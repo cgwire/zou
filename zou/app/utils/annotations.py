@@ -12,7 +12,7 @@ import math
 import os
 import re
 
-from PIL import Image, ImageColor, ImageDraw, ImageFont
+from PIL import Image, ImageChops, ImageColor, ImageDraw, ImageFont
 
 logger = logging.getLogger(__name__)
 
@@ -42,10 +42,9 @@ def render_annotation_on_image(image_path, annotation):
     image = Image.open(image_path).convert("RGBA")
     ss_size = (image.size[0] * SUPERSAMPLE, image.size[1] * SUPERSAMPLE)
     overlay = Image.new("RGBA", ss_size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(overlay)
 
     for obj in objects:
-        _draw_object(overlay, draw, obj, ss_size)
+        _draw_object(overlay, obj, ss_size)
 
     if SUPERSAMPLE != 1:
         overlay = overlay.resize(image.size, Image.LANCZOS)
@@ -54,11 +53,26 @@ def render_annotation_on_image(image_path, annotation):
     return image_path
 
 
-def _draw_object(overlay, draw, obj, image_size):
+def _draw_object(overlay, obj, image_size):
     if not isinstance(obj, dict):
         return
+    if isinstance(obj.get("eraser"), dict):
+        # The eraser punches holes via destination-out compositing, which
+        # Pillow primitives can't do in-place. Render the shape onto its
+        # own transparent layer, subtract the eraser mask from that layer's
+        # alpha channel, then composite the result back onto the overlay.
+        layer = Image.new("RGBA", overlay.size, (0, 0, 0, 0))
+        _dispatch_shape(layer, obj, image_size)
+        _apply_eraser(layer, obj, image_size)
+        overlay.alpha_composite(layer)
+    else:
+        _dispatch_shape(overlay, obj, image_size)
+
+
+def _dispatch_shape(target, obj, image_size):
     obj_type = (obj.get("type") or "").lower()
     scale_x, scale_y = _get_scales(obj, image_size)
+    draw = ImageDraw.Draw(target)
     try:
         if obj_type == "path":
             _draw_path(draw, obj, scale_x, scale_y)
@@ -75,18 +89,102 @@ def _draw_object(overlay, draw, obj, image_size):
         elif obj_type == "polygon":
             _draw_polygon(draw, obj, scale_x, scale_y)
         elif obj_type in ("i-text", "text", "textbox"):
-            _draw_text(overlay, obj, scale_x, scale_y)
+            _draw_text(target, obj, scale_x, scale_y)
         elif obj_type == "arrow":
             _draw_arrow(draw, obj, scale_x, scale_y)
         elif obj_type == "group":
             for child in obj.get("objects", []) or []:
-                _draw_object(overlay, draw, child, image_size)
+                _draw_object(target, child, image_size)
         else:
             logger.debug("Unsupported annotation type: %s", obj_type)
     except Exception:
         logger.exception(
             "Failed to render annotation object of type %s", obj_type
         )
+
+
+def _apply_eraser(layer, parent_obj, image_size):
+    """
+    Subtract the eraser mask from `layer`'s alpha channel.
+
+    The eraser is a fabric Group of paths in the PARENT's local centered
+    coordinate frame (eraser group sits at origin (0, 0) with the parent's
+    untransformed dimensions, with default `originX/Y='center'`). Each
+    child path is positioned within that frame via its own
+    `left/top/scaleX/scaleY/angle`. Path commands run from the path-local
+    frame → parent-centered frame → canvas frame → image frame.
+
+    Pillow has no destination-out compositing, so we stamp the eraser
+    paths onto an L-mode mask (255 = erased) and subtract that mask from
+    the layer's alpha. Anti-aliasing comes from the renderer's overall
+    supersample + LANCZOS downsample.
+    """
+    eraser = parent_obj.get("eraser")
+    if not isinstance(eraser, dict):
+        return
+    children = eraser.get("objects") or []
+    if not children:
+        return
+
+    scale_x, scale_y = _get_scales(parent_obj, image_size)
+    parent_centered = _make_object_transform(parent_obj, 0, 0)
+    parent_scale_x = parent_obj.get("scaleX", 1) or 1
+
+    mask = Image.new("L", layer.size, 0)
+    mask_draw = ImageDraw.Draw(mask)
+
+    for child in children:
+        if not isinstance(child, dict):
+            continue
+        if (child.get("type") or "").lower() != "path":
+            continue
+        _draw_eraser_path_on_mask(
+            mask_draw,
+            child,
+            parent_centered,
+            parent_scale_x,
+            scale_x,
+            scale_y,
+        )
+
+    if mask.getbbox() is None:
+        return
+
+    _, _, _, alpha = layer.split()
+    layer.putalpha(ImageChops.subtract(alpha, mask))
+
+
+def _draw_eraser_path_on_mask(
+    mask_draw, child, parent_centered, parent_scale_x, scale_x, scale_y
+):
+    raw = child.get("path")
+    if not raw:
+        return
+    commands = _parse_path_commands(raw)
+    if not commands:
+        return
+    anchors = _extract_path_anchor_points(commands)
+    # Child path local → eraser-centered (= parent-centered) coords.
+    child_transform = _centered_transform(
+        _with_default_bbox(child, anchors),
+        fallback_pivot=_bbox_centre(anchors),
+    )
+
+    def to_image(px, py):
+        ex, ey = child_transform(px, py)
+        cx_out, cy_out = parent_centered(ex, ey)
+        return cx_out * scale_x, cy_out * scale_y
+
+    # Eraser stroke width sits in the parent's local frame: it scales
+    # with the parent's transform (scaleX) before reaching canvas, then
+    # again with the canvas → image factor.
+    raw_width = child.get("strokeWidth", 1) or 1
+    pillow_width = max(1, int(round(raw_width * parent_scale_x * scale_x)))
+
+    segments = _path_to_segments(commands, to_image)
+    for points in segments:
+        if len(points) >= 2:
+            mask_draw.line(points, fill=255, width=pillow_width, joint="curve")
 
 
 def _get_scales(obj, image_size):
@@ -658,6 +756,19 @@ def _draw_path(draw, obj, scale_x, scale_y):
     def to_screen(px, py):
         return _to_image(transform(px, py), scale_x, scale_y)
 
+    segments = _path_to_segments(commands, to_screen)
+    for points in segments:
+        if len(points) >= 2:
+            draw.line(points, fill=color, width=width, joint="curve")
+
+
+def _path_to_segments(commands, to_point):
+    """
+    Flatten an SVG-like command list (M/L/Q/C/Z) into polyline
+    segments expressed via `to_point(px, py)` for every anchor and
+    sampled curve point. Shared by the path renderer and the eraser
+    mask renderer.
+    """
     segments = []
     current = None
     start = None
@@ -667,11 +778,11 @@ def _draw_path(draw, obj, scale_x, scale_y):
         if op == "M" and len(params) >= 2:
             if segments and len(segments[-1]) < 2:
                 segments.pop()
-            current = to_screen(params[0], params[1])
+            current = to_point(params[0], params[1])
             start = current
             segments.append([current])
         elif op == "L" and len(params) >= 2:
-            current = to_screen(params[0], params[1])
+            current = to_point(params[0], params[1])
             if not segments:
                 segments.append([])
             segments[-1].append(current)
@@ -681,16 +792,16 @@ def _draw_path(draw, obj, scale_x, scale_y):
             if not segments:
                 segments.append([])
             if current is None:
-                current = to_screen(cx, cy)
+                current = to_point(cx, cy)
                 segments[-1].append(current)
             segments[-1].extend(
-                _quad_points(current, to_screen(cx, cy), to_screen(ex, ey))
+                _quad_points(current, to_point(cx, cy), to_point(ex, ey))
             )
-            current = to_screen(ex, ey)
+            current = to_point(ex, ey)
         elif op == "C" and len(params) >= 6:
-            c1 = to_screen(params[0], params[1])
-            c2 = to_screen(params[2], params[3])
-            ep = to_screen(params[4], params[5])
+            c1 = to_point(params[0], params[1])
+            c2 = to_point(params[2], params[3])
+            ep = to_point(params[4], params[5])
             if not segments:
                 segments.append([])
             if current is None:
@@ -702,10 +813,7 @@ def _draw_path(draw, obj, scale_x, scale_y):
             if start is not None and segments and segments[-1]:
                 segments[-1].append(start)
             current = start
-
-    for points in segments:
-        if len(points) >= 2:
-            draw.line(points, fill=color, width=width, joint="curve")
+    return segments
 
 
 def _parse_path_commands(raw):

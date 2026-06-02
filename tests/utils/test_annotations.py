@@ -734,6 +734,290 @@ class AnnotationsRendererTestCase(unittest.TestCase):
         # have been if A's translation was applied to B too) is white.
         # (This is the actual user-reported symptom.)
 
+    def test_eraser_punches_hole_in_filled_rect(self):
+        """
+        A filled red rect with a horizontal eraser path through the
+        middle should keep the top and bottom bands red and clear a
+        transparent band in the centre.
+
+        Path geometry: the eraser group is layout=fixed at origin
+        (0, 0) with the parent's local dimensions (100x100). A path
+        child with left=-30, top=-20, width=60, height=40 puts its
+        bbox-top-left at (-30, -20) in eraser-centered coords. The
+        path commands draw a horizontal line at y=20 in path-local
+        coords → spans (-30, 0) to (30, 0) in eraser-centered →
+        (70, 100) to (130, 100) in canvas, stroked 40px → covers
+        the band y≈80..120, x≈70..130 of the rect.
+        """
+        path = self._temp_image(size=(200, 200))
+        annotation = {
+            "drawing": {
+                "objects": [
+                    {
+                        "type": "rect",
+                        "left": 50,
+                        "top": 50,
+                        "width": 100,
+                        "height": 100,
+                        "fill": "#ff0000",
+                        "canvasWidth": 200,
+                        "canvasHeight": 200,
+                        "eraser": {
+                            "type": "eraser",
+                            "width": 100,
+                            "height": 100,
+                            "objects": [
+                                {
+                                    "type": "path",
+                                    "left": -30,
+                                    "top": -20,
+                                    "width": 60,
+                                    "height": 40,
+                                    "scaleX": 1,
+                                    "scaleY": 1,
+                                    "angle": 0,
+                                    "stroke": "#000",
+                                    "strokeWidth": 40,
+                                    "pathOffset": {"x": 30, "y": 20},
+                                    "path": [
+                                        ["M", 0, 20],
+                                        ["L", 60, 20],
+                                    ],
+                                }
+                            ],
+                        },
+                    }
+                ]
+            }
+        }
+        annotations_renderer.render_annotation_on_image(path, annotation)
+        image = Image.open(path)
+        # Top of the rect stays red.
+        self.assertPixelClose(image.getpixel((100, 60)), (255, 0, 0))
+        # Bottom of the rect stays red.
+        self.assertPixelClose(image.getpixel((100, 140)), (255, 0, 0))
+        # Centre of the rect is erased → background shows through (white).
+        self.assertPixelWhite(image.getpixel((100, 100)))
+
+    def test_eraser_follows_rotated_parent(self):
+        """
+        Eraser paths are stored in the parent's local centered frame:
+        rotating the parent rotates the erased band with it. A 90°
+        rotation of the rect above should turn the horizontal erased
+        band into a vertical erased band.
+        """
+        path = self._temp_image(size=(200, 200))
+        annotation = {
+            "drawing": {
+                "objects": [
+                    {
+                        "type": "rect",
+                        # 90° rotation around the original bbox centre
+                        # leaves the centre at (100, 100); fabric stores
+                        # the post-rotation left/top so that the rotated
+                        # bbox lines up with the centre.
+                        "left": 150,
+                        "top": 50,
+                        "width": 100,
+                        "height": 100,
+                        "angle": 90,
+                        "fill": "#ff0000",
+                        "canvasWidth": 200,
+                        "canvasHeight": 200,
+                        "eraser": {
+                            "type": "eraser",
+                            "width": 100,
+                            "height": 100,
+                            "objects": [
+                                {
+                                    "type": "path",
+                                    "left": -30,
+                                    "top": -20,
+                                    "width": 60,
+                                    "height": 40,
+                                    "scaleX": 1,
+                                    "scaleY": 1,
+                                    "angle": 0,
+                                    "stroke": "#000",
+                                    "strokeWidth": 40,
+                                    "pathOffset": {"x": 30, "y": 20},
+                                    "path": [
+                                        ["M", 0, 20],
+                                        ["L", 60, 20],
+                                    ],
+                                }
+                            ],
+                        },
+                    }
+                ]
+            }
+        }
+        annotations_renderer.render_annotation_on_image(path, annotation)
+        image = Image.open(path)
+        # After 90° rotation the erased band runs vertically through the
+        # centre. Top of the band is now erased…
+        self.assertPixelWhite(image.getpixel((100, 80)))
+        # …bottom too.
+        self.assertPixelWhite(image.getpixel((100, 120)))
+        # …and the left/right of the rect (now top/bottom in the rotated
+        # frame) stay red.
+        self.assertPixelClose(image.getpixel((75, 100)), (255, 0, 0))
+        self.assertPixelClose(image.getpixel((125, 100)), (255, 0, 0))
+
+    def test_eraser_on_one_object_does_not_affect_siblings(self):
+        """
+        Two filled rects side by side. Only the left one carries an
+        eraser; the right one must stay fully red.
+        """
+        path = self._temp_image(size=(300, 200))
+        eraser_payload = {
+            "type": "eraser",
+            "width": 80,
+            "height": 80,
+            "objects": [
+                {
+                    "type": "path",
+                    "left": -30,
+                    "top": -15,
+                    "width": 60,
+                    "height": 30,
+                    "scaleX": 1,
+                    "scaleY": 1,
+                    "angle": 0,
+                    "stroke": "#000",
+                    "strokeWidth": 30,
+                    "pathOffset": {"x": 30, "y": 15},
+                    "path": [["M", 0, 15], ["L", 60, 15]],
+                }
+            ],
+        }
+        annotation = {
+            "drawing": {
+                "objects": [
+                    {
+                        "type": "rect",
+                        "left": 40,
+                        "top": 60,
+                        "width": 80,
+                        "height": 80,
+                        "fill": "#ff0000",
+                        "canvasWidth": 300,
+                        "canvasHeight": 200,
+                        "eraser": eraser_payload,
+                    },
+                    {
+                        "type": "rect",
+                        "left": 180,
+                        "top": 60,
+                        "width": 80,
+                        "height": 80,
+                        "fill": "#ff0000",
+                        "canvasWidth": 300,
+                        "canvasHeight": 200,
+                    },
+                ]
+            }
+        }
+        annotations_renderer.render_annotation_on_image(path, annotation)
+        image = Image.open(path)
+        # Left rect centre is erased.
+        self.assertPixelWhite(image.getpixel((80, 100)))
+        # Right rect centre is intact.
+        self.assertPixelClose(image.getpixel((220, 100)), (255, 0, 0))
+
+    def test_eraser_on_psstroke_clears_segment(self):
+        """
+        A freehand stroke crossing the centre of the canvas with an
+        eraser path clipping its middle should keep its ends and lose
+        its centre.
+        """
+        path = self._temp_image(size=(200, 200))
+        annotation = {
+            "drawing": {
+                "objects": [
+                    {
+                        "type": "PSStroke",
+                        "stroke": "#0000ff",
+                        "strokeWidth": 10,
+                        "canvasWidth": 200,
+                        "canvasHeight": 200,
+                        "left": 30,
+                        "top": 95,
+                        "width": 140,
+                        "height": 10,
+                        "strokePoints": [
+                            {"x": 30, "y": 100, "pressure": 1.0},
+                            {"x": 170, "y": 100, "pressure": 1.0},
+                        ],
+                        "eraser": {
+                            "type": "eraser",
+                            "width": 140,
+                            "height": 10,
+                            "objects": [
+                                {
+                                    "type": "path",
+                                    "left": -25,
+                                    "top": -10,
+                                    "width": 50,
+                                    "height": 20,
+                                    "scaleX": 1,
+                                    "scaleY": 1,
+                                    "angle": 0,
+                                    "stroke": "#000",
+                                    "strokeWidth": 30,
+                                    "pathOffset": {"x": 25, "y": 10},
+                                    "path": [
+                                        ["M", 0, 10],
+                                        ["L", 50, 10],
+                                    ],
+                                }
+                            ],
+                        },
+                    }
+                ]
+            }
+        }
+        annotations_renderer.render_annotation_on_image(path, annotation)
+        image = Image.open(path)
+        # Left end of the stroke is still blue.
+        self.assertPixelClose(image.getpixel((40, 100)), (0, 0, 255))
+        # Right end is still blue.
+        self.assertPixelClose(image.getpixel((160, 100)), (0, 0, 255))
+        # Middle of the stroke has been erased.
+        self.assertPixelWhite(image.getpixel((100, 100)))
+
+    def test_empty_eraser_leaves_object_intact(self):
+        """
+        An object with an eraser carrying no paths should render
+        normally (no false-positive erasing of the whole shape).
+        """
+        path = self._temp_image(size=(200, 200))
+        annotation = {
+            "drawing": {
+                "objects": [
+                    {
+                        "type": "rect",
+                        "left": 50,
+                        "top": 50,
+                        "width": 100,
+                        "height": 100,
+                        "fill": "#ff0000",
+                        "canvasWidth": 200,
+                        "canvasHeight": 200,
+                        "eraser": {
+                            "type": "eraser",
+                            "width": 100,
+                            "height": 100,
+                            "objects": [],
+                        },
+                    }
+                ]
+            }
+        }
+        annotations_renderer.render_annotation_on_image(path, annotation)
+        image = Image.open(path)
+        self.assertPixelClose(image.getpixel((100, 100)), (255, 0, 0))
+
     def test_unknown_type_does_not_raise(self):
         path = self._temp_image()
         before = Image.open(path).getpixel((100, 100))
