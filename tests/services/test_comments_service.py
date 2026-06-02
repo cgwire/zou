@@ -399,7 +399,9 @@ class CommentsServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(filtered), 0)
 
     def test_create_comment_with_hashtags(self):
-        """Integration test for create_comment with hashtag functionality"""
+        """
+        Integration test for create_comment with hashtag functionality
+        """
         modeling_task = self.generate_fixture_shot_task(
             name="main", task_type_id=self.task_type_modeling.id
         )

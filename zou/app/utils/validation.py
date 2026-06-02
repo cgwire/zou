@@ -19,7 +19,9 @@ class BaseSchema(BaseModel):
 
 
 def _format_validation_errors(exc: ValidationError):
-    """Turn Pydantic ValidationError into a list of {field, message} dicts."""
+    """
+    Turn Pydantic ValidationError into a list of {field, message} dicts.
+    """
     return [
         {
             "field": ".".join(str(loc) for loc in err["loc"] if loc != "body"),

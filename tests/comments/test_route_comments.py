@@ -82,8 +82,10 @@ class CommentRoutesTestCase(ApiDBTestCase):
         self.assertEqual(reply["person"]["full_name"], "John Did")
 
     def test_reply_author_hidden_from_client(self):
-        """Studio members' identities must not be exposed to clients on
-        replies, matching the comment author behavior."""
+        """
+        Studio members' identities must not be exposed to clients on
+        replies, matching the comment author behavior.
+        """
         client_person = Person.get(self.user_client["id"])
         self.project.team = [client_person, self.person]
         self.project.save()
@@ -107,9 +109,11 @@ class CommentRoutesTestCase(ApiDBTestCase):
         self.assertIsNone(target["replies"][0]["person"])
 
     def test_comment_author_hidden_from_client_in_list(self):
-        """The comment list must not embed a studio author for a client,
+        """
+        The comment list must not embed a studio author for a client,
         matching the single-comment and reply author behavior, while the
-        comment content stays visible."""
+        comment content stays visible.
+        """
         client_person = Person.get(self.user_client["id"])
         self.project.team = [client_person, self.person]
         self.project.save()
@@ -132,8 +136,10 @@ class CommentRoutesTestCase(ApiDBTestCase):
         self.assertIsNone(target["person"])
 
     def test_client_author_embedded_for_client_in_list(self):
-        """A client's own comment must keep its embedded author so it renders
-        with a name and avatar."""
+        """
+        A client's own comment must keep its embedded author so it renders
+        with a name and avatar.
+        """
         client_person = Person.get(self.user_client["id"])
         self.project.team = [client_person, self.person]
         self.project.save()
@@ -154,8 +160,10 @@ class CommentRoutesTestCase(ApiDBTestCase):
         self.assertEqual(target["person"]["role"], "client")
 
     def test_comment_author_hidden_from_client(self):
-        """The single-comment endpoint must not embed a studio author for a
-        client, matching the reply author behavior."""
+        """
+        The single-comment endpoint must not embed a studio author for a
+        client, matching the reply author behavior.
+        """
         client_person = Person.get(self.user_client["id"])
         self.project.team = [client_person, self.person]
         self.project.save()
@@ -174,9 +182,11 @@ class CommentRoutesTestCase(ApiDBTestCase):
         self.assertIsNone(result["person"])
 
     def test_internal_comment_forbidden_for_client(self):
-        """A client must not reach an internal studio comment (not for_client)
+        """
+        A client must not reach an internal studio comment (not for_client)
         on the single-comment endpoint. check_comment_access is the sole gate
-        now that clean_get_result no longer blanks the text."""
+        now that clean_get_result no longer blanks the text.
+        """
         client_person = Person.get(self.user_client["id"])
         self.project.team = [client_person, self.person]
         self.project.save()
@@ -192,8 +202,10 @@ class CommentRoutesTestCase(ApiDBTestCase):
         self.get(f"/data/comments/{comment['id']}", 403)
 
     def test_editor_hidden_from_client_in_list(self):
-        """A studio editor identity must not leak to clients in the comment
-        list, matching the comment author behavior."""
+        """
+        A studio editor identity must not leak to clients in the comment
+        list, matching the comment author behavior.
+        """
         client_person = Person.get(self.user_client["id"])
         self.project.team = [client_person, self.person]
         self.project.save()
@@ -218,7 +230,9 @@ class CommentRoutesTestCase(ApiDBTestCase):
         self.assertIsNone(target["editor_id"])
 
     def test_client_editor_kept_in_list(self):
-        """A client editor stays visible, mirroring the author behavior."""
+        """
+        A client editor stays visible, mirroring the author behavior.
+        """
         client_person = Person.get(self.user_client["id"])
         self.project.team = [client_person, self.person]
         self.project.save()
@@ -243,8 +257,10 @@ class CommentRoutesTestCase(ApiDBTestCase):
         self.assertEqual(target["editor"]["role"], "client")
 
     def test_editor_hidden_from_client(self):
-        """The single-comment endpoint must not expose a studio editor to a
-        client, matching the comment author behavior."""
+        """
+        The single-comment endpoint must not expose a studio editor to a
+        client, matching the comment author behavior.
+        """
         client_person = Person.get(self.user_client["id"])
         self.project.team = [client_person, self.person]
         self.project.save()
@@ -319,8 +335,10 @@ class CommentRoutesTestCase(ApiDBTestCase):
         self.assertIn("Batch comment", texts)
 
     def test_comment_without_for_client_hidden_from_client(self):
-        """A manager-authored comment without for_client stays hidden from
-        clients (default behavior preserved)."""
+        """
+        A manager-authored comment without for_client stays hidden from
+        clients (default behavior preserved).
+        """
         client_person = Person.get(self.user_client["id"])
         self.project.team = [client_person, self.person]
         self.project.save()
@@ -350,7 +368,9 @@ class CommentRoutesTestCase(ApiDBTestCase):
         self.assertFalse(result["for_client"])
 
     def _make_sibling_task(self):
-        """Create a second task on the same asset with a different task type."""
+        """
+        Create a second task on the same asset with a different task type.
+        """
         return Task.create(
             name="Modeling task",
             project_id=self.project.id,

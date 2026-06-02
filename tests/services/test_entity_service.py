@@ -91,7 +91,9 @@ class EntityServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(sequences[0]["tasks"]), 1)
 
     def test_get_entity_tasks_shot(self):
-        """Test get_entity_tasks for shot entity"""
+        """
+        Test get_entity_tasks for shot entity
+        """
         shot_entity = entities_service.get_entity(str(self.shot.id))
         tasks = entities_service.get_entity_tasks(shot_entity)
 
@@ -104,7 +106,9 @@ class EntityServiceTestCase(ApiDBTestCase):
         self.assertEqual(task["entity_id"], str(self.shot.id))
 
     def test_get_entity_tasks_asset(self):
-        """Test get_entity_tasks for asset entity"""
+        """
+        Test get_entity_tasks for asset entity
+        """
         asset_entity = entities_service.get_entity(str(self.asset.id))
         tasks = entities_service.get_entity_tasks(asset_entity)
         self.assertIsInstance(tasks, list)
@@ -116,7 +120,9 @@ class EntityServiceTestCase(ApiDBTestCase):
         self.assertEqual(task["entity_id"], str(self.asset.id))
 
     def test_get_entity_tasks_no_tasks(self):
-        """Test get_entity_tasks when entity has no tasks"""
+        """
+        Test get_entity_tasks when entity has no tasks
+        """
         shot_entity = entities_service.get_entity(str(self.shot.id))
         deletion_service.remove_task(str(self.shot_task.id), force=True)
         tasks = entities_service.get_entity_tasks(shot_entity)

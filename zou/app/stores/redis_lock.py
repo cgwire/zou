@@ -9,7 +9,9 @@ from zou.app import config
 
 
 def get_redis_client():
-    """Redis client for locking; same config as cache. Returns None if Redis unavailable."""
+    """
+    Redis client for locking; same config as cache. Returns None if Redis unavailable.
+    """
     try:
         client = redis.StrictRedis(
             host=config.KEY_VALUE_STORE["host"],

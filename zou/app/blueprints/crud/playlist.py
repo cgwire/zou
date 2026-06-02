@@ -12,7 +12,9 @@ from zou.app.utils import fields
 
 
 def _check_for_entity(data):
-    """Reject unknown for_entity values at the CRUD boundary."""
+    """
+    Reject unknown for_entity values at the CRUD boundary.
+    """
     if "for_entity" in data and data["for_entity"] is not None:
         if data["for_entity"] not in playlists_service.VALID_FOR_ENTITY_VALUES:
             raise WrongParameterException(

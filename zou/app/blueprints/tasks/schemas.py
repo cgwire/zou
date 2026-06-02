@@ -11,13 +11,17 @@ from zou.app.utils.validation import BaseSchema
 
 
 class CommentPreviewSchema(BaseSchema):
-    """Body for adding a preview to a comment."""
+    """
+    Body for adding a preview to a comment.
+    """
 
     revision: int = Field(0, ge=0)
 
 
 class ToReviewSchema(BaseSchema):
-    """Body for setting a task to review."""
+    """
+    Body for setting a task to review.
+    """
 
     person_id: Optional[str] = None
     comment: Optional[str] = ""
@@ -27,7 +31,9 @@ class ToReviewSchema(BaseSchema):
 
 
 class UnassignTasksSchema(BaseSchema):
-    """Body for clearing task assignations."""
+    """
+    Body for clearing task assignations.
+    """
 
     task_ids: List[str] = Field(
         ..., min_length=1, description="Tasks list required."
@@ -36,7 +42,9 @@ class UnassignTasksSchema(BaseSchema):
 
 
 class AssignTasksSchema(BaseSchema):
-    """Body for assigning tasks to a person."""
+    """
+    Body for assigning tasks to a person.
+    """
 
     task_ids: List[str] = Field(
         ..., min_length=1, description="Tasks list required."
@@ -44,7 +52,9 @@ class AssignTasksSchema(BaseSchema):
 
 
 class AssignPersonSchema(BaseSchema):
-    """Body for assigning a single task to a person."""
+    """
+    Body for assigning a single task to a person.
+    """
 
     person_id: str = Field(
         ..., min_length=1, description="Assignee ID required."
@@ -52,6 +62,8 @@ class AssignPersonSchema(BaseSchema):
 
 
 class TimeSpentSchema(BaseSchema):
-    """Body for creating/updating time spent on a task."""
+    """
+    Body for creating/updating time spent on a task.
+    """
 
     duration: float = Field(..., gt=0, description="Duration in minutes")

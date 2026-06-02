@@ -34,7 +34,9 @@ flask_bcrypt.generate_password_hash = _fast_generate
 
 @pytest.fixture(autouse=True)
 def _skip_bcrypt_check(request, monkeypatch):
-    """Bypass bcrypt verification during login for non-auth tests."""
+    """
+    Bypass bcrypt verification during login for non-auth tests.
+    """
     if request.fspath.basename not in _REAL_BCRYPT_FILES:
         monkeypatch.setattr(
             "flask_bcrypt.check_password_hash",
@@ -43,7 +45,9 @@ def _skip_bcrypt_check(request, monkeypatch):
 
 
 def pytest_configure(config):
-    """Create database schema once for the entire test session."""
+    """
+    Create database schema once for the entire test session.
+    """
     from zou.app import app
     from zou.app.utils import dbhelpers
 
@@ -63,7 +67,9 @@ def pytest_configure(config):
 
 
 def pytest_unconfigure(config):
-    """Drop database schema at the end of the test session."""
+    """
+    Drop database schema at the end of the test session.
+    """
     from zou.app import app
     from zou.app.utils import dbhelpers
 

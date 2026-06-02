@@ -152,9 +152,11 @@ class AnnotationsRendererTestCase(unittest.TestCase):
         self.assertPixelClose(image.getpixel((100, 100)), (255, 0, 255))
 
     def test_path_with_realistic_fabric_data(self):
-        """Real fabric.js paths carry left/top/width/height/pathOffset.
+        """
+        Real fabric.js paths carry left/top/width/height/pathOffset.
         The path commands are in path-local coords; fabric positions the
         path so its bbox center sits at (left + width/2, top + height/2).
+
         """
         path = self._temp_image(size=(200, 200))
         annotation = {
@@ -193,8 +195,10 @@ class AnnotationsRendererTestCase(unittest.TestCase):
         self.assertPixelWhite(image.getpixel((45, 100)))
 
     def test_arrow_uses_absolute_canvas_coords(self):
-        """Real fabric.js Line/Arrow store x1,y1,x2,y2 in canvas-absolute
-        coords. left/top are bbox metadata and must NOT be added on top."""
+        """
+        Real fabric.js Line/Arrow store x1,y1,x2,y2 in canvas-absolute
+        coords. left/top are bbox metadata and must NOT be added on top.
+        """
         path = self._temp_image(size=(200, 200))
         annotation = {
             "drawing": {
@@ -229,9 +233,11 @@ class AnnotationsRendererTestCase(unittest.TestCase):
         self.assertPixelWhite(image.getpixel((180, 100)))
 
     def test_psstroke_renders_polyline_through_strokepoints(self):
-        """PSStroke (pressure brush, the freehand tool in Kitsu) stores
+        """
+        PSStroke (pressure brush, the freehand tool in Kitsu) stores
         points under `strokePoints`, not `path`. Each point has x/y/pressure
-        in canvas-absolute coords."""
+        in canvas-absolute coords.
+        """
         path = self._temp_image(size=(200, 200))
         annotation = {
             "drawing": {
@@ -264,10 +270,12 @@ class AnnotationsRendererTestCase(unittest.TestCase):
         self.assertPixelWhite(image.getpixel((180, 50)))
 
     def test_psstroke_applies_pressure_to_width(self):
-        """PSBrush uses lineWidth = pressure * strokeWidth per segment.
+        """
+        PSBrush uses lineWidth = pressure * strokeWidth per segment.
         Low pressure must produce a noticeably thinner line — a pixel a
         few rows above the centerline should stay white at low pressure
-        but be coloured at high pressure."""
+        but be coloured at high pressure.
+        """
         # Low-pressure stroke (0.1): rendered width ~ 0.1 * 20 = 2 px
         path_low = self._temp_image(size=(200, 200))
         low_ann = {
@@ -317,10 +325,12 @@ class AnnotationsRendererTestCase(unittest.TestCase):
         self.assertPixelClose(high_img.getpixel((100, 105)), (0, 0, 0))
 
     def test_arrow_body_does_not_poke_past_tip(self):
-        """Pillow's draw.line rounds endpoints with a disk of radius
+        """
+        Pillow's draw.line rounds endpoints with a disk of radius
         width/2; without compensation the body sticks out past the
         triangular head. We shorten the body so the head fully covers
-        the tip."""
+        the tip.
+        """
         path = self._temp_image(size=(200, 200))
         annotation = {
             "drawing": {
@@ -353,12 +363,14 @@ class AnnotationsRendererTestCase(unittest.TestCase):
     def test_whiteboard_rect_renders_translucent_white_without_outline(
         self,
     ):
-        """Kitsu's whiteboard sticker (annotation.js:212) is a fabric.Rect
+        """
+        Kitsu's whiteboard sticker (annotation.js:212) is a fabric.Rect
         with `stroke: undefined`, `strokeWidth: 0`, fill=
         `rgba(255, 255, 255, 0.7)`. The renderer must:
         - not paint a red default outline,
         - parse the CSS-style rgba (alpha 0..1),
         - blend the translucent white so the underlying image still shows.
+
         """
         # Start from a black image so the white whiteboard is visible.
         path = self._temp_image()
@@ -401,11 +413,13 @@ class AnnotationsRendererTestCase(unittest.TestCase):
         )
 
     def test_rect_rotated_90_degrees(self):
-        """A 100x20 rect rotated 90° around its bbox centre ends up
+        """
+        A 100x20 rect rotated 90° around its bbox centre ends up
         looking like a 20x100 rect. Fabric's UI rotation updates
         `left`/`top` so the bbox centre stays put visually — the JSON
         therefore stores left=110, top=50 for a rect that was originally
-        at left=50, top=90 (centre (100, 100))."""
+        at left=50, top=90 (centre (100, 100)).
+        """
         path = self._temp_image(size=(200, 200))
         annotation = {
             "drawing": {
@@ -436,8 +450,10 @@ class AnnotationsRendererTestCase(unittest.TestCase):
         self.assertPixelWhite(image.getpixel((140, 100)))
 
     def test_rect_scaled(self):
-        """A rect with scaleX=2, scaleY=1.5 should render as if its
-        width/height were doubled / 1.5×'d, centered on its bbox."""
+        """
+        A rect with scaleX=2, scaleY=1.5 should render as if its
+        width/height were doubled / 1.5×'d, centered on its bbox.
+        """
         path = self._temp_image(size=(200, 200))
         annotation = {
             "drawing": {
@@ -467,10 +483,12 @@ class AnnotationsRendererTestCase(unittest.TestCase):
         self.assertPixelWhite(image.getpixel((165, 110)))
 
     def test_arrow_rotated(self):
-        """An arrow pointing right rotated 90° (fabric UI: rotate
+        """
+        An arrow pointing right rotated 90° (fabric UI: rotate
         around bbox centre, then store new left/top) should point down.
         Fabric stores left=104, top=60 for an arrow originally at
-        left=60, top=96 (centre (100, 100))."""
+        left=60, top=96 (centre (100, 100)).
+        """
         path = self._temp_image(size=(200, 200))
         annotation = {
             "drawing": {
@@ -504,10 +522,12 @@ class AnnotationsRendererTestCase(unittest.TestCase):
         self.assertPixelWhite(image.getpixel((75, 100)))
 
     def test_psstroke_translated_after_creation(self):
-        """A PSStroke whose `left` has shifted (the user dragged it
+        """
+        A PSStroke whose `left` has shifted (the user dragged it
         right) must render at the new position even when strokeOffset
         is not in the JSON. Pivot must come from the strokePoints'
-        bbox, not the moved bbox centre."""
+        bbox, not the moved bbox centre.
+        """
         path = self._temp_image(size=(200, 200))
         annotation = {
             "drawing": {
@@ -542,11 +562,13 @@ class AnnotationsRendererTestCase(unittest.TestCase):
         self.assertPixelWhite(image.getpixel((60, 100)))
 
     def test_path_translated_after_creation(self):
-        """Same scenario for a fabric.Path: the user moved it but the
+        """
+        Same scenario for a fabric.Path: the user moved it but the
         path commands themselves stayed in their original calcDim
         space. With no pathOffset in the JSON, the pivot must fall back
         to the path's own bbox so the new `left` actually shifts the
-        rendering."""
+        rendering.
+        """
         path = self._temp_image(size=(200, 200))
         annotation = {
             "drawing": {
@@ -577,10 +599,12 @@ class AnnotationsRendererTestCase(unittest.TestCase):
         self.assertPixelWhite(image.getpixel((60, 100)))
 
     def test_rotated_and_translated_strokes_stay_independent(self):
-        """When the same drawing contains one rotated PSStroke and one
+        """
+        When the same drawing contains one rotated PSStroke and one
         translated PSStroke, each must use its OWN bbox metadata — the
         translation of stroke B must not shift the rendering of stroke
-        A. Regression for a state-leakage bug across objects."""
+        A. Regression for a state-leakage bug across objects.
+        """
         path = self._temp_image(size=(300, 200))
         annotation = {
             "drawing": {
@@ -637,10 +661,12 @@ class AnnotationsRendererTestCase(unittest.TestCase):
         self.assertPixelWhite(image.getpixel((110, 100)))
 
     def test_real_psstroke_rotate_plus_translate_user_report(self):
-        """Reproduces the user-reported bug: one PSStroke is translated
+        """
+        Reproduces the user-reported bug: one PSStroke is translated
         (untouched-then-dragged), another is rotated + translated. Both
         must render at their fabric-equivalent positions independently.
-        Uses the exact JSON the user pasted."""
+        Uses the exact JSON the user pasted.
+        """
         path = self._temp_image(size=(1080, 605))
         annotation = {
             "drawing": {

@@ -828,8 +828,10 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         self.assertEqual(result["asset"][project_id][2]["name"], "my group")
 
     def test_context_excludes_guests(self):
-        """Guests created by the shared playlist flow must not show up
-        in /data/user/context — they are not part of the studio team."""
+        """
+        Guests created by the shared playlist flow must not show up
+        in /data/user/context — they are not part of the studio team.
+        """
         Person.create(
             first_name="Reviewer",
             last_name="One",

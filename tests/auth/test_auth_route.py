@@ -328,8 +328,10 @@ class Enforce2FATestCase(ApiDBTestCase):
         return {"Authorization": f"Bearer {tokens.get('access_token', None)}"}
 
     def test_login_returns_restricted_tokens(self):
-        """Login with ENFORCE_2FA=True, no 2FA configured returns
-        200 with tokens and two_factor_authentication_required."""
+        """
+        Login with ENFORCE_2FA=True, no 2FA configured returns
+        200 with tokens and two_factor_authentication_required.
+        """
         response = self.post("auth/login", self.credentials, 200)
         self.assertTrue(response["login"])
         self.assertTrue(response["two_factor_authentication_required"])
@@ -337,8 +339,10 @@ class Enforce2FATestCase(ApiDBTestCase):
         self.assertIn("refresh_token", response)
 
     def test_restricted_token_blocked_on_non_auth_route(self):
-        """Restricted token is blocked on non-auth routes with
-        403."""
+        """
+        Restricted token is blocked on non-auth routes with
+        403.
+        """
         tokens = self.post("auth/login", self.credentials, 200)
         headers = self.get_auth_headers(tokens)
         response = self.app.get("data/persons", headers=headers)
@@ -347,8 +351,10 @@ class Enforce2FATestCase(ApiDBTestCase):
         self.assertTrue(data["two_factor_authentication_required"])
 
     def test_restricted_token_allowed_on_totp(self):
-        """Restricted token can access /auth/totp for TOTP
-        enrollment."""
+        """
+        Restricted token can access /auth/totp for TOTP
+        enrollment.
+        """
         tokens = self.post("auth/login", self.credentials, 200)
         headers = self.get_auth_headers(tokens)
         headers["Content-type"] = "application/json"
@@ -358,21 +364,27 @@ class Enforce2FATestCase(ApiDBTestCase):
         self.assertIn("otp_secret", data)
 
     def test_restricted_token_allowed_on_authenticated(self):
-        """Restricted token can access /auth/authenticated."""
+        """
+        Restricted token can access /auth/authenticated.
+        """
         tokens = self.post("auth/login", self.credentials, 200)
         headers = self.get_auth_headers(tokens)
         response = self.app.get("auth/authenticated", headers=headers)
         self.assertEqual(response.status_code, 200)
 
     def test_restricted_token_allowed_on_logout(self):
-        """Restricted token can access /auth/logout."""
+        """
+        Restricted token can access /auth/logout.
+        """
         tokens = self.post("auth/login", self.credentials, 200)
         headers = self.get_auth_headers(tokens)
         response = self.app.get("auth/logout", headers=headers)
         self.assertEqual(response.status_code, 200)
 
     def test_restricted_token_blocked_on_change_password(self):
-        """Restricted token is blocked on /auth/change-password."""
+        """
+        Restricted token is blocked on /auth/change-password.
+        """
         tokens = self.post("auth/login", self.credentials, 200)
         headers = self.get_auth_headers(tokens)
         headers["Content-type"] = "application/json"
@@ -390,8 +402,10 @@ class Enforce2FATestCase(ApiDBTestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_token_unrestricted_after_2fa_setup(self):
-        """After configuring TOTP, refreshed token is
-        unrestricted."""
+        """
+        After configuring TOTP, refreshed token is
+        unrestricted.
+        """
         tokens = self.post("auth/login", self.credentials, 200)
         headers = self.get_auth_headers(tokens)
         headers["Content-type"] = "application/json"
@@ -428,7 +442,9 @@ class Enforce2FATestCase(ApiDBTestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_exempt_user_gets_unrestricted_tokens(self):
-        """Users in TWO_FA_EXEMPT_USERS get unrestricted tokens."""
+        """
+        Users in TWO_FA_EXEMPT_USERS get unrestricted tokens.
+        """
         self.app_instance.config["TWO_FA_EXEMPT_USERS"] = [
             self.person_dict["email"]
         ]
@@ -440,8 +456,10 @@ class Enforce2FATestCase(ApiDBTestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_user_with_2fa_configured_can_login(self):
-        """User with 2FA already configured gets unrestricted
-        tokens."""
+        """
+        User with 2FA already configured gets unrestricted
+        tokens.
+        """
         # Configure TOTP with enforcement disabled
         self.app_instance.config["ENFORCE_2FA"] = False
         tokens = self.post("auth/login", self.credentials, 200)
@@ -480,8 +498,10 @@ class Enforce2FATestCase(ApiDBTestCase):
         )
 
     def test_wrong_password_still_returns_400(self):
-        """Wrong password returns 400, not 403, even with
-        ENFORCE_2FA."""
+        """
+        Wrong password returns 400, not 403, even with
+        ENFORCE_2FA.
+        """
         credentials = {
             "email": self.person_dict["email"],
             "password": "wrongpassword",
@@ -516,11 +536,15 @@ class EmailOTPTestCase(ApiDBTestCase):
         return tokens, headers
 
     def get_person(self):
-        """Reload person from DB to get fresh state."""
+        """
+        Reload person from DB to get fresh state.
+        """
         return Person.get(self.person_dict["id"])
 
     def enable_email_otp(self, headers):
-        """Pre-enable then enable email OTP, return the secret."""
+        """
+        Pre-enable then enable email OTP, return the secret.
+        """
         # Pre-enable: generates secret and sends OTP email
         response = self.app.put("auth/email-otp", headers=headers)
         self.assertEqual(response.status_code, 200)
@@ -541,7 +565,9 @@ class EmailOTPTestCase(ApiDBTestCase):
         return secret
 
     def test_pre_enable_email_otp(self):
-        """PUT /auth/email-otp pre-enables email OTP."""
+        """
+        PUT /auth/email-otp pre-enables email OTP.
+        """
         _, headers = self.login()
         response = self.app.put("auth/email-otp", headers=headers)
         self.assertEqual(response.status_code, 200)
@@ -554,7 +580,9 @@ class EmailOTPTestCase(ApiDBTestCase):
         self.assertFalse(person.email_otp_enabled)
 
     def test_pre_enable_email_otp_already_enabled(self):
-        """PUT /auth/email-otp returns 400 if already enabled."""
+        """
+        PUT /auth/email-otp returns 400 if already enabled.
+        """
         _, headers = self.login()
         self.enable_email_otp(headers)
 
@@ -562,7 +590,9 @@ class EmailOTPTestCase(ApiDBTestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_enable_email_otp(self):
-        """POST /auth/email-otp enables email OTP with valid code."""
+        """
+        POST /auth/email-otp enables email OTP with valid code.
+        """
         _, headers = self.login()
         self.enable_email_otp(headers)
 
@@ -571,7 +601,9 @@ class EmailOTPTestCase(ApiDBTestCase):
         self.assertIsNotNone(person.preferred_two_factor_authentication)
 
     def test_enable_email_otp_wrong_code(self):
-        """POST /auth/email-otp returns 400 with wrong code."""
+        """
+        POST /auth/email-otp returns 400 with wrong code.
+        """
         _, headers = self.login()
 
         # Pre-enable
@@ -588,8 +620,10 @@ class EmailOTPTestCase(ApiDBTestCase):
         self.assertTrue(data["wrong_OTP"])
 
     def test_disable_email_otp(self):
-        """DELETE /auth/email-otp disables email OTP with valid
-        code."""
+        """
+        DELETE /auth/email-otp disables email OTP with valid
+        code.
+        """
         _, headers = self.login()
         secret = self.enable_email_otp(headers)
 
@@ -614,7 +648,9 @@ class EmailOTPTestCase(ApiDBTestCase):
         self.assertIsNone(person.email_otp_secret)
 
     def test_disable_email_otp_not_enabled(self):
-        """DELETE /auth/email-otp returns 400 if not enabled."""
+        """
+        DELETE /auth/email-otp returns 400 if not enabled.
+        """
         _, headers = self.login()
         response = self.app.delete(
             "auth/email-otp",
@@ -624,7 +660,9 @@ class EmailOTPTestCase(ApiDBTestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_disable_email_otp_wrong_code(self):
-        """DELETE /auth/email-otp returns 400 with wrong code."""
+        """
+        DELETE /auth/email-otp returns 400 with wrong code.
+        """
         _, headers = self.login()
         self.enable_email_otp(headers)
 
@@ -638,7 +676,9 @@ class EmailOTPTestCase(ApiDBTestCase):
         self.assertTrue(data["wrong_OTP"])
 
     def test_login_with_email_otp(self):
-        """Login with email OTP after it's enabled."""
+        """
+        Login with email OTP after it's enabled.
+        """
         tokens, headers = self.login()
         secret = self.enable_email_otp(headers)
         self.app.get("auth/logout", headers=headers)
@@ -668,14 +708,18 @@ class EmailOTPTestCase(ApiDBTestCase):
         self.assertTrue(response["login"])
 
     def test_send_email_otp_not_enabled(self):
-        """GET /auth/email-otp returns 400 if email OTP not enabled."""
+        """
+        GET /auth/email-otp returns 400 if email OTP not enabled.
+        """
         response = self.app.get(
             f"auth/email-otp?email={self.credentials['email']}"
         )
         self.assertEqual(response.status_code, 400)
 
     def test_send_email_otp_unknown_user(self):
-        """GET /auth/email-otp returns 404 for unknown email."""
+        """
+        GET /auth/email-otp returns 404 for unknown email.
+        """
         response = self.app.get("auth/email-otp?email=unknown@test.com")
         self.assertEqual(response.status_code, 404)
 
@@ -709,7 +753,9 @@ class TOTPTestCase(ApiDBTestCase):
         return Person.get(self.person_dict["id"])
 
     def enable_totp(self, headers):
-        """Pre-enable then enable TOTP, return the secret."""
+        """
+        Pre-enable then enable TOTP, return the secret.
+        """
         response = self.app.put("auth/totp", headers=headers)
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.data.decode("utf-8"))
@@ -725,7 +771,9 @@ class TOTPTestCase(ApiDBTestCase):
         return otp_secret
 
     def test_pre_enable_totp_already_enabled(self):
-        """PUT /auth/totp returns 400 if TOTP already enabled."""
+        """
+        PUT /auth/totp returns 400 if TOTP already enabled.
+        """
         _, headers = self.login()
         self.enable_totp(headers)
 
@@ -735,7 +783,9 @@ class TOTPTestCase(ApiDBTestCase):
         self.assertTrue(data["error"])
 
     def test_enable_totp_wrong_code(self):
-        """POST /auth/totp returns 400 with wrong code."""
+        """
+        POST /auth/totp returns 400 with wrong code.
+        """
         _, headers = self.login()
 
         self.app.put("auth/totp", headers=headers)
@@ -749,7 +799,9 @@ class TOTPTestCase(ApiDBTestCase):
         self.assertTrue(data["wrong_OTP"])
 
     def test_enable_totp_already_enabled(self):
-        """POST /auth/totp returns 400 if TOTP already enabled."""
+        """
+        POST /auth/totp returns 400 if TOTP already enabled.
+        """
         _, headers = self.login()
         otp_secret = self.enable_totp(headers)
 
@@ -764,7 +816,9 @@ class TOTPTestCase(ApiDBTestCase):
         self.assertTrue(data["error"])
 
     def test_disable_totp(self):
-        """DELETE /auth/totp disables TOTP with valid code."""
+        """
+        DELETE /auth/totp disables TOTP with valid code.
+        """
         _, headers = self.login()
         otp_secret = self.enable_totp(headers)
 
@@ -783,7 +837,9 @@ class TOTPTestCase(ApiDBTestCase):
         self.assertIsNone(person.totp_secret)
 
     def test_disable_totp_not_enabled(self):
-        """DELETE /auth/totp returns 400 if TOTP not enabled."""
+        """
+        DELETE /auth/totp returns 400 if TOTP not enabled.
+        """
         _, headers = self.login()
         response = self.app.delete(
             "auth/totp",
@@ -793,7 +849,9 @@ class TOTPTestCase(ApiDBTestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_disable_totp_wrong_code(self):
-        """DELETE /auth/totp returns 400 with wrong code."""
+        """
+        DELETE /auth/totp returns 400 with wrong code.
+        """
         _, headers = self.login()
         self.enable_totp(headers)
 
@@ -807,7 +865,9 @@ class TOTPTestCase(ApiDBTestCase):
         self.assertTrue(data["wrong_OTP"])
 
     def test_login_with_totp(self):
-        """Login with TOTP code after enabling."""
+        """
+        Login with TOTP code after enabling.
+        """
         _, headers = self.login()
         otp_secret = self.enable_totp(headers)
         self.app.get("auth/logout", headers=headers)
@@ -829,7 +889,9 @@ class TOTPTestCase(ApiDBTestCase):
         self.assertTrue(response["login"])
 
     def test_login_with_recovery_code(self):
-        """Login with recovery code after enabling TOTP."""
+        """
+        Login with recovery code after enabling TOTP.
+        """
         _, headers = self.login()
         self.enable_totp(headers)
 
@@ -857,8 +919,10 @@ class TOTPTestCase(ApiDBTestCase):
         self.assertTrue(response["login"])
 
     def test_recovery_codes_regeneration(self):
-        """PUT /auth/recovery-codes regenerates codes with valid
-        TOTP."""
+        """
+        PUT /auth/recovery-codes regenerates codes with valid
+        TOTP.
+        """
         _, headers = self.login()
         otp_secret = self.enable_totp(headers)
 
@@ -874,7 +938,9 @@ class TOTPTestCase(ApiDBTestCase):
         self.assertIsNotNone(data["otp_recovery_codes"])
 
     def test_recovery_codes_no_2fa(self):
-        """PUT /auth/recovery-codes returns 400 without 2FA."""
+        """
+        PUT /auth/recovery-codes returns 400 without 2FA.
+        """
         _, headers = self.login()
         response = self.app.put(
             "auth/recovery-codes",
@@ -884,7 +950,9 @@ class TOTPTestCase(ApiDBTestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_recovery_codes_wrong_otp(self):
-        """PUT /auth/recovery-codes returns 400 with wrong code."""
+        """
+        PUT /auth/recovery-codes returns 400 with wrong code.
+        """
         _, headers = self.login()
         self.enable_totp(headers)
 
@@ -924,7 +992,9 @@ class ChangePasswordErrorsTestCase(ApiDBTestCase):
         return tokens, headers
 
     def test_change_password_wrong_old(self):
-        """Change password with wrong old password returns 400."""
+        """
+        Change password with wrong old password returns 400.
+        """
         _, headers = self.login()
         response = self.app.post(
             "auth/change-password",
@@ -940,7 +1010,9 @@ class ChangePasswordErrorsTestCase(ApiDBTestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_change_password_mismatch(self):
-        """Change password with mismatched passwords returns 400."""
+        """
+        Change password with mismatched passwords returns 400.
+        """
         _, headers = self.login()
         response = self.app.post(
             "auth/change-password",
@@ -956,7 +1028,9 @@ class ChangePasswordErrorsTestCase(ApiDBTestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_change_password_too_short(self):
-        """Change password with short password returns 400."""
+        """
+        Change password with short password returns 400.
+        """
         _, headers = self.login()
         response = self.app.post(
             "auth/change-password",

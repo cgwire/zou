@@ -10,7 +10,9 @@ from zou.app.utils.validation import BaseSchema
 
 
 class LoginSchema(BaseSchema):
-    """Body for user login."""
+    """
+    Body for user login.
+    """
 
     email: str = Field(..., min_length=1, description="User email")
     password: str = Field("default", description="User password")
@@ -21,7 +23,9 @@ class LoginSchema(BaseSchema):
 
 
 class RegisterSchema(BaseSchema):
-    """Body for user registration."""
+    """
+    Body for user registration.
+    """
 
     email: str = Field(..., min_length=1, description="User email")
     first_name: str = Field(..., min_length=1, description="First name")
@@ -33,7 +37,9 @@ class RegisterSchema(BaseSchema):
 
 
 class ChangePasswordSchema(BaseSchema):
-    """Body for changing user password."""
+    """
+    Body for changing user password.
+    """
 
     old_password: str = Field(
         ..., min_length=1, description="Current password"
@@ -45,7 +51,9 @@ class ChangePasswordSchema(BaseSchema):
 
 
 class ResetPasswordSchema(BaseSchema):
-    """Body for resetting password with token."""
+    """
+    Body for resetting password with token.
+    """
 
     email: str = Field(..., min_length=1)
     token: str = Field(..., min_length=1)
@@ -54,19 +62,25 @@ class ResetPasswordSchema(BaseSchema):
 
 
 class SendPasswordResetSchema(BaseSchema):
-    """Body for requesting a password reset email."""
+    """
+    Body for requesting a password reset email.
+    """
 
     email: str = Field(..., min_length=1)
 
 
 class TotpSchema(BaseSchema):
-    """Body for enabling TOTP."""
+    """
+    Body for enabling TOTP.
+    """
 
     totp: str = Field(..., min_length=1, description="TOTP verification code")
 
 
 class TwoFactorAuthSchema(BaseSchema):
-    """Body for two-factor authentication verification."""
+    """
+    Body for two-factor authentication verification.
+    """
 
     totp: Optional[str] = None
     email_otp: Optional[str] = None
@@ -75,7 +89,9 @@ class TwoFactorAuthSchema(BaseSchema):
 
 
 class EmailOtpSchema(BaseSchema):
-    """Body for enabling email OTP."""
+    """
+    Body for enabling email OTP.
+    """
 
     email_otp: str = Field(
         ..., min_length=1, description="Email OTP verification code"
@@ -83,7 +99,9 @@ class EmailOtpSchema(BaseSchema):
 
 
 class FidoRegisterSchema(BaseSchema):
-    """Body for registering a FIDO device."""
+    """
+    Body for registering a FIDO device.
+    """
 
     registration_response: dict = Field(
         ..., description="FIDO device registration response"
@@ -94,7 +112,9 @@ class FidoRegisterSchema(BaseSchema):
 
 
 class FidoUnregisterSchema(BaseSchema):
-    """Body for unregistering a FIDO device."""
+    """
+    Body for unregistering a FIDO device.
+    """
 
     device_name: str = Field(
         ..., min_length=1, description="Name of the FIDO device to unregister"

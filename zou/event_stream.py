@@ -59,7 +59,9 @@ def _remove_user_from_room_index(user_id, room_id):
 
 
 def _validate_comparing(data):
-    """Sanitize the comparing dict to only keep known fields."""
+    """
+    Sanitize the comparing dict to only keep known fields.
+    """
     if not isinstance(data, dict):
         return None
     return {k: v for k, v in data.items() if k in COMPARING_FIELDS}

@@ -134,16 +134,20 @@ def _parse_color(value, default=None):
 
 
 def _stroke_color(obj):
-    """Return the stroke colour or None when no stroke was set. Shapes
+    """
+    Return the stroke colour or None when no stroke was set. Shapes
     that always need a visible line (path, line, arrow…) layer their own
-    fallback on top."""
+    fallback on top.
+    """
     return _parse_color(obj.get("stroke"), default=None)
 
 
 def _line_color(obj):
-    """Stroke with a black default — for shapes whose body IS the stroke
+    """
+    Stroke with a black default — for shapes whose body IS the stroke
     (line, arrow, path, psstroke, polyline). If the JSON has no stroke
-    but a fill, use the fill; else default to opaque black."""
+    but a fill, use the fill; else default to opaque black.
+    """
     return _stroke_color(obj) or _fill_color(obj) or (0, 0, 0, 255)
 
 
@@ -166,7 +170,8 @@ def _size(obj, scale_x, scale_y):
 
 
 def _make_object_transform(obj, pivot_x, pivot_y):
-    """Build the affine transform fabric applies to a shape's local
+    """
+    Build the affine transform fabric applies to a shape's local
     coords:  T(center) ∘ R(angle) ∘ S(scaleX, scaleY) ∘ T(-pivot).
 
     Returns a function (px, py) → (wx, wy) in CANVAS coordinates.
@@ -180,6 +185,7 @@ def _make_object_transform(obj, pivot_x, pivot_y):
     extra rotation the rendered position is off by an amount that
     looks like the shape's own translation, which is why side-by-side
     annotations appeared to inherit each other's drag.
+
     """
     angle_rad = math.radians(obj.get("angle", 0) or 0)
     cos_a = math.cos(angle_rad)
@@ -209,28 +215,32 @@ def _make_object_transform(obj, pivot_x, pivot_y):
 
 
 def _bbox_transform(obj):
-    """Transform for shapes whose local coords are in the (0,0)–(w,h)
-    bbox: rect, ellipse, text."""
+    """
+    Transform for shapes whose local coords are in the (0,0)–(w,h)
+    bbox: rect, ellipse, text.
+    """
     width = obj.get("width", 0) or 0
     height = obj.get("height", 0) or 0
     return _make_object_transform(obj, width / 2, height / 2)
 
 
 def _centered_transform(obj, fallback_pivot=None):
-    """Transform for shapes whose local coords are in fabric's centered
+    """
+    Transform for shapes whose local coords are in fabric's centered
     system (path commands, polyline points, line endpoints, PSBrush
     strokePoints).
 
     Pivot resolution:
-      1. `pathOffset` from the JSON if present (Path serialises it).
-      2. `fallback_pivot` if the caller provides one — typically the
-         bbox centre of the shape's own anchor points, which is what
-         fabric would recompute on deserialisation as `calcDim.left +
-         w/2, calcDim.top + h/2`.
-      3. Otherwise `(left + w/2, top + h/2)`. That assumes the shape
-         was never translated — fine for rect-like data without a
-         pathOffset, broken for moved path/psstroke without an explicit
-         offset (use option 2 there).
+    1. `pathOffset` from the JSON if present (Path serialises it).
+    2. `fallback_pivot` if the caller provides one — typically the
+    bbox centre of the shape's own anchor points, which is what
+    fabric would recompute on deserialisation as `calcDim.left +
+    w/2, calcDim.top + h/2`.
+    3. Otherwise `(left + w/2, top + h/2)`. That assumes the shape
+    was never translated — fine for rect-like data without a
+    pathOffset, broken for moved path/psstroke without an explicit
+    offset (use option 2 there).
+
     """
     path_offset = obj.get("pathOffset")
     if path_offset:
@@ -249,7 +259,9 @@ def _centered_transform(obj, fallback_pivot=None):
 
 
 def _bbox_centre(points):
-    """Mid-point of the bbox of a list of (x, y) tuples."""
+    """
+    Mid-point of the bbox of a list of (x, y) tuples.
+    """
     if not points:
         return 0, 0
     xs = [p[0] for p in points]
@@ -258,12 +270,14 @@ def _bbox_centre(points):
 
 
 def _with_default_bbox(obj, anchor_points):
-    """Return a copy of `obj` with `left`/`top`/`width`/`height` filled
+    """
+    Return a copy of `obj` with `left`/`top`/`width`/`height` filled
     in from the anchor points' bbox when missing — fabric would compute
     those from `calcDim` on deserialisation. Required so that the
     transform's centre and pivot align when the JSON only stores the
     shape's own points (typical of test data and some external
-    integrations)."""
+    integrations).
+    """
     if not anchor_points:
         return obj
     if (
@@ -290,18 +304,22 @@ def _to_image(point, scale_x, scale_y):
 
 
 def _stroke_outline_width(obj, scale_x):
-    """Outline width to pass to Pillow's `width` kwarg. Returns 0 (no
+    """
+    Outline width to pass to Pillow's `width` kwarg. Returns 0 (no
     outline) when the shape has no stroke — this is what makes the
-    whiteboard sticker (a fill-only fabric.Rect) render correctly."""
+    whiteboard sticker (a fill-only fabric.Rect) render correctly.
+    """
     if _stroke_color(obj) is None:
         return 0
     return _stroke_width(obj, scale_x)
 
 
 def _stroke_polygon(draw, points, color, width):
-    """Pillow's draw.polygon doesn't accept an outline-width kwarg, so
+    """
+    Pillow's draw.polygon doesn't accept an outline-width kwarg, so
     we draw each edge as a thick line. This is also what lets rotated
-    rects and ellipses keep their outline intact under transforms."""
+    rects and ellipses keep their outline intact under transforms.
+    """
     if color is None or width <= 0 or len(points) < 2:
         return
     for i in range(len(points)):
@@ -699,8 +717,10 @@ def _parse_path_commands(raw):
 
 
 def _extract_path_anchor_points(commands):
-    """Pick the destination point of each M/L/Q/C command — enough to
-    bracket the path's bbox without flattening every Bezier."""
+    """
+    Pick the destination point of each M/L/Q/C command — enough to
+    bracket the path's bbox without flattening every Bezier.
+    """
     points = []
     for cmd in commands:
         op = cmd[0].upper()

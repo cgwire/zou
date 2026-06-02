@@ -2,6 +2,7 @@ from flask_jwt_extended import jwt_required
 
 from zou.app.models.task_type import TaskType
 from zou.app.models.schedule_item import ScheduleItem
+from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.services.exception import WrongParameterException
 from zou.app.services import tasks_service
 
@@ -320,11 +321,31 @@ class TaskTypeResource(BaseModelResource):
 
     def pre_delete(self, instance_dict):
         """
-        Delete related ScheduleItems before deleting the TaskType.
-        This runs AFTER check_delete_permissions, preventing foreign key
-        constraint violations while maintaining security.
+        Refuse the delete with a clean 400 when the task type still has
+        scheduled items or is attached to projects, unless ``force`` is
+        set. With force, those rows are purged first so the deletion is
+        not blocked by their foreign keys.
         """
-        ScheduleItem.query.filter_by(task_type_id=instance_dict["id"]).delete()
+        task_type_id = instance_dict["id"]
+        if self.get_force():
+            ScheduleItem.query.filter_by(task_type_id=task_type_id).delete()
+            ProjectTaskTypeLink.query.filter_by(
+                task_type_id=task_type_id
+            ).delete()
+            return instance_dict
+
+        blockers = []
+        if ScheduleItem.query.filter_by(task_type_id=task_type_id).count():
+            blockers.append("schedule items")
+        if ProjectTaskTypeLink.query.filter_by(
+            task_type_id=task_type_id
+        ).count():
+            blockers.append("projects")
+        if blockers:
+            raise WrongParameterException(
+                f"Task type is attached to {' and '.join(blockers)}. "
+                "Re-issue the request with force=true to detach."
+            )
         return instance_dict
 
     def update_data(self, data, instance_id):

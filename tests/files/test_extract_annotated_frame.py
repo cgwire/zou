@@ -16,9 +16,11 @@ def _make_white_png(size=(200, 200)):
 
 
 def _patch_movie_extraction(test_case, frame_factory):
-    """Patch the project/entity/fps lookups and the frame extractor used
+    """
+    Patch the project/entity/fps lookups and the frame extractor used
     by the bulk-annotation routes so route tests can skip ffmpeg and
-    drive the extractor with arbitrary temp PNGs."""
+    drive the extractor with arbitrary temp PNGs.
+    """
     patches = [
         patch(
             "zou.app.services.preview_files_service.get_project_from_preview_file",

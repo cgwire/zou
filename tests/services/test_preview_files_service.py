@@ -233,10 +233,12 @@ class PlaylistTestCase(ApiDBTestCase):
         )
 
     def test_update_annotations_aborts_when_lock_unavailable(self):
-        """When the Redis lock can't be acquired (Redis down or wait
+        """
+        When the Redis lock can't be acquired (Redis down or wait
         timeout exceeded), the service must surface a 503 instead of
         silently racing through the read-modify-write without
-        serialization."""
+        serialization.
+        """
         from contextlib import contextmanager
 
         from zou.app.services.exception import AnnotationLockTimeoutException
@@ -425,9 +427,11 @@ class PlaylistTestCase(ApiDBTestCase):
                 os.remove(p)
 
     def test_extract_skips_metadata_only_previews(self):
-        """Imported-only previews have no local binary — extract functions
+        """
+        Imported-only previews have no local binary — extract functions
         must short-circuit silently (return None) so callers can no-op
-        instead of crashing on FileNotFoundError."""
+        instead of crashing on FileNotFoundError.
+        """
         preview_file = {
             "id": "some-uuid",
             "extension": "mp4",
@@ -563,9 +567,11 @@ def _make_white_png(size=(200, 200)):
 def _patch_movie_extraction(
     test_case, frame_factory, file_name="proj_asset_anim_v1.mp4"
 ):
-    """Patch the project/entity/fps lookups and the frame extractor used
+    """
+    Patch the project/entity/fps lookups and the frame extractor used
     by the bulk-annotation builders so service tests can assert on file
-    names and frame numbers without going through ffmpeg."""
+    names and frame numbers without going through ffmpeg.
+    """
     patches = [
         patch(
             "zou.app.services.preview_files_service.get_project_from_preview_file",
@@ -756,11 +762,13 @@ class ExtractAllAnnotationFramesTestCase(ApiDBTestCase):
             extract_all_annotation_frames_from_preview_file(self.preview_file)
 
     def test_entries_own_unique_temp_files_not_shared_with_extract(self):
-        """`extract_frame_from_movie` writes to a deterministic /tmp slot
+        """
+        `extract_frame_from_movie` writes to a deterministic /tmp slot
         per (movie, frame). A concurrent caller extracting the same frame
         (e.g. the single-frame route's `os.remove` finally) can delete
         the file from under us. The bundler must claim each extracted
-        frame as its own private temp file before rendering."""
+        frame as its own private temp file before rendering.
+        """
         shared_path = _make_white_png()
 
         def fake_extract(pf, fn):
@@ -819,10 +827,12 @@ class ExtractAllAnnotationFramesTestCase(ApiDBTestCase):
                 os.remove(shared_path)
 
     def test_skips_annotation_when_ffmpeg_produces_no_file(self):
-        """`extract_frame_from_movie` can return a path to a file ffmpeg
+        """
+        `extract_frame_from_movie` can return a path to a file ffmpeg
         never actually wrote (e.g. when frame_number is past EOF: ffmpeg
         exits 0 with no output). The bundler must NOT crash with
-        FileNotFoundError — it skips the annotation and keeps going."""
+        FileNotFoundError — it skips the annotation and keeps going.
+        """
         import zipfile
 
         good_path = _make_white_png()

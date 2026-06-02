@@ -76,8 +76,10 @@ if getattr(config, "PROMETHEUS_METRICS_ENABLED", False):
 
 
 class _ByteTracker:
-    """Mutable counter passed into ``_measure`` so streaming callers can
-    accumulate transferred bytes incrementally before the context exits."""
+    """
+    Mutable counter passed into ``_measure`` so streaming callers can
+    accumulate transferred bytes incrementally before the context exits.
+    """
 
     __slots__ = ("bytes",)
 
@@ -96,12 +98,14 @@ def _is_etag_mismatch(exc):
 
 @contextmanager
 def _measure(op, bucket, byte_count=None, tracker=None):
-    """Time a storage operation and record Prometheus metrics.
+    """
+    Time a storage operation and record Prometheus metrics.
 
     Pass ``byte_count`` for ops that know the size up-front (upload).
     Pass ``tracker`` for streaming ops that accumulate bytes incrementally.
     Bytes are recorded only on success. Exceptions are classified as
     ``etag_mismatch`` (corruption detected by SwiftBackend) or ``error``.
+
     """
     if not _PROM_ENABLED:
         yield

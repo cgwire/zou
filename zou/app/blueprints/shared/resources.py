@@ -303,7 +303,9 @@ class SharedPlaylistCommentsResource(Resource):
 
 
 class SharedPlaylistCommentResource(Resource):
-    """Edit or delete a single comment authored by a guest."""
+    """
+    Edit or delete a single comment authored by a guest.
+    """
 
     @require_valid_playlist_share_link()
     def put(self, token, comment_id):
@@ -365,7 +367,9 @@ class SharedPlaylistCommentResource(Resource):
 
 
 class SharedPlaylistCommentAttachmentsResource(Resource):
-    """Add an attachment file to a guest-owned comment."""
+    """
+    Add an attachment file to a guest-owned comment.
+    """
 
     @require_valid_playlist_share_link()
     def post(self, token, comment_id):
@@ -396,7 +400,9 @@ class SharedPlaylistCommentAttachmentsResource(Resource):
 
 
 class SharedPlaylistCommentAttachmentResource(Resource):
-    """Delete one attachment from a guest-owned comment."""
+    """
+    Delete one attachment from a guest-owned comment.
+    """
 
     @require_valid_playlist_share_link()
     def delete(self, token, comment_id, attachment_id):
@@ -423,7 +429,9 @@ class SharedPlaylistCommentAttachmentResource(Resource):
 
 
 class SharedPlaylistAttachmentFileResource(Resource):
-    """Download an attachment that belongs to a visible shared comment."""
+    """
+    Download an attachment that belongs to a visible shared comment.
+    """
 
     @require_valid_playlist_share_link()
     def get(self, token, attachment_id, file_name):

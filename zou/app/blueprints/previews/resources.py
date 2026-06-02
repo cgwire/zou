@@ -1803,9 +1803,11 @@ class ExtractAnnotatedFrameFromPreview(Resource):
 def _serve_annotated_frames_bundle(
     preview_file_id, build_bundle, mimetype, file_extension
 ):
-    """Common flow for the zip and pdf bulk-download resources: check
+    """
+    Common flow for the zip and pdf bulk-download resources: check
     permissions, build the bundle via the service, send it as an
-    attachment named `{preview_base_name}_annotated_frames.{ext}`."""
+    attachment named `{preview_base_name}_annotated_frames.{ext}`.
+    """
     preview_file = files_service.get_preview_file(preview_file_id)
     task = tasks_service.get_task(preview_file["task_id"])
     user_service.check_manager_project_access(task["project_id"])

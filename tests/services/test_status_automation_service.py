@@ -81,7 +81,9 @@ class StatusAutomationServiceTestCase(ApiDBTestCase):
         self.assertEqual(self.asset.ready_for, self.task_type_layout.id)
 
     def test_status_automation_sequence(self):
-        """Test that a status automation fires for sequence tasks."""
+        """
+        Test that a status automation fires for sequence tasks.
+        """
         # Create sequence-specific task types
         task_type_seq_prep = TaskType.create(
             name="Seq Prep",
@@ -151,7 +153,9 @@ class StatusAutomationServiceTestCase(ApiDBTestCase):
         self.assertEqual(str(task_seq_review.task_status_id), wip_status["id"])
 
     def test_status_automation_episode(self):
-        """Test that a status automation fires for episode tasks."""
+        """
+        Test that a status automation fires for episode tasks.
+        """
         self.generate_fixture_episode()
 
         # Create episode-specific task types
@@ -223,7 +227,9 @@ class StatusAutomationServiceTestCase(ApiDBTestCase):
         self.assertEqual(str(task_ep_final.task_status_id), wip_status["id"])
 
     def test_status_automation_entity_type_mismatch(self):
-        """Test that an asset automation does NOT fire on a sequence task."""
+        """
+        Test that an asset automation does NOT fire on a sequence task.
+        """
         # Create sequence-specific task types with the SAME names as asset
         # task types to ensure entity_type filtering is doing its job
         task_type_seq_concept = TaskType.create(

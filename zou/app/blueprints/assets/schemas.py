@@ -11,7 +11,9 @@ from zou.app.utils.validation import BaseSchema
 
 
 class NewAssetSchema(BaseSchema):
-    """Body for creating a new asset."""
+    """
+    Body for creating a new asset.
+    """
 
     name: str = Field(
         ..., min_length=1, description="The asset name is required."
@@ -23,7 +25,9 @@ class NewAssetSchema(BaseSchema):
 
 
 class AssetInstanceSchema(BaseSchema):
-    """Body for creating an asset instance on an asset."""
+    """
+    Body for creating an asset instance on an asset.
+    """
 
     asset_to_instantiate_id: UUID = Field(
         ..., description="Asset to instantiate unique identifier"
@@ -32,7 +36,9 @@ class AssetInstanceSchema(BaseSchema):
 
 
 class SetSharedAssetsSchema(BaseSchema):
-    """Body for setting shared status on assets."""
+    """
+    Body for setting shared status on assets.
+    """
 
     is_shared: Optional[bool] = True
     asset_ids: Optional[List[UUID]] = None

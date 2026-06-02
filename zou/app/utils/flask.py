@@ -10,7 +10,9 @@ orjson_options = orjson.OPT_NON_STR_KEYS
 
 
 def output_json(data, code, headers=None):
-    """Makes a Flask response with a JSON encoded body"""
+    """
+    Makes a Flask response with a JSON encoded body
+    """
     dumped = orjson.dumps(data, option=orjson_options)
 
     resp = make_response(dumped, code)
