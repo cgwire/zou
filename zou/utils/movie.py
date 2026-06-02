@@ -55,8 +55,11 @@ def generate_thumbnail(movie_path):
     file_target_path = os.path.join(tempfile.gettempdir(), file_target_name)
 
     try:
+        # `update=1` lets the image2 muxer write a single PNG to a
+        # plain (non-pattern) filename on ffmpeg ≥ 6, which otherwise
+        # refuses the path and skips the write.
         ffmpeg.input(movie_path, ss="00:00:00").output(
-            file_target_path, vframes=1
+            file_target_path, vframes=1, update=1
         ).overwrite_output().run(quiet=True)
     except ffmpeg._run.Error as e:
         log_ffmpeg_error(e, "an error occured during generate_thumbnail")
@@ -81,8 +84,13 @@ def extract_frame_from_movie(movie_path, frame_number, movie_fps):
     ).to_time_string()
 
     try:
+        # ffmpeg ≥ 6 rejects non-pattern filenames in the image2 muxer
+        # unless `-update 1` is set. Without it the muxer logs "filename
+        # does not contain an image sequence pattern" and the frame is
+        # not always written. `update=1` keeps the single-PNG path
+        # explicit and works on older ffmpeg too.
         ffmpeg.input(movie_path, ss=frame_time).output(
-            file_target_path, vframes=1
+            file_target_path, vframes=1, update=1
         ).overwrite_output().run(quiet=False)
     except ffmpeg._run.Error as e:
         log_ffmpeg_error(e, "extracting_frame")
