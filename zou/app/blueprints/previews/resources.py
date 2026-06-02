@@ -208,7 +208,7 @@ def send_storage_file(
         download_name = names_service.get_preview_file_name(preview_file_id)
 
     try:
-        return flask_send_file(
+        response = flask_send_file(
             file_path,
             conditional=True,
             mimetype=mimetype,
@@ -220,6 +220,13 @@ def send_storage_file(
     except IOError as e:
         current_app.logger.error(e)
         raise FileNotFound
+    # Preview bytes are gated by JWT / share-link token: never let a
+    # shared proxy store them. Flip Werkzeug's default `public,
+    # max-age=N` to `private, max-age=N` so the browser keeps caching
+    # but intermediaries don't.
+    response.cache_control.public = False
+    response.cache_control.private = True
+    return response
 
 
 class BaseNewPreviewFilePicture:
