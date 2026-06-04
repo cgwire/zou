@@ -3,6 +3,8 @@ from flask_fs.errors import FileNotFound
 from flask_restful import Resource
 
 from zou.app.blueprints.previews.resources import (
+    ALLOWED_FILE_EXTENSION,
+    ALLOWED_PICTURE_EXTENSION,
     send_movie_file,
     send_picture_file,
     send_standard_file,
@@ -25,7 +27,10 @@ from zou.app.services import (
     preview_files_service,
     tasks_service,
 )
-from zou.app.services.exception import PreviewFileNotFoundException
+from zou.app.services.exception import (
+    PreviewFileNotFoundException,
+    WrongParameterException,
+)
 from zou.app.utils import permissions, validation
 
 
@@ -762,6 +767,84 @@ class SharedPlaylistPreviewFileOriginalResource(Resource):
             raise permissions.PermissionDenied
         try:
             return send_picture_file("original", preview_file_id)
+        except FileNotFound:
+            raise PreviewFileNotFoundException
+
+
+class SharedPlaylistPreviewFileExtensionResource(Resource):
+    @require_valid_playlist_share_link()
+    def get(self, token, preview_file_id, extension):
+        """
+        Get shared original picture preview for any extension
+        ---
+        description: Serve the original still preview for an arbitrary
+          extension (gif, svg, jpg, pdf, ...), authorized by the share token.
+          Mirrors the authenticated
+          ``/pictures/originals/preview-files/<id>.<extension>`` route, which
+          the ``.png``-only shared route did not cover, so animated GIFs and
+          other non-PNG originals 404'd through a share link.
+        tags:
+          - Playlists
+        parameters:
+          - in: path
+            name: token
+            required: true
+            schema:
+              type: string
+            description: Share link token
+          - in: path
+            name: preview_file_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            description: Preview file unique identifier
+          - in: path
+            name: extension
+            required: true
+            schema:
+              type: string
+            description: File extension
+        responses:
+          200:
+            description: Original picture file
+            content:
+              application/octet-stream:
+                schema:
+                  type: string
+                  format: binary
+          400:
+            description: Extension not allowed
+          403:
+            description: Preview file is not part of this shared playlist
+          404:
+            description: Original file missing
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    error:
+                      type: string
+        """
+        if not playlist_sharing_service.is_preview_file_in_shared_playlist(
+            token, preview_file_id
+        ):
+            raise permissions.PermissionDenied
+        extension = extension.lower()
+        if extension not in ALLOWED_PICTURE_EXTENSION | ALLOWED_FILE_EXTENSION:
+            raise WrongParameterException(
+                f"Extension not allowed: {extension}"
+            )
+        try:
+            if extension == "png":
+                return send_picture_file("original", preview_file_id)
+            elif extension == "pdf":
+                return send_standard_file(
+                    preview_file_id, extension, "application/pdf"
+                )
+            else:
+                return send_standard_file(preview_file_id, extension)
         except FileNotFound:
             raise PreviewFileNotFoundException
 
