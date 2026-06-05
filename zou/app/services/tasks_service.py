@@ -1806,19 +1806,21 @@ def check_revision_is_unique_for_task(
         )
 
 
-def add_preview_file_to_comment(comment_id, person_id, task_id, revision=0):
+def add_preview_file_to_comment(comment_id, person_id, task_id, revision=None):
     """
     Add a preview to comment preview list. Auto set the revision field
     (add 1 if it's a new preview, keep the preview revision in other cases).
+    A revision of None means "auto-pick the next revision"; an explicit 0
+    is a valid, stored revision.
     """
     comment = get_comment_raw(comment_id)
     news = News.get_by(comment_id=comment_id)
     task = Task.get(comment.object_id)
     project_id = str(task.project_id)
     position = 1
-    if revision == 0 and len(comment.previews) == 0:
+    if revision is None and len(comment.previews) == 0:
         revision = get_next_preview_revision(task_id)
-    elif revision == 0:
+    elif revision is None:
         revision = comment.previews[0].revision
         position = get_next_position(task_id, revision)
     else:
