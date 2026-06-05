@@ -218,6 +218,32 @@ class PreviewRevisionTestCase(ApiDBTestCase):
         self.assertEqual(preview2["position"], 1)
         self.assertEqual(preview2["revision"], 2)
 
+    def test_preview_with_revision_zero_is_stored(self):
+        """
+        An explicit revision=0 is a valid value and must be stored as 0,
+        not treated as the auto-increment sentinel.
+        """
+        comment = self.create_comment()
+        path = (
+            f"/actions/tasks/{self.task_id}/comments/{comment['id']}"
+            f"/add-preview"
+        )
+        preview = self.post(path, {"revision": 0})
+        self.assertEqual(preview["revision"], 0)
+
+    def test_preview_without_revision_auto_increments(self):
+        """
+        Omitting revision keeps the auto-increment behaviour: the first
+        preview gets revision 1, the next one 2.
+        """
+        comment1 = self.create_comment()
+        preview1 = self.add_preview(comment1["id"])
+        self.assertEqual(preview1["revision"], 1)
+
+        comment2 = self.create_comment()
+        preview2 = self.add_preview(comment2["id"])
+        self.assertEqual(preview2["revision"], 2)
+
     def test_extra_preview_allowed_when_flag_off(self):
         """
         Regression: with the flag off, extra previews still work.

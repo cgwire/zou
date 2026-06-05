@@ -15,7 +15,7 @@ class CommentPreviewSchema(BaseSchema):
     Body for adding a preview to a comment.
     """
 
-    revision: int = Field(0, ge=0)
+    revision: Optional[int] = Field(None, ge=0)
 
 
 class ToReviewSchema(BaseSchema):
