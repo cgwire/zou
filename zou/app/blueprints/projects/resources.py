@@ -2609,6 +2609,7 @@ class ProductionTaskTypesTimeSpentsResource(Resource, ArgsMixin):
             description: Invalid date range parameters
         """
         user_service.check_manager_project_access(project_id)
+        self.check_id_parameter(task_type_id)
         arguments = self.get_args(["start_date", "end_date"])
         start_date, end_date = arguments["start_date"], arguments["end_date"]
         try:
