@@ -1,5 +1,6 @@
 from zou.app.blueprints.export.csv.base import BaseCsvExport
 from flask_jwt_extended import jwt_required
+from sqlalchemy import func
 from sqlalchemy.orm import selectinload
 
 from zou.app.models.person import Person
@@ -57,7 +58,10 @@ class PersonsCsvExport(BaseCsvExport):
         return (
             Person.query.options(selectinload(Person.departments))
             .filter(Person.is_bot.isnot(True), Person.is_guest.isnot(True))
-            .order_by(Person.last_name, Person.first_name)
+            .order_by(
+                func.lower(Person.first_name),
+                func.lower(Person.last_name),
+            )
         )
 
     def get_studio_name(self, studio_id):

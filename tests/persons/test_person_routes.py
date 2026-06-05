@@ -1,6 +1,8 @@
 from tests.base import ApiDBTestCase
 
 from zou.app.models.day_off import DayOff
+from zou.app.models.person import Person
+from zou.app.utils import auth
 
 
 class PersonRoutesTestCase(ApiDBTestCase):
@@ -159,6 +161,38 @@ class PersonRoutesTestCase(ApiDBTestCase):
             200,
         )
         self.assertTrue(result.get("success"))
+
+    def test_change_password_for_new_admin(self):
+        new_admin = Person.create(
+            first_name="New",
+            last_name="Admin",
+            role="admin",
+            email="new.admin@gmail.com",
+        )
+        result = self.post(
+            f"/actions/persons/{new_admin.id}/change-password",
+            {"password": "newpassword123", "password_2": "newpassword123"},
+            200,
+        )
+        self.assertTrue(result.get("success"))
+
+    def test_change_password_for_existing_admin_is_blocked(self):
+        other_admin = Person.create(
+            first_name="Other",
+            last_name="Admin",
+            role="admin",
+            email="other.admin@gmail.com",
+            password=auth.encrypt_password("existingpassword"),
+        )
+        result = self.post(
+            f"/actions/persons/{other_admin.id}/change-password",
+            {"password": "newpassword123", "password_2": "newpassword123"},
+            400,
+        )
+        self.assertEqual(
+            result.get("message"),
+            "An admin can't change another admin's password.",
+        )
 
     def test_clear_avatar(self):
         self.delete(f"/actions/persons/{self.person_id}/clear-avatar")

@@ -1650,9 +1650,10 @@ class ChangePasswordForPersonResource(Resource, ArgsMixin):
         Change person password
         ---
         description: Allow admin to change password for given user.
-          An admin can't change other admins password. The new password requires
-          a confirmation to ensure that the admin didn't make a mistake by
-          typing the new password.
+          An admin can't change another admin's existing password, but can
+          set the initial password of a newly created admin. The new password
+          requires a confirmation to ensure that the admin didn't make a
+          mistake by typing the new password.
         tags:
           - Persons
         parameters:
@@ -1719,11 +1720,17 @@ class ChangePasswordForPersonResource(Resource, ArgsMixin):
         current_user = persons_service.get_current_user()
         try:
             person = persons_service.get_person(person_id)
-            if person["id"] != current_user["id"] and (
-                person["email"] in config.PROTECTED_ACCOUNTS
-                or person["role"] == "admin"
-            ):
-                raise PersonInProtectedAccounts()
+            if person["id"] != current_user["id"]:
+                if person["email"] in config.PROTECTED_ACCOUNTS:
+                    raise PersonInProtectedAccounts(
+                        "This user is in protected accounts."
+                    )
+                elif person["role"] == "admin":
+                    person_raw = persons_service.get_person_raw(person_id)
+                    if person_raw.password is not None:
+                        raise PersonInProtectedAccounts(
+                            "An admin can't change another admin's password."
+                        )
             auth.validate_password(password, password_2)
             password = auth.encrypt_password(password)
             persons_service.update_password(person["email"], password)
@@ -1754,11 +1761,11 @@ class ChangePasswordForPersonResource(Resource, ArgsMixin):
             return {"error": True, "message": "Password is too short."}, 400
         except UnactiveUserException:
             return {"error": True, "message": "User is unactive."}, 400
-        except PersonInProtectedAccounts:
+        except PersonInProtectedAccounts as exception:
             return (
                 {
                     "error": True,
-                    "message": "This user is in protected accounts.",
+                    "message": exception.description,
                 },
                 400,
             )

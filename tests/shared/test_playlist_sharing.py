@@ -796,3 +796,200 @@ class PlaylistSharingTestCase(ApiDBTestCase):
             f"/preview-files/{other_revision.id}/download"
         )
         self.assertEqual(response.status_code, 403)
+
+    # --- Shared original picture by extension (gif, svg, jpg, ...) ---
+
+    def _attach_gif_preview_to_playlist(self):
+        """
+        Create an animated-GIF still preview with real bytes on disk and
+        wire it into the playlist's shots, the way an uploaded GIF is
+        stored (under the ``previews`` prefix, extension ``gif``).
+        """
+        import tempfile
+
+        from zou.app.models.playlist import Playlist as PlaylistModel
+        from zou.app.models.preview_file import PreviewFile
+        from zou.app.stores import file_store
+
+        preview_file = PreviewFile.create(
+            name="loop.gif",
+            revision=1,
+            extension="gif",
+            task_id=self.task.id,
+            person_id=self.person.id,
+        )
+        payload = b"GIF89a-fake-animated-payload"
+        with tempfile.NamedTemporaryFile(suffix=".gif", delete=False) as tmp:
+            tmp.write(payload)
+            tmp_path = tmp.name
+        file_store.add_file("previews", str(preview_file.id), tmp_path)
+        self.addCleanup(
+            file_store.remove_file, "previews", str(preview_file.id)
+        )
+
+        PlaylistModel.get(self.playlist["id"]).update(
+            {
+                "shots": [
+                    {
+                        "id": str(self.asset.id),
+                        "preview_file_id": str(preview_file.id),
+                        "preview_file_task_id": str(self.task.id),
+                    }
+                ]
+            }
+        )
+        return preview_file, payload
+
+    def test_shared_original_gif(self):
+        """
+        A GIF still preview in a shared playlist must be served through
+        the originals picture path. The ``.png``-only shared route did
+        not match ``.gif`` (or any non-PNG extension), so animated GIFs
+        404'd through a share link.
+        """
+        preview_file, payload = self._attach_gif_preview_to_playlist()
+        link = self.post(
+            f"/data/playlists/{self.playlist['id']}/share",
+            {},
+            201,
+        )
+        self.log_out()
+        response = self.app.get(
+            f"/shared/playlists/{link['token']}"
+            f"/pictures/originals/preview-files/{preview_file.id}.gif"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, payload)
+
+    def test_shared_original_gif_not_in_playlist(self):
+        """
+        A GIF preview that the shared playlist does not expose cannot be
+        fetched through its share link, even with a valid token.
+        """
+        from zou.app.models.preview_file import PreviewFile
+
+        foreign = PreviewFile.create(
+            name="foreign.gif",
+            revision=1,
+            extension="gif",
+            task_id=self.task.id,
+            person_id=self.person.id,
+        )
+        link = self.post(
+            f"/data/playlists/{self.playlist['id']}/share",
+            {},
+            201,
+        )
+        self.log_out()
+        response = self.app.get(
+            f"/shared/playlists/{link['token']}"
+            f"/pictures/originals/preview-files/{foreign.id}.gif"
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_shared_original_extension_not_allowed(self):
+        """
+        Disallowed extensions are rejected with a 400, mirroring the
+        authenticated generic originals route.
+        """
+        preview_file, _ = self._attach_gif_preview_to_playlist()
+        link = self.post(
+            f"/data/playlists/{self.playlist['id']}/share",
+            {},
+            201,
+        )
+        self.log_out()
+        response = self.app.get(
+            f"/shared/playlists/{link['token']}"
+            f"/pictures/originals/preview-files/{preview_file.id}.exe"
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_shared_original_png_still_served(self):
+        """
+        Regression guard: the static ``.png`` originals route must keep
+        winning over the new generic ``.<extension>`` route, and a PNG
+        original (stored under the ``original`` picture prefix) is served.
+        """
+        import tempfile
+
+        from zou.app.models.playlist import Playlist as PlaylistModel
+        from zou.app.models.preview_file import PreviewFile
+        from zou.app.stores import file_store
+
+        preview_file = PreviewFile.create(
+            name="still.png",
+            revision=1,
+            extension="png",
+            task_id=self.task.id,
+            person_id=self.person.id,
+        )
+        payload = b"\x89PNG\r\n\x1a\n-fake-original-png"
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+            tmp.write(payload)
+            tmp_path = tmp.name
+        file_store.add_picture("original", str(preview_file.id), tmp_path)
+        self.addCleanup(
+            file_store.remove_picture, "original", str(preview_file.id)
+        )
+        PlaylistModel.get(self.playlist["id"]).update(
+            {
+                "shots": [
+                    {
+                        "id": str(self.asset.id),
+                        "preview_file_id": str(preview_file.id),
+                        "preview_file_task_id": str(self.task.id),
+                    }
+                ]
+            }
+        )
+        link = self.post(
+            f"/data/playlists/{self.playlist['id']}/share",
+            {},
+            201,
+        )
+        self.log_out()
+        response = self.app.get(
+            f"/shared/playlists/{link['token']}"
+            f"/pictures/originals/preview-files/{preview_file.id}.png"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, payload)
+
+    def test_shared_original_missing_file(self):
+        """
+        A preview that is part of the shared playlist but whose original
+        file is absent from storage yields a 404, not a 500.
+        """
+        from zou.app.models.playlist import Playlist as PlaylistModel
+        from zou.app.models.preview_file import PreviewFile
+
+        preview_file = PreviewFile.create(
+            name="gone.gif",
+            revision=1,
+            extension="gif",
+            task_id=self.task.id,
+            person_id=self.person.id,
+        )
+        PlaylistModel.get(self.playlist["id"]).update(
+            {
+                "shots": [
+                    {
+                        "id": str(self.asset.id),
+                        "preview_file_id": str(preview_file.id),
+                        "preview_file_task_id": str(self.task.id),
+                    }
+                ]
+            }
+        )
+        link = self.post(
+            f"/data/playlists/{self.playlist['id']}/share",
+            {},
+            201,
+        )
+        self.log_out()
+        response = self.app.get(
+            f"/shared/playlists/{link['token']}"
+            f"/pictures/originals/preview-files/{preview_file.id}.gif"
+        )
+        self.assertEqual(response.status_code, 404)
