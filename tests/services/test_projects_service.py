@@ -99,6 +99,27 @@ class ProjectServiceTestCase(ApiDBTestCase):
         project = projects_service.get_project(self.project.id, relations=True)
         self.assertEqual(project["team"], [str(self.person.id)])
 
+    def test_add_team_member_swallows_concurrent_insert(self):
+        from unittest import mock
+        from sqlalchemy.exc import IntegrityError
+
+        self.generate_fixture_person()
+        project_id = str(self.project.id)
+        person_id = str(self.person.id)
+
+        # Simulate the TOCTOU race: a concurrent request inserted the same
+        # link first, so our own INSERT raises a UniqueViolation at save.
+        # add_team_member must treat it as a no-op instead of bubbling up a
+        # 500, and still return the up-to-date project.
+        with mock.patch.object(
+            projects_service,
+            "_save_project",
+            side_effect=IntegrityError("duplicate key", {}, Exception()),
+        ):
+            project = projects_service.add_team_member(project_id, person_id)
+
+        self.assertEqual(project["id"], project_id)
+
     def test_remove_team_member(self):
         self.generate_fixture_person()
         projects_service.add_team_member(self.project.id, self.person.id)
