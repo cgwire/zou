@@ -21,3 +21,13 @@ class EditRoutesTestCase(BaseEditTestCase):
     def test_get_edit_versions(self):
         result = self.get(f"/data/edits/{self.edit_id}/versions")
         self.assertIsInstance(result, list)
+
+    def test_get_edits_with_tasks(self):
+        result = self.get("/data/edits/with-tasks")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["name"], "Edit")
+
+    def test_get_edits_with_tasks_wrong_id_format(self):
+        self.get("/data/edits/with-tasks?project_id=not-a-uuid", 400)
+        self.get("/data/edits/with-tasks?episode_id=not-a-uuid", 400)
+        self.get("/data/edits/with-tasks?id=not-a-uuid", 400)

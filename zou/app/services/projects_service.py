@@ -560,7 +560,14 @@ def _add_to_list_attr(project_id, model_class, model_id, list_attr):
         )
     if str(model.id) not in [str(m.id) for m in getattr(project, list_attr)]:
         getattr(project, list_attr).append(model)
-        return _save_project(project)
+        try:
+            return _save_project(project)
+        except IntegrityError:
+            # A concurrent request already added the same link. The check
+            # above is not atomic, so treat the duplicate as a no-op and
+            # return the up-to-date project. The failed transaction has
+            # already been rolled back by Model.save().
+            return get_project_raw(project_id).serialize()
     else:
         return project.serialize()
 
