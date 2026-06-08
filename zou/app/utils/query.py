@@ -23,6 +23,33 @@ def get_query_criterions_from_request(request):
     return criterions
 
 
+# Some criterions accept sentinel values that are not UUIDs (e.g. "all" or
+# "main" for episode_id) and must therefore bypass UUID validation.
+EPISODE_ID_SENTINELS = ["all", "main"]
+
+
+def check_criterion_id_format(
+    criterions, id_fields=("id", "project_id", "episode_id")
+):
+    """
+    Ensure the id criterions extracted from a request hold a valid UUID before
+    they are injected into a custom SQL query. Resources that build queries by
+    hand (the various "*-and-tasks" endpoints) bypass the casting done in
+    apply_criterions_to_db_query, so an invalid UUID would otherwise reach the
+    database and raise a StatementError (HTTP 500) instead of a 400.
+    """
+    for id_field in id_fields:
+        value = criterions.get(id_field)
+        if value is None:
+            continue
+        if id_field == "episode_id" and value in EPISODE_ID_SENTINELS:
+            continue
+        if not fields.is_valid_id(value):
+            raise WrongParameterException(
+                f"Invalid UUID format for {id_field}: {value}"
+            )
+
+
 def apply_criterions_to_db_query(model, db_query, criterions):
     """
     Apply criterions given in HTTP request to the sqlachemy db query object.

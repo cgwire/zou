@@ -1,5 +1,5 @@
 from flask import request
-from flask_restful import Resource, inputs
+from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
 from zou.app.utils import permissions, query, validation
@@ -291,6 +291,7 @@ class AssetsAndTasksResource(Resource, ArgsMixin):
                         description: Array of related tasks
         """
         criterions = query.get_query_criterions_from_request(request)
+        query.check_criterion_id_format(criterions)
         check_criterion_access(criterions)
         if permissions.has_vendor_permissions():
             criterions["assigned_to"] = persons_service.get_current_user()[

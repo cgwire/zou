@@ -46,6 +46,7 @@ class ShotsCsvExport(Resource):
         self.check_permissions(project["id"])
 
         criterions = query.get_query_criterions_from_request(request)
+        query.check_criterion_id_format(criterions, ["id", "episode_id"])
         criterions["project_id"] = project["id"]
 
         self.task_status_map = tasks_service.get_task_status_map()
