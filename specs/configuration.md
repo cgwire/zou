@@ -59,6 +59,12 @@ All configuration is in `zou/app/config.py`, read from environment variables.
 | `SENTRY_DSN` | | Sentry error tracking |
 | `PLUGIN_FOLDER` | | Path to plugins directory |
 
+## Preview files
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PREVIEW_SAVE_SOURCE_FILE` | false | Keep the uploaded source movie alongside the normalized preview |
+
 ## LDAP / SAML
 
 | Variable | Default | Description |

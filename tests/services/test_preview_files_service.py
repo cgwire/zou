@@ -441,6 +441,70 @@ class PlaylistTestCase(ApiDBTestCase):
         self.assertIsNone(extract_tile_from_preview_file(preview_file))
 
 
+class MissingStatusTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_asset()
+        self.generate_fixture_assigner()
+        self.generate_fixture_person()
+        self.generate_fixture_task()
+        self.preview_file = self.generate_fixture_preview_file(
+            status="processing"
+        )
+
+    def tearDown(self):
+        super().tearDown()
+        self.delete_test_folder()
+
+    def _reload_preview(self):
+        from zou.app.models.preview_file import PreviewFile
+
+        return PreviewFile.get(self.preview_file.id)
+
+    def test_set_preview_file_as_missing_persists_missing(self):
+        preview_files_service.set_preview_file_as_missing(
+            str(self.preview_file.id)
+        )
+        reloaded = self._reload_preview()
+        self.assertEqual(reloaded.status.code, "missing")
+        self.assertEqual(reloaded.serialize()["status"], "missing")
+        self.assertEqual(reloaded.present()["status"], "missing")
+        self.assertEqual(reloaded.present_minimal()["status"], "missing")
+
+    def test_mark_helper_flips_ready_to_missing(self):
+        preview_files_service.set_preview_file_as_ready(
+            str(self.preview_file.id)
+        )
+        preview_files_service.mark_preview_file_as_missing_on_storage_404(
+            str(self.preview_file.id)
+        )
+        self.assertEqual(self._reload_preview().status.code, "missing")
+
+    def test_mark_helper_skips_processing_rows(self):
+        # Preview is still in 'processing' (mid-upload race).
+        preview_files_service.mark_preview_file_as_missing_on_storage_404(
+            str(self.preview_file.id)
+        )
+        self.assertEqual(self._reload_preview().status.code, "processing")
+
+    def test_mark_helper_is_idempotent_on_missing_rows(self):
+        preview_files_service.set_preview_file_as_missing(
+            str(self.preview_file.id)
+        )
+        preview_files_service.mark_preview_file_as_missing_on_storage_404(
+            str(self.preview_file.id)
+        )
+        self.assertEqual(self._reload_preview().status.code, "missing")
+
+    def test_mark_helper_is_safe_on_unknown_id(self):
+        from zou.app.utils import fields
+
+        preview_files_service.mark_preview_file_as_missing_on_storage_404(
+            fields.gen_uuid()
+        )
+
+
 class ExtractAnnotationFrameTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()

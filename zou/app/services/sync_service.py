@@ -1113,6 +1113,8 @@ def download_files_from_another_instance(
     number_workers=30,
     number_attemps=3,
     force_resync=False,
+    include_broken=True,
+    include_missing=True,
 ):
     """
     Download all files from source instance.
@@ -1151,6 +1153,8 @@ def download_files_from_another_instance(
         number_attemps=number_attemps,
         force=force_resync,
         dict_errors=dict_errors,
+        include_broken=include_broken,
+        include_missing=include_missing,
     )
     download_preview_background_files_from_another_instance(
         project=project,
@@ -1248,7 +1252,13 @@ def download_thumbnail_from_another_instance(
 
 
 def download_preview_files_from_another_instance(
-    project=None, pool=None, number_attemps=3, force=False, dict_errors={}
+    project=None,
+    pool=None,
+    number_attemps=3,
+    force=False,
+    dict_errors={},
+    include_broken=True,
+    include_missing=True,
 ):
     """
     Download all preview files and related (thumbnails and low def included).
@@ -1260,6 +1270,16 @@ def download_preview_files_from_another_instance(
         )
     else:
         preview_files = PreviewFile.query
+
+    excluded_statuses = []
+    if not include_broken:
+        excluded_statuses.append("broken")
+    if not include_missing:
+        excluded_statuses.append("missing")
+    if excluded_statuses:
+        preview_files = preview_files.filter(
+            PreviewFile.status.notin_(excluded_statuses)
+        )
 
     number_of_preview_files = preview_files.count()
     logger.info(f"Downloading preview files ({number_of_preview_files})...")

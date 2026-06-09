@@ -710,6 +710,20 @@ def sync_push_verify(target, project):
 @click.option("--number-workers", default=30, show_default=True, type=int)
 @click.option("--number-attemps", default=3, show_default=True, type=int)
 @click.option("--force-resync", is_flag=True, show_default=True, default=False)
+@click.option(
+    "--skip-broken",
+    is_flag=True,
+    show_default=True,
+    default=False,
+    help="Skip preview files whose status is 'broken' (synced by default).",
+)
+@click.option(
+    "--skip-missing",
+    is_flag=True,
+    show_default=True,
+    default=False,
+    help="Skip preview files whose status is 'missing' (synced by default).",
+)
 def sync_full_files(
     source,
     project,
@@ -717,6 +731,8 @@ def sync_full_files(
     number_workers,
     number_attemps,
     force_resync,
+    skip_broken,
+    skip_missing,
 ):
     """
     Retrieve all files from source instance. It expects that credentials to
@@ -737,6 +753,8 @@ def sync_full_files(
         number_workers=number_workers,
         number_attemps=number_attemps,
         force_resync=force_resync,
+        include_broken=not skip_broken,
+        include_missing=not skip_missing,
     )
     print("Syncing ended.")
     if dict_errors:
@@ -1021,6 +1039,7 @@ def create_bot(
     show_default=True,
 )
 @click.option("--all-broken", is_flag=True, default=False, show_default=True)
+@click.option("--all-missing", is_flag=True, default=False, show_default=True)
 @click.option(
     "--all-processing", is_flag=True, default=False, show_default=True
 )
@@ -1031,6 +1050,7 @@ def renormalize_movie_preview_files(
     preview_file_id,
     project_id,
     all_broken,
+    all_missing,
     all_processing,
     days=None,
     hours=None,
@@ -1046,6 +1066,7 @@ def renormalize_movie_preview_files(
         project_id,
         all_broken,
         all_processing,
+        all_missing=all_missing,
         days=days,
         hours=hours,
         minutes=minutes,
