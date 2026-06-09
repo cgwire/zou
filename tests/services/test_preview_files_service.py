@@ -472,38 +472,6 @@ class MissingStatusTestCase(ApiDBTestCase):
         self.assertEqual(reloaded.present()["status"], "missing")
         self.assertEqual(reloaded.present_minimal()["status"], "missing")
 
-    def test_mark_helper_flips_ready_to_missing(self):
-        preview_files_service.set_preview_file_as_ready(
-            str(self.preview_file.id)
-        )
-        preview_files_service.mark_preview_file_as_missing_on_storage_404(
-            str(self.preview_file.id)
-        )
-        self.assertEqual(self._reload_preview().status.code, "missing")
-
-    def test_mark_helper_skips_processing_rows(self):
-        # Preview is still in 'processing' (mid-upload race).
-        preview_files_service.mark_preview_file_as_missing_on_storage_404(
-            str(self.preview_file.id)
-        )
-        self.assertEqual(self._reload_preview().status.code, "processing")
-
-    def test_mark_helper_is_idempotent_on_missing_rows(self):
-        preview_files_service.set_preview_file_as_missing(
-            str(self.preview_file.id)
-        )
-        preview_files_service.mark_preview_file_as_missing_on_storage_404(
-            str(self.preview_file.id)
-        )
-        self.assertEqual(self._reload_preview().status.code, "missing")
-
-    def test_mark_helper_is_safe_on_unknown_id(self):
-        from zou.app.utils import fields
-
-        preview_files_service.mark_preview_file_as_missing_on_storage_404(
-            fields.gen_uuid()
-        )
-
 
 class ExtractAnnotationFrameTestCase(ApiDBTestCase):
     def setUp(self):

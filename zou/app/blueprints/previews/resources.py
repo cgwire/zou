@@ -748,9 +748,6 @@ class PreviewFileMovieResource(BasePreviewFileResource):
                 current_app.logger.error(
                     f"Movie file was not found for: {instance_id}"
                 )
-            preview_files_service.mark_preview_file_as_missing_on_storage_404(
-                instance_id
-            )
             raise PreviewFileNotFoundException
 
 
@@ -802,9 +799,6 @@ class PreviewFileLowMovieResource(BasePreviewFileResource):
                     current_app.logger.error(
                         f"Movie file was not found for: {instance_id}"
                     )
-                preview_files_service.mark_preview_file_as_missing_on_storage_404(
-                    instance_id
-                )
                 raise PreviewFileNotFoundException
 
 
@@ -852,9 +846,6 @@ class PreviewFileMovieDownloadResource(BasePreviewFileResource):
                 current_app.logger.error(
                     f"Movie file was not found for: {instance_id}"
                 )
-            preview_files_service.mark_preview_file_as_missing_on_storage_404(
-                instance_id
-            )
             raise PreviewFileNotFoundException
 
 
@@ -929,9 +920,6 @@ class PreviewFileResource(BasePreviewFileResource):
                 current_app.logger.error(
                     f"Non-movie file was not found for: {instance_id}"
                 )
-            preview_files_service.mark_preview_file_as_missing_on_storage_404(
-                instance_id
-            )
             raise PreviewFileNotFoundException
 
 
@@ -1005,9 +993,6 @@ class PreviewFileDownloadResource(BasePreviewFileResource):
                 current_app.logger.error(
                     f"Standard file was not found for: {instance_id}"
                 )
-            preview_files_service.mark_preview_file_as_missing_on_storage_404(
-                instance_id
-            )
             raise PreviewFileNotFoundException
 
 
@@ -1130,9 +1115,6 @@ class BasePreviewPictureResource(BasePreviewFileResource):
                 current_app.logger.error(
                     f"Picture file was not found for: {instance_id}"
                 )
-            preview_files_service.mark_preview_file_as_missing_on_storage_404(
-                instance_id
-            )
             raise PreviewFileNotFoundException
 
 

@@ -7,7 +7,6 @@ import time
 import zipfile
 
 import ffmpeg
-from flask_fs.errors import FileNotFound
 from PIL import Image
 
 from sqlalchemy.orm import aliased
@@ -219,31 +218,6 @@ def set_preview_file_as_missing(preview_file_id):
     storage and renormalization is no longer possible.
     """
     return update_preview_file(preview_file_id, {"status": "missing"})
-
-
-def mark_preview_file_as_missing_on_storage_404(preview_file_id):
-    """
-    Flag a preview file as ``missing`` because its binary turned out to
-    be absent from object storage at read time (Swift/S3 404).
-
-    Safe to call from any code path that catches a "file not found"
-    storage error: this is a best-effort, fire-and-forget marker that
-    skips rows still being uploaded (``processing``) or already flagged
-    as ``missing``, and never raises if the database write fails.
-    """
-    try:
-        preview_file = PreviewFile.get(preview_file_id)
-    except Exception:
-        return
-    if preview_file is None:
-        return
-    status_code = getattr(preview_file.status, "code", preview_file.status)
-    if status_code in ("processing", "missing"):
-        return
-    try:
-        set_preview_file_as_missing(preview_file_id)
-    except Exception:
-        pass
 
 
 def set_preview_file_as_ready(preview_file_id):
@@ -836,18 +810,14 @@ def extract_frame_from_preview_file(preview_file, frame_number):
         raise PreviewFileNotFoundException
 
     if preview_file["extension"] == "mp4":
-        try:
-            preview_file_path = fs.get_file_path_and_file(
-                config,
-                file_store.get_local_movie_path,
-                file_store.open_movie,
-                "previews",
-                preview_file["id"],
-                "mp4",
-            )
-        except FileNotFound:
-            mark_preview_file_as_missing_on_storage_404(preview_file["id"])
-            raise
+        preview_file_path = fs.get_file_path_and_file(
+            config,
+            file_store.get_local_movie_path,
+            file_store.open_movie,
+            "previews",
+            preview_file["id"],
+            "mp4",
+        )
     else:
         raise PreviewFileNotFoundException
 
@@ -953,9 +923,6 @@ def _copy_picture_preview_to_temp_png(preview_file):
             preview_file["id"],
             preview_file["extension"],
         )
-    except FileNotFound:
-        mark_preview_file_as_missing_on_storage_404(preview_file["id"])
-        return None
     except Exception:
         return None
     fd, temp_path = tempfile.mkstemp(suffix=".png")
@@ -1225,11 +1192,6 @@ def reset_movie_files_metadata():
             print(
                 f"Size information stored preview file {preview_file.id}",
             )
-        except FileNotFound:
-            mark_preview_file_as_missing_on_storage_404(str(preview_file.id))
-            print(
-                f"Preview file {preview_file.id} marked as missing (binary gone from storage)"
-            )
         except Exception as e:
             print(
                 f"Failed to store information for preview file {preview_file.id}: {e}"
@@ -1270,11 +1232,6 @@ def reset_picture_files_metadata():
             )
             print(
                 f"Size information stored for preview file {preview_file.id}",
-            )
-        except FileNotFound:
-            mark_preview_file_as_missing_on_storage_404(str(preview_file.id))
-            print(
-                f"Preview file {preview_file.id} marked as missing (binary gone from storage)"
             )
         except Exception as e:
             print(
@@ -1417,12 +1374,6 @@ def _retrieve_preview_file(config, file_store, prefix, preview_file):
             str(preview_file.id),
             preview_file.extension,
         )
-    except FileNotFound:
-        mark_preview_file_as_missing_on_storage_404(str(preview_file.id))
-        print(
-            f"Preview file {preview_file.id} marked as missing (binary gone from storage)."
-        )
-        return None
     except Exception as e:
         print(f"Failed to get preview file {preview_file.id}: {e}.")
         return None
