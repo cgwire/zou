@@ -12,6 +12,7 @@ STATUSES = [
     ("processing", "Processing"),
     ("ready", "Ready"),
     ("broken", "Broken"),
+    ("missing", "Missing"),
 ]
 
 VALIDATION_STATUSES = [

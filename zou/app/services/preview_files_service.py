@@ -212,6 +212,14 @@ def set_preview_file_as_broken(preview_file_id):
     return update_preview_file(preview_file_id, {"status": "broken"})
 
 
+def set_preview_file_as_missing(preview_file_id):
+    """
+    Mark a preview file as missing: its source binary is gone from
+    storage and renormalization is no longer possible.
+    """
+    return update_preview_file(preview_file_id, {"status": "missing"})
+
+
 def set_preview_file_as_ready(preview_file_id):
     """
     Mark given preview file as ready.
@@ -718,15 +726,15 @@ def _clear_empty_annotations(annotations):
 
 def get_running_preview_files(cursor_preview_file_id=None, limit=None):
     """
-    Return preview files for all productions with status equals to broken
-    or processing using cursor-based pagination.
+    Return preview files for all productions with status equals to broken,
+    missing or processing using cursor-based pagination.
     """
     query = (
         PreviewFile.query.join(Task)
         .join(Project)
         .join(ProjectStatus, ProjectStatus.id == Project.project_status_id)
         .filter(ProjectStatus.name.in_(("Active", "open", "Open")))
-        .filter(PreviewFile.status.in_(("broken", "processing")))
+        .filter(PreviewFile.status.in_(("broken", "missing", "processing")))
         .add_columns(Task.project_id, Task.task_type_id, Task.entity_id)
         .order_by(PreviewFile.created_at.desc())
     )
@@ -1156,7 +1164,7 @@ def reset_movie_files_metadata():
         .join(Project)
         .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
         .filter(ProjectStatus.name.in_(("Active", "open", "Open")))
-        .filter(PreviewFile.status.not_in(("broken", "processing")))
+        .filter(PreviewFile.status.not_in(("broken", "missing", "processing")))
         .filter(PreviewFile.extension == "mp4")
     )
     for preview_file in preview_files:
@@ -1199,7 +1207,7 @@ def reset_picture_files_metadata():
         .join(Project)
         .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
         .filter(ProjectStatus.name.in_(("Active", "open", "Open")))
-        .filter(PreviewFile.status.not_in(("broken", "processing")))
+        .filter(PreviewFile.status.not_in(("broken", "missing", "processing")))
         .filter(PreviewFile.extension == "png")
     )
     for preview_file in preview_files:
@@ -1253,7 +1261,7 @@ def generate_preview_extra(
         .join(Project)
         .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
         .filter(ProjectStatus.name.in_(("Active", "open", "Open")))
-        .filter(PreviewFile.status.not_in(("broken", "processing")))
+        .filter(PreviewFile.status.not_in(("broken", "missing", "processing")))
         .filter(PreviewFile.extension.in_(("mp4", "png")))
     )
     if project is not None:

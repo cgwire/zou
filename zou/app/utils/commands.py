@@ -813,6 +813,8 @@ def import_files_from_another_instance(
     number_workers=30,
     number_attemps=3,
     force_resync=False,
+    include_broken=True,
+    include_missing=True,
 ):
     """
     Retrieve and save all the data related most recent events from another API
@@ -828,6 +830,8 @@ def import_files_from_another_instance(
             number_workers=number_workers,
             number_attemps=number_attemps,
             force_resync=force_resync,
+            include_broken=include_broken,
+            include_missing=include_missing,
         )
 
 
@@ -966,19 +970,33 @@ def create_bot(
         print(bot["access_token"])
 
 
+class _SourceMovieMissing(RuntimeError):
+    """
+    Raised when the source movie binary is gone from storage during a
+    renormalize pass. Used to distinguish 'broken' from 'missing' status.
+    """
+
+
 def renormalize_movie_preview_files(
     preview_file_id=None,
     project_id=None,
     all_broken=None,
     all_processing=None,
+    all_missing=None,
     days=None,
     hours=None,
     minutes=None,
 ):
     with app.app_context():
-        if preview_file_id is None and not all_broken and not all_processing:
+        if (
+            preview_file_id is None
+            and not all_broken
+            and not all_processing
+            and not all_missing
+        ):
             print(
-                "You must specify at least one flag from --all-broken or --all-processing."
+                "You must specify at least one flag from --all-broken, "
+                "--all-missing or --all-processing."
             )
             sys.exit(1)
 
@@ -1002,14 +1020,15 @@ def renormalize_movie_preview_files(
                 PreviewFile.project_id == project_id
             )
 
-        if all_broken and all_processing:
-            query = query.filter(
-                PreviewFile.status.in_(("broken", "processing"))
-            )
-        elif all_broken:
-            query = query.filter(PreviewFile.status == "broken")
-        elif all_processing:
-            query = query.filter(PreviewFile.status == "processing")
+        selected_statuses = []
+        if all_broken:
+            selected_statuses.append("broken")
+        if all_missing:
+            selected_statuses.append("missing")
+        if all_processing:
+            selected_statuses.append("processing")
+        if selected_statuses:
+            query = query.filter(PreviewFile.status.in_(selected_statuses))
 
         preview_files = query.all()
         len_preview_files = len(preview_files)
@@ -1029,7 +1048,7 @@ def renormalize_movie_preview_files(
                         f"{preview_file_id}.{extension}.tmp",
                     )
                     if not file_store.exists_movie("source", preview_file_id):
-                        raise RuntimeError(
+                        raise _SourceMovieMissing(
                             f"Source movie missing in storage for preview "
                             f"{preview_file_id}; skipping renormalization."
                         )
@@ -1074,10 +1093,31 @@ def renormalize_movie_preview_files(
                             normalize=True,
                             add_source_to_file_store=False,
                         )
+                except _SourceMovieMissing as e:
+                    print(
+                        f"Renormalization of preview file {preview_file_id} failed: {e}"
+                    )
+                    try:
+                        preview_files_service.set_preview_file_as_missing(
+                            preview_file_id
+                        )
+                    except Exception as mark_err:
+                        print(
+                            f"Could not mark {preview_file_id} as missing: {mark_err}"
+                        )
+                    continue
                 except Exception as e:
                     print(
                         f"Renormalization of preview file {preview_file_id} failed: {e}"
                     )
+                    try:
+                        preview_files_service.set_preview_file_as_broken(
+                            preview_file_id
+                        )
+                    except Exception as mark_err:
+                        print(
+                            f"Could not mark {preview_file_id} as broken: {mark_err}"
+                        )
                     continue
 
 

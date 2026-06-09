@@ -163,3 +163,42 @@ class RenormalizeMoviePreviewFilesTestCase(ApiDBTestCase):
 
         self.assertIn("Local copy of source movie is missing or", output)
         mock_prepare.assert_not_called()
+
+    def test_source_missing_marks_preview_as_missing(self):
+        from zou.app.models.preview_file import PreviewFile
+
+        with patch.object(
+            file_store, "exists_movie", return_value=False
+        ), patch.object(preview_files_service, "prepare_and_store_movie"):
+            self._run_renormalize()
+
+        reloaded = PreviewFile.get(self.preview_file_id)
+        self.assertEqual(reloaded.status.code, "missing")
+
+    def test_all_missing_filter_selects_only_missing_rows(self):
+        from zou.app.models.preview_file import PreviewFile
+
+        # Existing self.preview_file has status="broken"; add a missing one.
+        missing_preview = self.generate_fixture_preview_file(
+            name="missing_one", revision=2, status="missing"
+        )
+        missing_id = str(missing_preview.id)
+        seen_ids = []
+
+        def fake_exists(prefix, pid):
+            seen_ids.append(pid)
+            return False
+
+        buf = io.StringIO()
+        with redirect_stdout(buf), patch.object(
+            file_store, "exists_movie", side_effect=fake_exists
+        ), patch.object(preview_files_service, "prepare_and_store_movie"):
+            commands.renormalize_movie_preview_files(all_missing=True)
+
+        self.assertIn(missing_id, seen_ids)
+        self.assertNotIn(self.preview_file_id, seen_ids)
+        # The broken row must still be broken; the missing row stays missing.
+        self.assertEqual(
+            PreviewFile.get(self.preview_file_id).status.code, "broken"
+        )
+        self.assertEqual(PreviewFile.get(missing_id).status.code, "missing")
