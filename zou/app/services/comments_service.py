@@ -700,6 +700,7 @@ def delete_reply(comment_id, reply_id):
         reply for reply in comment.replies if reply["id"] != reply_id
     ]
     comment.save()
+    tasks_service.clear_comment_cache(comment_id)
     Notification.delete_all_by(reply_id=reply_id)
     events.emit(
         "comment:delete-reply",
