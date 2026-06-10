@@ -26,8 +26,10 @@ from zou.app.services import (
     sync_service,
     tasks_service,
 )
+from zou.app.models.entity import Entity
 from zou.app.models.person import Person
 from zou.app.models.preview_file import PreviewFile
+from zou.app.models.project import Project
 from zou.app.models.task import Task
 from zou.app.models.plugin import Plugin
 from sqlalchemy.sql.expression import not_
@@ -1119,6 +1121,63 @@ def renormalize_movie_preview_files(
                             f"Could not mark {preview_file_id} as broken: {mark_err}"
                         )
                     continue
+
+
+def normalize_annotation_times(project_id=None, dry_run=False):
+    """
+    Merge preview file annotation entries that land on the same frame and
+    snap their times onto the frame grid used by the Kitsu player. Older
+    Kitsu versions stored unrounded times, leaving duplicated entries whose
+    drawings the player cannot display.
+    """
+    with app.app_context():
+        query = PreviewFile.query.filter(
+            PreviewFile.annotations.isnot(None)
+        ).order_by(PreviewFile.created_at.asc())
+        if project_id is not None:
+            query = query.join(Task).filter(Task.project_id == project_id)
+        changed_count = 0
+        scanned_count = 0
+        for preview_file in query:
+            if not preview_file.annotations:
+                continue
+            scanned_count += 1
+            preview_file_id = str(preview_file.id)
+            try:
+                if dry_run:
+                    task = Task.get(preview_file.task_id)
+                    project = Project.get(task.project_id).serialize()
+                    entity = Entity.get(task.entity_id)
+                    fps = float(
+                        preview_files_service.get_preview_file_fps(
+                            project,
+                            entity.serialize() if entity is not None else None,
+                        )
+                    )
+                    _, changed = (
+                        preview_files_service.normalize_annotation_times(
+                            preview_file.annotations, fps
+                        )
+                    )
+                else:
+                    changed = preview_files_service.normalize_preview_file_annotation_times(
+                        preview_file
+                    )
+                if changed:
+                    changed_count += 1
+                    print(
+                        f"Preview file {preview_file_id} "
+                        f"{'needs normalization' if dry_run else 'normalized'}."
+                    )
+            except Exception as e:
+                print(
+                    f"Normalization of preview file {preview_file_id} "
+                    f"failed: {e}"
+                )
+        print(
+            f"{changed_count}/{scanned_count} annotated preview files "
+            f"{'need normalization' if dry_run else 'normalized'}."
+        )
 
 
 def list_plugins(output_format, verbose, filter_field, filter_value):
