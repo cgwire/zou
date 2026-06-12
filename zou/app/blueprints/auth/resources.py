@@ -287,6 +287,12 @@ class LoginResource(Resource, ArgsMixin):
                 sensitive=user["role"] == "admin"
             )
 
+            # check_auth() serializes the person without relations, so add
+            # departments to reach parity with /auth/authenticated.
+            user["departments"] = persons_service.get_person(user["id"])[
+                "departments"
+            ]
+
             response_data = {
                 "user": user,
                 "organisation": organisation,

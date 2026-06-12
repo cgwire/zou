@@ -56,6 +56,27 @@ class AuthTestCase(ApiDBTestCase):
         self.assertIsAuthenticated(tokens)
         self.logout(tokens)
 
+    def test_login_returns_departments(self):
+        self.generate_fixture_department()
+        persons_service.add_to_department(
+            str(self.department.id), str(self.person.id)
+        )
+
+        result = self.post("auth/login", self.credentials, 200)
+        user = result["user"]
+        self.assertIn("departments", user)
+        self.assertIn(str(self.department.id), user["departments"])
+
+        # The login payload must carry the same departments as /auth/authenticated
+        headers = self.get_auth_headers(result)
+        response = self.app.get("auth/authenticated", headers=headers)
+        authenticated_user = json.loads(response.data.decode("utf-8"))["user"]
+        self.assertEqual(
+            sorted(user["departments"]),
+            sorted(authenticated_user["departments"]),
+        )
+        self.logout(result)
+
     def test_login_args_not_json(self):
         response = self.app.post(
             f"auth/login?email={self.credentials['email']}&password={self.credentials['password']}"
