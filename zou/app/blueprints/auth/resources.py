@@ -50,6 +50,7 @@ from zou.app.services import (
 
 from zou.app.utils.flask import is_from_browser
 from zou.app.utils.saml import saml_client_for
+from zou.app.utils import oidc
 
 from zou.app.stores import auth_tokens_store
 from zou.app.services.exception import (
@@ -1584,3 +1585,118 @@ class SAMLLoginResource(Resource, ArgsMixin):
                 redirect_url = value
 
         return redirect(redirect_url, code=302)
+
+
+class OIDCLoginResource(Resource, ArgsMixin):
+    def get(self):
+        """
+        OIDC SSO login redirect
+        ---
+        description: Initiate OIDC SSO login by redirecting to the OpenID
+          Connect identity provider.
+        tags:
+            - Authentication
+        responses:
+          302:
+            description: Redirect to OIDC identity provider
+          400:
+            description: OIDC not enabled
+        """
+        if not config.OIDC_ENABLED:
+            return {"error": "OIDC is not enabled."}, 400
+
+        redirect_uri = (
+            f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}"
+            "/api/auth/oidc/callback"
+        )
+        return oidc.get_oidc_client().authorize_redirect(redirect_uri)
+
+
+class OIDCCallbackResource(Resource, ArgsMixin):
+    def get(self):
+        """
+        OIDC SSO callback
+        ---
+        description: Handle the OIDC SSO callback. Exchanges the authorization
+          code, validates the ID token, then logs in the matching user
+          (creating one on first login when none exists).
+        tags:
+            - Authentication
+        responses:
+          302:
+            description: Login successful, redirect to home page
+          400:
+            description: OIDC not enabled or email not verified
+        """
+        if not config.OIDC_ENABLED:
+            return {"error": "OIDC is not enabled."}, 400
+
+        token = oidc.get_oidc_client().authorize_access_token()
+        claims = token.get("userinfo") or {}
+
+        email = oidc.get_email_from_claims(claims)
+        if not email:
+            return {"error": "No email claim returned by the provider."}, 400
+        if not oidc.is_email_verified(claims):
+            return {"error": "Email address is not verified."}, 400
+
+        person_info = oidc.map_claims(claims)
+
+        try:
+            user = persons_service.get_person_by_email(email)
+            for k, v in person_info.items():
+                if user.get(k) != v:
+                    persons_service.update_person(
+                        user["id"], person_info, bypass_protected_accounts=True
+                    )
+                    break
+        except PersonNotFoundException:
+            random_password = auth.encrypt_password(secrets.token_urlsafe(48))
+            # first_name/last_name are required by create_person; default them
+            # in case the provider did not return the corresponding claims.
+            create_info = {"first_name": "", "last_name": "", **person_info}
+            user = persons_service.create_person(
+                email, random_password, **create_info
+            )
+
+        response = make_response(
+            redirect(f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}")
+        )
+
+        if user["active"]:
+            # Honour 2FA enforcement unless OIDC sessions are configured to
+            # skip it (e.g. when the identity provider already enforces MFA).
+            requires_2fa_setup = False
+            if config.ENFORCE_2FA and not config.OIDC_SKIP_2FA:
+                if not auth_service.is_user_exempt_from_2fa(user, app):
+                    if not auth_service.person_two_factor_authentication_enabled(
+                        user
+                    ):
+                        requires_2fa_setup = True
+
+            additional_claims = {"identity_type": "person"}
+            if requires_2fa_setup:
+                additional_claims["requires_2fa_setup"] = True
+
+            access_token = create_access_token(
+                identity=user["id"],
+                additional_claims=additional_claims,
+            )
+            refresh_token = create_refresh_token(
+                identity=user["id"],
+                additional_claims=additional_claims,
+            )
+            identity_changed.send(
+                current_app._get_current_object(),
+                identity=Identity(user["id"], "person"),
+            )
+
+            ip_address = request.environ.get(
+                "HTTP_X_REAL_IP", request.remote_addr
+            )
+
+            set_access_cookies(response, access_token)
+            set_refresh_cookies(response, refresh_token)
+            events_service.create_login_log(user["id"], ip_address, "web")
+
+        return response

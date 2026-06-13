@@ -74,3 +74,45 @@ All configuration is in `zou/app/config.py`, read from environment variables.
 | `LDAP_BASE_DN` | | LDAP base distinguished name |
 | `SAML_ENABLED` | false | Enable SAML SSO |
 | `SAML_METADATA_URL` | | SAML IdP metadata URL |
+| `SAML_IDP_NAME` | | Display name shown on the SAML login button |
+
+## OIDC
+
+OpenID Connect single sign-on. When enabled, a "Login with <provider>" button
+is shown on the login page; users are redirected to the provider, and on return
+a matching Kitsu account is found by email (or created on first login).
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OIDC_ENABLED` | false | Enable OIDC SSO |
+| `OIDC_IDP_NAME` | | Display name shown on the OIDC login button |
+| `OIDC_DISCOVERY_URL` | | Provider OpenID configuration URL (ends with `/.well-known/openid-configuration`) |
+| `OIDC_CLIENT_ID` | | OAuth client identifier registered with the provider |
+| `OIDC_CLIENT_SECRET` | | OAuth client secret |
+| `OIDC_SCOPES` | `openid email profile` | Space-separated scopes to request |
+| `OIDC_EMAIL_CLAIM` | `email` | Claim used as the account email |
+| `OIDC_GIVEN_NAME_CLAIM` | `given_name` | Claim used for the first name |
+| `OIDC_FAMILY_NAME_CLAIM` | `family_name` | Claim used for the last name |
+| `OIDC_SKIP_2FA` | false | When true, OIDC sessions skip Kitsu's 2FA setup gate (trust the IdP for MFA). When false, `ENFORCE_2FA` applies as usual. |
+
+The redirect URI to register with the provider is
+`<DOMAIN_PROTOCOL>://<DOMAIN_NAME>/api/auth/oidc/callback`.
+
+### Example: Keycloak
+
+```
+OIDC_ENABLED=true
+OIDC_IDP_NAME=Keycloak
+OIDC_DISCOVERY_URL=https://keycloak.example.com/realms/myrealm/.well-known/openid-configuration
+OIDC_CLIENT_ID=kitsu
+OIDC_CLIENT_SECRET=<secret from the Keycloak client>
+```
+
+Register `https://kitsu.example.com/api/auth/oidc/callback` as a valid redirect
+URI on the Keycloak client. The same shape works for Azure AD, Okta, and Google
+by pointing `OIDC_DISCOVERY_URL` at the provider's discovery document and, if the
+provider uses non-standard claim names, overriding the `OIDC_*_CLAIM` variables.
+
+> OIDC requires Flask's signed-cookie session to carry the `state`/`nonce`/PKCE
+> values between `/auth/oidc/login` and `/auth/oidc/callback`, so `SECRET_KEY`
+> must be set (it already is in any standard deployment).
