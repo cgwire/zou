@@ -1075,6 +1075,26 @@ def renormalize_movie_preview_files(
 
 @cli.command()
 @click.option(
+    "--project-id",
+    required=False,
+    default=None,
+    show_default=True,
+)
+@click.option("--dry-run", is_flag=True, default=False, show_default=True)
+def normalize_annotation_times(project_id, dry_run):
+    """
+    Merge preview file annotation entries duplicated on the same frame and
+    snap their times onto the player's frame grid. Older Kitsu versions
+    stored unrounded annotation times, leaving entries the player cannot
+    display.
+    """
+    from zou.app.utils import commands
+
+    commands.normalize_annotation_times(project_id=project_id, dry_run=dry_run)
+
+
+@cli.command()
+@click.option(
     "--path",
     required=True,
     help="Plugin path: local directory, zip file, or git repository URL",

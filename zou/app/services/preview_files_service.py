@@ -1,4 +1,5 @@
 import copy
+import math
 import os
 import re
 import shutil
@@ -722,6 +723,101 @@ def _clear_empty_annotations(annotations):
         for annotation in annotations
         if len(annotation.get("drawing", {}).get("objects", [])) > 0
     ]
+
+
+def _round_time_to_frame(time_value, fps):
+    """
+    Snap a playback time onto the frame grid the Kitsu player uses:
+    the frame duration is 1 / fps rounded to 4 decimals, and rounding is
+    half-up to mirror the JavaScript Math.round used client-side.
+    """
+    precision_factor = 10000
+    frame_duration = (
+        math.floor(1 / fps * precision_factor + 0.5) / precision_factor
+    )
+    frame_number = math.floor(time_value / frame_duration + 0.5)
+    return (
+        math.floor(frame_number * frame_duration * precision_factor + 0.5)
+        / precision_factor
+    )
+
+
+def normalize_annotation_times(annotations, fps):
+    """
+    Collapse annotation entries that land on the same frame into one and
+    snap every entry time onto the frame grid.
+
+    Older Kitsu versions stored unrounded times (sometimes as strings)
+    while current ones snap them to the frame grid, so the same logical
+    frame can exist several times in a preview file's annotation list.
+    The player only displays the first entry matching a frame, which makes
+    the other entries' drawings invisible, and grid-timed deletions or
+    updates never match the legacy entries.
+
+    Objects are deduplicated by id and the input list is not mutated.
+    Returns a (annotations, changed) tuple; entries with unparseable times
+    are kept untouched.
+    """
+    result = []
+    by_frame_time = {}
+    changed = False
+    for annotation in annotations or []:
+        try:
+            time_value = max(float(annotation.get("time") or 0), 0.0)
+        except (TypeError, ValueError):
+            result.append(copy.deepcopy(annotation))
+            continue
+        frame_time = _round_time_to_frame(time_value, fps)
+        existing = by_frame_time.get(frame_time)
+        objects = (annotation.get("drawing") or {}).get("objects", [])
+        if existing is None:
+            entry = copy.deepcopy(annotation)
+            if entry.get("time") != frame_time:
+                changed = True
+            entry["time"] = frame_time
+            entry["drawing"] = {
+                **(entry.get("drawing") or {}),
+                "objects": (entry.get("drawing") or {}).get("objects", []),
+            }
+            by_frame_time[frame_time] = entry
+            result.append(entry)
+        else:
+            changed = True
+            seen_ids = {
+                existing_object.get("id")
+                for existing_object in existing["drawing"]["objects"]
+            }
+            existing["drawing"]["objects"].extend(
+                copy.deepcopy(new_object)
+                for new_object in objects
+                if new_object.get("id") not in seen_ids
+            )
+    return result, changed
+
+
+def normalize_preview_file_annotation_times(preview_file):
+    """
+    Normalize a preview file's annotation times in place (see
+    normalize_annotation_times). Returns True when the stored annotations
+    were modified.
+    """
+    if not preview_file.annotations:
+        return False
+    task = Task.get(preview_file.task_id)
+    project = Project.get(task.project_id).serialize()
+    entity = Entity.get(task.entity_id)
+    fps = float(
+        get_preview_file_fps(
+            project, entity.serialize() if entity is not None else None
+        )
+    )
+    annotations, changed = normalize_annotation_times(
+        preview_file.annotations, fps
+    )
+    if changed:
+        preview_file.update({"annotations": annotations})
+        files_service.clear_preview_file_cache(str(preview_file.id))
+    return changed
 
 
 def get_running_preview_files(cursor_preview_file_id=None, limit=None):

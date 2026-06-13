@@ -232,6 +232,121 @@ class PlaylistTestCase(ApiDBTestCase):
             persisted_preview_file["annotations"],
         )
 
+    def test_normalize_annotation_times_merges_same_frame_entries(self):
+        annotations = [
+            {
+                "time": 0.6,
+                "frame": 16,
+                "drawing": {"objects": [{"id": "new-1"}]},
+            },
+            {
+                "time": 0.616,
+                "frame": "017",
+                "drawing": {"objects": [{"id": "old-1"}, {"id": "old-2"}]},
+            },
+        ]
+        result, changed = preview_files_service.normalize_annotation_times(
+            annotations, 25
+        )
+        self.assertTrue(changed)
+        self.assertEqual(1, len(result))
+        self.assertEqual(0.6, result[0]["time"])
+        self.assertEqual(
+            ["new-1", "old-1", "old-2"],
+            [o["id"] for o in result[0]["drawing"]["objects"]],
+        )
+
+    def test_normalize_annotation_times_snaps_string_times(self):
+        annotations = [
+            {"time": "2", "drawing": {"objects": [{"id": "obj-1"}]}}
+        ]
+        result, changed = preview_files_service.normalize_annotation_times(
+            annotations, 25
+        )
+        self.assertTrue(changed)
+        self.assertEqual(2.0, result[0]["time"])
+
+    def test_normalize_annotation_times_keeps_distinct_frames(self):
+        annotations = [
+            {"time": 0.6, "drawing": {"objects": [{"id": "a"}]}},
+            {"time": 0.88, "drawing": {"objects": [{"id": "b"}]}},
+        ]
+        result, changed = preview_files_service.normalize_annotation_times(
+            annotations, 25
+        )
+        self.assertFalse(changed)
+        self.assertEqual(2, len(result))
+
+    def test_normalize_annotation_times_deduplicates_objects_by_id(self):
+        annotations = [
+            {"time": 0.6, "drawing": {"objects": [{"id": "a"}]}},
+            {
+                "time": 0.616,
+                "drawing": {"objects": [{"id": "a"}, {"id": "b"}]},
+            },
+        ]
+        result, _ = preview_files_service.normalize_annotation_times(
+            annotations, 25
+        )
+        self.assertEqual(
+            ["a", "b"], [o["id"] for o in result[0]["drawing"]["objects"]]
+        )
+
+    def test_normalize_annotation_times_keeps_unparseable_entries(self):
+        annotations = [{"time": "abc", "drawing": {"objects": [{"id": "a"}]}}]
+        result, changed = preview_files_service.normalize_annotation_times(
+            annotations, 25
+        )
+        self.assertFalse(changed)
+        self.assertEqual(annotations, result)
+
+    def test_normalize_annotation_times_does_not_mutate_input(self):
+        annotations = [
+            {"time": 0.6, "drawing": {"objects": [{"id": "a"}]}},
+            {"time": 0.616, "drawing": {"objects": [{"id": "b"}]}},
+        ]
+        preview_files_service.normalize_annotation_times(annotations, 25)
+        self.assertEqual(0.616, annotations[1]["time"])
+        self.assertEqual(1, len(annotations[0]["drawing"]["objects"]))
+
+    def test_normalize_preview_file_annotation_times(self):
+        preview_file = self.generate_fixture_preview_file()
+        preview_file.update(
+            {
+                "annotations": [
+                    {
+                        "time": 0.6,
+                        "drawing": {"objects": [{"id": "new-1"}]},
+                    },
+                    {
+                        "time": 0.616,
+                        "drawing": {"objects": [{"id": "old-1"}]},
+                    },
+                ]
+            }
+        )
+        changed = (
+            preview_files_service.normalize_preview_file_annotation_times(
+                preview_file
+            )
+        )
+        self.assertTrue(changed)
+        persisted = files_service.get_preview_file(str(preview_file.id))
+        self.assertEqual(1, len(persisted["annotations"]))
+        self.assertEqual(
+            ["new-1", "old-1"],
+            [
+                o["id"]
+                for o in persisted["annotations"][0]["drawing"]["objects"]
+            ],
+        )
+        changed = (
+            preview_files_service.normalize_preview_file_annotation_times(
+                preview_file
+            )
+        )
+        self.assertFalse(changed)
+
     def test_update_annotations_aborts_when_lock_unavailable(self):
         """
         When the Redis lock can't be acquired (Redis down or wait
