@@ -97,6 +97,35 @@ class MovieTestCase(unittest.TestCase):
         self.assertEqual(width / 2, width_norm)
         self.assertEqual(height / 2, height_norm)
 
+    def test_normalize_letterbox(self):
+        # A 4:3 source normalized into a 16:9 canvas must be letterboxed
+        # (pillarboxed here), not stretched: exact canvas dimensions, black
+        # side bars, undistorted content in the center.
+        source = str(Path(self.tmpdir) / "test_letterbox_source.m4v")
+        ffmpeg.input("color=c=red:s=320x240:d=1", f="lavfi").output(
+            source, r=5, vcodec="libx264", pix_fmt="yuv420p"
+        ).overwrite_output().run(quiet=True)
+
+        normalized, _, _ = movie.normalize_movie(source, 5, 320, 180)
+
+        width_norm, height_norm = movie.get_movie_size(normalized)
+        self.assertEqual(width_norm, 320)
+        self.assertEqual(height_norm, 180)
+
+        frame = str(Path(self.tmpdir) / "test_letterbox_frame.png")
+        ffmpeg.input(normalized).output(
+            frame, vframes=1
+        ).overwrite_output().run(quiet=True)
+        image = Image.open(frame).convert("RGB")
+
+        # Side bars (4:3 into 16:9 -> 40px pillars) are black...
+        left_r, left_g, left_b = image.getpixel((5, 90))
+        self.assertLess(left_r + left_g + left_b, 30)
+        # ...and the center keeps the undistorted red content.
+        center_r, center_g, center_b = image.getpixel((160, 90))
+        self.assertGreater(center_r, 150)
+        self.assertLess(center_g + center_b, 120)
+
     def test_concat_demuxer_testing(self):
         test_name = "test_concate_demuxer"
         self.concat_testing(movie.concat_demuxer, test_name)

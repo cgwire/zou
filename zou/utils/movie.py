@@ -228,7 +228,12 @@ def normalize_encoding(
         vcodec="libx264",
         movflags="+faststart",
         x264opts=f"keyint={keyframes}:scenecut=0",
-        s=f"{width}x{height}",
+        vf=(
+            f"scale={width}:{height}:"
+            "force_original_aspect_ratio=decrease:force_divisible_by=2,"
+            f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,"
+            "setsar=1"
+        ),
     )
     try:
         logger.info(f"ffmpeg {' '.join(stream.get_args())}")
