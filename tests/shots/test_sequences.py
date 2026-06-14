@@ -1,6 +1,6 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.services import projects_service, tasks_service
+from zou.app.services import entities_service, projects_service, tasks_service
 
 
 class SequenceTestCase(ApiDBTestCase):
@@ -131,12 +131,37 @@ class SequenceTestCase(ApiDBTestCase):
         self._setup_vendor()
         self.get(f"data/sequences/{self.sequence_id}/tasks", 403)
 
-    def test_get_sequences_with_tasks_vendor_blocked(self):
+    def test_get_sequences_with_tasks_vendor(self):
         self._setup_vendor()
-        self.get(
-            f"data/sequences/with-tasks?project_id={self.project_id}",
-            403,
+        path = f"data/sequences/with-tasks?project_id={self.project_id}"
+        # Without an assigned shot, the vendor gets no sequence (but no 403).
+        self.assertEqual(len(self.get(path)), 0)
+        # Assigning a shot task surfaces its parent sequence.
+        tasks_service.assign_task(self.shot_task.id, self.user_vendor["id"])
+        sequences = self.get(path)
+        self.assertEqual(len(sequences), 1)
+        self.assertEqual(sequences[0]["id"], self.sequence_id)
+        # Sequence-level tasks stay hidden unless directly assigned.
+        self.assertEqual(sequences[0]["tasks"], [])
+
+    def test_get_sequences_with_tasks_vendor_task_filter(self):
+        self._setup_vendor()
+        tasks_service.assign_task(self.shot_task.id, self.user_vendor["id"])
+        # A task on the very sequence holding the assigned shot, not yet
+        # assigned to the vendor.
+        sequence = entities_service.get_entity(self.shot.parent_id)
+        sequence_task = tasks_service.create_task(
+            self.task_type_animation.serialize(), sequence
         )
+        path = f"data/sequences/with-tasks?project_id={self.project_id}"
+        # The sequence is visible but its task stays hidden.
+        sequences = self.get(path)
+        self.assertEqual(len(sequences), 1)
+        self.assertEqual(sequences[0]["tasks"], [])
+        # Once assigned to the vendor, the sequence task shows up.
+        tasks_service.assign_task(sequence_task["id"], self.user_vendor["id"])
+        sequences = self.get(path)
+        self.assertEqual(len(sequences[0]["tasks"]), 1)
 
     def test_force_delete_sequence(self):
         self.get(f"data/sequences/{self.sequence_id}")
