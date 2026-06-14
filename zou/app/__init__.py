@@ -48,6 +48,7 @@ from zou.app.utils.flask import (
 )
 
 from zou.app.utils.saml import saml_client_for
+from zou.app.utils.oidc import oidc_client_for
 from zou.app.utils.fido import get_fido_server
 
 app = Flask(__name__)
@@ -86,6 +87,9 @@ if config.CORS_ALLOWED_ORIGINS:
 
 if config.SAML_ENABLED:
     app.extensions["saml_client"] = saml_client_for(config.SAML_METADATA_URL)
+
+if config.OIDC_ENABLED:
+    app.extensions["oidc_client"] = oidc_client_for(app)
 
 app.extensions["fido_server"] = get_fido_server()
 

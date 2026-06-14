@@ -15,6 +15,8 @@ from zou.app.blueprints.auth.resources import (
     TOTPResource,
     SAMLSSOResource,
     SAMLLoginResource,
+    OIDCLoginResource,
+    OIDCCallbackResource,
 )
 
 routes = [
@@ -31,6 +33,8 @@ routes = [
     ("/auth/fido", FIDOResource),
     ("/auth/saml/sso", SAMLSSOResource),
     ("/auth/saml/login", SAMLLoginResource),
+    ("/auth/oidc/login", OIDCLoginResource),
+    ("/auth/oidc/callback", OIDCCallbackResource),
 ]
 
 blueprint = Blueprint("auth", "auth")

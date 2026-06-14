@@ -476,6 +476,8 @@ class ConfigResource(Resource):
             "indexer_configured": config.INDEXER["key"] is not None,
             "saml_enabled": config.SAML_ENABLED,
             "saml_idp_name": config.SAML_IDP_NAME,
+            "oidc_enabled": config.OIDC_ENABLED,
+            "oidc_idp_name": config.OIDC_IDP_NAME,
             "default_locale": persons_service.get_default_locale(),
             "default_timezone": persons_service.get_default_timezone(),
             "enforce_2fa": config.ENFORCE_2FA,
