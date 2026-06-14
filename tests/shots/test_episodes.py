@@ -152,12 +152,18 @@ class EpisodeTestCase(ApiDBTestCase):
         self._setup_vendor()
         self.get(f"data/episodes/{self.episode_id}/tasks", 403)
 
-    def test_get_episodes_with_tasks_vendor_blocked(self):
+    def test_get_episodes_with_tasks_vendor(self):
         self._setup_vendor()
-        self.get(
-            f"data/episodes/with-tasks?project_id={self.project_id}",
-            403,
-        )
+        path = f"data/episodes/with-tasks?project_id={self.project_id}"
+        # Without an assigned shot, the vendor gets no episode (but no 403).
+        self.assertEqual(len(self.get(path)), 0)
+        # Assigning a descendant shot task surfaces its episode.
+        tasks_service.assign_task(self.shot_task.id, self.user_vendor["id"])
+        episodes = self.get(path)
+        self.assertEqual(len(episodes), 1)
+        self.assertEqual(episodes[0]["id"], self.episode_id)
+        # Episode-level tasks stay hidden unless directly assigned.
+        self.assertEqual(episodes[0]["tasks"], [])
 
     def test_force_delete_episode(self):
         self.get(f"data/episodes/{self.episode_id}")

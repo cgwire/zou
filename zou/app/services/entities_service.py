@@ -294,6 +294,9 @@ def get_entities_and_tasks(criterions=None):
     if "episode_id" in criterions:
         query = query.filter(Entity.parent_id == criterions["episode_id"])
 
+    if "entity_ids" in criterions:
+        query = query.filter(Entity.id.in_(criterions["entity_ids"]))
+
     for (
         entity,
         task_id,
@@ -368,7 +371,16 @@ def get_entities_and_tasks(criterions=None):
             if person_id:
                 task_map[task_id]["assignees"].append(str(person_id))
 
-    return list(entity_map.values())
+    entities = list(entity_map.values())
+    assigned_to = criterions.get("assigned_to")
+    if assigned_to is not None:
+        for entity in entities:
+            entity["tasks"] = [
+                task
+                for task in entity["tasks"]
+                if assigned_to in task["assignees"]
+            ]
+    return entities
 
 
 def get_entity_tasks(entity):
