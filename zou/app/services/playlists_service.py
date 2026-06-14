@@ -215,10 +215,17 @@ def get_first_shot_preview_file_id(playlist):
     return first.get("preview_file_id") if isinstance(first, dict) else None
 
 
-def get_playlist_with_preview_file_revisions(playlist_id):
+def get_playlist_with_preview_file_revisions(
+    playlist_id, with_annotations=True
+):
     """
     Return given playlist. Shot list is augmented with all previews available
     for a given shot.
+
+    When with_annotations is False, annotation blobs are omitted from the
+    response: they are the heaviest part of a playlist and the web client
+    loads them on demand. Callers that have no lazy-loading (e.g. the shared
+    guest player) keep the default and receive annotations inline.
     """
     # Eager load build_jobs to avoid N+1 when building build_jobs list
     playlist = (
@@ -236,7 +243,7 @@ def get_playlist_with_preview_file_revisions(playlist_id):
     if playlist_dict["shots"] is None:
         playlist_dict["shots"] = []
     playlist_dict, preview_file_map = set_preview_files_for_entities(
-        playlist_dict
+        playlist_dict, with_annotations=with_annotations
     )
 
     for shot in playlist_dict["shots"]:
@@ -250,11 +257,14 @@ def get_playlist_with_preview_file_revisions(playlist_id):
                 shot["preview_file_height"] = preview_file["height"]
                 shot["preview_file_duration"] = preview_file["duration"]
                 shot["preview_file_status"] = preview_file["status"]
-                shot["preview_file_annotations"] = preview_file["annotations"]
                 shot["preview_file_task_id"] = preview_file["task_id"]
                 shot["preview_file_previews"] = preview_file.get(
                     "previews", []
                 )
+                if with_annotations:
+                    shot["preview_file_annotations"] = preview_file.get(
+                        "annotations"
+                    )
             else:
                 del shot["preview_file_id"]
         except Exception as e:
@@ -273,10 +283,13 @@ def _add_build_job_infos_to_playlist_dict(playlist, playlist_dict):
     return playlist_dict
 
 
-def set_preview_files_for_entities(playlist_dict):
+def set_preview_files_for_entities(playlist_dict, with_annotations=True):
     """
     Retrieve all preview files related to entities listed in given playlist.
     Add to each entity a dict with task as keys and preview list as values.
+
+    Annotation blobs are included only when with_annotations is True; the web
+    client opts out and loads them on demand to keep the payload light.
     """
     entity_ids = []
     for entity in playlist_dict["shots"]:
@@ -291,8 +304,30 @@ def set_preview_files_for_entities(playlist_dict):
     previews = {}
     preview_file_map = {}
 
-    preview_files = (
-        PreviewFile.query.join(Task)
+    # Select scalar columns instead of full PreviewFile ORM objects: a playlist
+    # can hold thousands of revisions, and hydrating that many ORM instances
+    # was the bulk of the query time. We also skip the heavy JSONB blobs `data`
+    # (never used) and `annotations` (only when the caller asked for them). This
+    # mirrors get_preview_files_for_entity().
+    preview_columns = [
+        PreviewFile.id,
+        PreviewFile.revision,
+        PreviewFile.extension,
+        PreviewFile.width,
+        PreviewFile.height,
+        PreviewFile.duration,
+        PreviewFile.status,
+        PreviewFile.created_at,
+        PreviewFile.task_id,
+        Task.task_type_id,
+        Task.entity_id,
+    ]
+    if with_annotations:
+        preview_columns.append(PreviewFile.annotations)
+
+    preview_rows = (
+        PreviewFile.query.with_entities(*preview_columns)
+        .join(Task)
         .join(TaskType)
         .filter(Task.entity_id.in_(entity_ids))
         .order_by(TaskType.priority.desc())
@@ -300,35 +335,33 @@ def set_preview_files_for_entities(playlist_dict):
         .order_by(PreviewFile.revision.desc())
         .order_by(PreviewFile.position)
         .order_by(PreviewFile.created_at)
-        .add_column(Task.task_type_id)
-        .add_column(Task.entity_id)
         .all()
     )
 
-    for preview_file, task_type_id, entity_id in preview_files:
-        entity_id = str(entity_id)
-        task_type_id = str(task_type_id)
+    for row in preview_rows:
+        entity_id = str(row.entity_id)
+        task_type_id = str(row.task_type_id)
         if entity_id not in previews:
             previews[entity_id] = {}
 
         if task_type_id not in previews[entity_id]:
             previews[entity_id][task_type_id] = []
 
-        task_id = str(preview_file.task_id)
-        preview_file_id = str(preview_file.id)
+        preview_file_id = str(row.id)
 
         light_preview_file = {
             "id": preview_file_id,
-            "revision": preview_file.revision,
-            "extension": preview_file.extension,
-            "width": preview_file.width,
-            "height": preview_file.height,
-            "duration": float(preview_file.duration or 0),
-            "status": str(preview_file.status),
-            "annotations": preview_file.annotations,
-            "created_at": fields.serialize_value(preview_file.created_at),
-            "task_id": task_id,
+            "revision": row.revision,
+            "extension": row.extension,
+            "width": row.width,
+            "height": row.height,
+            "duration": float(row.duration or 0),
+            "status": str(row.status),
+            "created_at": fields.serialize_value(row.created_at),
+            "task_id": str(row.task_id),
         }  # Do not add too much field to avoid building too big responses
+        if with_annotations:
+            light_preview_file["annotations"] = row.annotations
         previews[entity_id][task_type_id].append(light_preview_file)
         preview_file_map[preview_file_id] = light_preview_file
 
@@ -345,7 +378,12 @@ def set_preview_files_for_entities(playlist_dict):
         else:
             entity["preview_files"] = []
 
-    return (fields.serialize_value(playlist_dict), preview_file_map)
+    # playlist_dict is already JSON-safe here: top-level fields and shots came
+    # through playlist.serialize(), build_jobs through BuildJob.present(), and
+    # every preview file dict is built with serialized values. A second
+    # serialize_value() pass over the whole (large) structure would just walk
+    # and copy it again for nothing.
+    return (playlist_dict, preview_file_map)
 
 
 def get_preview_files_for_entity(entity_id):
