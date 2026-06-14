@@ -215,10 +215,17 @@ def get_first_shot_preview_file_id(playlist):
     return first.get("preview_file_id") if isinstance(first, dict) else None
 
 
-def get_playlist_with_preview_file_revisions(playlist_id):
+def get_playlist_with_preview_file_revisions(
+    playlist_id, with_annotations=True
+):
     """
     Return given playlist. Shot list is augmented with all previews available
     for a given shot.
+
+    When with_annotations is False, annotation blobs are omitted from the
+    response: they are the heaviest part of a playlist and the web client
+    loads them on demand. Callers that have no lazy-loading (e.g. the shared
+    guest player) keep the default and receive annotations inline.
     """
     # Eager load build_jobs to avoid N+1 when building build_jobs list
     playlist = (
@@ -236,7 +243,7 @@ def get_playlist_with_preview_file_revisions(playlist_id):
     if playlist_dict["shots"] is None:
         playlist_dict["shots"] = []
     playlist_dict, preview_file_map = set_preview_files_for_entities(
-        playlist_dict
+        playlist_dict, with_annotations=with_annotations
     )
 
     for shot in playlist_dict["shots"]:
@@ -250,11 +257,14 @@ def get_playlist_with_preview_file_revisions(playlist_id):
                 shot["preview_file_height"] = preview_file["height"]
                 shot["preview_file_duration"] = preview_file["duration"]
                 shot["preview_file_status"] = preview_file["status"]
-                shot["preview_file_annotations"] = preview_file["annotations"]
                 shot["preview_file_task_id"] = preview_file["task_id"]
                 shot["preview_file_previews"] = preview_file.get(
                     "previews", []
                 )
+                if with_annotations:
+                    shot["preview_file_annotations"] = preview_file.get(
+                        "annotations"
+                    )
             else:
                 del shot["preview_file_id"]
         except Exception as e:
@@ -273,10 +283,13 @@ def _add_build_job_infos_to_playlist_dict(playlist, playlist_dict):
     return playlist_dict
 
 
-def set_preview_files_for_entities(playlist_dict):
+def set_preview_files_for_entities(playlist_dict, with_annotations=True):
     """
     Retrieve all preview files related to entities listed in given playlist.
     Add to each entity a dict with task as keys and preview list as values.
+
+    Annotation blobs are included only when with_annotations is True; the web
+    client opts out and loads them on demand to keep the payload light.
     """
     entity_ids = []
     for entity in playlist_dict["shots"]:
@@ -325,10 +338,11 @@ def set_preview_files_for_entities(playlist_dict):
             "height": preview_file.height,
             "duration": float(preview_file.duration or 0),
             "status": str(preview_file.status),
-            "annotations": preview_file.annotations,
             "created_at": fields.serialize_value(preview_file.created_at),
             "task_id": task_id,
         }  # Do not add too much field to avoid building too big responses
+        if with_annotations:
+            light_preview_file["annotations"] = preview_file.annotations
         previews[entity_id][task_type_id].append(light_preview_file)
         preview_file_map[preview_file_id] = light_preview_file
 
