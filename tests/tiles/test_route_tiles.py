@@ -60,4 +60,8 @@ class RouteTileTestCase(ApiDBTestCase):
         self.download_file(path, result_file_path)
 
         result_image = Image.open(result_file_path)
-        self.assertEqual(result_image.size, (1912, 600))
+        # The fixture is anamorphic (2.39 display in a 16:9 raster). Movie
+        # normalization now letterboxes it into the 16:9 project canvas
+        # (default 1920x1080), so the tile follows the 16:9 display ratio
+        # (8 * ceil(16/9 * 100) = 1424) instead of the source's 2.39 ratio.
+        self.assertEqual(result_image.size, (1424, 600))
