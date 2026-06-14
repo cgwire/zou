@@ -1631,7 +1631,11 @@ class OIDCCallbackResource(Resource, ArgsMixin):
         if not config.OIDC_ENABLED:
             return {"error": "OIDC is not enabled."}, 400
 
-        token = oidc.get_oidc_client().authorize_access_token()
+        try:
+            token = oidc.get_oidc_client().authorize_access_token()
+        except Exception:
+            current_app.logger.exception("OIDC token exchange failed.")
+            return {"error": "OIDC authentication failed."}, 400
         claims = token.get("userinfo") or {}
 
         email = oidc.get_email_from_claims(claims)

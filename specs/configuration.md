@@ -93,6 +93,7 @@ a matching Kitsu account is found by email (or created on first login).
 | `OIDC_EMAIL_CLAIM` | `email` | Claim used as the account email |
 | `OIDC_GIVEN_NAME_CLAIM` | `given_name` | Claim used for the first name |
 | `OIDC_FAMILY_NAME_CLAIM` | `family_name` | Claim used for the last name |
+| `OIDC_REQUIRE_EMAIL_VERIFIED` | true | When true, the provider must assert `email_verified == true`; logins with an absent or false claim are rejected. Set to false only for providers that do not emit the claim and whose emails are otherwise trusted. |
 | `OIDC_SKIP_2FA` | false | When true, OIDC sessions skip Kitsu's 2FA setup gate (trust the IdP for MFA). When false, `ENFORCE_2FA` applies as usual. |
 
 The redirect URI to register with the provider is

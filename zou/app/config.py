@@ -163,6 +163,7 @@ OIDC_SCOPES = os.getenv("OIDC_SCOPES", "openid email profile")
 OIDC_EMAIL_CLAIM = os.getenv("OIDC_EMAIL_CLAIM", "email")
 OIDC_GIVEN_NAME_CLAIM = os.getenv("OIDC_GIVEN_NAME_CLAIM", "given_name")
 OIDC_FAMILY_NAME_CLAIM = os.getenv("OIDC_FAMILY_NAME_CLAIM", "family_name")
+OIDC_REQUIRE_EMAIL_VERIFIED = envtobool("OIDC_REQUIRE_EMAIL_VERIFIED", True)
 OIDC_SKIP_2FA = envtobool("OIDC_SKIP_2FA", False)
 
 LOGS_MODE = os.getenv("LOGS_MODE", "default")

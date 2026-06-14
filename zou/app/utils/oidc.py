@@ -16,7 +16,10 @@ def oidc_client_for(app):
         server_metadata_url=config.OIDC_DISCOVERY_URL,
         client_id=config.OIDC_CLIENT_ID,
         client_secret=config.OIDC_CLIENT_SECRET,
-        client_kwargs={"scope": config.OIDC_SCOPES},
+        client_kwargs={
+            "scope": config.OIDC_SCOPES,
+            "code_challenge_method": "S256",
+        },
     )
     return oauth
 
@@ -39,12 +42,21 @@ def get_email_from_claims(claims):
 
 def is_email_verified(claims):
     """
-    Return whether the email can be trusted. We only reject when the
-    provider explicitly states the email is not verified; an absent
-    ``email_verified`` claim is treated as verified to stay compatible with
-    providers that do not emit it.
+    Return whether the email can be trusted.
+
+    With ``OIDC_REQUIRE_EMAIL_VERIFIED`` enabled (the default), the provider
+    must explicitly assert ``email_verified == true``; an absent claim is
+    rejected. This guards against account takeover when linking/provisioning
+    by email against a provider that allows unverified addresses.
+
+    With the flag disabled, we only reject when the provider explicitly
+    states the email is not verified, treating an absent claim as verified to
+    stay compatible with providers that do not emit it.
     """
-    return claims.get("email_verified", True) is not False
+    verified = claims.get("email_verified")
+    if config.OIDC_REQUIRE_EMAIL_VERIFIED:
+        return verified is True
+    return verified is not False
 
 
 def map_claims(claims):

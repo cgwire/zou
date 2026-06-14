@@ -45,15 +45,22 @@ class OIDCClaimMappingTestCase(ApiDBTestCase):
         )
 
     def test_map_claims_omits_missing_fields(self):
-        self.assertEqual(oidc.map_claims({"given_name": "Jane"}), {
-            "first_name": "Jane"
-        })
+        self.assertEqual(
+            oidc.map_claims({"given_name": "Jane"}), {"first_name": "Jane"}
+        )
         self.assertEqual(oidc.map_claims({}), {})
 
-    def test_is_email_verified(self):
-        self.assertTrue(oidc.is_email_verified({}))
-        self.assertTrue(oidc.is_email_verified({"email_verified": True}))
-        self.assertFalse(oidc.is_email_verified({"email_verified": False}))
+    def test_is_email_verified_strict(self):
+        with mock.patch.object(config, "OIDC_REQUIRE_EMAIL_VERIFIED", True):
+            self.assertFalse(oidc.is_email_verified({}))
+            self.assertTrue(oidc.is_email_verified({"email_verified": True}))
+            self.assertFalse(oidc.is_email_verified({"email_verified": False}))
+
+    def test_is_email_verified_permissive(self):
+        with mock.patch.object(config, "OIDC_REQUIRE_EMAIL_VERIFIED", False):
+            self.assertTrue(oidc.is_email_verified({}))
+            self.assertTrue(oidc.is_email_verified({"email_verified": True}))
+            self.assertFalse(oidc.is_email_verified({"email_verified": False}))
 
 
 class OIDCCallbackTestCase(ApiDBTestCase):
@@ -64,14 +71,17 @@ class OIDCCallbackTestCase(ApiDBTestCase):
         self._oidc_enabled = config.OIDC_ENABLED
         self._enforce_2fa = config.ENFORCE_2FA
         self._skip_2fa = config.OIDC_SKIP_2FA
+        self._require_email_verified = config.OIDC_REQUIRE_EMAIL_VERIFIED
         config.OIDC_ENABLED = True
         config.ENFORCE_2FA = False
         config.OIDC_SKIP_2FA = False
+        config.OIDC_REQUIRE_EMAIL_VERIFIED = True
 
     def tearDown(self):
         config.OIDC_ENABLED = self._oidc_enabled
         config.ENFORCE_2FA = self._enforce_2fa
         config.OIDC_SKIP_2FA = self._skip_2fa
+        config.OIDC_REQUIRE_EMAIL_VERIFIED = self._require_email_verified
         super().tearDown()
 
     def mock_client(self, claims):
@@ -99,6 +109,7 @@ class OIDCCallbackTestCase(ApiDBTestCase):
         response = self.call_callback(
             {
                 "email": email,
+                "email_verified": True,
                 "given_name": "New",
                 "family_name": "Comer",
             }
@@ -115,6 +126,7 @@ class OIDCCallbackTestCase(ApiDBTestCase):
         response = self.call_callback(
             {
                 "email": existing["email"],
+                "email_verified": True,
                 "given_name": "Updated",
                 "family_name": "Name",
             }
@@ -125,7 +137,9 @@ class OIDCCallbackTestCase(ApiDBTestCase):
         self.assertEqual(person["first_name"], "Updated")
 
     def test_missing_email_returns_400(self):
-        response = self.call_callback({"given_name": "No", "family_name": "Mail"})
+        response = self.call_callback(
+            {"given_name": "No", "family_name": "Mail"}
+        )
         self.assertEqual(response.status_code, 400)
 
     def test_unverified_email_rejected(self):
@@ -138,6 +152,41 @@ class OIDCCallbackTestCase(ApiDBTestCase):
             persons_service.get_person_by_email,
             "spoof@example.com",
         )
+
+    def test_absent_email_verified_rejected_when_strict(self):
+        response = self.call_callback(
+            {
+                "email": "noclaim@example.com",
+                "given_name": "No",
+                "family_name": "Claim",
+            }
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertRaises(
+            Exception,
+            persons_service.get_person_by_email,
+            "noclaim@example.com",
+        )
+
+    def test_absent_email_verified_accepted_when_permissive(self):
+        config.OIDC_REQUIRE_EMAIL_VERIFIED = False
+        response = self.call_callback(
+            {
+                "email": "permissive@example.com",
+                "given_name": "Per",
+                "family_name": "Missive",
+            }
+        )
+        self.assertEqual(response.status_code, 302)
+        person = persons_service.get_person_by_email("permissive@example.com")
+        self.assertEqual(person["first_name"], "Per")
+
+    def test_token_exchange_failure_returns_400(self):
+        client = mock.Mock()
+        client.authorize_access_token.side_effect = Exception("boom")
+        with mock.patch.object(oidc, "get_oidc_client", return_value=client):
+            response = self.app.get("auth/oidc/callback")
+        self.assertEqual(response.status_code, 400)
 
     def _capture_claims(self, claims):
         """Run the callback capturing the additional_claims passed to the JWT."""
@@ -154,6 +203,7 @@ class OIDCCallbackTestCase(ApiDBTestCase):
         additional_claims = self._capture_claims(
             {
                 "email": "needs2fa@example.com",
+                "email_verified": True,
                 "given_name": "Needs",
                 "family_name": "Tfa",
             }
@@ -166,6 +216,7 @@ class OIDCCallbackTestCase(ApiDBTestCase):
         additional_claims = self._capture_claims(
             {
                 "email": "skip2fa@example.com",
+                "email_verified": True,
                 "given_name": "Skip",
                 "family_name": "Tfa",
             }
