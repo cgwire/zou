@@ -252,8 +252,10 @@ class ProjectPlaylistResource(Resource):
         """
         user_service.block_access_to_vendor()
         user_service.check_project_access(project_id)
+        # The web client loads annotations on demand, so omit the heavy
+        # annotation blobs from this payload.
         return playlists_service.get_playlist_with_preview_file_revisions(
-            playlist_id
+            playlist_id, with_annotations=False
         )
 
 
