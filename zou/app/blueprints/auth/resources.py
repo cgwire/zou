@@ -1644,6 +1644,19 @@ class OIDCCallbackResource(Resource, ArgsMixin):
         if not oidc.is_email_verified(claims):
             return {"error": "Email address is not verified."}, 400
 
+        # Some providers (notably Azure AD/Entra ID) omit name claims from the
+        # ID token and only expose them on the userinfo endpoint. Fetch it as a
+        # best-effort fallback when the token carried no usable name claims; a
+        # failure here must not block an otherwise valid login.
+        if not oidc.map_claims(claims):
+            try:
+                userinfo = oidc.get_oidc_client().userinfo(token=token)
+                claims = {**userinfo, **claims}
+            except Exception:
+                current_app.logger.exception(
+                    "OIDC userinfo fetch failed; proceeding without it."
+                )
+
         person_info = oidc.map_claims(claims)
 
         try:
