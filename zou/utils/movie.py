@@ -229,6 +229,12 @@ def normalize_encoding(
         movflags="+faststart",
         x264opts=f"keyint={keyframes}:scenecut=0",
         vf=(
+            # De-anamorph first so anamorphic sources (non-square pixels)
+            # are fit by their *display* size, not their raster size; a
+            # no-op for the common square-pixel case (sar == 1). Then fit
+            # inside the target canvas preserving the ratio and pad with
+            # black bars instead of stretching.
+            "scale=trunc(iw*sar/2)*2:ih,"
             f"scale={width}:{height}:"
             "force_original_aspect_ratio=decrease:force_divisible_by=2,"
             f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,"

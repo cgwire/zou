@@ -126,6 +126,34 @@ class MovieTestCase(unittest.TestCase):
         self.assertGreater(center_r, 150)
         self.assertLess(center_g + center_b, 120)
 
+    def test_normalize_anamorphic_letterbox(self):
+        # An anamorphic source (non-square pixels, 2.39 display inside a
+        # 16:9 raster) must be de-anamorphed and letterboxed into the 16:9
+        # project canvas, not squished to fill it. The tile-size route test
+        # cannot catch this distortion, so assert on the pixels here.
+        source = "./tests/fixtures/videos/test_preview_tiles.mp4"
+        video = str(Path(self.tmpdir) / "test_anamorphic.mp4")
+        shutil.copyfile(source, video)
+
+        normalized, _, _ = movie.normalize_movie(video, 5, 1920, 1080)
+        self.assertEqual(movie.get_movie_size(normalized), (1920, 1080))
+
+        frame = str(Path(self.tmpdir) / "test_anamorphic_frame.png")
+        ffmpeg.input(normalized).output(
+            frame, vframes=1
+        ).overwrite_output().run(quiet=True)
+        image = Image.open(frame).convert("L")
+        width, height = image.size
+
+        # Top band is a black letterbox bar...
+        top = image.crop((0, 0, width, 80)).tobytes()
+        self.assertLess(sum(top) / len(top), 10)
+        # ...while the center keeps the undistorted content.
+        mid = image.crop(
+            (0, height // 2 - 40, width, height // 2 + 40)
+        ).tobytes()
+        self.assertGreater(sum(mid) / len(mid), 30)
+
     def test_concat_demuxer_testing(self):
         test_name = "test_concate_demuxer"
         self.concat_testing(movie.concat_demuxer, test_name)
