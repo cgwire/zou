@@ -106,7 +106,10 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
                 criterions_assets["source_id"] = episode_id
             assets = assets_service.get_assets(criterions_assets)
             for asset in assets:
-                key = f'asset_types_map[asset["entity_type_id"]]{slugify(asset["name"])}'
+                key = (
+                    f"{asset_types_map[asset['entity_type_id']]}"
+                    f"{slugify(asset['name'])}"
+                )
                 self.assets_map[key] = asset["id"]
         elif task_type["for_entity"] == "Shot":
             sequences_map = {}
@@ -137,7 +140,9 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
         elif task_type["for_entity"] == "Shot" and self.shots_map.get(key):
             entity_id = self.shots_map[key]
         else:
-            raise RowException(f"Entity {key} not found")
+            raise RowException(
+                f"Entity '{row['Entity']}' with parent '{row['Parent']}' not found"
+            )
 
         new_data = {}
 
