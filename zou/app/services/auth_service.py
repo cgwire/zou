@@ -7,11 +7,6 @@ from datetime import timedelta
 from flask import request, session, current_app
 from babel.dates import format_datetime
 
-from ldap3 import Server, Connection, ALL, NTLM, SIMPLE
-from ldap3.core.exceptions import (
-    LDAPSocketOpenError,
-    LDAPInvalidCredentialsResult,
-)
 
 from zou.app.services import persons_service, templates_service
 from zou.app.models.person import Person
@@ -164,6 +159,12 @@ def ldap_auth_strategy(person, password, app):
     (only if fallback is activated (via LDAP_FALLBACK flag) in configuration)
     """
     if person["is_generated_from_ldap"]:
+        from ldap3 import Server, Connection, ALL, NTLM, SIMPLE
+        from ldap3.core.exceptions import (
+            LDAPSocketOpenError,
+            LDAPInvalidCredentialsResult,
+        )
+
         try:
             SSL = app.config["LDAP_SSL"]
             if app.config["LDAP_IS_AD_SIMPLE"]:

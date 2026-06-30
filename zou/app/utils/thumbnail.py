@@ -1,8 +1,6 @@
 import os
 import shutil
 import math
-import cv2
-import numpy
 
 from pathlib import Path
 
@@ -218,6 +216,9 @@ def turn_hdr_into_thumbnail(original_path, size=BIG_RECTANGLE_SIZE):
     """
     Turn an HDR file into a thumbnail.
     """
+    import cv2
+    import numpy
+
     file_target_path = Path(original_path).with_suffix(".png")
     hdr = cv2.imread(original_path, flags=cv2.IMREAD_ANYDEPTH)
     # Simply clamp values to a 0-1 range for tone-mapping
