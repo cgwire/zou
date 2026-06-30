@@ -5,7 +5,6 @@ from flask import abort, request, current_app
 from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
-from zou.app import config
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
     persons_service,
@@ -1302,6 +1301,61 @@ class InvitePersonResource(Resource):
         return {"success": True, "message": "Email sent"}
 
 
+class ResetPasswordLinkResource(Resource):
+
+    @jwt_required()
+    def post(self, person_id):
+        """
+        Get a password reset link
+        ---
+        description: Return the password reset link for the given person. It is
+          the same link as the one embedded in the password recovery email, so
+          an admin can share it manually (for instance when email delivery is
+          not configured). An already pending reset token is reused so a link
+          shared earlier stays valid; a new one is generated otherwise.
+        tags:
+          - Persons
+        parameters:
+          - in: path
+            name: person_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            description: Person unique identifier
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+          200:
+            description: Password reset link generated
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    reset_password_link:
+                      type: string
+                      description: Link to follow to choose a new password
+          400:
+            description: User is a protected account or another admin who
+              already has a password
+        """
+        user_service.check_person_is_not_bot(person_id)
+        permissions.check_admin_permissions()
+        current_user = persons_service.get_current_user()
+        try:
+            person = persons_service.check_password_change_allowed(person_id)
+            reset_password_link = (
+                persons_service.get_or_create_password_reset_link(person_id)
+            )
+            current_app.logger.info(
+                f"User {current_user['email']} generated a password reset "
+                f"link for {person['email']}"
+            )
+            return {"reset_password_link": reset_password_link}
+        except PersonInProtectedAccounts as exception:
+            return {"error": True, "message": exception.description}, 400
+
+
 class DayOffForMonthResource(Resource, ArgsMixin):
 
     @jwt_required()
@@ -1719,18 +1773,7 @@ class ChangePasswordForPersonResource(Resource, ArgsMixin):
         password, password_2 = body.password, body.password_2
         current_user = persons_service.get_current_user()
         try:
-            person = persons_service.get_person(person_id)
-            if person["id"] != current_user["id"]:
-                if person["email"] in config.PROTECTED_ACCOUNTS:
-                    raise PersonInProtectedAccounts(
-                        "This user is in protected accounts."
-                    )
-                elif person["role"] == "admin":
-                    person_raw = persons_service.get_person_raw(person_id)
-                    if person_raw.password is not None:
-                        raise PersonInProtectedAccounts(
-                            "An admin can't change another admin's password."
-                        )
+            person = persons_service.check_password_change_allowed(person_id)
             auth.validate_password(password, password_2)
             password = auth.encrypt_password(password)
             persons_service.update_password(person["email"], password)

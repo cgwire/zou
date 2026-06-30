@@ -1,7 +1,10 @@
+import urllib.parse
+
 from tests.base import ApiDBTestCase
 
 from zou.app.models.day_off import DayOff
 from zou.app.models.person import Person
+from zou.app.stores import auth_tokens_store
 from zou.app.utils import auth
 
 
@@ -187,6 +190,78 @@ class PersonRoutesTestCase(ApiDBTestCase):
         result = self.post(
             f"/actions/persons/{other_admin.id}/change-password",
             {"password": "newpassword123", "password_2": "newpassword123"},
+            400,
+        )
+        self.assertEqual(
+            result.get("message"),
+            "An admin can't change another admin's password.",
+        )
+
+    def test_get_reset_password_link(self):
+        email = self.person.email
+        result = self.post(
+            f"/actions/persons/{self.person_id}/reset-password-link",
+            {},
+            200,
+        )
+        reset_link = result["reset_password_link"]
+        self.assertIn("/reset-change-password?", reset_link)
+
+        query = urllib.parse.urlparse(reset_link).query
+        params = dict(urllib.parse.parse_qsl(query))
+        self.assertEqual(params["email"], email)
+        # The link carries the very token stored for the reset flow, so it
+        # can be used to set a new password just like the emailed link.
+        self.assertEqual(
+            params["token"], auth_tokens_store.get(f"reset-token-{email}")
+        )
+        new_password = "newpassword123"
+        self.put(
+            "auth/reset-password",
+            {
+                "email": email,
+                "token": params["token"],
+                "password": new_password,
+                "password2": new_password,
+            },
+            200,
+        )
+        self.post(
+            "auth/login", {"email": email, "password": new_password}, 200
+        )
+
+    def test_get_reset_password_link_is_reused(self):
+        path = f"/actions/persons/{self.person_id}/reset-password-link"
+        first = self.post(path, {}, 200)["reset_password_link"]
+        second = self.post(path, {}, 200)["reset_password_link"]
+        # A pending token is reused so a previously shared link stays valid.
+        self.assertEqual(first, second)
+
+    def test_get_reset_password_link_for_new_admin(self):
+        new_admin = Person.create(
+            first_name="New",
+            last_name="Admin",
+            role="admin",
+            email="new.admin@gmail.com",
+        )
+        result = self.post(
+            f"/actions/persons/{new_admin.id}/reset-password-link",
+            {},
+            200,
+        )
+        self.assertIn("reset_password_link", result)
+
+    def test_get_reset_password_link_for_existing_admin_is_blocked(self):
+        other_admin = Person.create(
+            first_name="Other",
+            last_name="Admin",
+            role="admin",
+            email="other.admin@gmail.com",
+            password=auth.encrypt_password("existingpassword"),
+        )
+        result = self.post(
+            f"/actions/persons/{other_admin.id}/reset-password-link",
+            {},
             400,
         )
         self.assertEqual(
