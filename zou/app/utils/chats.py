@@ -1,10 +1,3 @@
-from slack import WebClient as SlackClient
-from matterhook import Webhook
-from discord import (
-    Client as DiscordClient,
-    Intents as DiscordIntents,
-    Embed as DiscordEmbed,
-)
 from zou.app import config
 import asyncio
 import logging
@@ -24,6 +17,8 @@ def send_to_slack(token, userid, message):
     if token:
         if userid:
             try:
+                from slack import WebClient as SlackClient
+
                 client = SlackClient(token=token)
                 blocks = [
                     {
@@ -53,6 +48,8 @@ def send_to_mattermost(webhook, userid, message):
     if webhook:
         if userid:
             try:
+                from matterhook import Webhook
+
                 arg = webhook.split("/")
                 server = f"{arg[0]}{arg[1]}//{arg[2]}"
                 hook = arg[4]
@@ -82,6 +79,12 @@ def send_to_mattermost(webhook, userid, message):
 
 
 def send_to_discord(token, userid, message):
+    from discord import (
+        Client as DiscordClient,
+        Intents as DiscordIntents,
+        Embed as DiscordEmbed,
+    )
+
     async def send_to_discord_async(token, userid, message):
         intents = DiscordIntents.default()
         intents.members = True

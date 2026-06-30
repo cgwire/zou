@@ -1,6 +1,5 @@
 import os
 import pathlib
-import opentimelineio as otio
 import re
 
 from string import Template
@@ -162,6 +161,8 @@ class OTIOBaseResource(Resource, ArgsMixin):
     ):
         result = {"updated_shots": [], "created_shots": []}
         try:
+            import opentimelineio as otio
+
             kwargs = {}
             extension = pathlib.Path(file_path).suffix
             if extension == ".edl":

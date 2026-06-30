@@ -8,7 +8,6 @@ import subprocess
 import tempfile
 
 import ffmpeg
-import opentimelineio as otio
 
 logger = logging.getLogger(__name__)
 loghandler = logging.StreamHandler()
@@ -75,6 +74,8 @@ def extract_frame_from_movie(movie_path, frame_number, movie_fps):
     Extract a frame from the movie given at movie path. It
     takes a picture at the specified time of the movie.
     """
+    import opentimelineio as otio
+
     file_source_name = os.path.basename(movie_path)
     file_target_name = f"{file_source_name[:-4]}_{frame_number}.png"
     file_target_path = os.path.join(tempfile.gettempdir(), file_target_name)
