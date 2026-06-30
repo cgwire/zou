@@ -15,7 +15,7 @@ class SalaryScale(db.Model, BaseMixin, SerializerMixin):
 
     department_id = db.Column(
         UUIDType(binary=False),
-        db.ForeignKey("department.id"),
+        db.ForeignKey("department.id", ondelete="CASCADE"),
         index=True,
         nullable=False,
     )
