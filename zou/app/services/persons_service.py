@@ -584,6 +584,62 @@ def is_admin(person):
     return person["role"] == "admin"
 
 
+def build_password_reset_url(email, token, token_type=None):
+    """
+    Build the URL a user can follow to choose a new password. It matches the
+    link embedded in the password recovery and invitation emails.
+    """
+    params = {"email": email, "token": token}
+    if token_type is not None:
+        params["type"] = token_type
+    query = urllib.parse.urlencode(params)
+    return (
+        f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}"
+        f"/reset-change-password?{query}"
+    )
+
+
+def check_password_change_allowed(person_id):
+    """
+    Ensure the current user is allowed to set the password of the given
+    person. The current user can always act on his own account, but cannot
+    set the password of a protected account nor the one of another admin who
+    already has a password. Returns the person on success, raises
+    PersonInProtectedAccounts otherwise.
+    """
+    current_user = get_current_user()
+    person = get_person(person_id)
+    if person["id"] != current_user["id"]:
+        if person["email"] in config.PROTECTED_ACCOUNTS:
+            raise PersonInProtectedAccounts(
+                "This user is in protected accounts."
+            )
+        elif person["role"] == "admin":
+            person_raw = get_person_raw(person_id)
+            if person_raw.password is not None:
+                raise PersonInProtectedAccounts(
+                    "An admin can't change another admin's password."
+                )
+    return person
+
+
+def get_or_create_password_reset_link(person_id):
+    """
+    Return the password reset link for the given person. If a reset token is
+    already stored for that person (for instance from a recovery email or a
+    previous call), it is reused so that a link shared earlier stays valid.
+    Otherwise a new token is generated and stored. It is the same link as the
+    one embedded in the password recovery email.
+    """
+    person = get_person(person_id)
+    key = f"reset-token-{person['email']}"
+    token = auth_tokens_store.get(key)
+    if not token:
+        token = auth_service.generate_reset_token()
+        auth_tokens_store.add(key, token, ttl=3600 * 2)
+    return build_password_reset_url(person["email"], token)
+
+
 def invite_person(person_id):
     """
     Send an invitation email to given person (a mail telling him/her how to
@@ -595,11 +651,8 @@ def invite_person(person_id):
     auth_tokens_store.add(
         f"reset-token-{person['email']}", token, ttl=3600 * 24 * 7
     )
-    params = {"email": person["email"], "token": token, "type": "new"}
-    query = urllib.parse.urlencode(params)
-    reset_url = (
-        f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}"
-        f"/reset-change-password?{query}"
+    reset_url = build_password_reset_url(
+        person["email"], token, token_type="new"
     )
 
     locale = person.get("locale") or getattr(config, "DEFAULT_LOCALE", "en_US")

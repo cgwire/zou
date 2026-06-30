@@ -29,7 +29,14 @@ from zou.app.services import (
     user_service,
     concepts_service,
 )
-from zou.app.utils import events, query, permissions, date_helpers, validation
+from zou.app.utils import (
+    events,
+    query,
+    permissions,
+    date_helpers,
+    validation,
+    fields,
+)
 from zou.app.mixin import ArgsMixin
 from zou.app.blueprints.tasks.schemas import (
     CommentPreviewSchema,
@@ -2672,7 +2679,6 @@ class SetTaskMainPreviewResource(Resource):
 class PersonsTasksDatesResource(Resource, ArgsMixin):
 
     @jwt_required()
-    @permissions.require_admin
     def get(self):
         """
         Get persons tasks dates
@@ -2681,7 +2687,8 @@ class PersonsTasksDatesResource(Resource, ArgsMixin):
         - Tasks
         description: For each active person, return the first start date of all
           tasks assigned to them and the last end date. Useful for schedule
-          planning.
+          planning. Admins get the studio-wide view; managers are restricted to
+          the projects of their own teams.
         parameters:
           - in: query
             name: project_id
@@ -2706,19 +2713,34 @@ class PersonsTasksDatesResource(Resource, ArgsMixin):
                           type: string
                           format: uuid
                           example: a24a6ea4-ce75-4665-a070-57453082c25
-                        first_start_date:
+                        min_date:
                           type: string
-                          format: date
-                          example: "2024-01-15"
-                        last_end_date:
+                          description: First task start date for this person
+                            within the requested scope
+                          example: "2024-01-15 00:00:00"
+                        max_date:
                           type: string
-                          format: date
-                          example: "2024-03-21"
+                          description: Last task due date for this person
+                            within the requested scope
+                          example: "2024-03-21 00:00:00"
         """
-        permissions.check_admin_permissions()
-        args = self.get_args([("project_id", None, False, str)])
+        # Normalise the `project_id` filter once, before branching on the
+        # caller's role. An empty or whitespace-only `?project_id=` is treated
+        # as an absent filter; any other non-UUID value is rejected with a 400
+        # rather than reaching the query as an invalid UUID (which used to 500
+        # for admins and 404 for managers).
+        project_id = (self.get_project_id() or "").strip() or None
+        if project_id is not None and not fields.is_valid_id(project_id):
+            raise WrongParameterException("Invalid project_id.")
+        project_ids = None
+        if not permissions.has_admin_permissions():
+            permissions.check_manager_permissions()
+            if project_id is not None:
+                user_service.check_manager_project_access(project_id)
+            else:
+                project_ids = user_service.get_open_project_ids()
         return tasks_service.get_persons_tasks_dates(
-            project_id=args["project_id"]
+            project_id=project_id, project_ids=project_ids
         )
 
 

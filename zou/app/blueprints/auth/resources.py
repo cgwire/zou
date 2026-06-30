@@ -1,6 +1,5 @@
 import hmac
 import secrets
-import urllib.parse
 
 from flask import request, jsonify, current_app, redirect, make_response
 from flask_restful import Resource
@@ -781,12 +780,7 @@ class ResetPasswordResource(Resource, ArgsMixin):
 
         token = auth_service.generate_reset_token()
         auth_tokens_store.add(f"reset-token-{body.email}", token, ttl=3600 * 2)
-        params = {"email": body.email, "token": token}
-        query = urllib.parse.urlencode(params)
-        reset_url = (
-            f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}"
-            f"/reset-change-password?{query}"
-        )
+        reset_url = persons_service.build_password_reset_url(body.email, token)
         locale = user.get("locale") or getattr(
             config, "DEFAULT_LOCALE", "en_US"
         )

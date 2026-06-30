@@ -7,6 +7,7 @@ from zou.app.blueprints.persons.resources import (
     DayOffForMonthResource,
     DesktopLoginsResource,
     InvitePersonResource,
+    ResetPasswordLinkResource,
     PersonMonthQuotaShotsResource,
     PersonWeekQuotaShotsResource,
     PersonDayQuotaShotsResource,
@@ -95,6 +96,10 @@ routes = [
         PersonDayOffResource,
     ),
     ("/actions/persons/<person_id>/invite", InvitePersonResource),
+    (
+        "/actions/persons/<person_id>/reset-password-link",
+        ResetPasswordLinkResource,
+    ),
     ("/actions/persons/<person_id>/departments/add", AddToDepartmentResource),
     (
         "/actions/persons/<person_id>/departments/<department_id>",

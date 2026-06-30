@@ -22,6 +22,7 @@ from zou.app.services import (
 from zou.app.services.exception import (
     PlaylistShareLinkNotFoundException,
     PlaylistNotFoundException,
+    PreviewFileNotFoundException,
 )
 from zou.app.utils import auth as auth_utils, fields
 
@@ -156,6 +157,14 @@ def is_preview_file_in_shared_playlist(token, preview_file_id):
     preview_file_id stored on a shot, or another preview file that
     shares its (task, revision) with the positioned one — a single
     revision may carry several previews (different positions).
+
+    The same entity may be listed several times in a playlist, each shot
+    positioned on a different task type / preview file (e.g. reviewing the
+    texturing, posing and expression previews of a single asset). We
+    therefore gather *every* preview positioned for the requested entity
+    instead of collapsing the shots into one entity -> preview_file_id
+    mapping, which kept only the last shot and 403'd the previews
+    positioned on the others.
     """
     share_link = validate_share_token(token)
     playlist = Playlist.get(share_link["playlist_id"])
@@ -163,21 +172,37 @@ def is_preview_file_in_shared_playlist(token, preview_file_id):
         return False
     preview_file = files_service.get_preview_file(preview_file_id)
     task = tasks_service.get_task(preview_file["task_id"])
-    entity_id_map = {
-        str(shot.get("entity_id") or shot.get("id")): shot.get(
-            "preview_file_id"
-        )
-        for shot in playlist.shots
-    }
+    entity_id = str(task["entity_id"])
 
-    main_preview_file_id = entity_id_map.get(str(task["entity_id"]))
-    if main_preview_file_id is None:
+    positioned_ids = {
+        str(shot["preview_file_id"])
+        for shot in playlist.shots
+        if str(shot.get("entity_id") or shot.get("id")) == entity_id
+        and shot.get("preview_file_id")
+    }
+    if not positioned_ids:
         return False
-    if main_preview_file_id == preview_file_id:
+    if str(preview_file_id) in positioned_ids:
         return True
 
-    main_preview_file = files_service.get_preview_file(main_preview_file_id)
-    return main_preview_file["revision"] == preview_file["revision"]
+    # Accept the other positions of a positioned revision: a single revision
+    # may carry several preview files (same task, same revision, different
+    # position). A different revision — or the same revision number on another
+    # task type of the entity — stays rejected.
+    for positioned_id in positioned_ids:
+        try:
+            main_preview_file = files_service.get_preview_file(positioned_id)
+        except PreviewFileNotFoundException:
+            # A deleted preview can stay referenced in playlist.shots
+            # (deletion does not scrub the shots column). Skip the dangling
+            # id instead of letting it mask a valid sibling/revision match.
+            continue
+        if (
+            str(main_preview_file["task_id"]) == str(preview_file["task_id"])
+            and main_preview_file["revision"] == preview_file["revision"]
+        ):
+            return True
+    return False
 
 
 class GuestCommentForbidden(Exception):

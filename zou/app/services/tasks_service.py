@@ -2052,12 +2052,34 @@ def reset_task_data(task_id):
     return task.serialize(relations=True)
 
 
-def get_persons_tasks_dates(project_id=None):
+def get_persons_tasks_dates(project_id=None, project_ids=None):
     """
     For schedule usages, for each active person, it returns the first start
     date of all tasks of assigned to this person and the last end date.
+
+    Scoping (project_id takes precedence over project_ids):
+    - project_id, when set, scopes the lookup to that single project and
+      nothing else. It is honoured directly -- including closed projects --
+      instead of being intersected with the open-project list, otherwise a
+      closed but legitimately accessible project would yield an empty result.
+      The caller is responsible for checking access to it.
+    - project_ids restricts the lookup to a set of projects. Only None (not an
+      empty list) triggers the studio-wide fallback below. An empty list is
+      honoured as-is and matches no project, which is how a manager with no
+      project gets an empty result -- the guard must stay an `is None` identity
+      test and never become `if not project_ids:`, otherwise such a manager
+      would leak the studio-wide view.
     """
-    project_ids = projects_service.open_project_ids()
+    if project_id is not None:
+        # An explicit, access-checked project scopes the lookup directly. This
+        # short-circuits the open-project fallback so a closed project the
+        # caller may legitimately see is not filtered out to an empty result.
+        project_ids = [project_id]
+    elif project_ids is None:
+        # Studio-wide fallback. Note this is the project-scoped helper, not
+        # user_service.get_open_project_ids() which is limited to the current
+        # user's projects.
+        project_ids = projects_service.open_project_ids()
     query = (
         Task.query.with_entities(
             Person.id, func.min(Task.start_date), func.max(Task.due_date)
@@ -2067,9 +2089,6 @@ def get_persons_tasks_dates(project_id=None):
         .group_by(Person.id)
         .join(Task.assignees)
     )
-
-    if project_id is not None:
-        query = query.filter(Task.project_id == project_id)
 
     return [
         {
