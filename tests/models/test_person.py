@@ -157,6 +157,23 @@ class PersonTestCase(ApiDBTestCase):
         person = self.post("data/persons", data)
         self.assertIsNotNone(person["id"])
 
+    def test_update_bot_can_keep_email_shared_with_person(self):
+        data = {
+            "first_name": "Bot",
+            "last_name": "Bot",
+            "email": "ema.doe@gmail.com",
+            "is_bot": True,
+        }
+        bot = self.post("data/persons", data)
+
+        self.put(
+            f"data/persons/{bot['id']}",
+            {"first_name": "Renamed Bot", "email": bot["email"]},
+        )
+        bot_again = self.get(f"data/persons/{bot['id']}")
+        self.assertEqual(bot_again["first_name"], "Renamed Bot")
+        self.assertEqual(bot_again["email"], "ema.doe@gmail.com")
+
     def test_update_person(self):
         person = self.get_first("data/persons")
         data = {
