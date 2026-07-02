@@ -113,6 +113,23 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         self.assertEqual(str(self.shot.id), shots[0]["id"])
         self.assertEqual(len(shots[0]["preview_files"][task_type_id]), 2)
 
+    def test_generate_temp_playlist_with_edit_task(self):
+        self.generate_fixture_edit_task()
+        entities = playlists_service.generate_temp_playlist(
+            [self.edit_task.id]
+        )
+        self.assertEqual(len(entities), 1)
+        self.assertEqual(str(self.edit.id), entities[0]["id"])
+        self.assertEqual(entities[0]["parent_name"], "")
+
+        self.generate_fixture_edit("Edit E01", parent_id=self.episode.id)
+        edit_task = self.generate_fixture_edit_task("Edit E01 task")
+        entities = playlists_service.generate_temp_playlist([edit_task.id])
+        self.assertEqual(len(entities), 1)
+        self.assertEqual(str(self.edit.id), entities[0]["id"])
+        self.assertEqual(entities[0]["episode_name"], self.episode.name)
+        self.assertEqual(entities[0]["parent_name"], self.episode.name)
+
     def test_generate_playlisted_entity_from_task(self):
         self.generate_fixture_preview_files()
         task_id = self.task.id

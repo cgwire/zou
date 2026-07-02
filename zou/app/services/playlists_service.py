@@ -35,6 +35,7 @@ from zou.app.stores.redis_lock import with_playlist_lock
 from zou.app.services import (
     assets_service,
     base_service,
+    edits_service,
     entities_service,
     files_service,
     preview_files_service,
@@ -1094,6 +1095,8 @@ def generate_playlisted_entity_from_task(task_id, task_type_links):
         playlisted_entity = get_base_sequence_for_playlist(entity, task_id)
     elif shots_service.is_episode(entity):
         playlisted_entity = get_base_episode_for_playlist(entity, task_id)
+    elif edits_service.is_edit(entity):
+        playlisted_entity = get_base_edit_for_playlist(entity, task_id)
     else:
         playlisted_entity = get_base_asset_for_playlist(entity, task_id)
 
@@ -1188,6 +1191,36 @@ def get_base_shot_for_playlist(entity, task_id):
         "sequence_name": sequence["name"],
         "parent_name": sequence["name"],
     }
+    return playlisted_entity
+
+
+def get_base_edit_for_playlist(entity, task_id):
+    edit = edits_service.get_edit(entity["id"])
+    episode = None
+    try:
+        episode = shots_service.get_episode(edit["parent_id"])
+    except Exception as e:
+        logger.debug(
+            f"No episode for edit parent_id={edit.get('parent_id')}: {e}"
+        )
+    if episode is not None:
+        playlisted_entity = {
+            "id": edit["id"],
+            "name": edit["name"],
+            "preview_file_task_id": task_id,
+            "episode_id": episode["id"],
+            "episode_name": episode["name"],
+            "parent_name": episode["name"],
+        }
+    else:
+        playlisted_entity = {
+            "id": edit["id"],
+            "name": edit["name"],
+            "preview_file_task_id": task_id,
+            "episode_id": "",
+            "episode_name": "",
+            "parent_name": "",
+        }
     return playlisted_entity
 
 
