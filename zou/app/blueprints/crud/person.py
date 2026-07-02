@@ -630,13 +630,16 @@ class PersonResource(BaseModelResource, ArgsMixin):
             except auth.EmailNotValidException as e:
                 raise WrongParameterException(str(e))
 
-            existing = Person.query.filter(
-                Person.email == data["email"],
-                Person.id != instance_id,
-                Person.is_bot.isnot(True),
-            ).first()
-            if existing is not None:
-                raise WrongParameterException("Email already in use.")
+            person = Person.get(instance_id)
+            is_bot = data.get("is_bot", person.is_bot)
+            if not is_bot:
+                existing = Person.query.filter(
+                    Person.email == data["email"],
+                    Person.id != instance_id,
+                    Person.is_bot.isnot(True),
+                ).first()
+                if existing is not None:
+                    raise WrongParameterException("Email already in use.")
 
         return data
 
