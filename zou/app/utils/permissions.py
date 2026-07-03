@@ -69,7 +69,7 @@ def has_person_permissions():
 
 def has_at_least_supervisor_permissions():
     """
-    Return True if user is an admin or a manager.
+    Return True if user is a supervisor, a manager or an admin.
     """
     return (
         supervisor_permission.can()

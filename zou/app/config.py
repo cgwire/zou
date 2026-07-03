@@ -225,7 +225,8 @@ TELEMETRY_URL = os.getenv(
 
 REMOVE_FILES = envtobool("REMOVE_FILES", False)
 
-# Deprecated
+# Legacy defaults, still read by tasks_service, files_service and the
+# Shotgun importer; kept for backwards compatibility.
 TO_REVIEW_TASK_STATUS = "To review"
 DEFAULT_FILE_STATUS = "To review"
 DEFAULT_FILE_TREE = os.getenv("DEFAULT_FILE_TREE", "default")
