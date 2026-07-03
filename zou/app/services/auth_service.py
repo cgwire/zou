@@ -288,8 +288,13 @@ def remove_otp_revovery_code(person_id, recovery_hash):
     """
     Remove an otp recovery code for a person_id.
     """
+    # recovery_hash may arrive as str (serialized login path) or bytes
+    # (raw ORM value from get_current_user(unsafe=True)); normalize to the
+    # bytes stored in the column.
+    if isinstance(recovery_hash, str):
+        recovery_hash = recovery_hash.encode()
     person = Person.get(person_id)
-    person.otp_recovery_codes.remove(recovery_hash.encode())
+    person.otp_recovery_codes.remove(recovery_hash)
     flag_modified(person, "otp_recovery_codes")
     person.commit()
     persons_service.clear_person_cache()
