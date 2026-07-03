@@ -90,7 +90,10 @@ class DownloadAttachmentResource(Resource):
                 file_path,
                 conditional=True,
                 mimetype=attachment_file["mimetype"],
-                as_attachment=False,
+                # Force download: the mimetype comes verbatim from the
+                # uploader, so serving inline would let an attacker run
+                # HTML/SVG in Kitsu's origin (stored XSS).
+                as_attachment=True,
                 download_name=attachment_file["name"],
                 max_age=config.CLIENT_CACHE_MAX_AGE,
                 last_modified=date_helpers.get_datetime_from_string(

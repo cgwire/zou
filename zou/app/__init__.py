@@ -116,6 +116,17 @@ def shutdown_session(exception=None):
         db.session.remove()
 
 
+@app.after_request
+def set_security_headers(response):
+    """
+    Add baseline security headers to every response. nosniff stops the
+    browser from MIME-sniffing a response into an executable type, e.g.
+    rendering an uploaded file served as octet-stream as HTML.
+    """
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    return response
+
+
 @app.errorhandler(404)
 def page_not_found(error):
     return jsonify(error=True, message=str(error)), 404

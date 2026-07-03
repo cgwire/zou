@@ -79,6 +79,9 @@ class CastingResource(Resource):
         user_service.check_project_access(project_id)
         if permissions.has_vendor_permissions():
             raise permissions.PermissionDenied
+        entity = entities_service.get_entity(entity_id)
+        if entity["project_id"] != project_id:
+            raise permissions.PermissionDenied
         return breakdown_service.get_casting(entity_id)
 
     @jwt_required()
@@ -166,6 +169,9 @@ class CastingResource(Resource):
                 "message": "Request body must be a JSON array",
             }, 400
         user_service.check_manager_project_access(project_id)
+        entity = entities_service.get_entity(entity_id)
+        if entity["project_id"] != project_id:
+            raise permissions.PermissionDenied
         return breakdown_service.update_casting(entity_id, casting)
 
 
@@ -424,7 +430,9 @@ class SequenceCastingResource(Resource):
         user_service.check_project_access(project_id)
         if permissions.has_vendor_permissions():
             raise permissions.PermissionDenied
-        shots_service.get_sequence(sequence_id)
+        sequence = shots_service.get_sequence(sequence_id)
+        if sequence["project_id"] != project_id:
+            raise permissions.PermissionDenied
         return breakdown_service.get_sequence_casting(sequence_id)
 
 
@@ -967,4 +975,8 @@ class ProjectEntityLinkResource(Resource):
             description: Entity link successfully deleted
         """
         user_service.check_manager_project_access(project_id)
+        link = entities_service.get_entity_link(entity_link_id)
+        entity = entities_service.get_entity(link["entity_in_id"])
+        if entity["project_id"] != project_id:
+            raise permissions.PermissionDenied
         return entities_service.remove_entity_link(entity_link_id)
