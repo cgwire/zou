@@ -443,7 +443,10 @@ def download_shared_attachment(token, attachment_id, file_name):
         file_path,
         conditional=True,
         mimetype=attachment["mimetype"],
-        as_attachment=False,
+        # Force download: this path is unauthenticated (share link) and the
+        # mimetype is attacker-controlled, so inline serving would allow a
+        # stored XSS in Kitsu's origin.
+        as_attachment=True,
         download_name=attachment["name"],
     )
 
