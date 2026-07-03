@@ -265,6 +265,19 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         if frame_out is not None:
             shot_new_values["data"]["frame_out"] = frame_out
 
+        # Keep the frame count consistent with an imported frame range when
+        # the CSV doesn't provide it explicitly.
+        if "nb_frames" not in shot_new_values:
+            try:
+                frame_in_value = int(shot_new_values["data"]["frame_in"])
+                frame_out_value = int(shot_new_values["data"]["frame_out"])
+                if frame_out_value > frame_in_value:
+                    shot_new_values["nb_frames"] = (
+                        frame_out_value - frame_in_value + 1
+                    )
+            except (KeyError, TypeError, ValueError):
+                pass
+
         fps = row.get("FPS", None)
         if fps is not None:
             shot_new_values["data"]["fps"] = fps

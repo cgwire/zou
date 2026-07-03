@@ -57,6 +57,11 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
         shot = shots[0]
         self.assertEqual(shot["data"].get("contractor", None), "contractor 1")
 
+        # nb_frames is derived from the imported frame range (all fixture
+        # rows cover 100-frame ranges).
+        for shot in shots:
+            self.assertEqual(shot["nb_frames"], 101)
+
         self.assertEqual(
             set(str(task.entity_id) for task in tasks),
             set(shot["id"] for shot in shots),
