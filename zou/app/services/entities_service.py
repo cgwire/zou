@@ -397,6 +397,17 @@ def get_entity_tasks(entity):
     return get_tasks(entity["id"])
 
 
+def get_entity_link(link_id):
+    """
+    Return the entity link matching given id, as a dict. Raises an exception
+    if nothing is found.
+    """
+    link = EntityLink.get_by(id=link_id)
+    if link is None:
+        raise EntityLinkNotFoundException
+    return link.serialize()
+
+
 def remove_entity_link(link_id):
     try:
         link = EntityLink.get_by(id=link_id)
