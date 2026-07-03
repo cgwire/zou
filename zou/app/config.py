@@ -1,4 +1,5 @@
 import os
+import sys
 import datetime
 import tempfile
 
@@ -13,6 +14,16 @@ DEBUG_PORT = int(os.getenv("DEBUG_PORT", 5000))
 APP_NAME = "Zou"
 APP_SYSTEM_ERROR_SUBJECT_LINE = f"{APP_NAME} system error"
 SECRET_KEY = os.getenv("SECRET_KEY", "mysecretkey")
+# The default key is public: since JWT signing falls back to SECRET_KEY, an
+# unconfigured production deployment lets anyone forge admin tokens. Refuse to
+# boot with the default outside DEBUG. Test runs (pytest) are exempt so the
+# suite keeps working without setting the variable.
+if SECRET_KEY == "mysecretkey" and not DEBUG and "pytest" not in sys.modules:
+    raise RuntimeError(
+        "SECRET_KEY is set to the insecure default 'mysecretkey'. Set the "
+        "SECRET_KEY environment variable to a strong, unique value before "
+        "starting Zou in production."
+    )
 
 AUTH_STRATEGY = os.getenv("AUTH_STRATEGY", "auth_local_classic")
 BCRYPT_LOG_ROUNDS = int(os.getenv("BCRYPT_LOG_ROUNDS", 12))
