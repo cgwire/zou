@@ -990,21 +990,25 @@ def renormalize_movie_preview_files(
     minutes=None,
 ):
     with app.app_context():
+        if isinstance(preview_file_id, str):
+            preview_file_id = [preview_file_id]
+
         if (
-            preview_file_id is None
+            not preview_file_id
             and not all_broken
             and not all_processing
             and not all_missing
         ):
             print(
-                "You must specify at least one flag from --all-broken, "
-                "--all-missing or --all-processing."
+                "You must specify at least one flag from --preview-file-id, "
+                "--all-broken, --all-missing or --all-processing."
             )
             sys.exit(1)
 
-        query = PreviewFile.query.filter(
-            PreviewFile.extension == "mp4"
-        ).order_by(PreviewFile.created_at.asc())
+        query = PreviewFile.query.order_by(PreviewFile.created_at.asc())
+
+        if not preview_file_id:
+            query = query.filter(PreviewFile.extension == "mp4")
 
         if any((minutes, hours, days)):
             since_date = datetime.datetime.now() - datetime.timedelta(
@@ -1014,8 +1018,8 @@ def renormalize_movie_preview_files(
             )
             query = query.filter(PreviewFile.created_at >= since_date)
 
-        if preview_file_id is not None:
-            query = query.filter(PreviewFile.id == preview_file_id)
+        if preview_file_id:
+            query = query.filter(PreviewFile.id.in_(preview_file_id))
 
         if project_id is not None:
             query = query.join(Task).filter(

@@ -1031,6 +1031,7 @@ def create_bot(
     required=False,
     default=None,
     show_default=True,
+    multiple=True,
 )
 @click.option(
     "--project-id",

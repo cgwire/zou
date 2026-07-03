@@ -202,3 +202,109 @@ class RenormalizeMoviePreviewFilesTestCase(ApiDBTestCase):
             PreviewFile.get(self.preview_file_id).status.code, "broken"
         )
         self.assertEqual(PreviewFile.get(missing_id).status.code, "missing")
+
+    def test_multiple_preview_file_ids_are_all_processed(self):
+        second_preview = self.generate_fixture_preview_file(
+            name="second", revision=2, status="broken"
+        )
+        second_id = str(second_preview.id)
+        seen_ids = []
+
+        def fake_exists(prefix, pid):
+            seen_ids.append(pid)
+            return False
+
+        buf = io.StringIO()
+        with redirect_stdout(buf), patch.object(
+            file_store, "exists_movie", side_effect=fake_exists
+        ), patch.object(preview_files_service, "prepare_and_store_movie"):
+            commands.renormalize_movie_preview_files(
+                preview_file_id=[self.preview_file_id, second_id]
+            )
+
+        self.assertIn(self.preview_file_id, seen_ids)
+        self.assertIn(second_id, seen_ids)
+
+    def test_explicit_preview_file_id_bypasses_mp4_extension_filter(self):
+        from zou.app.models.preview_file import PreviewFile
+
+        non_mp4_preview = PreviewFile.create(
+            name="mov_preview",
+            revision=1,
+            description="test description",
+            source="pytest",
+            task_id=self.task.id,
+            extension="mov",
+            person_id=self.person.id,
+            position=1,
+            status="broken",
+            duration=10,
+        )
+        non_mp4_id = str(non_mp4_preview.id)
+        seen_ids = []
+
+        def fake_exists(prefix, pid):
+            seen_ids.append(pid)
+            return False
+
+        buf = io.StringIO()
+        with redirect_stdout(buf), patch.object(
+            file_store, "exists_movie", side_effect=fake_exists
+        ), patch.object(preview_files_service, "prepare_and_store_movie"):
+            commands.renormalize_movie_preview_files(
+                preview_file_id=[non_mp4_id]
+            )
+
+        self.assertIn(non_mp4_id, seen_ids)
+
+    def test_bulk_scan_still_filters_by_mp4_extension(self):
+        from zou.app.models.preview_file import PreviewFile
+
+        non_mp4_preview = PreviewFile.create(
+            name="mov_preview_bulk",
+            revision=1,
+            description="test description",
+            source="pytest",
+            task_id=self.task.id,
+            extension="mov",
+            person_id=self.person.id,
+            position=1,
+            status="broken",
+            duration=10,
+        )
+        non_mp4_id = str(non_mp4_preview.id)
+        seen_ids = []
+
+        def fake_exists(prefix, pid):
+            seen_ids.append(pid)
+            return False
+
+        buf = io.StringIO()
+        with redirect_stdout(buf), patch.object(
+            file_store, "exists_movie", side_effect=fake_exists
+        ), patch.object(preview_files_service, "prepare_and_store_movie"):
+            commands.renormalize_movie_preview_files(all_broken=True)
+
+        self.assertIn(self.preview_file_id, seen_ids)
+        self.assertNotIn(non_mp4_id, seen_ids)
+
+    def test_cli_accepts_repeated_preview_file_id_option(self):
+        runner = CliRunner()
+        with patch.object(
+            commands, "renormalize_movie_preview_files"
+        ) as mock_cmd:
+            result = runner.invoke(
+                cli,
+                [
+                    "renormalize-movie-preview-files",
+                    "--preview-file-id",
+                    "id1",
+                    "--preview-file-id",
+                    "id2",
+                ],
+            )
+
+        self.assertEqual(result.exit_code, 0)
+        mock_cmd.assert_called_once()
+        args, kwargs = mock_cmd.call_args
+        self.assertEqual(args[0], ("id1", "id2"))
