@@ -17,6 +17,7 @@ from zou.app.services import (
 )
 from zou.app.services.exception import (
     CommentNotFoundException,
+    PreviewBackgroundFileNotFoundException,
     PreviewFileNotFoundException,
 )
 
@@ -46,6 +47,12 @@ class DeletionServiceTestCase(ApiDBTestCase):
     def test_remove_comment_not_found(self):
         with self.assertRaises(CommentNotFoundException):
             deletion_service.remove_comment(
+                "00000000-0000-0000-0000-000000000000"
+            )
+
+    def test_remove_preview_background_file_not_found(self):
+        with self.assertRaises(PreviewBackgroundFileNotFoundException):
+            deletion_service.remove_preview_background_file_by_id(
                 "00000000-0000-0000-0000-000000000000"
             )
 

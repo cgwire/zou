@@ -46,6 +46,7 @@ from zou.app.services.exception import (
     CommentNotFoundException,
     ModelWithRelationsDeletionException,
     PersonInProtectedAccounts,
+    PreviewBackgroundFileNotFoundException,
     PreviewFileNotFoundException,
 )
 
@@ -258,6 +259,8 @@ def remove_preview_background_file_by_id(
     preview_background_file = PreviewBackgroundFile.get(
         preview_background_file_id
     )
+    if preview_background_file is None:
+        raise PreviewBackgroundFileNotFoundException
     return remove_preview_background_file(preview_background_file, force=force)
 
 
