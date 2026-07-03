@@ -91,6 +91,7 @@ PREVIEW_FOLDER = os.getenv(
     os.getenv("THUMBNAIL_FOLDER", os.path.join(os.getcwd(), "previews")),
 )
 PREVIEW_SAVE_SOURCE_FILE = envtobool("PREVIEW_SAVE_SOURCE_FILE", False)
+MAX_IMAGE_PIXELS = int(os.getenv("MAX_IMAGE_PIXELS", 20000 * 20000))
 TMP_DIR = os.getenv("TMP_DIR", os.path.join(tempfile.gettempdir(), "zou"))
 
 EVENT_STREAM_HOST = os.getenv("EVENT_STREAM_HOST", "localhost")

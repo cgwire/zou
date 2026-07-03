@@ -6,11 +6,12 @@ from pathlib import Path
 
 from PIL import Image, ImageFile
 
+from zou.app import config
 from zou.app.utils import fs
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-Image.MAX_IMAGE_PIXELS = 20000 * 20000
+Image.MAX_IMAGE_PIXELS = config.MAX_IMAGE_PIXELS
 RECTANGLE_SIZE = 150, 100
 SQUARE_SIZE = 100, 100
 PREVIEW_SIZE = 1200, 0
