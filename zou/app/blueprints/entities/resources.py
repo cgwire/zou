@@ -84,6 +84,7 @@ class EntityNewsResource(Resource):
         """
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])
+        user_service.check_entity_access(entity_id)
         return news_service.get_news_for_entity(entity_id)
 
 
@@ -151,6 +152,7 @@ class EntityPreviewFilesResource(Resource):
         """
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])
+        user_service.check_entity_access(entity_id)
         return preview_files_service.get_preview_files_for_entity(entity_id)
 
 
@@ -215,6 +217,7 @@ class EntityTimeSpentsResource(Resource):
         """
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])
+        user_service.check_entity_access(entity_id)
         return time_spents_service.get_time_spents_for_entity(entity_id)
 
 
