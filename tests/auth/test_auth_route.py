@@ -245,8 +245,11 @@ class AuthTestCase(ApiDBTestCase):
     def test_reset_password(self):
         email = self.user["email"]
         self.assertIsNotAuthenticated({}, code=422)
+        # Unknown and known emails must return the same response so the
+        # endpoint cannot be used to enumerate accounts.
         data = {"email": "fake_email@test.com"}
-        self.post("auth/reset-password", data, 400)
+        response = self.post("auth/reset-password", data, 200)
+        self.assertTrue(response["success"])
         data = {"email": email}
         response = self.post("auth/reset-password", data, 200)
         self.assertTrue(response["success"])
