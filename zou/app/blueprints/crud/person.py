@@ -16,6 +16,7 @@ from zou.app.services import (
     persons_service,
 )
 from zou.app.utils import permissions, auth, date_helpers
+from zou.app.utils.fields import serialize_value
 
 from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
 
@@ -251,10 +252,16 @@ class PersonsResource(BaseModelsResource):
 
         if permissions.has_admin_permissions():
             if self.get_bool_parameter("with_pass_hash"):
-                return [
-                    person.serialize(relations=relations)
-                    for person in query.all()
-                ]
+                # Only the password hash is re-added (needed for Kitsu ->
+                # Kitsu migration). Never expose the 2FA secrets
+                # (totp/email OTP/recovery codes/FIDO) that the full
+                # serialize() would otherwise leak.
+                persons = []
+                for person in query.all():
+                    person_dict = person.serialize_safe(relations=relations)
+                    person_dict["password"] = serialize_value(person.password)
+                    persons.append(person_dict)
+                return persons
             else:
                 return [
                     person.serialize_safe(relations=relations)
