@@ -444,7 +444,11 @@ def set_person_as_active(email, unactive):
             if persons_service.is_user_limit_reached() and not unactive:
                 raise IsUserLimitReachedException
             person = persons_service.get_person_by_email_raw(email)
-            person.update({"active": not unactive})
+            persons_service.update_person(
+                person.id,
+                {"active": not unactive},
+                bypass_protected_accounts=True,
+            )
             print(
                 f'Person {email} is set as an {"active" if not unactive else "unactive"} user.'
             )
