@@ -68,6 +68,13 @@ class RouteThumbnailTestCase(ApiDBTestCase):
 
         self.assertEqual(result_image.size, thumbnail.BIG_SQUARE_SIZE)
 
+    def test_add_thumbnail_without_file_keeps_has_avatar_false(self):
+        path = f"/pictures/thumbnails/persons/{self.person_id}"
+        response = self.app.post(path, headers=self.base_headers)
+        self.assertEqual(response.status_code, 400)
+        person = self.get(f"data/persons/{self.person_id}")
+        self.assertFalse(person["has_avatar"])
+
     def test_add_preview(self):
         path = f"/pictures/preview-files/{self.preview_file_id}"
 

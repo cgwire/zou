@@ -80,6 +80,7 @@ class DownloadAttachmentResource(Resource):
             chat = chats_service.get_chat_by_id(message["chat_id"])
             entity = entities_service.get_entity(chat["object_id"])
             user_service.check_project_access(entity["project_id"])
+            user_service.check_entity_access(chat["object_id"])
         else:
             raise permissions.PermissionDenied()
         try:

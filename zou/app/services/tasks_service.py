@@ -1514,17 +1514,6 @@ def get_or_create_status(
     return task_status.serialize()
 
 
-def update_task_status(task_status_id, data):
-    """
-    Update task status data with given task_id.
-    """
-    task_status = get_task_status_raw(task_status_id)
-    task_status.update(data)
-    clear_task_status_cache(task_status_id)
-    events.emit("task-status:update", {"task_status_id": task_status_id})
-    return task_status.serialize()
-
-
 def get_or_create_department(name, color="#000000"):
     """
     Create a new department it doesn't exist. If it exists, it returns the

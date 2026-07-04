@@ -71,11 +71,11 @@ def update_person(person_id, data):
 ## Event emission pattern
 
 ```python
-from zou.app.services import events_service
+from zou.app.utils import events
 
 def create_task(data):
     task = Task.create(**data)
-    events_service.emit(
+    events.emit(
         "task:new",
         {"task_id": str(task.id)},
         project_id=str(task.project_id),

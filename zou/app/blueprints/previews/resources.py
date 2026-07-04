@@ -1249,8 +1249,6 @@ class BaseThumbnailResource(Resource):
         self.is_exist(instance_id)
         self.check_allowed_to_post(instance_id)
 
-        self.prepare_creation(instance_id)
-
         if "file" not in request.files:
             raise WrongParameterException("File not provided.")
 
@@ -1259,11 +1257,19 @@ class BaseThumbnailResource(Resource):
         thumbnail_path = thumbnail_utils.save_file(
             tmp_folder, instance_id, uploaded_file
         )
-        thumbnail_path = thumbnail_utils.turn_into_thumbnail(
-            thumbnail_path, size=self.size
-        )
-        file_store.add_picture("thumbnails", instance_id, thumbnail_path)
-        os.remove(thumbnail_path)
+        try:
+            thumbnail_path = thumbnail_utils.turn_into_thumbnail(
+                thumbnail_path, size=self.size
+            )
+            file_store.add_picture("thumbnails", instance_id, thumbnail_path)
+        finally:
+            if os.path.exists(thumbnail_path):
+                os.remove(thumbnail_path)
+
+        # Mark the avatar as present only once the thumbnail is stored, so a
+        # missing/invalid file or a storage failure cannot leave has_avatar
+        # set with no picture behind it (which would 404 every read).
+        self.prepare_creation(instance_id)
         preview_files_service.clear_variant_from_cache(
             instance_id, "thumbnails"
         )

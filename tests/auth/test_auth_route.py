@@ -245,8 +245,11 @@ class AuthTestCase(ApiDBTestCase):
     def test_reset_password(self):
         email = self.user["email"]
         self.assertIsNotAuthenticated({}, code=422)
+        # Unknown and known emails must return the same response so the
+        # endpoint cannot be used to enumerate accounts.
         data = {"email": "fake_email@test.com"}
-        self.post("auth/reset-password", data, 400)
+        response = self.post("auth/reset-password", data, 200)
+        self.assertTrue(response["success"])
         data = {"email": email}
         response = self.post("auth/reset-password", data, 200)
         self.assertTrue(response["success"])
@@ -460,6 +463,37 @@ class Enforce2FATestCase(ApiDBTestCase):
         # New token should access non-auth routes
         new_headers = self.get_auth_headers(new_tokens)
         response = self.app.get("data/persons", headers=new_headers)
+        self.assertEqual(response.status_code, 200)
+
+    def test_disable_totp_with_recovery_code(self):
+        """
+        Disabling TOTP with a recovery code succeeds. Regression: the
+        unsafe current-user path exposes recovery codes as raw bytes, which
+        used to crash when removing the consumed code.
+        """
+        tokens = self.post("auth/login", self.credentials, 200)
+        headers = self.get_auth_headers(tokens)
+        headers["Content-type"] = "application/json"
+
+        response = self.app.put("auth/totp", headers=headers)
+        otp_secret = json.loads(response.data.decode("utf-8"))["otp_secret"]
+        totp = pyotp.TOTP(otp_secret)
+        response = self.app.post(
+            "auth/totp",
+            data=json.dumps({"totp": totp.now()}),
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 200)
+        recovery_codes = json.loads(response.data.decode("utf-8"))[
+            "otp_recovery_codes"
+        ]
+        persons_service.clear_person_cache()
+
+        response = self.app.delete(
+            "auth/totp",
+            data=json.dumps({"recovery_code": recovery_codes[0]}),
+            headers=headers,
+        )
         self.assertEqual(response.status_code, 200)
 
     def test_exempt_user_gets_unrestricted_tokens(self):

@@ -221,13 +221,6 @@ def set_preview_file_as_missing(preview_file_id):
     return update_preview_file(preview_file_id, {"status": "missing"})
 
 
-def set_preview_file_as_ready(preview_file_id):
-    """
-    Mark given preview file as ready.
-    """
-    return update_preview_file(preview_file_id, {"status": "ready"})
-
-
 def _abort_on_storage_failure(preview_file_id, operation, exc):
     """
     Log a file store backend failure (Swift 401, S3 timeout, network error,

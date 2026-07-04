@@ -765,18 +765,16 @@ class ResetPasswordResource(Resource, ArgsMixin):
         """
         body = validation.validate_request_body(SendPasswordResetSchema)
 
+        # Always answer the same way whether or not the account exists or is
+        # active, so this public endpoint cannot be used to enumerate
+        # registered users.
+        generic_response = {"success": "Reset token sent"}
         try:
             user = persons_service.get_person_by_email(body.email)
-            if not user["active"]:
-                return (
-                    {"error": True, "message": "This user is inactive."},
-                    400,
-                )
         except PersonNotFoundException:
-            return (
-                {"error": True, "message": "Email not listed in database."},
-                400,
-            )
+            return generic_response
+        if not user["active"]:
+            return generic_response
 
         token = auth_service.generate_reset_token()
         auth_tokens_store.add(f"reset-token-{body.email}", token, ttl=3600 * 2)

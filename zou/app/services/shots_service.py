@@ -88,11 +88,6 @@ def get_scene_type():
     return entities_service.get_temporal_entity_type_by_name("Scene")
 
 
-@cache.memoize_function(1200)
-def get_camera_type():
-    return entities_service.get_entity_type_by_name("Camera")
-
-
 def get_episodes(criterions=None):
     """
     Get all episodes for given criterions.

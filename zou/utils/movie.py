@@ -325,7 +325,11 @@ def add_empty_soundtrack(file_path, try_count=1):
 
     duration = None
     try:
-        probe = ffmpeg.probe(tmp_file_path, select_streams="v")
+        # Probe the source movie (tmp_file_path is the not-yet-created
+        # output, just removed above): this original duration is used below
+        # to trim the duplicate frames ffmpeg appends when adding the
+        # empty soundtrack.
+        probe = ffmpeg.probe(file_path, select_streams="v")
         duration = probe["format"]["duration"]
     except Exception:
         pass
