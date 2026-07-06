@@ -70,7 +70,7 @@ class TwoFactorAuthSchema(BaseSchema):
 
     totp: Optional[str] = None
     email_otp: Optional[str] = None
-    fido_authentication_response: Optional[dict] = Field(default={})
+    fido_authentication_response: Optional[dict] = None
     recovery_code: Optional[str] = None
 
 
@@ -107,5 +107,5 @@ class FidoUnregisterSchema(BaseSchema):
     )
     totp: Optional[str] = None
     email_otp: Optional[str] = None
-    fido_authentication_response: Optional[dict] = Field(default={})
+    fido_authentication_response: Optional[dict] = None
     recovery_code: Optional[str] = None
