@@ -204,9 +204,7 @@ class ImportCsvPersonsTestCase(ApiDBTestCase):
         values["First Name"] = "Broken"
         values["Email"] = "broken.user@gmail.com"
         values["Country"] = "France"
-        row_broken = ";".join(
-            f'"{values[column]}"' for column in self.columns
-        )
+        row_broken = ";".join(f'"{values[column]}"' for column in self.columns)
         error = self._upload_csv(
             f"{header}\n{row_valid}\n{row_broken}\n", code=400
         )

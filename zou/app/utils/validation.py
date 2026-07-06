@@ -82,9 +82,7 @@ def validate_id_list(required=True):
             return None
         raise WrongParameterException("Request body must be a JSON array.")
     for entity_id in payload:
-        if not isinstance(entity_id, str) or not fields.is_valid_id(
-            entity_id
-        ):
+        if not isinstance(entity_id, str) or not fields.is_valid_id(entity_id):
             raise WrongParameterException(
                 "Request body must only contain valid UUIDs."
             )

@@ -40,9 +40,7 @@ def clear_entity_cache(entity_id):
     from zou.app.services import names_service
 
     cache.cache.delete_memoized(get_entity, entity_id)
-    cache.cache.delete_memoized(
-        names_service.get_full_entity_name, entity_id
-    )
+    cache.cache.delete_memoized(names_service.get_full_entity_name, entity_id)
 
 
 def clear_entity_type_cache(entity_type_id):

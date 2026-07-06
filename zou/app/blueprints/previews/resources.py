@@ -1625,9 +1625,7 @@ class UpdateAnnotationsResource(MethodView, ArgsMixin):
         if not (is_manager or is_client or is_supervisor_allowed):
             raise permissions.PermissionDenied
 
-        body = validation_utils.validate_request_body(
-            AnnotationsUpdateSchema
-        )
+        body = validation_utils.validate_request_body(AnnotationsUpdateSchema)
         user = persons_service.get_current_user()
         return preview_files_service.update_preview_file_annotations(
             user["id"],

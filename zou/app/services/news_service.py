@@ -75,9 +75,7 @@ def delete_news_for_comment(comment_id):
         for news in news_list:
             news_id = str(news.id)
             news.delete()
-            cache.cache.delete_memoized(
-                get_news, task["project_id"], news_id
-            )
+            cache.cache.delete_memoized(get_news, task["project_id"], news_id)
             events.emit(
                 "news:delete",
                 {"news_id": news_id},
@@ -277,9 +275,7 @@ def _get_news_total(query, limit):
     # count() wraps the whole 5-join select in a subquery; counting the
     # news column over the same joins gives the same total without
     # materializing the select (order_by must go, aggregates forbid it).
-    total = (
-        query.order_by(None).with_entities(func.count(News.id)).scalar()
-    )
+    total = query.order_by(None).with_entities(func.count(News.id)).scalar()
     nb_pages = int(math.ceil(total / float(limit)))
     return total, nb_pages
 
