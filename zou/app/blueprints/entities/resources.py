@@ -1,4 +1,4 @@
-from flask_restful import Resource
+from flask.views import MethodView
 
 from flask_jwt_extended import jwt_required
 
@@ -14,7 +14,7 @@ from zou.app.services import (
 from zou.app.utils import permissions, validation
 
 
-class EntityNewsResource(Resource):
+class EntityNewsResource(MethodView):
     @jwt_required()
     def get(self, entity_id):
         """
@@ -88,7 +88,7 @@ class EntityNewsResource(Resource):
         return news_service.get_news_for_entity(entity_id)
 
 
-class EntityPreviewFilesResource(Resource):
+class EntityPreviewFilesResource(MethodView):
     @jwt_required()
     def get(self, entity_id):
         """
@@ -156,7 +156,7 @@ class EntityPreviewFilesResource(Resource):
         return preview_files_service.get_preview_files_for_entity(entity_id)
 
 
-class EntityTimeSpentsResource(Resource):
+class EntityTimeSpentsResource(MethodView):
     @jwt_required()
     def get(self, entity_id):
         """
@@ -221,7 +221,7 @@ class EntityTimeSpentsResource(Resource):
         return time_spents_service.get_time_spents_for_entity(entity_id)
 
 
-class EntitiesLinkedWithTasksResource(Resource):
+class EntitiesLinkedWithTasksResource(MethodView):
     @jwt_required()
     def get(self, entity_id):
         """
@@ -300,7 +300,7 @@ class EntitiesLinkedWithTasksResource(Resource):
         return entities_service.get_linked_entities_with_tasks(entity_id)
 
 
-class EntityTaskCreationResource(Resource):
+class EntityTaskCreationResource(MethodView):
     @jwt_required()
     def post(self, entity_id):
         """

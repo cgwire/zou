@@ -139,3 +139,20 @@ def is_valid_id(value):
     Check if a given string is a valid UUID.
     """
     return _UUID_RE.match(value)
+
+
+def boolean(value):
+    """
+    Parse "true"/"false" (case insensitive, also "1"/"0"/"on") as a boolean.
+    Meant as a query argument type; raises ValueError on anything else.
+    """
+    if isinstance(value, bool):
+        return value
+    if not value:
+        raise ValueError("boolean type must be non-null")
+    value = value.lower()
+    if value in ("true", "1", "on"):
+        return True
+    if value in ("false", "0"):
+        return False
+    raise ValueError(f"Invalid literal for boolean(): {value}")

@@ -4,7 +4,7 @@ import orjson as json
 import sqlalchemy.orm as orm
 
 from flask import request, current_app
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from sqlalchemy.exc import IntegrityError, StatementError
@@ -18,9 +18,9 @@ from zou.app.services.exception import (
 )
 
 
-class BaseModelsResource(Resource, ArgsMixin):
+class BaseModelsResource(MethodView, ArgsMixin):
     def __init__(self, model):
-        Resource.__init__(self)
+        MethodView.__init__(self)
         self.model = model
         self.protected_fields = ["id", "created_at", "updated_at"]
 
@@ -351,9 +351,9 @@ class BaseModelsResource(Resource, ArgsMixin):
         )
 
 
-class BaseModelResource(Resource, ArgsMixin):
+class BaseModelResource(MethodView, ArgsMixin):
     def __init__(self, model):
-        Resource.__init__(self)
+        MethodView.__init__(self)
         self.protected_fields = ["id", "created_at", "updated_at"]
         self.model = model
         self.instance = None

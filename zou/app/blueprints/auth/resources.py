@@ -2,7 +2,7 @@ import hmac
 import secrets
 
 from flask import request, jsonify, current_app, redirect, make_response
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_principal import (
     Identity,
     AnonymousIdentity,
@@ -93,7 +93,7 @@ def _build_2fa_registration_response(response_data, user_id):
     return response
 
 
-class AuthenticatedResource(Resource):
+class AuthenticatedResource(MethodView):
 
     @jwt_required()
     def get(self):
@@ -125,7 +125,7 @@ class AuthenticatedResource(Resource):
         }
 
 
-class LogoutResource(Resource):
+class LogoutResource(MethodView):
 
     @jwt_required()
     @permissions.require_person
@@ -159,7 +159,7 @@ class LogoutResource(Resource):
             return logout_data
 
 
-class LoginResource(Resource, ArgsMixin):
+class LoginResource(MethodView, ArgsMixin):
 
     def post(self):
         """
@@ -407,7 +407,7 @@ class LoginResource(Resource, ArgsMixin):
         )
 
 
-class RefreshTokenResource(Resource):
+class RefreshTokenResource(MethodView):
     @jwt_required(refresh=True)
     @permissions.require_person
     def get(self):
@@ -450,7 +450,7 @@ class RefreshTokenResource(Resource):
             return {"access_token": access_token}
 
 
-class ChangePasswordResource(Resource, ArgsMixin):
+class ChangePasswordResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_person
@@ -560,7 +560,7 @@ class ChangePasswordResource(Resource, ArgsMixin):
         return (body.old_password, body.password, body.password_2)
 
 
-class ResetPasswordResource(Resource, ArgsMixin):
+class ResetPasswordResource(MethodView, ArgsMixin):
 
     def put(self):
         """
@@ -721,7 +721,7 @@ class ResetPasswordResource(Resource, ArgsMixin):
         return {"success": "Reset token sent"}
 
 
-class TOTPResource(Resource, ArgsMixin):
+class TOTPResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_person
@@ -876,7 +876,7 @@ class TOTPResource(Resource, ArgsMixin):
             )
 
 
-class EmailOTPResource(Resource, ArgsMixin):
+class EmailOTPResource(MethodView, ArgsMixin):
 
     def get(self):
         """
@@ -1079,7 +1079,7 @@ class EmailOTPResource(Resource, ArgsMixin):
             )
 
 
-class FIDOResource(Resource, ArgsMixin):
+class FIDOResource(MethodView, ArgsMixin):
     """
     Resource to allow a user to register/unregister FIDO device or to get a
     challenge for a FIDO device.
@@ -1269,7 +1269,7 @@ class FIDOResource(Resource, ArgsMixin):
             )
 
 
-class RecoveryCodesResource(Resource, ArgsMixin):
+class RecoveryCodesResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_person
@@ -1345,7 +1345,7 @@ class RecoveryCodesResource(Resource, ArgsMixin):
             )
 
 
-class SAMLSSOResource(Resource, ArgsMixin):
+class SAMLSSOResource(MethodView, ArgsMixin):
     def post(self):
         """
         SAML SSO login
@@ -1452,7 +1452,7 @@ class SAMLSSOResource(Resource, ArgsMixin):
         return response
 
 
-class SAMLLoginResource(Resource, ArgsMixin):
+class SAMLLoginResource(MethodView, ArgsMixin):
 
     def get(self):
         """
@@ -1494,7 +1494,7 @@ class SAMLLoginResource(Resource, ArgsMixin):
         return redirect(redirect_url, code=302)
 
 
-class OIDCLoginResource(Resource, ArgsMixin):
+class OIDCLoginResource(MethodView, ArgsMixin):
     def get(self):
         """
         OIDC SSO login redirect
@@ -1519,7 +1519,7 @@ class OIDCLoginResource(Resource, ArgsMixin):
         return oidc.get_oidc_client().authorize_redirect(redirect_uri)
 
 
-class OIDCCallbackResource(Resource, ArgsMixin):
+class OIDCCallbackResource(MethodView, ArgsMixin):
     def get(self):
         """
         OIDC SSO callback

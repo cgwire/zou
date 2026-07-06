@@ -2,7 +2,7 @@ import os
 
 from flask import request, abort, current_app
 from flask import send_file as flask_send_file
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 from flask_fs.errors import FileNotFound
 from zou.app import config
@@ -95,7 +95,7 @@ def send_storage_file(
         )
 
 
-class WorkingFileFileResource(Resource):
+class WorkingFileFileResource(MethodView):
 
     def check_access(self, working_file_id):
         working_file = files_service.get_working_file(working_file_id)
@@ -249,7 +249,7 @@ class WorkingFileFileResource(Resource):
         return working_file, 201
 
 
-class WorkingFilePathResource(Resource, ArgsMixin):
+class WorkingFilePathResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def post(self, task_id):
@@ -384,7 +384,7 @@ class WorkingFilePathResource(Resource, ArgsMixin):
         )
 
 
-class EntityOutputFilePathResource(Resource, ArgsMixin):
+class EntityOutputFilePathResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def post(self, entity_id):
@@ -520,7 +520,7 @@ class EntityOutputFilePathResource(Resource, ArgsMixin):
         return body.model_dump()
 
 
-class InstanceOutputFilePathResource(Resource, ArgsMixin):
+class InstanceOutputFilePathResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def post(self, asset_instance_id, temporal_entity_id):
@@ -659,7 +659,7 @@ class InstanceOutputFilePathResource(Resource, ArgsMixin):
         return body.model_dump()
 
 
-class LastWorkingFilesResource(Resource):
+class LastWorkingFilesResource(MethodView):
 
     @jwt_required()
     def get(self, task_id):
@@ -716,7 +716,7 @@ class LastWorkingFilesResource(Resource):
         return result
 
 
-class TaskWorkingFilesResource(Resource):
+class TaskWorkingFilesResource(MethodView):
 
     @jwt_required()
     def get(self, task_id):
@@ -777,7 +777,7 @@ class TaskWorkingFilesResource(Resource):
         return result
 
 
-class NewWorkingFileResource(Resource, ArgsMixin):
+class NewWorkingFileResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def post(self, task_id):
@@ -959,7 +959,7 @@ class NewWorkingFileResource(Resource, ArgsMixin):
         )
 
 
-class ModifiedFileResource(Resource):
+class ModifiedFileResource(MethodView):
 
     @jwt_required()
     def put(self, working_file_id):
@@ -1007,7 +1007,7 @@ class ModifiedFileResource(Resource):
         return working_file
 
 
-class CommentWorkingFileResource(Resource, ArgsMixin):
+class CommentWorkingFileResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def put(self, working_file_id):
@@ -1077,7 +1077,7 @@ class CommentWorkingFileResource(Resource, ArgsMixin):
         return working_file
 
 
-class NewEntityOutputFileResource(Resource, ArgsMixin):
+class NewEntityOutputFileResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def post(self, entity_id):
@@ -1323,7 +1323,7 @@ class NewEntityOutputFileResource(Resource, ArgsMixin):
         return output_file
 
 
-class NewInstanceOutputFileResource(Resource, ArgsMixin):
+class NewInstanceOutputFileResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def post(self, asset_instance_id, temporal_entity_id):
@@ -1591,7 +1591,7 @@ class NewInstanceOutputFileResource(Resource, ArgsMixin):
         return output_file
 
 
-class GetNextEntityOutputFileRevisionResource(Resource, ArgsMixin):
+class GetNextEntityOutputFileRevisionResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def post(self, entity_id):
@@ -1663,7 +1663,7 @@ class GetNextEntityOutputFileRevisionResource(Resource, ArgsMixin):
         return {"next_revision": next_revision_number}, 200
 
 
-class GetNextInstanceOutputFileRevisionResource(Resource, ArgsMixin):
+class GetNextInstanceOutputFileRevisionResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def post(self, asset_instance_id, temporal_entity_id):
@@ -1750,7 +1750,7 @@ class GetNextInstanceOutputFileRevisionResource(Resource, ArgsMixin):
         return {"next_revision": next_revision_number}, 200
 
 
-class LastEntityOutputFilesResource(Resource, ArgsMixin):
+class LastEntityOutputFilesResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def get(self, entity_id):
@@ -1865,7 +1865,7 @@ class LastEntityOutputFilesResource(Resource, ArgsMixin):
         )
 
 
-class LastInstanceOutputFilesResource(Resource, ArgsMixin):
+class LastInstanceOutputFilesResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def get(self, asset_instance_id, temporal_entity_id):
@@ -1990,7 +1990,7 @@ class LastInstanceOutputFilesResource(Resource, ArgsMixin):
         )
 
 
-class EntityOutputTypesResource(Resource):
+class EntityOutputTypesResource(MethodView):
 
     @jwt_required()
     def get(self, entity_id):
@@ -2050,7 +2050,7 @@ class EntityOutputTypesResource(Resource):
         return files_service.get_output_types_for_entity(entity_id)
 
 
-class InstanceOutputTypesResource(Resource):
+class InstanceOutputTypesResource(MethodView):
 
     @jwt_required()
     def get(self, asset_instance_id, temporal_entity_id):
@@ -2121,7 +2121,7 @@ class InstanceOutputTypesResource(Resource):
         )
 
 
-class EntityOutputTypeOutputFilesResource(Resource, ArgsMixin):
+class EntityOutputTypeOutputFilesResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def get(self, entity_id, output_type_id):
@@ -2208,7 +2208,7 @@ class EntityOutputTypeOutputFilesResource(Resource, ArgsMixin):
         return output_files
 
 
-class InstanceOutputTypeOutputFilesResource(Resource, ArgsMixin):
+class InstanceOutputTypeOutputFilesResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def get(self, asset_instance_id, temporal_entity_id, output_type_id):
@@ -2312,7 +2312,7 @@ class InstanceOutputTypeOutputFilesResource(Resource, ArgsMixin):
         )
 
 
-class ProjectOutputFilesResource(Resource, ArgsMixin):
+class ProjectOutputFilesResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def get(self, project_id):
@@ -2430,7 +2430,7 @@ class ProjectOutputFilesResource(Resource, ArgsMixin):
         )
 
 
-class EntityOutputFilesResource(Resource, ArgsMixin):
+class EntityOutputFilesResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def get(self, entity_id):
@@ -2550,7 +2550,7 @@ class EntityOutputFilesResource(Resource, ArgsMixin):
         )
 
 
-class InstanceOutputFilesResource(Resource):
+class InstanceOutputFilesResource(MethodView):
 
     @jwt_required()
     def get(self, asset_instance_id):
@@ -2686,7 +2686,7 @@ class InstanceOutputFilesResource(Resource):
         )
 
 
-class FileResource(Resource):
+class FileResource(MethodView):
 
     @jwt_required()
     def get(self, file_id):
@@ -2761,7 +2761,7 @@ class FileResource(Resource):
         return file_dict
 
 
-class SetTreeResource(Resource, ArgsMixin):
+class SetTreeResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def post(self, project_id):
@@ -2836,7 +2836,7 @@ class SetTreeResource(Resource, ArgsMixin):
         return project
 
 
-class EntityWorkingFilesResource(Resource, ArgsMixin):
+class EntityWorkingFilesResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def get(self, entity_id):
@@ -2935,7 +2935,7 @@ class EntityWorkingFilesResource(Resource, ArgsMixin):
         )
 
 
-class GuessFromPathResource(Resource, ArgsMixin):
+class GuessFromPathResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def post(self):

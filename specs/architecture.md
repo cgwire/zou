@@ -4,7 +4,7 @@ Zou is the REST API backend for Kitsu, a production management tool for animatio
 
 ## Tech stack
 
-- **Framework**: Flask + Flask-RESTful
+- **Framework**: Flask (resources are `MethodView` classes)
 - **Database**: PostgreSQL (psycopg3 driver) via Flask-SQLAlchemy
 - **Migrations**: Alembic via Flask-Migrate
 - **Auth**: Flask-JWT-Extended (access + refresh tokens)
@@ -84,7 +84,7 @@ Permissions are enforced at the blueprint/service layer. Every endpoint checks t
 
 ## Key design patterns
 
-1. **Blueprint + Resource**: Each feature is a Flask blueprint containing Flask-RESTful Resource classes.
+1. **Blueprint + Resource**: Each feature is a Flask blueprint containing Flask `MethodView` resource classes.
 2. **Service layer**: Blueprints delegate to stateless service functions. Services handle business logic, caching, and event emission.
 3. **Generic CRUD**: `BaseModelsResource` and `BaseModelResource` provide list/create and get/update/delete for any model. Subclasses override permission hooks.
 4. **Event-driven**: Mutations emit events via Redis pub/sub. The event stream daemon broadcasts to WebSocket clients for live UI updates.

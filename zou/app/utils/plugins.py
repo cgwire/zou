@@ -17,7 +17,7 @@ from alembic import command
 from alembic.config import Config
 from collections.abc import MutableMapping
 from flask import Blueprint, send_from_directory, abort, current_app
-from flask_restful import Resource
+from flask.views import MethodView
 from pathlib import Path
 from sqlalchemy import MetaData
 from sqlalchemy.util import FacadeDict
@@ -26,7 +26,7 @@ from zou.app import db, app
 from zou.app.utils.api import configure_api_from_blueprint
 
 
-class StaticResource(Resource):
+class StaticResource(MethodView):
 
     plugin_id = None
 

@@ -1,4 +1,4 @@
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app.utils import permissions, validation
@@ -12,7 +12,7 @@ from zou.app.blueprints.departments.schemas import (
 )
 
 
-class AllDepartmentSoftwareResource(Resource, ArgsMixin):
+class AllDepartmentSoftwareResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_admin
@@ -74,7 +74,7 @@ class AllDepartmentSoftwareResource(Resource, ArgsMixin):
         return softwares, 200
 
 
-class AddSoftwareToDepartmentResource(Resource, ArgsMixin):
+class AddSoftwareToDepartmentResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_admin
@@ -146,7 +146,7 @@ class AddSoftwareToDepartmentResource(Resource, ArgsMixin):
         return software, 201
 
 
-class SoftwareDepartmentResource(Resource, ArgsMixin):
+class SoftwareDepartmentResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_admin
@@ -252,7 +252,7 @@ class SoftwareDepartmentResource(Resource, ArgsMixin):
         return "", 204
 
 
-class AllDepartmentHardwareItemsResource(Resource, ArgsMixin):
+class AllDepartmentHardwareItemsResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_admin
@@ -312,7 +312,7 @@ class AllDepartmentHardwareItemsResource(Resource, ArgsMixin):
         return hardware_items, 200
 
 
-class AddHardwareItemToDepartmentResource(Resource, ArgsMixin):
+class AddHardwareItemToDepartmentResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_admin
@@ -388,7 +388,7 @@ class AddHardwareItemToDepartmentResource(Resource, ArgsMixin):
         return hardware_item_link, 201
 
 
-class HardwareItemDepartmentResource(Resource, ArgsMixin):
+class HardwareItemDepartmentResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_admin

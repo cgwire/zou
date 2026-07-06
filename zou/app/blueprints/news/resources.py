@@ -1,4 +1,4 @@
-from flask_restful import Resource, inputs
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app.mixin import ArgsMixin
@@ -9,7 +9,7 @@ from zou.app.services import (
     persons_service,
 )
 from zou.app.services.exception import NewsNotFoundException
-from zou.app.utils import permissions
+from zou.app.utils import fields, permissions
 
 
 class NewsMixin(ArgsMixin):
@@ -65,7 +65,7 @@ class NewsMixin(ArgsMixin):
                     "only_preview",
                     False,
                     False,
-                    inputs.boolean,
+                    fields.boolean,
                 ),
                 "task_type_id",
                 "task_status_id",
@@ -91,7 +91,7 @@ class NewsMixin(ArgsMixin):
         )
 
 
-class ProjectNewsResource(Resource, NewsMixin, ArgsMixin):
+class ProjectNewsResource(MethodView, NewsMixin, ArgsMixin):
 
     @jwt_required()
     def get(self, project_id):
@@ -223,7 +223,7 @@ class ProjectNewsResource(Resource, NewsMixin, ArgsMixin):
         return self.get_news([project_id])
 
 
-class NewsResource(Resource, NewsMixin, ArgsMixin):
+class NewsResource(MethodView, NewsMixin, ArgsMixin):
 
     @jwt_required()
     def get(self):
@@ -348,7 +348,7 @@ class NewsResource(Resource, NewsMixin, ArgsMixin):
         return self.get_news(project_ids=open_project_ids)
 
 
-class ProjectSingleNewsResource(Resource):
+class ProjectSingleNewsResource(MethodView):
 
     @jwt_required()
     def get(self, project_id, news_id):

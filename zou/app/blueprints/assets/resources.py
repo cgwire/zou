@@ -1,5 +1,5 @@
 from flask import request
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app.utils import permissions, query, validation
@@ -32,7 +32,7 @@ def check_criterion_access(criterions):
     return True
 
 
-class AssetResource(Resource, ArgsMixin):
+class AssetResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def get(self, asset_id):
@@ -131,7 +131,7 @@ class AssetResource(Resource, ArgsMixin):
         return "", 204
 
 
-class AllAssetsResource(Resource):
+class AllAssetsResource(MethodView):
 
     @jwt_required()
     def get(self):
@@ -218,7 +218,7 @@ class AllAssetsAliasResource(AllAssetsResource):
     pass
 
 
-class AssetsAndTasksResource(Resource, ArgsMixin):
+class AssetsAndTasksResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def get(self):
@@ -304,7 +304,7 @@ class AssetsAndTasksResource(Resource, ArgsMixin):
         return assets_service.get_assets_and_tasks(criterions)
 
 
-class AssetTypeResource(Resource):
+class AssetTypeResource(MethodView):
 
     @jwt_required()
     def get(self, asset_type_id):
@@ -353,7 +353,7 @@ class AssetTypeResource(Resource):
         return assets_service.get_asset_type(asset_type_id)
 
 
-class AssetTypesResource(Resource):
+class AssetTypesResource(MethodView):
 
     @jwt_required()
     def get(self):
@@ -404,7 +404,7 @@ class AssetTypesResource(Resource):
         return assets_service.get_asset_types(criterions)
 
 
-class ProjectAssetTypesResource(Resource):
+class ProjectAssetTypesResource(MethodView):
 
     @jwt_required()
     def get(self, project_id):
@@ -451,7 +451,7 @@ class ProjectAssetTypesResource(Resource):
         return assets_service.get_asset_types_for_project(project_id)
 
 
-class ShotAssetTypesResource(Resource):
+class ShotAssetTypesResource(MethodView):
 
     @jwt_required()
     def get(self, shot_id):
@@ -499,7 +499,7 @@ class ShotAssetTypesResource(Resource):
         return assets_service.get_asset_types_for_shot(shot_id)
 
 
-class ProjectAssetsResource(Resource):
+class ProjectAssetsResource(MethodView):
 
     @jwt_required()
     def get(self, project_id):
@@ -581,7 +581,7 @@ class ProjectAssetsResource(Resource):
         return assets_service.get_assets(criterions)
 
 
-class ProjectAssetTypeAssetsResource(Resource):
+class ProjectAssetTypeAssetsResource(MethodView):
 
     @jwt_required()
     def get(self, project_id, asset_type_id):
@@ -665,7 +665,7 @@ class ProjectAssetTypeAssetsResource(Resource):
         return assets_service.get_assets(criterions)
 
 
-class AssetAssetsResource(Resource):
+class AssetAssetsResource(MethodView):
 
     @jwt_required()
     def get(self, asset_id):
@@ -719,7 +719,7 @@ class AssetAssetsResource(Resource):
         return breakdown_service.get_entity_casting(asset_id)
 
 
-class AssetTasksResource(Resource, ArgsMixin):
+class AssetTasksResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def get(self, asset_id):
@@ -807,7 +807,7 @@ class AssetTasksResource(Resource, ArgsMixin):
         )
 
 
-class AssetTaskTypesResource(Resource):
+class AssetTaskTypesResource(MethodView):
 
     @jwt_required()
     def get(self, asset_id):
@@ -863,7 +863,7 @@ class AssetTaskTypesResource(Resource):
         return tasks_service.get_task_types_for_asset(asset_id)
 
 
-class NewAssetResource(Resource, ArgsMixin):
+class NewAssetResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def post(self, project_id, asset_type_id):
@@ -985,7 +985,7 @@ class NewAssetResource(Resource, ArgsMixin):
         return asset, 201
 
 
-class AssetCastingResource(Resource):
+class AssetCastingResource(MethodView):
 
     @jwt_required()
     def get(self, asset_id):
@@ -1124,7 +1124,7 @@ class AssetCastingResource(Resource):
         return breakdown_service.update_casting(asset_id, casting)
 
 
-class AssetCastInResource(Resource):
+class AssetCastInResource(MethodView):
 
     @jwt_required()
     def get(self, asset_id):
@@ -1190,7 +1190,7 @@ class AssetCastInResource(Resource):
         return breakdown_service.get_cast_in(asset_id)
 
 
-class AssetShotAssetInstancesResource(Resource):
+class AssetShotAssetInstancesResource(MethodView):
 
     @jwt_required()
     def get(self, asset_id):
@@ -1247,7 +1247,7 @@ class AssetShotAssetInstancesResource(Resource):
         return breakdown_service.get_shot_asset_instances_for_asset(asset_id)
 
 
-class AssetSceneAssetInstancesResource(Resource):
+class AssetSceneAssetInstancesResource(MethodView):
     @jwt_required()
     def get(self, asset_id):
         """
@@ -1303,7 +1303,7 @@ class AssetSceneAssetInstancesResource(Resource):
         return breakdown_service.get_scene_asset_instances_for_asset(asset_id)
 
 
-class AssetAssetInstancesResource(Resource, ArgsMixin):
+class AssetAssetInstancesResource(MethodView, ArgsMixin):
     @jwt_required()
     def get(self, asset_id):
         """
@@ -1439,7 +1439,7 @@ class AssetAssetInstancesResource(Resource, ArgsMixin):
         return asset_instance, 201
 
 
-class BaseSetSharedAssetsResource(Resource, ArgsMixin):
+class BaseSetSharedAssetsResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def post(self, project_id=None, asset_type_id=None, asset_ids=None):
@@ -1637,7 +1637,7 @@ class SetSharedAssetsResource(BaseSetSharedAssetsResource):
         return super().post(asset_ids=asset_ids)
 
 
-class ProjectAssetsSharedUsedResource(Resource):
+class ProjectAssetsSharedUsedResource(MethodView):
     @jwt_required()
     def get(self, project_id):
         """
@@ -1692,7 +1692,7 @@ class ProjectAssetsSharedUsedResource(Resource):
         return assets_service.get_shared_assets_used_in_project(project_id)
 
 
-class ProjectEpisodeAssetsSharedUsedResource(Resource):
+class ProjectEpisodeAssetsSharedUsedResource(MethodView):
 
     @jwt_required()
     def get(self, project_id, episode_id):

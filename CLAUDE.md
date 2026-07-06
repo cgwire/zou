@@ -138,12 +138,12 @@ app.register_blueprint(<name>_blueprint)
 ### Resource pattern
 
 ```python
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 from zou.app.utils import permissions, validation
 from zou.app.blueprints.<name>.schemas import MySchema
 
-class MyResource(Resource):
+class MyResource(MethodView):
     @jwt_required()
     def post(self):
         permissions.check_manager_permissions()
@@ -161,7 +161,7 @@ For standard model CRUD, extend `BaseModelsResource` / `BaseModelResource` in `z
 
 ## Pydantic Validation (v2)
 
-All request body validation uses Pydantic v2 schemas. **Do not use `reqparse` or `ArgsMixin` for body parsing** — those are legacy patterns; no resource uses `reqparse` for bodies anymore (`ArgsMixin.get_args` remains for query parameters only).
+All request body validation uses Pydantic v2 schemas. **Do not use `ArgsMixin` for body parsing** — `ArgsMixin.get_args` is for query parameters only. `flask_restful` and `reqparse` are gone: resources are plain Flask `MethodView` classes.
 
 ### Schema pattern
 

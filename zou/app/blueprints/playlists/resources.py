@@ -7,7 +7,7 @@ from flask import (
     request,
     send_file as flask_send_file,
 )
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app import config
@@ -41,7 +41,7 @@ from zou.app.utils import fs, permissions, validation
 from zou.utils.movie import EncodingParameters
 
 
-class ProjectPlaylistsResource(Resource, ArgsMixin):
+class ProjectPlaylistsResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def get(self, project_id):
@@ -122,7 +122,7 @@ class ProjectPlaylistsResource(Resource, ArgsMixin):
         )
 
 
-class EpisodePlaylistsResource(Resource, ArgsMixin):
+class EpisodePlaylistsResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def get(self, project_id, episode_id):
@@ -193,7 +193,7 @@ class EpisodePlaylistsResource(Resource, ArgsMixin):
         )
 
 
-class ProjectPlaylistResource(Resource):
+class ProjectPlaylistResource(MethodView):
 
     @jwt_required()
     def get(self, project_id, playlist_id):
@@ -259,7 +259,7 @@ class ProjectPlaylistResource(Resource):
         )
 
 
-class EntityPreviewsResource(Resource):
+class EntityPreviewsResource(MethodView):
 
     @jwt_required()
     def get(self, entity_id):
@@ -308,7 +308,7 @@ class EntityPreviewsResource(Resource):
         return playlists_service.get_preview_files_for_entity(entity_id)
 
 
-class PlaylistAddEntityResource(Resource, ArgsMixin):
+class PlaylistAddEntityResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def post(self, playlist_id):
@@ -364,7 +364,7 @@ class PlaylistAddEntityResource(Resource, ArgsMixin):
         return updated_playlist
 
 
-class PlaylistDownloadResource(Resource):
+class PlaylistDownloadResource(MethodView):
 
     @jwt_required()
     def get(self, playlist_id, build_job_id):
@@ -451,7 +451,7 @@ class PlaylistDownloadResource(Resource):
         )
 
 
-class BuildPlaylistMovieResource(Resource, ArgsMixin):
+class BuildPlaylistMovieResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def get(self, playlist_id):
@@ -560,7 +560,7 @@ class BuildPlaylistMovieResource(Resource, ArgsMixin):
             return job
 
 
-class PlaylistZipDownloadResource(Resource):
+class PlaylistZipDownloadResource(MethodView):
 
     @jwt_required()
     def get(self, playlist_id):
@@ -619,7 +619,7 @@ class PlaylistZipDownloadResource(Resource):
         )
 
 
-class BuildJobResource(Resource):
+class BuildJobResource(MethodView):
 
     @jwt_required()
     def get(self, playlist_id, build_job_id):
@@ -716,7 +716,7 @@ class BuildJobResource(Resource):
         return "", 204
 
 
-class ProjectBuildJobsResource(Resource):
+class ProjectBuildJobsResource(MethodView):
 
     @jwt_required()
     def get(self, project_id):
@@ -766,7 +766,7 @@ class ProjectBuildJobsResource(Resource):
         return playlists_service.get_build_jobs_for_project(project_id)
 
 
-class ProjectAllPlaylistsResource(Resource, ArgsMixin):
+class ProjectAllPlaylistsResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def get(self, project_id):
@@ -817,7 +817,7 @@ class ProjectAllPlaylistsResource(Resource, ArgsMixin):
         return playlists_service.get_playlists_for_project(project_id, page)
 
 
-class TempPlaylistResource(Resource, ArgsMixin):
+class TempPlaylistResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def post(self, project_id):
@@ -893,7 +893,7 @@ class TempPlaylistResource(Resource, ArgsMixin):
         )
 
 
-class NotifyClientsResource(Resource, ArgsMixin):
+class NotifyClientsResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def post(self, playlist_id):
@@ -956,7 +956,7 @@ class NotifyClientsResource(Resource, ArgsMixin):
         return {"status": "success"}
 
 
-class PlaylistShareLinksResource(Resource):
+class PlaylistShareLinksResource(MethodView):
     """
     Manage share links for a playlist (manager+).
     """
@@ -987,7 +987,7 @@ class PlaylistShareLinksResource(Resource):
         return share_link, 201
 
 
-class PlaylistShareLinkResource(Resource):
+class PlaylistShareLinkResource(MethodView):
     """
     Revoke a specific share link (manager+).
     """
@@ -1008,7 +1008,7 @@ class PlaylistShareLinkResource(Resource):
         return playlist_sharing_service.revoke_share_link(token)
 
 
-class PlaylistShareLinkInviteResource(Resource):
+class PlaylistShareLinkInviteResource(MethodView):
     """
     Email a share link to one or more recipients (manager+).
 

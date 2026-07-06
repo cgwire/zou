@@ -5,7 +5,7 @@ import csv
 from sqlalchemy.exc import IntegrityError
 
 from flask import request, current_app
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app.mixin import ArgsMixin
@@ -32,7 +32,7 @@ class RowException(Exception):
         self.message = message
 
 
-class BaseCsvImportResource(Resource, ArgsMixin):
+class BaseCsvImportResource(MethodView, ArgsMixin):
     @jwt_required()
     def post(self, *args):
         uploaded_file = request.files["file"]

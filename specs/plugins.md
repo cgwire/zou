@@ -37,10 +37,10 @@ frontend_studio_enabled = false
 The plugin module must expose a `routes` list:
 
 ```python
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
-class MyResource(Resource):
+class MyResource(MethodView):
     @jwt_required()
     def get(self):
         return {"data": "response"}

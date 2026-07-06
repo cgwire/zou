@@ -1,10 +1,10 @@
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from .models import Count
 
 
-class HelloWorld(Resource):
+class HelloWorld(MethodView):
 
     @jwt_required()
     def get(self):
