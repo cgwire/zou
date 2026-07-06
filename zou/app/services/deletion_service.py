@@ -89,7 +89,11 @@ def remove_comment(comment_id):
                 {"comment_id": comment.id},
                 project_id=str(task.project_id),
             )
-            return comment.serialize()
+        else:
+            # The task may already be gone; still notify listeners so
+            # they drop the comment from their state.
+            events.emit("comment:delete", {"comment_id": comment.id})
+        return comment.serialize()
     else:
         raise CommentNotFoundException
 

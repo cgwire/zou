@@ -46,6 +46,14 @@ class DeletionServiceTestCase(ApiDBTestCase):
         result = deletion_service.remove_comment(comment_id)
         self.assertEqual(result["id"], comment_id)
 
+    def test_remove_comment_with_deleted_task(self):
+        self.generate_fixture_comment()
+        comment_id = self.comment["id"]
+        with mock.patch.object(Task, "get", return_value=None):
+            result = deletion_service.remove_comment(comment_id)
+        self.assertEqual(result["id"], comment_id)
+        self.assertIsNone(Comment.get(comment_id))
+
     def test_remove_comment_not_found(self):
         with self.assertRaises(CommentNotFoundException):
             deletion_service.remove_comment(
