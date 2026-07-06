@@ -23,6 +23,10 @@ class QueryTestCase(ApiDBTestCase):
         self.generate_fixture_asset_character("Asset char 1")
         self.generate_fixture_asset_character("Asset char 2")
 
+    def test_malformed_filters_return_400(self):
+        self.get('data/projects?id=["broken', 400)
+        self.get("data/projects?is_clients_isolated=notabool", 400)
+
     def test_get_by_name(self):
         entities = self.get("data/entities")
         self.assertEqual(len(entities), 5)

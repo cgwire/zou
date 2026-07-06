@@ -186,7 +186,10 @@ def apply_sort_by(model, query, sort_by):
 
 def cast_value(value, field_key):
     if field_key.type.python_type is bool:
-        return string.strtobool(value)
+        try:
+            return string.strtobool(value)
+        except ValueError:
+            raise WrongParameterException(f"Invalid boolean value: {value}")
     elif field_key.type.python_type is uuid.UUID:
         if (
             value

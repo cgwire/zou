@@ -109,7 +109,12 @@ class BaseModelsResource(Resource, ArgsMixin):
                     many_join_filter.append((key, value))
 
                 elif value_is_list:
-                    value_array = json.loads(value)
+                    try:
+                        value_array = json.loads(value)
+                    except ValueError:
+                        raise WrongParameterException(
+                            f"Malformed list filter for field {key}."
+                        )
                     in_filter.append(
                         field_key.in_(
                             [
