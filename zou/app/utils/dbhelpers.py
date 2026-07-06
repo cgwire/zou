@@ -1,13 +1,6 @@
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy_utils import database_exists, create_database
-from sqlalchemy.engine.url import URL
 from sqlalchemy.orm import close_all_sessions
-
-
-def get_db_uri():
-    from zou.app.config import DATABASE
-
-    return URL.create(**DATABASE).render_as_string(hide_password=False)
 
 
 def reset_all():
