@@ -70,8 +70,10 @@ class BaseCsvImportResource(Resource, ArgsMixin):
         self.prepare_import(*args)
         with open(file_path, newline="", encoding="utf-8") as csvfile:
             reader = csv.DictReader(csvfile, dialect=self.get_dialect(csvfile))
-            line_number = 1
             for row in reader:
+                # reader.line_num is the real file line (header included),
+                # so errors point at the line the user sees in the file.
+                line_number = reader.line_num
                 try:
                     row = self.import_row(row, *args)
                     result.append(row)
@@ -89,7 +91,6 @@ class BaseCsvImportResource(Resource, ArgsMixin):
                     )
                 except Exception as e:
                     raise ImportRowException(str(e), line_number)
-                line_number += 1
         return result
 
     def get_dialect(self, csvfile):
