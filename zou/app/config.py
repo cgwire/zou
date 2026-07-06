@@ -92,6 +92,10 @@ PREVIEW_FOLDER = os.getenv(
 )
 PREVIEW_SAVE_SOURCE_FILE = envtobool("PREVIEW_SAVE_SOURCE_FILE", False)
 MAX_IMAGE_PIXELS = int(os.getenv("MAX_IMAGE_PIXELS", 20000 * 20000))
+# Cap on any request body size (Flask MAX_CONTENT_LENGTH). Generous by
+# default so multi-GB movie uploads keep working while unbounded bodies
+# can no longer fill the disk. Set to 0 to disable the limit.
+MAX_CONTENT_LENGTH = int(os.getenv("MAX_CONTENT_LENGTH", 10 * 1024**3)) or None
 TMP_DIR = os.getenv("TMP_DIR", os.path.join(tempfile.gettempdir(), "zou"))
 
 EVENT_STREAM_HOST = os.getenv("EVENT_STREAM_HOST", "localhost")
