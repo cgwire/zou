@@ -18,6 +18,26 @@ from zou.app.services.exception import (
 )
 
 
+def build_db_error_message(exception):
+    """
+    Client-safe message for database errors: the raw exception text embeds
+    SQL statements and bound parameter values, which must stay in the
+    server logs and never reach the client.
+    """
+    if isinstance(exception, IntegrityError):
+        origin = str(getattr(exception, "orig", exception)).lower()
+        if "duplicate key" in origin or "unique constraint" in origin:
+            return "A record with the same unique values already exists."
+        if "foreign key" in origin:
+            return "The change conflicts with records referencing this one."
+        if "not-null" in origin or "null value" in origin:
+            return "A required field is missing."
+        return "The data conflicts with database integrity rules."
+    if isinstance(exception, StatementError):
+        return "One of the provided values has an invalid format."
+    return str(exception)
+
+
 class BaseModelsResource(MethodView, ArgsMixin):
     def __init__(self, model):
         MethodView.__init__(self)
@@ -341,7 +361,7 @@ class BaseModelsResource(MethodView, ArgsMixin):
             KeyError,
         ) as exception:
             current_app.logger.error(str(exception), exc_info=1)
-            return {"message": str(exception)}, 400
+            return {"message": build_db_error_message(exception)}, 400
 
     def emit_create_event(self, instance_dict):
         return events.emit(
@@ -407,19 +427,17 @@ class BaseModelResource(MethodView, ArgsMixin):
         }
         for key, value in data.items():
             if key in columns and isinstance(value, str) and value != "":
-                for fmt in (
-                    "%Y-%m-%dT%H:%M:%S.%f",
-                    "%Y-%m-%dT%H:%M:%S",
-                    "%Y-%m-%d",
-                ):
-                    try:
-                        datetime.datetime.strptime(value, fmt)
-                        break
-                    except ValueError:
-                        continue
-                else:
+                try:
+                    # fromisoformat accepts what PostgreSQL does for ISO
+                    # 8601 (date only, time offsets...); Z must be mapped
+                    # to +00:00 while Python 3.10 is supported.
+                    datetime.datetime.fromisoformat(
+                        value.replace("Z", "+00:00")
+                    )
+                except ValueError:
                     raise WrongParameterException(
-                        f"Invalid date format for '{key}': '{value}'. Expected YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS."
+                        f"Invalid date format for '{key}': '{value}'. "
+                        "Expected an ISO 8601 date or datetime."
                     )
 
     def serialize_instance(self, data, relations=True):
@@ -586,7 +604,7 @@ class BaseModelResource(MethodView, ArgsMixin):
             StatementError,
         ) as exception:
             current_app.logger.error(str(exception), exc_info=1)
-            return {"message": str(exception)}, 400
+            return {"message": build_db_error_message(exception)}, 400
 
     @jwt_required()
     def delete(self, instance_id):
@@ -621,13 +639,9 @@ class BaseModelResource(MethodView, ArgsMixin):
             self.emit_delete_event(instance_dict)
             self.post_delete(instance_dict)
 
-        except IntegrityError as exception:
+        except (IntegrityError, StatementError) as exception:
             current_app.logger.error(str(exception), exc_info=1)
-            return {"message": str(exception)}, 400
-
-        except StatementError as exception:
-            current_app.logger.error(str(exception), exc_info=1)
-            return {"message": str(exception)}, 400
+            return {"message": build_db_error_message(exception)}, 400
 
         return "", 204
 
