@@ -5,7 +5,7 @@ import redis
 import requests
 from flask import Response, abort
 from flask_jwt_extended import jwt_required
-from flask_restful import Resource
+from flask.views import MethodView
 
 from zou import __version__
 from zou.app import app, config
@@ -19,7 +19,7 @@ from zou.app.utils import date_helpers, permissions, shell
 from zou.app.utils.redis import get_redis_url
 
 
-class IndexResource(Resource):
+class IndexResource(MethodView):
     def get(self):
         """
         Get API name and version
@@ -44,7 +44,7 @@ class IndexResource(Resource):
         return {"api": config.APP_NAME, "version": __version__}
 
 
-class BaseStatusResource(Resource):
+class BaseStatusResource(MethodView):
 
     def get_status(self):
         is_db_up = self._check_database()
@@ -380,7 +380,7 @@ class InfluxStatusResource(BaseStatusResource):
         }
 
 
-class StatsResource(Resource):
+class StatsResource(MethodView):
     @jwt_required()
     def get(self):
         """
@@ -418,7 +418,7 @@ class StatsResource(Resource):
         return stats_service.get_main_stats()
 
 
-class ConfigResource(Resource):
+class ConfigResource(MethodView):
     def get(self):
         """
         Get the configuration of the Kitsu instance
@@ -490,7 +490,7 @@ class ConfigResource(Resource):
         return conf
 
 
-class TestEventsResource(Resource):
+class TestEventsResource(MethodView):
     def get(self):
         """
         Generate a test event

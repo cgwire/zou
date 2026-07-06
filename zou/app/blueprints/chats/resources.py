@@ -1,5 +1,5 @@
 from flask import request
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.chats.schemas import ChatMessageSchema
@@ -14,7 +14,7 @@ from zou.app.services import (
 from zou.app.services.exception import WrongParameterException
 
 
-class ChatResource(Resource):
+class ChatResource(MethodView):
 
     @jwt_required()
     def get(self, entity_id):
@@ -69,7 +69,7 @@ class ChatResource(Resource):
         return chat
 
 
-class ChatMessagesResource(Resource):
+class ChatMessagesResource(MethodView):
 
     @jwt_required()
     def get(self, entity_id):
@@ -223,7 +223,7 @@ class ChatMessagesResource(Resource):
         )
 
 
-class ChatMessageResource(Resource):
+class ChatMessageResource(MethodView):
 
     @jwt_required()
     def get(self, entity_id, chat_message_id):

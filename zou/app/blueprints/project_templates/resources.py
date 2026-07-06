@@ -1,6 +1,6 @@
 from flask import request
 from flask_jwt_extended import jwt_required
-from flask_restful import Resource
+from flask.views import MethodView
 
 from zou.app.mixin import ArgsMixin
 from zou.app.services import project_templates_service
@@ -16,7 +16,7 @@ from zou.app.utils import permissions
 # ---------------------------------------------------------------------------
 
 
-class ProjectTemplateTaskTypesResource(Resource, ArgsMixin):
+class ProjectTemplateTaskTypesResource(MethodView, ArgsMixin):
     @jwt_required()
     def get(self, template_id):
         """
@@ -61,7 +61,7 @@ class ProjectTemplateTaskTypesResource(Resource, ArgsMixin):
         return link, 201
 
 
-class ProjectTemplateTaskTypeResource(Resource):
+class ProjectTemplateTaskTypeResource(MethodView):
     @jwt_required()
     def delete(self, template_id, task_type_id):
         """
@@ -80,7 +80,7 @@ class ProjectTemplateTaskTypeResource(Resource):
         return "", 204
 
 
-class ProjectTemplateTaskStatusesResource(Resource, ArgsMixin):
+class ProjectTemplateTaskStatusesResource(MethodView, ArgsMixin):
     @jwt_required()
     def get(self, template_id):
         """
@@ -127,7 +127,7 @@ class ProjectTemplateTaskStatusesResource(Resource, ArgsMixin):
         return link, 201
 
 
-class ProjectTemplateTaskStatusResource(Resource):
+class ProjectTemplateTaskStatusResource(MethodView):
     @jwt_required()
     def delete(self, template_id, task_status_id):
         """
@@ -146,7 +146,7 @@ class ProjectTemplateTaskStatusResource(Resource):
         return "", 204
 
 
-class ProjectTemplateAssetTypesResource(Resource, ArgsMixin):
+class ProjectTemplateAssetTypesResource(MethodView, ArgsMixin):
     @jwt_required()
     def get(self, template_id):
         """
@@ -184,7 +184,7 @@ class ProjectTemplateAssetTypesResource(Resource, ArgsMixin):
         return entry, 201
 
 
-class ProjectTemplateAssetTypeResource(Resource):
+class ProjectTemplateAssetTypeResource(MethodView):
     @jwt_required()
     def delete(self, template_id, asset_type_id):
         """
@@ -203,7 +203,7 @@ class ProjectTemplateAssetTypeResource(Resource):
         return "", 204
 
 
-class ProjectTemplateStatusAutomationsResource(Resource, ArgsMixin):
+class ProjectTemplateStatusAutomationsResource(MethodView, ArgsMixin):
     @jwt_required()
     def get(self, template_id):
         """
@@ -243,7 +243,7 @@ class ProjectTemplateStatusAutomationsResource(Resource, ArgsMixin):
         return entry, 201
 
 
-class ProjectTemplateStatusAutomationResource(Resource):
+class ProjectTemplateStatusAutomationResource(MethodView):
     @jwt_required()
     def delete(self, template_id, status_automation_id):
         """
@@ -262,7 +262,7 @@ class ProjectTemplateStatusAutomationResource(Resource):
         return "", 204
 
 
-class ProjectTemplateBackgroundsResource(Resource, ArgsMixin):
+class ProjectTemplateBackgroundsResource(MethodView, ArgsMixin):
     @jwt_required()
     def get(self, template_id):
         """
@@ -300,7 +300,7 @@ class ProjectTemplateBackgroundsResource(Resource, ArgsMixin):
         return entry, 201
 
 
-class ProjectTemplateBackgroundResource(Resource):
+class ProjectTemplateBackgroundResource(MethodView):
     @jwt_required()
     def delete(self, template_id, preview_background_file_id):
         """
@@ -319,7 +319,7 @@ class ProjectTemplateBackgroundResource(Resource):
         return "", 204
 
 
-class ProjectTemplateDefaultBackgroundResource(Resource):
+class ProjectTemplateDefaultBackgroundResource(MethodView):
     @jwt_required()
     def put(self, template_id):
         """
@@ -342,7 +342,7 @@ class ProjectTemplateDefaultBackgroundResource(Resource):
         return template, 200
 
 
-class ProjectTemplateMetadataDescriptorsResource(Resource):
+class ProjectTemplateMetadataDescriptorsResource(MethodView):
     @jwt_required()
     def put(self, template_id):
         """
@@ -375,7 +375,7 @@ class ProjectTemplateMetadataDescriptorsResource(Resource):
 # ---------------------------------------------------------------------------
 
 
-class ProjectTemplateFromProjectResource(Resource, ArgsMixin):
+class ProjectTemplateFromProjectResource(MethodView, ArgsMixin):
     @jwt_required()
     def post(self, project_id):
         """
@@ -405,7 +405,7 @@ class ProjectTemplateFromProjectResource(Resource, ArgsMixin):
         return template, 201
 
 
-class ApplyProjectTemplateResource(Resource):
+class ApplyProjectTemplateResource(MethodView):
     @jwt_required()
     def post(self, project_id, template_id):
         """

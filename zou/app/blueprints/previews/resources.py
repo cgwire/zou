@@ -3,7 +3,7 @@ import orjson as json
 
 from flask import request, current_app
 from flask import send_file as flask_send_file
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 from flask_fs.errors import FileNotFound
 from werkzeug.exceptions import NotFound
@@ -428,7 +428,7 @@ class BaseNewPreviewFilePicture:
 
 
 class CreatePreviewFilePictureResource(
-    BaseNewPreviewFilePicture, Resource, ArgsMixin
+    BaseNewPreviewFilePicture, MethodView, ArgsMixin
 ):
 
     @jwt_required()
@@ -604,7 +604,7 @@ class BaseBatchComment(BaseNewPreviewFilePicture, ArgsMixin):
         return new_comments, 201
 
 
-class AddTaskBatchCommentResource(BaseBatchComment, Resource):
+class AddTaskBatchCommentResource(BaseBatchComment, MethodView):
 
     @jwt_required()
     def post(self, task_id):
@@ -651,7 +651,7 @@ class AddTaskBatchCommentResource(BaseBatchComment, Resource):
         return self.process_comments(task_id)
 
 
-class AddTasksBatchCommentResource(BaseBatchComment, Resource):
+class AddTasksBatchCommentResource(BaseBatchComment, MethodView):
 
     @jwt_required()
     def post(self):
@@ -689,13 +689,13 @@ class AddTasksBatchCommentResource(BaseBatchComment, Resource):
         return self.process_comments()
 
 
-class BasePreviewFileResource(Resource):
+class BasePreviewFileResource(MethodView):
     """
     Base class to download a preview file.
     """
 
     def __init__(self):
-        Resource.__init__(self)
+        MethodView.__init__(self)
         self.preview_file = None
         self.last_modified = None
 
@@ -999,10 +999,10 @@ class PreviewFileDownloadResource(BasePreviewFileResource):
             raise PreviewFileNotFoundException
 
 
-class AttachmentThumbnailResource(Resource):
+class AttachmentThumbnailResource(MethodView):
 
     def __init__(self):
-        Resource.__init__(self)
+        MethodView.__init__(self)
         self.attachment_file = None
 
     def is_allowed(self, attachment_id):
@@ -1174,7 +1174,7 @@ class PreviewFileOriginalResource(BasePreviewFileThumbnailResource):
         BasePreviewPictureResource.__init__(self, "original")
 
 
-class BaseThumbnailResource(Resource):
+class BaseThumbnailResource(MethodView):
     """
     Base class to post and get a thumbnail.
     """
@@ -1186,7 +1186,7 @@ class BaseThumbnailResource(Resource):
         update_model_func,
         size=thumbnail_utils.RECTANGLE_SIZE,
     ):
-        Resource.__init__(self)
+        MethodView.__init__(self)
         self.data_type = data_type
         self.get_model_func = get_model_func
         self.update_model_func = update_model_func
@@ -1396,7 +1396,7 @@ class CreateProjectThumbnailResource(ProjectThumbnailResource):
         return user_service.check_manager_project_access(instance_id)
 
 
-class SetMainPreviewResource(Resource, ArgsMixin):
+class SetMainPreviewResource(MethodView, ArgsMixin):
     """
     Set given preview as main preview of the related entity. This preview will
     be used to illustrate the entity.
@@ -1473,7 +1473,7 @@ class SetMainPreviewResource(Resource, ArgsMixin):
         return entity
 
 
-class UpdatePreviewPositionResource(Resource, ArgsMixin):
+class UpdatePreviewPositionResource(MethodView, ArgsMixin):
     """
     Allow to change orders of previews for a single revision.
     """
@@ -1534,7 +1534,7 @@ class UpdatePreviewPositionResource(Resource, ArgsMixin):
         )
 
 
-class UpdateAnnotationsResource(Resource, ArgsMixin):
+class UpdateAnnotationsResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def put(self, preview_file_id):
@@ -1638,7 +1638,7 @@ class UpdateAnnotationsResource(Resource, ArgsMixin):
         )
 
 
-class RunningPreviewFiles(Resource, ArgsMixin):
+class RunningPreviewFiles(MethodView, ArgsMixin):
     """
     Retrieve all preview files from open productions with states equals
     to processing or broken
@@ -1710,7 +1710,7 @@ class RunningPreviewFiles(Resource, ArgsMixin):
         )
 
 
-class ExtractFrameFromPreview(Resource, ArgsMixin):
+class ExtractFrameFromPreview(MethodView, ArgsMixin):
     """
     Extract the current frame of the preview
     """
@@ -1772,7 +1772,7 @@ class ExtractFrameFromPreview(Resource, ArgsMixin):
             os.remove(extracted_frame_path)
 
 
-class ExtractAnnotatedFrameFromPreview(Resource):
+class ExtractAnnotatedFrameFromPreview(MethodView):
     """
     Extract a frame (movie) or the picture itself, with its matching
     annotation rendered on top.
@@ -1875,7 +1875,7 @@ def _serve_annotated_frames_bundle(
         os.remove(bundle_path)
 
 
-class ExtractAllAnnotatedFramesFromPreview(Resource):
+class ExtractAllAnnotatedFramesFromPreview(MethodView):
     """
     Build a zip archive containing every annotated frame (movie) or
     every annotated copy of the picture preview.
@@ -1923,7 +1923,7 @@ class ExtractAllAnnotatedFramesFromPreview(Resource):
         )
 
 
-class ExtractAllAnnotatedFramesAsPdfFromPreview(Resource):
+class ExtractAllAnnotatedFramesAsPdfFromPreview(MethodView):
     """
     Build a multi-page PDF containing every annotated frame (movie) or
     every annotated copy of the picture preview.
@@ -1971,7 +1971,7 @@ class ExtractAllAnnotatedFramesAsPdfFromPreview(Resource):
         )
 
 
-class ExtractTileFromPreview(Resource):
+class ExtractTileFromPreview(MethodView):
     """
     Extract a tile from a preview_file
     """
@@ -2022,7 +2022,7 @@ class ExtractTileFromPreview(Resource):
             os.remove(extracted_tile_path)
 
 
-class CreatePreviewBackgroundFileResource(Resource):
+class CreatePreviewBackgroundFileResource(MethodView):
     """
     Main resource to add a preview background file. It stores the preview background
     file and generates a rectangle thumbnail.
@@ -2196,7 +2196,7 @@ class CreatePreviewBackgroundFileResource(Resource):
         )
 
 
-class PreviewBackgroundFileResource(Resource):
+class PreviewBackgroundFileResource(MethodView):
     """
     Main resource to download a preview background file.
     """

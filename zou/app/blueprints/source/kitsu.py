@@ -1,7 +1,7 @@
 from sqlalchemy.exc import IntegrityError
 
 from flask import request
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app.models.attachment_file import AttachmentFile
@@ -52,9 +52,9 @@ def _project_id_from_attachment(entry):
     return None
 
 
-class BaseImportKitsuResource(Resource, ArgsMixin):
+class BaseImportKitsuResource(MethodView, ArgsMixin):
     def __init__(self, model):
-        Resource.__init__(self)
+        MethodView.__init__(self)
         self.model = model
 
     @jwt_required()

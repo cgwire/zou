@@ -1,5 +1,5 @@
 from flask import request
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app.services import (
@@ -16,7 +16,7 @@ from zou.app.utils import query, permissions, validation
 from zou.app.blueprints.concepts.schemas import NewConceptSchema
 
 
-class ConceptResource(Resource, ArgsMixin):
+class ConceptResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def get(self, concept_id):
@@ -116,7 +116,7 @@ class ConceptResource(Resource, ArgsMixin):
         return "", 204
 
 
-class AllConceptsResource(Resource):
+class AllConceptsResource(MethodView):
 
     @jwt_required()
     def get(self):
@@ -197,7 +197,7 @@ class AllConceptsResource(Resource):
         return concepts_service.get_concepts(criterions)
 
 
-class ConceptTaskTypesResource(Resource):
+class ConceptTaskTypesResource(MethodView):
 
     @jwt_required()
     def get(self, concept_id):
@@ -256,7 +256,7 @@ class ConceptTaskTypesResource(Resource):
         return tasks_service.get_task_types_for_concept(concept_id)
 
 
-class ConceptTasksResource(Resource, ArgsMixin):
+class ConceptTasksResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def get(self, concept_id):
@@ -341,7 +341,7 @@ class ConceptTasksResource(Resource, ArgsMixin):
         )
 
 
-class ConceptPreviewsResource(Resource):
+class ConceptPreviewsResource(MethodView):
 
     @jwt_required()
     def get(self, concept_id):
@@ -409,7 +409,7 @@ class ConceptPreviewsResource(Resource):
         return playlists_service.get_preview_files_for_entity(concept_id)
 
 
-class ConceptsAndTasksResource(Resource):
+class ConceptsAndTasksResource(MethodView):
     @jwt_required()
     def get(self):
         """
@@ -504,7 +504,7 @@ class ConceptsAndTasksResource(Resource):
         return concepts_service.get_concepts_and_tasks(criterions)
 
 
-class ProjectConceptsResource(Resource, ArgsMixin):
+class ProjectConceptsResource(MethodView, ArgsMixin):
     @jwt_required()
     def get(self, project_id):
         """

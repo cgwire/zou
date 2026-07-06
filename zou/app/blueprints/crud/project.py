@@ -1,6 +1,6 @@
 from flask_jwt_extended import jwt_required
 
-from flask_restful import Resource
+from flask.views import MethodView
 
 
 from zou.app.mixin import ArgsMixin
@@ -551,7 +551,7 @@ class ProjectResource(BaseModelResource, ArgsMixin):
             return "", 204
 
 
-class ProjectTaskTypeLinksResource(Resource, ArgsMixin):
+class ProjectTaskTypeLinksResource(MethodView, ArgsMixin):
     @jwt_required()
     def post(self):
         """
@@ -629,7 +629,7 @@ class ProjectTaskTypeLinksResource(Resource, ArgsMixin):
         return task_type_link, 201
 
 
-class ProjectTaskStatusLinksResource(Resource, ArgsMixin):
+class ProjectTaskStatusLinksResource(MethodView, ArgsMixin):
     @jwt_required()
     def post(self):
         """

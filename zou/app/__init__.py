@@ -143,6 +143,17 @@ def page_not_found(error):
     return jsonify(error=True, message=str(error)), 404
 
 
+@app.errorhandler(HTTPException)
+def http_error(error):
+    """
+    Return HTTP errors raised by resources (abort calls) as JSON instead
+    of the default werkzeug HTML page, as flask_restful used to do.
+    """
+    if error.response is not None:
+        return error.response
+    return jsonify(error=True, message=error.description), error.code
+
+
 @app.errorhandler(WrongIdFormatException)
 def id_parameter_format_error(error):
     return (

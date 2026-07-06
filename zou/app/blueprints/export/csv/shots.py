@@ -1,4 +1,4 @@
-from flask_restful import Resource
+from flask.views import MethodView
 from flask import request
 from flask_jwt_extended import jwt_required
 from slugify import slugify
@@ -13,7 +13,7 @@ from zou.app.services import (
 from zou.app.utils import csv_utils, query
 
 
-class ShotsCsvExport(Resource):
+class ShotsCsvExport(MethodView):
     @jwt_required()
     def get(self, project_id):
         """

@@ -1,5 +1,5 @@
 from flask import abort, current_app, request
-from flask_restful import Resource
+from flask.views import MethodView
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from zou.app import config
@@ -7,7 +7,7 @@ from zou.app.models.person import Person
 from zou.app.stores import config_store
 
 
-class ConfigCheckResource(Resource):
+class ConfigCheckResource(MethodView):
 
     def get(self):
         token = request.headers.get("Authorization", "")

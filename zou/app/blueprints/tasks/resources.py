@@ -2,7 +2,7 @@ import datetime
 
 
 from flask import request
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app.services.exception import (
@@ -48,7 +48,7 @@ from zou.app.blueprints.tasks.schemas import (
 )
 
 
-class AddPreviewResource(Resource, ArgsMixin):
+class AddPreviewResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def post(self, task_id, comment_id):
@@ -131,7 +131,7 @@ class AddPreviewResource(Resource, ArgsMixin):
         return preview_file, 201
 
 
-class AddExtraPreviewResource(Resource, ArgsMixin):
+class AddExtraPreviewResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def post(self, task_id, comment_id, preview_file_id):
@@ -269,7 +269,7 @@ class AddExtraPreviewResource(Resource, ArgsMixin):
         return "", 204
 
 
-class TaskPreviewsResource(Resource):
+class TaskPreviewsResource(MethodView):
 
     @jwt_required()
     def get(self, task_id):
@@ -325,7 +325,7 @@ class TaskPreviewsResource(Resource):
         return files_service.get_preview_files_for_task(task_id)
 
 
-class TaskCommentsResource(Resource):
+class TaskCommentsResource(MethodView):
 
     @jwt_required()
     def get(self, task_id):
@@ -386,7 +386,7 @@ class TaskCommentsResource(Resource):
         )
 
 
-class TaskCommentResource(Resource):
+class TaskCommentResource(MethodView):
 
     @jwt_required()
     def get(self, task_id, comment_id):
@@ -511,7 +511,7 @@ class TaskCommentResource(Resource):
         return "", 204
 
 
-class PersonTasksResource(Resource):
+class PersonTasksResource(MethodView):
 
     @jwt_required()
     def get(self, person_id):
@@ -590,7 +590,7 @@ class PersonTasksResource(Resource):
         return tasks_service.get_person_tasks(person_id, projects)
 
 
-class PersonRelatedTasksResource(Resource):
+class PersonRelatedTasksResource(MethodView):
 
     @jwt_required()
     def get(self, person_id, task_type_id):
@@ -666,7 +666,7 @@ class PersonRelatedTasksResource(Resource):
         return tasks_service.get_person_related_tasks(person_id, task_type_id)
 
 
-class PersonDoneTasksResource(Resource):
+class PersonDoneTasksResource(MethodView):
 
     @jwt_required()
     def get(self, person_id):
@@ -745,7 +745,7 @@ class PersonDoneTasksResource(Resource):
         return tasks_service.get_person_done_tasks(person_id, projects)
 
 
-class CreateShotTasksResource(Resource):
+class CreateShotTasksResource(MethodView):
 
     @jwt_required()
     def post(self, project_id, task_type_id):
@@ -837,7 +837,7 @@ class CreateShotTasksResource(Resource):
         return tasks, 201
 
 
-class CreateConceptTasksResource(Resource):
+class CreateConceptTasksResource(MethodView):
 
     @jwt_required()
     def post(self, project_id, task_type_id):
@@ -937,7 +937,7 @@ class CreateConceptTasksResource(Resource):
         return tasks, 201
 
 
-class CreateEntityTasksResource(Resource):
+class CreateEntityTasksResource(MethodView):
 
     @jwt_required()
     def post(self, project_id, entity_type, task_type_id):
@@ -1043,7 +1043,7 @@ class CreateEntityTasksResource(Resource):
         return tasks, 201
 
 
-class CreateAssetTasksResource(Resource):
+class CreateAssetTasksResource(MethodView):
 
     @jwt_required()
     def post(self, project_id, task_type_id):
@@ -1135,7 +1135,7 @@ class CreateAssetTasksResource(Resource):
         return tasks, 201
 
 
-class CreateEditTasksResource(Resource):
+class CreateEditTasksResource(MethodView):
 
     @jwt_required()
     def post(self, project_id, task_type_id):
@@ -1227,7 +1227,7 @@ class CreateEditTasksResource(Resource):
         return tasks, 201
 
 
-class ToReviewResource(Resource, ArgsMixin):
+class ToReviewResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def put(self, task_id):
@@ -1350,7 +1350,7 @@ class ToReviewResource(Resource, ArgsMixin):
         return {"folder_path": folder_path, "file_name": file_name}
 
 
-class ClearAssignationResource(Resource, ArgsMixin):
+class ClearAssignationResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def put(self):
@@ -1413,7 +1413,7 @@ class ClearAssignationResource(Resource, ArgsMixin):
         return tasks
 
 
-class TasksAssignResource(Resource, ArgsMixin):
+class TasksAssignResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def put(self, person_id):
@@ -1520,7 +1520,7 @@ class TasksAssignResource(Resource, ArgsMixin):
         return tasks
 
 
-class TaskAssignResource(Resource, ArgsMixin):
+class TaskAssignResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def put(self, task_id):
@@ -1610,7 +1610,7 @@ class TaskAssignResource(Resource, ArgsMixin):
         return task
 
 
-class TaskFullResource(Resource):
+class TaskFullResource(MethodView):
 
     @jwt_required()
     def get(self, task_id):
@@ -1704,7 +1704,7 @@ class TaskFullResource(Resource):
         return task
 
 
-class TaskForEntityResource(Resource):
+class TaskForEntityResource(MethodView):
 
     @jwt_required()
     def get(self, entity_id, task_type_id):
@@ -1777,7 +1777,7 @@ class TaskForEntityResource(Resource):
         )
 
 
-class SetTimeSpentResource(Resource, ArgsMixin):
+class SetTimeSpentResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def post(self, task_id, date, person_id):
@@ -1947,7 +1947,7 @@ class SetTimeSpentResource(Resource, ArgsMixin):
             raise WrongParameterException("Wrong date format.")
 
 
-class AddTimeSpentResource(Resource, ArgsMixin):
+class AddTimeSpentResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def post(self, task_id, date, person_id):
@@ -2041,7 +2041,7 @@ class AddTimeSpentResource(Resource, ArgsMixin):
             raise WrongParameterException("Wrong date format.")
 
 
-class GetTimeSpentResource(Resource):
+class GetTimeSpentResource(MethodView):
 
     @jwt_required()
     def get(self, task_id):
@@ -2096,7 +2096,7 @@ class GetTimeSpentResource(Resource):
         return tasks_service.get_time_spents(task_id)
 
 
-class GetTimeSpentDateResource(Resource):
+class GetTimeSpentDateResource(MethodView):
 
     @jwt_required()
     def get(self, task_id, date):
@@ -2161,7 +2161,7 @@ class GetTimeSpentDateResource(Resource):
             raise WrongParameterException("Wrong date format.")
 
 
-class DeleteAllTasksForTaskTypeResource(Resource):
+class DeleteAllTasksForTaskTypeResource(MethodView):
 
     @jwt_required()
     def delete(self, project_id, task_type_id):
@@ -2201,7 +2201,7 @@ class DeleteAllTasksForTaskTypeResource(Resource):
         return "", 204
 
 
-class DeleteTasksResource(Resource):
+class DeleteTasksResource(MethodView):
 
     @jwt_required()
     def post(self, project_id):
@@ -2241,7 +2241,7 @@ class DeleteTasksResource(Resource):
         return task_ids, 200
 
 
-class ProjectSubscriptionsResource(Resource):
+class ProjectSubscriptionsResource(MethodView):
 
     @jwt_required()
     @permissions.require_admin
@@ -2292,7 +2292,7 @@ class ProjectSubscriptionsResource(Resource):
         return notifications_service.get_subscriptions_for_project(project_id)
 
 
-class ProjectNotificationsResource(Resource, ArgsMixin):
+class ProjectNotificationsResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_admin
@@ -2369,7 +2369,7 @@ class ProjectNotificationsResource(Resource, ArgsMixin):
         )
 
 
-class ProjectTasksResource(Resource, ArgsMixin):
+class ProjectTasksResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def get(self, project_id):
@@ -2466,7 +2466,7 @@ class ProjectTasksResource(Resource, ArgsMixin):
         )
 
 
-class ProjectCommentsResource(Resource, ArgsMixin):
+class ProjectCommentsResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def get(self, project_id):
@@ -2536,7 +2536,7 @@ class ProjectCommentsResource(Resource, ArgsMixin):
         return tasks_service.get_comments_for_project(project_id, page, limit)
 
 
-class ProjectPreviewFilesResource(Resource, ArgsMixin):
+class ProjectPreviewFilesResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_admin
@@ -2608,7 +2608,7 @@ class ProjectPreviewFilesResource(Resource, ArgsMixin):
         return files_service.get_preview_files_for_project(project_id, page)
 
 
-class SetTaskMainPreviewResource(Resource):
+class SetTaskMainPreviewResource(MethodView):
     @jwt_required()
     def put(self, task_id):
         """
@@ -2680,7 +2680,7 @@ class SetTaskMainPreviewResource(Resource):
         return entity
 
 
-class PersonsTasksDatesResource(Resource, ArgsMixin):
+class PersonsTasksDatesResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def get(self):
@@ -2748,7 +2748,7 @@ class PersonsTasksDatesResource(Resource, ArgsMixin):
         )
 
 
-class OpenTasksResource(Resource, ArgsMixin):
+class OpenTasksResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def get(self):
@@ -2903,7 +2903,7 @@ class OpenTasksResource(Resource, ArgsMixin):
         )
 
 
-class OpenTasksStatsResource(Resource, ArgsMixin):
+class OpenTasksStatsResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def get(self):

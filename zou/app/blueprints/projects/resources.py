@@ -1,5 +1,5 @@
 from flask import abort
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 
@@ -38,7 +38,7 @@ from zou.app.services.exception import (
 from zou.app.models.metadata_descriptor import METADATA_DESCRIPTOR_TYPES
 
 
-class OpenProjectsResource(Resource, ArgsMixin):
+class OpenProjectsResource(MethodView, ArgsMixin):
     """
     Return the list of projects currently running. Most of the time, past
     projects are not needed.
@@ -93,7 +93,7 @@ class OpenProjectsResource(Resource, ArgsMixin):
             return user_service.get_open_projects(name)
 
 
-class AllProjectsResource(Resource, ArgsMixin):
+class AllProjectsResource(MethodView, ArgsMixin):
     """
     Return all projects listed in database. Ensure that user has at least
     the manager level before that.
@@ -156,7 +156,7 @@ class AllProjectsResource(Resource, ArgsMixin):
                 return [user_service.get_project_by_name(name)]
 
 
-class ProductionTeamResource(Resource, ArgsMixin):
+class ProductionTeamResource(MethodView, ArgsMixin):
     """
     Allow to manage the people listed in a production team.
     """
@@ -276,7 +276,7 @@ class ProductionTeamResource(Resource, ArgsMixin):
         )
 
 
-class ProductionTeamRemoveResource(Resource):
+class ProductionTeamRemoveResource(MethodView):
 
     @jwt_required()
     def delete(self, project_id, person_id):
@@ -312,7 +312,7 @@ class ProductionTeamRemoveResource(Resource):
         return "", 204
 
 
-class ProductionAssetTypeResource(Resource, ArgsMixin):
+class ProductionAssetTypeResource(MethodView, ArgsMixin):
     """
     Allow to add an asset type linked to a production.
     """
@@ -377,7 +377,7 @@ class ProductionAssetTypeResource(Resource, ArgsMixin):
         return project, 201
 
 
-class ProductionAssetTypeRemoveResource(Resource):
+class ProductionAssetTypeRemoveResource(MethodView):
 
     @jwt_required()
     def delete(self, project_id, asset_type_id):
@@ -413,7 +413,7 @@ class ProductionAssetTypeRemoveResource(Resource):
         return "", 204
 
 
-class ProductionTaskTypesResource(Resource, ArgsMixin):
+class ProductionTaskTypesResource(MethodView, ArgsMixin):
     """
     Retrieve task types linked to the production
     """
@@ -449,7 +449,7 @@ class ProductionTaskTypesResource(Resource, ArgsMixin):
         return projects_service.get_project_task_types(project_id)
 
 
-class ProductionTaskTypeResource(Resource, ArgsMixin):
+class ProductionTaskTypeResource(MethodView, ArgsMixin):
     """
     Allow to add a task type linked to a production.
     """
@@ -518,7 +518,7 @@ class ProductionTaskTypeResource(Resource, ArgsMixin):
         return project, 201
 
 
-class ProductionTaskTypeRemoveResource(Resource):
+class ProductionTaskTypeRemoveResource(MethodView):
     """
     Allow to remove a task type linked to a production.
     """
@@ -557,7 +557,7 @@ class ProductionTaskTypeRemoveResource(Resource):
         return "", 204
 
 
-class ProductionTaskStatusResource(Resource, ArgsMixin):
+class ProductionTaskStatusResource(MethodView, ArgsMixin):
     """
     Allow to add a task type linked to a production.
     """
@@ -652,7 +652,7 @@ class ProductionTaskStatusResource(Resource, ArgsMixin):
         return project, 201
 
 
-class ProductionTaskStatusRemoveResource(Resource):
+class ProductionTaskStatusRemoveResource(MethodView):
     """
     Allow to remove a task status linked to a production.
     """
@@ -691,7 +691,7 @@ class ProductionTaskStatusRemoveResource(Resource):
         return "", 204
 
 
-class ProductionStatusAutomationResource(Resource, ArgsMixin):
+class ProductionStatusAutomationResource(MethodView, ArgsMixin):
     """
     Allow to add a status automation linked to a production.
     """
@@ -784,7 +784,7 @@ class ProductionStatusAutomationResource(Resource, ArgsMixin):
         return project, 201
 
 
-class ProductionStatusAutomationRemoveResource(Resource):
+class ProductionStatusAutomationRemoveResource(MethodView):
     """
     Allow to remove a status automation linked to a production.
     """
@@ -825,7 +825,7 @@ class ProductionStatusAutomationRemoveResource(Resource):
         return "", 204
 
 
-class ProductionPreviewBackgroundFileResource(Resource, ArgsMixin):
+class ProductionPreviewBackgroundFileResource(MethodView, ArgsMixin):
     """
     Allow to add a preview background file linked to a production.
     """
@@ -920,7 +920,7 @@ class ProductionPreviewBackgroundFileResource(Resource, ArgsMixin):
         return project, 201
 
 
-class ProductionPreviewBackgroundFileRemoveResource(Resource):
+class ProductionPreviewBackgroundFileRemoveResource(MethodView):
     """
     Allow to remove a preview background file linked to a production.
     """
@@ -961,7 +961,7 @@ class ProductionPreviewBackgroundFileRemoveResource(Resource):
         return "", 204
 
 
-class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
+class ProductionMetadataDescriptorsResource(MethodView, ArgsMixin):
     """
     Resource to get and create metadata descriptors. It serves to describe
     extra fields listed in the data attribute of entities.
@@ -1125,7 +1125,7 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
         )
 
 
-class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
+class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
     """
     Resource to get, update or delete a metadata descriptor. Descriptors serve
     to describe extra fields listed in the data attribute of entities.
@@ -1289,7 +1289,7 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
         return "", 204
 
 
-class ProductionMetadataDescriptorsReorderResource(Resource, ArgsMixin):
+class ProductionMetadataDescriptorsReorderResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def post(self, project_id):
@@ -1392,7 +1392,7 @@ class ProductionMetadataDescriptorsReorderResource(Resource, ArgsMixin):
         )
 
 
-class ProductionTimeSpentsResource(Resource):
+class ProductionTimeSpentsResource(MethodView):
     """
     Resource to retrieve time spents for given production.
     """
@@ -1428,7 +1428,7 @@ class ProductionTimeSpentsResource(Resource):
         return tasks_service.get_time_spents_for_project(project_id)
 
 
-class ProductionMilestonesResource(Resource):
+class ProductionMilestonesResource(MethodView):
     """
     Resource to retrieve milestones for given production.
     """
@@ -1464,7 +1464,7 @@ class ProductionMilestonesResource(Resource):
         return schedule_service.get_milestones_for_project(project_id)
 
 
-class ProductionScheduleItemsResource(Resource):
+class ProductionScheduleItemsResource(MethodView):
     """
     Resource to retrieve schedule items for given production.
     """
@@ -1501,7 +1501,7 @@ class ProductionScheduleItemsResource(Resource):
         return schedule_service.get_schedule_items(project_id)
 
 
-class ProductionTaskTypeScheduleItemsResource(Resource):
+class ProductionTaskTypeScheduleItemsResource(MethodView):
     """
     Resource to retrieve schedule items for given production.
     """
@@ -1538,7 +1538,7 @@ class ProductionTaskTypeScheduleItemsResource(Resource):
         return schedule_service.get_task_types_schedule_items(project_id)
 
 
-class ProductionAssetTypesScheduleItemsResource(Resource):
+class ProductionAssetTypesScheduleItemsResource(MethodView):
     """
     Resource to retrieve asset types schedule items for given task type.
     """
@@ -1585,7 +1585,7 @@ class ProductionAssetTypesScheduleItemsResource(Resource):
         )
 
 
-class ProductionEpisodesScheduleItemsResource(Resource, ArgsMixin):
+class ProductionEpisodesScheduleItemsResource(MethodView, ArgsMixin):
     """
     Resource to retrieve episodes schedule items for given task type.
     """
@@ -1634,7 +1634,7 @@ class ProductionEpisodesScheduleItemsResource(Resource, ArgsMixin):
         )
 
 
-class ProductionSequencesScheduleItemsResource(Resource):
+class ProductionSequencesScheduleItemsResource(MethodView):
     """
     Resource to retrieve sequences schedule items for given task type.
     """
@@ -1681,7 +1681,7 @@ class ProductionSequencesScheduleItemsResource(Resource):
         )
 
 
-class ProductionBudgetsResource(Resource, ArgsMixin):
+class ProductionBudgetsResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def get(self, project_id):
@@ -1781,7 +1781,7 @@ class ProductionBudgetsResource(Resource, ArgsMixin):
         )
 
 
-class ProductionBudgetResource(Resource, ArgsMixin):
+class ProductionBudgetResource(MethodView, ArgsMixin):
     """
     Resource to retrieve a budget for given production.
     """
@@ -1919,7 +1919,7 @@ class ProductionBudgetResource(Resource, ArgsMixin):
         return "", 204
 
 
-class ProductionBudgetEntriesResource(Resource, ArgsMixin):
+class ProductionBudgetEntriesResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def get(self, project_id, budget_id):
@@ -2064,7 +2064,7 @@ class ProductionBudgetEntriesResource(Resource, ArgsMixin):
         )
 
 
-class ProductionBudgetEntryResource(Resource, ArgsMixin):
+class ProductionBudgetEntryResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def get(self, project_id, budget_id, entry_id):
@@ -2253,7 +2253,7 @@ class ProductionBudgetEntryResource(Resource, ArgsMixin):
         return "", 204
 
 
-class ProductionMonthTimeSpentsResource(Resource, ArgsMixin):
+class ProductionMonthTimeSpentsResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def get(self, project_id):
@@ -2290,7 +2290,7 @@ class ProductionMonthTimeSpentsResource(Resource, ArgsMixin):
         )
 
 
-class ProductionScheduleVersionTaskLinksResource(Resource, ArgsMixin):
+class ProductionScheduleVersionTaskLinksResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def get(self, production_schedule_version_id):
@@ -2359,7 +2359,7 @@ class ProductionScheduleVersionTaskLinksResource(Resource, ArgsMixin):
 
 
 class ProductionScheduleVersionSetTaskLinksFromTasksResource(
-    Resource, ArgsMixin
+    MethodView, ArgsMixin
 ):
 
     @jwt_required()
@@ -2404,7 +2404,7 @@ class ProductionScheduleVersionSetTaskLinksFromTasksResource(
         )
 
 
-class ProductionScheduleVersionApplyToProductionResource(Resource, ArgsMixin):
+class ProductionScheduleVersionApplyToProductionResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def post(self, production_schedule_version_id):
@@ -2450,7 +2450,7 @@ class ProductionScheduleVersionApplyToProductionResource(Resource, ArgsMixin):
 
 
 class ProductionScheduleVersionSetTaskLinksFromProductionScheduleVersionResource(
-    Resource, ArgsMixin
+    MethodView, ArgsMixin
 ):
 
     @jwt_required()
@@ -2529,7 +2529,7 @@ class ProductionScheduleVersionSetTaskLinksFromProductionScheduleVersionResource
         )
 
 
-class ProductionTaskTypesTimeSpentsResource(Resource, ArgsMixin):
+class ProductionTaskTypesTimeSpentsResource(MethodView, ArgsMixin):
     """
     Retrieve time spents for a task type in the production
     """
@@ -2622,7 +2622,7 @@ class ProductionTaskTypesTimeSpentsResource(Resource, ArgsMixin):
             )
 
 
-class ProductionDayOffsResource(Resource, ArgsMixin):
+class ProductionDayOffsResource(MethodView, ArgsMixin):
     """
     Retrieve all day offs for a production
     """

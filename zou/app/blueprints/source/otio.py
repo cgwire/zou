@@ -5,12 +5,13 @@ import re
 from string import Template
 
 from flask import request, current_app
-from flask_restful import Resource, inputs
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app import config
 
 from zou.app.mixin import ArgsMixin
+from zou.app.utils import fields
 from zou.app.services import (
     shots_service,
     projects_service,
@@ -39,7 +40,7 @@ mapping_substitutions_to_regex = {
 }
 
 
-class OTIOBaseResource(Resource, ArgsMixin):
+class OTIOBaseResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def post(self, project_id, episode_id=None):
@@ -421,7 +422,7 @@ class OTIOImportResource(OTIOBaseResource):
                     False,
                     str,
                 ),
-                ("match_case", True, False, inputs.boolean),
+                ("match_case", True, False, fields.boolean),
             ]
         )
 
@@ -555,6 +556,6 @@ class OTIOImportEpisodeResource(OTIOBaseResource):
                     False,
                     str,
                 ),
-                ("match_case", True, False, inputs.boolean),
+                ("match_case", True, False, fields.boolean),
             ]
         )

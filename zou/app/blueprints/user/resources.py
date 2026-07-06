@@ -1,5 +1,5 @@
 from flask import abort, request
-from flask_restful import Resource, inputs
+from flask.views import MethodView
 
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
@@ -26,7 +26,7 @@ from zou.app.services.exception import (
 )
 
 
-class AssetTasksResource(Resource):
+class AssetTasksResource(MethodView):
 
     def get(self, asset_id):
         """
@@ -100,7 +100,7 @@ class AssetTasksResource(Resource):
         return user_service.get_tasks_for_entity(asset_id)
 
 
-class AssetTaskTypesResource(Resource):
+class AssetTaskTypesResource(MethodView):
 
     def get(self, asset_id):
         """
@@ -169,7 +169,7 @@ class AssetTaskTypesResource(Resource):
         return user_service.get_task_types_for_entity(asset_id)
 
 
-class ShotTaskTypesResource(Resource):
+class ShotTaskTypesResource(MethodView):
 
     def get(self, shot_id):
         """
@@ -238,7 +238,7 @@ class ShotTaskTypesResource(Resource):
         return user_service.get_task_types_for_entity(shot_id)
 
 
-class SceneTaskTypesResource(Resource):
+class SceneTaskTypesResource(MethodView):
     """
     Return tasks related to given scene for current user.
     """
@@ -310,7 +310,7 @@ class SceneTaskTypesResource(Resource):
         return user_service.get_task_types_for_entity(scene_id)
 
 
-class SequenceTaskTypesResource(Resource):
+class SequenceTaskTypesResource(MethodView):
 
     def get(self, sequence_id):
         """
@@ -379,7 +379,7 @@ class SequenceTaskTypesResource(Resource):
         return user_service.get_task_types_for_entity(sequence_id)
 
 
-class AssetTypeAssetsResource(Resource):
+class AssetTypeAssetsResource(MethodView):
 
     def get(self, project_id, asset_type_id):
         """
@@ -457,7 +457,7 @@ class AssetTypeAssetsResource(Resource):
         )
 
 
-class OpenProjectsResource(Resource, ArgsMixin):
+class OpenProjectsResource(MethodView, ArgsMixin):
 
     def get(self):
         """
@@ -529,7 +529,7 @@ class OpenProjectsResource(Resource, ArgsMixin):
         return user_service.get_open_projects(name=name)
 
 
-class ProjectSequencesResource(Resource):
+class ProjectSequencesResource(MethodView):
 
     def get(self, project_id):
         """
@@ -596,7 +596,7 @@ class ProjectSequencesResource(Resource):
         return user_service.get_sequences_for_project(project_id)
 
 
-class ProjectEpisodesResource(Resource):
+class ProjectEpisodesResource(MethodView):
 
     def get(self, project_id):
         """
@@ -659,7 +659,7 @@ class ProjectEpisodesResource(Resource):
         return user_service.get_project_episodes(project_id)
 
 
-class ProjectAssetTypesResource(Resource):
+class ProjectAssetTypesResource(MethodView):
 
     def get(self, project_id):
         """
@@ -725,7 +725,7 @@ class ProjectAssetTypesResource(Resource):
         return user_service.get_asset_types_for_project(project_id)
 
 
-class SequenceShotsResource(Resource):
+class SequenceShotsResource(MethodView):
 
     def get(self, sequence_id):
         """
@@ -792,7 +792,7 @@ class SequenceShotsResource(Resource):
         return user_service.get_shots_for_sequence(sequence_id)
 
 
-class SequenceScenesResource(Resource):
+class SequenceScenesResource(MethodView):
 
     def get(self, sequence_id):
         """
@@ -859,7 +859,7 @@ class SequenceScenesResource(Resource):
         return user_service.get_scenes_for_sequence(sequence_id)
 
 
-class ShotTasksResource(Resource):
+class ShotTasksResource(MethodView):
 
     def get(self, shot_id):
         """
@@ -934,7 +934,7 @@ class ShotTasksResource(Resource):
         return user_service.get_tasks_for_entity(shot_id)
 
 
-class SceneTasksResource(Resource):
+class SceneTasksResource(MethodView):
 
     def get(self, scene_id):
         """
@@ -1009,7 +1009,7 @@ class SceneTasksResource(Resource):
         return user_service.get_tasks_for_entity(scene_id)
 
 
-class SequenceTasksResource(Resource):
+class SequenceTasksResource(MethodView):
 
     def get(self, sequence_id):
         """
@@ -1085,7 +1085,7 @@ class SequenceTasksResource(Resource):
         return user_service.get_tasks_for_entity(sequence_id)
 
 
-class TodosResource(Resource):
+class TodosResource(MethodView):
 
     def get(self):
         """
@@ -1150,7 +1150,7 @@ class TodosResource(Resource):
         return user_service.get_todos()
 
 
-class ToChecksResource(Resource):
+class ToChecksResource(MethodView):
 
     def get(self):
         """
@@ -1216,7 +1216,7 @@ class ToChecksResource(Resource):
         return user_service.get_tasks_to_check()
 
 
-class DoneResource(Resource):
+class DoneResource(MethodView):
 
     def get(self):
         """
@@ -1281,7 +1281,7 @@ class DoneResource(Resource):
         return user_service.get_done_tasks()
 
 
-class FiltersResource(Resource, ArgsMixin):
+class FiltersResource(MethodView, ArgsMixin):
 
     def get(self):
         """
@@ -1468,7 +1468,7 @@ class FiltersResource(Resource, ArgsMixin):
         )
 
 
-class FilterResource(Resource, ArgsMixin):
+class FilterResource(MethodView, ArgsMixin):
 
     def put(self, filter_id):
         """
@@ -1602,7 +1602,7 @@ class FilterResource(Resource, ArgsMixin):
         return "", 204
 
 
-class FilterGroupsResource(Resource, ArgsMixin):
+class FilterGroupsResource(MethodView, ArgsMixin):
 
     def get(self):
         """
@@ -1782,7 +1782,7 @@ class FilterGroupsResource(Resource, ArgsMixin):
         )
 
 
-class FilterGroupResource(Resource, ArgsMixin):
+class FilterGroupResource(MethodView, ArgsMixin):
 
     def get(self, filter_group_id):
         """
@@ -1977,7 +1977,7 @@ class FilterGroupResource(Resource, ArgsMixin):
         return "", 204
 
 
-class DesktopLoginLogsResource(Resource, ArgsMixin):
+class DesktopLoginLogsResource(MethodView, ArgsMixin):
 
     def get(self):
         """
@@ -2090,7 +2090,7 @@ class DesktopLoginLogsResource(Resource, ArgsMixin):
         return desktop_login_log, 201
 
 
-class NotificationsResource(Resource, ArgsMixin):
+class NotificationsResource(MethodView, ArgsMixin):
 
     def get(self):
         """
@@ -2239,7 +2239,7 @@ class NotificationsResource(Resource, ArgsMixin):
         )
 
 
-class NotificationResource(Resource, ArgsMixin):
+class NotificationResource(MethodView, ArgsMixin):
 
     def get(self, notification_id):
         """
@@ -2386,7 +2386,7 @@ class NotificationResource(Resource, ArgsMixin):
         return user_service.update_notification(notification_id, body.read)
 
 
-class MarkAllNotificationsAsReadResource(Resource):
+class MarkAllNotificationsAsReadResource(MethodView):
 
     def post(self):
         """
@@ -2412,7 +2412,7 @@ class MarkAllNotificationsAsReadResource(Resource):
         return {"success": True}
 
 
-class HasTaskSubscribedResource(Resource):
+class HasTaskSubscribedResource(MethodView):
 
     def get(self, task_id):
         """
@@ -2443,7 +2443,7 @@ class HasTaskSubscribedResource(Resource):
         return user_service.has_task_subscription(task_id)
 
 
-class TaskSubscribeResource(Resource):
+class TaskSubscribeResource(MethodView):
 
     def post(self, task_id):
         """
@@ -2500,7 +2500,7 @@ class TaskSubscribeResource(Resource):
         return user_service.subscribe_to_task(task_id), 201
 
 
-class TaskUnsubscribeResource(Resource):
+class TaskUnsubscribeResource(MethodView):
 
     def delete(self, task_id):
         """
@@ -2528,7 +2528,7 @@ class TaskUnsubscribeResource(Resource):
         return "", 204
 
 
-class HasSequenceSubscribedResource(Resource):
+class HasSequenceSubscribedResource(MethodView):
 
     def get(self, sequence_id, task_type_id):
         """
@@ -2569,7 +2569,7 @@ class HasSequenceSubscribedResource(Resource):
         )
 
 
-class SequenceSubscribeResource(Resource):
+class SequenceSubscribeResource(MethodView):
 
     def post(self, sequence_id, task_type_id):
         """
@@ -2643,7 +2643,7 @@ class SequenceSubscribeResource(Resource):
         return subscription, 201
 
 
-class SequenceUnsubscribeResource(Resource):
+class SequenceUnsubscribeResource(MethodView):
 
     def delete(self, sequence_id, task_type_id):
         """
@@ -2679,7 +2679,7 @@ class SequenceUnsubscribeResource(Resource):
         return "", 204
 
 
-class SequenceSubscriptionsResource(Resource):
+class SequenceSubscriptionsResource(MethodView):
 
     def get(self, project_id, task_type_id):
         """
@@ -2723,7 +2723,7 @@ class SequenceSubscriptionsResource(Resource):
         )
 
 
-class TimeSpentsResource(Resource, ArgsMixin):
+class TimeSpentsResource(MethodView, ArgsMixin):
     """
     Get all time spents for the current user.
     Optionnaly can accept date range parameters.
@@ -2823,7 +2823,7 @@ class TimeSpentsResource(Resource, ArgsMixin):
             )
 
 
-class DateTimeSpentsResource(Resource):
+class DateTimeSpentsResource(MethodView):
 
     def get(self, date):
         """
@@ -2895,7 +2895,7 @@ class DateTimeSpentsResource(Resource):
             raise WrongParameterException("Wrong date format.")
 
 
-class TaskTimeSpentResource(Resource):
+class TaskTimeSpentResource(MethodView):
 
     def get(self, task_id, date):
         """
@@ -2974,7 +2974,7 @@ class TaskTimeSpentResource(Resource):
             raise WrongParameterException("Wrong date format.")
 
 
-class DayOffResource(Resource):
+class DayOffResource(MethodView):
 
     def get(self, date):
         """
@@ -3034,7 +3034,7 @@ class DayOffResource(Resource):
             raise WrongParameterException("Wrong date format.")
 
 
-class ContextResource(Resource):
+class ContextResource(MethodView):
 
     def get(self):
         """
@@ -3143,7 +3143,7 @@ class ContextResource(Resource):
         return user_service.get_context()
 
 
-class ClearAvatarResource(Resource):
+class ClearAvatarResource(MethodView):
 
     def delete(self):
         """
@@ -3162,7 +3162,7 @@ class ClearAvatarResource(Resource):
         return "", 204
 
 
-class ChatsResource(Resource):
+class ChatsResource(MethodView):
 
     def get(self):
         """
@@ -3218,7 +3218,7 @@ class ChatsResource(Resource):
         return chats_service.get_chats_for_person(user["id"])
 
 
-class JoinChatResource(Resource):
+class JoinChatResource(MethodView):
 
     def post(self, entity_id):
         """

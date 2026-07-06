@@ -1,6 +1,6 @@
 
 from flask import request, send_file as flask_send_file, current_app
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app.mixin import ArgsMixin
@@ -27,7 +27,7 @@ from zou.app.services import (
 from zou.app import config
 
 
-class DownloadAttachmentResource(Resource):
+class DownloadAttachmentResource(MethodView):
 
     @jwt_required()
     def get(self, attachment_file_id, file_name):
@@ -109,7 +109,7 @@ class DownloadAttachmentResource(Resource):
             raise AttachmentFileNotFoundException
 
 
-class AckCommentResource(Resource):
+class AckCommentResource(MethodView):
 
     @jwt_required()
     def post(self, task_id, comment_id):
@@ -157,7 +157,7 @@ class AckCommentResource(Resource):
         return comments_service.acknowledge_comment(comment_id)
 
 
-class CommentTaskResource(Resource):
+class CommentTaskResource(MethodView):
 
     @jwt_required()
     def post(self, task_id):
@@ -298,7 +298,7 @@ class CommentTaskResource(Resource):
         )
 
 
-class AttachmentResource(Resource):
+class AttachmentResource(MethodView):
     @jwt_required()
     def delete(self, task_id, comment_id, attachment_id):
         """
@@ -346,7 +346,7 @@ class AttachmentResource(Resource):
         return "", 204
 
 
-class AddAttachmentToCommentResource(Resource):
+class AddAttachmentToCommentResource(MethodView):
     @jwt_required()
     def post(self, task_id, comment_id):
         """
@@ -435,7 +435,7 @@ class AddAttachmentToCommentResource(Resource):
         return comment["attachment_files"], 201
 
 
-class CommentManyTasksResource(Resource):
+class CommentManyTasksResource(MethodView):
 
     @jwt_required()
     def post(self, project_id):
@@ -598,7 +598,7 @@ class CommentManyTasksResource(Resource):
         return allowed_comments
 
 
-class ReplyCommentResource(Resource, ArgsMixin):
+class ReplyCommentResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def post(self, task_id, comment_id):
@@ -683,7 +683,7 @@ class ReplyCommentResource(Resource, ArgsMixin):
         )
 
 
-class DeleteReplyCommentResource(Resource):
+class DeleteReplyCommentResource(MethodView):
 
     @jwt_required()
     def delete(self, task_id, comment_id, reply_id):
@@ -727,7 +727,7 @@ class DeleteReplyCommentResource(Resource):
         return comments_service.delete_reply(comment_id, reply_id)
 
 
-class ProjectAttachmentFiles(Resource):
+class ProjectAttachmentFiles(MethodView):
 
     @jwt_required()
     def get(self, project_id):
@@ -790,7 +790,7 @@ class ProjectAttachmentFiles(Resource):
         )
 
 
-class TaskAttachmentFiles(Resource):
+class TaskAttachmentFiles(MethodView):
 
     @jwt_required()
     def get(self, task_id):
@@ -856,7 +856,7 @@ class TaskAttachmentFiles(Resource):
         return comments_service.get_all_attachment_files_for_task(task_id)
 
 
-class MoveCommentResource(Resource):
+class MoveCommentResource(MethodView):
 
     @jwt_required()
     def post(self, task_id, comment_id):
