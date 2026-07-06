@@ -2,22 +2,11 @@ from ua_parser import user_agent_parser
 from werkzeug.user_agent import UserAgent
 from werkzeug.utils import cached_property
 from flask.json.provider import JSONProvider
-from flask import make_response, request, abort
+from flask import request, abort
 
 import orjson
 
 orjson_options = orjson.OPT_NON_STR_KEYS
-
-
-def output_json(data, code, headers=None):
-    """
-    Makes a Flask response with a JSON encoded body
-    """
-    dumped = orjson.dumps(data, option=orjson_options)
-
-    resp = make_response(dumped, code)
-    resp.headers.extend(headers or {})
-    return resp
 
 
 class ORJSONProvider(JSONProvider):
