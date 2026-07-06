@@ -121,9 +121,19 @@ def set_security_headers(response):
     """
     Add baseline security headers to every response. nosniff stops the
     browser from MIME-sniffing a response into an executable type, e.g.
-    rendering an uploaded file served as octet-stream as HTML.
+    rendering an uploaded file served as octet-stream as HTML. The
+    frame headers block cross-origin embedding (clickjacking) while
+    keeping same-origin embedding allowed, since Kitsu and Zou share
+    the same origin in the standard deployment.
     """
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+    response.headers.setdefault(
+        "Content-Security-Policy", "frame-ancestors 'self'"
+    )
+    response.headers.setdefault(
+        "Referrer-Policy", "strict-origin-when-cross-origin"
+    )
     return response
 
 
