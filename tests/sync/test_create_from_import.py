@@ -1,3 +1,7 @@
+from unittest import mock
+
+from sqlalchemy.exc import IntegrityError
+
 from tests.base import ApiDBTestCase
 
 from zou.app.models.entity import Entity, EntityLink
@@ -68,6 +72,52 @@ class CreateFromImportTestCase(ApiDBTestCase):
         Entity.create_from_import(entity_dict)
         entity = Entity.get(entity_dict["id"])
         self.assertEqual(entity_dict["name"], entity.name)
+
+    def test_create_from_import_list_skips_broken_rows(self):
+        def entity_dict(entity_id, name, entity_type_id):
+            return {
+                "id": entity_id,
+                "entities_out": [],
+                "created_at": "2019-06-20T12:28:16",
+                "updated_at": "2019-08-16T11:44:31",
+                "name": name,
+                "description": "",
+                "canceled": False,
+                "project_id": str(self.project.id),
+                "entity_type_id": entity_type_id,
+                "preview_file_id": None,
+                "entities_in": [],
+                "type": "Asset",
+            }
+
+        valid_type_id = str(self.asset_type_character.id)
+        first_id = "11111111-3186-4405-8dc8-d6cb3a68ff1c"
+        broken_id = "22222222-3186-4405-8dc8-d6cb3a68ff1c"
+        last_id = "33333333-3186-4405-8dc8-d6cb3a68ff1c"
+
+        # Simulate a broken row: a real FK violation would roll back the
+        # test harness outer transaction, so raise from the import
+        # instead (in production each row commits independently).
+        original = Entity.create_from_import.__func__
+
+        def flaky_import(data):
+            if data["id"] == broken_id:
+                raise IntegrityError("insert", {}, Exception("boom"))
+            return original(Entity, data)
+
+        with mock.patch.object(
+            Entity, "create_from_import", side_effect=flaky_import
+        ):
+            Entity.create_from_import_list(
+                [
+                    entity_dict(first_id, "Lama", valid_type_id),
+                    entity_dict(broken_id, "Broken", valid_type_id),
+                    entity_dict(last_id, "Alpaga", valid_type_id),
+                ]
+            )
+        self.assertIsNotNone(Entity.get(first_id))
+        self.assertIsNone(Entity.get(broken_id))
+        self.assertIsNotNone(Entity.get(last_id))
 
     def test_entity_link(self):
         entity_link_dict = {

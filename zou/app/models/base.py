@@ -1,7 +1,12 @@
+import logging
+
 from sqlalchemy_utils import UUIDType
 from sqlalchemy import func, orm
+from sqlalchemy.exc import IntegrityError
 from zou.app import db
 from zou.app.utils import date_helpers, fields
+
+logger = logging.getLogger(__name__)
 
 
 class BaseMixin(object):
@@ -182,7 +187,15 @@ class BaseMixin(object):
         if "data" in data_list:
             data_list = data_list["data"]
         for data in data_list:
-            cls.create_from_import(data)
+            try:
+                cls.create_from_import(data)
+            except IntegrityError:
+                # One broken row must not lose the rest of the list. The
+                # session was already rolled back by create/save.
+                logger.error(
+                    f"Failed to import {cls.__name__} {data.get('id')}",
+                    exc_info=1,
+                )
 
     @classmethod
     def delete_from_import(cls, instance_id):
