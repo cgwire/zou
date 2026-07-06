@@ -8,7 +8,7 @@ All blueprints are registered in `zou/app/api.py`. Each blueprint package define
 configure_api_from_blueprint(blueprint, routes)
 ```
 
-This wraps Flask-RESTful's `Api` around the blueprint and adds all routes.
+This registers each resource as a Flask `MethodView` on the blueprint via `add_url_rule`.
 
 ## Blueprint list
 
