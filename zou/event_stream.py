@@ -1,3 +1,18 @@
+"""
+Realtime event stream (WebSocket) server.
+
+This process fans out Zou events and hosts the collaborative "preview
+rooms". SocketIO message delivery is shared across processes through the
+Redis message_queue, BUT the presence state below (rooms_data,
+user_rooms, server_stats) lives in this process's memory.
+
+Consequence: run the event stream as a SINGLE process. It uses gevent
+(one process, many greenlets) and is meant to be deployed that way; do
+NOT put it behind several gunicorn workers or the room playback state
+and connection counts diverge per worker. Horizontal scaling would
+require moving that presence state into Redis (see ARCH-12 / MEM-8).
+"""
+
 from gevent import monkey
 
 monkey.patch_all()
