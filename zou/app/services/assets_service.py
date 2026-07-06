@@ -2,6 +2,7 @@ from sqlalchemy import or_
 from sqlalchemy.exc import StatementError
 from sqlalchemy.orm import aliased
 
+from zou.app import db
 from zou.app.utils import events, fields, cache
 from zou.app.utils import query as query_utils
 
@@ -173,9 +174,57 @@ def get_full_assets(criterions=None):
     return assets
 
 
+def _apply_asset_and_tasks_criterions(query, criterions, assigned_to):
+    """
+    Apply the with-tasks asset filters (asset types only, id, project,
+    episode casting, assigned to current user) on a query that has Entity
+    in its FROM clause. Episode casting and assignation are expressed as
+    EXISTS subqueries so no filter ever multiplies the result rows.
+    """
+    query = query.filter(build_asset_type_filter())
+
+    if "id" in criterions:
+        query = query.filter(Entity.id == criterions["id"])
+
+    if "project_id" in criterions:
+        query = query.filter(Entity.project_id == criterions["project_id"])
+
+    if "episode_id" in criterions:
+        episode_id = criterions["episode_id"]
+        if episode_id == "main":
+            query = query.filter(Entity.source_id == None)
+        elif episode_id != "all":
+            cast_in_episode = (
+                db.session.query(EntityLink.entity_out_id)
+                .filter(EntityLink.entity_out_id == Entity.id)
+                .filter(EntityLink.entity_in_id == episode_id)
+                .exists()
+            )
+            query = query.filter(
+                or_(Entity.source_id == episode_id, cast_in_episode)
+            )
+
+    if assigned_to:
+        has_assigned_task = (
+            db.session.query(Task.id)
+            .filter(Task.entity_id == Entity.id)
+            .filter(user_service.build_assignee_filter())
+            .exists()
+        )
+        query = query.filter(has_assigned_task)
+
+    return query
+
+
 def get_assets_and_tasks(criterions=None, with_episode_ids=False):
     """
     Get all assets for given criterions with related tasks for each asset.
+
+    Runs three flat queries (assets, tasks, assignee links) instead of a
+    single Entity x Task x TaskPersonLink join: the joined form returned
+    one row per (asset, task, assignee) with every asset column repeated
+    on each row, which dominated the payload, the sort and the Python
+    dedup on large productions.
     """
     if criterions is None:
         criterions = {}
@@ -186,16 +235,44 @@ def get_assets_and_tasks(criterions=None, with_episode_ids=False):
         criterions.get("project_id", None), None
     )
 
-    query = (
-        Entity.query.filter(build_asset_type_filter())
-        .join(EntityType, Entity.entity_type_id == EntityType.id)
-        .outerjoin(Task)
-        .outerjoin(TaskPersonLink)
+    assigned_to = "assigned_to" in criterions
+    if assigned_to:
+        del criterions["assigned_to"]
+
+    asset_rows = (
+        _apply_asset_and_tasks_criterions(
+            Entity.query.join(
+                EntityType, Entity.entity_type_id == EntityType.id
+            ),
+            criterions,
+            assigned_to,
+        )
+        .with_entities(
+            Entity.id,
+            Entity.name,
+            Entity.description,
+            Entity.data,
+            Entity.preview_file_id,
+            Entity.entity_type_id,
+            Entity.canceled,
+            Entity.ready_for,
+            Entity.source_id,
+            Entity.is_casting_standby,
+            Entity.is_shared,
+            Entity.project_id,
+            EntityType.name.label("asset_type_name"),
+        )
+        .order_by(EntityType.name, Entity.name)
+        .all()
     )
 
-    tasks_query = query.add_columns(
-        EntityType.name,
+    task_query = _apply_asset_and_tasks_criterions(
+        Task.query.join(Entity, Task.entity_id == Entity.id),
+        criterions,
+        assigned_to,
+    ).with_entities(
         Task.id,
+        Task.entity_id,
         Task.task_type_id,
         Task.task_status_id,
         Task.priority,
@@ -210,35 +287,21 @@ def get_assets_and_tasks(criterions=None, with_episode_ids=False):
         Task.last_comment_date,
         Task.last_preview_file_id,
         Task.difficulty,
-        TaskPersonLink.person_id,
-    ).order_by(EntityType.name, Entity.name)
+    )
+    if assigned_to:
+        task_query = task_query.filter(user_service.build_assignee_filter())
+    task_rows = task_query.all()
 
-    if "id" in criterions:
-        tasks_query = tasks_query.filter(Entity.id == criterions["id"])
-
-    if "project_id" in criterions:
-        tasks_query = tasks_query.filter(
-            Entity.project_id == criterions["project_id"]
-        )
-
-    if "episode_id" in criterions:
-        episode_id = criterions["episode_id"]
-        if episode_id == "main":
-            tasks_query = tasks_query.filter(Entity.source_id == None)
-        elif episode_id != "all":
-            tasks_query = tasks_query.outerjoin(
-                EntityLink, EntityLink.entity_out_id == Entity.id
-            )
-            tasks_query = tasks_query.filter(
-                or_(
-                    Entity.source_id == episode_id,
-                    EntityLink.entity_in_id == episode_id,
-                )
-            )
-
-    if "assigned_to" in criterions:
-        tasks_query = tasks_query.filter(user_service.build_assignee_filter())
-        del criterions["assigned_to"]
+    link_query = _apply_asset_and_tasks_criterions(
+        db.session.query(TaskPersonLink)
+        .join(Task, TaskPersonLink.task_id == Task.id)
+        .join(Entity, Task.entity_id == Entity.id),
+        criterions,
+        assigned_to,
+    ).with_entities(TaskPersonLink.task_id, TaskPersonLink.person_id)
+    if assigned_to:
+        link_query = link_query.filter(user_service.build_assignee_filter())
+    link_rows = link_query.all()
 
     cast_in_episode_ids = {}
     if "project_id" in criterions or with_episode_ids:
@@ -274,106 +337,73 @@ def get_assets_and_tasks(criterions=None, with_episode_ids=False):
                 str(link.entity_in_id)
             )
 
-    query_result = tasks_query.all()
-
     if "vendor_departments" in criterions:
         not_allowed_descriptors_field_names = (
             entities_service.get_not_allowed_descriptors_fields_for_vendor(
                 "Asset",
                 criterions["vendor_departments"],
-                set(asset[0].project_id for asset in query_result),
+                set(row.project_id for row in asset_rows),
             )
         )
 
-    for (
-        asset,
-        entity_type_name,
-        task_id,
-        task_type_id,
-        task_status_id,
-        task_priority,
-        task_estimation,
-        task_duration,
-        task_retake_count,
-        task_real_start_date,
-        task_end_date,
-        task_start_date,
-        task_due_date,
-        task_done_date,
-        task_last_comment_date,
-        task_last_preview_file_id,
-        task_difficulty,
-        person_id,
-    ) in query_result:
-        if asset.source_id is None:
-            source_id = ""
-        else:
-            source_id = str(asset.source_id)
+    for row in asset_rows:
+        asset_id = str(row.id)
+        data = fields.serialize_value(row.data or {})
+        if "vendor_departments" in criterions:
+            data = entities_service.remove_not_allowed_fields_from_metadata(
+                not_allowed_descriptors_field_names[row.project_id],
+                data,
+            )
 
-        asset_id = str(asset.id)
+        asset_map[asset_id] = {
+            "id": asset_id,
+            "name": row.name,
+            "preview_file_id": str(row.preview_file_id or ""),
+            "description": row.description,
+            "asset_type_name": row.asset_type_name,
+            "asset_type_id": str(row.entity_type_id),
+            "canceled": row.canceled,
+            "ready_for": str(row.ready_for),
+            "episode_id": str(row.source_id) if row.source_id else "",
+            "casting_episode_ids": cast_in_episode_ids.get(asset_id, []),
+            "is_casting_standby": row.is_casting_standby,
+            "is_shared": row.is_shared,
+            "data": data,
+            "tasks": [],
+        }
 
-        if asset_id not in asset_map:
-            data = fields.serialize_value(asset.data or {})
-            if "vendor_departments" in criterions:
-                data = (
-                    entities_service.remove_not_allowed_fields_from_metadata(
-                        not_allowed_descriptors_field_names[asset.project_id],
-                        data,
-                    )
-                )
+    for row in task_rows:
+        task_id = str(row.id)
+        asset_dict = asset_map.get(str(row.entity_id))
+        if asset_dict is None:
+            continue
+        task_dict = {
+            "id": task_id,
+            "due_date": fields.serialize_value(row.due_date),
+            "done_date": fields.serialize_value(row.done_date),
+            "duration": row.duration,
+            "entity_id": str(row.entity_id),
+            "estimation": row.estimation,
+            "end_date": fields.serialize_value(row.end_date),
+            "is_subscribed": subscription_map.get(task_id, False),
+            "last_comment_date": fields.serialize_value(row.last_comment_date),
+            "last_preview_file_id": str(row.last_preview_file_id or ""),
+            "priority": row.priority or 0,
+            "real_start_date": fields.serialize_value(row.real_start_date),
+            "retake_count": row.retake_count,
+            "start_date": fields.serialize_value(row.start_date),
+            "difficulty": row.difficulty,
+            "task_status_id": str(row.task_status_id),
+            "task_type_id": str(row.task_type_id),
+            "assignees": [],
+        }
+        task_map[task_id] = task_dict
+        asset_dict["tasks"].append(task_dict)
 
-            asset_map[asset_id] = {
-                "id": asset_id,
-                "name": asset.name,
-                "preview_file_id": str(asset.preview_file_id or ""),
-                "description": asset.description,
-                "asset_type_name": entity_type_name,
-                "asset_type_id": str(asset.entity_type_id),
-                "canceled": asset.canceled,
-                "ready_for": str(asset.ready_for),
-                "episode_id": source_id,
-                "casting_episode_ids": cast_in_episode_ids.get(asset_id, []),
-                "is_casting_standby": asset.is_casting_standby,
-                "is_shared": asset.is_shared,
-                "data": data,
-                "tasks": [],
-            }
-
-        if task_id is not None:
-            task_id = str(task_id)
-            if task_id not in task_map:
-                task_dict = {
-                    "id": task_id,
-                    "due_date": fields.serialize_value(task_due_date),
-                    "done_date": fields.serialize_value(task_done_date),
-                    "duration": task_duration,
-                    "entity_id": asset_id,
-                    "estimation": task_estimation,
-                    "end_date": fields.serialize_value(task_end_date),
-                    "is_subscribed": subscription_map.get(task_id, False),
-                    "last_comment_date": fields.serialize_value(
-                        task_last_comment_date
-                    ),
-                    "last_preview_file_id": str(
-                        task_last_preview_file_id or ""
-                    ),
-                    "priority": task_priority or 0,
-                    "real_start_date": fields.serialize_value(
-                        task_real_start_date
-                    ),
-                    "retake_count": task_retake_count,
-                    "start_date": fields.serialize_value(task_start_date),
-                    "difficulty": task_difficulty,
-                    "task_status_id": str(task_status_id),
-                    "task_type_id": str(task_type_id),
-                    "assignees": [],
-                }
-                task_map[task_id] = task_dict
-                asset_dict = asset_map[asset_id]
-                asset_dict["tasks"].append(task_dict)
-
-            if person_id:
-                task_map[task_id]["assignees"].append(str(person_id))
+    for task_id, person_id in link_rows:
+        task_dict = task_map.get(str(task_id))
+        if task_dict is not None and person_id:
+            task_dict["assignees"].append(str(person_id))
 
     return list(asset_map.values())
 
