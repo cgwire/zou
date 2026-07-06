@@ -10,7 +10,7 @@ value Babel cannot parse. NULL is safe here, the read paths fall back to the
 default locale.
 
 Revision ID: f2c9a1b7e4d8
-Revises: f1a2b3c4d5e6
+Revises: a3d9c1e7b5f2
 Create Date: 2026-07-06 10:00:00.000000
 
 """
@@ -24,7 +24,7 @@ from babel.core import UnknownLocaleError
 
 # revision identifiers, used by Alembic.
 revision = "f2c9a1b7e4d8"
-down_revision = "f1a2b3c4d5e6"
+down_revision = "a3d9c1e7b5f2"
 branch_labels = None
 depends_on = None
 
