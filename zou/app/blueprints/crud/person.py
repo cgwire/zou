@@ -9,6 +9,7 @@ from zou.app.models.person import (
     CONTRACT_TYPES,
     TWO_FACTOR_AUTHENTICATION_TYPES,
     normalize_country,
+    normalize_locale,
 )
 from zou.app.services import (
     deletion_service,
@@ -40,6 +41,21 @@ def check_country(data):
     if not is_valid:
         raise WrongParameterException(
             "Invalid country code, expected an ISO 3166-1 alpha-2 code."
+        )
+
+
+def check_locale(data):
+    """
+    Reject a locale that Python Babel cannot parse with a clean 400. Empty or
+    missing values are treated as "no locale" and accepted. Without this guard
+    the raw value would be stored and then break every later read of the
+    person, since the model re-parses the locale through Babel on load.
+    """
+    is_valid, _ = normalize_locale(data.get("locale"))
+    if not is_valid:
+        raise WrongParameterException(
+            "Invalid locale, expected a name available in Python Babel "
+            "(e.g. en_US, fr_FR)."
         )
 
 
@@ -300,6 +316,7 @@ class PersonsResource(BaseModelsResource):
         ]:
             raise WrongParameterException("Invalid contract_type")
         check_country(data)
+        check_locale(data)
         if "two_factor_authentication" in data and data[
             "two_factor_authentication"
         ] not in [
@@ -607,6 +624,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
         ]:
             raise WrongParameterException("Invalid contract_type")
         check_country(data)
+        check_locale(data)
         if "two_factor_authentication" in data and data[
             "two_factor_authentication"
         ] not in [

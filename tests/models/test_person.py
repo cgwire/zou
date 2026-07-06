@@ -3,7 +3,11 @@ import unittest
 
 from tests.base import ApiDBTestCase
 from zou.app.models.department import Department
-from zou.app.models.person import Person, normalize_country
+from zou.app.models.person import (
+    Person,
+    normalize_country,
+    normalize_locale,
+)
 
 from zou.app.utils import fields
 
@@ -27,6 +31,40 @@ class NormalizeCountryTestCase(unittest.TestCase):
     def test_malformed_values_are_rejected(self):
         for value in ["France", "FRA", "f", "f1", "éé", 123, ["FR"], 1.5]:
             self.assertEqual(normalize_country(value), (False, None))
+
+
+class NormalizeLocaleTestCase(unittest.TestCase):
+    """
+    Unit coverage for normalize_locale, the single source of truth shared by
+    the model validator and the API guard.
+    """
+
+    def test_valid_locales_are_trimmed_and_kept(self):
+        for value, expected in [
+            ("en_US", "en_US"),
+            ("fr_FR", "fr_FR"),
+            (" pt_BR ", "pt_BR"),
+            ("fr", "fr"),
+            ("en_us", "en_us"),  # Babel parses it back; casing is left as-is
+        ]:
+            self.assertEqual(normalize_locale(value), (True, expected))
+
+    def test_empty_values_mean_no_locale(self):
+        for value in [None, "", "   "]:
+            self.assertEqual(normalize_locale(value), (True, None))
+
+    def test_unparseable_values_are_rejected(self):
+        for value in [
+            "zz_ZZ",  # well-formed but unknown to Babel
+            "notlocale",
+            "en-US",  # wrong separator -> ValueError
+            "fr_FR_x",  # malformed identifier -> ValueError
+            "en_US_POSIX",  # valid Babel variant but too long for the column
+            123,
+            ["fr_FR"],
+            1.5,
+        ]:
+            self.assertEqual(normalize_locale(value), (False, None))
 
 
 class PersonTestCase(ApiDBTestCase):
@@ -270,6 +308,69 @@ class PersonTestCase(ApiDBTestCase):
         self.assertNotIn("country", person.present_minimal())
         safe = person.serialize_safe()
         self.assertEqual(safe["country"], "FR")
+
+    def test_person_locale_round_trip(self):
+        data = {
+            "first_name": "Locale",
+            "last_name": "Tester",
+            "email": "locale.tester@gmail.com",
+            "locale": "fr_FR",
+        }
+        person = self.post("data/persons", data)
+        self.assertEqual(person["locale"], "fr_FR")
+
+        # The stored value survives every read path (single GET, relations,
+        # list) instead of breaking serialization.
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertEqual(person_again["locale"], "fr_FR")
+        person_with_relations = self.get(
+            f"data/persons/{person['id']}?relations=true"
+        )
+        self.assertEqual(person_with_relations["locale"], "fr_FR")
+        listed = next(
+            p for p in self.get("data/persons") if p["id"] == person["id"]
+        )
+        self.assertEqual(listed["locale"], "fr_FR")
+
+        self.put(f"data/persons/{person['id']}", {"locale": "pt_BR"})
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertEqual(person_again["locale"], "pt_BR")
+
+        # Whitespace is trimmed on update.
+        self.put(f"data/persons/{person['id']}", {"locale": " ja_JP "})
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertEqual(person_again["locale"], "ja_JP")
+
+    def test_create_person_with_invalid_locale(self):
+        data = {
+            "first_name": "Bad",
+            "last_name": "Locale",
+            "email": "bad.locale@gmail.com",
+            "locale": "zz_ZZ",
+        }
+        self.post("data/persons", data, 400)
+
+    def test_update_person_with_invalid_locale(self):
+        # The PUT guard rejects every unparseable category with a clean 400
+        # (never a 500 and never a poisoned entry): unknown locales, wrong
+        # separators, malformed identifiers and non-string bodies.
+        person = self.get_first("data/persons")
+        for value in ["zz_ZZ", "notlocale", "en-US", "fr_FR_x", 123, ["fr_FR"]]:
+            self.put(f"data/persons/{person['id']}", {"locale": value}, 400)
+
+    def test_locale_validator_never_raises_on_direct_write(self):
+        # Direct writes (SSO sign-in, imports, scripts) bypass the API guard,
+        # so the model validator must silently discard bad input instead of
+        # persisting a value that would break later reads.
+        person = Person.get_by(email="ema.doe@gmail.com")
+        person.update({"locale": "zz_ZZ"})
+        self.assertIsNone(person.locale)
+        person.update({"locale": ["fr_FR"]})
+        self.assertIsNone(person.locale)
+        person.update({"locale": "en-US"})
+        self.assertIsNone(person.locale)
+        person.update({"locale": " fr_FR "})
+        self.assertEqual(str(person.locale), "fr_FR")
 
     def test_update_person_with_duplicate_email(self):
         persons = sorted(self.get("data/persons"), key=itemgetter("email"))

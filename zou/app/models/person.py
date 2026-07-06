@@ -14,6 +14,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 from pytz import timezone as pytz_timezone
 from babel import Locale
+from babel.core import UnknownLocaleError
 
 from zou.app.models.serializer import SerializerMixin
 from zou.app.models.department import Department
@@ -85,6 +86,46 @@ def normalize_country(value):
     if len(normalized) == 2 and normalized.isascii() and normalized.isalpha():
         return True, normalized
     return False, None
+
+
+def normalize_locale(value):
+    """
+    Normalize a locale to a name Python Babel can parse back. Returns an
+    ``(is_valid, normalized)`` tuple:
+
+      - ``(True, "en_US")`` for a locale Babel recognizes (any casing and
+        surrounding whitespace); the value is trimmed but kept as-is rather
+        than re-serialized to Babel's canonical form, so ``zh_CN`` is not
+        rewritten to ``zh_Hans_CN`` and stays within the column width;
+      - ``(True, None)`` for an empty or ``None`` value (i.e. "no locale");
+      - ``(False, None)`` for a value Babel cannot parse (unknown locale,
+        malformed identifier, non-string input such as a SAML single-element
+        list) or one too long for the column.
+
+    Single source of truth shared by the API guard (raises 400 on invalid)
+    and the model validator (silently discards invalid). Without it an
+    unparseable value would be stored verbatim and then break every later
+    read of the person, since LocaleType re-parses the stored column value
+    through Babel on load.
+    """
+    if value is None:
+        return True, None
+    if isinstance(value, Locale):
+        return True, str(value)
+    if not isinstance(value, str):
+        return False, None
+    normalized = value.strip()
+    if normalized == "":
+        return True, None
+    # The locale column is a Unicode(10); a longer value would overflow the
+    # column even if Babel accepts it (e.g. the "en_US_POSIX" variant).
+    if len(normalized) > 10:
+        return False, None
+    try:
+        Locale.parse(normalized)
+    except (UnknownLocaleError, ValueError, TypeError):
+        return False, None
+    return True, normalized
 
 
 class DepartmentLink(db.Model):
@@ -212,6 +253,24 @@ class Person(db.Model, BaseMixin, SerializerMixin):
         if not is_valid:
             logger.warning(
                 f"Discarded invalid country value for person: {value!r}"
+            )
+        return normalized
+
+    @validates("locale")
+    def validate_locale(self, key, value):
+        """
+        Keep only locales Python Babel can parse back. Empty or malformed
+        values are stored as None (the read path then falls back to the
+        default locale). API requests are rejected upstream with a clean
+        400; this is the last-resort guard for direct writes (SSO sign-in,
+        imports, scripts) that never raises. Without it an unparseable value
+        would be persisted verbatim and break every later read of the person,
+        since LocaleType re-parses the stored column through Babel on load.
+        """
+        is_valid, normalized = normalize_locale(value)
+        if not is_valid:
+            logger.warning(
+                f"Discarded invalid locale value for person: {value!r}"
             )
         return normalized
 
