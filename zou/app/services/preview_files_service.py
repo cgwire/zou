@@ -44,6 +44,7 @@ from zou.app.services.exception import (
     AnnotationNotFoundException,
     WrongParameterException,
     PreviewFileNotFoundException,
+    PreviewProcessingFailedException,
     ProjectNotFoundException,
     EpisodeNotFoundException,
 )
@@ -348,10 +349,8 @@ def prepare_and_store_movie(
                     result = _run_remote_normalize_movie(
                         current_app, preview_file_id, fps, width, height
                     )
-                    if result is True:
-                        err = None
-                    else:
-                        err = result
+                    if result is not True:
+                        raise PreviewProcessingFailedException(result)
 
                     normalized_movie_path = fs.get_file_path_and_file(
                         config,
@@ -372,17 +371,16 @@ def prepare_and_store_movie(
                         width=width,
                         height=height,
                     )
+                    if err:
+                        # The normalized files were never produced: fail
+                        # before storing anything.
+                        raise PreviewProcessingFailedException(err)
                     file_store.add_movie(
                         "previews", preview_file_id, normalized_movie_path
                     )
                     file_store.add_movie(
                         "lowdef", preview_file_id, normalized_movie_low_path
                     )
-                if err:
-                    current_app.logger.error(
-                        f"Fail to normalize: {uploaded_movie_path}"
-                    )
-                    current_app.logger.error(err)
 
                 current_app.logger.info(
                     f"file normalized {normalized_movie_path}"
