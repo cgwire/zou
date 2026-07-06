@@ -221,6 +221,18 @@ def set_preview_file_as_missing(preview_file_id):
     return update_preview_file(preview_file_id, {"status": "missing"})
 
 
+def _remove_temp_files(*paths):
+    """
+    Remove movie processing temp files, ignoring the ones already gone.
+    """
+    for path in paths:
+        if path is not None:
+            try:
+                os.remove(path)
+            except FileNotFoundError:
+                pass
+
+
 def _abort_on_storage_failure(preview_file_id, operation, exc):
     """
     Log a file store backend failure (Swift 401, S3 timeout, network error,
@@ -258,6 +270,7 @@ def prepare_and_store_movie(
                     "source", preview_file_id, uploaded_movie_path
                 )
             except Exception as exc:
+                _remove_temp_files(uploaded_movie_path)
                 return _abort_on_storage_failure(
                     preview_file_id, "source movie upload", exc
                 )
@@ -300,7 +313,9 @@ def prepare_and_store_movie(
                 exc_info=1,
             )
 
+        normalized_movie_path = None
         normalized_movie_low_path = None
+        original_picture_path = None
         try:
             project = get_project_from_preview_file(preview_file_id)
             entity = get_entity_from_preview_file(preview_file_id)
@@ -315,6 +330,7 @@ def prepare_and_store_movie(
                 )
                 time.sleep(2)
                 preview_file = set_preview_file_as_broken(preview_file_id)
+                _remove_temp_files(uploaded_movie_path)
                 return preview_file
 
         fps = get_preview_file_fps(project, entity)
@@ -377,6 +393,11 @@ def prepare_and_store_movie(
                     current_app.logger.error(exc.stderr)
                 current_app.logger.error("failed", exc_info=1)
                 preview_file = set_preview_file_as_broken(preview_file_id)
+                _remove_temp_files(
+                    uploaded_movie_path,
+                    normalized_movie_path,
+                    normalized_movie_low_path,
+                )
                 return preview_file
         else:
             try:
@@ -387,6 +408,7 @@ def prepare_and_store_movie(
                     "lowdef", preview_file_id, uploaded_movie_path
                 )
             except Exception as exc:
+                _remove_temp_files(uploaded_movie_path)
                 return _abort_on_storage_failure(
                     preview_file_id, "movie upload", exc
                 )
@@ -407,6 +429,12 @@ def prepare_and_store_movie(
             try:
                 save_variants(preview_file_id, original_picture_path)
             except Exception as exc:
+                _remove_temp_files(
+                    uploaded_movie_path,
+                    normalized_movie_path,
+                    normalized_movie_low_path,
+                    original_picture_path,
+                )
                 return _abort_on_storage_failure(
                     preview_file_id, "thumbnail variants upload", exc
                 )
@@ -485,10 +513,13 @@ def save_variants(preview_file_id, original_picture_path, with_original=True):
     )
     if with_original:
         variants.append(("original", original_picture_path))
-    for prefix, path in variants:
-        file_store.add_picture(prefix, preview_file_id, path)
-        os.remove(path)
-        clear_variant_from_cache(preview_file_id, prefix)
+    try:
+        for prefix, path in variants:
+            file_store.add_picture(prefix, preview_file_id, path)
+            clear_variant_from_cache(preview_file_id, prefix)
+    finally:
+        # A failed upload must not leak the remaining variant files.
+        _remove_temp_files(*[path for _, path in variants])
 
     return variants
 
@@ -1191,6 +1222,9 @@ def _bundle_annotated_frames_into_zip(entries):
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
             for arcname, src_path in entries:
                 zf.write(src_path, arcname=arcname)
+    except Exception:
+        _remove_temp_files(zip_path)
+        raise
     finally:
         _cleanup_entries(entries)
     return zip_path
@@ -1218,6 +1252,9 @@ def _bundle_annotated_frames_into_pdf(entries):
             append_images=tail,
             resolution=150.0,
         )
+    except Exception:
+        _remove_temp_files(pdf_path)
+        raise
     finally:
         for img in images:
             img.close()
