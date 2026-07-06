@@ -1,4 +1,4 @@
-from sqlalchemy import or_
+from sqlalchemy import cast, or_, Text
 from sqlalchemy.exc import StatementError
 from sqlalchemy.orm import aliased
 
@@ -174,6 +174,17 @@ def get_full_assets(criterions=None):
     return assets
 
 
+def _serialize_datetime(value):
+    """
+    Specialized serializer for the with-tasks hot loop: the task date
+    columns are all DateTime, so the type-dispatch of
+    fields.serialize_value (6 calls per task) is pure overhead there.
+    """
+    if value is None:
+        return None
+    return value.replace(microsecond=0).isoformat()
+
+
 def _apply_asset_and_tasks_criterions(query, criterions, assigned_to):
     """
     Apply the with-tasks asset filters (asset types only, id, project,
@@ -271,10 +282,13 @@ def get_assets_and_tasks(criterions=None, with_episode_ids=False):
         criterions,
         assigned_to,
     ).with_entities(
-        Task.id,
-        Task.entity_id,
-        Task.task_type_id,
-        Task.task_status_id,
+        # uuid::text in SQL: casting 4-5 uuids per task row in Python
+        # (uuid.__str__ + the UUID result processor) shows up in profiles
+        # at 75k tasks.
+        cast(Task.id, Text).label("id"),
+        cast(Task.entity_id, Text).label("entity_id"),
+        cast(Task.task_type_id, Text).label("task_type_id"),
+        cast(Task.task_status_id, Text).label("task_status_id"),
         Task.priority,
         Task.estimation,
         Task.duration,
@@ -285,7 +299,7 @@ def get_assets_and_tasks(criterions=None, with_episode_ids=False):
         Task.due_date,
         Task.done_date,
         Task.last_comment_date,
-        Task.last_preview_file_id,
+        cast(Task.last_preview_file_id, Text).label("last_preview_file_id"),
         Task.difficulty,
     )
     if assigned_to:
@@ -298,7 +312,10 @@ def get_assets_and_tasks(criterions=None, with_episode_ids=False):
         .join(Entity, Task.entity_id == Entity.id),
         criterions,
         assigned_to,
-    ).with_entities(TaskPersonLink.task_id, TaskPersonLink.person_id)
+    ).with_entities(
+        cast(TaskPersonLink.task_id, Text),
+        cast(TaskPersonLink.person_id, Text),
+    )
     if assigned_to:
         link_query = link_query.filter(user_service.build_assignee_filter())
     link_rows = link_query.all()
@@ -373,37 +390,37 @@ def get_assets_and_tasks(criterions=None, with_episode_ids=False):
         }
 
     for row in task_rows:
-        task_id = str(row.id)
-        asset_dict = asset_map.get(str(row.entity_id))
+        task_id = row.id
+        asset_dict = asset_map.get(row.entity_id)
         if asset_dict is None:
             continue
         task_dict = {
             "id": task_id,
-            "due_date": fields.serialize_value(row.due_date),
-            "done_date": fields.serialize_value(row.done_date),
+            "due_date": _serialize_datetime(row.due_date),
+            "done_date": _serialize_datetime(row.done_date),
             "duration": row.duration,
-            "entity_id": str(row.entity_id),
+            "entity_id": row.entity_id,
             "estimation": row.estimation,
-            "end_date": fields.serialize_value(row.end_date),
+            "end_date": _serialize_datetime(row.end_date),
             "is_subscribed": subscription_map.get(task_id, False),
-            "last_comment_date": fields.serialize_value(row.last_comment_date),
-            "last_preview_file_id": str(row.last_preview_file_id or ""),
+            "last_comment_date": _serialize_datetime(row.last_comment_date),
+            "last_preview_file_id": row.last_preview_file_id or "",
             "priority": row.priority or 0,
-            "real_start_date": fields.serialize_value(row.real_start_date),
+            "real_start_date": _serialize_datetime(row.real_start_date),
             "retake_count": row.retake_count,
-            "start_date": fields.serialize_value(row.start_date),
+            "start_date": _serialize_datetime(row.start_date),
             "difficulty": row.difficulty,
-            "task_status_id": str(row.task_status_id),
-            "task_type_id": str(row.task_type_id),
+            "task_status_id": row.task_status_id,
+            "task_type_id": row.task_type_id,
             "assignees": [],
         }
         task_map[task_id] = task_dict
         asset_dict["tasks"].append(task_dict)
 
     for task_id, person_id in link_rows:
-        task_dict = task_map.get(str(task_id))
+        task_dict = task_map.get(task_id)
         if task_dict is not None and person_id:
-            task_dict["assignees"].append(str(person_id))
+            task_dict["assignees"].append(person_id)
 
     return list(asset_map.values())
 
