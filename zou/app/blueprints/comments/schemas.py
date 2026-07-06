@@ -54,8 +54,11 @@ class CommentCreateSchema(BaseSchema):
     @classmethod
     def decode_json_strings(cls, value):
         """
-        Accept the JSON-encoded strings sent by multipart forms.
+        Accept the JSON-encoded strings sent by multipart forms and the
+        explicit nulls sent by Kitsu when the field is empty.
         """
+        if value is None:
+            return []
         if isinstance(value, str):
             return json.loads(value) if value else []
         return value

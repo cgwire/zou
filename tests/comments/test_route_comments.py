@@ -50,6 +50,20 @@ class CommentRoutesTestCase(ApiDBTestCase):
         )
         self.assertIsNotNone(result["id"])
 
+    def test_comment_task_null_links_and_checklist(self):
+        result = self.post(
+            f"/actions/tasks/{self.task.id}/comment",
+            {
+                "task_status_id": str(self.task_status.id),
+                "comment": "No links here",
+                "links": None,
+                "checklist": None,
+            },
+        )
+        self.assertIsNotNone(result["id"])
+        self.assertEqual(result["links"], [])
+        self.assertEqual(result["checklist"], [])
+
     def test_batch_comment_task(self):
         comments = [
             {"task_status_id": str(self.task_status.id), "text": "note 1"},
