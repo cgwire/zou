@@ -1118,3 +1118,4 @@ class ChangePasswordErrorsTestCase(ApiDBTestCase):
             ),
             headers=headers,
         )
+        self.assertEqual(response.status_code, 400)
