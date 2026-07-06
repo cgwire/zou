@@ -481,7 +481,7 @@ def get_raw_asset_by_shotgun_id(shotgun_id):
     return get_asset_raw(asset["id"])
 
 
-@cache.memoize_function(120)
+@cache.memoize_function_single_flight(120)
 def get_full_asset(asset_id):
     """
     Return asset matching given id with additional information (project name,

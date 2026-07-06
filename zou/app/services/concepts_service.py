@@ -70,7 +70,7 @@ def get_concept(concept_id, relations=False):
     )
 
 
-@cache.memoize_function(120)
+@cache.memoize_function_single_flight(120)
 def get_full_concept(concept_id):
     """
     Return given concept as a dictionary with extra data like project.

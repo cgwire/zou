@@ -256,7 +256,7 @@ def get_edit(edit_id, relations=False):
     )
 
 
-@cache.memoize_function(120)
+@cache.memoize_function_single_flight(120)
 def get_full_edit(edit_id):
     """
     Return given edit as a dictionary with extra data like project.

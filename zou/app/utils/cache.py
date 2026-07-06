@@ -91,6 +91,37 @@ def memoize_function(timeout=120):
     return decorator
 
 
+def memoize_function_single_flight(timeout=120):
+    """
+    Like memoize_function, plus a Redis lock around cache-miss rebuilds:
+    when a hot entry expires, concurrent requests rebuild it once instead
+    of all at once (anti-stampede). Reserved for functions that never
+    return None, since a None hit is indistinguishable from a miss.
+    """
+
+    def decorator(func):
+        cached_func = memoize_function(timeout)(func)
+
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            from zou.app.stores.redis_lock import with_lock
+
+            key = cached_func.make_cache_key(
+                cached_func.uncached, *args, **kwargs
+            )
+            if cache.get(key) is not None:
+                return cached_func(*args, **kwargs)
+            with with_lock(f"single-flight-{key}"):
+                return cached_func(*args, **kwargs)
+
+        wrapper.make_cache_key = cached_func.make_cache_key
+        wrapper.uncached = cached_func.uncached
+        wrapper.cache_timeout = cached_func.cache_timeout
+        return wrapper
+
+    return decorator
+
+
 def invalidate(*args):
     cache.delete_memoized(*args)
 
