@@ -63,7 +63,7 @@ class BaseModelsResource(Resource, ArgsMixin):
         if (total < offset) or (page < 1):
             result = {
                 "data": [],
-                "total": 0,
+                "total": total,
                 "nb_pages": nb_pages,
                 "limit": limit,
                 "offset": offset,
