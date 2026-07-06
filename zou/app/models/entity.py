@@ -1,3 +1,16 @@
+"""
+The Entity model is polymorphic: assets, shots, sequences, episodes,
+scenes, edits and concepts are all rows in the entity table,
+distinguished by entity_type_id (there is no per-type table). Parenting
+is done through parent_id (e.g. shot -> sequence -> episode) and
+source_id (the "main" episode of an asset), while EntityLink models
+many-to-many casting relations between entities.
+
+Because there is no ORM subclass per type, "is this a shot?" style
+questions live in the services (shots_service, entities_service...) and
+compare entity_type_id against the cached type ids, not in this model.
+"""
+
 from sqlalchemy_utils import UUIDType, ChoiceType
 
 from zou.app import db
