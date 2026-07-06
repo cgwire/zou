@@ -274,7 +274,12 @@ def get_last_news_for_project(
 
 
 def _get_news_total(query, limit):
-    total = query.count()
+    # count() wraps the whole 5-join select in a subquery; counting the
+    # news column over the same joins gives the same total without
+    # materializing the select (order_by must go, aggregates forbid it).
+    total = (
+        query.order_by(None).with_entities(func.count(News.id)).scalar()
+    )
     nb_pages = int(math.ceil(total / float(limit)))
     return total, nb_pages
 
