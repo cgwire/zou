@@ -33,3 +33,13 @@ class ExtractAnnotatedFrameSchema(BaseSchema):
     """
 
     frame_number: Optional[int] = Field(None, ge=1)
+
+
+class AnnotationsUpdateSchema(BaseSchema):
+    """
+    Body for updating the annotations of a preview file.
+    """
+
+    additions: list = Field(default_factory=list)
+    updates: list = Field(default_factory=list)
+    deletions: list = Field(default_factory=list)
