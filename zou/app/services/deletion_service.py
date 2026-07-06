@@ -216,17 +216,22 @@ def remove_preview_file(preview_file, force=False):
     if news is not None:
         news.update({"preview_file_id": None})
 
-    if config.REMOVE_FILES or force:
-        if preview_file.extension == "png":
-            clear_picture_files(preview_file.id)
-        elif preview_file.extension == "mp4":
-            clear_movie_files(preview_file.id)
-        else:
-            clear_generic_files(preview_file.id)
+    preview_file_id = str(preview_file.id)
+    extension = preview_file.extension
 
     preview_file.comments = []
     preview_file.save()
     preview_file.delete()
+
+    # Remove the physical files only once the DB row is gone: if the
+    # delete fails, the row must not end up pointing at missing files.
+    if config.REMOVE_FILES or force:
+        if extension == "png":
+            clear_picture_files(preview_file_id)
+        elif extension == "mp4":
+            clear_movie_files(preview_file_id)
+        else:
+            clear_generic_files(preview_file_id)
 
     # Update last preview file uploaded on task
     if task.last_preview_file_id == preview_file.id:
