@@ -18,10 +18,11 @@ class ImportRowException(Exception):
     message = ""
     line_number = 0
 
-    def __init__(self, message, line_number):
+    def __init__(self, message, line_number, imported_rows=0):
         Exception.__init__(self, message)
         self.message = message
         self.line_number = line_number
+        self.imported_rows = imported_rows
 
 
 class RowException(Exception):
@@ -59,12 +60,19 @@ class BaseCsvImportResource(MethodView, ArgsMixin):
             "error": True,
             "message": exception.message,
             "line_number": exception.line_number,
+            "imported_rows": exception.imported_rows,
         }
 
     def format_error(self, exception):
         return {"error": True, "message": str(exception)}
 
     def run_import(self, file_path, *args):
+        """
+        Import rows one by one, each committed on its own: a failure stops
+        the import but keeps previously imported rows (imported_rows in
+        the error payload tells the client how many). Fixing the file and
+        re-importing with update=true completes the job idempotently.
+        """
         result = []
         self.check_permissions(*args)
         self.prepare_import(*args)
@@ -78,19 +86,27 @@ class BaseCsvImportResource(MethodView, ArgsMixin):
                     row = self.import_row(row, *args)
                     result.append(row)
                 except IntegrityError as e:
-                    raise ImportRowException(e._message(), line_number)
+                    raise ImportRowException(
+                        e._message(), line_number, len(result)
+                    )
                 except RowException as e:
-                    raise ImportRowException(e.message, line_number)
+                    raise ImportRowException(
+                        e.message, line_number, len(result)
+                    )
                 except KeyError as e:
                     raise ImportRowException(
-                        f"A columns is missing: {str(e)}", line_number
+                        f"A columns is missing: {str(e)}",
+                        line_number,
+                        len(result),
                     )
                 except ValueError as e:
                     raise ImportRowException(
-                        f"A value is invalid: {str(e)}", line_number
+                        f"A value is invalid: {str(e)}",
+                        line_number,
+                        len(result),
                     )
                 except Exception as e:
-                    raise ImportRowException(str(e), line_number)
+                    raise ImportRowException(str(e), line_number, len(result))
         return result
 
     def get_dialect(self, csvfile):
