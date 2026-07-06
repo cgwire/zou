@@ -1062,7 +1062,12 @@ def download_file(file_path, prefix, dl_func, preview_file_id):
                 tmp_file.write(chunk)
         logger.info(f"{file_path} downloaded")
     except Exception:
-        pass
+        # A partial file would be mistaken for a valid download on the
+        # next sync run: remove it and log instead of failing the whole
+        # sync for one file.
+        logger.exception(f"Failed to download {prefix} {preview_file_id}")
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
 
 def download_preview(preview_file):
