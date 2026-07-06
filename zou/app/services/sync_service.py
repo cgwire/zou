@@ -1,3 +1,15 @@
+"""
+Pull-based synchronization from another Kitsu instance through gazu.
+
+The service logs in to a remote instance and mirrors its data locally,
+model by model, following the API event log to fetch only what changed
+since the last run (see _fetch_events / cursor_event_id). It is meant
+for one-way replication (a studio mirror, a backup instance); it never
+pushes local changes back. File synchronization (previews, thumbnails)
+downloads to a temporary path first and cleans it up on failure so a
+partial download never lands in the store.
+"""
+
 import datetime
 import logging
 import os

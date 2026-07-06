@@ -1,3 +1,16 @@
+"""
+Business logic for tasks: assignation, status changes, comments, time
+spent and the aggregated "todos"/"open tasks" views.
+
+Two conventions matter when editing this module:
+- get_task()/get_task_status()/... return serialized dicts and are
+  memoized; every mutation must invalidate its entry (clear_task_cache
+  and friends) or clients keep reading stale data.
+- Several imports of other services are done lazily inside functions to
+  break import cycles (tasks <-> shots <-> entities). Keep them local
+  when adding cross-service calls.
+"""
+
 import collections
 import uuid
 

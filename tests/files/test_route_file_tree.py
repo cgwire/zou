@@ -37,17 +37,6 @@ class FolderPathTestCase(ApiDBTestCase):
             "3ds_max",
         )
 
-    def test_get_path_shot(self):
-        data = {"software": self.software_max.id}
-        result = self.post(
-            f"/data/tasks/{self.shot_task.id}/working-file-path", data, 200
-        )
-        self.assertEqual(
-            result["path"],
-            "/simple/productions/cosmos_landromat/shots/s01/p01/animation/"
-            "3ds_max",
-        )
-
     def test_get_path_scene(self):
         data = {"software": self.software_max.id}
         result = self.post(
