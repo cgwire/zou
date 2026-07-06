@@ -1,7 +1,16 @@
-from tests.base import ApiDBTestCase
+import pytest
 
+from tests.base import ApiDBTestCase, indexer_is_up
 
 from zou.app.services import index_service
+
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.skipif(
+        not indexer_is_up(),
+        reason="Needs a running Meilisearch (integration test)",
+    ),
+]
 
 
 class AssetSearchTestCase(ApiDBTestCase):

@@ -1,8 +1,18 @@
 from unittest.mock import patch
 
-from tests.base import ApiDBTestCase
+import pytest
+
+from tests.base import ApiDBTestCase, indexer_is_up
 
 from zou.app.services import assets_service, index_service
+
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.skipif(
+        not indexer_is_up(),
+        reason="Needs a running Meilisearch (integration test)",
+    ),
+]
 from zou.app.services.exception import (
     EpisodeNotFoundException,
     SequenceNotFoundException,

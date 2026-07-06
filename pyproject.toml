@@ -1,2 +1,7 @@
 [tool.black]
 line-length = 79
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: needs an external service (e.g. a running Meilisearch)",
+]

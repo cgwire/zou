@@ -52,6 +52,29 @@ from flask import current_app
 
 TEST_FOLDER = os.path.join("tests", "tmp")
 
+
+def indexer_is_up():
+    """
+    Tell whether an indexer is configured (INDEXER_KEY) and the
+    Meilisearch instance answers, so integration tests are skipped
+    instead of erroring or hanging when it is absent.
+    """
+    import requests
+
+    from zou.app import config
+
+    if config.INDEXER["key"] is None:
+        return False
+    url = (
+        f"{config.INDEXER['protocol']}://{config.INDEXER['host']}"
+        f":{config.INDEXER['port']}/health"
+    )
+    try:
+        return requests.get(url, timeout=1).status_code == 200
+    except requests.RequestException:
+        return False
+
+
 auth_tokens_store.revoked_tokens_store = fakeredis.FakeStrictRedis(
     decode_responses=True
 )
