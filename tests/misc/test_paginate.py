@@ -22,6 +22,10 @@ class PaginationTestCase(ApiDBTestCase):
         persons = self.get("data/persons?page=0")["data"]
         self.assertEqual(len(persons), 0)
 
+    def test_malformed_page_returns_400(self):
+        self.get("data/persons?page=foo", 400)
+        self.get("data/persons?page=1&limit=bar", 400)
+
     def test_metadata(self):
         pagination_infos = self.get("data/persons?page=2")
         self.assertEqual(pagination_infos["total"], 251)

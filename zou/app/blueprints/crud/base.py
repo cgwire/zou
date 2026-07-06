@@ -3,7 +3,7 @@ import math
 import orjson as json
 import sqlalchemy.orm as orm
 
-from flask import request, abort, current_app
+from flask import request, current_app
 from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
@@ -243,8 +243,8 @@ class BaseModelsResource(Resource, ArgsMixin):
                 self.check_read_permissions(options)
                 query = self.apply_filters(query, options)
                 query = self.add_project_permission_filter(query)
-                page = int(options.get("page", "-1"))
-                limit = int(options.get("limit", 0))
+                page = self.get_page()
+                limit = self.get_limit()
                 relations = self.get_bool_parameter("relations")
                 is_paginated = page > -1
 

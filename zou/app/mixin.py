@@ -75,15 +75,23 @@ class ArgsMixin(object):
         """
         Returns page requested by the user as an integer.
         """
-        options = request.args
-        return int(options.get("page", "-1"))
+        return self.get_integer_parameter("page", -1)
 
     def get_limit(self):
         """
         Returns limit requested by the user as an integer.
         """
-        options = request.args
-        return int(options.get("limit", 0))
+        return self.get_integer_parameter("limit", 0)
+
+    def get_integer_parameter(self, field_name, default=0):
+        """
+        Returns an integer query parameter, raising a 400 error when the
+        value is not a valid integer.
+        """
+        try:
+            return int(request.args.get(field_name, default))
+        except ValueError:
+            raise WrongParameterException(f"{field_name} must be an integer.")
 
     def get_sort_by(self):
         """
