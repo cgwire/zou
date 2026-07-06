@@ -45,7 +45,7 @@ def clear_asset_cache(asset_id):
 
 
 def clear_asset_type_cache():
-    cache.cache.delete_memoized(get_asset_types)
+    cache.cache.delete_memoized(get_all_asset_types)
 
 
 def get_temporal_type_ids():
@@ -378,15 +378,27 @@ def get_assets_and_tasks(criterions=None, with_episode_ids=False):
     return list(asset_map.values())
 
 
-@cache.memoize_function(240)
 def get_asset_types(criterions=None):
     """
-    Retrieve all asset types available.
+    Retrieve all asset types available. Only the no-criterion variant is
+    memoized: criterion dicts vary per request and used to pollute the
+    cache with entries that were never hit again.
     """
-    if criterions is None:
-        criterions = {}
+    if not criterions:
+        return get_all_asset_types()
     query = EntityType.query.filter(build_entity_type_asset_type_filter())
     query = query_utils.apply_criterions_to_db_query(Entity, query, criterions)
+    return EntityType.serialize_list(
+        query.all(), obj_type="AssetType", relations=True
+    )
+
+
+@cache.memoize_function(240)
+def get_all_asset_types():
+    """
+    Retrieve all asset types, without criterion.
+    """
+    query = EntityType.query.filter(build_entity_type_asset_type_filter())
     return EntityType.serialize_list(
         query.all(), obj_type="AssetType", relations=True
     )
