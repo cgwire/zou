@@ -16,6 +16,9 @@ _REAL_BCRYPT_FILES = {
     # Share-link passwords are hashed with bcrypt; the verification
     # path must not be patched to always-True for this file.
     "test_playlist_sharing.py",
+    # Recovery codes are hashed with bcrypt and their verification is
+    # exactly what the FIDO unregister tests assert.
+    "test_fido.py",
 }
 
 # flask_bcrypt module-level functions create a Bcrypt() instance without
