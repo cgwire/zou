@@ -27,7 +27,6 @@ from zou.app.mixin import ArgsMixin
 from zou.app.utils import auth, emails, permissions, date_helpers, validation
 from zou.app.blueprints.auth.schemas import (
     LoginSchema,
-    RegisterSchema,
     ChangePasswordSchema,
     ResetPasswordSchema,
     SendPasswordResetSchema,
@@ -449,90 +448,6 @@ class RefreshTokenResource(Resource):
             return response
         else:
             return {"access_token": access_token}
-
-
-class RegistrationResource(Resource, ArgsMixin):
-    """
-    Allow a user to register himself to the service.
-    """
-
-    def post(self):
-        """
-        Register new user
-        ---
-        description: Allow a user to register himself to the service.
-        tags:
-            - Authentication
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  email:
-                    type: string
-                    format: email
-                    example: admin@example.com
-                    description: User email address
-                  password:
-                    type: string
-                    format: password
-                    description: User password
-                  password_2:
-                    type: string
-                    format: password
-                    description: Password confirmation
-                  first_name:
-                    type: string
-                    description: User first name
-                  last_name:
-                    type: string
-                    description: User last name
-                required:
-                  - email
-                  - password
-                  - password_2
-                  - first_name
-                  - last_name
-        responses:
-          201:
-            description: Registration successful
-          400:
-            description: Invalid password or email
-        """
-        body = validation.validate_request_body(RegisterSchema)
-
-        try:
-            email = auth.validate_email(body.email)
-            auth.validate_password(body.password, body.password_2)
-            password = auth.encrypt_password(body.password)
-            persons_service.create_person(
-                email, password, body.first_name, body.last_name
-            )
-            return {"registration_success": True}, 201
-        except auth.PasswordsNoMatchException:
-            return (
-                {
-                    "error": True,
-                    "message": "Confirmation password doesn't match.",
-                },
-                400,
-            )
-        except auth.PasswordTooShortException:
-            return {"error": True, "message": "Password is too short."}, 400
-        except auth.EmailNotValidException as exception:
-            return {"error": True, "message": str(exception)}, 400
-
-    def get_arguments(self):
-        body = validation.validate_request_body(RegisterSchema)
-        return (
-            body.email,
-            body.password,
-            body.password_2,
-            body.first_name,
-            body.last_name,
-        )
 
 
 class ChangePasswordResource(Resource, ArgsMixin):

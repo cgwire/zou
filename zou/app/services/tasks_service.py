@@ -1454,11 +1454,18 @@ def update_task(task_id, data):
     """
     task = get_task_raw(task_id)
 
-    if is_finished(task, data):
-        data["end_date"] = date_helpers.get_utc_now_datetime()
-
-    if is_done(task, data):
-        data["done_date"] = date_helpers.get_utc_now_datetime()
+    if "task_status_id" in data and data["task_status_id"] != str(
+        task.task_status_id
+    ):
+        new_status = get_task_status_raw(data["task_status_id"])
+        now = date_helpers.get_utc_now_datetime()
+        # Rolling a task back from done/feedback must clear the matching
+        # dates, otherwise stats keep counting the task as finished.
+        if new_status.is_feedback_request:
+            data["end_date"] = now
+        elif not new_status.is_done:
+            data["end_date"] = None
+        data["done_date"] = now if new_status.is_done else None
 
     task.update(data)
     clear_task_cache(task_id)
@@ -1640,33 +1647,6 @@ def delete_time_spent(task_id, person_id, date):
     events.emit("task:update", {"task_id": task_id}, project_id=project_id)
 
     return time_spent.serialize()
-
-
-def is_finished(task, data):
-    """
-    Return True if task status is set to feedback request.
-    """
-    if "task_status_id" in data:
-        task_status = get_task_status_raw(task.task_status_id)
-        new_task_status = get_task_status_raw(data["task_status_id"])
-        return (
-            new_task_status.id != task_status.id
-            and new_task_status.is_feedback_request
-        )
-    else:
-        return False
-
-
-def is_done(task, data):
-    """
-    Return True if task status is set to done.
-    """
-    if "task_status_id" in data:
-        task_status = get_task_status_raw(task.task_status_id)
-        new_task_status = get_task_status_raw(data["task_status_id"])
-        return new_task_status.id != task_status.id and new_task_status.is_done
-    else:
-        return False
 
 
 def clear_assignation(task_id, person_id=None):
