@@ -272,8 +272,7 @@ def is_edit(entity):
     """
     Returns True if given entity has 'Edit' as entity type
     """
-    edit_type = get_edit_type()
-    return str(entity["entity_type_id"]) == edit_type["id"]
+    return entities_service.is_edit(entity)
 
 
 def get_edits_for_project(project_id, only_assigned=False):

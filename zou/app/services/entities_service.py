@@ -50,6 +50,14 @@ def get_temporal_entity_type_by_name(name):
     return entity_type
 
 
+def is_edit(entity):
+    """
+    Return True if given entity dict has 'Edit' as entity type.
+    """
+    edit_type = get_temporal_entity_type_by_name("Edit")
+    return str(entity["entity_type_id"]) == edit_type["id"]
+
+
 @cache.memoize_function(240)
 def get_entity_type(entity_type_id):
     """
