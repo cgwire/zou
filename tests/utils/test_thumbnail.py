@@ -5,7 +5,6 @@ from PIL import Image
 
 from werkzeug.datastructures import FileStorage
 
-from zou.app import app
 from zou.app.utils import thumbnail, fs
 
 TEST_FOLDER = os.path.join("tests", "tmp")
@@ -27,8 +26,10 @@ class ThumbnailTestCase(unittest.TestCase):
     def tearDown(self):
         super(ThumbnailTestCase, self).tearDown()
         fs.rm_rf(self.folder_name)
+        # Only remove what these tests create (everything lives in
+        # TEST_FOLDER). Never touch PREVIEW_FOLDER: outside CI it can
+        # resolve to a live development preview store.
         fs.rm_rf(TEST_FOLDER)
-        fs.rm_rf(app.config["PREVIEW_FOLDER"])
 
     def test_turn_into_thumbnail(self):
         file_path_fixture = self.get_fixture_file_path("thumbnails/th01.png")
