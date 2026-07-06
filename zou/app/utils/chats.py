@@ -17,7 +17,7 @@ def send_to_slack(token, userid, message):
     if token:
         if userid:
             try:
-                from slack import WebClient as SlackClient
+                from slack_sdk import WebClient as SlackClient
 
                 client = SlackClient(token=token)
                 blocks = [
