@@ -1,10 +1,15 @@
 from datetime import datetime, timedelta
+from freezegun import freeze_time
+
 from tests.base import ApiDBTestCase
 
 from zou.app.models.news import News
 from zou.app.services import comments_service, news_service
 
 
+# Frozen mid-day time: these tests build date-boundary filters (before/
+# after) from now(), which flakes around midnight otherwise.
+@freeze_time("2026-07-06T12:00:00")
 class NewsServiceTestCase(ApiDBTestCase):
     def setUp(self):
         super(NewsServiceTestCase, self).setUp()
