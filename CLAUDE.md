@@ -161,7 +161,7 @@ For standard model CRUD, extend `BaseModelsResource` / `BaseModelResource` in `z
 
 ## Pydantic Validation (v2)
 
-All request body validation uses Pydantic v2 schemas. **Do not use `reqparse` or `ArgsMixin` for body parsing** — those are legacy patterns. Two inherited `reqparse` usages remain (`comments/resources.py`, `chats/resources.py`): do not copy them, migrate them to Pydantic when you touch those resources.
+All request body validation uses Pydantic v2 schemas. **Do not use `reqparse` or `ArgsMixin` for body parsing** — those are legacy patterns; no resource uses `reqparse` for bodies anymore (`ArgsMixin.get_args` remains for query parameters only).
 
 ### Schema pattern
 

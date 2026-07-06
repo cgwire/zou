@@ -1,8 +1,9 @@
 from flask import request
-from flask_restful import Resource, reqparse
+from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
-from zou.app.utils import permissions
+from zou.app.blueprints.chats.schemas import ChatMessageSchema
+from zou.app.utils import permissions, validation
 
 from zou.app.services import (
     chats_service,
@@ -204,16 +205,8 @@ class ChatMessagesResource(Resource):
         user_service.check_entity_access(entity["id"])
 
         person = persons_service.get_current_user()
-        if request.is_json:
-            location = ["values", "json"]
-        else:
-            location = ["values", "form"]
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "message", type=str, required=True, location=location
-        )
-        args = parser.parse_args()
-        message = args["message"]
+        body = validation.validate_request_body(ChatMessageSchema)
+        message = body.message
         files = request.files
 
         chat = chats_service.get_chat(entity_id)

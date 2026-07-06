@@ -17,7 +17,7 @@ def send_to_slack(token, userid, message):
     if token:
         if userid:
             try:
-                from slack import WebClient as SlackClient
+                from slack_sdk import WebClient as SlackClient
 
                 client = SlackClient(token=token)
                 blocks = [
@@ -48,23 +48,21 @@ def send_to_mattermost(webhook, userid, message):
     if webhook:
         if userid:
             try:
-                from matterhook import Webhook
+                import requests
 
-                arg = webhook.split("/")
-                server = f"{arg[0]}{arg[1]}//{arg[2]}"
-                hook = arg[4]
-
-                # mandatory parameters are url and your webhook API key
-                mwh = Webhook(server, hook)
-                mwh.username = f"Kitsu - {message['project_name']}"
-                mwh.icon_url = (
-                    f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}"
-                    f"/img/kitsu.b07d6464.png"
-                )
-
-                # send a message to the API_KEY's channel
-                mwh.send(message["message"], channel=f"@{userid}")
-
+                # A Mattermost incoming webhook is a plain POST of a
+                # JSON payload on the webhook URL.
+                payload = {
+                    "text": message["message"],
+                    "channel": f"@{userid}",
+                    "username": f"Kitsu - {message['project_name']}",
+                    "icon_url": (
+                        f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}"
+                        "/img/kitsu.b07d6464.png"
+                    ),
+                }
+                response = requests.post(webhook, json=payload, timeout=30)
+                response.raise_for_status()
             except Exception:
                 logger.error(
                     "Exception when sending a Mattermost notification:",
