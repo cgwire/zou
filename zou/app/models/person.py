@@ -7,7 +7,7 @@ from sqlalchemy_utils import (
     TimezoneType,
     ChoiceType,
 )
-from sqlalchemy import Index
+from sqlalchemy import func, Index
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import validates
 from sqlalchemy.dialects.postgresql import JSONB
@@ -17,6 +17,7 @@ from babel import Locale
 from babel.core import UnknownLocaleError
 
 from zou.app.models.serializer import SerializerMixin
+from zou.app.utils import fields
 from zou.app.models.department import Department
 from zou.app.models.base import BaseMixin
 from zou.app import db
@@ -283,10 +284,17 @@ class Person(db.Model, BaseMixin, SerializerMixin):
 
     @full_name.expression
     def full_name(cls):
-        if cls.first_name and cls.last_name:
-            return cls.first_name + " " + cls.last_name
-        else:
-            return cls.first_name + cls.last_name
+        # The previous form branched on bool(Column), which is always
+        # true, and produced NULL as soon as one name part was NULL.
+        # concat_ws skips NULLs; nullif maps empty strings to NULL so the
+        # result matches the Python property for every combination.
+        return func.trim(
+            func.concat_ws(
+                " ",
+                func.nullif(cls.first_name, ""),
+                func.nullif(cls.last_name, ""),
+            )
+        )
 
     def fido_devices(self):
         if self.fido_credentials is None:
@@ -312,22 +320,29 @@ class Person(db.Model, BaseMixin, SerializerMixin):
         )
 
     def present_minimal(self, relations=False, milliseconds=False):
-        data = SerializerMixin.serialize(
-            self, "Person", relations=relations, milliseconds=milliseconds
-        )
+        """
+        Build the minimal person dict directly: serializing all columns to
+        keep a dozen fields was a hot path (embedded author of every
+        comment and reply).
+        """
+        departments = []
+        if relations:
+            departments = [
+                str(department.id) for department in self.departments
+            ]
         return {
-            "id": data["id"],
-            "type": data["type"],
-            "first_name": data["first_name"],
-            "last_name": data["last_name"],
+            "id": str(self.id),
+            "type": "Person",
+            "first_name": self.first_name,
+            "last_name": self.last_name,
             "full_name": self.full_name,
-            "has_avatar": data["has_avatar"],
-            "active": data["active"],
-            "departments": data.get("departments", []),
-            "studio_id": data["studio_id"],
-            "role": data["role"],
-            "desktop_login": data["desktop_login"],
-            "is_bot": data["is_bot"],
+            "has_avatar": self.has_avatar,
+            "active": self.active,
+            "departments": departments,
+            "studio_id": str(self.studio_id) if self.studio_id else None,
+            "role": fields.serialize_value(self.role),
+            "desktop_login": self.desktop_login,
+            "is_bot": self.is_bot,
         }
 
     def set_departments(self, department_ids):

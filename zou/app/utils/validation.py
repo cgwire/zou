@@ -12,6 +12,7 @@ from flask import request
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from zou.app.services.exception import WrongParameterException
+from zou.app.utils import fields
 
 
 class BaseSchema(BaseModel):
@@ -65,3 +66,24 @@ def validate_request_body(SchemaClass, *, data=None):
             "Validation error.",
             dict={"errors": errors},
         )
+
+
+def validate_id_list(required=True):
+    """
+    Validate that the request body is a JSON array of UUID strings and
+    return it. Bulk endpoints (create tasks for shots, batch delete...)
+    take a bare array as body. With required=False an absent or empty
+    body returns None: those endpoints treat it as "no explicit
+    selection" and target every entity of the scope.
+    """
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, list):
+        if not required and payload in (None, {}):
+            return None
+        raise WrongParameterException("Request body must be a JSON array.")
+    for entity_id in payload:
+        if not isinstance(entity_id, str) or not fields.is_valid_id(entity_id):
+            raise WrongParameterException(
+                "Request body must only contain valid UUIDs."
+            )
+    return payload

@@ -3,7 +3,8 @@ import sys
 import datetime
 import tempfile
 
-from zou.app.utils import dbhelpers
+from sqlalchemy.engine.url import URL
+
 from zou.app.utils.env import envtobool, env_with_semicolon_to_list
 
 PROPAGATE_EXCEPTIONS = True
@@ -63,7 +64,9 @@ DATABASE = {
     "password": os.getenv("DB_PASSWORD", "mysecretpassword"),
     "database": os.getenv("DB_DATABASE", "zoudb"),
 }
-SQLALCHEMY_DATABASE_URI = dbhelpers.get_db_uri()
+SQLALCHEMY_DATABASE_URI = URL.create(**DATABASE).render_as_string(
+    hide_password=False
+)
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 SQLALCHEMY_ENGINE_OPTIONS = {
     "pool_size": int(os.getenv("DB_POOL_SIZE", 30)),

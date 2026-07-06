@@ -454,7 +454,10 @@ def _resolve_episode_and_build_task_dict(
             except EpisodeNotFoundException:
                 episode_name = "MP"
 
-    task_dict = get_task(str(task.id), relations=True)
+    # Serialize the Task instance already carried by the row instead of
+    # re-fetching it through get_task (one query per row on cache miss).
+    # Assignees are attached in batch by the callers.
+    task_dict = task.serialize()
     if entity_type_name == "Sequence" and entity_parent_id is not None:
         episode_id = entity_parent_id
         episode = shots_service.get_episode(episode_id)
@@ -1123,6 +1126,8 @@ def get_person_tasks(person_id, projects, is_done=None):
             ]
         tasks.append(task_dict)
 
+    if tasks:
+        _attach_assignee_ids(tasks)
     _add_last_comments_to_tasks(tasks)
     return tasks
 
@@ -1200,6 +1205,8 @@ def get_person_tasks_to_check(project_ids=None, department_ids=None):
         )
         tasks.append(task_dict)
 
+    if tasks:
+        _attach_assignee_ids(tasks)
     _add_last_comments_to_tasks(tasks)
     return tasks
 
@@ -2251,6 +2258,9 @@ def get_open_tasks(
             }
         )
         tasks.append(task_dict)
+
+    if tasks:
+        _attach_assignee_ids(tasks)
 
     result = {
         "data": [],

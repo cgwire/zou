@@ -77,7 +77,7 @@ def clear_index(index_name):
     """
     Clear all data into the index matching given name.
     """
-    cache.cache.delete_memoized(get_index)
+    cache.cache.delete_memoized(get_index, index_name)
     index = get_index(index_name)
     task = index.delete_all_documents()
     get_client().wait_for_task(

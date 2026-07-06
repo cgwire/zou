@@ -423,7 +423,7 @@ def get_shot(shot_id, relations=False):
     )
 
 
-@cache.memoize_function(120)
+@cache.memoize_function_single_flight(120)
 def get_full_shot(shot_id):
     """
     Return given shot as a dictionary with extra data like project and
@@ -506,7 +506,7 @@ def get_sequence(sequence_id):
     return get_sequence_raw(sequence_id).serialize(obj_type="Sequence")
 
 
-@cache.memoize_function(120)
+@cache.memoize_function_single_flight(120)
 def get_full_sequence(sequence_id):
     """
     Return given sequence as a dictionary with extra data like project name.
@@ -685,8 +685,7 @@ def is_edit(entity):
     """
     Returns True if given entity has 'Edit' as entity type
     """
-    edit_type = get_edit_type()
-    return str(entity["entity_type_id"]) == edit_type["id"]
+    return entities_service.is_edit(entity)
 
 
 def is_episode(entity):

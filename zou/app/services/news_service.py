@@ -73,10 +73,12 @@ def delete_news_for_comment(comment_id):
     if len(news_list) > 0:
         task = tasks_service.get_task(news_list[0].task_id)
         for news in news_list:
+            news_id = str(news.id)
             news.delete()
+            cache.cache.delete_memoized(get_news, task["project_id"], news_id)
             events.emit(
                 "news:delete",
-                {"news_id": news.id},
+                {"news_id": news_id},
                 project_id=task["project_id"],
             )
     return fields.serialize_list(news_list)
@@ -270,7 +272,10 @@ def get_last_news_for_project(
 
 
 def _get_news_total(query, limit):
-    total = query.count()
+    # count() wraps the whole 5-join select in a subquery; counting the
+    # news column over the same joins gives the same total without
+    # materializing the select (order_by must go, aggregates forbid it).
+    total = query.order_by(None).with_entities(func.count(News.id)).scalar()
     nb_pages = int(math.ceil(total / float(limit)))
     return total, nb_pages
 

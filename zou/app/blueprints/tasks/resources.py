@@ -821,7 +821,7 @@ class CreateShotTasksResource(MethodView):
         user_service.check_manager_project_access(project_id)
         task_type = tasks_service.get_task_type(task_type_id)
 
-        shot_ids = request.json
+        shot_ids = validation.validate_id_list(required=False)
         shots = []
         if isinstance(shot_ids, list) and len(shot_ids) > 0:
             for shot_id in shot_ids:
@@ -918,7 +918,7 @@ class CreateConceptTasksResource(MethodView):
             raise permissions.PermissionDenied
         task_type = tasks_service.get_task_type(task_type_id)
 
-        concept_ids = request.json
+        concept_ids = validation.validate_id_list(required=False)
         concepts = []
         if isinstance(concept_ids, list) and len(concept_ids) > 0:
             for concept_id in concept_ids:
@@ -1025,7 +1025,7 @@ class CreateEntityTasksResource(MethodView):
             )
         )
 
-        entity_ids = request.json
+        entity_ids = validation.validate_id_list(required=False)
         entities = []
         if isinstance(entity_ids, list) and len(entity_ids) > 0:
             for entity_id in entity_ids:
@@ -1119,7 +1119,7 @@ class CreateAssetTasksResource(MethodView):
         user_service.check_manager_project_access(project_id)
         task_type = tasks_service.get_task_type(task_type_id)
 
-        asset_ids = request.json
+        asset_ids = validation.validate_id_list(required=False)
         assets = []
         if isinstance(asset_ids, list) and len(asset_ids) > 0:
             for asset_id in asset_ids:
@@ -1211,7 +1211,7 @@ class CreateEditTasksResource(MethodView):
         user_service.check_manager_project_access(project_id)
         task_type = tasks_service.get_task_type(task_type_id)
 
-        edit_ids = request.json
+        edit_ids = validation.validate_id_list(required=False)
         edits = []
         if isinstance(edit_ids, list) and len(edit_ids) > 0:
             for edit_id in edit_ids:
@@ -2232,9 +2232,7 @@ class DeleteTasksResource(MethodView):
                       example: ["a24a6ea4-ce75-4665-a070-57453082c25"]
         """
         user_service.check_manager_project_access(project_id)
-        task_ids = request.json
-        if not isinstance(task_ids, list):
-            raise WrongParameterException("Request body must be a JSON array.")
+        task_ids = validation.validate_id_list()
         task_ids = deletion_service.remove_tasks(project_id, task_ids)
         for task_id in task_ids:
             tasks_service.clear_task_cache(task_id)

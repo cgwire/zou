@@ -12,6 +12,7 @@ from zou.app import config
 from zou.app.mixin import ArgsMixin
 from zou.app.utils import validation as validation_utils
 from zou.app.blueprints.previews.schemas import (
+    AnnotationsUpdateSchema,
     ExtractAnnotatedFrameSchema,
     PreviewFileUploadSchema,
     PreviewFilePositionSchema,
@@ -1624,17 +1625,15 @@ class UpdateAnnotationsResource(MethodView, ArgsMixin):
         if not (is_manager or is_client or is_supervisor_allowed):
             raise permissions.PermissionDenied
 
-        additions = request.json.get("additions", [])
-        updates = request.json.get("updates", [])
-        deletions = request.json.get("deletions", [])
+        body = validation_utils.validate_request_body(AnnotationsUpdateSchema)
         user = persons_service.get_current_user()
         return preview_files_service.update_preview_file_annotations(
             user["id"],
             task["project_id"],
             preview_file_id,
-            additions=additions,
-            updates=updates,
-            deletions=deletions,
+            additions=body.additions,
+            updates=body.updates,
+            deletions=body.deletions,
         )
 
 

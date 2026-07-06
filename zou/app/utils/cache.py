@@ -16,12 +16,15 @@ leaves the cached object untouched.
 """
 
 import copy
+import logging
 import redis
 
 from functools import wraps
 
 from flask_caching import Cache
 from zou.app import config
+
+logger = logging.getLogger(__name__)
 
 cache = None
 _is_simple_cache = False
@@ -49,6 +52,16 @@ else:
             }
         )
     except redis.ConnectionError:
+        # SimpleCache is per-process: with several workers each one keeps
+        # its own copy and delete_memoized() only invalidates the local
+        # one, so mutations made by one worker keep being served stale by
+        # the others until their TTL expires.
+        logger.warning(
+            "Cache Redis is unreachable, falling back to in-memory "
+            "SimpleCache. With multiple workers, cache invalidation is "
+            "BROKEN across processes: stale data may be served. Fix the "
+            "Redis connection or set CACHE_TYPE explicitly."
+        )
         cache = Cache(config={"CACHE_TYPE": "simple"})
         _is_simple_cache = True
 
@@ -70,6 +83,37 @@ def memoize_function(timeout=120):
             return copy.deepcopy(result)
 
         # Copy flask-caching attributes so delete_memoized works
+        wrapper.make_cache_key = cached_func.make_cache_key
+        wrapper.uncached = cached_func.uncached
+        wrapper.cache_timeout = cached_func.cache_timeout
+        return wrapper
+
+    return decorator
+
+
+def memoize_function_single_flight(timeout=120):
+    """
+    Like memoize_function, plus a Redis lock around cache-miss rebuilds:
+    when a hot entry expires, concurrent requests rebuild it once instead
+    of all at once (anti-stampede). Reserved for functions that never
+    return None, since a None hit is indistinguishable from a miss.
+    """
+
+    def decorator(func):
+        cached_func = memoize_function(timeout)(func)
+
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            from zou.app.stores.redis_lock import with_lock
+
+            key = cached_func.make_cache_key(
+                cached_func.uncached, *args, **kwargs
+            )
+            if cache.get(key) is not None:
+                return cached_func(*args, **kwargs)
+            with with_lock(f"single-flight-{key}"):
+                return cached_func(*args, **kwargs)
+
         wrapper.make_cache_key = cached_func.make_cache_key
         wrapper.uncached = cached_func.uncached
         wrapper.cache_timeout = cached_func.cache_timeout

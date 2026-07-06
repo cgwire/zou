@@ -188,6 +188,31 @@ class ImportCsvPersonsTestCase(ApiDBTestCase):
             ["Animation"],
         )
 
+    def test_import_persons_partial_import_reported(self):
+        """
+        Rows are committed one by one: a failing row stops the import but
+        keeps the rows before it, and the error payload reports the failing
+        line and how many rows were imported, so the client can fix the
+        file and re-run with update=true.
+        """
+        header = ";".join(f'"{column}"' for column in self.columns)
+        values = {column: "" for column in self.columns}
+        values["Last Name"] = "User"
+        values["First Name"] = "Valid"
+        values["Email"] = "valid.user@gmail.com"
+        row_valid = ";".join(f'"{values[column]}"' for column in self.columns)
+        values["First Name"] = "Broken"
+        values["Email"] = "broken.user@gmail.com"
+        values["Country"] = "France"
+        row_broken = ";".join(f'"{values[column]}"' for column in self.columns)
+        error = self._upload_csv(
+            f"{header}\n{row_valid}\n{row_broken}\n", code=400
+        )
+        self.assertEqual(error["line_number"], 3)
+        self.assertEqual(error["imported_rows"], 1)
+        self.assertIsNotNone(Person.get_by(email="valid.user@gmail.com"))
+        self.assertIsNone(Person.get_by(email="broken.user@gmail.com"))
+
     def _csv(self, **overrides):
         values = {column: "" for column in self.columns}
         values["First Name"] = "Test"

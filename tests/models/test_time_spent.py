@@ -1,3 +1,4 @@
+import datetime
 import random
 
 from tests.base import ApiDBTestCase
@@ -21,11 +22,15 @@ class TimeSpentTestCase(ApiDBTestCase):
         self.generate_fixture_task_status()
         self.generate_fixture_assigner()
         self.generate_fixture_task()
+        # Distinct deterministic dates: (person, task, date) is unique, so
+        # letting mixer draw random dates makes the test flaky on collision.
+        dates = iter(datetime.date(2024, 1, day) for day in [1, 2, 3])
         self.tasks = self.generate_data(
             TimeSpent,
             3,
             task_id=self.task.id,
             person_id=self.person.id,
+            date=lambda: next(dates),
             duration=lambda: random.uniform(0.1, 10000),
         )
 
