@@ -1,4 +1,3 @@
-import isoweek
 import datetime
 
 from babel.dates import format_datetime
@@ -122,7 +121,7 @@ def get_week_interval(year, week):
         or week > 52
     ):
         raise WrongDateFormatException
-    start = isoweek.Week(year, week).monday()
+    start = datetime.date.fromisocalendar(year, week, 1)
     end = start + relativedelta.relativedelta(days=7)
     return start, end
 
