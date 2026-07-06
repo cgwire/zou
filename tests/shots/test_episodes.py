@@ -175,4 +175,14 @@ class EpisodeTestCase(ApiDBTestCase):
         self.delete(f"data/episodes/{self.episode_id}", 400)
 
     def test_episode_stats(self):
-        pass
+        self.generate_fixture_department()
+        self.generate_fixture_shot_task()
+        stats = self.get(f"data/projects/{self.project_id}/episodes/stats")
+        task_type_id = str(self.task_type_animation.id)
+        task_status_id = str(self.task_status.id)
+        episode_stats = stats[self.episode_id]
+        self.assertEqual(
+            episode_stats[task_type_id][task_status_id]["count"], 1
+        )
+        self.assertEqual(episode_stats["all"][task_status_id]["count"], 1)
+        self.assertIn("all", stats)
