@@ -2,21 +2,30 @@ from flask import request
 from flask_jwt_extended import jwt_required
 from flask.views import MethodView
 
-from zou.app.mixin import ArgsMixin
 from zou.app.services import project_templates_service
 from zou.app.services.exception import (
     ProjectNotFoundException,
     ProjectTemplateNotFoundException,
     WrongParameterException,
 )
-from zou.app.utils import permissions
+from zou.app.utils import permissions, validation
+from zou.app.blueprints.project_templates.schemas import (
+    SetDefaultBackgroundSchema,
+    AddAssetTypeSchema,
+    AddBackgroundSchema,
+    AddStatusAutomationSchema,
+    AddTaskStatusSchema,
+    AddTaskTypeSchema,
+    CreateTemplateFromProjectSchema,
+    SetMetadataDescriptorsSchema,
+)
 
 # ---------------------------------------------------------------------------
 # Link management
 # ---------------------------------------------------------------------------
 
 
-class ProjectTemplateTaskTypesResource(MethodView, ArgsMixin):
+class ProjectTemplateTaskTypesResource(MethodView):
     @jwt_required()
     def get(self, template_id):
         """
@@ -42,17 +51,12 @@ class ProjectTemplateTaskTypesResource(MethodView, ArgsMixin):
           - Project Templates
         """
         permissions.check_admin_permissions()
-        args = self.get_args(
-            [
-                ("task_type_id", "", True),
-                ("priority", None, False, int),
-            ]
-        )
+        data = validation.validate_request_body(AddTaskTypeSchema)
         try:
             link = project_templates_service.add_task_type_to_template(
                 template_id,
-                args["task_type_id"],
-                args["priority"],
+                data.task_type_id,
+                data.priority,
             )
         except ProjectTemplateNotFoundException:
             return {"message": "Project template not found"}, 404
@@ -80,7 +84,7 @@ class ProjectTemplateTaskTypeResource(MethodView):
         return "", 204
 
 
-class ProjectTemplateTaskStatusesResource(MethodView, ArgsMixin):
+class ProjectTemplateTaskStatusesResource(MethodView):
     @jwt_required()
     def get(self, template_id):
         """
@@ -106,19 +110,13 @@ class ProjectTemplateTaskStatusesResource(MethodView, ArgsMixin):
           - Project Templates
         """
         permissions.check_admin_permissions()
-        args = self.get_args(
-            [
-                ("task_status_id", "", True),
-                ("priority", None, False, int),
-                ("roles_for_board", [], False, str, "append"),
-            ]
-        )
+        data = validation.validate_request_body(AddTaskStatusSchema)
         try:
             link = project_templates_service.add_task_status_to_template(
                 template_id,
-                args["task_status_id"],
-                args["priority"],
-                args["roles_for_board"] or None,
+                data.task_status_id,
+                data.priority,
+                data.roles_for_board or None,
             )
         except ProjectTemplateNotFoundException:
             return {"message": "Project template not found"}, 404
@@ -146,7 +144,7 @@ class ProjectTemplateTaskStatusResource(MethodView):
         return "", 204
 
 
-class ProjectTemplateAssetTypesResource(MethodView, ArgsMixin):
+class ProjectTemplateAssetTypesResource(MethodView):
     @jwt_required()
     def get(self, template_id):
         """
@@ -172,10 +170,10 @@ class ProjectTemplateAssetTypesResource(MethodView, ArgsMixin):
           - Project Templates
         """
         permissions.check_admin_permissions()
-        args = self.get_args([("asset_type_id", "", True)])
+        data = validation.validate_request_body(AddAssetTypeSchema)
         try:
             entry = project_templates_service.add_asset_type_to_template(
-                template_id, args["asset_type_id"]
+                template_id, data.asset_type_id
             )
         except ProjectTemplateNotFoundException:
             return {"message": "Project template not found"}, 404
@@ -203,7 +201,7 @@ class ProjectTemplateAssetTypeResource(MethodView):
         return "", 204
 
 
-class ProjectTemplateStatusAutomationsResource(MethodView, ArgsMixin):
+class ProjectTemplateStatusAutomationsResource(MethodView):
     @jwt_required()
     def get(self, template_id):
         """
@@ -229,11 +227,11 @@ class ProjectTemplateStatusAutomationsResource(MethodView, ArgsMixin):
           - Project Templates
         """
         permissions.check_admin_permissions()
-        args = self.get_args([("status_automation_id", "", True)])
+        data = validation.validate_request_body(AddStatusAutomationSchema)
         try:
             entry = (
                 project_templates_service.add_status_automation_to_template(
-                    template_id, args["status_automation_id"]
+                    template_id, data.status_automation_id
                 )
             )
         except ProjectTemplateNotFoundException:
@@ -262,7 +260,7 @@ class ProjectTemplateStatusAutomationResource(MethodView):
         return "", 204
 
 
-class ProjectTemplateBackgroundsResource(MethodView, ArgsMixin):
+class ProjectTemplateBackgroundsResource(MethodView):
     @jwt_required()
     def get(self, template_id):
         """
@@ -288,10 +286,10 @@ class ProjectTemplateBackgroundsResource(MethodView, ArgsMixin):
           - Project Templates
         """
         permissions.check_admin_permissions()
-        args = self.get_args([("preview_background_file_id", "", True)])
+        data = validation.validate_request_body(AddBackgroundSchema)
         try:
             entry = project_templates_service.add_preview_background_file_to_template(
-                template_id, args["preview_background_file_id"]
+                template_id, data.preview_background_file_id
             )
         except ProjectTemplateNotFoundException:
             return {"message": "Project template not found"}, 404
@@ -329,11 +327,10 @@ class ProjectTemplateDefaultBackgroundResource(MethodView):
           - Project Templates
         """
         permissions.check_admin_permissions()
-        data = request.json or {}
-        background_id = data.get("default_preview_background_file_id")
+        data = validation.validate_request_body(SetDefaultBackgroundSchema)
         try:
             template = project_templates_service.set_template_default_preview_background_file(
-                template_id, background_id
+                template_id, data.default_preview_background_file_id
             )
         except ProjectTemplateNotFoundException:
             return {"message": "Project template not found"}, 404
@@ -353,10 +350,14 @@ class ProjectTemplateMetadataDescriptorsResource(MethodView):
           - Project Templates
         """
         permissions.check_admin_permissions()
-        data = request.json or {}
-        descriptors = data.get("metadata_descriptors")
-        if descriptors is None and isinstance(data, list):
-            descriptors = data
+        body = request.get_json(silent=True)
+        if isinstance(body, list):
+            # Legacy shape: the descriptors sent as a bare JSON array.
+            descriptors = body
+        else:
+            descriptors = validation.validate_request_body(
+                SetMetadataDescriptorsSchema
+            ).metadata_descriptors
         try:
             template = (
                 project_templates_service.set_template_metadata_descriptors(
@@ -375,7 +376,7 @@ class ProjectTemplateMetadataDescriptorsResource(MethodView):
 # ---------------------------------------------------------------------------
 
 
-class ProjectTemplateFromProjectResource(MethodView, ArgsMixin):
+class ProjectTemplateFromProjectResource(MethodView):
     @jwt_required()
     def post(self, project_id):
         """
@@ -386,17 +387,14 @@ class ProjectTemplateFromProjectResource(MethodView, ArgsMixin):
           - Project Templates
         """
         permissions.check_admin_permissions()
-        args = self.get_args(
-            [
-                ("name", "", True),
-                ("description", None, False),
-            ]
+        data = validation.validate_request_body(
+            CreateTemplateFromProjectSchema
         )
         try:
             template = project_templates_service.create_template_from_project(
                 project_id,
-                args["name"],
-                description=args["description"],
+                data.name,
+                description=data.description,
             )
         except ProjectNotFoundException:
             return {"message": "Project not found"}, 404
