@@ -223,21 +223,24 @@ def two_factor_auth_required(error):
     )
 
 
-if config.DEBUG:
-
-    @app.errorhandler(Exception)
-    def server_error(error):
-        # HTTPExceptions (404, 405, ...) carry their own status code; let
-        # Flask render them normally instead of masking every one as a 500
-        # with a stacktrace while in debug mode.
-        if isinstance(error, HTTPException):
-            return error
-        stacktrace = traceback.format_exc()
-        current_app.logger.error(stacktrace)
+@app.errorhandler(Exception)
+def server_error(error):
+    # HTTPExceptions (404, 405, ...) carry their own status code; let
+    # Flask render them normally instead of masking every one as a 500.
+    if isinstance(error, HTTPException):
+        return error
+    stacktrace = traceback.format_exc()
+    current_app.logger.error(
+        f"Unhandled error on {request.method} {request.path}\n{stacktrace}"
+    )
+    if config.DEBUG:
         return (
             jsonify(error=True, message=str(error), stacktrace=stacktrace),
             500,
         )
+    # No exception details for the client in production: the message can
+    # embed internals (SQL, paths); everything is in the logs above.
+    return jsonify(error=True, message="Internal server error."), 500
 
 
 def configure_auth():
