@@ -1,7 +1,6 @@
-import orjson as json
 
-from flask import abort, request, send_file as flask_send_file, current_app
-from flask_restful import Resource, reqparse
+from flask import request, send_file as flask_send_file, current_app
+from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
 from zou.app.mixin import ArgsMixin
@@ -11,6 +10,7 @@ from zou.app.services.exception import (
 )
 from zou.app.utils import permissions, date_helpers, validation
 from zou.app.blueprints.comments.schemas import (
+    CommentCreateSchema,
     CommentReplySchema,
     MoveCommentSchema,
 )
@@ -286,52 +286,15 @@ class CommentTaskResource(Resource):
         return comment, 201
 
     def get_arguments(self):
-        parser = reqparse.RequestParser()
-        if request.is_json:
-            location = ["values", "json"]
-            parser.add_argument(
-                "checklist",
-                type=dict,
-                action="append",
-                default=[],
-                location=location,
-            )
-            parser.add_argument(
-                "links",
-                type=str,
-                action="append",
-                default=[],
-                location=location,
-            )
-        else:
-            location = "values"
-            parser.add_argument("checklist", default="[]", location=location)
-            parser.add_argument("links", default="[]", location=location)
-        parser.add_argument(
-            "task_status_id",
-            required=True,
-            help="Task Status ID is missing",
-            location=location,
-        )
-        parser.add_argument("comment", default="", location=location)
-        parser.add_argument("person_id", default="", location=location)
-        parser.add_argument("created_at", default="", location=location)
-        parser.add_argument(
-            "for_client", type=bool, default=False, location=location
-        )
-        args = parser.parse_args()
+        body = validation.validate_request_body(CommentCreateSchema)
         return (
-            args["task_status_id"],
-            args["comment"],
-            args["person_id"],
-            args["created_at"],
-            (
-                args["checklist"]
-                if request.is_json
-                else json.loads(args["checklist"])
-            ),
-            (args["links"] if request.is_json else json.loads(args["links"])),
-            args["for_client"],
+            body.task_status_id,
+            body.comment,
+            body.person_id,
+            body.created_at,
+            body.checklist,
+            body.links,
+            body.for_client,
         )
 
 
