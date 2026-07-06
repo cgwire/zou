@@ -155,6 +155,19 @@ class TaskServiceTestCase(ApiDBTestCase):
         self.assertEqual(self.task.assignees[0].id, self.person.id)
         self.assertEqual(self.task.assigner_id, self.assigner.id)
 
+    def test_update_task_resets_dates_on_status_rollback(self):
+        done_status = self.generate_fixture_task_status_done()
+        wip_status = self.generate_fixture_task_status_wip()
+        task = tasks_service.update_task(
+            self.task.id, {"task_status_id": str(done_status.id)}
+        )
+        self.assertIsNotNone(task["done_date"])
+        task = tasks_service.update_task(
+            self.task.id, {"task_status_id": str(wip_status.id)}
+        )
+        self.assertIsNone(task["done_date"])
+        self.assertIsNone(task["end_date"])
+
     def test_assign_task_is_idempotent(self):
         self.task.assignees = []
         self.task.save()
