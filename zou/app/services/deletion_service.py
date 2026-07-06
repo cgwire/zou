@@ -299,10 +299,13 @@ def remove_attachment_file(attachment_file):
     Remove all files related to given attachment file, then remove the
     attachment file entry from the database.
     """
+    from zou.app.services import comments_service
+
     if config.REMOVE_FILES:
         file_store.remove_file("attachments", str(attachment_file.id))
     attachment_dict = attachment_file.serialize()
     attachment_file.delete()
+    comments_service.clear_attachment_file_cache(attachment_dict["id"])
     return attachment_dict
 
 

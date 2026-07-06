@@ -34,7 +34,15 @@ from zou.app.services.exception import (
 
 
 def clear_entity_cache(entity_id):
+    # Deferred import: names_service imports entities_service. Renaming a
+    # parent (sequence, episode) still leaves children names cached up to
+    # their TTL; only the entity's own name is invalidated here.
+    from zou.app.services import names_service
+
     cache.cache.delete_memoized(get_entity, entity_id)
+    cache.cache.delete_memoized(
+        names_service.get_full_entity_name, entity_id
+    )
 
 
 def clear_entity_type_cache(entity_type_id):

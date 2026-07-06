@@ -58,6 +58,10 @@ def get_attachment_file(attachment_file_id):
     return attachment_file.serialize()
 
 
+def clear_attachment_file_cache(attachment_file_id):
+    cache.cache.delete_memoized(get_attachment_file, attachment_file_id)
+
+
 def get_attachment_file_path(attachment_file):
     """
     Get attachement file path when stored locally.
