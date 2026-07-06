@@ -1706,7 +1706,8 @@ def assign_task(task_id, person_id, assigner_id=None):
     task = get_task_raw(task_id)
     project_id = str(task.project_id)
     person = persons_service.get_person_raw(person_id)
-    task.assignees.append(person)
+    if person not in task.assignees:
+        task.assignees.append(person)
     if assigner_id is not None:
         task.assigner_id = assigner_id
     task.save()
