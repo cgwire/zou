@@ -504,7 +504,7 @@ def send_email_otp(person):
     time_string = format_datetime(
         date_helpers.get_utc_now_datetime(),
         tzinfo=person["timezone"],
-        locale=person["locale"],
+        locale=locale,
     )
     person_IP = request.headers.get("X-Forwarded-For", None) or ""
     subject = get_email_translation(

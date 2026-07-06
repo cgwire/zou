@@ -599,7 +599,7 @@ class ChangePasswordResource(Resource, ArgsMixin):
             time_string = format_datetime(
                 date_helpers.get_utc_now_datetime(),
                 tzinfo=user["timezone"],
-                locale=user["locale"],
+                locale=locale,
             )
             person_IP = request.headers.get("X-Forwarded-For", None) or ""
             subject = get_email_translation(
@@ -781,7 +781,7 @@ class ResetPasswordResource(Resource, ArgsMixin):
         time_string = format_datetime(
             date_helpers.get_utc_now_datetime(),
             tzinfo=user["timezone"],
-            locale=user["locale"],
+            locale=locale,
         )
         person_IP = request.headers.get("X-Forwarded-For", None) or ""
         organisation = persons_service.get_organisation()
