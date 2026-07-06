@@ -1,3 +1,7 @@
+import io
+
+from werkzeug.datastructures import FileStorage
+
 from tests.base import ApiDBTestCase
 
 from zou.app.services import (
@@ -7,7 +11,7 @@ from zou.app.services import (
     tasks_service,
     exception,
 )
-from zou.app.utils import events
+from zou.app.utils import events, fields
 
 
 class CommentsServiceTestCase(ApiDBTestCase):
@@ -39,9 +43,6 @@ class CommentsServiceTestCase(ApiDBTestCase):
         self.wfa_status = self.generate_fixture_task_status_wfa()
         self.project_id = str(self.project.id)
 
-    def generate_commment():
-        pass
-
     def test_new_comment(self):
         self.comment = comments_service.new_comment(
             self.task.id, self.task_status.id, self.user["id"], "first comment"
@@ -58,10 +59,6 @@ class CommentsServiceTestCase(ApiDBTestCase):
         )
         self.assertEqual(self.comment["created_at"], "2024-01-23T10:00:00")
         # TODO test attachment files
-
-    def test_create_comment(self):
-        # TODO
-        pass
 
     def test_check_retake_capping(self):
         self.project.update({"max_retakes": 2})
@@ -159,69 +156,59 @@ class CommentsServiceTestCase(ApiDBTestCase):
         self.assertEqual(payload["new_task_status_id"], self.wfa_status["id"])
         self.assertEqual(payload["comment_id"], comment["id"])
 
-    def test_manage_subscriptions(self):
-        # TODO
-        pass
-
-    def test_run_status_automation(self):
-        # TODO
-        pass
-
-    def add_attachments_to_comment(self):
-        # TODO
-        pass
+    def _create_attachment(self, comment, filename):
+        uploaded_file = FileStorage(
+            stream=io.BytesIO(b"attachment content"), filename=filename
+        )
+        return comments_service.create_attachment(comment, uploaded_file)
 
     def test_create_attachment(self):
-        # TODO
-        pass
+        comment = comments_service.new_comment(
+            self.task.id, self.task_status.id, self.user["id"], "comment"
+        )
+        attachment = self._create_attachment(comment, "notes.txt")
+        self.assertEqual(attachment["name"], "notes.txt")
+        self.assertEqual(attachment["extension"], "txt")
+        self.assertGreater(attachment["size"], 0)
 
     def test_get_attachment_file_path(self):
-        # TODO
-        pass
+        comment = comments_service.new_comment(
+            self.task.id, self.task_status.id, self.user["id"], "comment"
+        )
+        attachment = self._create_attachment(comment, "notes.txt")
+        path = comments_service.get_attachment_file_path(attachment)
+        with open(path, "rb") as attachment_file:
+            self.assertEqual(attachment_file.read(), b"attachment content")
 
     def test_get_all_attachment_files_for_project(self):
-        # TODO
-        pass
-
-    def test_manage_subscriptions(self):
-        # TODO
-        pass
-
-    def test_run_status_automation(self):
-        # TODO
-        pass
-
-    def add_attachments_to_comment(self):
-        # TODO
-        pass
-
-    def test_create_attachment(self):
-        # TODO
-        pass
-
-    def test_get_attachment_file_path(self):
-        # TODO
-        pass
-
-    def test_get_all_attachment_files_for_project(self):
-        # TODO
-        pass
+        comment = comments_service.new_comment(
+            self.task.id, self.task_status.id, self.user["id"], "comment"
+        )
+        attachment = self._create_attachment(comment, "notes.txt")
+        attachments = comments_service.get_all_attachment_files_for_project(
+            self.project_id
+        )
+        self.assertEqual(len(attachments), 1)
+        self.assertEqual(attachments[0]["id"], attachment["id"])
+        attachments = comments_service.get_all_attachment_files_for_project(
+            fields.gen_uuid()
+        )
+        self.assertEqual(len(attachments), 0)
 
     def test_get_all_attachment_files_for_task(self):
-        # TODO
-        pass
-
-    def test_acknowledge_comment(self):
-        # TODO
-        pass
-
-    def test_ack_comment(self):
-        # TODO
-        pass
-
-    def test_unack_comment(self):
-        # TODO
-        pass
+        comment = comments_service.new_comment(
+            self.task.id, self.task_status.id, self.user["id"], "comment"
+        )
+        attachment = self._create_attachment(comment, "notes.txt")
+        attachments = comments_service.get_all_attachment_files_for_task(
+            str(self.task.id)
+        )
+        self.assertEqual(len(attachments), 1)
+        self.assertEqual(attachments[0]["id"], attachment["id"])
+        attachments = comments_service.get_all_attachment_files_for_task(
+            fields.gen_uuid()
+        )
+        self.assertEqual(len(attachments), 0)
 
     def test_reply_comment(self):
         reply_text = "first reply"
@@ -254,13 +241,36 @@ class CommentsServiceTestCase(ApiDBTestCase):
             [str(self.department_animation.id)],
         )
 
-    def get_reply(self):
-        # TODO
-        pass
+    def test_get_reply(self):
+        comment = comments_service.new_comment(
+            self.task.id, self.task_status.id, self.user["id"], "comment"
+        )
+        reply = comments_service.reply_comment(
+            comment["id"], "the reply", person_id=self.user["id"]
+        )
+        found = comments_service.get_reply(comment["id"], reply["id"])
+        self.assertEqual(found["text"], "the reply")
+        self.assertRaises(
+            exception.ReplyNotFoundException,
+            comments_service.get_reply,
+            comment["id"],
+            fields.gen_uuid(),
+        )
 
-    def delete_reply(self):
-        # TODO
-        pass
+    def test_delete_reply(self):
+        comment = comments_service.new_comment(
+            self.task.id, self.task_status.id, self.user["id"], "comment"
+        )
+        reply = comments_service.reply_comment(
+            comment["id"], "the reply", person_id=self.user["id"]
+        )
+        comments_service.delete_reply(comment["id"], reply["id"])
+        self.assertRaises(
+            exception.ReplyNotFoundException,
+            comments_service.get_reply,
+            comment["id"],
+            reply["id"],
+        )
 
     def test_reset_mentions(self):
         self.comment = comments_service.new_comment(
@@ -418,7 +428,6 @@ class CommentsServiceTestCase(ApiDBTestCase):
         )
         self.assertIsNotNone(comment["id"])
         self.assertEqual(comment["text"], comment_text)
-        text = ""
         comments = tasks_service.get_comments(modeling_task.id)
         self.assertEqual(len(comments), 1)
         self.assertTrue("Animation" in comments[0]["text"])
