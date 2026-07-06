@@ -134,7 +134,11 @@ class AuthTestCase(ApiDBTestCase):
             data=json.dumps(subscription_data),
             headers={"Content-type": "application/json"},
         )
-        self.assertEqual(response.status_code, 404)
+        # With the route removed, nothing matches the path: a plain 404 in
+        # production. Under DEBUG the frontend file-serving catch-all
+        # (/<fs>/<filename>, GET-only) is registered and captures the path, so
+        # the POST is refused with a 405. Either way registration is refused.
+        self.assertIn(response.status_code, (404, 405))
 
     def test_change_password(self):
         credentials = dict(self.credentials)

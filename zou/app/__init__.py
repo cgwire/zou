@@ -17,6 +17,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_mail import Mail
 
+from werkzeug.exceptions import HTTPException
 from jwt import ExpiredSignatureError
 from babel.core import UnknownLocaleError
 from meilisearch.errors import (
@@ -215,6 +216,11 @@ if config.DEBUG:
 
     @app.errorhandler(Exception)
     def server_error(error):
+        # HTTPExceptions (404, 405, ...) carry their own status code; let
+        # Flask render them normally instead of masking every one as a 500
+        # with a stacktrace while in debug mode.
+        if isinstance(error, HTTPException):
+            return error
         stacktrace = traceback.format_exc()
         current_app.logger.error(stacktrace)
         return (
