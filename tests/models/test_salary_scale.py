@@ -43,9 +43,7 @@ class SalaryScaleTestCase(ApiDBTestCase):
             f"data/salary-scales/{salary_scale['id']}"
         )
         self.assertEqual(salary_scale_again["salary"], 640)
-        self.put_404(
-            f"data/salary-scales/{fields.gen_uuid()}", {"salary": 1}
-        )
+        self.put_404(f"data/salary-scales/{fields.gen_uuid()}", {"salary": 1})
 
     def test_delete_salary_scale(self):
         self.generate_fixture_department()

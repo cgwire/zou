@@ -6,7 +6,7 @@ from tests.base import ApiDBTestCase
 from zou.app.models.event import ApiEvent
 from zou.app.models.login_log import LoginLog
 
-from zou.app.services import assets_service, events_service
+from zou.app.services import assets_service
 
 
 # Frozen mid-day time: these tests build date-boundary filters (before/
