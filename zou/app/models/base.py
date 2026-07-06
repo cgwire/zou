@@ -105,9 +105,37 @@ class BaseMixin(object):
             db.session.commit()
         except Exception:
             db.session.rollback()
-            db.session.remove()
             raise
         return instance
+
+    @classmethod
+    def _resolve_relations(cls, data):
+        """
+        Map relationship fields of data to lists of ORM instances. Values
+        can be ids, dicts holding an id or already-loaded instances;
+        unknown ids are dropped. Non-relationship fields are left out.
+        """
+        resolved = {}
+        for key, value in data.items():
+            field_key = getattr(cls, key, None)
+            if not hasattr(field_key, "property") or not isinstance(
+                field_key.property, orm.properties.RelationshipProperty
+            ):
+                continue
+            class_ = field_key.property.entity.class_
+            values = []
+            if value is not None:
+                for id in value:
+                    if isinstance(id, str):
+                        v = class_.get(id)
+                    elif isinstance(id, dict):
+                        v = class_.get(id["id"])
+                    else:
+                        v = id
+                    if v is not None:
+                        values.append(v)
+            resolved[key] = values
+        return resolved
 
     @classmethod
     def create_no_commit(cls, **kw):
@@ -115,28 +143,7 @@ class BaseMixin(object):
         Shorthand to create an entry via the database session without commiting
         the request.
         """
-        for key, value in kw.items():
-            if hasattr(cls, key):
-                field_key = getattr(cls, key)
-
-                if hasattr(field_key, "property"):
-                    if isinstance(
-                        field_key.property,
-                        orm.properties.RelationshipProperty,
-                    ):
-                        class_ = field_key.property.entity.class_
-                        values = []
-                        if value is not None:
-                            for id in value:
-                                if isinstance(id, str):
-                                    v = class_.get(id)
-                                elif isinstance(id, dict):
-                                    v = class_.get(id["id"])
-                                else:
-                                    v = id
-                                if v is not None:
-                                    values.append(v)
-                        kw[key] = values
+        kw.update(cls._resolve_relations(kw))
         instance = cls(**kw)
         db.session.add(instance)
         return instance
@@ -213,7 +220,6 @@ class BaseMixin(object):
             db.session.commit()
         except Exception:
             db.session.rollback()
-            db.session.remove()
             raise
 
     def save(self):
@@ -227,7 +233,6 @@ class BaseMixin(object):
             db.session.commit()
         except Exception:
             db.session.rollback()
-            db.session.remove()
             raise
 
     def delete(self):
@@ -240,7 +245,6 @@ class BaseMixin(object):
             db.session.commit()
         except Exception:
             db.session.rollback()
-            db.session.remove()
             raise
 
     def delete_no_commit(self):
@@ -261,7 +265,6 @@ class BaseMixin(object):
             db.session.commit()
         except Exception:
             db.session.rollback()
-            db.session.remove()
             raise
 
     def update_no_commit(self, data):
@@ -270,30 +273,12 @@ class BaseMixin(object):
         instance fields. It doesn't generate a commit.
         """
         self.updated_at = date_helpers.get_utc_now_datetime()
+        resolved = self._resolve_relations(data)
         for key, value in data.items():
-            if hasattr(self.__class__, key):
-                field_key = getattr(self.__class__, key)
-
-                if hasattr(field_key, "property"):
-                    if isinstance(
-                        field_key.property,
-                        orm.properties.RelationshipProperty,
-                    ):
-                        class_ = field_key.property.entity.class_
-                        values = []
-                        if value is not None:
-                            for id in value:
-                                if isinstance(id, str):
-                                    v = class_.get(id)
-                                elif isinstance(id, dict):
-                                    v = class_.get(id["id"])
-                                else:
-                                    v = id
-                                if v is not None:
-                                    values.append(v)
-                        setattr(self, key, values)
-                    else:
-                        setattr(self, key, value)
+            field_key = getattr(self.__class__, key, None)
+            if not hasattr(field_key, "property"):
+                continue
+            setattr(self, key, resolved.get(key, value))
         db.session.add(self)
 
     def set_links(self, ids, LinkTable, field_left, field_right):
