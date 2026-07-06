@@ -1,8 +1,10 @@
 from tests.base import ApiDBTestCase
 
+from zou.app.models.entity import Entity
 from zou.app.services import (
     assets_service,
     breakdown_service,
+    entities_service,
     projects_service,
     tasks_service,
 )
@@ -215,6 +217,111 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         self.assertEqual(second["nb_entities_out"], 1)
         self.assertEqual(second["added_asset_ids"], [])
         self.assertEqual(second["removed_asset_ids"], [asset_character_id])
+
+    def test_update_casting_keeps_asset_in_episode_while_another_shot_uses_it(
+        self,
+    ):
+        """
+        Casting an asset in a shot auto-casts it in the parent episode too.
+        Removing that asset from one shot must not detach it from the
+        episode while another shot of that episode still casts it
+        (cgwire/kitsu#1388).
+        """
+        asset_id = str(self.asset.id)
+        # generate_fixture_shot() reassigns self.shot to the newly created
+        # shot, so keep an explicit reference to the original one.
+        first_shot = self.shot
+        other_shot = self.generate_fixture_shot("SH02")
+
+        breakdown_service.update_casting(
+            first_shot.id, [{"asset_id": asset_id, "nb_occurences": 1}]
+        )
+        breakdown_service.update_casting(
+            other_shot.id, [{"asset_id": asset_id, "nb_occurences": 1}]
+        )
+        episode_casting = breakdown_service.get_casting(self.episode.id)
+        self.assertEqual(
+            [cast["asset_id"] for cast in episode_casting], [asset_id]
+        )
+
+        # Un-cast the asset from the first shot only: the episode still
+        # casts it through the second shot.
+        breakdown_service.update_casting(first_shot.id, [])
+        episode_casting = breakdown_service.get_casting(self.episode.id)
+        self.assertEqual(
+            [cast["asset_id"] for cast in episode_casting], [asset_id]
+        )
+
+        # Un-cast the asset from the last remaining shot: it must now
+        # disappear from the episode casting (and asset list) too.
+        breakdown_service.update_casting(other_shot.id, [])
+        episode_casting = breakdown_service.get_casting(self.episode.id)
+        self.assertEqual(episode_casting, [])
+        episode = entities_service.get_entity(self.episode.id)
+        self.assertEqual(episode["nb_entities_out"], 0)
+
+    def test_update_casting_removal_from_shot_emits_episode_event(self):
+        """
+        Detaching the asset from the episode (because it is no longer
+        casted in any of its shots) must emit an episode:casting-update
+        event, the same way casting it in a shot emits an asset:update
+        event, so listeners can refresh the episode's asset list.
+        """
+        captured = []
+
+        class _Handler:
+            __name__ = "episode_casting_update_handler"
+
+            def __init__(self, sink):
+                self.sink = sink
+
+            def handle_event(self, data=None):
+                self.sink.append(data or {})
+
+        events.unregister_all()
+        handler = _Handler(captured)
+        events.register(
+            "episode:casting-update", "episode_casting_update_handler", handler
+        )
+
+        asset_id = str(self.asset.id)
+        breakdown_service.update_casting(
+            self.shot.id, [{"asset_id": asset_id, "nb_occurences": 1}]
+        )
+        self.assertEqual(captured, [])
+
+        breakdown_service.update_casting(self.shot.id, [])
+        self.assertEqual(len(captured), 1)
+        self.assertEqual(captured[0]["episode_id"], str(self.episode.id))
+        self.assertEqual(captured[0]["removed_asset_ids"], [asset_id])
+        self.assertEqual(captured[0]["nb_entities_out"], 0)
+
+    def test_update_casting_removal_from_shot_without_episode_does_not_fail(
+        self,
+    ):
+        """
+        A shot whose sequence has no parent episode (non-episodic
+        production) must not break when an asset is un-cast from it.
+        """
+        no_episode_sequence = Entity.create(
+            name="NoEpisodeSequence",
+            project_id=self.project.id,
+            entity_type_id=self.sequence_type.id,
+        )
+        no_episode_shot = Entity.create(
+            name="NoEpisodeShot",
+            project_id=self.project.id,
+            entity_type_id=self.shot_type.id,
+            parent_id=no_episode_sequence.id,
+        )
+        asset_id = str(self.asset.id)
+        breakdown_service.update_casting(
+            no_episode_shot.id,
+            [{"asset_id": asset_id, "nb_occurences": 1}],
+        )
+        breakdown_service.update_casting(no_episode_shot.id, [])
+        casting = breakdown_service.get_casting(no_episode_shot.id)
+        self.assertEqual(casting, [])
 
     def test_add_instance_to_shot(self):
         instances = breakdown_service.get_asset_instances_for_shot(

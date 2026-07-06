@@ -325,6 +325,11 @@ def update_casting(entity_id, casting):
             {"shot_id": entity_id, **casting_diff},
             project_id=str(entity.project_id),
         )
+        if removed_asset_ids:
+            episode_id = _get_episode_id_for_shot(entity_dict)
+            if episode_id is not None:
+                for asset_id in removed_asset_ids:
+                    _detach_asset_from_episode_if_unused(asset_id, episode_id)
     elif shots_service.is_episode(entity_dict):
         events.emit(
             "episode:casting-update",
@@ -423,6 +428,61 @@ def _remove_asset_from_episode_shots(asset_id, episode_id):
             project_id=str(shot.project_id),
         )
     return shots
+
+
+def _get_episode_id_for_shot(shot):
+    """
+    Return the ID of the episode given shot belongs to, or None if its
+    sequence has no parent episode.
+    """
+    sequence = shots_service.get_sequence(str(shot["parent_id"]))
+    return sequence["parent_id"]
+
+
+def _detach_asset_from_episode_if_unused(asset_id, episode_id):
+    """
+    Casting an asset in a shot automatically casts it in the parent episode
+    too (see `_create_episode_casting_link`). Symmetrically, once an asset is
+    removed from a shot's casting, remove it from the episode as well, unless
+    it is still casted in another shot of that episode.
+    """
+    shots = shots_service.get_shots_for_episode(episode_id)
+    shot_ids = [shot["id"] for shot in shots]
+    is_still_casted_in_a_shot = (
+        len(shot_ids) > 0
+        and EntityLink.query.filter(EntityLink.entity_in_id.in_(shot_ids))
+        .filter(EntityLink.entity_out_id == asset_id)
+        .first()
+        is not None
+    )
+    if is_still_casted_in_a_shot:
+        return
+
+    link = EntityLink.get_by(entity_in_id=episode_id, entity_out_id=asset_id)
+    if link is None:
+        return
+
+    episode = entities_service.get_entity_raw(episode_id)
+    link.delete()
+    episode.update({"nb_entities_out": max(episode.nb_entities_out - 1, 0)})
+    events.emit(
+        "episode:casting-update",
+        {
+            "episode_id": str(episode_id),
+            "nb_entities_out": episode.nb_entities_out,
+            "added_asset_ids": [],
+            "removed_asset_ids": [str(asset_id)],
+        },
+        project_id=str(episode.project_id),
+    )
+    # Mirror the asset:update event emitted when the link was auto-created
+    # in `_create_episode_casting_link`, so listeners refresh the asset the
+    # same way on both sides of the auto-casting link.
+    events.emit(
+        "asset:update",
+        {"asset_id": str(asset_id)},
+        project_id=str(episode.project_id),
+    )
 
 
 def _create_episode_casting_link(entity, asset_id, nb_occurences=1, label=""):
