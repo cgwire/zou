@@ -303,12 +303,15 @@ class BaseNewPreviewFilePicture:
         file_name = f"{instance_id}.{extension}"
         file_path = os.path.join(tmp_folder, file_name)
         uploaded_file.save(file_path)
-        file_store.add_file("previews", instance_id, file_path)
-        file_size = fs.get_file_size(file_path)
-        preview_files_service.update_preview_file(
-            instance_id, {"file_size": file_size}, silent=True
-        )
-        os.remove(file_path)
+        try:
+            file_store.add_file("previews", instance_id, file_path)
+            file_size = fs.get_file_size(file_path)
+            preview_files_service.update_preview_file(
+                instance_id, {"file_size": file_size}, silent=True
+            )
+        finally:
+            if os.path.exists(file_path):
+                os.remove(file_path)
         return file_path
 
     def emit_app_preview_event(self, preview_file_id):
@@ -1451,6 +1454,10 @@ class SetMainPreviewResource(Resource, ArgsMixin):
         task = tasks_service.get_task(preview_file["task_id"])
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
+        # Clients review content but must not redefine how an entity is
+        # illustrated.
+        if permissions.has_client_permissions():
+            raise permissions.PermissionDenied
         if frame_number is not None:
             if preview_file["extension"] != "mp4":
                 raise WrongParameterException(

@@ -28,7 +28,7 @@ _is_simple_cache = False
 
 if config.CACHE_TYPE is not None:
     cache = Cache(config={"CACHE_TYPE": config.CACHE_TYPE})
-    _is_simple_cache = config.CACHE_TYPE == "simple"
+    _is_simple_cache = config.CACHE_TYPE in ("simple", "SimpleCache")
 else:
     try:
         redis_cache = redis.StrictRedis(

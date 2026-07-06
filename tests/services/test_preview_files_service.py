@@ -391,6 +391,26 @@ class PlaylistTestCase(ApiDBTestCase):
             persisted_preview_file["annotations"],
         )
 
+    def test_save_variants_cleans_up_on_upload_failure(self):
+        import shutil
+
+        self.generate_fixture_preview_file()
+        folder = tempfile.mkdtemp()
+        picture_path = os.path.join(folder, "original.png")
+        shutil.copyfile(
+            self.get_fixture_file_path(os.path.join("thumbnails", "th01.png")),
+            picture_path,
+        )
+        with patch(
+            "zou.app.services.preview_files_service.file_store.add_picture",
+            side_effect=RuntimeError("storage down"),
+        ):
+            with self.assertRaises(RuntimeError):
+                preview_files_service.save_variants(
+                    str(self.preview_file.id), picture_path
+                )
+        self.assertEqual(os.listdir(folder), [])
+
     def test_get_preview_file_dimensions(self):
         self.assertFalse(_is_valid_resolution(""))
         self.assertFalse(_is_valid_resolution(None))

@@ -11,7 +11,6 @@ from flask_principal import (
 from flask_jwt_extended import (
     jwt_required,
     create_access_token,
-    create_refresh_token,
     set_access_cookies,
     set_refresh_cookies,
     unset_jwt_cookies,
@@ -79,13 +78,8 @@ def _build_2fa_registration_response(response_data, user_id):
     the requires_2fa_setup claim so the user gets full access.
     """
     additional_claims = {"identity_type": "person"}
-    access_token = create_access_token(
-        identity=user_id,
-        additional_claims=additional_claims,
-    )
-    refresh_token = create_refresh_token(
-        identity=user_id,
-        additional_claims=additional_claims,
+    access_token, refresh_token = auth_service.create_auth_tokens(
+        user_id, additional_claims
     )
     response_data["access_token"] = access_token
     response_data["refresh_token"] = refresh_token
@@ -148,7 +142,8 @@ class LogoutResource(Resource):
             description: Logout successful
         """
         try:
-            auth_service.logout(get_jwt()["jti"])
+            payload = get_jwt()
+            auth_service.logout(payload["jti"], payload.get("refresh_jti"))
             identity_changed.send(
                 current_app._get_current_object(), identity=AnonymousIdentity()
             )
@@ -266,13 +261,8 @@ class LoginResource(Resource, ArgsMixin):
             if requires_2fa_setup:
                 additional_claims["requires_2fa_setup"] = True
 
-            access_token = create_access_token(
-                identity=user["id"],
-                additional_claims=additional_claims,
-            )
-            refresh_token = create_refresh_token(
-                identity=user["id"],
-                additional_claims=additional_claims,
+            access_token, refresh_token = auth_service.create_auth_tokens(
+                user["id"], additional_claims
             )
             identity_changed.send(
                 current_app._get_current_object(),
@@ -444,6 +434,10 @@ class RefreshTokenResource(Resource):
                 ):
                     additional_claims["requires_2fa_setup"] = True
 
+        # Keep the refresh token jti in the new access token so a later
+        # logout still revokes the refresh token.
+        additional_claims["refresh_jti"] = get_jwt()["jti"]
+
         access_token = create_access_token(
             identity=user["id"],
             additional_claims=additional_claims,
@@ -605,7 +599,7 @@ class ChangePasswordResource(Resource, ArgsMixin):
             time_string = format_datetime(
                 date_helpers.get_utc_now_datetime(),
                 tzinfo=user["timezone"],
-                locale=user["locale"],
+                locale=locale,
             )
             person_IP = request.headers.get("X-Forwarded-For", None) or ""
             subject = get_email_translation(
@@ -787,7 +781,7 @@ class ResetPasswordResource(Resource, ArgsMixin):
         time_string = format_datetime(
             date_helpers.get_utc_now_datetime(),
             tzinfo=user["timezone"],
-            locale=user["locale"],
+            locale=locale,
         )
         person_IP = request.headers.get("X-Forwarded-For", None) or ""
         organisation = persons_service.get_organisation()
@@ -1509,17 +1503,23 @@ class SAMLSSOResource(Resource, ArgsMixin):
         )
 
         if user["active"]:
-            access_token = create_access_token(
-                identity=user["id"],
-                additional_claims={
-                    "identity_type": "person",
-                },
-            )
-            refresh_token = create_refresh_token(
-                identity=user["id"],
-                additional_claims={
-                    "identity_type": "person",
-                },
+            # Honour 2FA enforcement unless SAML sessions are configured
+            # to skip it (e.g. when the identity provider already
+            # enforces MFA), mirroring the OIDC callback.
+            requires_2fa_setup = False
+            if config.ENFORCE_2FA and not config.SAML_SKIP_2FA:
+                if not auth_service.is_user_exempt_from_2fa(user, app):
+                    if not auth_service.person_two_factor_authentication_enabled(
+                        user
+                    ):
+                        requires_2fa_setup = True
+
+            additional_claims = {"identity_type": "person"}
+            if requires_2fa_setup:
+                additional_claims["requires_2fa_setup"] = True
+
+            access_token, refresh_token = auth_service.create_auth_tokens(
+                user["id"], additional_claims
             )
             identity_changed.send(
                 current_app._get_current_object(),
@@ -1687,13 +1687,8 @@ class OIDCCallbackResource(Resource, ArgsMixin):
             if requires_2fa_setup:
                 additional_claims["requires_2fa_setup"] = True
 
-            access_token = create_access_token(
-                identity=user["id"],
-                additional_claims=additional_claims,
-            )
-            refresh_token = create_refresh_token(
-                identity=user["id"],
-                additional_claims=additional_claims,
+            access_token, refresh_token = auth_service.create_auth_tokens(
+                user["id"], additional_claims
             )
             identity_changed.send(
                 current_app._get_current_object(),

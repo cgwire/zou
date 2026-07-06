@@ -117,6 +117,34 @@ jobs:
           MAIL_DEBUG_BODY: 1
           MAIL_ENABLED: False
 
+  audit:
+    name: Audit dependencies 🔒
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 🐍
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install packages 📦
+        run: >-
+          pip install --upgrade pip setuptools &&
+          pip install -r requirements.txt
+      # The cryptography/pyopenssl advisories below cannot be fixed yet:
+      # pysaml2 7.5.4 (latest) caps pyopenssl<24.3, which caps
+      # cryptography<44. Re-check whenever pysaml2 releases.
+      - name: Run pip-audit 🔒
+        run: >-
+          pip install pip-audit &&
+          pip-audit --skip-editable
+          --ignore-vuln PYSEC-2026-35
+          --ignore-vuln CVE-2024-12797
+          --ignore-vuln CVE-2026-26007
+          --ignore-vuln GHSA-537c-gmf6-5ccf
+          --ignore-vuln CVE-2026-27448
+          --ignore-vuln CVE-2026-27459
+
   publish-test:
     name: Publish to TestPyPI 📦
     needs: test

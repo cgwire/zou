@@ -1,3 +1,5 @@
+from unittest import mock
+
 from tests.base import ApiDBTestCase
 
 from zou.app.models.comment import Comment
@@ -43,6 +45,14 @@ class DeletionServiceTestCase(ApiDBTestCase):
         comment_id = self.comment["id"]
         result = deletion_service.remove_comment(comment_id)
         self.assertEqual(result["id"], comment_id)
+
+    def test_remove_comment_with_deleted_task(self):
+        self.generate_fixture_comment()
+        comment_id = self.comment["id"]
+        with mock.patch.object(Task, "get", return_value=None):
+            result = deletion_service.remove_comment(comment_id)
+        self.assertEqual(result["id"], comment_id)
+        self.assertIsNone(Comment.get(comment_id))
 
     def test_remove_comment_not_found(self):
         with self.assertRaises(CommentNotFoundException):
@@ -98,6 +108,19 @@ class DeletionServiceTestCase(ApiDBTestCase):
         result = deletion_service.remove_preview_file_by_id(preview_id)
         self.assertEqual(result["id"], preview_id)
         self.assertIsNone(PreviewFile.get(preview_id))
+
+    def test_remove_preview_file_keeps_files_when_db_delete_fails(self):
+        self.generate_fixture_preview_file()
+        with mock.patch.object(
+            deletion_service, "clear_movie_files"
+        ) as clear_files, mock.patch.object(
+            PreviewFile, "delete", side_effect=RuntimeError
+        ):
+            with self.assertRaises(RuntimeError):
+                deletion_service.remove_preview_file_by_id(
+                    str(self.preview_file.id), force=True
+                )
+        clear_files.assert_not_called()
 
     def test_remove_preview_file_by_id_not_found(self):
         with self.assertRaises(PreviewFileNotFoundException):

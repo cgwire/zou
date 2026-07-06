@@ -1,8 +1,8 @@
 import datetime
 
 
-from flask import abort, request
-from flask_restful import Resource, inputs
+from flask import request
+from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
 from zou.app.services.exception import (
@@ -2665,6 +2665,10 @@ class SetTaskMainPreviewResource(Resource):
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
+        # Clients review content but must not redefine how an entity is
+        # illustrated.
+        if permissions.has_client_permissions():
+            raise permissions.PermissionDenied
         preview_file = preview_files_service.get_last_preview_file_for_task(
             task_id
         )

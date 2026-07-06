@@ -1706,7 +1706,8 @@ def assign_task(task_id, person_id, assigner_id=None):
     task = get_task_raw(task_id)
     project_id = str(task.project_id)
     person = persons_service.get_person_raw(person_id)
-    task.assignees.append(person)
+    if person not in task.assignees:
+        task.assignees.append(person)
     if assigner_id is not None:
         task.assigner_id = assigner_id
     task.save()
@@ -1969,7 +1970,6 @@ def reset_tasks_data(project_id):
 
 
 def reset_task_data(task_id):
-    clear_task_cache(task_id)
     task = Task.get(task_id)
     retake_count = 0
     real_start_date = None
@@ -2034,6 +2034,9 @@ def reset_task_data(task_id):
             "task_status_id": task_status_id,
         }
     )
+    # Invalidate after the write, otherwise a concurrent read re-caches
+    # the stale row between the invalidation and the update.
+    clear_task_cache(task_id)
     project_id = str(task.project_id)
     events.emit(
         "task:update", {"task_id": str(task.id)}, project_id=project_id

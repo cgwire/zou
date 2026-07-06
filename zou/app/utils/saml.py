@@ -19,7 +19,9 @@ def saml_client_for(metadata_url):
         f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}/api/auth/saml/sso"
     )
 
-    rv = requests.get(metadata_url)
+    # saml_client_for is also called at runtime when the SAML login route
+    # rebuilds the client, so a hung IdP must not block a worker forever.
+    rv = requests.get(metadata_url, timeout=30)
 
     settings = {
         "entityid": f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}/api/auth/saml/login",

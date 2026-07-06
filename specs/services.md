@@ -27,29 +27,39 @@ Blueprint resource → Service function → Model query/mutation → Event emiss
 | `backup_service` | Database backup |
 | `base_service` | Shared helpers (model retrieval) |
 | `breakdown_service` | Episode/sequence breakdowns |
+| `budget_service` | Production budgets and budget entries |
 | `chats_service` | Entity chat threads and messages |
 | `comments_service` | Comment CRUD, replies, attachments, acknowledgments |
 | `concepts_service` | Concept art management |
+| `custom_actions_service` | Custom action buttons exposed to the UI |
 | `deletion_service` | Safe deletion with relationship cleanup |
+| `departments_service` | Departments, software licenses, hardware items |
 | `edits_service` | Edit/video content |
 | `emails_service` | Email template rendering and sending |
 | `entities_service` | Generic entity operations |
 | `events_service` | Event emission and persistence |
+| `file_tree_service` | File path generation from project file trees |
 | `files_service` | Working files, output files, file paths, versioning |
 | `index_service` | Meilisearch indexing |
 | `names_service` | Naming convention utilities |
 | `news_service` | Studio news/announcements |
 | `notifications_service` | Notification creation and subscriptions |
 | `persons_service` | Person CRUD, departments, presence |
+| `playlist_sharing_service` | Guest access to shared playlists (links, builds) |
 | `playlists_service` | Playlists, sharing, build jobs |
+| `plugins_service` | Plugin install/load lifecycle (CLI only) |
 | `preview_files_service` | Preview uploads, thumbnails, annotations |
+| `project_templates_service` | Bootstrap projects from templates |
 | `projects_service` | Project CRUD, team, settings, metadata |
+| `scenes_service` | Layout scenes and their shots/asset instances |
 | `schedule_service` | Schedule items, milestones, production schedules |
 | `shots_service` | Shots, sequences, episodes, scenes |
+| `stats_service` | Project/task statistics |
 | `status_automations_service` | Automatic status transitions |
 | `sync_service` | Data import/export synchronization |
 | `tasks_service` | Task lifecycle, assignments, status, time tracking |
-| `templates_service` | File tree templates |
+| `templates_service` | Notification email HTML templates |
+| `time_spents_service` | Time spent entries and aggregates |
 | `user_service` | Current user context, access checks |
 
 ## Caching pattern

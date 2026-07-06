@@ -142,4 +142,5 @@ class GetCurrentConfigCommandTestCase(unittest.TestCase):
         mock_get.assert_called_once_with(
             "http://myhost:8080/admin/config/check",
             headers={"Authorization": f"Bearer {TEST_TOKEN}"},
+            timeout=30,
         )

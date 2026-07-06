@@ -1,4 +1,4 @@
-from flask import g, request
+from flask import current_app, g, request
 from flask_fs.errors import FileNotFound
 from flask_restful import Resource
 
@@ -190,7 +190,9 @@ class SharedPlaylistCommentsResource(Resource):
                     playlist_sharing_service.get_shared_task_comments(task_id)
                 )
             except Exception:
-                pass
+                current_app.logger.exception(
+                    f"Failed to load shared comments for task {task_id}."
+                )
         return comments
 
     @require_valid_playlist_share_link(with_password=True)

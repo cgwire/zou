@@ -5,6 +5,11 @@ import string
 from datetime import timedelta
 
 from flask import request, session, current_app
+from flask_jwt_extended import (
+    create_access_token,
+    create_refresh_token,
+    get_jti,
+)
 from babel.dates import format_datetime
 
 
@@ -107,6 +112,10 @@ def check_auth(
 
     if login_failed_attemps > 0:
         update_login_failed_attemps(person["id"], 0)
+
+    # The person dict may come straight from the memoize cache: strip the
+    # secrets from a copy so the cached entry is left untouched.
+    person = dict(person)
 
     if "password" in person:
         del person["password"]
@@ -495,7 +504,7 @@ def send_email_otp(person):
     time_string = format_datetime(
         date_helpers.get_utc_now_datetime(),
         tzinfo=person["timezone"],
-        locale=person["locale"],
+        locale=locale,
     )
     person_IP = request.headers.get("X-Forwarded-For", None) or ""
     subject = get_email_translation(
@@ -676,11 +685,37 @@ def generate_new_recovery_codes(person_id):
     return otp_recovery_codes
 
 
-def revoke_tokens(app, jti):
+def create_auth_tokens(identity, additional_claims=None):
     """
-    Remove access and refresh tokens from auth token store.
+    Create an access token and a refresh token pair. The refresh token jti
+    is embedded in the access token claims so that logout can revoke both
+    tokens at once.
+    """
+    if additional_claims is None:
+        additional_claims = {}
+    refresh_token = create_refresh_token(
+        identity=identity, additional_claims=additional_claims
+    )
+    access_token = create_access_token(
+        identity=identity,
+        additional_claims={
+            **additional_claims,
+            "refresh_jti": get_jti(refresh_token),
+        },
+    )
+    return access_token, refresh_token
+
+
+def revoke_tokens(app, jti, refresh_jti=None):
+    """
+    Add given token ids to the auth token blocklist. Each entry lives as
+    long as the token it revokes can still be presented.
     """
     auth_tokens_store.add(jti, "true", app.config["JWT_ACCESS_TOKEN_EXPIRES"])
+    if refresh_jti is not None:
+        auth_tokens_store.add(
+            refresh_jti, "true", app.config["JWT_REFRESH_TOKEN_EXPIRES"]
+        )
 
 
 def is_default_password(app, password):
@@ -745,8 +780,8 @@ def check_login_failed_attemps(person):
     return login_failed_attemps
 
 
-def logout(jti):
+def logout(jti, refresh_jti=None):
     try:
-        revoke_tokens(current_app, jti)
+        revoke_tokens(current_app, jti, refresh_jti=refresh_jti)
     except Exception:
         pass

@@ -1,11 +1,14 @@
 import flask_bcrypt as bcrypt
 
+from unittest import mock
+
 from tests.base import ApiDBTestCase
 
 from zou.app.utils import auth
 
 from zou.app import app
 
+from zou.app.stores import auth_tokens_store
 from zou.app.services import persons_service, auth_service
 from zou.app.services.exception import (
     PersonNotFoundException,
@@ -28,6 +31,12 @@ class AuthTestCase(ApiDBTestCase):
             "email": self.person_dict["email"],
             "password": "secretpassword",
         }
+
+    def tearDown(self):
+        # Some tests switch the auth strategy; restore the default so the
+        # leak does not break login tests run after this file.
+        app.config["AUTH_STRATEGY"] = "auth_local_classic"
+        super(AuthTestCase, self).tearDown()
 
     def test_load_user(self):
         person = persons_service.get_person(self.person.id)
@@ -104,6 +113,23 @@ class AuthTestCase(ApiDBTestCase):
         )
         self.assertEqual(person["first_name"], "John")
 
+    def test_check_auth_works_on_a_copy(self):
+        app.config["AUTH_STRATEGY"] = "auth_local_classic"
+        email = self.person_dict["email"]
+        person = persons_service.get_person_by_email_desktop_login(email)
+        with mock.patch.object(
+            persons_service,
+            "get_person_by_email_desktop_login",
+            return_value=person,
+        ):
+            result = auth_service.check_auth(app, email, "secretpassword")
+        self.assertNotIn("password", result)
+        self.assertIn("password", person)
+
     def test_revoke_tokens(self):
-        # Complex to test, jwt extended requires a proper flask context to run.
-        pass
+        auth_service.revoke_tokens(
+            app, "access-jti", refresh_jti="refresh-jti"
+        )
+        self.assertTrue(auth_tokens_store.is_revoked("access-jti"))
+        self.assertTrue(auth_tokens_store.is_revoked("refresh-jti"))
+        self.assertFalse(auth_tokens_store.is_revoked("other-jti"))

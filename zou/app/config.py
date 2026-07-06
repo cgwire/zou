@@ -92,6 +92,10 @@ PREVIEW_FOLDER = os.getenv(
 )
 PREVIEW_SAVE_SOURCE_FILE = envtobool("PREVIEW_SAVE_SOURCE_FILE", False)
 MAX_IMAGE_PIXELS = int(os.getenv("MAX_IMAGE_PIXELS", 20000 * 20000))
+# Cap on any request body size (Flask MAX_CONTENT_LENGTH). Generous by
+# default so multi-GB movie uploads keep working while unbounded bodies
+# can no longer fill the disk. Set to 0 to disable the limit.
+MAX_CONTENT_LENGTH = int(os.getenv("MAX_CONTENT_LENGTH", 10 * 1024**3)) or None
 TMP_DIR = os.getenv("TMP_DIR", os.path.join(tempfile.gettempdir(), "zou"))
 
 EVENT_STREAM_HOST = os.getenv("EVENT_STREAM_HOST", "localhost")
@@ -165,6 +169,7 @@ LDAP_SSL = envtobool("LDAP_SSL", False)
 SAML_ENABLED = envtobool("SAML_ENABLED", False)
 SAML_IDP_NAME = os.getenv("SAML_IDP_NAME", "")
 SAML_METADATA_URL = os.getenv("SAML_METADATA_URL", "")
+SAML_SKIP_2FA = envtobool("SAML_SKIP_2FA", False)
 
 OIDC_ENABLED = envtobool("OIDC_ENABLED", False)
 OIDC_IDP_NAME = os.getenv("OIDC_IDP_NAME", "")

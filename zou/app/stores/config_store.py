@@ -1,8 +1,11 @@
+import logging
 import sys
 
 import redis
 
 from zou.app import config
+
+logger = logging.getLogger(__name__)
 
 USER_LIMIT_KEY = "config:user_limit"
 DEFAULT_TIMEZONE_KEY = "config:default_timezone"
@@ -23,7 +26,7 @@ try:
 except redis.ConnectionError:
     config_store = None
     if "pytest" not in sys.modules:
-        print("Cannot access to the required Redis instance")
+        logger.error("Cannot access to the required Redis instance")
 
 
 def _get_redis_raw(key):
@@ -31,7 +34,7 @@ def _get_redis_raw(key):
         try:
             return config_store.get(key)
         except redis.ConnectionError:
-            pass
+            logger.warning(f"Redis unavailable while reading {key}")
     return None
 
 
@@ -42,7 +45,7 @@ def _get(key, fallback):
             if value is not None:
                 return value
         except redis.ConnectionError:
-            pass
+            logger.warning(f"Redis unavailable while reading {key}")
     return fallback
 
 
@@ -53,7 +56,7 @@ def _sync(key, env_value):
             if current is None or str(current) != str(env_value):
                 config_store.set(key, env_value)
         except redis.ConnectionError:
-            pass
+            logger.warning(f"Redis unavailable while syncing {key}")
     return env_value
 
 

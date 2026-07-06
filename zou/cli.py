@@ -528,7 +528,9 @@ if os.getenv("ADMIN_TOKEN"):
         url = f"{host}/admin/config/check"
         try:
             response = requests.get(
-                url, headers={"Authorization": f"Bearer {token}"}
+                url,
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=30,
             )
             response.raise_for_status()
         except requests.ConnectionError:

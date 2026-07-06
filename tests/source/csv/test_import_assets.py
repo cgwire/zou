@@ -142,6 +142,7 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
             os.path.join("csv", "assets_broken_03.csv")
         )
         error = self.upload_file(path, file_path_fixture, 400)
-        self.assertEqual(error["line_number"], 1)
+        # The header is file line 1, so the first data row is line 2.
+        self.assertEqual(error["line_number"], 2)
         entities = Entity.query.all()
         self.assertEqual(len(entities), 0)

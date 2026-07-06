@@ -25,9 +25,13 @@ class PermissionTestCase(ApiDBTestCase):
 
     def test_admin_can_edit_project(self):
         self.log_in(self.user["email"])
+        data = {"name": "Cosmos Landromat 2 edited"}
+        self.put(f"data/projects/{self.project_id}", data, 200)
 
     def test_admin_can_read_project(self):
         self.log_in(self.user["email"])
+        project = self.get(f"data/projects/{self.project_id}")
+        self.assertEqual(project["id"], str(self.project_id))
 
     def test_cg_artist_cannot_create_project(self):
         self.log_in_cg_artist()
