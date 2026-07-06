@@ -217,10 +217,10 @@ def configure_auth():
     from zou.app.services import persons_service
     from zou.app.services.auth_service import logout
 
-    def check_active_identity(identity, identity_type, jti):
+    def check_active_identity(identity, identity_type, jti, refresh_jti=None):
         if not identity.active:
             if identity_type == "person":
-                logout(jti=jti)
+                logout(jti=jti, refresh_jti=refresh_jti)
             current_app.logger.error(
                 f"Identity {identity.id} is not active anymore"
             )
@@ -246,7 +246,12 @@ def configure_auth():
             identity = persons_service.get_person_raw_cached(payload["sub"])
         except PersonNotFoundException:
             return wrong_auth_handler()
-        check_active_identity(identity, identity_type, jti=payload["jti"])
+        check_active_identity(
+            identity,
+            identity_type,
+            jti=payload["jti"],
+            refresh_jti=payload.get("refresh_jti"),
+        )
 
         if payload.get("requires_2fa_setup"):
             allowed_paths = {

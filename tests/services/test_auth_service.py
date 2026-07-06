@@ -6,6 +6,7 @@ from zou.app.utils import auth
 
 from zou.app import app
 
+from zou.app.stores import auth_tokens_store
 from zou.app.services import persons_service, auth_service
 from zou.app.services.exception import (
     PersonNotFoundException,
@@ -105,5 +106,9 @@ class AuthTestCase(ApiDBTestCase):
         self.assertEqual(person["first_name"], "John")
 
     def test_revoke_tokens(self):
-        # Complex to test, jwt extended requires a proper flask context to run.
-        pass
+        auth_service.revoke_tokens(
+            app, "access-jti", refresh_jti="refresh-jti"
+        )
+        self.assertTrue(auth_tokens_store.is_revoked("access-jti"))
+        self.assertTrue(auth_tokens_store.is_revoked("refresh-jti"))
+        self.assertFalse(auth_tokens_store.is_revoked("other-jti"))

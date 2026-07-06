@@ -206,6 +206,26 @@ class AuthTestCase(ApiDBTestCase):
         self.assertIsAuthenticated(tokens)
         self.logout(tokens)
 
+    def test_logout_revokes_refresh_token(self):
+        tokens = self.post("auth/login", self.credentials, 200)
+        self.logout(tokens)
+        headers = {
+            "Authorization": f"Bearer {tokens.get('refresh_token', None)}"
+        }
+        response = self.app.get("auth/refresh-token", headers=headers)
+        self.assertEqual(response.status_code, 401)
+
+    def test_logout_after_refresh_revokes_refresh_token(self):
+        tokens = self.post("auth/login", self.credentials, 200)
+        refresh_headers = {
+            "Authorization": f"Bearer {tokens.get('refresh_token', None)}"
+        }
+        result = self.app.get("auth/refresh-token", headers=refresh_headers)
+        new_tokens = json.loads(result.data.decode("utf-8"))
+        self.logout(new_tokens)
+        response = self.app.get("auth/refresh-token", headers=refresh_headers)
+        self.assertEqual(response.status_code, 401)
+
     def test_refresh_token(self):
         tokens = self.post("auth/login", self.credentials, 200)
         self.assertIsAuthenticated(tokens)

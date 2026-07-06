@@ -191,7 +191,7 @@ class OIDCCallbackTestCase(ApiDBTestCase):
     def _capture_claims(self, claims):
         """Run the callback capturing the additional_claims passed to the JWT."""
         with mock.patch(
-            "zou.app.blueprints.auth.resources.create_access_token",
+            "zou.app.services.auth_service.create_access_token",
             wraps=real_create_access_token,
         ) as create_token:
             self.call_callback(claims)
