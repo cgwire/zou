@@ -117,6 +117,25 @@ jobs:
           MAIL_DEBUG_BODY: 1
           MAIL_ENABLED: False
 
+  audit:
+    name: Audit dependencies 🔒
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 🐍
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install packages 📦
+        run: >-
+          pip install --upgrade pip setuptools &&
+          pip install -r requirements.txt
+      - name: Run pip-audit 🔒
+        run: >-
+          pip install pip-audit &&
+          pip-audit --skip-editable
+
   publish-test:
     name: Publish to TestPyPI 📦
     needs: test
