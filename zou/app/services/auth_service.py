@@ -113,6 +113,10 @@ def check_auth(
     if login_failed_attemps > 0:
         update_login_failed_attemps(person["id"], 0)
 
+    # The person dict may come straight from the memoize cache: strip the
+    # secrets from a copy so the cached entry is left untouched.
+    person = dict(person)
+
     if "password" in person:
         del person["password"]
 
