@@ -1,7 +1,11 @@
 from tests.base import ApiDBTestCase
 
 from zou.app.models.notification import Notification
-from zou.app.services import comments_service, notifications_service
+from zou.app.services import (
+    comments_service,
+    notifications_service,
+    projects_service,
+)
 
 
 class NotificationsServiceTestCase(ApiDBTestCase):
@@ -270,3 +274,21 @@ class NotificationsServiceTestCase(ApiDBTestCase):
         )
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0], str(self.person.id))
+
+    def test_get_mentioned_people_leaves_comment_untouched(self):
+        self.generate_fixture_comment()
+        self.generate_fixture_department()
+        self.person.departments.append(self.department)
+        self.person.save()
+        projects_service.add_team_member(
+            str(self.project.id), str(self.person.id)
+        )
+        comment = {
+            "mentions": [],
+            "department_mentions": [str(self.department.id)],
+        }
+        result = notifications_service.get_mentioned_people(
+            str(self.project.id), comment
+        )
+        self.assertEqual(result, [str(self.person.id)])
+        self.assertEqual(comment["mentions"], [])
