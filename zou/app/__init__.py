@@ -52,53 +52,20 @@ from zou.app.utils.saml import saml_client_for
 from zou.app.utils.oidc import oidc_client_for
 from zou.app.utils.fido import get_fido_server
 
-app = Flask(__name__)
-app.json = ORJSONProvider(app)
-app.request_class.user_agent_class = ParsedUserAgent
-app.config.from_object(config)
-
-monitoring.init_monitoring(app)
-
-logs.configure_logs_ovh(app)
-
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)  # DB schema migration features
-app.extensions["sqlalchemy"].db = db
-
-app.secret_key = app.config["SECRET_KEY"]
-jwt = JWTManager(app)  # JWT auth tokens
-Principal(app)  # Permissions
-cache.cache.init_app(app)  # Function caching
+# Extensions are created unbound and attached to an app in create_app().
+# Models are declared against `db.Model`, which is available without an
+# app, so importing this module no longer needs a fully wired app.
+db = SQLAlchemy()
+migrate = Migrate()
+jwt = JWTManager()
 mail = Mail()
-mail.init_app(app)  # To send emails
-swagger = Swagger(
-    app,
-    template=swagger_module.swagger_template,
-    config=swagger_module.swagger_config,
-)
-configure_openapi_route(app, swagger)
-
-if config.CORS_ALLOWED_ORIGINS:
-    CORS(
-        app,
-        resources={r"/*": {"origins": config.CORS_ALLOWED_ORIGINS}},
-        supports_credentials=True,
-    )
+swagger = None
+# Set by create_app(). Kept as a module global because much of the code
+# base imports `from zou.app import app` at import time, including modules
+# loaded while the API is being wired.
+app = None
 
 
-if config.SAML_ENABLED:
-    app.extensions["saml_client"] = saml_client_for(config.SAML_METADATA_URL)
-
-if config.OIDC_ENABLED:
-    app.extensions["oidc_client"] = oidc_client_for(app)
-
-app.extensions["fido_server"] = get_fido_server()
-
-if config.INDEXER["key"] is not None:
-    app.extensions["indexer_client"] = indexing.init_client()
-
-
-@app.teardown_appcontext
 def shutdown_session(exception=None):
     """
     Clean up database session when application context is torn down.
@@ -117,7 +84,6 @@ def shutdown_session(exception=None):
         db.session.remove()
 
 
-@app.after_request
 def set_security_headers(response):
     """
     Add baseline security headers to every response. nosniff stops the
@@ -138,12 +104,10 @@ def set_security_headers(response):
     return response
 
 
-@app.errorhandler(404)
 def page_not_found(error):
     return jsonify(error=True, message=str(error)), 404
 
 
-@app.errorhandler(HTTPException)
 def http_error(error):
     """
     Return HTTP errors raised by resources (abort calls) as JSON instead
@@ -154,7 +118,6 @@ def http_error(error):
     return jsonify(error=True, message=error.description), error.code
 
 
-@app.errorhandler(WrongIdFormatException)
 def id_parameter_format_error(error):
     return (
         jsonify(
@@ -165,43 +128,35 @@ def id_parameter_format_error(error):
     )
 
 
-@app.errorhandler(WrongParameterException)
 def wrong_parameter(error):
     return jsonify(error=True, message=str(error), data=error.dict), 400
 
 
-@app.errorhandler(PreviewProcessingFailedException)
 def preview_processing_failed(error):
     return jsonify(error=True, message=str(error), data=error.dict), 500
 
 
-@app.errorhandler(ExpiredSignatureError)
 def wrong_token_signature(error):
     return jsonify(error=True, message=str(error)), 401
 
 
-@app.errorhandler(ModelWithRelationsDeletionException)
 def try_delete_model_with_relations(error):
     return jsonify(error=True, message=str(error)), 400
 
 
-@app.errorhandler(WrongTaskTypeForEntityException)
 def wrong_task_type_for_entity(error):
     return jsonify(error=True, message=str(error)), 400
 
 
-@app.errorhandler(UnknownLocaleError)
 def wrong_locale_label(error):
     return jsonify(error=True, message=str(error)), 400
 
 
-@app.errorhandler(MeilisearchCommunicationError)
 def indexer_not_reachable(error):
     current_app.logger.error("Indexer not reachable")
     return jsonify(error=True, message="Indexer not reachable"), 500
 
 
-@app.errorhandler(MeilisearchApiError)
 def indexer_key_error(error):
     if error.code == "invalid_api_key":
         current_app.logger.error("The indexer key is rejected")
@@ -210,7 +165,6 @@ def indexer_key_error(error):
         raise error
 
 
-@app.errorhandler(TwoFactorAuthenticationRequiredException)
 def two_factor_auth_required(error):
     return (
         jsonify(
@@ -223,7 +177,6 @@ def two_factor_auth_required(error):
     )
 
 
-@app.errorhandler(Exception)
 def server_error(error):
     # HTTPExceptions (404, 405, ...) carry their own status code; let
     # Flask render them normally instead of masking every one as a 500.
@@ -243,7 +196,41 @@ def server_error(error):
     return jsonify(error=True, message="Internal server error."), 500
 
 
-def configure_auth():
+def register_error_handlers(app):
+    """
+    Register the request lifecycle hooks and the JSON error handlers on
+    the given app.
+    """
+    app.teardown_appcontext(shutdown_session)
+    app.after_request(set_security_headers)
+    app.register_error_handler(404, page_not_found)
+    app.register_error_handler(HTTPException, http_error)
+    app.register_error_handler(
+        WrongIdFormatException, id_parameter_format_error
+    )
+    app.register_error_handler(WrongParameterException, wrong_parameter)
+    app.register_error_handler(
+        PreviewProcessingFailedException, preview_processing_failed
+    )
+    app.register_error_handler(ExpiredSignatureError, wrong_token_signature)
+    app.register_error_handler(
+        ModelWithRelationsDeletionException, try_delete_model_with_relations
+    )
+    app.register_error_handler(
+        WrongTaskTypeForEntityException, wrong_task_type_for_entity
+    )
+    app.register_error_handler(UnknownLocaleError, wrong_locale_label)
+    app.register_error_handler(
+        MeilisearchCommunicationError, indexer_not_reachable
+    )
+    app.register_error_handler(MeilisearchApiError, indexer_key_error)
+    app.register_error_handler(
+        TwoFactorAuthenticationRequiredException, two_factor_auth_required
+    )
+    app.register_error_handler(Exception, server_error)
+
+
+def configure_auth(app):
     from zou.app.services import persons_service
     from zou.app.services.auth_service import logout
 
@@ -350,9 +337,72 @@ def load_api(app):
     api.configure(app)
 
     fs.mkdir_p(app.config["TMP_DIR"])
-    configure_auth()
+    configure_auth(app)
 
 
-file_store.configure_storages(app)
-config_store.sync_config()
-load_api(app)
+def create_app(config_object=config):
+    """
+    Build and wire a Zou Flask application: extensions, JSON provider,
+    error handlers, auth, storages and API routes. The module-level `app`
+    below is one instance of it; the CLI and tests can build their own.
+
+    Assigns the module-level `app` early (before the API is loaded)
+    because blueprints and services imported during load_api still do
+    `from zou.app import app` at import time.
+    """
+    global app, swagger
+
+    app = Flask(__name__)
+    app.json = ORJSONProvider(app)
+    app.request_class.user_agent_class = ParsedUserAgent
+    app.config.from_object(config_object)
+
+    monitoring.init_monitoring(app)
+    logs.configure_logs_ovh(app)
+
+    db.init_app(app)
+    migrate.init_app(app, db)
+    app.extensions["sqlalchemy"].db = db
+
+    app.secret_key = app.config["SECRET_KEY"]
+    jwt.init_app(app)
+    Principal(app)
+    cache.cache.init_app(app)
+    mail.init_app(app)
+    swagger = Swagger(
+        app,
+        template=swagger_module.swagger_template,
+        config=swagger_module.swagger_config,
+    )
+    configure_openapi_route(app, swagger)
+
+    if config_object.CORS_ALLOWED_ORIGINS:
+        CORS(
+            app,
+            resources={r"/*": {"origins": config_object.CORS_ALLOWED_ORIGINS}},
+            supports_credentials=True,
+        )
+
+    if config_object.SAML_ENABLED:
+        app.extensions["saml_client"] = saml_client_for(
+            config_object.SAML_METADATA_URL
+        )
+
+    if config_object.OIDC_ENABLED:
+        app.extensions["oidc_client"] = oidc_client_for(app)
+
+    app.extensions["fido_server"] = get_fido_server()
+
+    if config_object.INDEXER["key"] is not None:
+        app.extensions["indexer_client"] = indexing.init_client()
+
+    register_error_handlers(app)
+
+    file_store.configure_storages(app)
+    config_store.sync_config()
+    load_api(app)
+
+    return app
+
+
+app = create_app()
