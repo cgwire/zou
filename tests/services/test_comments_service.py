@@ -241,6 +241,16 @@ class CommentsServiceTestCase(ApiDBTestCase):
             [str(self.department_animation.id)],
         )
 
+    def test_acknowledge_comment(self):
+        comment = comments_service.new_comment(
+            self.task.id, self.task_status.id, self.user["id"], "to ack"
+        )
+        path = f"data/tasks/{self.task.id}/comments/{comment['id']}/ack"
+        result = self.post(path, {}, 200)
+        self.assertIn(self.user["id"], result["acknowledgements"])
+        result = self.post(path, {}, 200)
+        self.assertEqual(result["acknowledgements"], [])
+
     def test_get_reply(self):
         comment = comments_service.new_comment(
             self.task.id, self.task_status.id, self.user["id"], "comment"

@@ -12,6 +12,7 @@ from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.comment import Comment
 from zou.app.models.department import Department
 from zou.app.models.notification import Notification
+from zou.app.models.person import Person
 from zou.app.models.project import Project
 from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
@@ -578,8 +579,11 @@ def acknowledge_comment(comment_id):
     comment = tasks_service.get_comment_raw(comment_id)
     task = tasks_service.get_task(str(comment.object_id))
     project_id = task["project_id"]
-    current_user = persons_service.get_current_user_raw()
-    current_user_id = str(current_user.id)
+    # Reload the person through the session: appending the cached
+    # current_user instance to the relationship raises an identity
+    # conflict when another instance of the row lives in the session.
+    current_user_id = persons_service.get_current_user()["id"]
+    current_user = Person.get(current_user_id)
 
     acknowledgements = fields.serialize_orm_arrays(comment.acknowledgements)
     is_already_ack = current_user_id in acknowledgements
