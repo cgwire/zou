@@ -16,12 +16,15 @@ leaves the cached object untouched.
 """
 
 import copy
+import logging
 import redis
 
 from functools import wraps
 
 from flask_caching import Cache
 from zou.app import config
+
+logger = logging.getLogger(__name__)
 
 cache = None
 _is_simple_cache = False
@@ -49,6 +52,16 @@ else:
             }
         )
     except redis.ConnectionError:
+        # SimpleCache is per-process: with several workers each one keeps
+        # its own copy and delete_memoized() only invalidates the local
+        # one, so mutations made by one worker keep being served stale by
+        # the others until their TTL expires.
+        logger.warning(
+            "Cache Redis is unreachable, falling back to in-memory "
+            "SimpleCache. With multiple workers, cache invalidation is "
+            "BROKEN across processes: stale data may be served. Fix the "
+            "Redis connection or set CACHE_TYPE explicitly."
+        )
         cache = Cache(config={"CACHE_TYPE": "simple"})
         _is_simple_cache = True
 
