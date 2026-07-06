@@ -169,6 +169,7 @@ LDAP_SSL = envtobool("LDAP_SSL", False)
 SAML_ENABLED = envtobool("SAML_ENABLED", False)
 SAML_IDP_NAME = os.getenv("SAML_IDP_NAME", "")
 SAML_METADATA_URL = os.getenv("SAML_METADATA_URL", "")
+SAML_SKIP_2FA = envtobool("SAML_SKIP_2FA", False)
 
 OIDC_ENABLED = envtobool("OIDC_ENABLED", False)
 OIDC_IDP_NAME = os.getenv("OIDC_IDP_NAME", "")

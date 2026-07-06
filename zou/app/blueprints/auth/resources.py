@@ -1503,8 +1503,23 @@ class SAMLSSOResource(Resource, ArgsMixin):
         )
 
         if user["active"]:
+            # Honour 2FA enforcement unless SAML sessions are configured
+            # to skip it (e.g. when the identity provider already
+            # enforces MFA), mirroring the OIDC callback.
+            requires_2fa_setup = False
+            if config.ENFORCE_2FA and not config.SAML_SKIP_2FA:
+                if not auth_service.is_user_exempt_from_2fa(user, app):
+                    if not auth_service.person_two_factor_authentication_enabled(
+                        user
+                    ):
+                        requires_2fa_setup = True
+
+            additional_claims = {"identity_type": "person"}
+            if requires_2fa_setup:
+                additional_claims["requires_2fa_setup"] = True
+
             access_token, refresh_token = auth_service.create_auth_tokens(
-                user["id"], {"identity_type": "person"}
+                user["id"], additional_claims
             )
             identity_changed.send(
                 current_app._get_current_object(),
