@@ -121,7 +121,7 @@ class AuthTestCase(ApiDBTestCase):
         self.logout(tokens)
         self.assertIsNotAuthenticated(tokens)
 
-    def test_register(self):
+    def test_register_route_is_gone(self):
         subscription_data = {
             "email": "alice@doe.com",
             "password": "12345678",
@@ -129,68 +129,24 @@ class AuthTestCase(ApiDBTestCase):
             "first_name": "Alice",
             "last_name": "Doe",
         }
-        self.post("auth/register", subscription_data, 201)
-
-        credentials = {
-            "email": subscription_data["email"],
-            "password": subscription_data["password"],
-        }
-        tokens = self.post("auth/login", credentials, 200)
-        self.assertIsAuthenticated(tokens)
-        self.logout(tokens)
-
-    def test_register_bad_email(self):
-        credentials = {
-            "email": "alicedoecom",
-            "password": "12345678",
-            "password_2": "12345678",
-            "first_name": "Alice",
-            "last_name": "Doe",
-        }
-        self.post("auth/register", credentials, 400)
-
-    def test_register_different_password(self):
-        credentials = {
-            "email": "alice@doe.com",
-            "password": "12345678",
-            "password_2": "12345687",
-            "first_name": "Alice",
-            "last_name": "Doe",
-        }
-        self.post("auth/register", credentials, 400)
-
-    def test_register_password_too_short(self):
-        credentials = {
-            "email": "alice@doe.com",
-            "password": "123",
-            "password_2": "123",
-            "first_name": "Alice",
-            "last_name": "Doe",
-        }
-        self.post("auth/register", credentials, 400)
+        response = self.app.post(
+            "auth/register",
+            data=json.dumps(subscription_data),
+            headers={"Content-type": "application/json"},
+        )
+        self.assertEqual(response.status_code, 404)
 
     def test_change_password(self):
-        user_data = {
-            "email": "alice@doe.com",
-            "password": "12345678",
-            "password_2": "12345678",
-            "first_name": "Alice",
-            "last_name": "Doe",
-        }
-        credentials = {
-            "email": "alice@doe.com",
-            "password": "12345678",
-        }
-        self.post("auth/register", user_data, 201)
+        credentials = dict(self.credentials)
         tokens = self.post("auth/login", credentials, 200)
         self.assertIsAuthenticated(tokens)
 
         new_password = {
-            "old_password": "12345678",
+            "old_password": credentials["password"],
             "password": "87654321",
             "password_2": "87654321",
         }
-        credentials = {"email": "alice@doe.com", "password": "87654321"}
+        credentials = {"email": credentials["email"], "password": "87654321"}
 
         headers = self.get_auth_headers(tokens)
         headers["Content-type"] = "application/json"

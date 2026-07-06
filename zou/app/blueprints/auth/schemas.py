@@ -4,7 +4,7 @@ Pydantic schemas for request body validation in the auth blueprint.
 
 from typing import Optional
 
-from pydantic import Field, model_validator
+from pydantic import Field
 
 from zou.app.utils.validation import BaseSchema
 
@@ -20,20 +20,6 @@ class LoginSchema(BaseSchema):
     email_otp: Optional[str] = None
     fido_authentication_response: Optional[dict] = None
     recovery_code: Optional[str] = None
-
-
-class RegisterSchema(BaseSchema):
-    """
-    Body for user registration.
-    """
-
-    email: str = Field(..., min_length=1, description="User email")
-    first_name: str = Field(..., min_length=1, description="First name")
-    last_name: str = Field(..., min_length=1, description="Last name")
-    password: str = Field(..., min_length=1, description="Password")
-    password_2: str = Field(
-        ..., min_length=1, description="Confirmation password"
-    )
 
 
 class ChangePasswordSchema(BaseSchema):
