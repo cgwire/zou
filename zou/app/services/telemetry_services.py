@@ -35,4 +35,4 @@ def send_main_infos():
         "python_version": platform.python_version(),
     }
 
-    requests.post(config.TELEMETRY_URL, json=data)
+    requests.post(config.TELEMETRY_URL, json=data, timeout=30)
