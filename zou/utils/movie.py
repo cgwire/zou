@@ -67,7 +67,7 @@ def generate_thumbnail(movie_path):
         log_ffmpeg_error(e, "an error occured during generate_thumbnail")
         raise (e)
     except Exception:
-        print("Error while generating thumbnail")
+        logger.error("Error while generating thumbnail", exc_info=1)
         raise
     return file_target_path
 

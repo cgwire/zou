@@ -1,7 +1,11 @@
+import logging
 import sys
+
 import redis
 
 from zou.app import config
+
+logger = logging.getLogger(__name__)
 
 try:
     revoked_tokens_store = redis.StrictRedis(
@@ -15,7 +19,7 @@ try:
 except redis.ConnectionError:
     revoked_tokens_store = None
     if "pytest" not in sys.modules:
-        print("Cannot access to the required Redis instance")
+        logger.error("Cannot access to the required Redis instance")
 
 
 def add(key, token, ttl=None):
