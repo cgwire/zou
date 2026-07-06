@@ -87,7 +87,11 @@ def emit(event, data=None, persist=True, project_id=None):
             try:
                 func.handle_event(data)
             except Exception:
-                current_app.logger.error("Error handling event", exc_info=1)
+                current_app.logger.error(
+                    f"Error handling event {event} "
+                    f"with {type(func).__name__}",
+                    exc_info=1,
+                )
 
 
 def save_event(event, data, project_id=None):
