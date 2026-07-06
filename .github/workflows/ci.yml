@@ -76,7 +76,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Cache APT packages
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         id: apt-cache
         with:
           path: ~/apt-cache
@@ -204,7 +204,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Cache APT packages
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         id: apt-cache
         with:
           path: ~/apt-cache
