@@ -74,7 +74,7 @@ jobs:
         env:
           MEILI_MASTER_KEY: ${{ env.INDEXER_KEY }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Cache APT packages
         uses: actions/cache@v4
         id: apt-cache
@@ -121,7 +121,7 @@ jobs:
     name: Audit dependencies 🔒
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up Python 🐍
         uses: actions/setup-python@v5
         with:
@@ -154,7 +154,7 @@ jobs:
       id-token: write
     environment: testpypi
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Set up Python 🐍
         uses: actions/setup-python@v6
         with:
@@ -202,7 +202,7 @@ jobs:
         env:
           MEILI_MASTER_KEY: ${{ env.INDEXER_KEY }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Cache APT packages
         uses: actions/cache@v4
         id: apt-cache
@@ -254,7 +254,7 @@ jobs:
       id-token: write
     environment: pypi
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Set up Python 🐍
         uses: actions/setup-python@v6
         with:
