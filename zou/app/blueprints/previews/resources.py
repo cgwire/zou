@@ -1451,6 +1451,10 @@ class SetMainPreviewResource(Resource, ArgsMixin):
         task = tasks_service.get_task(preview_file["task_id"])
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
+        # Clients review content but must not redefine how an entity is
+        # illustrated.
+        if permissions.has_client_permissions():
+            raise permissions.PermissionDenied
         if frame_number is not None:
             if preview_file["extension"] != "mp4":
                 raise WrongParameterException(
