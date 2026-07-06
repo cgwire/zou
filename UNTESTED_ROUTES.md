@@ -17,8 +17,7 @@ To re-derive the list: compare the routes registered in
 |---|---|---|
 | FIDO/WebAuthn | `/auth/fido` (GET, PUT, POST, DELETE) | Needs a mocked WebAuthn authenticator (audit TEST-1) |
 | SAML SSO | `/auth/saml/sso`, `/auth/saml/login` | Needs a fixture IdP assertion (audit TEST-1); the 2FA gate logic is shared with OIDC, which is tested |
-| Video streaming | `/movies/originals/…`, `/movies/low/…` | Use the existing video fixture with ffmpeg mocked (audit TEST-2) |
-| Batch comments | `/actions/tasks/batch-comment`, `/actions/tasks/<id>/batch-comment` | Core review flow, no route test (audit TEST-2) |
+| Batch comments (multipart) | `/actions/tasks/batch-comment` with attached preview files | JSON body path is covered; the multipart upload variant is not |
 | Working file I/O | `/data/working-files/<id>/file` (GET, POST) | Skipped historically (binary I/O) |
 | Attachment upload | `/actions/tasks/<id>/comments/<id>/add-attachment`, attachment download/delete routes | Service layer covered since the audit; route-level upload still untested |
 | Output files with instances | `/data/asset-instances/<id>/entities/<id>/output-types/<id>/output-files` | Skipped historically (complex FK setup) |
@@ -36,3 +35,6 @@ To re-derive the list: compare the routes registered in
   `tests/thumbnails/`, including both `set-main-preview` routes.
 - `/data/tasks/<id>/comments/<id>/ack` got its first test along with
   the session-conflict fix (audit BUG-37).
+- Batch-comment routes (JSON body) and movie streaming
+  (original/low/download/404) are covered in `tests/comments/` and
+  `tests/previews/` (audit TEST-2).
