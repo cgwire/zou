@@ -39,10 +39,10 @@ zou/
 │   │                        # entities, events, export, index,
 │   │                        # news, search, source, user,
 │   │                        # departments
-│   ├── models/              # 50 SQLAlchemy model files
-│   ├── services/            # 40 business logic modules
+│   ├── models/              # ~50 SQLAlchemy model files
+│   ├── services/            # ~40 business logic modules
 │   ├── stores/              # File storage abstraction
-│   └── utils/               # 31 utility modules
+│   └── utils/               # ~35 utility modules
 ├── migrations/              # Alembic migration versions
 ├── remote/                  # Remote job execution
 └── cli.py                   # CLI commands
