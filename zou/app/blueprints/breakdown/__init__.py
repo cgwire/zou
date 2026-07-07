@@ -10,6 +10,7 @@ from zou.app.blueprints.breakdown.resources import (
     SceneAssetInstancesResource,
     SceneCameraInstancesResource,
     CastingResource,
+    EntitiesCastingResource,
     AssetTypeCastingResource,
     SequenceCastingResource,
     EpisodeSequenceAllCastingResource,
@@ -20,6 +21,10 @@ routes = [
     (
         "/data/projects/<project_id>/entities/<entity_id>/casting",
         CastingResource,
+    ),
+    (
+        "/data/projects/<project_id>/entities/casting",
+        EntitiesCastingResource,
     ),
     (
         "/data/projects/<project_id>/asset-types/<asset_type_id>/casting",

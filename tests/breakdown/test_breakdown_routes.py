@@ -48,6 +48,46 @@ class BreakdownRoutesTestCase(ApiDBTestCase):
         self.assertIsInstance(result, dict)
         self.assertIn(self.asset_character_id, result)
 
+    def test_update_entities_casting(self):
+        castings = {
+            self.shot_id: [{"asset_id": self.asset_id, "nb_occurences": 1}],
+            self.asset_character_id: [
+                {"asset_id": self.asset_id, "nb_occurences": 2}
+            ],
+        }
+        result = self.put(
+            f"/data/projects/{self.project_id}/entities/casting",
+            castings,
+            200,
+        )
+        self.assertEqual(set(result.keys()), set(castings.keys()))
+        shot_casting = self.get(
+            f"/data/projects/{self.project_id}"
+            f"/entities/{self.shot_id}/casting"
+        )
+        self.assertEqual(shot_casting[0]["asset_id"], self.asset_id)
+        character_casting = self.get(
+            f"/data/projects/{self.project_id}"
+            f"/entities/{self.asset_character_id}/casting"
+        )
+        self.assertEqual(character_casting[0]["nb_occurences"], 2)
+
+    def test_update_entities_casting_rejects_non_object_body(self):
+        self.put(
+            f"/data/projects/{self.project_id}/entities/casting",
+            [{"asset_id": self.asset_id, "nb_occurences": 1}],
+            400,
+        )
+
+    def test_update_entities_casting_as_artist_is_forbidden(self):
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        self.put(
+            f"/data/projects/{self.project_id}/entities/casting",
+            {self.shot_id: [{"asset_id": self.asset_id, "nb_occurences": 1}]},
+            403,
+        )
+
     def test_get_episodes_casting(self):
         self._set_shot_casting()
         result = self.get(f"/data/projects/{self.project_id}/episodes/casting")

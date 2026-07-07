@@ -175,6 +175,74 @@ class CastingResource(MethodView):
         return breakdown_service.update_casting(entity_id, casting)
 
 
+class EntitiesCastingResource(MethodView):
+    @jwt_required()
+    def put(self, project_id):
+        """
+        Update several entity castings
+        ---
+        description: Modify the casting of several entities of a project in
+          a single request. The request body maps entity ids to casting
+          arrays, each following the same format as the single entity
+          casting route.
+        tags:
+          - Breakdown
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            type: string
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Unique identifier of the project
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Map of entity ids to casting arrays
+                additionalProperties:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      asset_id:
+                        type: string
+                        format: uuid
+                        description: Asset identifier to link
+                      nb_occurences:
+                        type: integer
+                        description: Number of occurences of the asset
+        responses:
+          200:
+            description: Map of entity ids to their updated casting
+            content:
+              application/json:
+                schema:
+                  type: object
+        """
+        castings = request.json
+        if not isinstance(castings, dict) or not all(
+            isinstance(casting, list) for casting in castings.values()
+        ):
+            return {
+                "error": True,
+                "message": "Request body must be a JSON object mapping "
+                "entity ids to casting arrays",
+            }, 400
+        user_service.check_manager_project_access(project_id)
+        # Validate every entity before updating anything.
+        for entity_id in castings.keys():
+            entity = entities_service.get_entity(entity_id)
+            if entity["project_id"] != project_id:
+                raise permissions.PermissionDenied
+        return {
+            entity_id: breakdown_service.update_casting(entity_id, casting)
+            for entity_id, casting in castings.items()
+        }
+
+
 class EpisodesCastingResource(MethodView):
     @jwt_required()
     def get(self, project_id):
