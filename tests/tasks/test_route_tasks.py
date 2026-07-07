@@ -279,6 +279,34 @@ class TaskRoutesTestCase(ApiDBTestCase):
         task = tasks_service.get_task(shot_task_id, relations=True)
         self.assertEqual(len(task["assignees"]), 0)
 
+    def test_set_tasks_priority(self):
+        self.generate_fixture_task()
+        self.generate_fixture_shot_task()
+        task_id = str(self.task.id)
+        shot_task_id = str(self.shot_task.id)
+        data = {"task_ids": [task_id, shot_task_id], "priority": 2}
+        result = self.put("/actions/tasks/set-priority", data)
+
+        self.assertEqual(len(result), 2)
+        self.assertTrue(all(task["priority"] == 2 for task in result))
+        task = tasks_service.get_task(task_id)
+        self.assertEqual(task["priority"], 2)
+        task = tasks_service.get_task(shot_task_id)
+        self.assertEqual(task["priority"], 2)
+
+    def test_set_tasks_priority_skips_forbidden_tasks(self):
+        self.generate_fixture_task()
+        self.generate_fixture_user_cg_artist()
+        task_id = str(self.task.id)
+        data = {"task_ids": [task_id], "priority": 1}
+        self.log_in_cg_artist()
+        result = self.put("/actions/tasks/set-priority", data)
+
+        self.assertEqual(result, [])
+        self.log_in_admin()
+        task = tasks_service.get_task(task_id)
+        self.assertEqual(task["priority"], 0)
+
     def test_comment_task(self):
         self.project_id = self.project.id
         self.generate_fixture_user_manager()

@@ -40,6 +40,7 @@ from zou.app.utils import (
 from zou.app.mixin import ArgsMixin
 from zou.app.blueprints.tasks.schemas import (
     CommentPreviewSchema,
+    SetTasksPrioritySchema,
     ToReviewSchema,
     UnassignTasksSchema,
     AssignTasksSchema,
@@ -1405,6 +1406,66 @@ class ClearAssignationResource(MethodView, ArgsMixin):
                     task_id, person_id=body.person_id
                 )
                 tasks.append(task_id)
+            except permissions.PermissionDenied:
+                pass
+            except TaskNotFoundException:
+                pass
+
+        return tasks
+
+
+class SetTasksPriorityResource(MethodView, ArgsMixin):
+
+    @jwt_required()
+    def put(self):
+        """
+        Set tasks priority
+        ---
+        tags:
+        - Tasks
+        description: Set the priority of every task given in the id list.
+          Tasks the current user is not allowed to update are skipped.
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - task_ids
+                  - priority
+                properties:
+                  task_ids:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+                    example: [
+                      "a24a6ea4-ce75-4665-a070-57453082c25",
+                      "b24a6ea4-ce75-4665-a070-57453082c25"
+                    ]
+                  priority:
+                    type: integer
+                    example: 2
+        responses:
+            200:
+                description: Updated tasks
+                content:
+                  application/json:
+                    schema:
+                      type: array
+                      items:
+                        type: object
+        """
+        body = validation.validate_request_body(SetTasksPrioritySchema)
+
+        data = {"priority": body.priority}
+        tasks = []
+        for task_id in body.task_ids:
+            try:
+                task = tasks_service.get_task(task_id)
+                user_service.check_supervisor_task_access(task, data)
+                tasks.append(tasks_service.update_task(task_id, dict(data)))
             except permissions.PermissionDenied:
                 pass
             except TaskNotFoundException:
