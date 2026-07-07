@@ -2,7 +2,7 @@ from datetime import timedelta
 from operator import itemgetter
 from sqlalchemy.orm import aliased
 from sqlalchemy.exc import IntegrityError, StatementError
-from sqlalchemy import func, or_
+from sqlalchemy import cast, func, or_, Text
 
 from zou.app.utils import (
     cache,
@@ -219,182 +219,333 @@ def get_episode_map(criterions=None):
     return episode_map
 
 
-def get_shots_and_tasks(criterions=None):
+# Field orders of the compact encoding of the with-tasks view. Clients
+# must map values by reading these names from the response header, never
+# by hardcoding positions.
+SHOTS_AND_TASKS_SHOT_FIELDS = [
+    "canceled",
+    "data",
+    "description",
+    "entity_type_id",
+    "episode_id",
+    "episode_name",
+    "fps",
+    "frame_in",
+    "frame_out",
+    "id",
+    "name",
+    "nb_frames",
+    "parent_id",
+    "preview_file_id",
+    "project_id",
+    "project_name",
+    "sequence_id",
+    "sequence_name",
+    "source_id",
+    "nb_entities_out",
+    "is_casting_standby",
+    "type",
+    "tasks",
+]
+SHOTS_AND_TASKS_TASK_FIELDS = [
+    "id",
+    "duration",
+    "due_date",
+    "end_date",
+    "done_date",
+    "entity_id",
+    "estimation",
+    "is_subscribed",
+    "last_comment_date",
+    "last_preview_file_id",
+    "nb_assets_ready",
+    "priority",
+    "real_start_date",
+    "retake_count",
+    "start_date",
+    "difficulty",
+    "nb_drawings",
+    "task_status_id",
+    "task_type_id",
+    "assignees",
+]
+
+
+def prepare_shots_and_tasks(criterions=None, compact=False):
     """
-    Get all shots for given criterions with related tasks for each shot.
+    Run the with-tasks queries and return a generator yielding one shot
+    at a time. With compact=True each item is a list of values aligned on
+    SHOTS_AND_TASKS_SHOT_FIELDS (tasks aligned on
+    SHOTS_AND_TASKS_TASK_FIELDS) instead of a dict.
+
+    Three flat queries (shots, tasks, assignee links) instead of a single
+    Entity x Task x TaskPersonLink join, and no per-row ORM
+    materialization: the joined form dominated payload and memory on
+    large productions (10k shots for series).
+
+    All database and request-dependent work happens before this function
+    returns: the generator is pure formatting, so a streaming response
+    can consume it after the request context is gone, without the whole
+    response ever being held in memory.
     """
+    from zou.app import db
+
     if criterions is None:
         criterions = {}
     shot_type = get_shot_type()
-    shot_map = {}
-    task_map = {}
     subscription_map = notifications_service.get_subscriptions_for_user(
-        criterions.get("project_id", None), get_shot_type()["id"]
+        criterions.get("project_id", None), shot_type["id"]
     )
+
+    assigned_to = "assigned_to" in criterions
+    if assigned_to:
+        del criterions["assigned_to"]
 
     Sequence = aliased(Entity, name="sequence")
     Episode = aliased(Entity, name="episode")
 
-    query = (
-        Entity.query.join(Project, Project.id == Entity.project_id)
-        .join(Sequence, Sequence.id == Entity.parent_id)
-        .outerjoin(Episode, Episode.id == Sequence.parent_id)
-        .outerjoin(Task, Task.entity_id == Entity.id)
-        .outerjoin(TaskPersonLink)
-        .add_columns(
-            Episode.name,
-            Episode.id,
-            Sequence.name,
-            Sequence.id,
-            Task.id,
-            Task.task_type_id,
-            Task.task_status_id,
-            Task.priority,
-            Task.estimation,
-            Task.duration,
-            Task.retake_count,
-            Task.real_start_date,
-            Task.end_date,
-            Task.start_date,
-            Task.due_date,
-            Task.done_date,
-            Task.last_comment_date,
-            Task.last_preview_file_id,
-            Task.nb_assets_ready,
-            Task.difficulty,
-            Task.nb_drawings,
-            TaskPersonLink.person_id,
-            Project.id,
-            Project.name,
+    def apply_filters(query):
+        query = query.filter(Entity.entity_type_id == shot_type["id"])
+        if "id" in criterions:
+            query = query.filter(Entity.id == criterions["id"])
+        if "project_id" in criterions:
+            query = query.filter(Entity.project_id == criterions["project_id"])
+        if "episode_id" in criterions and criterions["episode_id"] != "all":
+            query = query.filter(
+                Sequence.parent_id == criterions["episode_id"]
+            )
+        if assigned_to:
+            has_assigned_task = (
+                db.session.query(Task.id)
+                .filter(Task.entity_id == Entity.id)
+                .filter(user_service.build_assignee_filter())
+                .exists()
+            )
+            query = query.filter(has_assigned_task)
+        return query
+
+    shot_rows = (
+        apply_filters(
+            Entity.query.join(Project, Project.id == Entity.project_id)
+            .join(Sequence, Sequence.id == Entity.parent_id)
+            .outerjoin(Episode, Episode.id == Sequence.parent_id)
         )
-        .filter(Entity.entity_type_id == shot_type["id"])
+        .with_entities(
+            cast(Entity.id, Text).label("id"),
+            Entity.name,
+            Entity.description,
+            Entity.data,
+            Entity.canceled,
+            cast(Entity.entity_type_id, Text).label("entity_type_id"),
+            cast(Entity.parent_id, Text).label("parent_id"),
+            cast(Entity.preview_file_id, Text).label("preview_file_id"),
+            cast(Entity.source_id, Text).label("source_id"),
+            Entity.nb_frames,
+            Entity.nb_entities_out,
+            Entity.is_casting_standby,
+            cast(Entity.project_id, Text).label("project_id"),
+            cast(Episode.id, Text).label("episode_id"),
+            Episode.name.label("episode_name"),
+            cast(Sequence.id, Text).label("sequence_id"),
+            Sequence.name.label("sequence_name"),
+            Project.name.label("project_name"),
+        )
+        .all()
     )
-    if "id" in criterions:
-        query = query.filter(Entity.id == criterions["id"])
 
-    if "project_id" in criterions:
-        query = query.filter(Entity.project_id == criterions["project_id"])
+    task_query = apply_filters(
+        Task.query.join(Entity, Task.entity_id == Entity.id).join(
+            Sequence, Sequence.id == Entity.parent_id
+        )
+    ).with_entities(
+        # uuid::text in SQL: casting uuids per task row in Python shows
+        # up in profiles on task-heavy productions.
+        cast(Task.id, Text).label("id"),
+        cast(Task.entity_id, Text).label("entity_id"),
+        cast(Task.task_type_id, Text).label("task_type_id"),
+        cast(Task.task_status_id, Text).label("task_status_id"),
+        Task.priority,
+        Task.estimation,
+        Task.duration,
+        Task.retake_count,
+        Task.real_start_date,
+        Task.end_date,
+        Task.start_date,
+        Task.due_date,
+        Task.done_date,
+        Task.last_comment_date,
+        cast(Task.last_preview_file_id, Text).label("last_preview_file_id"),
+        Task.nb_assets_ready,
+        Task.difficulty,
+        Task.nb_drawings,
+    )
+    if assigned_to:
+        task_query = task_query.filter(user_service.build_assignee_filter())
+    task_rows = task_query.all()
 
-    if "episode_id" in criterions and criterions["episode_id"] != "all":
-        query = query.filter(Sequence.parent_id == criterions["episode_id"])
+    link_query = apply_filters(
+        db.session.query(TaskPersonLink)
+        .join(Task, TaskPersonLink.task_id == Task.id)
+        .join(Entity, Task.entity_id == Entity.id)
+        .join(Sequence, Sequence.id == Entity.parent_id)
+    ).with_entities(
+        cast(TaskPersonLink.task_id, Text),
+        cast(TaskPersonLink.person_id, Text),
+    )
+    if assigned_to:
+        link_query = link_query.filter(user_service.build_assignee_filter())
+    link_rows = link_query.all()
 
-    if "assigned_to" in criterions:
-        query = query.filter(user_service.build_assignee_filter())
-        del criterions["assigned_to"]
-
-    query_result = query.all()
-
+    not_allowed_map = None
     if "vendor_departments" in criterions:
-        not_allowed_descriptors_field_names = (
+        not_allowed_map = (
             entities_service.get_not_allowed_descriptors_fields_for_vendor(
                 "Shot",
                 criterions["vendor_departments"],
-                set(shot[0].project_id for shot in query_result),
+                set(row.project_id for row in shot_rows),
             )
         )
 
-    for (
-        shot,
-        episode_name,
-        episode_id,
-        sequence_name,
-        sequence_id,
-        task_id,
-        task_type_id,
-        task_status_id,
-        task_priority,
-        task_estimation,
-        task_duration,
-        task_retake_count,
-        task_real_start_date,
-        task_end_date,
-        task_start_date,
-        task_due_date,
-        task_done_date,
-        task_last_comment_date,
-        task_last_preview_file_id,
-        task_nb_assets_ready,
-        task_difficulty,
-        task_nb_drawings,
-        person_id,
-        project_id,
-        project_name,
-    ) in query_result:
-        shot_id = str(shot.id)
+    assignees_by_task = {}
+    for task_id, person_id in link_rows:
+        if person_id:
+            assignees_by_task.setdefault(task_id, []).append(person_id)
 
-        if shot_id not in shot_map:
-            data = fields.serialize_value(shot.data or {})
-            if "vendor_departments" in criterions:
+    tasks_by_entity = {}
+    for row in task_rows:
+        tasks_by_entity.setdefault(row.entity_id, []).append(row)
+
+    if compact:
+
+        def build_task(row):
+            return [
+                row.id,
+                row.duration,
+                fields.serialize_datetime(row.due_date),
+                fields.serialize_datetime(row.end_date),
+                fields.serialize_datetime(row.done_date),
+                row.entity_id,
+                row.estimation,
+                subscription_map.get(row.id, False),
+                fields.serialize_datetime(row.last_comment_date),
+                row.last_preview_file_id,
+                row.nb_assets_ready,
+                row.priority or 0,
+                fields.serialize_datetime(row.real_start_date),
+                row.retake_count,
+                fields.serialize_datetime(row.start_date),
+                row.difficulty,
+                row.nb_drawings,
+                row.task_status_id,
+                row.task_type_id,
+                assignees_by_task.get(row.id, []),
+            ]
+
+    else:
+
+        def build_task(row):
+            return {
+                "id": row.id,
+                "duration": row.duration,
+                "due_date": fields.serialize_datetime(row.due_date),
+                "end_date": fields.serialize_datetime(row.end_date),
+                "done_date": fields.serialize_datetime(row.done_date),
+                "entity_id": row.entity_id,
+                "estimation": row.estimation,
+                "is_subscribed": subscription_map.get(row.id, False),
+                "last_comment_date": fields.serialize_datetime(
+                    row.last_comment_date
+                ),
+                "last_preview_file_id": row.last_preview_file_id,
+                "nb_assets_ready": row.nb_assets_ready,
+                "priority": row.priority or 0,
+                "real_start_date": fields.serialize_datetime(
+                    row.real_start_date
+                ),
+                "retake_count": row.retake_count,
+                "start_date": fields.serialize_datetime(row.start_date),
+                "difficulty": row.difficulty,
+                "nb_drawings": row.nb_drawings,
+                "task_status_id": row.task_status_id,
+                "task_type_id": row.task_type_id,
+                "assignees": assignees_by_task.get(row.id, []),
+            }
+
+    def iterate():
+        for row in shot_rows:
+            data = fields.serialize_value(row.data or {})
+            if not_allowed_map is not None:
                 data = (
                     entities_service.remove_not_allowed_fields_from_metadata(
-                        not_allowed_descriptors_field_names[shot.project_id],
-                        data,
+                        not_allowed_map[row.project_id], data
                     )
                 )
-
-            shot_map[shot_id] = fields.serialize_dict(
-                {
-                    "canceled": shot.canceled,
+            tasks = [
+                build_task(task_row)
+                for task_row in tasks_by_entity.get(row.id, ())
+            ]
+            if compact:
+                yield [
+                    row.canceled,
+                    data,
+                    row.description,
+                    row.entity_type_id,
+                    row.episode_id,
+                    row.episode_name or "",
+                    data.get("fps", None),
+                    data.get("frame_in", None),
+                    data.get("frame_out", None),
+                    row.id,
+                    row.name,
+                    row.nb_frames,
+                    row.parent_id,
+                    row.preview_file_id,
+                    row.project_id,
+                    row.project_name,
+                    row.sequence_id,
+                    row.sequence_name,
+                    row.source_id,
+                    row.nb_entities_out,
+                    row.is_casting_standby,
+                    "Shot",
+                    tasks,
+                ]
+            else:
+                yield {
+                    "canceled": row.canceled,
                     "data": data,
-                    "description": shot.description,
-                    "entity_type_id": shot.entity_type_id,
-                    "episode_id": episode_id,
-                    "episode_name": episode_name or "",
+                    "description": row.description,
+                    "entity_type_id": row.entity_type_id,
+                    "episode_id": row.episode_id,
+                    "episode_name": row.episode_name or "",
                     "fps": data.get("fps", None),
                     "frame_in": data.get("frame_in", None),
                     "frame_out": data.get("frame_out", None),
-                    "id": shot.id,
-                    "name": shot.name,
-                    "nb_frames": shot.nb_frames,
-                    "parent_id": shot.parent_id,
-                    "preview_file_id": shot.preview_file_id or None,
-                    "project_id": project_id,
-                    "project_name": project_name,
-                    "sequence_id": sequence_id,
-                    "sequence_name": sequence_name,
-                    "source_id": shot.source_id,
-                    "nb_entities_out": shot.nb_entities_out,
-                    "is_casting_standby": shot.is_casting_standby,
-                    "tasks": [],
+                    "id": row.id,
+                    "name": row.name,
+                    "nb_frames": row.nb_frames,
+                    "parent_id": row.parent_id,
+                    "preview_file_id": row.preview_file_id,
+                    "project_id": row.project_id,
+                    "project_name": row.project_name,
+                    "sequence_id": row.sequence_id,
+                    "sequence_name": row.sequence_name,
+                    "source_id": row.source_id,
+                    "nb_entities_out": row.nb_entities_out,
+                    "is_casting_standby": row.is_casting_standby,
+                    "tasks": tasks,
                     "type": "Shot",
                 }
-            )
 
-        if task_id is not None:
-            task_id = str(task_id)
-            if task_id not in task_map:
-                task_dict = fields.serialize_dict(
-                    {
-                        "id": task_id,
-                        "duration": task_duration,
-                        "due_date": task_due_date,
-                        "end_date": task_end_date,
-                        "done_date": task_done_date,
-                        "entity_id": shot_id,
-                        "estimation": task_estimation,
-                        "is_subscribed": subscription_map.get(task_id, False),
-                        "last_comment_date": task_last_comment_date,
-                        "last_preview_file_id": task_last_preview_file_id,
-                        "nb_assets_ready": task_nb_assets_ready,
-                        "priority": task_priority or 0,
-                        "real_start_date": task_real_start_date,
-                        "retake_count": task_retake_count,
-                        "start_date": task_start_date,
-                        "difficulty": task_difficulty,
-                        "nb_drawings": task_nb_drawings,
-                        "task_status_id": task_status_id,
-                        "task_type_id": task_type_id,
-                        "assignees": [],
-                    }
-                )
-                task_map[task_id] = task_dict
-                shot_dict = shot_map[shot_id]
-                shot_dict["tasks"].append(task_dict)
+    return iterate()
 
-            if person_id:
-                task_map[task_id]["assignees"].append(str(person_id))
 
-    return list(shot_map.values())
+def get_shots_and_tasks(criterions=None):
+    """
+    Get all shots for given criterions with related tasks for each shot,
+    as a list of dicts.
+    """
+    return list(prepare_shots_and_tasks(criterions))
 
 
 def get_shot_raw(shot_id):

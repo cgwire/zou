@@ -1,4 +1,6 @@
-from flask import request
+import orjson
+
+from flask import request, Response
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
@@ -1006,6 +1008,21 @@ class ShotsAndTasksResource(MethodView):
             type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: compact
+            type: boolean
+            default: false
+            description: Encode shots and tasks as positional value arrays
+              (halves the payload). Field names are given by the
+              shot_fields and task_fields entries of the response, map
+              values by name, never by hardcoded position.
+          - in: query
+            name: stream
+            type: boolean
+            default: false
+            description: Stream the response as NDJSON (one header line,
+              then one shot per line) instead of a single JSON document,
+              to keep server memory flat on large productions.
         responses:
             200:
                 description: All shots
@@ -1041,6 +1058,13 @@ class ShotsAndTasksResource(MethodView):
                                   example: SH010 Animation
         """
         criterions = query.get_query_criterions_from_request(request)
+        # Kitsu-oriented options for full-project views: compact halves
+        # the payload (positional rows, field names in the header) and
+        # stream sends NDJSON without holding the response in memory.
+        # They are response options, not filters: pop them before the
+        # criterions reach the service.
+        stream = criterions.pop("stream", "false") == "true"
+        compact = criterions.pop("compact", "false") == "true"
         query.check_criterion_id_format(criterions)
         user_service.check_project_access(criterions.get("project_id", None))
         if permissions.has_vendor_permissions():
@@ -1051,7 +1075,27 @@ class ShotsAndTasksResource(MethodView):
                 str(department.id)
                 for department in persons_service.get_current_user_raw().departments
             ]
-        return shots_service.get_shots_and_tasks(criterions)
+        if not stream and not compact:
+            return shots_service.get_shots_and_tasks(criterions)
+
+        rows = shots_service.prepare_shots_and_tasks(
+            criterions, compact=compact
+        )
+        header = {"compact": compact}
+        if compact:
+            header["shot_fields"] = shots_service.SHOTS_AND_TASKS_SHOT_FIELDS
+            header["task_fields"] = shots_service.SHOTS_AND_TASKS_TASK_FIELDS
+
+        if not stream:
+            header["rows"] = list(rows)
+            return header
+
+        def generate():
+            yield orjson.dumps(header) + b"\n"
+            for item in rows:
+                yield orjson.dumps(item) + b"\n"
+
+        return Response(generate(), mimetype="application/x-ndjson")
 
 
 class SceneAndTasksResource(MethodView):

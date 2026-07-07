@@ -174,17 +174,6 @@ def get_full_assets(criterions=None):
     return assets
 
 
-def _serialize_datetime(value):
-    """
-    Specialized serializer for the with-tasks hot loop: the task date
-    columns are all DateTime, so the type-dispatch of
-    fields.serialize_value (6 calls per task) is pure overhead there.
-    """
-    if value is None:
-        return None
-    return value.replace(microsecond=0).isoformat()
-
-
 def _apply_asset_and_tasks_criterions(query, criterions, assigned_to):
     """
     Apply the with-tasks asset filters (asset types only, id, project,
@@ -428,19 +417,19 @@ def prepare_assets_and_tasks(
         def build_task(row):
             return [
                 row.id,
-                _serialize_datetime(row.due_date),
-                _serialize_datetime(row.done_date),
+                fields.serialize_datetime(row.due_date),
+                fields.serialize_datetime(row.done_date),
                 row.duration,
                 row.entity_id,
                 row.estimation,
-                _serialize_datetime(row.end_date),
+                fields.serialize_datetime(row.end_date),
                 subscription_map.get(row.id, False),
-                _serialize_datetime(row.last_comment_date),
+                fields.serialize_datetime(row.last_comment_date),
                 row.last_preview_file_id or "",
                 row.priority or 0,
-                _serialize_datetime(row.real_start_date),
+                fields.serialize_datetime(row.real_start_date),
                 row.retake_count,
-                _serialize_datetime(row.start_date),
+                fields.serialize_datetime(row.start_date),
                 row.difficulty,
                 row.task_status_id,
                 row.task_type_id,
@@ -452,21 +441,23 @@ def prepare_assets_and_tasks(
         def build_task(row):
             return {
                 "id": row.id,
-                "due_date": _serialize_datetime(row.due_date),
-                "done_date": _serialize_datetime(row.done_date),
+                "due_date": fields.serialize_datetime(row.due_date),
+                "done_date": fields.serialize_datetime(row.done_date),
                 "duration": row.duration,
                 "entity_id": row.entity_id,
                 "estimation": row.estimation,
-                "end_date": _serialize_datetime(row.end_date),
+                "end_date": fields.serialize_datetime(row.end_date),
                 "is_subscribed": subscription_map.get(row.id, False),
-                "last_comment_date": _serialize_datetime(
+                "last_comment_date": fields.serialize_datetime(
                     row.last_comment_date
                 ),
                 "last_preview_file_id": row.last_preview_file_id or "",
                 "priority": row.priority or 0,
-                "real_start_date": _serialize_datetime(row.real_start_date),
+                "real_start_date": fields.serialize_datetime(
+                    row.real_start_date
+                ),
                 "retake_count": row.retake_count,
-                "start_date": _serialize_datetime(row.start_date),
+                "start_date": fields.serialize_datetime(row.start_date),
                 "difficulty": row.difficulty,
                 "task_status_id": row.task_status_id,
                 "task_type_id": row.task_type_id,
