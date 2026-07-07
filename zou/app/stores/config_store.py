@@ -1,9 +1,9 @@
 import logging
-import sys
 
 import redis
 
 from zou.app import config
+from zou.app.stores import redis_client
 
 logger = logging.getLogger(__name__)
 
@@ -14,19 +14,8 @@ NOMAD_HOST_KEY = "config:nomad_host"
 NOMAD_NORMALIZE_JOB_KEY = "config:nomad_normalize_job"
 NOMAD_PLAYLIST_JOB_KEY = "config:nomad_playlist_job"
 
-try:
-    config_store = redis.StrictRedis(
-        host=config.KEY_VALUE_STORE["host"],
-        port=config.KEY_VALUE_STORE["port"],
-        db=config.KV_CONFIG_DB_INDEX,
-        password=config.KEY_VALUE_STORE["password"],
-        decode_responses=True,
-    )
-    config_store.ping()
-except redis.ConnectionError:
-    config_store = None
-    if "pytest" not in sys.modules:
-        logger.error("Cannot access to the required Redis instance")
+# Lazily connected: the pool opens on the first command, not at import.
+config_store = redis_client.get_client(config.KV_CONFIG_DB_INDEX)
 
 
 def _get_redis_raw(key):
