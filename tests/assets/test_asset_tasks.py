@@ -1,3 +1,5 @@
+import orjson
+
 from tests.base import ApiDBTestCase
 
 from zou.app.models.entity import EntityLink
@@ -7,6 +9,21 @@ from zou.app.services import (
     assets_service,
     persons_service,
 )
+
+
+def rebuild_from_compact(asset_fields, task_fields, rows):
+    """
+    Reverse the compact encoding by mapping positional values back to
+    field names, as a client is expected to do.
+    """
+    assets = []
+    for row in rows:
+        asset = dict(zip(asset_fields, row))
+        asset["tasks"] = [
+            dict(zip(task_fields, task_row)) for task_row in asset["tasks"]
+        ]
+        assets.append(asset)
+    return assets
 
 
 class AssetTasksTestCase(ApiDBTestCase):
@@ -45,6 +62,48 @@ class AssetTasksTestCase(ApiDBTestCase):
         self.assertEqual(
             assets[0]["tasks"][0]["assignees"][0], str(self.person_id)
         )
+
+    def test_get_assets_and_tasks_compact(self):
+        self.generate_fixture_task(name="Secondary")
+        reference = self.get("data/assets/with-tasks")
+        payload = self.get("data/assets/with-tasks?compact=true")
+        self.assertTrue(payload["compact"])
+        rebuilt = rebuild_from_compact(
+            payload["asset_fields"], payload["task_fields"], payload["rows"]
+        )
+        self.assertEqual(rebuilt, reference)
+
+    def test_get_assets_and_tasks_stream(self):
+        self.generate_fixture_task(name="Secondary")
+        reference = self.get("data/assets/with-tasks")
+        response = self.app.get(
+            "data/assets/with-tasks?stream=true", headers=self.base_headers
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "application/x-ndjson")
+        lines = response.data.decode("utf-8").strip().split("\n")
+        header = orjson.loads(lines[0])
+        self.assertFalse(header["compact"])
+        assets = [orjson.loads(line) for line in lines[1:]]
+        self.assertEqual(assets, reference)
+
+    def test_get_assets_and_tasks_stream_compact(self):
+        self.generate_fixture_task(name="Secondary")
+        reference = self.get("data/assets/with-tasks")
+        response = self.app.get(
+            "data/assets/with-tasks?stream=true&compact=true",
+            headers=self.base_headers,
+        )
+        self.assertEqual(response.status_code, 200)
+        lines = response.data.decode("utf-8").strip().split("\n")
+        header = orjson.loads(lines[0])
+        self.assertTrue(header["compact"])
+        rebuilt = rebuild_from_compact(
+            header["asset_fields"],
+            header["task_fields"],
+            [orjson.loads(line) for line in lines[1:]],
+        )
+        self.assertEqual(rebuilt, reference)
 
     def test_get_assets_and_tasks_episode_filter(self):
         """
