@@ -1,3 +1,4 @@
+from sqlalchemy import cast, Text
 from sqlalchemy.orm import aliased
 from sqlalchemy.exc import StatementError
 
@@ -8,6 +9,7 @@ from zou.app.utils import (
     query as query_utils,
 )
 
+from zou.app import db
 from zou.app.models.entity import (
     Entity,
     EntityLink,
@@ -16,7 +18,7 @@ from zou.app.models.entity import (
 )
 from zou.app.models.project import Project
 from zou.app.models.subscription import Subscription
-from zou.app.models.task import Task, TaskPersonLink
+from zou.app.models.task import Task
 
 from zou.app.services import (
     deletion_service,
@@ -75,159 +77,136 @@ def get_edits(criterions=None):
     return edits
 
 
+EDITS_AND_TASKS_TASK_FIELDS = [
+    "id",
+    "duration",
+    "due_date",
+    "entity_id",
+    "end_date",
+    "estimation",
+    "last_comment_date",
+    "last_preview_file_id",
+    "nb_assets_ready",
+    "priority",
+    "real_start_date",
+    "retake_count",
+    "start_date",
+    "task_status_id",
+    "task_type_id",
+]
+
+
 def get_edits_and_tasks(criterions=None):
     """
-    Get all edits for given criterions with related tasks for each edit.
+    Get all edits for given criterions with related tasks for each edit,
+    as a list of dicts. Flat narrow queries through
+    entities_service.fetch_entity_task_map instead of a row-multiplying
+    join; response shape unchanged.
     """
     if criterions is None:
         criterions = {}
     edit_type = get_edit_type()
-    edit_map = {}
-    task_map = {}
-    Episode = aliased(Entity, name="episode")
     subscription_map = notifications_service.get_subscriptions_for_user(
-        criterions.get("project_id", None), get_edit_type()["id"]
+        criterions.get("project_id", None), edit_type["id"]
     )
 
-    query = (
-        Entity.query.join(Project, Entity.project_id == Project.id)
-        .outerjoin(Episode, Episode.id == Entity.parent_id)
-        .outerjoin(Task, Task.entity_id == Entity.id)
-        .outerjoin(TaskPersonLink)
-        .add_columns(
-            Episode.id,
-            Episode.name,
-            Task.id,
-            Task.task_type_id,
-            Task.task_status_id,
-            Task.priority,
-            Task.estimation,
-            Task.duration,
-            Task.retake_count,
-            Task.real_start_date,
-            Task.end_date,
-            Task.start_date,
-            Task.due_date,
-            Task.last_comment_date,
-            Task.last_preview_file_id,
-            Task.nb_assets_ready,
-            TaskPersonLink.person_id,
-            Project.id,
-            Project.name,
-        )
-        .filter(Entity.entity_type_id == edit_type["id"])
-    )
-    if "id" in criterions:
-        query = query.filter(Entity.id == criterions["id"])
-
-    if "project_id" in criterions:
-        query = query.filter(Entity.project_id == criterions["project_id"])
-
-    if "episode_id" in criterions:
-        query = query.filter(Entity.parent_id == criterions["episode_id"])
-
-    if "assigned_to" in criterions:
-        query = query.filter(user_service.build_assignee_filter())
+    assigned_to = "assigned_to" in criterions
+    if assigned_to:
         del criterions["assigned_to"]
 
-    query_result = query.all()
+    Episode = aliased(Entity, name="episode")
 
+    def apply_filters(query):
+        query = query.filter(Entity.entity_type_id == edit_type["id"])
+        if "id" in criterions:
+            query = query.filter(Entity.id == criterions["id"])
+        if "project_id" in criterions:
+            query = query.filter(Entity.project_id == criterions["project_id"])
+        if "episode_id" in criterions:
+            query = query.filter(Entity.parent_id == criterions["episode_id"])
+        if assigned_to:
+            has_assigned_task = (
+                db.session.query(Task.id)
+                .filter(Task.entity_id == Entity.id)
+                .filter(user_service.build_assignee_filter())
+                .exists()
+            )
+            query = query.filter(has_assigned_task)
+        return query
+
+    edit_rows = (
+        apply_filters(
+            Entity.query.join(
+                Project, Entity.project_id == Project.id
+            ).outerjoin(Episode, Episode.id == Entity.parent_id)
+        )
+        .with_entities(
+            cast(Entity.id, Text).label("id"),
+            Entity.name,
+            Entity.description,
+            Entity.data,
+            Entity.canceled,
+            cast(Entity.entity_type_id, Text).label("entity_type_id"),
+            cast(Entity.parent_id, Text).label("parent_id"),
+            cast(Entity.preview_file_id, Text).label("preview_file_id"),
+            cast(Entity.source_id, Text).label("source_id"),
+            Entity.nb_entities_out,
+            cast(Entity.project_id, Text).label("project_id"),
+            cast(Episode.id, Text).label("episode_id"),
+            Episode.name.label("episode_name"),
+            Project.name.label("project_name"),
+        )
+        .all()
+    )
+
+    tasks_by_entity, build_task = entities_service.fetch_entity_task_map(
+        apply_filters,
+        subscription_map,
+        EDITS_AND_TASKS_TASK_FIELDS,
+        assigned_to=assigned_to,
+    )
+
+    not_allowed_map = None
     if "vendor_departments" in criterions:
-        not_allowed_descriptors_field_names = (
+        not_allowed_map = (
             entities_service.get_not_allowed_descriptors_fields_for_vendor(
                 "Edit",
                 criterions["vendor_departments"],
-                set(edit[0].project_id for edit in query_result),
+                set(row.project_id for row in edit_rows),
             )
         )
 
-    for (
-        edit,
-        episode_id,
-        episode_name,
-        task_id,
-        task_type_id,
-        task_status_id,
-        task_priority,
-        task_estimation,
-        task_duration,
-        task_retake_count,
-        task_real_start_date,
-        task_end_date,
-        task_start_date,
-        task_due_date,
-        task_last_comment_date,
-        task_last_preview_file_id,
-        task_nb_assets_ready,
-        person_id,
-        project_id,
-        project_name,
-    ) in query.all():
-        edit_id = str(edit.id)
-
-        if edit_id not in edit_map:
-            data = fields.serialize_value(edit.data or {})
-            if "vendor_departments" in criterions:
-                data = (
-                    entities_service.remove_not_allowed_fields_from_metadata(
-                        not_allowed_descriptors_field_names[edit.project_id],
-                        data,
-                    )
-                )
-
-            edit_map[edit_id] = fields.serialize_dict(
-                {
-                    "canceled": edit.canceled,
-                    "data": data,
-                    "description": edit.description,
-                    "entity_type_id": edit.entity_type_id,
-                    "episode_id": episode_id,
-                    "episode_name": episode_name or "",
-                    "id": edit.id,
-                    "name": edit.name,
-                    "parent_id": edit.parent_id,
-                    "preview_file_id": edit.preview_file_id or None,
-                    "project_id": project_id,
-                    "project_name": project_name,
-                    "source_id": edit.source_id,
-                    "nb_entities_out": edit.nb_entities_out,
-                    "tasks": [],
-                    "type": "Edit",
-                }
+    edits = []
+    for row in edit_rows:
+        data = fields.serialize_value(row.data or {})
+        if not_allowed_map is not None:
+            data = entities_service.remove_not_allowed_fields_from_metadata(
+                not_allowed_map[row.project_id], data
             )
-
-        if task_id is not None:
-            task_id = str(task_id)
-            if task_id not in task_map:
-                task_dict = fields.serialize_dict(
-                    {
-                        "id": task_id,
-                        "duration": task_duration,
-                        "due_date": task_due_date,
-                        "entity_id": edit_id,
-                        "end_date": task_end_date,
-                        "estimation": task_estimation,
-                        "last_comment_date": task_last_comment_date,
-                        "last_preview_file_id": task_last_preview_file_id,
-                        "is_subscribed": subscription_map.get(task_id, False),
-                        "nb_assets_ready": task_nb_assets_ready,
-                        "priority": task_priority or 0,
-                        "real_start_date": task_real_start_date,
-                        "retake_count": task_retake_count,
-                        "start_date": task_start_date,
-                        "task_status_id": task_status_id,
-                        "task_type_id": task_type_id,
-                        "assignees": [],
-                    }
-                )
-                task_map[task_id] = task_dict
-                edit_dict = edit_map[edit_id]
-                edit_dict["tasks"].append(task_dict)
-
-            if person_id:
-                task_map[task_id]["assignees"].append(str(person_id))
-
-    return list(edit_map.values())
+        edits.append(
+            {
+                "canceled": row.canceled,
+                "data": data,
+                "description": row.description,
+                "entity_type_id": row.entity_type_id,
+                "episode_id": row.episode_id,
+                "episode_name": row.episode_name or "",
+                "id": row.id,
+                "name": row.name,
+                "parent_id": row.parent_id,
+                "preview_file_id": row.preview_file_id,
+                "project_id": row.project_id,
+                "project_name": row.project_name,
+                "source_id": row.source_id,
+                "nb_entities_out": row.nb_entities_out,
+                "tasks": [
+                    build_task(task_row)
+                    for task_row in tasks_by_entity.get(row.id, ())
+                ],
+                "type": "Edit",
+            }
+        )
+    return edits
 
 
 def get_edit_raw(edit_id):

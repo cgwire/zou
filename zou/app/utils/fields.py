@@ -141,6 +141,16 @@ def is_valid_id(value):
     return _UUID_RE.match(value)
 
 
+def serialize_datetime(value):
+    """
+    Serialize a DateTime column value (or None) without the type dispatch
+    of serialize_value: meant for hot loops over known column types.
+    """
+    if value is None:
+        return None
+    return value.replace(microsecond=0).isoformat()
+
+
 def boolean(value):
     """
     Parse "true"/"false" (case insensitive, also "1"/"0"/"on") as a boolean.

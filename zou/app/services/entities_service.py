@@ -1,3 +1,4 @@
+from sqlalchemy import cast, Text
 from sqlalchemy.exc import IntegrityError
 
 from zou.app.services import (
@@ -258,142 +259,208 @@ def get_entity_links_for_project(
     return results
 
 
+# Builders for each task field of the with-tasks views. Every view picks
+# its exact field list so its response shape stays unchanged; is_subscribed
+# and assignees are always added by build_task.
+_TASK_FIELD_BUILDERS = {
+    "id": lambda row: row.id,
+    "entity_id": lambda row: row.entity_id,
+    "task_type_id": lambda row: row.task_type_id,
+    "task_status_id": lambda row: row.task_status_id,
+    "priority": lambda row: row.priority or 0,
+    "estimation": lambda row: row.estimation,
+    "duration": lambda row: row.duration,
+    "retake_count": lambda row: row.retake_count,
+    "real_start_date": lambda row: fields.serialize_datetime(
+        row.real_start_date
+    ),
+    "end_date": lambda row: fields.serialize_datetime(row.end_date),
+    "start_date": lambda row: fields.serialize_datetime(row.start_date),
+    "due_date": lambda row: fields.serialize_datetime(row.due_date),
+    "done_date": lambda row: fields.serialize_datetime(row.done_date),
+    "last_comment_date": lambda row: fields.serialize_datetime(
+        row.last_comment_date
+    ),
+    "last_preview_file_id": lambda row: row.last_preview_file_id,
+    "nb_assets_ready": lambda row: row.nb_assets_ready,
+    "difficulty": lambda row: row.difficulty,
+    "nb_drawings": lambda row: row.nb_drawings,
+}
+
+ENTITIES_AND_TASKS_TASK_FIELDS = [
+    "id",
+    "estimation",
+    "entity_id",
+    "end_date",
+    "due_date",
+    "done_date",
+    "duration",
+    "last_comment_date",
+    "last_preview_file_id",
+    "priority",
+    "real_start_date",
+    "retake_count",
+    "start_date",
+    "difficulty",
+    "task_status_id",
+    "task_type_id",
+]
+
+
+def fetch_entity_task_map(
+    apply_filters, subscription_map, task_fields, assigned_to=False
+):
+    """
+    Shared core of the get_*_and_tasks views: fetch the tasks and the
+    assignee links of the entities selected by apply_filters (a callable
+    adding entity-scoped filters and joins to a query whose FROM clause
+    contains Entity) with two narrow flat queries, then group them.
+
+    Returns (tasks_by_entity, build_task): task rows grouped by entity id
+    (uuid as text) and a builder producing task dicts restricted to
+    task_fields, so every view keeps its exact response shape. With
+    assigned_to=True only the tasks assigned to the current user are
+    fetched.
+    """
+    from zou.app.services import user_service
+
+    task_query = apply_filters(
+        Task.query.join(Entity, Task.entity_id == Entity.id)
+    ).with_entities(
+        # uuid::text in SQL: casting uuids per task row in Python shows
+        # up in profiles on task-heavy productions.
+        cast(Task.id, Text).label("id"),
+        cast(Task.entity_id, Text).label("entity_id"),
+        cast(Task.task_type_id, Text).label("task_type_id"),
+        cast(Task.task_status_id, Text).label("task_status_id"),
+        Task.priority,
+        Task.estimation,
+        Task.duration,
+        Task.retake_count,
+        Task.real_start_date,
+        Task.end_date,
+        Task.start_date,
+        Task.due_date,
+        Task.done_date,
+        Task.last_comment_date,
+        cast(Task.last_preview_file_id, Text).label("last_preview_file_id"),
+        Task.nb_assets_ready,
+        Task.difficulty,
+        Task.nb_drawings,
+    )
+    if assigned_to:
+        task_query = task_query.filter(user_service.build_assignee_filter())
+    task_rows = task_query.all()
+
+    link_query = apply_filters(
+        db.session.query(TaskPersonLink)
+        .join(Task, TaskPersonLink.task_id == Task.id)
+        .join(Entity, Task.entity_id == Entity.id)
+    ).with_entities(
+        cast(TaskPersonLink.task_id, Text),
+        cast(TaskPersonLink.person_id, Text),
+    )
+    if assigned_to:
+        link_query = link_query.filter(user_service.build_assignee_filter())
+
+    assignees_by_task = {}
+    for task_id, person_id in link_query.all():
+        if person_id:
+            assignees_by_task.setdefault(task_id, []).append(person_id)
+
+    tasks_by_entity = {}
+    for row in task_rows:
+        tasks_by_entity.setdefault(row.entity_id, []).append(row)
+
+    builders = [(name, _TASK_FIELD_BUILDERS[name]) for name in task_fields]
+
+    def build_task(row):
+        task = {name: builder(row) for name, builder in builders}
+        task["is_subscribed"] = subscription_map.get(row.id, False)
+        task["assignees"] = assignees_by_task.get(row.id, [])
+        return task
+
+    return tasks_by_entity, build_task
+
+
 def get_entities_and_tasks(criterions=None):
     """
-    Get all entities for given criterions with related tasks for each entity.
+    Get all entities for given criterions with related tasks for each
+    entity, as a list of dicts.
     """
     if criterions is None:
         criterions = {}
     if "episode_id" in criterions and criterions["episode_id"] == "all":
         return []
 
-    entity_map = {}
-    task_map = {}
     subscription_map = notifications_service.get_subscriptions_for_user(
         criterions.get("project_id", None),
         criterions.get("entity_type_id", None),
     )
 
-    query = (
-        Entity.query.outerjoin(Task, Task.entity_id == Entity.id)
-        .outerjoin(TaskPersonLink)
-        .add_columns(
-            Task.id,
-            Task.task_type_id,
-            Task.task_status_id,
-            Task.priority,
-            Task.estimation,
-            Task.duration,
-            Task.retake_count,
-            Task.real_start_date,
-            Task.end_date,
-            Task.start_date,
-            Task.due_date,
-            Task.done_date,
-            Task.last_comment_date,
-            Task.last_preview_file_id,
-            Task.difficulty,
-            TaskPersonLink.person_id,
+    def apply_filters(query):
+        if "entity_type_id" in criterions:
+            query = query.filter(
+                Entity.entity_type_id == criterions["entity_type_id"]
+            )
+        if "project_id" in criterions:
+            query = query.filter(Entity.project_id == criterions["project_id"])
+        if "episode_id" in criterions:
+            query = query.filter(Entity.parent_id == criterions["episode_id"])
+        if "entity_ids" in criterions:
+            query = query.filter(Entity.id.in_(criterions["entity_ids"]))
+        return query
+
+    entity_rows = (
+        apply_filters(Entity.query)
+        .with_entities(
+            cast(Entity.id, Text).label("id"),
+            Entity.name,
+            Entity.status,
+            cast(Entity.parent_id, Text).label("parent_id"),
+            Entity.description,
+            Entity.data,
+            cast(Entity.preview_file_id, Text).label("preview_file_id"),
+            Entity.canceled,
         )
+        .all()
     )
 
-    if "entity_type_id" in criterions:
-        query = query.filter(
-            Entity.entity_type_id == criterions["entity_type_id"]
-        )
+    tasks_by_entity, build_task = fetch_entity_task_map(
+        apply_filters, subscription_map, ENTITIES_AND_TASKS_TASK_FIELDS
+    )
 
-    if "project_id" in criterions:
-        query = query.filter(Entity.project_id == criterions["project_id"])
-
-    if "episode_id" in criterions:
-        query = query.filter(Entity.parent_id == criterions["episode_id"])
-
-    if "entity_ids" in criterions:
-        query = query.filter(Entity.id.in_(criterions["entity_ids"]))
-
-    for (
-        entity,
-        task_id,
-        task_type_id,
-        task_status_id,
-        task_priority,
-        task_estimation,
-        task_duration,
-        task_retake_count,
-        task_real_start_date,
-        task_end_date,
-        task_start_date,
-        task_due_date,
-        task_done_date,
-        task_last_comment_date,
-        task_last_preview_file_id,
-        task_difficulty,
-        person_id,
-    ) in query.all():
-        entity_id = str(entity.id)
-
-        entity.data = entity.data or {}
-
-        if entity_id not in entity_map:
-            status = "running"
-            if entity.status is not None:
-                status = str(entity.status.code)
-            entity_map[entity_id] = {
-                "id": str(entity.id),
-                "name": entity.name,
-                "status": status,
-                "episode_id": str(entity.parent_id),
-                "description": entity.description,
-                "frame_in": entity.data.get("frame_in", None),
-                "frame_out": entity.data.get("frame_out", None),
-                "fps": entity.data.get("fps", None),
-                "preview_file_id": str(entity.preview_file_id or ""),
-                "canceled": entity.canceled,
-                "data": fields.serialize_value(entity.data),
-                "tasks": [],
-            }
-
-        if task_id is not None:
-            task_id = str(task_id)
-            if task_id not in task_map:
-                task_dict = fields.serialize_dict(
-                    {
-                        "id": task_id,
-                        "estimation": task_estimation,
-                        "entity_id": entity_id,
-                        "end_date": task_end_date,
-                        "due_date": task_due_date,
-                        "done_date": task_done_date,
-                        "duration": task_duration,
-                        "is_subscribed": subscription_map.get(task_id, False),
-                        "last_comment_date": task_last_comment_date,
-                        "last_preview_file_id": task_last_preview_file_id,
-                        "priority": task_priority or 0,
-                        "real_start_date": task_real_start_date,
-                        "retake_count": task_retake_count,
-                        "start_date": task_start_date,
-                        "difficulty": task_difficulty,
-                        "task_status_id": str(task_status_id),
-                        "task_type_id": str(task_type_id),
-                        "assignees": [],
-                    }
-                )
-                task_map[task_id] = task_dict
-                entity_dict = entity_map[entity_id]
-                entity_dict["tasks"].append(task_dict)
-
-            if person_id:
-                task_map[task_id]["assignees"].append(str(person_id))
-
-    entities = list(entity_map.values())
     assigned_to = criterions.get("assigned_to")
-    if assigned_to is not None:
-        for entity in entities:
-            entity["tasks"] = [
-                task
-                for task in entity["tasks"]
-                if assigned_to in task["assignees"]
+    entities = []
+    for row in entity_rows:
+        data = row.data or {}
+        status = "running"
+        if row.status is not None:
+            status = str(row.status.code)
+        tasks = [
+            build_task(task_row)
+            for task_row in tasks_by_entity.get(row.id, ())
+        ]
+        if assigned_to is not None:
+            tasks = [
+                task for task in tasks if assigned_to in task["assignees"]
             ]
+        entities.append(
+            {
+                "id": row.id,
+                "name": row.name,
+                "status": status,
+                "episode_id": str(row.parent_id),
+                "description": row.description,
+                "frame_in": data.get("frame_in", None),
+                "frame_out": data.get("frame_out", None),
+                "fps": data.get("fps", None),
+                "preview_file_id": row.preview_file_id or "",
+                "canceled": row.canceled,
+                "data": fields.serialize_value(data),
+                "tasks": tasks,
+            }
+        )
     return entities
 
 

@@ -1,3 +1,4 @@
+from sqlalchemy import cast, Text
 from sqlalchemy.exc import StatementError
 from sqlalchemy.orm import selectinload
 
@@ -8,6 +9,7 @@ from zou.app.utils import (
     query as query_utils,
 )
 
+from zou.app import db
 from zou.app.models.entity import (
     Entity,
     EntityLink,
@@ -16,7 +18,7 @@ from zou.app.models.entity import (
 )
 from zou.app.models.project import Project
 from zou.app.models.subscription import Subscription
-from zou.app.models.task import Task, TaskPersonLink
+from zou.app.models.task import Task
 
 from zou.app.services import (
     deletion_service,
@@ -165,138 +167,137 @@ def get_concepts(criterions=None):
     return concepts
 
 
+CONCEPTS_AND_TASKS_TASK_FIELDS = [
+    "id",
+    "duration",
+    "due_date",
+    "end_date",
+    "entity_id",
+    "estimation",
+    "last_comment_date",
+    "nb_assets_ready",
+    "priority",
+    "real_start_date",
+    "retake_count",
+    "start_date",
+    "task_status_id",
+    "task_type_id",
+]
+
+
 def get_concepts_and_tasks(criterions=None):
     """
-    Get all concepts for given criterions with related tasks for each concept.
+    Get all concepts for given criterions with related tasks for each
+    concept, as a list of dicts. Flat narrow queries through
+    entities_service.fetch_entity_task_map instead of a row-multiplying
+    join; response shape unchanged.
     """
     if criterions is None:
         criterions = {}
     concept_type = get_concept_type()
-    concept_map = {}
-    task_map = {}
     subscription_map = notifications_service.get_subscriptions_for_user(
-        criterions.get("project_id", None), get_concept_type()["id"]
+        criterions.get("project_id", None), concept_type["id"]
     )
 
-    query = (
-        Entity.query.join(Project, Project.id == Entity.project_id)
-        .outerjoin(Task, Task.entity_id == Entity.id)
-        .outerjoin(TaskPersonLink)
-        .add_columns(
-            Task.id,
-            Task.task_type_id,
-            Task.task_status_id,
-            Task.priority,
-            Task.estimation,
-            Task.duration,
-            Task.retake_count,
-            Task.real_start_date,
-            Task.end_date,
-            Task.start_date,
-            Task.due_date,
-            Task.last_comment_date,
-            Task.nb_assets_ready,
-            TaskPersonLink.person_id,
-            Project.id,
-            Project.name,
-        )
-        .filter(Entity.entity_type_id == concept_type["id"])
-    )
-    if "id" in criterions:
-        query = query.filter(Entity.id == criterions["id"])
-
-    if "project_id" in criterions:
-        query = query.filter(Entity.project_id == criterions["project_id"])
-
-    if "assigned_to" in criterions:
-        query = query.filter(user_service.build_assignee_filter())
+    assigned_to = "assigned_to" in criterions
+    if assigned_to:
         del criterions["assigned_to"]
 
-    query_result = query.all()
-
-    for (
-        concept,
-        task_id,
-        task_type_id,
-        task_status_id,
-        task_priority,
-        task_estimation,
-        task_duration,
-        task_retake_count,
-        task_real_start_date,
-        task_end_date,
-        task_start_date,
-        task_due_date,
-        task_last_comment_date,
-        task_nb_assets_ready,
-        person_id,
-        project_id,
-        project_name,
-    ) in query_result:
-        concept_id = str(concept.id)
-
-        if concept_id not in concept_map:
-            data = fields.serialize_value(concept.data or {})
-
-            concept_map[concept_id] = fields.serialize_dict(
-                {
-                    "canceled": concept.canceled,
-                    "data": data,
-                    "description": concept.description,
-                    "entity_type_id": concept.entity_type_id,
-                    "fps": data.get("fps", None),
-                    "frame_in": data.get("frame_in", None),
-                    "frame_out": data.get("frame_out", None),
-                    "id": concept.id,
-                    "name": concept.name,
-                    "nb_frames": concept.nb_frames,
-                    "parent_id": concept.parent_id,
-                    "preview_file_id": concept.preview_file_id or None,
-                    "project_id": project_id,
-                    "project_name": project_name,
-                    "source_id": concept.source_id,
-                    "nb_entities_out": concept.nb_entities_out,
-                    "is_casting_standby": concept.is_casting_standby,
-                    "tasks": [],
-                    "entity_concept_links": concept.entity_concept_links,
-                    "type": "Concept",
-                    "updated_at": concept.updated_at,
-                    "created_at": concept.created_at,
-                    "created_by": concept.created_by,
-                }
+    def apply_filters(query):
+        query = query.filter(Entity.entity_type_id == concept_type["id"])
+        if "id" in criterions:
+            query = query.filter(Entity.id == criterions["id"])
+        if "project_id" in criterions:
+            query = query.filter(Entity.project_id == criterions["project_id"])
+        if assigned_to:
+            has_assigned_task = (
+                db.session.query(Task.id)
+                .filter(Task.entity_id == Entity.id)
+                .filter(user_service.build_assignee_filter())
+                .exists()
             )
+            query = query.filter(has_assigned_task)
+        return query
 
-        if task_id is not None:
-            task_id = str(task_id)
-            if task_id not in task_map:
-                task_dict = fields.serialize_dict(
-                    {
-                        "id": task_id,
-                        "duration": task_duration,
-                        "due_date": task_due_date,
-                        "end_date": task_end_date,
-                        "entity_id": concept_id,
-                        "estimation": task_estimation,
-                        "is_subscribed": subscription_map.get(task_id, False),
-                        "last_comment_date": task_last_comment_date,
-                        "nb_assets_ready": task_nb_assets_ready,
-                        "priority": task_priority or 0,
-                        "real_start_date": task_real_start_date,
-                        "retake_count": task_retake_count,
-                        "start_date": task_start_date,
-                        "task_status_id": task_status_id,
-                        "task_type_id": task_type_id,
-                        "assignees": [],
-                    }
-                )
-                task_map[task_id] = task_dict
-                concept_dict = concept_map[concept_id]
-                concept_dict["tasks"].append(task_dict)
+    concept_rows = (
+        apply_filters(
+            Entity.query.join(Project, Project.id == Entity.project_id)
+        )
+        .with_entities(
+            cast(Entity.id, Text).label("id"),
+            Entity.name,
+            Entity.description,
+            Entity.data,
+            Entity.canceled,
+            cast(Entity.entity_type_id, Text).label("entity_type_id"),
+            cast(Entity.parent_id, Text).label("parent_id"),
+            cast(Entity.preview_file_id, Text).label("preview_file_id"),
+            cast(Entity.source_id, Text).label("source_id"),
+            Entity.nb_frames,
+            Entity.nb_entities_out,
+            Entity.is_casting_standby,
+            cast(Entity.created_by, Text).label("created_by"),
+            Entity.created_at,
+            Entity.updated_at,
+            cast(Entity.project_id, Text).label("project_id"),
+            Project.name.label("project_name"),
+        )
+        .all()
+    )
 
-            if person_id:
-                task_map[task_id]["assignees"].append(str(person_id))
+    tasks_by_entity, build_task = entities_service.fetch_entity_task_map(
+        apply_filters,
+        subscription_map,
+        CONCEPTS_AND_TASKS_TASK_FIELDS,
+        assigned_to=assigned_to,
+    )
 
-    return list(concept_map.values())
+    concept_links = apply_filters(
+        db.session.query(EntityConceptLink).join(
+            Entity, EntityConceptLink.entity_in_id == Entity.id
+        )
+    ).with_entities(
+        cast(EntityConceptLink.entity_in_id, Text),
+        cast(EntityConceptLink.entity_out_id, Text),
+    )
+    links_by_concept = {}
+    for entity_in_id, entity_out_id in concept_links.all():
+        links_by_concept.setdefault(entity_in_id, []).append(entity_out_id)
+
+    concepts = []
+    for row in concept_rows:
+        data = fields.serialize_value(row.data or {})
+        concepts.append(
+            {
+                "canceled": row.canceled,
+                "data": data,
+                "description": row.description,
+                "entity_type_id": row.entity_type_id,
+                "fps": data.get("fps", None),
+                "frame_in": data.get("frame_in", None),
+                "frame_out": data.get("frame_out", None),
+                "id": row.id,
+                "name": row.name,
+                "nb_frames": row.nb_frames,
+                "parent_id": row.parent_id,
+                "preview_file_id": row.preview_file_id,
+                "project_id": row.project_id,
+                "project_name": row.project_name,
+                "source_id": row.source_id,
+                "nb_entities_out": row.nb_entities_out,
+                "is_casting_standby": row.is_casting_standby,
+                "tasks": [
+                    build_task(task_row)
+                    for task_row in tasks_by_entity.get(row.id, ())
+                ],
+                "entity_concept_links": links_by_concept.get(row.id, []),
+                "type": "Concept",
+                "updated_at": fields.serialize_datetime(row.updated_at),
+                "created_at": fields.serialize_datetime(row.created_at),
+                "created_by": row.created_by,
+            }
+        )
+    return concepts
 
 
 def get_concepts_for_project(project_id, only_assigned=False):

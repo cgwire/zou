@@ -1,3 +1,5 @@
+import orjson
+
 from tests.base import ApiDBTestCase
 
 from zou.app.services import (
@@ -6,6 +8,21 @@ from zou.app.services import (
     tasks_service,
     shots_service,
 )
+
+
+def rebuild_from_compact(shot_fields, task_fields, rows):
+    """
+    Reverse the compact encoding by mapping positional values back to
+    field names, as a client is expected to do.
+    """
+    shots = []
+    for row in rows:
+        shot = dict(zip(shot_fields, row))
+        shot["tasks"] = [
+            dict(zip(task_fields, task_row)) for task_row in shot["tasks"]
+        ]
+        shots.append(shot)
+    return shots
 
 
 class ShotTasksTestCase(ApiDBTestCase):
@@ -43,6 +60,48 @@ class ShotTasksTestCase(ApiDBTestCase):
         self.assertEqual(shots[0]["tasks"][0]["assignees"][0], self.person_id)
         self.assertEqual(shots[0]["episode_name"], "E01")
         self.assertEqual(shots[0]["sequence_name"], "S01")
+
+    def test_get_shots_and_tasks_compact(self):
+        self.generate_fixture_shot_task(name="Secondary")
+        reference = self.get("data/shots/with-tasks")
+        payload = self.get("data/shots/with-tasks?compact=true")
+        self.assertTrue(payload["compact"])
+        rebuilt = rebuild_from_compact(
+            payload["shot_fields"], payload["task_fields"], payload["rows"]
+        )
+        self.assertEqual(rebuilt, reference)
+
+    def test_get_shots_and_tasks_stream(self):
+        self.generate_fixture_shot_task(name="Secondary")
+        reference = self.get("data/shots/with-tasks")
+        response = self.app.get(
+            "data/shots/with-tasks?stream=true", headers=self.base_headers
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "application/x-ndjson")
+        lines = response.data.decode("utf-8").strip().split("\n")
+        header = orjson.loads(lines[0])
+        self.assertFalse(header["compact"])
+        shots = [orjson.loads(line) for line in lines[1:]]
+        self.assertEqual(shots, reference)
+
+    def test_get_shots_and_tasks_stream_compact(self):
+        self.generate_fixture_shot_task(name="Secondary")
+        reference = self.get("data/shots/with-tasks")
+        response = self.app.get(
+            "data/shots/with-tasks?stream=true&compact=true",
+            headers=self.base_headers,
+        )
+        self.assertEqual(response.status_code, 200)
+        lines = response.data.decode("utf-8").strip().split("\n")
+        header = orjson.loads(lines[0])
+        self.assertTrue(header["compact"])
+        rebuilt = rebuild_from_compact(
+            header["shot_fields"],
+            header["task_fields"],
+            [orjson.loads(line) for line in lines[1:]],
+        )
+        self.assertEqual(rebuilt, reference)
 
     def test_get_shots_and_tasks_vendor(self):
         self.generate_fixture_shot_task(name="Secondary")

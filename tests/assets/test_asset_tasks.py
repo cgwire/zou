@@ -1,11 +1,29 @@
+import orjson
+
 from tests.base import ApiDBTestCase
 
+from zou.app.models.entity import EntityLink
 from zou.app.services import (
     projects_service,
     tasks_service,
     assets_service,
     persons_service,
 )
+
+
+def rebuild_from_compact(asset_fields, task_fields, rows):
+    """
+    Reverse the compact encoding by mapping positional values back to
+    field names, as a client is expected to do.
+    """
+    assets = []
+    for row in rows:
+        asset = dict(zip(asset_fields, row))
+        asset["tasks"] = [
+            dict(zip(task_fields, task_row)) for task_row in asset["tasks"]
+        ]
+        assets.append(asset)
+    return assets
 
 
 class AssetTasksTestCase(ApiDBTestCase):
@@ -44,6 +62,78 @@ class AssetTasksTestCase(ApiDBTestCase):
         self.assertEqual(
             assets[0]["tasks"][0]["assignees"][0], str(self.person_id)
         )
+
+    def test_get_assets_and_tasks_compact(self):
+        self.generate_fixture_task(name="Secondary")
+        reference = self.get("data/assets/with-tasks")
+        payload = self.get("data/assets/with-tasks?compact=true")
+        self.assertTrue(payload["compact"])
+        rebuilt = rebuild_from_compact(
+            payload["asset_fields"], payload["task_fields"], payload["rows"]
+        )
+        self.assertEqual(rebuilt, reference)
+
+    def test_get_assets_and_tasks_stream(self):
+        self.generate_fixture_task(name="Secondary")
+        reference = self.get("data/assets/with-tasks")
+        response = self.app.get(
+            "data/assets/with-tasks?stream=true", headers=self.base_headers
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "application/x-ndjson")
+        lines = response.data.decode("utf-8").strip().split("\n")
+        header = orjson.loads(lines[0])
+        self.assertFalse(header["compact"])
+        assets = [orjson.loads(line) for line in lines[1:]]
+        self.assertEqual(assets, reference)
+
+    def test_get_assets_and_tasks_stream_compact(self):
+        self.generate_fixture_task(name="Secondary")
+        reference = self.get("data/assets/with-tasks")
+        response = self.app.get(
+            "data/assets/with-tasks?stream=true&compact=true",
+            headers=self.base_headers,
+        )
+        self.assertEqual(response.status_code, 200)
+        lines = response.data.decode("utf-8").strip().split("\n")
+        header = orjson.loads(lines[0])
+        self.assertTrue(header["compact"])
+        rebuilt = rebuild_from_compact(
+            header["asset_fields"],
+            header["task_fields"],
+            [orjson.loads(line) for line in lines[1:]],
+        )
+        self.assertEqual(rebuilt, reference)
+
+    def test_get_assets_and_tasks_episode_filter(self):
+        """
+        An asset both sourced from an episode and cast in it through an
+        entity link must come back exactly once with its tasks, and an
+        asset unrelated to the episode must not come back at all.
+        """
+        self.generate_fixture_episode("E01")
+        episode_id = str(self.episode.id)
+        self.asset.update({"source_id": self.episode.id})
+        EntityLink.create(
+            entity_in_id=self.episode.id, entity_out_id=self.asset.id
+        )
+        self.generate_fixture_asset_character()
+
+        assets = assets_service.get_assets_and_tasks(
+            {"episode_id": episode_id}
+        )
+        self.assertEqual(len(assets), 1)
+        self.assertEqual(assets[0]["id"], str(self.asset_id))
+        self.assertEqual(len(assets[0]["tasks"]), 1)
+        self.assertEqual(
+            assets[0]["tasks"][0]["assignees"], [str(self.person_id)]
+        )
+
+        main_assets = assets_service.get_assets_and_tasks(
+            {"episode_id": "main"}
+        )
+        self.assertEqual(len(main_assets), 1)
+        self.assertEqual(main_assets[0]["id"], str(self.asset_character.id))
 
     def test_get_assets_and_tasks_vendor(self):
         self.generate_fixture_task(name="Secondary")
