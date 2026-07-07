@@ -4,7 +4,7 @@ import uuid
 import orjson as json
 import sqlalchemy.orm as orm
 
-from zou.app import app
+from zou.app import config
 from zou.app.utils import fields, string
 from zou.app.services.exception import WrongParameterException
 from sqlalchemy import func
@@ -115,7 +115,7 @@ def get_paginated_results(query, page, limit=None, relations=False):
         entries = query.all()
         return fields.serialize_models(entries, relations=relations)
     else:
-        limit = limit or app.config["NB_RECORDS_PER_PAGE"]
+        limit = limit or config.NB_RECORDS_PER_PAGE
         total = query.count()
         offset = (page - 1) * limit
 
@@ -153,7 +153,7 @@ def get_cursor_results(
     relations=False,
 ):
     """ """
-    limit = limit or app.config["NB_RECORDS_PER_PAGE"]
+    limit = limit or config.NB_RECORDS_PER_PAGE
     total = query.count()
     query = (
         query.filter(model.created_at > cursor_created_at)

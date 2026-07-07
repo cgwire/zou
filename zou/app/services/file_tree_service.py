@@ -5,8 +5,6 @@ import orjson as json
 from collections import OrderedDict
 from slugify import slugify
 
-from zou.app import app
-
 from zou.app.models.asset_instance import AssetInstance
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
@@ -298,6 +296,8 @@ _file_tree_cache = {}
 
 
 def get_tree_from_file(tree_name):
+    from zou.app import app
+
     if tree_name in _file_tree_cache:
         return _file_tree_cache[tree_name]
     try:

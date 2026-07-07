@@ -2,7 +2,7 @@ import itertools
 from operator import itemgetter
 
 from zou.app.models.file_status import FileStatus
-from zou.app import app
+from zou.app import config
 
 from zou.app.models.entity import Entity
 from zou.app.models.output_file import OutputFile
@@ -71,10 +71,10 @@ def get_default_status():
     """
     Return default file status to set on a file when it is created.
     """
-    default_status = FileStatus.get_by(name=app.config["DEFAULT_FILE_STATUS"])
+    default_status = FileStatus.get_by(name=config.DEFAULT_FILE_STATUS)
     if default_status is None:
         default_status = FileStatus(
-            name=app.config["DEFAULT_FILE_STATUS"], color="#FFFFFF"
+            name=config.DEFAULT_FILE_STATUS, color="#FFFFFF"
         )
         default_status.save()
     return default_status.serialize()

@@ -70,7 +70,7 @@ from zou.app.models.working_file import WorkingFile
 from zou.app.services import deletion_service, tasks_service, projects_service
 from zou.app.stores import file_store
 from zou.app.utils import events, date_helpers
-from zou.app import app
+from zou.app import config
 
 logger = logging.getLogger()
 logger.setLevel(os.environ.get("LOGLEVEL", "INFO").upper())
@@ -81,7 +81,7 @@ logger.addHandler(console_handler)
 lock = RLock()
 
 
-preview_folder = app.config["PREVIEW_FOLDER"]
+preview_folder = config.PREVIEW_FOLDER
 local_picture = LocalBackend(
     "local", {"root": os.path.join(preview_folder, "pictures")}
 )
@@ -1583,6 +1583,8 @@ def download_file_from_another_instance(
     force=False,
     dict_errors={},
 ):
+    from zou.app import app
+
     with app.app_context():
         if force or not exist_func(prefix, id):
             for attemps_count in range(0, number_attemps):

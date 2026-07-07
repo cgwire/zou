@@ -22,7 +22,7 @@ from pathlib import Path
 from sqlalchemy import MetaData
 from sqlalchemy.util import FacadeDict
 
-from zou.app import db, app
+from zou.app import db
 from zou.app.utils.api import configure_api_from_blueprint
 
 
@@ -504,6 +504,8 @@ def create_plugin_metadata(plugin_id):
     their tables fresh, and Alembic won't try to create/drop Zou's
     core tables.
     """
+    from zou.app import app
+
     plugin_metadata = MetaData()
     with app.app_context():
         plugin_metadata.reflect(bind=db.engine)
