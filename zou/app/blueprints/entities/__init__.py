@@ -7,9 +7,14 @@ from zou.app.blueprints.entities.resources import (
     EntityTaskCreationResource,
     EntityTimeSpentsResource,
     EntitiesLinkedWithTasksResource,
+    ProjectDeleteEntitiesResource,
 )
 
 routes = [
+    (
+        "/actions/projects/<project_id>/delete-entities",
+        ProjectDeleteEntitiesResource,
+    ),
     ("/data/entities/<entity_id>/news", EntityNewsResource),
     ("/data/entities/<entity_id>/preview-files", EntityPreviewFilesResource),
     ("/data/entities/<entity_id>/tasks", EntityTaskCreationResource),

@@ -4,13 +4,20 @@ from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.entities.schemas import CreateEntityTasksSchema
 from zou.app.services import (
+    assets_service,
+    concepts_service,
+    edits_service,
     entities_service,
     news_service,
+    persons_service,
     preview_files_service,
+    projects_service,
+    shots_service,
     tasks_service,
     time_spents_service,
     user_service,
 )
+from zou.app.services.exception import WrongParameterException
 from zou.app.utils import permissions, validation
 
 
@@ -365,3 +372,97 @@ class EntityTaskCreationResource(MethodView):
         ]
         tasks = tasks_service.create_tasks_for_entity(entity, task_types)
         return tasks, 201
+
+
+class ProjectDeleteEntitiesResource(MethodView):
+    @jwt_required()
+    def post(self, project_id):
+        """
+        Delete entities batch
+        ---
+        description: Delete assets, shots, edits and concepts given by id
+          list in a single request. Each entity follows the same rules as
+          its single deletion route. Entities with tasks are marked as
+          canceled on first deletion, then removed for real when already
+          canceled; concepts are always removed. Only entity creators or
+          project managers can delete entities.
+        tags:
+          - Entities
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            description: Unique identifier of the project
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                description: Entity unique identifiers to delete
+        responses:
+          200:
+            description: Deleted entity ids
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+          400:
+            description: An entity does not belong to the project or is
+              not an asset, a shot, an edit or a concept
+        """
+        projects_service.get_project(project_id)
+        entity_ids = validation.validate_id_list()
+        current_user_id = persons_service.get_current_user()["id"]
+
+        shot_type_id = shots_service.get_shot_type()["id"]
+        edit_type_id = edits_service.get_edit_type()["id"]
+        concept_type_id = concepts_service.get_concept_type()["id"]
+
+        # Validate every entity before removing anything.
+        to_remove = []
+        for entity_id in entity_ids:
+            entity = entities_service.get_entity(entity_id)
+            if entity["project_id"] != project_id:
+                raise WrongParameterException(
+                    f"Entity {entity_id} does not belong to project "
+                    f"{project_id}."
+                )
+            if entity["created_by"] == current_user_id:
+                user_service.check_belong_to_project(project_id)
+            else:
+                user_service.check_manager_project_access(project_id)
+
+            entity_type_id = entity["entity_type_id"]
+            if entity_type_id == shot_type_id:
+                remove = shots_service.remove_shot
+                force = entity["canceled"]
+            elif entity_type_id == edit_type_id:
+                remove = edits_service.remove_edit
+                force = entity["canceled"]
+            elif entity_type_id == concept_type_id:
+                remove = concepts_service.remove_concept
+                force = True
+            elif assets_service.is_asset_dict(entity):
+                remove = assets_service.remove_asset
+                force = entity["canceled"]
+            else:
+                raise WrongParameterException(
+                    f"Entity {entity_id} is not an asset, a shot, an edit "
+                    f"or a concept."
+                )
+            to_remove.append((entity_id, remove, force))
+
+        for entity_id, remove, force in to_remove:
+            remove(entity_id, force=force)
+        return entity_ids, 200

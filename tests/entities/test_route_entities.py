@@ -82,3 +82,35 @@ class EntityRoutesTestCase(ApiDBTestCase):
             f"/data/entities/{self.asset.id}/entities-linked/with-tasks"
         )
         self.assertTrue(len(result) > 0)
+
+    def test_delete_entities(self):
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+        asset_id = str(self.asset.id)
+        shot_id = str(self.shot.id)
+        path = f"/actions/projects/{self.project.id}/delete-entities"
+        result = self.post(path, [asset_id, shot_id], 200)
+        self.assertEqual(result, [asset_id, shot_id])
+        # The asset has a task: it is canceled, not removed.
+        asset = self.get(f"/data/assets/{asset_id}")
+        self.assertTrue(asset["canceled"])
+        # The shot has no task: it is removed for real.
+        self.get(f"/data/shots/{shot_id}", 404)
+
+    def test_delete_entities_removes_canceled_asset(self):
+        self.asset.update({"canceled": True})
+        asset_id = str(self.asset.id)
+        path = f"/actions/projects/{self.project.id}/delete-entities"
+        self.post(path, [asset_id], 200)
+        self.get(f"/data/assets/{asset_id}", 404)
+
+    def test_delete_entities_rejects_unsupported_entity_type(self):
+        self.generate_fixture_sequence()
+        path = f"/actions/projects/{self.project.id}/delete-entities"
+        self.post(path, [str(self.sequence.id)], 400)
+
+    def test_delete_entities_as_artist_is_forbidden(self):
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        path = f"/actions/projects/{self.project.id}/delete-entities"
+        self.post(path, [str(self.asset.id)], 403)
