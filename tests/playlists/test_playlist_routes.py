@@ -125,6 +125,68 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
         shot_ids = [s["entity_id"] for s in playlist.get("shots", [])]
         self.assertIn(str(self.shot.id), shot_ids)
 
+    def test_add_entities_to_playlist(self):
+        first_shot_id = str(self.shot.id)
+        self.generate_fixture_shot("SH02")
+        second_shot_id = str(self.shot.id)
+        self.generate_fixture_playlist("Add Entities Playlist")
+        playlist_id = str(self.playlist.id)
+        result = self.post(
+            f"/actions/playlists/{playlist_id}/add-entities",
+            {"entity_ids": [first_shot_id, second_shot_id]},
+            200,
+        )
+        entity_ids = [shot["entity_id"] for shot in result["shots"]]
+        self.assertEqual(entity_ids, [first_shot_id, second_shot_id])
+
+    def test_add_entities_to_playlist_skips_present_entities(self):
+        first_shot_id = str(self.shot.id)
+        self.generate_fixture_shot("SH02")
+        second_shot_id = str(self.shot.id)
+        self.generate_fixture_playlist("Add Entities Playlist")
+        playlist_id = str(self.playlist.id)
+        self.post(
+            f"/actions/playlists/{playlist_id}/add-entity",
+            {"entity_id": first_shot_id},
+            200,
+        )
+        result = self.post(
+            f"/actions/playlists/{playlist_id}/add-entities",
+            {"entity_ids": [first_shot_id, second_shot_id]},
+            200,
+        )
+        entity_ids = [shot["entity_id"] for shot in result["shots"]]
+        self.assertEqual(entity_ids, [first_shot_id, second_shot_id])
+
+    def test_add_entities_to_playlist_picks_latest_preview_file(self):
+        self.generate_fixture_preview_file(
+            revision=1, task_id=self.shot_task.id
+        )
+        self.generate_fixture_preview_file(
+            revision=2, task_id=self.shot_task.id
+        )
+        latest_preview_file_id = str(self.preview_file.id)
+        self.generate_fixture_playlist("Add Entities Playlist")
+        playlist_id = str(self.playlist.id)
+        result = self.post(
+            f"/actions/playlists/{playlist_id}/add-entities",
+            {"entity_ids": [str(self.shot.id)]},
+            200,
+        )
+        self.assertEqual(
+            result["shots"][0]["preview_file_id"], latest_preview_file_id
+        )
+
+    def test_add_entities_as_artist_is_forbidden(self):
+        self.generate_fixture_user_cg_artist()
+        playlist = self._create_playlist("Artist Playlist")
+        self.log_in_cg_artist()
+        self.post(
+            f"/actions/playlists/{playlist['id']}/add-entities",
+            {"entity_ids": [str(self.shot.id)]},
+            403,
+        )
+
     def _create_playlist(self, name, creator_id=None):
         return Playlist.create(
             name=name,

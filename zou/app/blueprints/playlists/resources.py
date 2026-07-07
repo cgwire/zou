@@ -14,6 +14,7 @@ from zou.app import config
 from zou.app.mixin import ArgsMixin
 
 from zou.app.blueprints.playlists.schemas import (
+    AddEntitiesToPlaylistSchema,
     AddEntityToPlaylistSchema,
     CreatePlaylistShareLinkSchema,
     InviteShareLinkSchema,
@@ -362,6 +363,59 @@ class PlaylistAddEntityResource(MethodView, ArgsMixin):
             str(body.preview_file_id) if body.preview_file_id else None,
         )
         return updated_playlist
+
+
+class PlaylistAddEntitiesResource(MethodView, ArgsMixin):
+
+    @jwt_required()
+    def post(self, playlist_id):
+        """
+        Add entities to playlist
+        ---
+        description: Atomically add several entities to the given playlist
+          in a single database write. Entities already in the playlist are
+          skipped. Each added entity gets its latest uploaded preview
+          file, restricted to the playlist task type when one is set.
+        tags:
+          - Playlists
+        parameters:
+          - in: path
+            name: playlist_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            description: Playlist unique identifier
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - entity_ids
+                properties:
+                  entity_ids:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+                    description: Entity unique identifiers to add to playlist
+        responses:
+          200:
+            description: Updated playlist
+            content:
+              application/json:
+                schema:
+                  type: object
+        """
+        playlist = playlists_service.get_playlist(playlist_id)
+        user_service.check_playlist_update_access(playlist)
+
+        body = validation.validate_request_body(AddEntitiesToPlaylistSchema)
+        return playlists_service.add_entities_to_playlist(
+            playlist_id, body.entity_ids
+        )
 
 
 class PlaylistDownloadResource(MethodView):

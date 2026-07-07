@@ -562,6 +562,79 @@ def add_entity_to_playlist(playlist_id, entity_id, preview_file_id=None):
     return playlist_dict
 
 
+def get_latest_preview_file_ids_for_entities(entity_ids, task_type_id=None):
+    """
+    Return a map of entity id to the id of its most recently created
+    preview file. When task_type_id is set, only preview files uploaded
+    for that task type are considered.
+    """
+    if not entity_ids:
+        return {}
+    query = (
+        PreviewFile.query.join(Task, PreviewFile.task_id == Task.id)
+        .filter(Task.entity_id.in_(entity_ids))
+        .with_entities(PreviewFile.id, Task.entity_id)
+        .order_by(Task.entity_id, PreviewFile.created_at.desc())
+    )
+    if task_type_id is not None:
+        query = query.filter(Task.task_type_id == task_type_id)
+    latest = {}
+    for preview_file_id, entity_id in query.all():
+        entity_id_str = str(entity_id)
+        if entity_id_str not in latest:
+            latest[entity_id_str] = str(preview_file_id)
+    return latest
+
+
+def add_entities_to_playlist(playlist_id, entity_ids):
+    """
+    Atomically append several entities to the playlist shots list in a
+    single database write. Entities already in the playlist are skipped.
+    Each added entry gets the latest preview file uploaded for the
+    entity, restricted to the playlist task type when one is set.
+    """
+    entity_id_strs = [str(entity_id) for entity_id in entity_ids]
+    with with_playlist_lock(
+        playlist_id, timeout=30, wait_timeout=35
+    ) as _acquired:
+        playlist = Playlist.get(playlist_id)
+        task_type_id = (
+            str(playlist.task_type_id)
+            if playlist.task_type_id is not None
+            else None
+        )
+        preview_file_ids = get_latest_preview_file_ids_for_entities(
+            entity_id_strs, task_type_id
+        )
+        shots = list(playlist.shots or [])
+        present_ids = {shot.get("entity_id") for shot in shots}
+        added_shots = []
+        for entity_id_str in entity_id_strs:
+            if entity_id_str not in present_ids:
+                shot = {"entity_id": entity_id_str}
+                preview_file_id = preview_file_ids.get(entity_id_str)
+                if preview_file_id is not None:
+                    shot["preview_file_id"] = preview_file_id
+                shots.append(shot)
+                present_ids.add(entity_id_str)
+                added_shots.append(shot)
+        if added_shots:
+            playlist.update({"shots": shots})
+        playlist_dict = playlist.serialize()
+
+    for shot in added_shots:
+        events.emit(
+            "playlist:add_entity",
+            {
+                "playlist_id": playlist_dict["id"],
+                "entity_id": shot["entity_id"],
+                "preview_file_id": shot.get("preview_file_id"),
+            },
+            project_id=playlist_dict["project_id"],
+        )
+    return playlist_dict
+
+
 def _add_entity_to_playlist_db(playlist_id, entity_id_str, preview_file_id):
     """
     Internal helper function to add an entity to playlist in the database.

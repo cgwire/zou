@@ -33,6 +33,18 @@ class AddEntityToPlaylistSchema(BaseSchema):
         return v
 
 
+class AddEntitiesToPlaylistSchema(BaseSchema):
+    """
+    Body for adding several entities to a playlist at once.
+    """
+
+    entity_ids: List[UUID] = Field(
+        ...,
+        min_length=1,
+        description="List of entity unique identifiers to add",
+    )
+
+
 class TempPlaylistCreateSchema(BaseSchema):
     """
     Body for generating a temporary playlist from task IDs.
