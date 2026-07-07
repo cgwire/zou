@@ -1,4 +1,5 @@
-from zou.app import app
+from flask import current_app
+
 from zou.app.indexer import indexing
 
 from zou.app.models.entity import Entity
@@ -332,7 +333,9 @@ def index_asset(asset):
     except indexing.IndexerNotInitializedError:
         pass
     except Exception:
-        app.logger.error("Indexer is not reachable, indexation failed.")
+        current_app.logger.error(
+            "Indexer is not reachable, indexation failed."
+        )
     return {}
 
 
@@ -348,7 +351,9 @@ def index_person(person):
     except indexing.IndexerNotInitializedError:
         pass
     except Exception:
-        app.logger.error("Indexer is not reachable, indexation failed.")
+        current_app.logger.error(
+            "Indexer is not reachable, indexation failed."
+        )
     return {}
 
 
@@ -364,7 +369,9 @@ def index_shot(shot):
     except indexing.IndexerNotInitializedError:
         pass
     except Exception:
-        app.logger.error("Indexer is not reachable, indexation failed.")
+        current_app.logger.error(
+            "Indexer is not reachable, indexation failed."
+        )
     return {}
 
 
@@ -473,7 +480,9 @@ def remove_asset_index(asset_id):
     except indexing.IndexerNotInitializedError:
         pass
     except Exception:
-        app.logger.error("Indexer is not reachable, indexation failed.")
+        current_app.logger.error(
+            "Indexer is not reachable, indexation failed."
+        )
     return {}
 
 
@@ -486,7 +495,9 @@ def remove_person_index(person_id):
     except indexing.IndexerNotInitializedError:
         pass
     except Exception:
-        app.logger.error("Indexer is not reachable, indexation failed.")
+        current_app.logger.error(
+            "Indexer is not reachable, indexation failed."
+        )
     return {}
 
 
@@ -499,5 +510,7 @@ def remove_shot_index(shot_id):
     except indexing.IndexerNotInitializedError:
         pass
     except Exception:
-        app.logger.error("Indexer is not reachable, indexation failed.")
+        current_app.logger.error(
+            "Indexer is not reachable, indexation failed."
+        )
     return {}

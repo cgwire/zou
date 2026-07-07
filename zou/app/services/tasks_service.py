@@ -19,7 +19,7 @@ from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import case
 from sqlalchemy.orm import aliased, selectinload
 
-from zou.app import app, db
+from zou.app import config, db
 from zou.app.utils import events
 
 from zou.app.models.attachment_file import AttachmentFile
@@ -135,7 +135,7 @@ def get_task_statuses():
 
 @cache.memoize_function(120)
 def get_to_review_status():
-    return get_or_create_status(app.config["TO_REVIEW_TASK_STATUS"], "pndng")
+    return get_or_create_status(config.TO_REVIEW_TASK_STATUS, "pndng")
 
 
 @cache.memoize_function(120)

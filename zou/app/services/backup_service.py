@@ -12,9 +12,9 @@ from zou.app.utils import date_helpers
 
 from flask_fs.backends.local import LocalBackend
 
-from zou.app import app
+from zou.app import config
 
-preview_folder = app.config["PREVIEW_FOLDER"]
+preview_folder = config.PREVIEW_FOLDER
 local_picture = LocalBackend(
     "local", {"root": os.path.join(preview_folder, "pictures")}
 )

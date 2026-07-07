@@ -60,10 +60,11 @@ migrate = Migrate()
 jwt = JWTManager()
 mail = Mail()
 swagger = None
-# Set by create_app(). Kept as a module global because much of the code
-# base imports `from zou.app import app` at import time, including modules
-# loaded while the API is being wired.
-app = None
+# The module-level `app` is NOT created at import time: it is built
+# lazily by __getattr__ (bottom of this module) on first access, so
+# importing zou.app or any submodule stays side-effect free. Entry
+# points (wsgi, debug, event_stream, tests) either access `zou.app.app`
+# or call create_app() explicitly.
 
 
 def shutdown_session(exception=None):
@@ -343,8 +344,10 @@ def load_api(app):
 def create_app(config_object=config):
     """
     Build and wire a Zou Flask application: extensions, JSON provider,
-    error handlers, auth, storages and API routes. The module-level `app`
-    below is one instance of it; the CLI and tests can build their own.
+    error handlers, auth, storages and API routes. Nothing is built at
+    import time: entry points call this explicitly, and legacy
+    `from zou.app import app` imports get the same instance lazily via
+    the module __getattr__ below.
 
     Assigns the module-level `app` early (before the API is loaded)
     because blueprints and services imported during load_api still do
@@ -405,4 +408,15 @@ def create_app(config_object=config):
     return app
 
 
-app = create_app()
+def __getattr__(name):
+    """
+    Build the default application on first access to `zou.app.app`
+    (PEP 562). Keeps `from zou.app import app` and the gunicorn
+    `zou.app:app` entry point working while making the boot lazy:
+    importing zou.app or its submodules no longer wires the whole API.
+    Once built, create_app() assigns the module global, so this hook
+    only ever fires once per process.
+    """
+    if name == "app":
+        return create_app()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

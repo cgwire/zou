@@ -5,7 +5,7 @@ from io import StringIO
 from html.parser import HTMLParser
 from flask_mail import Message
 
-from zou.app import mail, app
+from zou.app import mail
 
 # Force quoted-printable encoding for utf-8 message bodies so that the
 # Python email module wraps lines at 76 chars. Without this, long HTML
@@ -26,6 +26,8 @@ def send_email(subject, html, recipient_email, body=None, locale=None):
     If locale is provided (e.g. "en_US", "fr_FR"), the Content-Language
     header is set so the recipient's client can use the correct language.
     """
+    from zou.app import app
+
     if body is None:
         body = strip_html_tags(html)
     if app.config["MAIL_DEBUG_BODY"]:
