@@ -1,3 +1,5 @@
+from flask import request
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app.models.task_type import TaskType
@@ -5,6 +7,7 @@ from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.services.exception import WrongParameterException
 from zou.app.services import tasks_service
+from zou.app.utils import permissions
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
@@ -366,3 +369,53 @@ class TaskTypeResource(BaseModelResource):
     def post_delete(self, instance_dict):
         tasks_service.clear_task_type_cache(instance_dict["id"])
         return instance_dict
+
+
+class TaskTypesReorderResource(MethodView):
+    @jwt_required()
+    def post(self):
+        """
+        Reorder task types
+        ---
+        tags:
+          - Crud
+        description: Set the global priority of task types from the given
+          ordered id list in a single request, replacing one update request
+          per task type.
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - task_type_ids
+                properties:
+                  task_type_ids:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+        responses:
+            200:
+              description: Updated task types
+        """
+        permissions.check_admin_permissions()
+        body = request.json
+        if not isinstance(body, dict) or not isinstance(
+            body.get("task_type_ids"), list
+        ):
+            raise WrongParameterException(
+                "Request body must be a JSON object with a "
+                "'task_type_ids' list."
+            )
+        updated = []
+        for priority, task_type_id in enumerate(
+            body["task_type_ids"], start=1
+        ):
+            task_type = TaskType.get(task_type_id)
+            if task_type is not None:
+                task_type.update({"priority": priority})
+                tasks_service.clear_task_type_cache(str(task_type.id))
+                updated.append(task_type.serialize())
+        return updated

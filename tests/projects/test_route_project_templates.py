@@ -89,6 +89,58 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
         )
         self.assertEqual(len(types), 0)
 
+    def test_task_type_reorder_route(self):
+        template = self._create_template()
+        tt1 = str(self.task_type_modeling.id)
+        tt2 = str(self.task_type_concept.id)
+        self.post(
+            f"/data/project-templates/{template['id']}/task-types",
+            {"task_type_id": tt1, "priority": 1},
+        )
+        self.post(
+            f"/data/project-templates/{template['id']}/task-types",
+            {"task_type_id": tt2, "priority": 2},
+        )
+        result = self.post(
+            f"/data/project-templates/{template['id']}/task-types/reorder",
+            {"task_type_ids": [tt2, tt1]},
+            200,
+        )
+        by_type = {link["task_type_id"]: link["priority"] for link in result}
+        self.assertEqual(by_type[tt2], 1)
+        self.assertEqual(by_type[tt1], 2)
+
+    def test_task_status_reorder_route_preserves_roles(self):
+        template = self._create_template()
+        ts1 = str(self.task_status.id)
+        ts2 = str(self.task_status_done.id)
+        self.post(
+            f"/data/project-templates/{template['id']}/task-statuses",
+            {
+                "task_status_id": ts1,
+                "priority": 1,
+                "roles_for_board": ["manager"],
+            },
+        )
+        self.post(
+            f"/data/project-templates/{template['id']}/task-statuses",
+            {"task_status_id": ts2, "priority": 2},
+        )
+        result = self.post(
+            f"/data/project-templates/{template['id']}/task-statuses/reorder",
+            {"task_status_ids": [ts2, ts1]},
+            200,
+        )
+        by_status = {link["task_status_id"]: link for link in result}
+        self.assertEqual(by_status[ts2]["priority"], 1)
+        self.assertEqual(by_status[ts1]["priority"], 2)
+        # Board roles survive the reorder (only priority is updated).
+        statuses = self.get(
+            f"/data/project-templates/{template['id']}/task-statuses"
+        )
+        by_id = {status["id"]: status for status in statuses}
+        self.assertIn("manager", by_id[ts1]["roles_for_board"])
+
     def test_task_status_link_routes(self):
         template = self._create_template()
         link = self.post(

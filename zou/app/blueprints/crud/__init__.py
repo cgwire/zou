@@ -115,6 +115,7 @@ from zou.app.blueprints.crud.software import (
 from zou.app.blueprints.crud.task_type import (
     TaskTypesResource,
     TaskTypeResource,
+    TaskTypesReorderResource,
 )
 from zou.app.blueprints.crud.task_status import (
     TaskStatusesResource,
@@ -165,6 +166,7 @@ routes = [
     ("/data/entities", EntitiesResource),
     ("/data/entities/<instance_id>", EntityResource),
     ("/data/task-types", TaskTypesResource),
+    ("/data/task-types/reorder", TaskTypesReorderResource),
     ("/data/task-types/<instance_id>", TaskTypeResource),
     ("/data/task-type-links", ProjectTaskTypeLinksResource),
     (

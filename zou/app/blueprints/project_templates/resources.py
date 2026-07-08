@@ -424,3 +424,103 @@ class ApplyProjectTemplateResource(MethodView):
         except WrongParameterException as exception:
             return {"message": str(exception)}, 400
         return project, 200
+
+
+class ProjectTemplateTaskTypesReorderResource(MethodView):
+    @jwt_required()
+    def post(self, template_id):
+        """
+        Reorder template task types
+        ---
+        tags:
+          - Project templates
+        description: Set the priority of the template's task type links from
+          the given ordered id list in a single request, replacing one link
+          request per task type.
+        parameters:
+          - in: path
+            name: template_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - task_type_ids
+                properties:
+                  task_type_ids:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+        responses:
+            200:
+              description: Updated task type links
+        """
+        permissions.check_admin_permissions()
+        body = request.json
+        if not isinstance(body, dict) or not isinstance(
+            body.get("task_type_ids"), list
+        ):
+            raise WrongParameterException(
+                "Request body must be a JSON object with a "
+                "'task_type_ids' list."
+            )
+        return project_templates_service.set_template_task_type_priorities(
+            template_id, body["task_type_ids"]
+        )
+
+
+class ProjectTemplateTaskStatusesReorderResource(MethodView):
+    @jwt_required()
+    def post(self, template_id):
+        """
+        Reorder template task statuses
+        ---
+        tags:
+          - Project templates
+        description: Set the priority of the template's task status links from
+          the given ordered id list in a single request, preserving each
+          link's board roles and replacing one link request per status.
+        parameters:
+          - in: path
+            name: template_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - task_status_ids
+                properties:
+                  task_status_ids:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+        responses:
+            200:
+              description: Updated task status links
+        """
+        permissions.check_admin_permissions()
+        body = request.json
+        if not isinstance(body, dict) or not isinstance(
+            body.get("task_status_ids"), list
+        ):
+            raise WrongParameterException(
+                "Request body must be a JSON object with a "
+                "'task_status_ids' list."
+            )
+        return project_templates_service.set_template_task_status_priorities(
+            template_id, body["task_status_ids"]
+        )

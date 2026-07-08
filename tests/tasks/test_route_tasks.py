@@ -677,6 +677,20 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.assertEqual(by_type[tt2], 1)
         self.assertEqual(by_type[tt1], 2)
 
+    def test_reorder_task_types(self):
+        tt1 = str(self.task_type.id)
+        tt2 = str(self.task_type_concept.id)
+        result = self.post(
+            "/data/task-types/reorder",
+            {"task_type_ids": [tt2, tt1]},
+            200,
+        )
+        by_type = {
+            task_type["id"]: task_type["priority"] for task_type in result
+        }
+        self.assertEqual(by_type[tt2], 1)
+        self.assertEqual(by_type[tt1], 2)
+
     def test_reorder_task_status_links_preserves_roles(self):
         from zou.app.models.project import ProjectTaskStatusLink
 
