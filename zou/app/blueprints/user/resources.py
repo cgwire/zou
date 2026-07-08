@@ -1,4 +1,4 @@
-from flask import abort, request
+from flask import abort, jsonify, request
 from flask.views import MethodView
 
 from zou.app.mixin import ArgsMixin
@@ -2440,7 +2440,7 @@ class HasTaskSubscribedResource(MethodView):
                     type: boolean
                     example: true
         """
-        return user_service.has_task_subscription(task_id)
+        return jsonify(user_service.has_task_subscription(task_id))
 
 
 class TaskSubscribeResource(MethodView):
@@ -2564,8 +2564,10 @@ class HasSequenceSubscribedResource(MethodView):
                     type: boolean
                     example: true
         """
-        return user_service.has_sequence_subscription(
-            sequence_id, task_type_id
+        return jsonify(
+            user_service.has_sequence_subscription(
+                sequence_id, task_type_id
+            )
         )
 
 
