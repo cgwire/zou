@@ -80,12 +80,11 @@ def get_year_interval(year):
     """
     Get a tuple containing start date and end date for given year.
     """
-    year = int(year)
-    if year > get_utc_now_datetime().year or year < 2010:
+    try:
+        start = datetime.datetime(int(year), 1, 1)
+        end = start + relativedelta.relativedelta(years=1)
+    except (ValueError, OverflowError):
         raise WrongDateFormatException
-
-    start = datetime.datetime(year, 1, 1)
-    end = start + relativedelta.relativedelta(years=1)
     return start, end
 
 
@@ -93,18 +92,11 @@ def get_month_interval(year, month):
     """
     Get a tuple containing start date and end date for given year and month.
     """
-    year = int(year)
-    month = int(month)
-    if (
-        year > get_utc_now_datetime().year
-        or year < 2010
-        or month < 1
-        or month > 12
-    ):
+    try:
+        start = datetime.datetime(int(year), int(month), 1)
+        end = start + relativedelta.relativedelta(months=1)
+    except (ValueError, OverflowError):
         raise WrongDateFormatException
-
-    start = datetime.datetime(year, month, 1)
-    end = start + relativedelta.relativedelta(months=1)
     return start, end
 
 
@@ -112,17 +104,11 @@ def get_week_interval(year, week):
     """
     Get a tuple containing start date and end date for given year and week.
     """
-    year = int(year)
-    week = int(week)
-    if (
-        year > get_utc_now_datetime().year
-        or year < 2010
-        or week < 1
-        or week > 52
-    ):
+    try:
+        start = datetime.date.fromisocalendar(int(year), int(week), 1)
+        end = start + relativedelta.relativedelta(days=7)
+    except (ValueError, OverflowError):
         raise WrongDateFormatException
-    start = datetime.date.fromisocalendar(year, week, 1)
-    end = start + relativedelta.relativedelta(days=7)
     return start, end
 
 
@@ -130,20 +116,11 @@ def get_day_interval(year, month, day):
     """
     Get a tuple containing start date and end date for given day.
     """
-    year = int(year)
-    month = int(month)
-    day = int(day)
-    if (
-        year > get_utc_now_datetime().year
-        or year < 2010
-        or month < 1
-        or month > 12
-        or day < 1
-        or day > 31
-    ):
+    try:
+        start = datetime.datetime(int(year), int(month), int(day))
+        end = start + relativedelta.relativedelta(days=1)
+    except (ValueError, OverflowError):
         raise WrongDateFormatException
-    start = datetime.datetime(year, month, day)
-    end = start + relativedelta.relativedelta(days=1)
     return start, end
 
 

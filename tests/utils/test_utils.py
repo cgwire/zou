@@ -118,6 +118,24 @@ class UtilsTestCase(unittest.TestCase):
         self.assertEqual(start.strftime("%Y-%m-%d"), "2021-02-10")
         self.assertEqual(end.strftime("%Y-%m-%d"), "2021-02-11")
 
+    def test_interval_allows_future_years(self):
+        from zou.app.services.exception import WrongDateFormatException
+
+        next_year = date_helpers.get_utc_now_datetime().year + 1
+        start, _ = date_helpers.get_month_interval(next_year, 1)
+        self.assertEqual(start.year, next_year)
+        start, _ = date_helpers.get_month_interval(2500, 12)
+        self.assertEqual(start.year, 2500)
+
+        with pytest.raises(WrongDateFormatException):
+            date_helpers.get_month_interval(2026, 13)
+        with pytest.raises(WrongDateFormatException):
+            date_helpers.get_day_interval(2026, 2, 30)
+        with pytest.raises(WrongDateFormatException):
+            date_helpers.get_week_interval(2026, 60)
+        with pytest.raises(WrongDateFormatException):
+            date_helpers.get_month_interval("abc", 1)
+
     def test_get_redis_url(self):
         db_index = 0
         self.assertEqual(
