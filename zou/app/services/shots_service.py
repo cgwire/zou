@@ -580,6 +580,8 @@ def get_full_shot(shot_id):
     Return given shot as a dictionary with extra data like project and
     sequence names.
     """
+    if not fields.is_valid_id(shot_id):
+        raise ShotNotFoundException
     shots = get_shots_and_tasks({"id": shot_id})
     if len(shots) > 0:
         shot = shots[0]
