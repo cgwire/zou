@@ -24,6 +24,8 @@ from zou.app.blueprints.projects.schemas import (
     MetadataDescriptorSchema,
     MetadataDescriptorUpdateSchema,
     MetadataDescriptorOrderSchema,
+    AllProjectsMetadataDescriptorUpdateSchema,
+    AllProjectsMetadataDescriptorOrderSchema,
     BudgetSchema,
     BudgetUpdateSchema,
     BudgetEntrySchema,
@@ -1392,6 +1394,220 @@ class ProductionMetadataDescriptorsReorderResource(MethodView, ArgsMixin):
         )
 
 
+VALID_METADATA_ENTITY_TYPES = [
+    "Asset",
+    "Shot",
+    "Edit",
+    "Episode",
+    "Sequence",
+    "Project",
+]
+
+
+def _accessible_open_project_ids():
+    """
+    Open projects the current user can act on: every open project for an
+    admin, only the user's team open projects otherwise. Keeps the
+    all-projects metadata routes from touching projects a manager has no
+    access to.
+    """
+    if permissions.has_admin_permissions():
+        return projects_service.open_project_ids()
+    return [project["id"] for project in user_service.related_projects()]
+
+
+def _check_metadata_entity_type(entity_type):
+    if entity_type not in VALID_METADATA_ENTITY_TYPES:
+        raise WrongParameterException(
+            "Wrong entity type. Please select Asset, Shot, Sequence, "
+            "Episode, Edit, or Project."
+        )
+
+
+class AllProjectsMetadataDescriptorsResource(MethodView):
+
+    @jwt_required()
+    def post(self):
+        """
+        Create a metadata descriptor on all accessible projects
+        ---
+        description: Create the same metadata descriptor in every open
+          project the user can access that does not already own one with the
+          same field name. Replaces one create request per project.
+        tags:
+          - Projects
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - name
+                  - data_type
+                properties:
+                  entity_type:
+                    type: string
+                    default: "Project"
+                  name:
+                    type: string
+                  data_type:
+                    type: string
+        responses:
+          201:
+            description: Created descriptors
+          400:
+            description: Invalid parameters
+        """
+        permissions.check_manager_permissions()
+        body = validation.validate_request_body(MetadataDescriptorSchema)
+        _check_metadata_entity_type(body.entity_type)
+        types = [type_name for type_name, _ in METADATA_DESCRIPTOR_TYPES]
+        if body.data_type not in types:
+            raise WrongParameterException("Invalid data_type")
+        return (
+            projects_service.add_metadata_descriptor_to_projects(
+                _accessible_open_project_ids(),
+                body.entity_type,
+                body.name,
+                body.data_type,
+                body.choices,
+                body.for_client,
+                body.departments,
+            ),
+            201,
+        )
+
+
+class AllProjectsMetadataDescriptorResource(MethodView, ArgsMixin):
+
+    @jwt_required()
+    def put(self, field_name):
+        """
+        Update a metadata descriptor on all accessible projects
+        ---
+        description: Update every metadata descriptor sharing the given field
+          name across the open projects the user can access. Replaces one
+          update request per project.
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: field_name
+            required: true
+            schema:
+              type: string
+        responses:
+          200:
+            description: Updated descriptors
+          400:
+            description: Invalid parameters
+        """
+        permissions.check_manager_permissions()
+        body = validation.validate_request_body(
+            AllProjectsMetadataDescriptorUpdateSchema
+        )
+        _check_metadata_entity_type(body.entity_type)
+        types = [type_name for type_name, _ in METADATA_DESCRIPTOR_TYPES]
+        if body.data_type not in types:
+            raise WrongParameterException("Invalid data_type")
+        changes = {
+            "for_client": body.for_client,
+            "data_type": body.data_type,
+            "choices": body.choices,
+            "departments": body.departments,
+        }
+        # Keep the field name untouched when the name is not being changed.
+        if body.name:
+            changes["name"] = body.name
+        return projects_service.update_metadata_descriptor_on_projects(
+            _accessible_open_project_ids(),
+            body.entity_type,
+            field_name,
+            changes,
+        )
+
+    @jwt_required()
+    def delete(self, field_name):
+        """
+        Delete a metadata descriptor from all accessible projects
+        ---
+        description: Remove every metadata descriptor sharing the given field
+          name across the open projects the user can access. Replaces one
+          delete request per project.
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: field_name
+            required: true
+            schema:
+              type: string
+          - in: query
+            name: entity_type
+            required: true
+            schema:
+              type: string
+        responses:
+          200:
+            description: Removed descriptor ids
+          400:
+            description: Invalid parameters
+        """
+        permissions.check_manager_permissions()
+        entity_type = self.get_text_parameter("entity_type")
+        _check_metadata_entity_type(entity_type)
+        return projects_service.remove_metadata_descriptor_from_projects(
+            _accessible_open_project_ids(), entity_type, field_name
+        )
+
+
+class AllProjectsMetadataDescriptorsReorderResource(MethodView):
+
+    @jwt_required()
+    def post(self):
+        """
+        Reorder metadata descriptors on all accessible projects
+        ---
+        description: Apply the same column order, given as a list of field
+          names, on every open project the user can access. Replaces one
+          reorder request per project.
+        tags:
+          - Projects
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - entity_type
+                  - field_order
+                properties:
+                  entity_type:
+                    type: string
+                  field_order:
+                    type: array
+                    items:
+                      type: string
+        responses:
+          200:
+            description: Updated descriptors
+          400:
+            description: Invalid parameters
+        """
+        permissions.check_manager_permissions()
+        body = validation.validate_request_body(
+            AllProjectsMetadataDescriptorOrderSchema
+        )
+        _check_metadata_entity_type(body.entity_type)
+        return projects_service.reorder_metadata_descriptors_on_projects(
+            _accessible_open_project_ids(),
+            body.entity_type,
+            body.field_order,
+        )
+
+
 class ProductionTimeSpentsResource(MethodView):
     """
     Resource to retrieve time spents for given production.
@@ -2404,7 +2620,9 @@ class ProductionScheduleVersionSetTaskLinksFromTasksResource(
         )
 
 
-class ProductionScheduleVersionApplyToProductionResource(MethodView, ArgsMixin):
+class ProductionScheduleVersionApplyToProductionResource(
+    MethodView, ArgsMixin
+):
 
     @jwt_required()
     def post(self, production_schedule_version_id):

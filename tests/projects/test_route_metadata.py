@@ -44,6 +44,66 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         project = self.get(f"data/projects/{self.project_id}")
         self.assertIsNone((project.get("data") or {}).get("ship_code"))
 
+    def test_all_projects_metadata_descriptor(self):
+        first_project_id = str(self.project_id)
+        second_project = self.generate_fixture_project(name="Second Project")
+        second_project_id = str(second_project.id)
+        closed_project_id = str(self.project_closed.id)
+
+        created = self.post(
+            "data/metadata-descriptors/all-projects",
+            {
+                "entity_type": "Project",
+                "name": "Delivery code",
+                "data_type": "string",
+            },
+            201,
+        )
+        # Both open projects, the closed one is left out.
+        self.assertEqual(len(created), 2)
+        for project_id in (first_project_id, second_project_id):
+            descriptors = self.get(
+                f"data/projects/{project_id}/metadata-descriptors"
+            )
+            self.assertTrue(
+                any(d["field_name"] == "delivery_code" for d in descriptors)
+            )
+        closed = self.get(
+            f"data/projects/{closed_project_id}/metadata-descriptors"
+        )
+        self.assertFalse(
+            any(d["field_name"] == "delivery_code" for d in closed)
+        )
+
+        updated = self.put(
+            "data/metadata-descriptors/all-projects/delivery_code",
+            {
+                "entity_type": "Project",
+                "name": "Ship code",
+                "data_type": "string",
+            },
+        )
+        self.assertEqual(len(updated), 2)
+
+        self.post(
+            "data/metadata-descriptors/all-projects/reorder",
+            {"entity_type": "Project", "field_order": ["ship_code"]},
+            200,
+        )
+
+        self.delete(
+            "data/metadata-descriptors/all-projects/ship_code"
+            "?entity_type=Project",
+            200,
+        )
+        for project_id in (first_project_id, second_project_id):
+            descriptors = self.get(
+                f"data/projects/{project_id}/metadata-descriptors"
+            )
+            self.assertFalse(
+                any(d["field_name"] == "ship_code" for d in descriptors)
+            )
+
     def test_add_asset_metadata_descriptor(self):
         descriptor = self.post(
             f"data/projects/{self.project_id}/metadata-descriptors",
