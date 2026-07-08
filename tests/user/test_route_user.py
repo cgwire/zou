@@ -30,6 +30,12 @@ class UserRoutesTestCase(ApiDBTestCase):
         self.assertIsInstance(result, list)
         self.assertTrue(len(result) > 0)
 
+    def test_task_subscription(self):
+        path = f"/data/user/tasks/{self.task.id}/subscribed"
+        self.assertFalse(self.get(path))
+        self.post(f"/actions/user/tasks/{self.task.id}/subscribe", {}, 201)
+        self.assertTrue(self.get(path))
+
     def test_join_and_leave_chat(self):
         self.post(f"/actions/user/chats/{self.asset.id}/join", {}, 200)
         chat = self.get(f"/data/entities/{self.asset.id}/chat")
