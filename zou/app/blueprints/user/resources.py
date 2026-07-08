@@ -19,6 +19,7 @@ from zou.app.blueprints.user.schemas import (
     CreateSearchFilterGroupSchema,
     UpdateSearchFilterGroupSchema,
     NotificationUpdateSchema,
+    SubscribeTasksSchema,
 )
 from zou.app.services.exception import (
     WrongDateFormatException,
@@ -2528,6 +2529,83 @@ class TaskUnsubscribeResource(MethodView):
         return "", 204
 
 
+class TasksSubscribeResource(MethodView):
+
+    def post(self):
+        """
+        Subscribe to several tasks
+        ---
+        description: Create subscription entries for the current user and
+          every task in the id list. Useful to subscribe to a selection in
+          one request. Returns the created subscriptions.
+        tags:
+        - User
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - task_ids
+                properties:
+                  task_ids:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+        responses:
+            201:
+              description: Subscriptions created successfully
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+        """
+        body = validation.validate_request_body(SubscribeTasksSchema)
+        return [
+            user_service.subscribe_to_task(task_id)
+            for task_id in body.task_ids
+        ], 201
+
+
+class TasksUnsubscribeResource(MethodView):
+
+    def post(self):
+        """
+        Unsubscribe from several tasks
+        ---
+        description: Remove the subscription entries for the current user and
+          every task in the id list. Useful to unsubscribe from a selection
+          in one request. Returns the given task id list.
+        tags:
+        - User
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - task_ids
+                properties:
+                  task_ids:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+        responses:
+            200:
+              description: Subscriptions removed successfully
+        """
+        body = validation.validate_request_body(SubscribeTasksSchema)
+        for task_id in body.task_ids:
+            user_service.unsubscribe_from_task(task_id)
+        return body.task_ids, 200
+
+
 class HasSequenceSubscribedResource(MethodView):
 
     def get(self, sequence_id, task_type_id):
@@ -2565,9 +2643,7 @@ class HasSequenceSubscribedResource(MethodView):
                     example: true
         """
         return jsonify(
-            user_service.has_sequence_subscription(
-                sequence_id, task_type_id
-            )
+            user_service.has_sequence_subscription(sequence_id, task_type_id)
         )
 
 

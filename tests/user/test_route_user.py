@@ -36,6 +36,34 @@ class UserRoutesTestCase(ApiDBTestCase):
         self.post(f"/actions/user/tasks/{self.task.id}/subscribe", {}, 201)
         self.assertTrue(self.get(path))
 
+    def test_tasks_batch_subscription(self):
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+        self.generate_fixture_shot_task()
+        task_id = str(self.task.id)
+        shot_task_id = str(self.shot_task.id)
+        subscribed_task = f"/data/user/tasks/{task_id}/subscribed"
+        subscribed_shot_task = f"/data/user/tasks/{shot_task_id}/subscribed"
+        self.assertFalse(self.get(subscribed_task))
+        self.assertFalse(self.get(subscribed_shot_task))
+
+        result = self.post(
+            "/actions/user/tasks/subscribe",
+            {"task_ids": [task_id, shot_task_id]},
+            201,
+        )
+        self.assertEqual(len(result), 2)
+        self.assertTrue(self.get(subscribed_task))
+        self.assertTrue(self.get(subscribed_shot_task))
+
+        self.post(
+            "/actions/user/tasks/unsubscribe",
+            {"task_ids": [task_id, shot_task_id]},
+            200,
+        )
+        self.assertFalse(self.get(subscribed_task))
+        self.assertFalse(self.get(subscribed_shot_task))
+
     def test_join_and_leave_chat(self):
         self.post(f"/actions/user/chats/{self.asset.id}/join", {}, 200)
         chat = self.get(f"/data/entities/{self.asset.id}/chat")
