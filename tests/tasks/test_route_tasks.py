@@ -662,6 +662,47 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.assertEqual(ProjectTaskTypeLink.query.count(), 1)
         self.assertEqual(ProjectTaskTypeLink.query.first().priority, 3)
 
+    def test_reorder_task_type_links(self):
+        project_id = str(self.project.id)
+        tt1 = str(self.task_type.id)
+        tt2 = str(self.task_type_concept.id)
+        projects_service.create_project_task_type_link(project_id, tt1, 1)
+        projects_service.create_project_task_type_link(project_id, tt2, 2)
+        result = self.post(
+            f"/data/projects/{project_id}/task-type-links/batch",
+            {"task_type_ids": [tt2, tt1]},
+            200,
+        )
+        by_type = {link["task_type_id"]: link["priority"] for link in result}
+        self.assertEqual(by_type[tt2], 1)
+        self.assertEqual(by_type[tt1], 2)
+
+    def test_reorder_task_status_links_preserves_roles(self):
+        from zou.app.models.project import ProjectTaskStatusLink
+
+        project_id = str(self.project.id)
+        ts1 = str(self.task_status_wip.id)
+        ts2 = str(self.task_status_done.id)
+        ProjectTaskStatusLink.create(
+            project_id=project_id,
+            task_status_id=ts1,
+            priority=1,
+            roles_for_board=["manager"],
+        )
+        ProjectTaskStatusLink.create(
+            project_id=project_id, task_status_id=ts2, priority=2
+        )
+        result = self.post(
+            f"/data/projects/{project_id}/task-status-links/batch",
+            {"task_status_ids": [ts2, ts1]},
+            200,
+        )
+        by_status = {link["task_status_id"]: link for link in result}
+        self.assertEqual(by_status[ts2]["priority"], 1)
+        self.assertEqual(by_status[ts1]["priority"], 2)
+        # The reorder only updates priority, board roles are preserved.
+        self.assertEqual(by_status[ts1]["roles_for_board"], ["manager"])
+
     def test_update_entity_main_preview_from_task(self):
         task = self.generate_fixture_task().serialize()
         preview_file = self.generate_fixture_preview_file().serialize()

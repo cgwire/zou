@@ -1020,6 +1020,42 @@ def create_project_task_status_link(
     return task_status_link.serialize()
 
 
+def set_project_task_type_link_priorities(project_id, task_type_ids):
+    """
+    Set the priority of the project's task type links from the given ordered
+    id list (priority = position, 1-based). Only existing links are touched,
+    so a reorder never creates links. Returns the updated links.
+    """
+    links = []
+    for priority, task_type_id in enumerate(task_type_ids, start=1):
+        link = ProjectTaskTypeLink.get_by(
+            project_id=project_id, task_type_id=task_type_id
+        )
+        if link is not None:
+            link.update({"priority": priority})
+            links.append(link.serialize())
+    clear_project_cache(project_id)
+    return links
+
+
+def set_project_task_status_link_priorities(project_id, task_status_ids):
+    """
+    Set the priority of the project's task status links from the given ordered
+    id list (priority = position, 1-based). Only the priority is updated, so
+    the board roles of each link are preserved. Returns the updated links.
+    """
+    links = []
+    for priority, task_status_id in enumerate(task_status_ids, start=1):
+        link = ProjectTaskStatusLink.get_by(
+            project_id=project_id, task_status_id=task_status_id
+        )
+        if link is not None:
+            link.update({"priority": priority})
+            links.append(link.serialize())
+    clear_project_cache(project_id)
+    return links
+
+
 def get_project_task_types(project_id):
     project = get_project_raw(project_id)
     return Project.serialize_list(project.task_types)

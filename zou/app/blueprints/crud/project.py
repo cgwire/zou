@@ -1,3 +1,4 @@
+from flask import request
 from flask_jwt_extended import jwt_required
 
 from flask.views import MethodView
@@ -724,3 +725,98 @@ class ProjectTaskStatusLinksResource(MethodView, ArgsMixin):
         )
         projects_service.clear_project_cache(task_status_link["project_id"])
         return task_status_link, 201
+
+
+def _validate_id_list_body(key):
+    body = request.json
+    if not isinstance(body, dict) or not isinstance(body.get(key), list):
+        raise WrongParameterException(
+            f"Request body must be a JSON object with a '{key}' list."
+        )
+    return body[key]
+
+
+class BatchProjectTaskTypeLinksResource(MethodView):
+    @jwt_required()
+    def post(self, project_id):
+        """
+        Reorder project task type links
+        ---
+        tags:
+          - Crud
+        description: Set the priority of the project's task type links from
+          the given ordered id list in a single request, replacing one link
+          request per task type.
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - task_type_ids
+                properties:
+                  task_type_ids:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+        responses:
+            200:
+              description: Updated task type links
+        """
+        user_service.check_manager_project_access(project_id)
+        task_type_ids = _validate_id_list_body("task_type_ids")
+        return projects_service.set_project_task_type_link_priorities(
+            project_id, task_type_ids
+        )
+
+
+class BatchProjectTaskStatusLinksResource(MethodView):
+    @jwt_required()
+    def post(self, project_id):
+        """
+        Reorder project task status links
+        ---
+        tags:
+          - Crud
+        description: Set the priority of the project's task status links from
+          the given ordered id list in a single request, preserving each
+          link's board roles and replacing one link request per status.
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - task_status_ids
+                properties:
+                  task_status_ids:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+        responses:
+            200:
+              description: Updated task status links
+        """
+        user_service.check_manager_project_access(project_id)
+        task_status_ids = _validate_id_list_body("task_status_ids")
+        return projects_service.set_project_task_status_link_priorities(
+            project_id, task_status_ids
+        )
