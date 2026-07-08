@@ -256,6 +256,34 @@ class TaskServiceTestCase(ApiDBTestCase):
             self.assertEqual(task["assignees"], [person_id])
             self.assertTrue(all(isinstance(a, str) for a in task["assignees"]))
 
+    def test_get_tasks_for_project_loads_only_assignee_ids(self):
+        from sqlalchemy import event
+        from zou.app import db
+
+        person_id = str(self.person.id)
+        statements = []
+
+        def collect(conn, cursor, statement, *args, **kwargs):
+            statements.append(statement)
+
+        engine = db.session.get_bind()
+        event.listen(engine, "before_cursor_execute", collect)
+        try:
+            tasks = tasks_service.get_tasks_for_project(self.project.id)
+        finally:
+            event.remove(engine, "before_cursor_execute", collect)
+
+        assignees = [a for task in tasks for a in task["assignees"]]
+        self.assertIn(person_id, assignees)
+        self.assertTrue(all(isinstance(a, str) for a in assignees))
+
+        person_link_statements = [
+            s for s in statements if "task_person_link" in s.lower()
+        ]
+        self.assertTrue(person_link_statements)
+        for statement in person_link_statements:
+            self.assertNotIn("person.password", statement)
+
     def test_get_task_dicts_for_entity_relations_avoids_n_plus_one(self):
         from sqlalchemy import event
         from zou.app import db
