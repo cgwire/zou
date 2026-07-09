@@ -4,10 +4,6 @@ import time
 from flask_fs.errors import FileNotFound
 
 
-class DownloadFromStorageFailedException(Exception):
-    pass
-
-
 def mkdir_p(path):
     os.makedirs(path, exist_ok=True)
 
@@ -85,7 +81,10 @@ def get_file_path_and_file(
                             f"{prefix}-{instance_id}"
                         ) from exception
                     else:
-                        raise DownloadFromStorageFailedException
+                        # The download reported success but the file is still
+                        # missing or empty: treat it as absent (404) like the
+                        # local backend does, not an unhandled 500.
+                        raise FileNotFound(f"{prefix}-{instance_id}")
 
     return file_path
 
