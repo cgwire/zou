@@ -1925,7 +1925,7 @@ class ProductionEpisodesScheduleItemsResource(MethodView, ArgsMixin):
         )
 
 
-class ProductionSequencesScheduleItemsResource(MethodView):
+class ProductionSequencesScheduleItemsResource(MethodView, ArgsMixin):
     """
     Resource to retrieve sequences schedule items for given task type.
     """
@@ -1939,6 +1939,13 @@ class ProductionSequencesScheduleItemsResource(MethodView):
         tags:
           - Projects
         parameters:
+          - in: query
+            name: episode_id
+            required: false
+            schema:
+              type: string
+              format: uuid
+            description: Restrict results to sequences of the given episode
           - in: path
             name: project_id
             required: true
@@ -1967,8 +1974,11 @@ class ProductionSequencesScheduleItemsResource(MethodView):
         """
         user_service.check_project_access(project_id)
         user_service.block_access_to_vendor()
+        self.check_id_parameter(project_id)
+        self.check_id_parameter(task_type_id)
+        episode_id = self.get_id_parameter("episode") or None
         return schedule_service.get_sequences_schedule_items(
-            project_id, task_type_id
+            project_id, task_type_id, episode_id
         )
 
 

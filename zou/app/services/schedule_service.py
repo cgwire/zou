@@ -151,13 +151,17 @@ def get_episodes_schedule_items(project_id, task_type_id):
 
 def get_sequences_schedule_items(project_id, task_type_id, episode_id=None):
     """
-    Return all asset type schedule items for given project. If no schedule item
-    exists for a given asset type, it creates one.
+    Return all sequence schedule items for given project. If no schedule item
+    exists for a given sequence, it creates one. When an episode is given,
+    results are restricted to the sequences of that episode.
     """
+    sequences = shots_service.get_sequences_for_project(project_id)
     if episode_id is not None:
-        sequences = shots_service.get_sequences_for_episode(episode_id)
-    else:
-        sequences = shots_service.get_sequences_for_project(project_id)
+        sequences = [
+            sequence
+            for sequence in sequences
+            if sequence["parent_id"] == str(episode_id)
+        ]
     sequence_map = base_service.get_model_map_from_array(sequences)
     sequence_type = shots_service.get_sequence_type()
 

@@ -44,6 +44,35 @@ class ScheduleServiceTestCase(ApiDBTestCase):
         self.assertEqual(items[0]["task_type_id"], self.task_type_id)
         self.assertEqual(items[0]["project_id"], self.project_id)
 
+    def test_get_schedule_sequence_items_for_episode(self):
+        episode_2 = self.generate_fixture_episode(name="E02")
+        sequence_2 = self.generate_fixture_sequence(
+            name="S02", episode_id=episode_2.id
+        )
+        sequence_2_id = str(sequence_2.id)
+        episode_2_id = str(episode_2.id)
+
+        # Without episode filter, both sequences are returned.
+        items = schedule_service.get_sequences_schedule_items(
+            self.project.id, self.task_type_id
+        )
+        object_ids = {item["object_id"] for item in items}
+        self.assertEqual(object_ids, {self.sequence_id, sequence_2_id})
+
+        # Filtered on the first episode, only its sequence is returned.
+        items = schedule_service.get_sequences_schedule_items(
+            self.project.id, self.task_type_id, self.episode_id
+        )
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["object_id"], self.sequence_id)
+
+        # Filtered on the second episode, only its sequence is returned.
+        items = schedule_service.get_sequences_schedule_items(
+            self.project.id, self.task_type_id, episode_2_id
+        )
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["object_id"], sequence_2_id)
+
     def test_get_schedule_episode_items(self):
         items = schedule_service.get_episodes_schedule_items(
             self.project.id, self.task_type_id
