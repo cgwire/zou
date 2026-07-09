@@ -2688,6 +2688,8 @@ class SetTaskMainPreviewResource(MethodView):
         responses:
             200:
                 description: Preview set as main preview
+            400:
+                description: The task has no preview file
                 content:
                   application/json:
                     schema:
@@ -2731,12 +2733,13 @@ class SetTaskMainPreviewResource(MethodView):
         preview_file = preview_files_service.get_last_preview_file_for_task(
             task_id
         )
-        entity = None
-        if preview_file is not None:
-            entity = entities_service.update_entity_preview(
-                task["entity_id"], preview_file["id"]
+        if preview_file is None:
+            raise WrongParameterException(
+                "This task has no preview file to set as the main preview."
             )
-        return entity
+        return entities_service.update_entity_preview(
+            task["entity_id"], preview_file["id"]
+        )
 
 
 class PersonsTasksDatesResource(MethodView, ArgsMixin):

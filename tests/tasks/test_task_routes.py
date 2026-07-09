@@ -256,6 +256,14 @@ class TaskRoutesTestCase(ApiDBTestCase):
         entity = self.get(f"/data/entities/{task['entity_id']}")
         self.assertIsNotNone(entity.get("preview_file_id"))
 
+    def test_set_main_preview_without_preview(self):
+        result = self.put(
+            f"/actions/tasks/{self.task.id}/set-main-preview",
+            {},
+            400,
+        )
+        self.assertIn("no preview file", result["message"])
+
     def test_set_main_preview_as_client(self):
         # A client can review but must not redefine the entity thumbnail.
         self.generate_fixture_preview_file()
