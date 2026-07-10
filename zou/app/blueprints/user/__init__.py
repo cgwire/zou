@@ -98,6 +98,13 @@ routes = [
     ("/actions/user/tasks/<task_id>/unsubscribe", TaskUnsubscribeResource),
     ("/actions/user/clear-avatar", ClearAvatarResource),
     (
+        "/data/user/sequences/<sequence_id>/task-types/<task_type_id>/"
+        "subscribed",
+        HasSequenceSubscribedResource,
+    ),
+    # Deprecated alias: the resource is sequence-specific, the entities
+    # segment was misleading.
+    (
         "/data/user/entities/<sequence_id>/task-types/<task_type_id>/subscribed",
         HasSequenceSubscribedResource,
     ),

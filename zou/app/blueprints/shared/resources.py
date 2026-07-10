@@ -412,7 +412,7 @@ class SharedPlaylistCommentAttachmentResource(MethodView):
     """
 
     @require_valid_playlist_share_link()
-    def delete(self, token, comment_id, attachment_id):
+    def delete(self, token, comment_id, attachment_file_id):
         """
         Delete an attachment from a guest-owned comment
         ---
@@ -426,7 +426,7 @@ class SharedPlaylistCommentAttachmentResource(MethodView):
         body = validation.validate_request_body(GuestActionSchema)
         try:
             playlist_sharing_service.remove_guest_comment_attachment(
-                comment_id, str(body.guest_id), attachment_id, token
+                comment_id, str(body.guest_id), attachment_file_id, token
             )
             return "", 204
         except playlist_sharing_service.GuestCommentForbidden:
@@ -441,7 +441,7 @@ class SharedPlaylistAttachmentFileResource(MethodView):
     """
 
     @require_valid_playlist_share_link()
-    def get(self, token, attachment_id, file_name):
+    def get(self, token, attachment_file_id, file_name):
         """
         Download attachment file
         ---
@@ -453,7 +453,7 @@ class SharedPlaylistAttachmentFileResource(MethodView):
         """
         try:
             return playlist_sharing_service.download_shared_attachment(
-                token, attachment_id, file_name
+                token, attachment_file_id, file_name
             )
         except playlist_sharing_service.GuestCommentNotFound:
             return {"error": "Attachment not found"}, 404

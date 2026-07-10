@@ -22,59 +22,59 @@ from zou.app.blueprints.project_templates.resources import (
 
 routes = [
     (
-        "/data/project-templates/<template_id>/task-types",
+        "/data/project-templates/<project_template_id>/task-types",
         ProjectTemplateTaskTypesResource,
     ),
     (
-        "/actions/project-templates/<template_id>/task-types/reorder",
+        "/actions/project-templates/<project_template_id>/task-types/reorder",
         ProjectTemplateTaskTypesReorderResource,
     ),
     (
-        "/data/project-templates/<template_id>/task-types/<task_type_id>",
+        "/data/project-templates/<project_template_id>/task-types/<task_type_id>",
         ProjectTemplateTaskTypeResource,
     ),
     (
-        "/data/project-templates/<template_id>/task-statuses",
+        "/data/project-templates/<project_template_id>/task-statuses",
         ProjectTemplateTaskStatusesResource,
     ),
     (
-        "/actions/project-templates/<template_id>/task-statuses/reorder",
+        "/actions/project-templates/<project_template_id>/task-statuses/reorder",
         ProjectTemplateTaskStatusesReorderResource,
     ),
     (
-        "/data/project-templates/<template_id>/task-statuses/<task_status_id>",
+        "/data/project-templates/<project_template_id>/task-statuses/<task_status_id>",
         ProjectTemplateTaskStatusResource,
     ),
     (
-        "/data/project-templates/<template_id>/asset-types",
+        "/data/project-templates/<project_template_id>/asset-types",
         ProjectTemplateAssetTypesResource,
     ),
     (
-        "/data/project-templates/<template_id>/asset-types/<asset_type_id>",
+        "/data/project-templates/<project_template_id>/asset-types/<asset_type_id>",
         ProjectTemplateAssetTypeResource,
     ),
     (
-        "/data/project-templates/<template_id>/status-automations",
+        "/data/project-templates/<project_template_id>/status-automations",
         ProjectTemplateStatusAutomationsResource,
     ),
     (
-        "/data/project-templates/<template_id>/status-automations/<status_automation_id>",
+        "/data/project-templates/<project_template_id>/status-automations/<status_automation_id>",
         ProjectTemplateStatusAutomationResource,
     ),
     (
-        "/data/project-templates/<template_id>/metadata-descriptors",
+        "/data/project-templates/<project_template_id>/metadata-descriptors",
         ProjectTemplateMetadataDescriptorsResource,
     ),
     (
-        "/data/project-templates/<template_id>/preview-background-files",
+        "/data/project-templates/<project_template_id>/preview-background-files",
         ProjectTemplateBackgroundsResource,
     ),
     (
-        "/data/project-templates/<template_id>/preview-background-files/<preview_background_file_id>",
+        "/data/project-templates/<project_template_id>/preview-background-files/<preview_background_file_id>",
         ProjectTemplateBackgroundResource,
     ),
     (
-        "/data/project-templates/<template_id>/default-preview-background-file",
+        "/data/project-templates/<project_template_id>/default-preview-background-file",
         ProjectTemplateDefaultBackgroundResource,
     ),
     (
@@ -82,7 +82,7 @@ routes = [
         ProjectTemplateFromProjectResource,
     ),
     (
-        "/data/projects/<project_id>/apply-template/<template_id>",
+        "/data/projects/<project_id>/apply-template/<project_template_id>",
         ApplyProjectTemplateResource,
     ),
 ]

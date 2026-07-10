@@ -1207,7 +1207,7 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
-    def get(self, project_id, descriptor_id):
+    def get(self, project_id, metadata_descriptor_id):
         """
         Get metadata descriptor
         ---
@@ -1225,7 +1225,7 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
             description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
-            name: descriptor_id
+            name: metadata_descriptor_id
             required: true
             schema:
               type: string
@@ -1241,10 +1241,10 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
                   type: object
         """
         user_service.check_project_access(project_id)
-        return projects_service.get_metadata_descriptor(descriptor_id)
+        return projects_service.get_metadata_descriptor(metadata_descriptor_id)
 
     @jwt_required()
-    def put(self, project_id, descriptor_id):
+    def put(self, project_id, metadata_descriptor_id):
         """
         Update metadata descriptor
         ---
@@ -1262,7 +1262,7 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
             description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
-            name: descriptor_id
+            name: metadata_descriptor_id
             required: true
             schema:
               type: string
@@ -1308,7 +1308,7 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
         body = validation.validate_request_body(MetadataDescriptorUpdateSchema)
         user_service.check_all_departments_access(
             project_id,
-            projects_service.get_metadata_descriptor(descriptor_id)[
+            projects_service.get_metadata_descriptor(metadata_descriptor_id)[
                 "departments"
             ]
             + body.departments,
@@ -1322,10 +1322,12 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
             raise WrongParameterException("Invalid data_type")
 
         args = body.model_dump()
-        return projects_service.update_metadata_descriptor(descriptor_id, args)
+        return projects_service.update_metadata_descriptor(
+            metadata_descriptor_id, args
+        )
 
     @jwt_required()
-    def delete(self, project_id, descriptor_id):
+    def delete(self, project_id, metadata_descriptor_id):
         """
         Delete metadata descriptor
         ---
@@ -1343,7 +1345,7 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
             description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
-            name: descriptor_id
+            name: metadata_descriptor_id
             required: true
             schema:
               type: string
@@ -1356,11 +1358,11 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
         """
         user_service.check_all_departments_access(
             project_id,
-            projects_service.get_metadata_descriptor(descriptor_id)[
+            projects_service.get_metadata_descriptor(metadata_descriptor_id)[
                 "departments"
             ],
         )
-        projects_service.remove_metadata_descriptor(descriptor_id)
+        projects_service.remove_metadata_descriptor(metadata_descriptor_id)
         return "", 204
 
 
