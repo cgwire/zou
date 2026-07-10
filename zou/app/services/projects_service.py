@@ -956,6 +956,50 @@ def add_metadata_descriptor_to_projects(
     return created
 
 
+def copy_project_metadata_descriptors(project_id):
+    """
+    Copy the Project-scoped metadata descriptors (the all-projects columns)
+    owned by open projects onto the given project so that its cells are
+    editable right away. One copy per distinct field name; field names the
+    project already owns are left untouched. Returns the created descriptors.
+    """
+    descriptors = (
+        MetadataDescriptor.query.join(
+            Project, MetadataDescriptor.project_id == Project.id
+        )
+        .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
+        .filter(ProjectStatus.name.in_(("Active", "open", "Open")))
+        .filter(MetadataDescriptor.entity_type == "Project")
+        .filter(MetadataDescriptor.project_id != project_id)
+        .order_by(MetadataDescriptor.position, MetadataDescriptor.name)
+        .all()
+    )
+    owned_field_names = {
+        descriptor.field_name
+        for descriptor in MetadataDescriptor.query.filter(
+            MetadataDescriptor.project_id == project_id,
+            MetadataDescriptor.entity_type == "Project",
+        )
+    }
+    created = []
+    for descriptor in descriptors:
+        if descriptor.field_name in owned_field_names:
+            continue
+        owned_field_names.add(descriptor.field_name)
+        created.append(
+            add_metadata_descriptor(
+                project_id,
+                "Project",
+                descriptor.name,
+                descriptor.data_type,
+                descriptor.choices,
+                descriptor.for_client,
+                [str(department.id) for department in descriptor.departments],
+            )
+        )
+    return created
+
+
 def update_metadata_descriptor_on_projects(
     project_ids, entity_type, field_name, changes
 ):

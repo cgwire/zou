@@ -104,6 +104,33 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
                 any(d["field_name"] == "ship_code" for d in descriptors)
             )
 
+    def test_new_project_copies_project_descriptors(self):
+        # A Project descriptor on an open project and one on a closed
+        # project: only the open one is copied onto a new project.
+        self.post(
+            f"data/projects/{self.project_id}/metadata-descriptors",
+            {
+                "entity_type": "Project",
+                "name": "Delivery code",
+                "data_type": "string",
+            },
+        )
+        projects_service.add_metadata_descriptor(
+            str(self.project_closed.id),
+            "Project",
+            "Closed only",
+            "string",
+            [],
+            False,
+        )
+        project = self.post("data/projects", {"name": "Fresh Project"}, 201)
+        descriptors = self.get(
+            f"data/projects/{project['id']}/metadata-descriptors"
+        )
+        field_names = [d["field_name"] for d in descriptors]
+        self.assertIn("delivery_code", field_names)
+        self.assertNotIn("closed_only", field_names)
+
     def test_add_asset_metadata_descriptor(self):
         descriptor = self.post(
             f"data/projects/{self.project_id}/metadata-descriptors",
