@@ -48,7 +48,6 @@ from zou.app.services.exception import (
     PersonInProtectedAccounts,
     PreviewBackgroundFileNotFoundException,
     PreviewFileNotFoundException,
-    WrongParameterException,
 )
 
 
@@ -389,9 +388,9 @@ def remove_entities(project_id, entity_ids):
     Delete a list of a project's entities, dispatching each to the right
     removal by its type (asset, shot, edit, concept). Entities with tasks are
     canceled on first deletion, then removed for real when already canceled;
-    concepts are always removed. Every entity is validated to belong to the
-    project and to be a supported type before anything is removed. Returns
-    the removed entity ids.
+    concepts are always removed. Entities that do not belong to the project
+    or are not one of those types are skipped. Returns the ids of the
+    entities that were removed.
     """
     from zou.app.services import (
         assets_service,
@@ -409,9 +408,7 @@ def remove_entities(project_id, entity_ids):
     for entity_id in entity_ids:
         entity = entities_service.get_entity(entity_id)
         if entity["project_id"] != project_id:
-            raise WrongParameterException(
-                f"Entity {entity_id} does not belong to project {project_id}."
-            )
+            continue
         entity_type_id = entity["entity_type_id"]
         if entity_type_id == shot_type_id:
             remove = shots_service.remove_shot
@@ -426,15 +423,12 @@ def remove_entities(project_id, entity_ids):
             remove = assets_service.remove_asset
             force = entity["canceled"]
         else:
-            raise WrongParameterException(
-                f"Entity {entity_id} is not an asset, a shot, an edit "
-                f"or a concept."
-            )
+            continue
         to_remove.append((entity_id, remove, force))
 
     for entity_id, remove, force in to_remove:
         remove(entity_id, force=force)
-    return entity_ids
+    return [entity_id for entity_id, _, _ in to_remove]
 
 
 def remove_tasks_for_project_and_task_type(project_id, task_type_id):
