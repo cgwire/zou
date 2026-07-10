@@ -98,6 +98,8 @@ routes = [
         "/data/entities/<entity_id>/output-file-path",
         EntityOutputFilePathResource,
     ),
+    ("/data/entities/guess-from-path", GuessFromPathResource),
+    # Deprecated snake_case alias, kept because gazu still posts it.
     ("/data/entities/guess_from_path", GuessFromPathResource),
     (
         "/data/working-files/<working_file_id>/file",

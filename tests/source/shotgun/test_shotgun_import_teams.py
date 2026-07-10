@@ -46,7 +46,7 @@ class ImportShotgunProjectConnectionsTestCase(ShotgunTestCase):
             "type": "ProjectUserConnection",
         }
 
-        api_path = "/import/shotgun/projectconnections"
+        api_path = "/import/shotgun/project-connections"
         self.projects = self.post(api_path, [sg_project_persons], 200)
         self.assertEqual(len(self.projects), 1)
 

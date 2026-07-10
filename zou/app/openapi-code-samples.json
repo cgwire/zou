@@ -2340,7 +2340,7 @@
         ]
       }
     },
-    "/data/entities/guess_from_path": {
+    "/data/entities/guess-from-path": {
       "post": {
         "summary": "Guess file tree template",
         "description": "Get list of possible project file tree templates matching a file path and data ids corresponding to template tokens.",
@@ -2348,12 +2348,12 @@
           {
             "lang": "bash",
             "label": "curl",
-            "source": "curl -X POST \"http://api.example.com/data/entities/guess_from_path\" \\\n  -H \"Authorization: Bearer YOUR_API_TOKEN\" \\\n  -H \"Accept: application/json\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"project_id\": \"a24a6ea4-ce75-4665-a070-57453082c25\",\n  \"file_path\": \"/project/asset/working/main_v001.blend\",\n  \"sep\": \"/\"\n}'"
+            "source": "curl -X POST \"http://api.example.com/data/entities/guess-from-path\" \\\n  -H \"Authorization: Bearer YOUR_API_TOKEN\" \\\n  -H \"Accept: application/json\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"project_id\": \"a24a6ea4-ce75-4665-a070-57453082c25\",\n  \"file_path\": \"/project/asset/working/main_v001.blend\",\n  \"sep\": \"/\"\n}'"
           },
           {
             "lang": "python",
             "label": "Python",
-            "source": "import requests\n\nurl = \"http://api.example.com/data/entities/guess_from_path\"\nheaders = {\n    \"Authorization\": \"Bearer YOUR_API_TOKEN\",\n    \"Accept\": \"application/json\",\n    \"Content-Type\": \"application/json\"\n}\nparams = {}\npayload = {\n    \"project_id\": \"a24a6ea4-ce75-4665-a070-57453082c25\",\n    \"file_path\": \"/project/asset/working/main_v001.blend\",\n    \"sep\": \"/\"\n}\n\nresponse = requests.post(\n    url,\n    headers=headers,\n    params=params,\n    json=payload\n)\n\nresponse.raise_for_status()\n\nif response.content:\n    print(response.json())"
+            "source": "import requests\n\nurl = \"http://api.example.com/data/entities/guess-from-path\"\nheaders = {\n    \"Authorization\": \"Bearer YOUR_API_TOKEN\",\n    \"Accept\": \"application/json\",\n    \"Content-Type\": \"application/json\"\n}\nparams = {}\npayload = {\n    \"project_id\": \"a24a6ea4-ce75-4665-a070-57453082c25\",\n    \"file_path\": \"/project/asset/working/main_v001.blend\",\n    \"sep\": \"/\"\n}\n\nresponse = requests.post(\n    url,\n    headers=headers,\n    params=params,\n    json=payload\n)\n\nresponse.raise_for_status()\n\nif response.content:\n    print(response.json())"
           }
         ]
       }
