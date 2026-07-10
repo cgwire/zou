@@ -11,6 +11,7 @@ from flask_jwt_extended import jwt_required
 from zou.app import config
 
 from zou.app.mixin import ArgsMixin
+from zou.app.services.exception import WrongParameterException
 from zou.app.utils import fields
 from zou.app.services import (
     shots_service,
@@ -88,6 +89,10 @@ class OTIOBaseResource(MethodView, ArgsMixin):
                 args["naming_convention"],
                 args["match_case"],
             )
+        except WrongParameterException:
+            # User input error (unsupported or unparseable file): the global
+            # handler answers 400, no server-error log.
+            raise
         except Exception as e:
             current_app.logger.error(
                 f"Import OTIO failed: {type(e).__name__}: {str(e)}"
@@ -161,17 +166,25 @@ class OTIOBaseResource(MethodView, ArgsMixin):
         match_case,
     ):
         result = {"updated_shots": [], "created_shots": []}
-        try:
-            import opentimelineio as otio
+        import opentimelineio as otio
 
+        suffix = pathlib.Path(file_path).suffix.lstrip(".").lower()
+        supported = otio.adapters.suffixes_with_defined_adapters(read=True)
+        if suffix not in supported:
+            raise WrongParameterException(
+                f"Unsupported file type '.{suffix}'. Supported formats: "
+                f"{', '.join(sorted(supported))}."
+            )
+        try:
             kwargs = {}
-            extension = pathlib.Path(file_path).suffix
-            if extension == ".edl":
+            if suffix == "edl":
                 kwargs["rate"] = projects_service.get_project_fps(project_id)
                 kwargs["ignore_timecode_mismatch"] = True
             timeline = otio.adapters.read_from_file(file_path, **kwargs)
         except Exception as e:
-            raise Exception(f"Failed to parse OTIO file: {str(e)}")
+            raise WrongParameterException(
+                f"Failed to parse OTIO file: {str(e)}"
+            )
 
         self.prepare_import(
             project_id,
