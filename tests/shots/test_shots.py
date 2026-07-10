@@ -65,6 +65,9 @@ class ShotTestCase(ApiDBTestCase):
         self.assertEqual(shot["project_name"], self.serialized_project["name"])
         self.assertEqual(len(shot["tasks"]), 1)
 
+    def test_get_shot_with_invalid_id(self):
+        self.get_404("data/shots/undefined")
+
     def test_get_shot_by_name(self):
         shots = self.get(f"data/shots/all?name={self.shot.name.lower()}")
         self.assertEqual(shots[0]["id"], str(self.shot.id))
