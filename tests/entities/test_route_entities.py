@@ -1,6 +1,7 @@
 from tests.base import ApiDBTestCase
 
 from zou.app.models.time_spent import TimeSpent
+from zou.app.utils import fields
 from zou.app.models.entity import EntityConceptLink
 from zou.app.services import (
     comments_service,
@@ -102,6 +103,17 @@ class EntityRoutesTestCase(ApiDBTestCase):
         asset_id = str(self.asset.id)
         path = f"/actions/projects/{self.project.id}/delete-entities"
         self.post(path, [asset_id], 200)
+        self.get(f"/data/assets/{asset_id}", 404)
+
+    def test_delete_entities_ignores_absent_entities(self):
+        # An id that no longer exists (e.g. deleted by someone else) must not
+        # fail the whole batch: it is skipped and the others are processed.
+        self.asset.update({"canceled": True})
+        asset_id = str(self.asset.id)
+        missing_id = str(fields.gen_uuid())
+        path = f"/actions/projects/{self.project.id}/delete-entities"
+        result = self.post(path, [missing_id, asset_id], 200)
+        self.assertEqual(result, [asset_id])
         self.get(f"/data/assets/{asset_id}", 404)
 
     def test_delete_entities_skips_unsupported_entity_type(self):
