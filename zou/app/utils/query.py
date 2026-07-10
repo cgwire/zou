@@ -185,12 +185,19 @@ def apply_sort_by(model, query, sort_by):
 
 
 def cast_value(value, field_key):
-    if field_key.type.python_type is bool:
+    # Some column types (ChoiceType, LocaleType, TimezoneType, ...) do not
+    # implement python_type and raise NotImplementedError; they just fall
+    # through to the generic cast below instead of crashing the request.
+    try:
+        python_type = field_key.type.python_type
+    except NotImplementedError:
+        python_type = None
+    if python_type is bool:
         try:
             return string.strtobool(value)
         except ValueError:
             raise WrongParameterException(f"Invalid boolean value: {value}")
-    elif field_key.type.python_type is uuid.UUID:
+    elif python_type is uuid.UUID:
         if (
             value
             and not isinstance(value, uuid.UUID)
