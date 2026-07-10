@@ -741,7 +741,7 @@ def _validate_id_list_body(key):
     return body[key]
 
 
-class BatchProjectTaskTypeLinksResource(MethodView):
+class ProjectTaskTypeLinksReorderResource(MethodView):
     @jwt_required()
     def post(self, project_id):
         """
@@ -784,7 +784,7 @@ class BatchProjectTaskTypeLinksResource(MethodView):
         )
 
 
-class BatchProjectTaskStatusLinksResource(MethodView):
+class ProjectTaskStatusLinksReorderResource(MethodView):
     @jwt_required()
     def post(self, project_id):
         """
