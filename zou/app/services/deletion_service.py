@@ -44,6 +44,7 @@ from zou.app import config
 from zou.app.services.exception import (
     AttachmentFileNotFoundException,
     CommentNotFoundException,
+    EntityNotFoundException,
     ModelWithRelationsDeletionException,
     PersonInProtectedAccounts,
     PreviewBackgroundFileNotFoundException,
@@ -388,9 +389,9 @@ def remove_entities(project_id, entity_ids):
     Delete a list of a project's entities, dispatching each to the right
     removal by its type (asset, shot, edit, concept). Entities with tasks are
     canceled on first deletion, then removed for real when already canceled;
-    concepts are always removed. Entities that do not belong to the project
-    or are not one of those types are skipped. Returns the ids of the
-    entities that were removed.
+    concepts are always removed. Absent entities and entities that do not
+    belong to the project or are not one of those types are skipped.
+    Returns the ids of the entities that were removed.
     """
     from zou.app.services import (
         assets_service,
@@ -406,7 +407,12 @@ def remove_entities(project_id, entity_ids):
 
     to_remove = []
     for entity_id in entity_ids:
-        entity = entities_service.get_entity(entity_id)
+        try:
+            entity = entities_service.get_entity(entity_id)
+        except EntityNotFoundException:
+            # Already gone (e.g. deleted by someone else): the deletion is
+            # idempotent, skip it like remove_tasks ignores unknown ids.
+            continue
         if entity["project_id"] != project_id:
             continue
         entity_type_id = entity["entity_type_id"]

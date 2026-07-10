@@ -3,6 +3,7 @@ from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.entities.schemas import CreateEntityTasksSchema
+from zou.app.services.exception import EntityNotFoundException
 from zou.app.services import (
     deletion_service,
     entities_service,
@@ -423,7 +424,11 @@ class ProjectDeleteEntitiesResource(MethodView):
         # Authorization stays in the resource: creators may delete their own
         # entities, otherwise project-manager access is required.
         for entity_id in entity_ids:
-            entity = entities_service.get_entity(entity_id)
+            try:
+                entity = entities_service.get_entity(entity_id)
+            except EntityNotFoundException:
+                # Nothing to authorize for an entity that is already gone.
+                continue
             if entity["created_by"] == current_user_id:
                 user_service.check_belong_to_project(project_id)
             else:
