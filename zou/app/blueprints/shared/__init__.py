@@ -44,12 +44,12 @@ routes = [
     ),
     (
         "/shared/playlists/<token>/comments/<comment_id>/"
-        "attachments/<attachment_id>",
+        "attachments/<attachment_file_id>",
         SharedPlaylistCommentAttachmentResource,
     ),
     (
         "/shared/playlists/<token>/attachment-files/"
-        "<attachment_id>/file/<file_name>",
+        "<attachment_file_id>/file/<file_name>",
         SharedPlaylistAttachmentFileResource,
     ),
     (

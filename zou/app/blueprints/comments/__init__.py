@@ -23,7 +23,7 @@ routes = [
         ReplyCommentResource,
     ),
     (
-        "/data/tasks/<task_id>/comments/<comment_id>/attachments/<attachment_id>",
+        "/data/tasks/<task_id>/comments/<comment_id>/attachments/<attachment_file_id>",
         AttachmentResource,
     ),
     (

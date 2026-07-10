@@ -111,6 +111,11 @@ routes = [
     ("/import/shotgun/notes", ImportShotgunNotesResource),
     ("/import/shotgun/errors", ShotgunImportErrorsResource),
     (
+        "/import/shotgun/project-connections",
+        ImportShotgunProjectConnectionsResource,
+    ),
+    # Deprecated alias without hyphen, kept for old sync scripts.
+    (
         "/import/shotgun/projectconnections",
         ImportShotgunProjectConnectionsResource,
     ),
@@ -122,6 +127,11 @@ routes = [
     ("/import/shotgun/remove/episode", ImportRemoveShotgunEpisodeResource),
     ("/import/shotgun/remove/sequence", ImportRemoveShotgunSequenceResource),
     ("/import/shotgun/remove/asset", ImportRemoveShotgunAssetResource),
+    (
+        "/import/shotgun/remove/project-connection",
+        ImportRemoveShotgunProjectConnectionResource,
+    ),
+    # Deprecated alias without hyphen, kept for old sync scripts.
     (
         "/import/shotgun/remove/projectconnection",
         ImportRemoveShotgunProjectConnectionResource,

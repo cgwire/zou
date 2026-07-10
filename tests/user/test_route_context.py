@@ -520,6 +520,17 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         )
         self.assertTrue(self.user_id in recipients)
 
+        subscribed_path = (
+            f'/data/user/sequences/{self.sequence_dict["id"]}'
+            f'/task-types/{self.task_type_dict["id"]}/subscribed'
+        )
+        self.assertTrue(self.get(subscribed_path))
+        deprecated_path = (
+            f'/data/user/entities/{self.sequence_dict["id"]}'
+            f'/task-types/{self.task_type_dict["id"]}/subscribed'
+        )
+        self.assertTrue(self.get(deprecated_path))
+
     def test_unsubscribe_sequence(self):
         path = f'/actions/user/sequences/{self.sequence_dict["id"]}/task-types/{self.task_type_dict["id"]}/'
         self.post(path + "subscribe", {})

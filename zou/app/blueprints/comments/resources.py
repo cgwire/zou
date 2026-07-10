@@ -1,4 +1,3 @@
-
 from flask import request, send_file as flask_send_file, current_app
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -300,7 +299,7 @@ class CommentTaskResource(MethodView):
 
 class AttachmentResource(MethodView):
     @jwt_required()
-    def delete(self, task_id, comment_id, attachment_id):
+    def delete(self, task_id, comment_id, attachment_file_id):
         """
         Delete comment attachment
         ---
@@ -324,7 +323,7 @@ class AttachmentResource(MethodView):
             example: b35b7fb5-df86-5776-b181-68564193d36
             description: Unique identifier of the comment
           - in: path
-            name: attachment_id
+            name: attachment_file_id
             required: true
             type: string
             format: uuid
@@ -342,7 +341,7 @@ class AttachmentResource(MethodView):
             task = tasks_service.get_task(task_id)
             user_service.check_manager_project_access(task["project_id"])
 
-        deletion_service.remove_attachment_file_by_id(attachment_id)
+        deletion_service.remove_attachment_file_by_id(attachment_file_id)
         return "", 204
 
 

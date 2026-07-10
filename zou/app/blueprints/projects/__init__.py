@@ -114,7 +114,7 @@ routes = [
         ProductionMetadataDescriptorsReorderResource,
     ),
     (
-        "/data/projects/<project_id>/metadata-descriptors/<descriptor_id>",
+        "/data/projects/<project_id>/metadata-descriptors/<metadata_descriptor_id>",
         ProductionMetadataDescriptorResource,
     ),
     (

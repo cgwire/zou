@@ -46,6 +46,17 @@ class FileRoutesTestCase(ApiDBTestCase):
 
     def test_guess_from_path(self):
         result = self.post(
+            "/data/entities/guess-from-path",
+            {
+                "project_id": str(self.project.id),
+                "file_path": "/some/test/path",
+            },
+            200,
+        )
+        self.assertIsInstance(result, list)
+
+    def test_guess_from_path_deprecated_alias(self):
+        result = self.post(
             "/data/entities/guess_from_path",
             {
                 "project_id": str(self.project.id),

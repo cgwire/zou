@@ -117,7 +117,7 @@ routes = [
         CreateConceptTasksResource,
     ),
     (
-        "/actions/projects/<project_id>/task-types/<task_type_id>/create-tasks/<entity_type>/",
+        "/actions/projects/<project_id>/task-types/<task_type_id>/create-tasks/<entity_type>",
         CreateEntityTasksResource,
     ),
     ("/actions/tasks/set-main-preview", SetTasksMainPreviewResource),

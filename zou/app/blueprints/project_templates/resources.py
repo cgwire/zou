@@ -27,7 +27,7 @@ from zou.app.blueprints.project_templates.schemas import (
 
 class ProjectTemplateTaskTypesResource(MethodView):
     @jwt_required()
-    def get(self, template_id):
+    def get(self, project_template_id):
         """
         List task types attached to a project template.
         ---
@@ -37,13 +37,13 @@ class ProjectTemplateTaskTypesResource(MethodView):
         permissions.check_manager_permissions()
         try:
             return project_templates_service.get_template_task_types(
-                template_id
+                project_template_id
             )
         except ProjectTemplateNotFoundException:
             return {"message": "Project template not found"}, 404
 
     @jwt_required()
-    def post(self, template_id):
+    def post(self, project_template_id):
         """
         Attach a task type to a project template.
         ---
@@ -54,7 +54,7 @@ class ProjectTemplateTaskTypesResource(MethodView):
         data = validation.validate_request_body(AddTaskTypeSchema)
         try:
             link = project_templates_service.add_task_type_to_template(
-                template_id,
+                project_template_id,
                 data.task_type_id,
                 data.priority,
             )
@@ -67,7 +67,7 @@ class ProjectTemplateTaskTypesResource(MethodView):
 
 class ProjectTemplateTaskTypeResource(MethodView):
     @jwt_required()
-    def delete(self, template_id, task_type_id):
+    def delete(self, project_template_id, task_type_id):
         """
         Detach a task type from a project template.
         ---
@@ -77,7 +77,7 @@ class ProjectTemplateTaskTypeResource(MethodView):
         permissions.check_admin_permissions()
         try:
             project_templates_service.remove_task_type_from_template(
-                template_id, task_type_id
+                project_template_id, task_type_id
             )
         except ProjectTemplateNotFoundException:
             return {"message": "Project template not found"}, 404
@@ -86,7 +86,7 @@ class ProjectTemplateTaskTypeResource(MethodView):
 
 class ProjectTemplateTaskStatusesResource(MethodView):
     @jwt_required()
-    def get(self, template_id):
+    def get(self, project_template_id):
         """
         List task statuses attached to a project template.
         ---
@@ -96,13 +96,13 @@ class ProjectTemplateTaskStatusesResource(MethodView):
         permissions.check_manager_permissions()
         try:
             return project_templates_service.get_template_task_statuses(
-                template_id
+                project_template_id
             )
         except ProjectTemplateNotFoundException:
             return {"message": "Project template not found"}, 404
 
     @jwt_required()
-    def post(self, template_id):
+    def post(self, project_template_id):
         """
         Attach a task status to a project template.
         ---
@@ -113,7 +113,7 @@ class ProjectTemplateTaskStatusesResource(MethodView):
         data = validation.validate_request_body(AddTaskStatusSchema)
         try:
             link = project_templates_service.add_task_status_to_template(
-                template_id,
+                project_template_id,
                 data.task_status_id,
                 data.priority,
                 data.roles_for_board or None,
@@ -127,7 +127,7 @@ class ProjectTemplateTaskStatusesResource(MethodView):
 
 class ProjectTemplateTaskStatusResource(MethodView):
     @jwt_required()
-    def delete(self, template_id, task_status_id):
+    def delete(self, project_template_id, task_status_id):
         """
         Detach a task status from a project template.
         ---
@@ -137,7 +137,7 @@ class ProjectTemplateTaskStatusResource(MethodView):
         permissions.check_admin_permissions()
         try:
             project_templates_service.remove_task_status_from_template(
-                template_id, task_status_id
+                project_template_id, task_status_id
             )
         except ProjectTemplateNotFoundException:
             return {"message": "Project template not found"}, 404
@@ -146,7 +146,7 @@ class ProjectTemplateTaskStatusResource(MethodView):
 
 class ProjectTemplateAssetTypesResource(MethodView):
     @jwt_required()
-    def get(self, template_id):
+    def get(self, project_template_id):
         """
         List asset types attached to a project template.
         ---
@@ -156,13 +156,13 @@ class ProjectTemplateAssetTypesResource(MethodView):
         permissions.check_manager_permissions()
         try:
             return project_templates_service.get_template_asset_types(
-                template_id
+                project_template_id
             )
         except ProjectTemplateNotFoundException:
             return {"message": "Project template not found"}, 404
 
     @jwt_required()
-    def post(self, template_id):
+    def post(self, project_template_id):
         """
         Attach an asset type to a project template.
         ---
@@ -173,7 +173,7 @@ class ProjectTemplateAssetTypesResource(MethodView):
         data = validation.validate_request_body(AddAssetTypeSchema)
         try:
             entry = project_templates_service.add_asset_type_to_template(
-                template_id, data.asset_type_id
+                project_template_id, data.asset_type_id
             )
         except ProjectTemplateNotFoundException:
             return {"message": "Project template not found"}, 404
@@ -184,7 +184,7 @@ class ProjectTemplateAssetTypesResource(MethodView):
 
 class ProjectTemplateAssetTypeResource(MethodView):
     @jwt_required()
-    def delete(self, template_id, asset_type_id):
+    def delete(self, project_template_id, asset_type_id):
         """
         Detach an asset type from a project template.
         ---
@@ -194,7 +194,7 @@ class ProjectTemplateAssetTypeResource(MethodView):
         permissions.check_admin_permissions()
         try:
             project_templates_service.remove_asset_type_from_template(
-                template_id, asset_type_id
+                project_template_id, asset_type_id
             )
         except ProjectTemplateNotFoundException:
             return {"message": "Project template not found"}, 404
@@ -203,7 +203,7 @@ class ProjectTemplateAssetTypeResource(MethodView):
 
 class ProjectTemplateStatusAutomationsResource(MethodView):
     @jwt_required()
-    def get(self, template_id):
+    def get(self, project_template_id):
         """
         List status automations attached to a project template.
         ---
@@ -213,13 +213,13 @@ class ProjectTemplateStatusAutomationsResource(MethodView):
         permissions.check_manager_permissions()
         try:
             return project_templates_service.get_template_status_automations(
-                template_id
+                project_template_id
             )
         except ProjectTemplateNotFoundException:
             return {"message": "Project template not found"}, 404
 
     @jwt_required()
-    def post(self, template_id):
+    def post(self, project_template_id):
         """
         Attach a status automation to a project template.
         ---
@@ -231,7 +231,7 @@ class ProjectTemplateStatusAutomationsResource(MethodView):
         try:
             entry = (
                 project_templates_service.add_status_automation_to_template(
-                    template_id, data.status_automation_id
+                    project_template_id, data.status_automation_id
                 )
             )
         except ProjectTemplateNotFoundException:
@@ -243,7 +243,7 @@ class ProjectTemplateStatusAutomationsResource(MethodView):
 
 class ProjectTemplateStatusAutomationResource(MethodView):
     @jwt_required()
-    def delete(self, template_id, status_automation_id):
+    def delete(self, project_template_id, status_automation_id):
         """
         Detach a status automation from a project template.
         ---
@@ -253,7 +253,7 @@ class ProjectTemplateStatusAutomationResource(MethodView):
         permissions.check_admin_permissions()
         try:
             project_templates_service.remove_status_automation_from_template(
-                template_id, status_automation_id
+                project_template_id, status_automation_id
             )
         except ProjectTemplateNotFoundException:
             return {"message": "Project template not found"}, 404
@@ -262,7 +262,7 @@ class ProjectTemplateStatusAutomationResource(MethodView):
 
 class ProjectTemplateBackgroundsResource(MethodView):
     @jwt_required()
-    def get(self, template_id):
+    def get(self, project_template_id):
         """
         List preview background files attached to a project template.
         ---
@@ -272,13 +272,13 @@ class ProjectTemplateBackgroundsResource(MethodView):
         permissions.check_manager_permissions()
         try:
             return project_templates_service.get_template_preview_background_files(
-                template_id
+                project_template_id
             )
         except ProjectTemplateNotFoundException:
             return {"message": "Project template not found"}, 404
 
     @jwt_required()
-    def post(self, template_id):
+    def post(self, project_template_id):
         """
         Attach a preview background file to a project template.
         ---
@@ -289,7 +289,7 @@ class ProjectTemplateBackgroundsResource(MethodView):
         data = validation.validate_request_body(AddBackgroundSchema)
         try:
             entry = project_templates_service.add_preview_background_file_to_template(
-                template_id, data.preview_background_file_id
+                project_template_id, data.preview_background_file_id
             )
         except ProjectTemplateNotFoundException:
             return {"message": "Project template not found"}, 404
@@ -300,7 +300,7 @@ class ProjectTemplateBackgroundsResource(MethodView):
 
 class ProjectTemplateBackgroundResource(MethodView):
     @jwt_required()
-    def delete(self, template_id, preview_background_file_id):
+    def delete(self, project_template_id, preview_background_file_id):
         """
         Detach a preview background file from a project template.
         ---
@@ -310,7 +310,7 @@ class ProjectTemplateBackgroundResource(MethodView):
         permissions.check_admin_permissions()
         try:
             project_templates_service.remove_preview_background_file_from_template(
-                template_id, preview_background_file_id
+                project_template_id, preview_background_file_id
             )
         except ProjectTemplateNotFoundException:
             return {"message": "Project template not found"}, 404
@@ -319,7 +319,7 @@ class ProjectTemplateBackgroundResource(MethodView):
 
 class ProjectTemplateDefaultBackgroundResource(MethodView):
     @jwt_required()
-    def put(self, template_id):
+    def put(self, project_template_id):
         """
         Set the default preview background file for a project template.
         ---
@@ -330,7 +330,7 @@ class ProjectTemplateDefaultBackgroundResource(MethodView):
         data = validation.validate_request_body(SetDefaultBackgroundSchema)
         try:
             template = project_templates_service.set_template_default_preview_background_file(
-                template_id, data.default_preview_background_file_id
+                project_template_id, data.default_preview_background_file_id
             )
         except ProjectTemplateNotFoundException:
             return {"message": "Project template not found"}, 404
@@ -341,7 +341,7 @@ class ProjectTemplateDefaultBackgroundResource(MethodView):
 
 class ProjectTemplateMetadataDescriptorsResource(MethodView):
     @jwt_required()
-    def put(self, template_id):
+    def put(self, project_template_id):
         """
         Replace the JSONB metadata descriptors snapshot on a project
         template. Admin only.
@@ -361,7 +361,7 @@ class ProjectTemplateMetadataDescriptorsResource(MethodView):
         try:
             template = (
                 project_templates_service.set_template_metadata_descriptors(
-                    template_id, descriptors
+                    project_template_id, descriptors
                 )
             )
         except ProjectTemplateNotFoundException:
@@ -405,7 +405,7 @@ class ProjectTemplateFromProjectResource(MethodView):
 
 class ApplyProjectTemplateResource(MethodView):
     @jwt_required()
-    def post(self, project_id, template_id):
+    def post(self, project_id, project_template_id):
         """
         Apply a project template to an existing project. Admin only.
         ---
@@ -415,7 +415,7 @@ class ApplyProjectTemplateResource(MethodView):
         permissions.check_admin_permissions()
         try:
             project = project_templates_service.apply_template_to_project(
-                project_id, template_id
+                project_id, project_template_id
             )
         except ProjectNotFoundException:
             return {"message": "Project not found"}, 404
@@ -428,7 +428,7 @@ class ApplyProjectTemplateResource(MethodView):
 
 class ProjectTemplateTaskTypesReorderResource(MethodView):
     @jwt_required()
-    def post(self, template_id):
+    def post(self, project_template_id):
         """
         Reorder template task types
         ---
@@ -439,7 +439,7 @@ class ProjectTemplateTaskTypesReorderResource(MethodView):
           request per task type.
         parameters:
           - in: path
-            name: template_id
+            name: project_template_id
             required: true
             schema:
               type: string
@@ -472,13 +472,13 @@ class ProjectTemplateTaskTypesReorderResource(MethodView):
                 "'task_type_ids' list."
             )
         return project_templates_service.set_template_task_type_priorities(
-            template_id, body["task_type_ids"]
+            project_template_id, body["task_type_ids"]
         )
 
 
 class ProjectTemplateTaskStatusesReorderResource(MethodView):
     @jwt_required()
-    def post(self, template_id):
+    def post(self, project_template_id):
         """
         Reorder template task statuses
         ---
@@ -489,7 +489,7 @@ class ProjectTemplateTaskStatusesReorderResource(MethodView):
           link's board roles and replacing one link request per status.
         parameters:
           - in: path
-            name: template_id
+            name: project_template_id
             required: true
             schema:
               type: string
@@ -522,5 +522,5 @@ class ProjectTemplateTaskStatusesReorderResource(MethodView):
                 "'task_status_ids' list."
             )
         return project_templates_service.set_template_task_status_priorities(
-            template_id, body["task_status_ids"]
+            project_template_id, body["task_status_ids"]
         )
