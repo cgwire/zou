@@ -39,6 +39,13 @@ class PersonRoutesTestCase(ApiDBTestCase):
             {"duration": 300},
         )
 
+    def test_get_persons_filtered_by_choice_field(self):
+        # Filtering on a ChoiceType column (role) used to 500: its SQLAlchemy
+        # type raises NotImplementedError for python_type.
+        persons = self.get("data/persons?role=admin")
+        self.assertTrue(len(persons) >= 1)
+        self.assertTrue(all(p["role"] == "admin" for p in persons))
+
     # --- Time spents ---
 
     def test_get_person_time_spents(self):
