@@ -1829,7 +1829,7 @@ class ProductionTaskTypeScheduleItemsResource(MethodView):
         return schedule_service.get_task_types_schedule_items(project_id)
 
 
-class ProductionAssetTypesScheduleItemsResource(MethodView):
+class ProductionAssetTypesScheduleItemsResource(MethodView, ArgsMixin):
     """
     Resource to retrieve asset types schedule items for given task type.
     """
@@ -1843,6 +1843,13 @@ class ProductionAssetTypesScheduleItemsResource(MethodView):
         tags:
           - Projects
         parameters:
+          - in: query
+            name: episode_id
+            required: false
+            schema:
+              type: string
+              format: uuid
+            description: Restrict results to asset types of the given episode
           - in: path
             name: project_id
             required: true
@@ -1871,8 +1878,11 @@ class ProductionAssetTypesScheduleItemsResource(MethodView):
         """
         user_service.check_project_access(project_id)
         user_service.block_access_to_vendor()
+        self.check_id_parameter(project_id)
+        self.check_id_parameter(task_type_id)
+        episode_id = self.get_id_parameter("episode") or None
         return schedule_service.get_asset_types_schedule_items(
-            project_id, task_type_id
+            project_id, task_type_id, episode_id
         )
 
 

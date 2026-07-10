@@ -1,5 +1,7 @@
 from tests.base import ApiDBTestCase
 
+from zou.app.models.entity import Entity
+
 
 class ProjectScheduleRouteTestCase(ApiDBTestCase):
     def setUp(self):
@@ -64,3 +66,34 @@ class ProjectScheduleRouteTestCase(ApiDBTestCase):
         self.assertEqual(items[0]["object_id"], self.asset_type_id)
         self.assertEqual(items[0]["task_type_id"], self.task_type_id)
         self.assertEqual(items[0]["project_id"], self.project_id)
+
+    def test_get_schedule_asset_type_items_for_episode(self):
+        self.generate_fixture_asset_types()
+        episode_1 = self.episode
+        episode_2 = self.generate_fixture_episode(name="E02")
+        episode_2_id = str(episode_2.id)
+        asset_type_character_id = str(self.asset_type_character.id)
+
+        Entity.create(
+            name="Tree E01",
+            project_id=self.project.id,
+            entity_type_id=self.asset_type.id,
+            source_id=episode_1.id,
+        )
+        Entity.create(
+            name="Rabbit E02",
+            project_id=self.project.id,
+            entity_type_id=self.asset_type_character.id,
+            source_id=episode_2.id,
+        )
+        base_path = f"/data/projects/{self.project_id}/schedule-items/{self.task_type_id}/asset-types"
+
+        # Filtered on the first episode, only its asset type is returned.
+        items = self.get(f"{base_path}?episode_id={self.episode_id}")
+        object_ids = {item["object_id"] for item in items}
+        self.assertEqual(object_ids, {self.asset_type_id})
+
+        # Filtered on the second episode, only its asset type is returned.
+        items = self.get(f"{base_path}?episode_id={episode_2_id}")
+        object_ids = {item["object_id"] for item in items}
+        self.assertEqual(object_ids, {asset_type_character_id})

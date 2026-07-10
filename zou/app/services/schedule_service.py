@@ -101,21 +101,33 @@ def get_task_types_schedule_items(project_id):
     )
 
 
-def get_asset_types_schedule_items(project_id, task_type_id):
+def get_asset_types_schedule_items(project_id, task_type_id, episode_id=None):
     """
     Return all asset type schedule items for given project. If no schedule item
-    exists for a given asset type, it creates one.
+    exists for a given asset type, it creates one. When an episode is given,
+    results are restricted to the asset types having assets in that episode.
     """
-    asset_types = assets_service.get_asset_types_for_project(project_id)
+    if episode_id is not None:
+        asset_types = assets_service.get_asset_types_for_episode(
+            project_id, episode_id
+        )
+    else:
+        asset_types = assets_service.get_asset_types_for_project(project_id)
     asset_type_map = base_service.get_model_map_from_array(asset_types)
-    existing_schedule_items = set(
+
+    query = (
         ScheduleItem.query.join(
             EntityType, ScheduleItem.object_id == EntityType.id
         )
         .filter(ScheduleItem.project_id == project_id)
         .filter(ScheduleItem.task_type_id == task_type_id)
-        .all()
     )
+    if episode_id is not None:
+        query = query.filter(
+            ScheduleItem.object_id.in_(list(asset_type_map.keys()))
+        )
+    existing_schedule_items = set(query.all())
+
     return get_entity_schedule_items(
         project_id,
         task_type_id,
