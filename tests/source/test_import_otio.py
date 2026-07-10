@@ -1,4 +1,5 @@
 import os
+import tempfile
 
 from tests.base import ApiDBTestCase
 
@@ -67,6 +68,28 @@ class ImportOTIOEdlTestCase(ApiDBTestCase):
         sequences = shots_service.get_sequences()
         sequence_names = {s["name"] for s in sequences}
         self.assertEqual(sequence_names, {"SQ010", "SQ020"})
+
+    def _upload_bad_file(self, suffix, content):
+        path = f"/import/otio/projects/{self.project.id}"
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=suffix, delete=False
+        ) as bad_file:
+            bad_file.write(content)
+        try:
+            return self.upload_file(path, bad_file.name, code=400)
+        finally:
+            os.remove(bad_file.name)
+
+    def test_import_unsupported_file_type(self):
+        # A file OTIO has no adapter for (e.g. a csv) is a user error: clean
+        # 400 with an explicit message, not a logged server error.
+        result = self._upload_bad_file(".csv", "shot;frame_in;frame_out\n")
+        self.assertIn("Unsupported file type '.csv'", result["message"])
+        self.assertIn("edl", result["message"])
+
+    def test_import_unparseable_file(self):
+        result = self._upload_bad_file(".edl", "this is not an edl\n")
+        self.assertIn("Failed to parse OTIO file", result["message"])
 
     def test_import_edl_updates_existing_shots(self):
         self.import_edl("no_offset.edl")
