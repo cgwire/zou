@@ -71,7 +71,7 @@ routes = [
         "/data/persons/<person_id>/quota-shots/day/<year>/<month>/<day>",
         PersonDayQuotaShotsResource,
     ),
-    ("/data/persons/time-spents/year-table/", TimeSpentYearsResource),
+    ("/data/persons/time-spents/year-table", TimeSpentYearsResource),
     ("/data/persons/time-spents/month-table/<year>", TimeSpentMonthsResource),
     ("/data/persons/time-spents/week-table/<year>", TimeSpentWeekResource),
     (
