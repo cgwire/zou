@@ -405,7 +405,9 @@ class ProjectDeleteEntitiesResource(MethodView):
                 description: Entity unique identifiers to delete
         responses:
           200:
-            description: Deleted entity ids
+            description: Ids of the entities that were deleted. Entities that
+              do not belong to the project or are not an asset, a shot, an
+              edit or a concept are skipped.
             content:
               application/json:
                 schema:
@@ -413,9 +415,6 @@ class ProjectDeleteEntitiesResource(MethodView):
                   items:
                     type: string
                     format: uuid
-          400:
-            description: An entity does not belong to the project or is
-              not an asset, a shot, an edit or a concept
         """
         projects_service.get_project(project_id)
         entity_ids = validation.validate_id_list()

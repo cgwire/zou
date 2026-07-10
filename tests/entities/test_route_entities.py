@@ -104,10 +104,23 @@ class EntityRoutesTestCase(ApiDBTestCase):
         self.post(path, [asset_id], 200)
         self.get(f"/data/assets/{asset_id}", 404)
 
-    def test_delete_entities_rejects_unsupported_entity_type(self):
+    def test_delete_entities_skips_unsupported_entity_type(self):
         self.generate_fixture_sequence()
+        sequence_id = str(self.sequence.id)
         path = f"/actions/projects/{self.project.id}/delete-entities"
-        self.post(path, [str(self.sequence.id)], 400)
+        result = self.post(path, [sequence_id], 200)
+        # A sequence is not a deletable type: it is skipped, not deleted.
+        self.assertEqual(result, [])
+        self.get(f"/data/entities/{sequence_id}")
+
+    def test_delete_entities_skips_entity_from_other_project(self):
+        asset_id = str(self.asset.id)
+        other_project = self.generate_fixture_project(name="Other Project")
+        path = f"/actions/projects/{other_project.id}/delete-entities"
+        result = self.post(path, [asset_id], 200)
+        # The asset belongs to another project: it is skipped, not deleted.
+        self.assertEqual(result, [])
+        self.get(f"/data/assets/{asset_id}")
 
     def test_delete_entities_as_artist_is_forbidden(self):
         self.generate_fixture_user_cg_artist()
