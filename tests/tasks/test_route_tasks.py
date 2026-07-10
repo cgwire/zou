@@ -688,7 +688,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
         projects_service.create_project_task_type_link(project_id, tt1, 1)
         projects_service.create_project_task_type_link(project_id, tt2, 2)
         result = self.post(
-            f"/data/projects/{project_id}/task-type-links/reorder",
+            f"/actions/projects/{project_id}/task-type-links/reorder",
             {"task_type_ids": [tt2, tt1]},
             200,
         )
@@ -700,7 +700,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
         tt1 = str(self.task_type.id)
         tt2 = str(self.task_type_concept.id)
         result = self.post(
-            "/data/task-types/reorder",
+            "/actions/task-types/reorder",
             {"task_type_ids": [tt2, tt1]},
             200,
         )
@@ -726,7 +726,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
             project_id=project_id, task_status_id=ts2, priority=2
         )
         result = self.post(
-            f"/data/projects/{project_id}/task-status-links/reorder",
+            f"/actions/projects/{project_id}/task-status-links/reorder",
             {"task_status_ids": [ts2, ts1]},
             200,
         )

@@ -26,7 +26,7 @@ routes = [
         ProjectTemplateTaskTypesResource,
     ),
     (
-        "/data/project-templates/<template_id>/task-types/reorder",
+        "/actions/project-templates/<template_id>/task-types/reorder",
         ProjectTemplateTaskTypesReorderResource,
     ),
     (
@@ -38,7 +38,7 @@ routes = [
         ProjectTemplateTaskStatusesResource,
     ),
     (
-        "/data/project-templates/<template_id>/task-statuses/reorder",
+        "/actions/project-templates/<template_id>/task-statuses/reorder",
         ProjectTemplateTaskStatusesReorderResource,
     ),
     (

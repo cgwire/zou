@@ -122,7 +122,7 @@ routes = [
         AllProjectsMetadataDescriptorsResource,
     ),
     (
-        "/data/metadata-descriptors/all-projects/reorder",
+        "/actions/metadata-descriptors/all-projects/reorder",
         AllProjectsMetadataDescriptorsReorderResource,
     ),
     (

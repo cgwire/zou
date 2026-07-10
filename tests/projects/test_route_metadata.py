@@ -86,7 +86,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         self.assertEqual(len(updated), 2)
 
         self.post(
-            "data/metadata-descriptors/all-projects/reorder",
+            "actions/metadata-descriptors/all-projects/reorder",
             {"entity_type": "Project", "field_order": ["ship_code"]},
             200,
         )

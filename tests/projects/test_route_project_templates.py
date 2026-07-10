@@ -102,7 +102,7 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
             {"task_type_id": tt2, "priority": 2},
         )
         result = self.post(
-            f"/data/project-templates/{template['id']}/task-types/reorder",
+            f"/actions/project-templates/{template['id']}/task-types/reorder",
             {"task_type_ids": [tt2, tt1]},
             200,
         )
@@ -127,7 +127,7 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
             {"task_status_id": ts2, "priority": 2},
         )
         result = self.post(
-            f"/data/project-templates/{template['id']}/task-statuses/reorder",
+            f"/actions/project-templates/{template['id']}/task-statuses/reorder",
             {"task_status_ids": [ts2, ts1]},
             200,
         )
