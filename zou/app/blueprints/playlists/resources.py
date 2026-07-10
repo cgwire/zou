@@ -372,10 +372,13 @@ class PlaylistAddEntitiesResource(MethodView, ArgsMixin):
         """
         Add entities to playlist
         ---
-        description: Atomically add several entities to the given playlist
-          in a single database write. Entities already in the playlist are
-          skipped. Each added entity gets its latest uploaded preview
-          file, restricted to the playlist task type when one is set.
+        description: Atomically add several (entity, preview) couples to the
+          given playlist in a single database write. A playlist entry is the
+          couple, so the same entity may be added several times with
+          different previews; only exact duplicate couples are skipped. When
+          a couple has no preview_file_id, the entity's latest preview
+          (highest revision, restricted to the playlist task type when one is
+          set) is used.
         tags:
           - Playlists
         parameters:
@@ -393,14 +396,23 @@ class PlaylistAddEntitiesResource(MethodView, ArgsMixin):
               schema:
                 type: object
                 required:
-                  - entity_ids
+                  - entities
                 properties:
-                  entity_ids:
+                  entities:
                     type: array
                     items:
-                      type: string
-                      format: uuid
-                    description: Entity unique identifiers to add to playlist
+                      type: object
+                      required:
+                        - entity_id
+                      properties:
+                        entity_id:
+                          type: string
+                          format: uuid
+                        preview_file_id:
+                          type: string
+                          format: uuid
+                          nullable: true
+                    description: Entity/preview couples to add to the playlist
         responses:
           200:
             description: Updated playlist
@@ -413,8 +425,15 @@ class PlaylistAddEntitiesResource(MethodView, ArgsMixin):
         user_service.check_playlist_update_access(playlist)
 
         body = validation.validate_request_body(AddEntitiesToPlaylistSchema)
+        entities = [
+            {
+                "entity_id": entity.entity_id,
+                "preview_file_id": entity.preview_file_id,
+            }
+            for entity in body.entities
+        ]
         return playlists_service.add_entities_to_playlist(
-            playlist_id, body.entity_ids
+            playlist_id, entities
         )
 
 

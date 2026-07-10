@@ -133,48 +133,127 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
         playlist_id = str(self.playlist.id)
         result = self.post(
             f"/actions/playlists/{playlist_id}/add-entities",
-            {"entity_ids": [first_shot_id, second_shot_id]},
+            {
+                "entities": [
+                    {"entity_id": first_shot_id},
+                    {"entity_id": second_shot_id},
+                ]
+            },
             200,
         )
         entity_ids = [shot["entity_id"] for shot in result["shots"]]
         self.assertEqual(entity_ids, [first_shot_id, second_shot_id])
 
-    def test_add_entities_to_playlist_skips_present_entities(self):
-        first_shot_id = str(self.shot.id)
-        self.generate_fixture_shot("SH02")
-        second_shot_id = str(self.shot.id)
-        self.generate_fixture_playlist("Add Entities Playlist")
-        playlist_id = str(self.playlist.id)
-        self.post(
-            f"/actions/playlists/{playlist_id}/add-entity",
-            {"entity_id": first_shot_id},
-            200,
-        )
-        result = self.post(
-            f"/actions/playlists/{playlist_id}/add-entities",
-            {"entity_ids": [first_shot_id, second_shot_id]},
-            200,
-        )
-        entity_ids = [shot["entity_id"] for shot in result["shots"]]
-        self.assertEqual(entity_ids, [first_shot_id, second_shot_id])
-
-    def test_add_entities_to_playlist_picks_latest_preview_file(self):
+    def test_add_entities_to_playlist_skips_duplicate_couple(self):
+        # The same (entity, preview) couple twice collapses to one entry.
         self.generate_fixture_preview_file(
             revision=1, task_id=self.shot_task.id
         )
+        preview_id = str(self.preview_file.id)
+        self.generate_fixture_playlist("Add Entities Playlist")
+        playlist_id = str(self.playlist.id)
+        shot_id = str(self.shot.id)
+        result = self.post(
+            f"/actions/playlists/{playlist_id}/add-entities",
+            {
+                "entities": [
+                    {"entity_id": shot_id, "preview_file_id": preview_id},
+                    {"entity_id": shot_id, "preview_file_id": preview_id},
+                ]
+            },
+            200,
+        )
+        couples = [
+            (shot["entity_id"], shot.get("preview_file_id"))
+            for shot in result["shots"]
+        ]
+        self.assertEqual(couples, [(shot_id, preview_id)])
+
+    def test_add_entities_same_entity_twice_with_different_previews(self):
+        # The same entity may appear several times with different previews.
+        self.generate_fixture_preview_file(
+            revision=1, task_id=self.shot_task.id
+        )
+        first_preview_id = str(self.preview_file.id)
+        self.generate_fixture_preview_file(
+            revision=2, task_id=self.shot_task.id
+        )
+        second_preview_id = str(self.preview_file.id)
+        self.generate_fixture_playlist("Add Entities Playlist")
+        playlist_id = str(self.playlist.id)
+        shot_id = str(self.shot.id)
+        result = self.post(
+            f"/actions/playlists/{playlist_id}/add-entities",
+            {
+                "entities": [
+                    {
+                        "entity_id": shot_id,
+                        "preview_file_id": first_preview_id,
+                    },
+                    {
+                        "entity_id": shot_id,
+                        "preview_file_id": second_preview_id,
+                    },
+                ]
+            },
+            200,
+        )
+        couples = [
+            (shot["entity_id"], shot.get("preview_file_id"))
+            for shot in result["shots"]
+        ]
+        self.assertEqual(
+            couples,
+            [(shot_id, first_preview_id), (shot_id, second_preview_id)],
+        )
+
+    def test_add_entities_to_playlist_picks_latest_preview_file(self):
+        # No preview given: the entity's latest preview is resolved by
+        # revision. Create the highest revision first so an ordering by
+        # created_at would pick the wrong one.
         self.generate_fixture_preview_file(
             revision=2, task_id=self.shot_task.id
         )
         latest_preview_file_id = str(self.preview_file.id)
+        self.generate_fixture_preview_file(
+            revision=1, task_id=self.shot_task.id
+        )
         self.generate_fixture_playlist("Add Entities Playlist")
         playlist_id = str(self.playlist.id)
         result = self.post(
             f"/actions/playlists/{playlist_id}/add-entities",
-            {"entity_ids": [str(self.shot.id)]},
+            {"entities": [{"entity_id": str(self.shot.id)}]},
             200,
         )
         self.assertEqual(
             result["shots"][0]["preview_file_id"], latest_preview_file_id
+        )
+
+    def test_add_entities_to_playlist_uses_playlist_task_type(self):
+        # The shot has a preview on its animation task (from setUp)...
+        self.generate_fixture_preview_file(
+            revision=1, task_id=self.shot_task.id
+        )
+        animation_preview_id = str(self.preview_file.id)
+        # ...and a higher-revision preview on a layout task.
+        layout_task = self.generate_fixture_shot_task(
+            name="Layout", task_type_id=self.task_type_layout.id
+        )
+        self.generate_fixture_preview_file(revision=9, task_id=layout_task.id)
+        # The playlist is scoped to the animation task type.
+        self.generate_fixture_playlist(
+            "Task Type Playlist", task_type_id=self.task_type_animation.id
+        )
+        playlist_id = str(self.playlist.id)
+        result = self.post(
+            f"/actions/playlists/{playlist_id}/add-entities",
+            {"entities": [{"entity_id": str(self.shot.id)}]},
+            200,
+        )
+        # Despite the layout preview's higher revision, the playlist task type
+        # wins, so the animation preview is picked.
+        self.assertEqual(
+            result["shots"][0]["preview_file_id"], animation_preview_id
         )
 
     def test_add_entities_as_artist_is_forbidden(self):
@@ -183,7 +262,7 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
         self.log_in_cg_artist()
         self.post(
             f"/actions/playlists/{playlist['id']}/add-entities",
-            {"entity_ids": [str(self.shot.id)]},
+            {"entities": [{"entity_id": str(self.shot.id)}]},
             403,
         )
 
