@@ -279,6 +279,25 @@ class TaskRoutesTestCase(ApiDBTestCase):
         task = tasks_service.get_task(shot_task_id, relations=True)
         self.assertEqual(len(task["assignees"]), 0)
 
+    def test_update_task_assignees(self):
+        # The fixture task starts assigned to self.person.
+        self.generate_fixture_task()
+        task_id = str(self.task.id)
+        person_id = str(self.person.id)
+        self.put(f"data/tasks/{task_id}", {"assignees": []}, 200)
+        task = tasks_service.get_task(task_id, relations=True)
+        self.assertEqual(task["assignees"], [])
+        self.put(f"data/tasks/{task_id}", {"assignees": [person_id]}, 200)
+        task = tasks_service.get_task(task_id, relations=True)
+        self.assertEqual(task["assignees"], [person_id])
+        # The generic update emits the same task:assign event as the assign
+        # route, so the assignation notification is created too.
+        notifications = notifications_service.get_last_notifications(
+            "assignation"
+        )
+        self.assertEqual(len(notifications), 1)
+        self.assertEqual(str(notifications[0]["person_id"]), person_id)
+
     def test_set_tasks_priority(self):
         self.generate_fixture_task()
         self.generate_fixture_shot_task()
