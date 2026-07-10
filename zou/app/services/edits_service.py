@@ -17,6 +17,7 @@ from zou.app.models.entity import (
     EntityConceptLink,
 )
 from zou.app.models.project import Project
+from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 
@@ -302,6 +303,7 @@ def remove_edit(edit_id, force=False):
 
         EntityVersion.delete_all_by(entity_id=edit_id)
         Subscription.delete_all_by(entity_id=edit_id)
+        ScheduleItem.delete_all_by(object_id=edit_id)
         EntityLink.delete_all_by(entity_in_id=edit_id)
         EntityLink.delete_all_by(entity_out_id=edit_id)
         EntityConceptLink.delete_all_by(entity_in_id=edit_id)

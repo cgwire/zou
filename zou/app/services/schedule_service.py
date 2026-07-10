@@ -19,6 +19,7 @@ from zou.app.utils import events, fields, cache
 from zou.app.services import (
     assets_service,
     base_service,
+    edits_service,
     shots_service,
     tasks_service,
     projects_service,
@@ -201,6 +202,41 @@ def get_sequences_schedule_items(project_id, task_type_id, episode_id=None):
         task_type_id,
         sequences,
         sequence_map,
+        existing_schedule_items,
+    )
+
+
+def get_edits_schedule_items(project_id, task_type_id, episode_id=None):
+    """
+    Return all edit schedule items for given project. If no schedule item
+    exists for a given edit, it creates one. Canceled edits are ignored.
+    When an episode is given, results are restricted to the edits of that
+    episode.
+    """
+    edits = edits_service.get_edits_for_project(project_id)
+    edits = [edit for edit in edits if not edit["canceled"]]
+    if episode_id is not None:
+        edits = [
+            edit for edit in edits if edit["parent_id"] == str(episode_id)
+        ]
+    edit_map = base_service.get_model_map_from_array(edits)
+    edit_type = edits_service.get_edit_type()
+
+    query = (
+        ScheduleItem.query.join(Entity, ScheduleItem.object_id == Entity.id)
+        .filter(ScheduleItem.project_id == project_id)
+        .filter(Entity.entity_type_id == edit_type["id"])
+        .filter(ScheduleItem.task_type_id == task_type_id)
+    )
+    if episode_id is not None:
+        query = query.filter(Entity.parent_id == episode_id)
+    existing_schedule_items = set(query.all())
+
+    return get_entity_schedule_items(
+        project_id,
+        task_type_id,
+        edits,
+        edit_map,
         existing_schedule_items,
     )
 

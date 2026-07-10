@@ -2000,6 +2000,63 @@ class ProductionSequencesScheduleItemsResource(MethodView, ArgsMixin):
         )
 
 
+class ProductionEditsScheduleItemsResource(MethodView, ArgsMixin):
+    """
+    Resource to retrieve edits schedule items for given task type.
+    """
+
+    @jwt_required()
+    def get(self, project_id, task_type_id):
+        """
+        Get edits schedule items
+        ---
+        description: Retrieve edits schedule items for given task type.
+        tags:
+          - Projects
+        parameters:
+          - in: query
+            name: episode_id
+            required: false
+            schema:
+              type: string
+              format: uuid
+            description: Restrict results to edits of the given episode
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: task_type_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            description: Task type unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
+        responses:
+          200:
+            description: All edits schedule items for given task type
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+        """
+        user_service.check_project_access(project_id)
+        user_service.block_access_to_vendor()
+        self.check_id_parameter(project_id)
+        self.check_id_parameter(task_type_id)
+        episode_id = self.get_id_parameter("episode") or None
+        return schedule_service.get_edits_schedule_items(
+            project_id, task_type_id, episode_id
+        )
+
+
 class ProductionBudgetsResource(MethodView, ArgsMixin):
 
     @jwt_required()
