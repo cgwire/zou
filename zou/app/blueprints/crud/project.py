@@ -268,6 +268,11 @@ class ProjectsResource(BaseModelsResource):
             project_dict["first_episode_id"] = fields.serialize_value(
                 episode["id"]
             )
+        # The all-projects metadata columns are one Project descriptor row
+        # per project: copy them onto the new project so its cells are
+        # editable right away, instead of one create request per descriptor
+        # from the client.
+        projects_service.copy_project_metadata_descriptors(str(project.id))
         user_service.clear_project_cache()
         projects_service.clear_project_cache("")
         return project_dict

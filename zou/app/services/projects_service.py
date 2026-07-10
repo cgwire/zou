@@ -497,6 +497,72 @@ def remove_task_status_setting(project_id, task_status_id):
     )
 
 
+def update_project_settings(
+    project_id,
+    task_types=None,
+    task_status_ids=None,
+    asset_type_ids=None,
+    replace_task_types=False,
+):
+    """
+    Add several task types (with their priority), task statuses and asset
+    types to the project settings in a single operation. Unknown ids are
+    skipped. When replace_task_types is set, the given task type list is the
+    full wanted set: existing links absent from it are removed.
+    """
+    project = get_project_raw(project_id)
+    project_id = str(project.id)
+
+    wanted_task_types = {}
+    for entry in task_types or []:
+        wanted_task_types[str(entry["task_type_id"])] = entry.get("priority")
+
+    existing_links = {
+        str(link.task_type_id): link
+        for link in ProjectTaskTypeLink.query.filter_by(project_id=project_id)
+    }
+    for task_type_id, priority in wanted_task_types.items():
+        link = existing_links.get(task_type_id)
+        if link is None:
+            if TaskType.get(task_type_id) is not None:
+                ProjectTaskTypeLink.create(
+                    task_type_id=task_type_id,
+                    project_id=project_id,
+                    priority=priority,
+                )
+        elif priority is not None and link.priority != priority:
+            link.update({"priority": priority})
+    if replace_task_types:
+        for task_type_id, link in existing_links.items():
+            if task_type_id not in wanted_task_types:
+                task_type = TaskType.get(task_type_id)
+                if task_type is not None:
+                    project.task_types.remove(task_type)
+
+    task_status_map = {
+        str(status.id): status for status in project.task_statuses
+    }
+    for task_status_id in task_status_ids or []:
+        task_status = TaskStatus.get(task_status_id)
+        if (
+            task_status is not None
+            and str(task_status.id) not in task_status_map
+        ):
+            project.task_statuses.append(task_status)
+            task_status_map[str(task_status.id)] = task_status
+
+    asset_type_map = {
+        str(asset_type.id): asset_type for asset_type in project.asset_types
+    }
+    for asset_type_id in asset_type_ids or []:
+        asset_type = EntityType.get(asset_type_id)
+        if asset_type is not None and str(asset_type.id) not in asset_type_map:
+            project.asset_types.append(asset_type)
+            asset_type_map[str(asset_type.id)] = asset_type
+
+    return _save_project(project)
+
+
 def add_status_automation_setting(project_id, status_automation_id):
     """
     Add a status automation listed in database to the project status automations.
@@ -887,6 +953,50 @@ def add_metadata_descriptor_to_projects(
                     departments,
                 )
             )
+    return created
+
+
+def copy_project_metadata_descriptors(project_id):
+    """
+    Copy the Project-scoped metadata descriptors (the all-projects columns)
+    owned by open projects onto the given project so that its cells are
+    editable right away. One copy per distinct field name; field names the
+    project already owns are left untouched. Returns the created descriptors.
+    """
+    descriptors = (
+        MetadataDescriptor.query.join(
+            Project, MetadataDescriptor.project_id == Project.id
+        )
+        .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
+        .filter(ProjectStatus.name.in_(("Active", "open", "Open")))
+        .filter(MetadataDescriptor.entity_type == "Project")
+        .filter(MetadataDescriptor.project_id != project_id)
+        .order_by(MetadataDescriptor.position, MetadataDescriptor.name)
+        .all()
+    )
+    owned_field_names = {
+        descriptor.field_name
+        for descriptor in MetadataDescriptor.query.filter(
+            MetadataDescriptor.project_id == project_id,
+            MetadataDescriptor.entity_type == "Project",
+        )
+    }
+    created = []
+    for descriptor in descriptors:
+        if descriptor.field_name in owned_field_names:
+            continue
+        owned_field_names.add(descriptor.field_name)
+        created.append(
+            add_metadata_descriptor(
+                project_id,
+                "Project",
+                descriptor.name,
+                descriptor.data_type,
+                descriptor.choices,
+                descriptor.for_client,
+                [str(department.id) for department in descriptor.departments],
+            )
+        )
     return created
 
 

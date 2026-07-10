@@ -1,6 +1,8 @@
 from tests.base import ApiDBTestCase
 
+from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.services import budget_service
+from zou.app.utils import fields
 
 
 class ProjectSettingsRoutesTestCase(ApiDBTestCase):
@@ -96,6 +98,126 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
         )
         status_ids = [s["id"] for s in statuses]
         self.assertNotIn(str(self.task_status.id), status_ids)
+
+    # --- Batch settings ---
+
+    def test_add_project_settings_batch(self):
+        result = self.post(
+            f"/data/projects/{self.project_id}/settings/batch",
+            {
+                "task_types": [
+                    {"task_type_id": str(self.task_type.id), "priority": 1},
+                    {
+                        "task_type_id": str(self.task_type_modeling.id),
+                        "priority": 2,
+                    },
+                ],
+                "task_status_ids": [str(self.task_status.id)],
+                "asset_type_ids": [str(self.asset_type.id)],
+            },
+            200,
+        )
+        self.assertIsNotNone(result.get("id"))
+        project = self.get(f"/data/projects/{self.project_id}")
+        self.assertIn(str(self.task_type.id), project["task_types"])
+        self.assertIn(str(self.task_type_modeling.id), project["task_types"])
+        self.assertIn(str(self.asset_type.id), project["asset_types"])
+        statuses = self.get(
+            f"/data/projects/{self.project_id}/settings/task-status"
+        )
+        self.assertIn(str(self.task_status.id), [s["id"] for s in statuses])
+        link = ProjectTaskTypeLink.get_by(
+            project_id=self.project_id, task_type_id=str(self.task_type.id)
+        )
+        self.assertEqual(link.priority, 1)
+
+    def test_project_settings_batch_is_idempotent(self):
+        data = {
+            "task_types": [{"task_type_id": str(self.task_type.id)}],
+            "task_status_ids": [
+                str(self.task_status.id),
+                str(self.task_status.id),
+            ],
+            "asset_type_ids": [str(self.asset_type.id)],
+        }
+        self.post(
+            f"/data/projects/{self.project_id}/settings/batch", data, 200
+        )
+        self.post(
+            f"/data/projects/{self.project_id}/settings/batch", data, 200
+        )
+        project = self.get(f"/data/projects/{self.project_id}")
+        self.assertEqual(
+            project["task_types"].count(str(self.task_type.id)), 1
+        )
+        self.assertEqual(
+            project["asset_types"].count(str(self.asset_type.id)), 1
+        )
+        statuses = self.get(
+            f"/data/projects/{self.project_id}/settings/task-status"
+        )
+        status_ids = [s["id"] for s in statuses]
+        self.assertEqual(status_ids.count(str(self.task_status.id)), 1)
+
+    def test_project_settings_batch_replace_task_types(self):
+        self.post(
+            f"/data/projects/{self.project_id}/settings/batch",
+            {
+                "task_types": [
+                    {"task_type_id": str(self.task_type.id), "priority": 1},
+                    {
+                        "task_type_id": str(self.task_type_concept.id),
+                        "priority": 2,
+                    },
+                ]
+            },
+            200,
+        )
+        self.post(
+            f"/data/projects/{self.project_id}/settings/batch",
+            {
+                "task_types": [
+                    {"task_type_id": str(self.task_type.id), "priority": 2},
+                    {
+                        "task_type_id": str(self.task_type_modeling.id),
+                        "priority": 1,
+                    },
+                ],
+                "replace_task_types": True,
+            },
+            200,
+        )
+        project = self.get(f"/data/projects/{self.project_id}")
+        self.assertIn(str(self.task_type.id), project["task_types"])
+        self.assertIn(str(self.task_type_modeling.id), project["task_types"])
+        self.assertNotIn(str(self.task_type_concept.id), project["task_types"])
+        link = ProjectTaskTypeLink.get_by(
+            project_id=self.project_id, task_type_id=str(self.task_type.id)
+        )
+        self.assertEqual(link.priority, 2)
+
+    def test_project_settings_batch_skips_unknown_ids(self):
+        self.post(
+            f"/data/projects/{self.project_id}/settings/batch",
+            {
+                "task_types": [{"task_type_id": fields.gen_uuid()}],
+                "task_status_ids": [fields.gen_uuid()],
+                "asset_type_ids": [fields.gen_uuid()],
+            },
+            200,
+        )
+        project = self.get(f"/data/projects/{self.project_id}")
+        self.assertEqual(project["task_types"], [])
+        self.assertEqual(project["asset_types"], [])
+
+    def test_project_settings_batch_as_artist_is_forbidden(self):
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        self.post(
+            f"/data/projects/{self.project_id}/settings/batch",
+            {"task_types": [{"task_type_id": str(self.task_type.id)}]},
+            403,
+        )
 
     # --- Status automations settings ---
 

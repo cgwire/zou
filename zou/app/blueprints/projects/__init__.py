@@ -15,6 +15,7 @@ from zou.app.blueprints.projects.resources import (
     ProductionTaskTypesResource,
     ProductionTaskStatusResource,
     ProductionTaskStatusRemoveResource,
+    ProductionSettingsBatchResource,
     ProductionStatusAutomationResource,
     ProductionStatusAutomationRemoveResource,
     ProductionMetadataDescriptorResource,
@@ -83,6 +84,10 @@ routes = [
     (
         "/data/projects/<project_id>/settings/task-status/<task_status_id>",
         ProductionTaskStatusRemoveResource,
+    ),
+    (
+        "/data/projects/<project_id>/settings/batch",
+        ProductionSettingsBatchResource,
     ),
     (
         "/data/projects/<project_id>/settings/status-automations",

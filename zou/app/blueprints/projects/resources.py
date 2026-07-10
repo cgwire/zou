@@ -19,6 +19,7 @@ from zou.app.blueprints.projects.schemas import (
     ProjectAssetTypeSchema,
     ProjectTaskTypeSchema,
     ProjectTaskStatusSchema,
+    ProjectSettingsBatchSchema,
     ProjectStatusAutomationSchema,
     ProjectPreviewBackgroundSchema,
     MetadataDescriptorSchema,
@@ -691,6 +692,78 @@ class ProductionTaskStatusRemoveResource(MethodView):
         user_service.check_manager_project_access(project_id)
         projects_service.remove_task_status_setting(project_id, task_status_id)
         return "", 204
+
+
+class ProductionSettingsBatchResource(MethodView):
+    """
+    Allow to add several task types, task statuses and asset types to a
+    production in a single request.
+    """
+
+    @jwt_required()
+    def post(self, project_id):
+        """
+        Add settings to production batch
+        ---
+        description: Add several task types (with their priority), task
+          statuses and asset types to a production in a single request,
+          replacing one link request per item. Unknown ids are skipped.
+          When replace_task_types is set, the task type list is the full
+          wanted set and existing links absent from it are removed.
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task_types:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        task_type_id:
+                          type: string
+                          format: uuid
+                        priority:
+                          type: integer
+                  task_status_ids:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+                  asset_type_ids:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+                  replace_task_types:
+                    type: boolean
+                    default: false
+        responses:
+          200:
+            description: Updated project
+        """
+        body = validation.validate_request_body(ProjectSettingsBatchSchema)
+        user_service.check_manager_project_access(project_id)
+        return projects_service.update_project_settings(
+            project_id,
+            task_types=[entry.model_dump() for entry in body.task_types],
+            task_status_ids=body.task_status_ids,
+            asset_type_ids=body.asset_type_ids,
+            replace_task_types=body.replace_task_types,
+        )
 
 
 class ProductionStatusAutomationResource(MethodView, ArgsMixin):
