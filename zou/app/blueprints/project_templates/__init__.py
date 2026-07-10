@@ -14,8 +14,10 @@ from zou.app.blueprints.project_templates.resources import (
     ProjectTemplateStatusAutomationsResource,
     ProjectTemplateTaskStatusResource,
     ProjectTemplateTaskStatusesResource,
+    ProjectTemplateTaskStatusesReorderResource,
     ProjectTemplateTaskTypeResource,
     ProjectTemplateTaskTypesResource,
+    ProjectTemplateTaskTypesReorderResource,
 )
 
 routes = [
@@ -24,12 +26,20 @@ routes = [
         ProjectTemplateTaskTypesResource,
     ),
     (
+        "/data/project-templates/<template_id>/task-types/reorder",
+        ProjectTemplateTaskTypesReorderResource,
+    ),
+    (
         "/data/project-templates/<template_id>/task-types/<task_type_id>",
         ProjectTemplateTaskTypeResource,
     ),
     (
         "/data/project-templates/<template_id>/task-statuses",
         ProjectTemplateTaskStatusesResource,
+    ),
+    (
+        "/data/project-templates/<template_id>/task-statuses/reorder",
+        ProjectTemplateTaskStatusesReorderResource,
     ),
     (
         "/data/project-templates/<template_id>/task-statuses/<task_status_id>",

@@ -2,11 +2,19 @@
 Pydantic schemas for request body validation in the user blueprint.
 """
 
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import Field
 
 from zou.app.utils.validation import BaseSchema
+
+
+class SubscribeTasksSchema(BaseSchema):
+    """
+    Body for subscribing to or unsubscribing from several tasks at once.
+    """
+
+    task_ids: List[str] = Field(..., min_length=1)
 
 
 class CreateSearchFilterSchema(BaseSchema):

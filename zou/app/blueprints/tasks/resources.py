@@ -40,6 +40,7 @@ from zou.app.utils import (
 from zou.app.mixin import ArgsMixin
 from zou.app.blueprints.tasks.schemas import (
     CommentPreviewSchema,
+    SetTasksMainPreviewSchema,
     SetTasksPrioritySchema,
     ToReviewSchema,
     UnassignTasksSchema,
@@ -2737,6 +2738,64 @@ class SetTaskMainPreviewResource(MethodView):
                 task["entity_id"], preview_file["id"]
             )
         return entity
+
+
+class SetTasksMainPreviewResource(MethodView):
+    @jwt_required()
+    def put(self):
+        """
+        Set main preview from several tasks
+        ---
+        tags:
+          - Tasks
+        description: For each task in the id list, set its last preview as
+          the main preview of the related entity. Useful to set thumbnails
+          for a selection in one request. Tasks without a preview are
+          skipped. Returns the updated entities.
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - task_ids
+                properties:
+                  task_ids:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+        responses:
+            200:
+                description: Entities whose main preview was updated
+                content:
+                  application/json:
+                    schema:
+                      type: array
+                      items:
+                        type: object
+        """
+        body = validation.validate_request_body(SetTasksMainPreviewSchema)
+        # Clients review content but must not redefine how an entity is
+        # illustrated.
+        if permissions.has_client_permissions():
+            raise permissions.PermissionDenied
+        entities = []
+        for task_id in body.task_ids:
+            task = tasks_service.get_task(task_id)
+            user_service.check_project_access(task["project_id"])
+            user_service.check_entity_access(task["entity_id"])
+            preview_file = (
+                preview_files_service.get_last_preview_file_for_task(task_id)
+            )
+            if preview_file is not None:
+                entities.append(
+                    entities_service.update_entity_preview(
+                        task["entity_id"], preview_file["id"]
+                    )
+                )
+        return entities
 
 
 class PersonsTasksDatesResource(MethodView, ArgsMixin):

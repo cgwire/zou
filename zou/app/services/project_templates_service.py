@@ -320,6 +320,30 @@ def remove_task_status_from_template(template_id, task_status_id):
     )
 
 
+def set_template_task_type_priorities(template_id, task_type_ids):
+    """
+    Set the priority of the template's task type links from the given ordered
+    id list (priority = position, 1-based) in a single pass. Returns the
+    updated links.
+    """
+    return [
+        add_task_type_to_template(template_id, task_type_id, priority)
+        for priority, task_type_id in enumerate(task_type_ids, start=1)
+    ]
+
+
+def set_template_task_status_priorities(template_id, task_status_ids):
+    """
+    Set the priority of the template's task status links from the given
+    ordered id list (priority = position, 1-based). Board roles are preserved
+    since only the priority is passed. Returns the updated links.
+    """
+    return [
+        add_task_status_to_template(template_id, task_status_id, priority)
+        for priority, task_status_id in enumerate(task_status_ids, start=1)
+    ]
+
+
 def get_template_asset_types(template_id):
     template = _ensure_template_exists(template_id)
     return [

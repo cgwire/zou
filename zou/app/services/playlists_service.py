@@ -564,9 +564,10 @@ def add_entity_to_playlist(playlist_id, entity_id, preview_file_id=None):
 
 def get_latest_preview_file_ids_for_entities(entity_ids, task_type_id=None):
     """
-    Return a map of entity id to the id of its most recently created
-    preview file. When task_type_id is set, only preview files uploaded
-    for that task type are considered.
+    Return a map of entity id to the id of its latest preview file, picking
+    the highest revision (created_at breaks ties within a revision). When
+    task_type_id is set, only preview files uploaded for that task type are
+    considered.
     """
     if not entity_ids:
         return {}
@@ -574,7 +575,11 @@ def get_latest_preview_file_ids_for_entities(entity_ids, task_type_id=None):
         PreviewFile.query.join(Task, PreviewFile.task_id == Task.id)
         .filter(Task.entity_id.in_(entity_ids))
         .with_entities(PreviewFile.id, Task.entity_id)
-        .order_by(Task.entity_id, PreviewFile.created_at.desc())
+        .order_by(
+            Task.entity_id,
+            PreviewFile.revision.desc(),
+            PreviewFile.created_at.desc(),
+        )
     )
     if task_type_id is not None:
         query = query.filter(Task.task_type_id == task_type_id)
@@ -586,14 +591,27 @@ def get_latest_preview_file_ids_for_entities(entity_ids, task_type_id=None):
     return latest
 
 
-def add_entities_to_playlist(playlist_id, entity_ids):
+def add_entities_to_playlist(playlist_id, entities):
     """
-    Atomically append several entities to the playlist shots list in a
-    single database write. Entities already in the playlist are skipped.
-    Each added entry gets the latest preview file uploaded for the
-    entity, restricted to the playlist task type when one is set.
+    Atomically append several (entity, preview) couples to the playlist shots
+    list in a single database write. A playlist entry is the couple
+    (entity_id, preview_file_id): the same entity may appear several times
+    with different previews, so only exact duplicate couples are skipped.
+    When a couple has no preview_file_id, the latest preview for the entity
+    is resolved (highest revision, restricted to the playlist task type when
+    one is set).
     """
-    entity_id_strs = [str(entity_id) for entity_id in entity_ids]
+    couples = [
+        (
+            str(entity["entity_id"]),
+            (
+                str(entity["preview_file_id"])
+                if entity.get("preview_file_id") is not None
+                else None
+            ),
+        )
+        for entity in entities
+    ]
     with with_playlist_lock(
         playlist_id, timeout=30, wait_timeout=35
     ) as _acquired:
@@ -603,20 +621,34 @@ def add_entities_to_playlist(playlist_id, entity_ids):
             if playlist.task_type_id is not None
             else None
         )
-        preview_file_ids = get_latest_preview_file_ids_for_entities(
-            entity_id_strs, task_type_id
+        entity_ids_to_resolve = [
+            entity_id
+            for entity_id, preview_file_id in couples
+            if preview_file_id is None
+        ]
+        resolved_preview_ids = (
+            get_latest_preview_file_ids_for_entities(
+                entity_ids_to_resolve, task_type_id
+            )
+            if entity_ids_to_resolve
+            else {}
         )
         shots = list(playlist.shots or [])
-        present_ids = {shot.get("entity_id") for shot in shots}
+        present_couples = {
+            (shot.get("entity_id"), shot.get("preview_file_id"))
+            for shot in shots
+        }
         added_shots = []
-        for entity_id_str in entity_id_strs:
-            if entity_id_str not in present_ids:
-                shot = {"entity_id": entity_id_str}
-                preview_file_id = preview_file_ids.get(entity_id_str)
+        for entity_id, preview_file_id in couples:
+            if preview_file_id is None:
+                preview_file_id = resolved_preview_ids.get(entity_id)
+            couple = (entity_id, preview_file_id)
+            if couple not in present_couples:
+                shot = {"entity_id": entity_id}
                 if preview_file_id is not None:
                     shot["preview_file_id"] = preview_file_id
                 shots.append(shot)
-                present_ids.add(entity_id_str)
+                present_couples.add(couple)
                 added_shots.append(shot)
         if added_shots:
             playlist.update({"shots": shots})

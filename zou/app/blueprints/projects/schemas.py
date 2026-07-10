@@ -93,6 +93,29 @@ class MetadataDescriptorOrderSchema(BaseSchema):
     descriptor_ids: List[str] = Field(..., min_length=1)
 
 
+class AllProjectsMetadataDescriptorUpdateSchema(BaseSchema):
+    """
+    Body for updating a metadata descriptor across all accessible projects.
+    """
+
+    entity_type: str = Field(..., min_length=1)
+    name: Optional[str] = None
+    for_client: Optional[bool] = False
+    data_type: str = Field("string", min_length=1)
+    choices: List[str] = Field(default=[])
+    departments: List[str] = Field(default=[])
+
+
+class AllProjectsMetadataDescriptorOrderSchema(BaseSchema):
+    """
+    Body for reordering metadata descriptors across all accessible projects.
+    The order is given as a list of field names shared by the projects.
+    """
+
+    entity_type: str = Field(..., min_length=1)
+    field_order: List[str] = Field(..., min_length=1)
+
+
 class BudgetSchema(BaseSchema):
     """
     Body for creating a budget.

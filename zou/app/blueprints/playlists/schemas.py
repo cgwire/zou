@@ -33,15 +33,37 @@ class AddEntityToPlaylistSchema(BaseSchema):
         return v
 
 
-class AddEntitiesToPlaylistSchema(BaseSchema):
+class PlaylistEntitySchema(BaseSchema):
     """
-    Body for adding several entities to a playlist at once.
+    An (entity, preview) couple to add to a playlist. The same entity may
+    appear several times with different previews; the playlist forbids the
+    same couple twice, not the same entity twice.
     """
 
-    entity_ids: List[UUID] = Field(
+    entity_id: UUID = Field(..., description="Entity unique identifier to add")
+    preview_file_id: Optional[UUID] = Field(
+        None,
+        description="Optional preview file identifier for this entity. When "
+        "omitted, the latest preview for the playlist task type is used.",
+    )
+
+    @field_validator("preview_file_id", mode="before")
+    @classmethod
+    def coerce_empty_to_none(cls, v):
+        if v == "":
+            return None
+        return v
+
+
+class AddEntitiesToPlaylistSchema(BaseSchema):
+    """
+    Body for adding several (entity, preview) couples to a playlist at once.
+    """
+
+    entities: List[PlaylistEntitySchema] = Field(
         ...,
         min_length=1,
-        description="List of entity unique identifiers to add",
+        description="Entity/preview couples to add to the playlist",
     )
 
 

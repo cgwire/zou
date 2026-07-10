@@ -66,7 +66,8 @@ HTTP → Flask routing → Resource method → @jwt_required()
 - Services are **module-level functions**, not classes
 - Models inherit `db.Model, BaseMixin, SerializerMixin`
 - UUIDs everywhere for primary keys (`UUIDType(binary=False)`)
-- **String formatting: f-strings only** for any new or edited code. Do not introduce `"... %s" % x` or `.format(...)`. Pre-existing `%`-formatted lines in a file you're editing can stay — don't scope-creep — but every new line you add should use f-strings.
+- **String formatting: f-strings only** for any new or edited code. Do not introduce `"... %s" % x` or `.format(...)`. Pre-existing `%`-formatted lines in a file you're editing can stay — don't scope-creep — but every new line you add uses f-strings. Multi-line: implicit concatenation of f-string literals, not `+`.
+- **No parentheses around tuple literals** where they add nothing: write `return a, b`, not `return (a, b)`. Same for unpacking. Don't refactor untouched code for this.
 - **Docstrings: opening and closing `"""` each on their own line.** Always put a newline immediately after the opening `"""` and immediately before the closing `"""`, even for one-liners. Do not write `"""Summary on the same line."""` or `"""First line\n    second line."""`.
 
   ```python
@@ -223,7 +224,7 @@ class MyModel(db.Model, BaseMixin, SerializerMixin):
 
 `BaseMixin` provides: `create()`, `get(id)`, `get_by()`, `get_all_by()`, `update(data)`, `delete()`, `serialize()`.
 
-The `Entity` model is **polymorphic** — assets, shots, sequences, episodes are all rows distinguished by `entity_type_id`.
+The `Entity` model is **polymorphic** — assets, shots, sequences, episodes are all rows distinguished by `entity_type_id`. Write operations on entities go through the `data/entities/` routes; several entity-noun sub-routes are GET-only.
 
 ## Permissions & Roles
 
@@ -250,7 +251,7 @@ Format: `<table_name>:<action>` — e.g., `task:new`, `comment:delete`, `person:
 
 ## Testing
 
-See `CLAUDE.local.md` for how to run tests locally. The test DB schema is created/dropped automatically by `conftest.py`.
+See `CLAUDE.local.md` (gitignored) for how to run tests on this machine. The test DB schema is created/dropped automatically by `conftest.py`, which also forces `PREVIEW_FOLDER` to a tempdir.
 
 ### Test base class
 
@@ -324,19 +325,14 @@ class MyServiceTestCase(ApiDBTestCase):
 ```
 
 ## Migrations
+
 ```bash
-# Generate
-zou migrate-db --message "Add column X to table Y"
+zou migrate-db --message "Add column X to table Y"   # generate
+zou upgrade-db                                        # apply
+zou downgrade-db --revision "-1"                      # rollback one step
+```
 
-# Apply
-zou upgrade-db
-
-# Rollback one step
-zou downgrade-db --revision "-1"
-
-Migrations live in `zou/migrations/versions/`. Each file has `upgrade()` and `downgrade()` functions. Use `UUIDType(binary=False)` for UUID columns.
-
-See `CLAUDE.local.md` for `zou migrate-db` / `zou upgrade-db` / `zou downgrade-db` invocations.
+Migrations live in `zou/migrations/versions/`. Each file has `upgrade()` and `downgrade()` functions. Use `UUIDType(binary=False)` for UUID columns. New columns must be nullable or defaulted (one-way migrations in production).
 
 ## Key Environment Variables
 

@@ -270,6 +270,35 @@ class TaskRoutesTestCase(ApiDBTestCase):
             403,
         )
 
+    def test_set_tasks_main_preview(self):
+        self.generate_fixture_preview_file(task_id=self.task.id)
+        self.generate_fixture_shot_task()
+        self.generate_fixture_preview_file(task_id=self.shot_task.id)
+        task_ids = [str(self.task.id), str(self.shot_task.id)]
+        result = self.put(
+            "/actions/tasks/set-main-preview",
+            {"task_ids": task_ids},
+        )
+        self.assertEqual(len(result), 2)
+        for task_id in task_ids:
+            task = tasks_service.get_task(task_id)
+            entity = self.get(f"/data/entities/{task['entity_id']}")
+            self.assertIsNotNone(entity.get("preview_file_id"))
+
+    def test_set_tasks_main_preview_as_client(self):
+        # A client can review but must not redefine entity thumbnails.
+        self.generate_fixture_preview_file()
+        self.generate_fixture_user_client()
+        projects_service.add_team_member(
+            self.project_id, self.user_client["id"]
+        )
+        self.log_in_client()
+        self.put(
+            "/actions/tasks/set-main-preview",
+            {"task_ids": [str(self.task.id)]},
+            403,
+        )
+
     def test_delete_tasks_for_task_type(self):
         self.delete(
             f"/actions/projects/{self.project_id}"

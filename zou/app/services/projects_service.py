@@ -850,6 +850,114 @@ def remove_metadata_descriptor(metadata_descriptor_id):
     return descriptor.serialize()
 
 
+def add_metadata_descriptor_to_projects(
+    project_ids,
+    entity_type,
+    name,
+    data_type,
+    choices,
+    for_client,
+    departments=None,
+):
+    """
+    Create the same metadata descriptor in every given project that does not
+    already own one with the same field name and entity type. Returns the
+    list of created descriptors.
+    """
+    field_name = slugify.slugify(name, separator="_")
+    created = []
+    for project_id in project_ids:
+        exists = (
+            MetadataDescriptor.query.filter(
+                MetadataDescriptor.project_id == project_id,
+                MetadataDescriptor.entity_type == entity_type,
+                MetadataDescriptor.field_name == field_name,
+            ).count()
+            > 0
+        )
+        if not exists:
+            created.append(
+                add_metadata_descriptor(
+                    project_id,
+                    entity_type,
+                    name,
+                    data_type,
+                    choices,
+                    for_client,
+                    departments,
+                )
+            )
+    return created
+
+
+def update_metadata_descriptor_on_projects(
+    project_ids, entity_type, field_name, changes
+):
+    """
+    Update every metadata descriptor sharing the given field name and entity
+    type across the given projects. Returns the list of updated descriptors.
+    """
+    descriptors = MetadataDescriptor.query.filter(
+        MetadataDescriptor.project_id.in_(project_ids),
+        MetadataDescriptor.entity_type == entity_type,
+        MetadataDescriptor.field_name == field_name,
+    ).all()
+    return [
+        update_metadata_descriptor(str(descriptor.id), dict(changes))
+        for descriptor in descriptors
+    ]
+
+
+def remove_metadata_descriptor_from_projects(
+    project_ids, entity_type, field_name
+):
+    """
+    Remove every metadata descriptor sharing the given field name and entity
+    type across the given projects. Returns the list of removed ids.
+    """
+    descriptors = MetadataDescriptor.query.filter(
+        MetadataDescriptor.project_id.in_(project_ids),
+        MetadataDescriptor.entity_type == entity_type,
+        MetadataDescriptor.field_name == field_name,
+    ).all()
+    removed_ids = []
+    for descriptor in descriptors:
+        descriptor_id = str(descriptor.id)
+        remove_metadata_descriptor(descriptor_id)
+        removed_ids.append(descriptor_id)
+    return removed_ids
+
+
+def reorder_metadata_descriptors_on_projects(
+    project_ids, entity_type, field_order
+):
+    """
+    Apply the same column order, given as a list of field names, on every
+    given project. Descriptors whose field name is not listed keep trailing
+    positions (handled by reorder_metadata_descriptors). Returns the list of
+    updated descriptors across all projects.
+    """
+    updated = []
+    for project_id in project_ids:
+        descriptors = MetadataDescriptor.query.filter(
+            MetadataDescriptor.project_id == project_id,
+            MetadataDescriptor.entity_type == entity_type,
+        ).all()
+        by_field = {desc.field_name: str(desc.id) for desc in descriptors}
+        ordered_ids = [
+            by_field[field_name]
+            for field_name in field_order
+            if field_name in by_field
+        ]
+        if ordered_ids:
+            updated.extend(
+                reorder_metadata_descriptors(
+                    project_id, entity_type, ordered_ids
+                )
+            )
+    return updated
+
+
 def is_tv_show(project):
     return project["production_type"] == "tvshow"
 
@@ -910,6 +1018,42 @@ def create_project_task_status_link(
         )
 
     return task_status_link.serialize()
+
+
+def set_project_task_type_link_priorities(project_id, task_type_ids):
+    """
+    Set the priority of the project's task type links from the given ordered
+    id list (priority = position, 1-based). Only existing links are touched,
+    so a reorder never creates links. Returns the updated links.
+    """
+    links = []
+    for priority, task_type_id in enumerate(task_type_ids, start=1):
+        link = ProjectTaskTypeLink.get_by(
+            project_id=project_id, task_type_id=task_type_id
+        )
+        if link is not None:
+            link.update({"priority": priority})
+            links.append(link.serialize())
+    clear_project_cache(project_id)
+    return links
+
+
+def set_project_task_status_link_priorities(project_id, task_status_ids):
+    """
+    Set the priority of the project's task status links from the given ordered
+    id list (priority = position, 1-based). Only the priority is updated, so
+    the board roles of each link are preserved. Returns the updated links.
+    """
+    links = []
+    for priority, task_status_id in enumerate(task_status_ids, start=1):
+        link = ProjectTaskStatusLink.get_by(
+            project_id=project_id, task_status_id=task_status_id
+        )
+        if link is not None:
+            link.update({"priority": priority})
+            links.append(link.serialize())
+    clear_project_cache(project_id)
+    return links
 
 
 def get_project_task_types(project_id):

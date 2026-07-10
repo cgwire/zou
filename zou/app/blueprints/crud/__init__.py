@@ -77,6 +77,8 @@ from zou.app.blueprints.crud.project import (
     ProjectsResource,
     ProjectTaskTypeLinksResource,
     ProjectTaskStatusLinksResource,
+    BatchProjectTaskTypeLinksResource,
+    BatchProjectTaskStatusLinksResource,
 )
 from zou.app.blueprints.crud.project_status import (
     ProjectStatusResource,
@@ -113,6 +115,7 @@ from zou.app.blueprints.crud.software import (
 from zou.app.blueprints.crud.task_type import (
     TaskTypesResource,
     TaskTypeResource,
+    TaskTypesReorderResource,
 )
 from zou.app.blueprints.crud.task_status import (
     TaskStatusesResource,
@@ -163,11 +166,20 @@ routes = [
     ("/data/entities", EntitiesResource),
     ("/data/entities/<instance_id>", EntityResource),
     ("/data/task-types", TaskTypesResource),
+    ("/data/task-types/reorder", TaskTypesReorderResource),
     ("/data/task-types/<instance_id>", TaskTypeResource),
     ("/data/task-type-links", ProjectTaskTypeLinksResource),
+    (
+        "/data/projects/<project_id>/task-type-links/batch",
+        BatchProjectTaskTypeLinksResource,
+    ),
     ("/data/task-status", TaskStatusesResource),
     ("/data/task-status/<instance_id>", TaskStatusResource),
     ("/data/task-status-links", ProjectTaskStatusLinksResource),
+    (
+        "/data/projects/<project_id>/task-status-links/batch",
+        BatchProjectTaskStatusLinksResource,
+    ),
     ("/data/tasks", TasksResource),
     ("/data/tasks/<instance_id>", TaskResource),
     ("/data/departments", DepartmentsResource),
