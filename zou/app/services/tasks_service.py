@@ -17,7 +17,7 @@ import uuid
 from sqlalchemy.exc import StatementError, IntegrityError, DataError
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import case
-from sqlalchemy.orm import aliased, selectinload
+from sqlalchemy.orm import aliased, load_only, selectinload
 
 from zou.app import config, db
 from zou.app.utils import events
@@ -1890,7 +1890,9 @@ def get_tasks_for_project(
     Return all tasks for given project.
     """
     query = (
-        Task.query.options(selectinload(Task.assignees))
+        Task.query.options(
+            selectinload(Task.assignees).load_only(Person.id)
+        )
         .filter(Task.project_id == project_id)
         .order_by(Task.updated_at.desc())
     )
