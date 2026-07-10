@@ -43,6 +43,20 @@ class ProjectTaskStatusSchema(BaseSchema):
     task_status_id: str = Field(..., min_length=1)
 
 
+class ProjectSettingsBatchSchema(BaseSchema):
+    """
+    Body for adding several task types, task statuses and asset types to a
+    project in a single request.
+    """
+
+    task_types: List[ProjectTaskTypeSchema] = Field(default=[])
+    task_status_ids: List[str] = Field(default=[])
+    asset_type_ids: List[str] = Field(default=[])
+    # When set, task_types is the full wanted set: existing task type links
+    # absent from it are removed (used by the import-from-production flow).
+    replace_task_types: bool = False
+
+
 class ProjectStatusAutomationSchema(BaseSchema):
     """
     Body for adding a status automation to a project.
