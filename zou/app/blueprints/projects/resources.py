@@ -1900,6 +1900,13 @@ class ProductionEpisodesScheduleItemsResource(MethodView, ArgsMixin):
         tags:
           - Projects
         parameters:
+          - in: query
+            name: episode_id
+            required: false
+            schema:
+              type: string
+              format: uuid
+            description: Restrict results to the given episode
           - in: path
             name: project_id
             required: true
@@ -1930,8 +1937,9 @@ class ProductionEpisodesScheduleItemsResource(MethodView, ArgsMixin):
         user_service.block_access_to_vendor()
         self.check_id_parameter(project_id)
         self.check_id_parameter(task_type_id)
+        episode_id = self.get_id_parameter("episode") or None
         return schedule_service.get_episodes_schedule_items(
-            project_id, task_type_id
+            project_id, task_type_id, episode_id
         )
 
 

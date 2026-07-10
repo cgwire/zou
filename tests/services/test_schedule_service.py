@@ -82,6 +82,32 @@ class ScheduleServiceTestCase(ApiDBTestCase):
         self.assertEqual(items[0]["task_type_id"], self.task_type_id)
         self.assertEqual(items[0]["project_id"], self.project_id)
 
+    def test_get_schedule_episode_items_for_episode(self):
+        episode_1_id = self.episode_id
+        episode_2 = self.generate_fixture_episode(name="E02")
+        episode_2_id = str(episode_2.id)
+
+        # Without episode filter, both episodes are returned.
+        items = schedule_service.get_episodes_schedule_items(
+            self.project.id, self.task_type_id
+        )
+        object_ids = {item["object_id"] for item in items}
+        self.assertEqual(object_ids, {episode_1_id, episode_2_id})
+
+        # Filtered on the first episode, only that episode is returned.
+        items = schedule_service.get_episodes_schedule_items(
+            self.project.id, self.task_type_id, episode_1_id
+        )
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["object_id"], episode_1_id)
+
+        # Filtered on the second episode, only that episode is returned.
+        items = schedule_service.get_episodes_schedule_items(
+            self.project.id, self.task_type_id, episode_2_id
+        )
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["object_id"], episode_2_id)
+
     def test_get_schedule_asset_type_items(self):
         items = schedule_service.get_asset_types_schedule_items(
             self.project.id, self.task_type_id
