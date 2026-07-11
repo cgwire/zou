@@ -7,6 +7,7 @@ from zou.app.models.person import (
     Person,
     ROLE_TYPES,
     CONTRACT_TYPES,
+    DISPLAY_DATE_FORMATS,
     TWO_FACTOR_AUTHENTICATION_TYPES,
     normalize_country,
     normalize_locale,
@@ -56,6 +57,20 @@ def check_locale(data):
         raise WrongParameterException(
             "Invalid locale, expected a name available in Python Babel "
             "(e.g. en_US, fr_FR)."
+        )
+
+
+def check_display_date_format(data):
+    """
+    Reject a display date format outside the supported list with a clean
+    400. A missing or null value is treated as "use the default" and
+    accepted.
+    """
+    value = data.get("display_date_format")
+    if value is not None and value not in DISPLAY_DATE_FORMATS:
+        raise WrongParameterException(
+            "Invalid display_date_format, expected one of: "
+            f"{', '.join(DISPLAY_DATE_FORMATS)}."
         )
 
 
@@ -317,6 +332,7 @@ class PersonsResource(BaseModelsResource):
             raise WrongParameterException("Invalid contract_type")
         check_country(data)
         check_locale(data)
+        check_display_date_format(data)
         if "two_factor_authentication" in data and data[
             "two_factor_authentication"
         ] not in [
@@ -625,6 +641,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
             raise WrongParameterException("Invalid contract_type")
         check_country(data)
         check_locale(data)
+        check_display_date_format(data)
         if "two_factor_authentication" in data and data[
             "two_factor_authentication"
         ] not in [

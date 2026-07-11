@@ -61,6 +61,12 @@ SENIORITY_TYPES = [
     ("junior", "Junior"),
 ]
 
+DISPLAY_DATE_FORMATS = [
+    "YYYY-MM-DD",
+    "DD/MM/YYYY",
+    "MM/DD/YYYY",
+]
+
 
 def normalize_country(value):
     """
@@ -195,6 +201,8 @@ class Person(db.Model, BaseMixin, SerializerMixin):
         LocaleType,
         default=lambda: Locale(config_store.get_default_locale()),
     )
+    use_12_hour_clock = db.Column(db.Boolean(), default=False)
+    display_date_format = db.Column(db.String(20), default="YYYY-MM-DD")
     data = db.Column(JSONB)
     role = db.Column(ChoiceType(ROLE_TYPES), default="user", nullable=False)
     position = db.Column(ChoiceType(POSITION_TYPES), default="artist")
