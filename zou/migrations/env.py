@@ -24,7 +24,10 @@ except RuntimeError:
     migrate_args = {}
 
 if config.config_file_name:
-    fileConfig(config.config_file_name)
+    # disable_existing_loggers defaults to True and would silence every
+    # logger created before the migration runs (e.g. Flask's app.logger
+    # when upgrade-db is invoked in-process).
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 logger = logging.getLogger("alembic.env")
 
 
