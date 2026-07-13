@@ -260,6 +260,38 @@ class PersonTestCase(ApiDBTestCase):
         person_again = self.get(f"data/persons/{person['id']}")
         self.assertIsNone(person_again["country"])
 
+    def test_person_display_preferences_round_trip(self):
+        person = self.get_first("data/persons")
+        self.put(
+            f"data/persons/{person['id']}",
+            {"use_12_hour_clock": True, "display_date_format": "DD/MM/YYYY"},
+        )
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertTrue(person_again["use_12_hour_clock"])
+        self.assertEqual(person_again["display_date_format"], "DD/MM/YYYY")
+
+        self.put(f"data/persons/{person['id']}", {"display_date_format": None})
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertIsNone(person_again["display_date_format"])
+
+    def test_person_invalid_display_date_format(self):
+        person = self.get_first("data/persons")
+        self.put(
+            f"data/persons/{person['id']}",
+            {"display_date_format": "DD-MM-YYYY"},
+            400,
+        )
+        self.post(
+            "data/persons",
+            {
+                "first_name": "Bad",
+                "last_name": "Format",
+                "email": "bad.format@gmail.com",
+                "display_date_format": "MM-DD",
+            },
+            400,
+        )
+
     def test_create_person_without_country(self):
         data = {
             "first_name": "NoCountry",
@@ -355,7 +387,14 @@ class PersonTestCase(ApiDBTestCase):
         # (never a 500 and never a poisoned entry): unknown locales, wrong
         # separators, malformed identifiers and non-string bodies.
         person = self.get_first("data/persons")
-        for value in ["zz_ZZ", "notlocale", "en-US", "fr_FR_x", 123, ["fr_FR"]]:
+        for value in [
+            "zz_ZZ",
+            "notlocale",
+            "en-US",
+            "fr_FR_x",
+            123,
+            ["fr_FR"],
+        ]:
             self.put(f"data/persons/{person['id']}", {"locale": value}, 400)
 
     def test_locale_validator_never_raises_on_direct_write(self):
