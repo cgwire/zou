@@ -193,6 +193,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     )
 
     shotgun_id = db.Column(db.Integer, unique=True)
+
     timezone = db.Column(
         TimezoneType(backend="pytz"),
         default=lambda: pytz_timezone(config_store.get_default_timezone()),
@@ -204,6 +205,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     use_12_hour_clock = db.Column(db.Boolean(), default=False)
     display_date_format = db.Column(db.String(20), default="YYYY-MM-DD")
     data = db.Column(JSONB)
+
     role = db.Column(ChoiceType(ROLE_TYPES), default="user", nullable=False)
     position = db.Column(ChoiceType(POSITION_TYPES), default="artist")
     seniority = db.Column(ChoiceType(SENIORITY_TYPES), default="mid")
@@ -223,6 +225,8 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     is_guest = db.Column(db.Boolean(), default=False, nullable=False)
     jti = db.Column(db.String(60), nullable=True, unique=True)
     expiration_date = db.Column(db.Date(), nullable=True)
+    is_generated_from_ldap = db.Column(db.Boolean(), default=False)
+    ldap_uid = db.Column(db.String(60), unique=True, default=None)
 
     departments = db.relationship(
         "Department",
@@ -231,9 +235,6 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     studio_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("studio.id"), index=True
     )
-
-    is_generated_from_ldap = db.Column(db.Boolean(), default=False)
-    ldap_uid = db.Column(db.String(60), unique=True, default=None)
 
     __table_args__ = (
         Index(
