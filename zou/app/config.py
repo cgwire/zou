@@ -17,14 +17,23 @@ APP_SYSTEM_ERROR_SUBJECT_LINE = f"{APP_NAME} system error"
 SECRET_KEY = os.getenv("SECRET_KEY", "mysecretkey")
 # The default key is public: since JWT signing falls back to SECRET_KEY, an
 # unconfigured production deployment lets anyone forge admin tokens. Refuse to
-# boot the HTTP server with the default outside DEBUG. CLI commands (which load
-# zou.cli) and test runs (pytest) never serve tokens, so they stay exempt and
-# keep working without the variable set.
+# boot the HTTP server with the default outside DEBUG. CLI commands and test
+# runs (pytest) never serve tokens, so they stay exempt and keep working
+# without the variable set. The CLI reaches us three ways: the `zou` console
+# script imports zou.cli (so it lands in sys.modules), while `python zou/cli.py`
+# and `python -m zou.cli` run cli.py as __main__ under that name instead, so we
+# also match on the __main__ module's file being cli.py.
+_main_module = sys.modules.get("__main__")
+_started_from_cli = (
+    "zou.cli" in sys.modules
+    or os.path.basename(getattr(_main_module, "__file__", "") or "")
+    == "cli.py"
+)
 if (
     SECRET_KEY == "mysecretkey"
     and not DEBUG
     and "pytest" not in sys.modules
-    and "zou.cli" not in sys.modules
+    and not _started_from_cli
 ):
     raise RuntimeError(
         "SECRET_KEY is set to the insecure default 'mysecretkey'. Set the "
