@@ -11,6 +11,7 @@ from tests.base import ApiDBTestCase
 
 from zou.app.utils.plugins import (
     PluginManifest,
+    _build_plugin_alembic_config,
     install_plugin_files,
     uninstall_plugin_files,
     create_plugin_package,
@@ -431,3 +432,28 @@ class PluginStaticRoutesTestCase(ApiDBTestCase):
         add_static_routes(manifest, routes)
 
         self.assertEqual(len(routes), 0)
+
+
+class PluginAlembicConfigTestCase(ApiDBTestCase):
+
+    def setUp(self):
+        super(PluginAlembicConfigTestCase, self).setUp()
+        self.temp_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        super(PluginAlembicConfigTestCase, self).tearDown()
+        if os.path.exists(self.temp_dir):
+            shutil.rmtree(self.temp_dir)
+
+    def test_build_config_with_percent_in_db_uri(self):
+        from zou.app import app
+
+        uri = "postgresql://user:i4xVGz%2189Dsoi@localhost:5432/zoudb"
+        with app.app_context():
+            with patch.dict(
+                app.config, {"SQLALCHEMY_DATABASE_URI": uri}
+            ):
+                alembic_cfg = _build_plugin_alembic_config(self.temp_dir)
+        self.assertEqual(
+            alembic_cfg.get_main_option("sqlalchemy.url"), uri
+        )
