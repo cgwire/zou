@@ -136,9 +136,9 @@ def get_default_date_object(date_string):
 
 def is_valid_id(value):
     """
-    Check if a given string is a valid UUID.
+    Check if a given value is a valid UUID or its string representation.
     """
-    return _UUID_RE.match(value)
+    return _UUID_RE.match(str(value))
 
 
 def serialize_datetime(value):

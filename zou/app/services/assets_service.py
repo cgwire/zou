@@ -569,6 +569,28 @@ def get_asset_types_for_project(project_id):
     return EntityType.serialize_list(result, obj_type="AssetType")
 
 
+def get_asset_types_for_episode(project_id, episode_id):
+    """
+    Retrieve all asset types related to assets natively belonging to a given
+    episode (shared/casted assets excluded, to match the schedule scope).
+    """
+    asset_type_ids = {
+        asset.entity_type_id
+        for asset in Entity.query.filter(build_asset_type_filter())
+        .filter(Entity.project_id == project_id)
+        .filter(Entity.source_id == episode_id)
+        .all()
+    }
+
+    if len(asset_type_ids) > 0:
+        result = EntityType.query.filter(
+            EntityType.id.in_(list(asset_type_ids))
+        ).all()
+    else:
+        result = []
+    return EntityType.serialize_list(result, obj_type="AssetType")
+
+
 def get_asset_types_for_shot(shot_id):
     """
     Retrieve all asset types related to asset casted in a given shot.

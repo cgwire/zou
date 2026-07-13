@@ -1,5 +1,6 @@
 from tests.base import ApiDBTestCase
 
+from zou.app.models.entity import Entity
 from zou.app.models.milestone import Milestone
 from zou.app.models.production_schedule_version import (
     ProductionScheduleVersion,
@@ -44,6 +45,35 @@ class ScheduleServiceTestCase(ApiDBTestCase):
         self.assertEqual(items[0]["task_type_id"], self.task_type_id)
         self.assertEqual(items[0]["project_id"], self.project_id)
 
+    def test_get_schedule_sequence_items_for_episode(self):
+        episode_2 = self.generate_fixture_episode(name="E02")
+        sequence_2 = self.generate_fixture_sequence(
+            name="S02", episode_id=episode_2.id
+        )
+        sequence_2_id = str(sequence_2.id)
+        episode_2_id = str(episode_2.id)
+
+        # Without episode filter, both sequences are returned.
+        items = schedule_service.get_sequences_schedule_items(
+            self.project.id, self.task_type_id
+        )
+        object_ids = {item["object_id"] for item in items}
+        self.assertEqual(object_ids, {self.sequence_id, sequence_2_id})
+
+        # Filtered on the first episode, only its sequence is returned.
+        items = schedule_service.get_sequences_schedule_items(
+            self.project.id, self.task_type_id, self.episode_id
+        )
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["object_id"], self.sequence_id)
+
+        # Filtered on the second episode, only its sequence is returned.
+        items = schedule_service.get_sequences_schedule_items(
+            self.project.id, self.task_type_id, episode_2_id
+        )
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["object_id"], sequence_2_id)
+
     def test_get_schedule_episode_items(self):
         items = schedule_service.get_episodes_schedule_items(
             self.project.id, self.task_type_id
@@ -52,6 +82,88 @@ class ScheduleServiceTestCase(ApiDBTestCase):
         self.assertEqual(items[0]["task_type_id"], self.task_type_id)
         self.assertEqual(items[0]["project_id"], self.project_id)
 
+    def test_get_schedule_episode_items_for_episode(self):
+        episode_1_id = self.episode_id
+        episode_2 = self.generate_fixture_episode(name="E02")
+        episode_2_id = str(episode_2.id)
+
+        # Without episode filter, both episodes are returned.
+        items = schedule_service.get_episodes_schedule_items(
+            self.project.id, self.task_type_id
+        )
+        object_ids = {item["object_id"] for item in items}
+        self.assertEqual(object_ids, {episode_1_id, episode_2_id})
+
+        # Filtered on the first episode, only that episode is returned.
+        items = schedule_service.get_episodes_schedule_items(
+            self.project.id, self.task_type_id, episode_1_id
+        )
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["object_id"], episode_1_id)
+
+        # Filtered on the second episode, only that episode is returned.
+        items = schedule_service.get_episodes_schedule_items(
+            self.project.id, self.task_type_id, episode_2_id
+        )
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["object_id"], episode_2_id)
+
+    def test_get_schedule_edit_items(self):
+        edit = self.generate_fixture_edit(parent_id=self.episode.id)
+        edit_id = str(edit.id)
+        items = schedule_service.get_edits_schedule_items(
+            self.project.id, self.task_type_id
+        )
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["object_id"], edit_id)
+        self.assertEqual(items[0]["task_type_id"], self.task_type_id)
+        self.assertEqual(items[0]["project_id"], self.project_id)
+
+    def test_get_schedule_edit_items_for_episode(self):
+        edit_1 = self.generate_fixture_edit(
+            name="Edit E01", parent_id=self.episode.id
+        )
+        edit_1_id = str(edit_1.id)
+        episode_2 = self.generate_fixture_episode(name="E02")
+        episode_2_id = str(episode_2.id)
+        edit_2 = self.generate_fixture_edit(
+            name="Edit E02", parent_id=episode_2.id
+        )
+        edit_2_id = str(edit_2.id)
+
+        # Without episode filter, both edits are returned.
+        items = schedule_service.get_edits_schedule_items(
+            self.project.id, self.task_type_id
+        )
+        object_ids = {item["object_id"] for item in items}
+        self.assertEqual(object_ids, {edit_1_id, edit_2_id})
+
+        # Filtered on the first episode, only its edit is returned.
+        items = schedule_service.get_edits_schedule_items(
+            self.project.id, self.task_type_id, self.episode_id
+        )
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["object_id"], edit_1_id)
+
+        # Filtered on the second episode, only its edit is returned.
+        items = schedule_service.get_edits_schedule_items(
+            self.project.id, self.task_type_id, episode_2_id
+        )
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["object_id"], edit_2_id)
+
+    def test_get_schedule_edit_items_ignores_canceled(self):
+        edit = self.generate_fixture_edit()
+        edit_id = str(edit.id)
+        canceled_edit = self.generate_fixture_edit(name="Canceled Edit")
+        canceled_edit.update({"canceled": True})
+
+        items = schedule_service.get_edits_schedule_items(
+            self.project.id, self.task_type_id
+        )
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["object_id"], edit_id)
+
     def test_get_schedule_asset_type_items(self):
         items = schedule_service.get_asset_types_schedule_items(
             self.project.id, self.task_type_id
@@ -59,6 +171,42 @@ class ScheduleServiceTestCase(ApiDBTestCase):
         self.assertEqual(items[0]["object_id"], self.asset_type_id)
         self.assertEqual(items[0]["task_type_id"], self.task_type_id)
         self.assertEqual(items[0]["project_id"], self.project_id)
+
+    def test_get_schedule_asset_type_items_for_episode(self):
+        self.generate_fixture_asset_types()
+        episode_1 = self.episode
+        episode_2 = self.generate_fixture_episode(name="E02")
+        episode_2_id = str(episode_2.id)
+        asset_type_character_id = str(self.asset_type_character.id)
+
+        # An asset natively belonging to the first episode...
+        Entity.create(
+            name="Tree E01",
+            project_id=self.project.id,
+            entity_type_id=self.asset_type.id,
+            source_id=episode_1.id,
+        )
+        # ...and one of a different type belonging to the second episode.
+        Entity.create(
+            name="Rabbit E02",
+            project_id=self.project.id,
+            entity_type_id=self.asset_type_character.id,
+            source_id=episode_2.id,
+        )
+
+        # Filtered on the first episode, only its asset type is returned.
+        items = schedule_service.get_asset_types_schedule_items(
+            self.project.id, self.task_type_id, self.episode_id
+        )
+        object_ids = {item["object_id"] for item in items}
+        self.assertEqual(object_ids, {self.asset_type_id})
+
+        # Filtered on the second episode, only its asset type is returned.
+        items = schedule_service.get_asset_types_schedule_items(
+            self.project.id, self.task_type_id, episode_2_id
+        )
+        object_ids = {item["object_id"] for item in items}
+        self.assertEqual(object_ids, {asset_type_character_id})
 
     def test_get_all_schedule_items(self):
         schedule_service.get_task_types_schedule_items(self.project.id)

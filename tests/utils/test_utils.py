@@ -51,6 +51,13 @@ class UtilsTestCase(unittest.TestCase):
         self.assertEqual(fields.serialize_dict(data), result)
         self.assertEqual(fields.serialize_value(data), result)
 
+    def test_is_valid_id(self):
+        unique_id = uuid.uuid4()
+        self.assertTrue(fields.is_valid_id(str(unique_id)))
+        self.assertTrue(fields.is_valid_id(unique_id))
+        self.assertFalse(fields.is_valid_id("undefined"))
+        self.assertFalse(fields.is_valid_id(None))
+
     def test_serialize_orm_array(self):
         person = Person(id=uuid.uuid4(), first_name="Jhon", last_name="Doe")
         person2 = Person(id=uuid.uuid4(), first_name="Emma", last_name="Peel")

@@ -19,6 +19,7 @@ from zou.app.utils import events, fields, cache
 from zou.app.services import (
     assets_service,
     base_service,
+    edits_service,
     shots_service,
     tasks_service,
     projects_service,
@@ -101,21 +102,33 @@ def get_task_types_schedule_items(project_id):
     )
 
 
-def get_asset_types_schedule_items(project_id, task_type_id):
+def get_asset_types_schedule_items(project_id, task_type_id, episode_id=None):
     """
     Return all asset type schedule items for given project. If no schedule item
-    exists for a given asset type, it creates one.
+    exists for a given asset type, it creates one. When an episode is given,
+    results are restricted to the asset types having assets in that episode.
     """
-    asset_types = assets_service.get_asset_types_for_project(project_id)
+    if episode_id is not None:
+        asset_types = assets_service.get_asset_types_for_episode(
+            project_id, episode_id
+        )
+    else:
+        asset_types = assets_service.get_asset_types_for_project(project_id)
     asset_type_map = base_service.get_model_map_from_array(asset_types)
-    existing_schedule_items = set(
+
+    query = (
         ScheduleItem.query.join(
             EntityType, ScheduleItem.object_id == EntityType.id
         )
         .filter(ScheduleItem.project_id == project_id)
         .filter(ScheduleItem.task_type_id == task_type_id)
-        .all()
     )
+    if episode_id is not None:
+        query = query.filter(
+            ScheduleItem.object_id.in_(list(asset_type_map.keys()))
+        )
+    existing_schedule_items = set(query.all())
+
     return get_entity_schedule_items(
         project_id,
         task_type_id,
@@ -125,21 +138,30 @@ def get_asset_types_schedule_items(project_id, task_type_id):
     )
 
 
-def get_episodes_schedule_items(project_id, task_type_id):
+def get_episodes_schedule_items(project_id, task_type_id, episode_id=None):
     """
     Return all episode schedule items for given project. If no schedule item
-    exists for a given asset type, it creates one.
+    exists for a given episode, it creates one. When an episode is given,
+    results are restricted to that episode.
     """
     episode_type = shots_service.get_episode_type()
     episodes = shots_service.get_episodes_for_project(project_id)
+    if episode_id is not None:
+        episodes = [
+            episode for episode in episodes if episode["id"] == str(episode_id)
+        ]
     episodes_map = base_service.get_model_map_from_array(episodes)
-    existing_schedule_items = set(
+
+    query = (
         ScheduleItem.query.join(Entity, ScheduleItem.object_id == Entity.id)
         .filter(ScheduleItem.project_id == project_id)
         .filter(Entity.entity_type_id == episode_type["id"])
         .filter(ScheduleItem.task_type_id == task_type_id)
-        .all()
     )
+    if episode_id is not None:
+        query = query.filter(ScheduleItem.object_id == episode_id)
+    existing_schedule_items = set(query.all())
+
     return get_entity_schedule_items(
         project_id,
         task_type_id,
@@ -151,13 +173,17 @@ def get_episodes_schedule_items(project_id, task_type_id):
 
 def get_sequences_schedule_items(project_id, task_type_id, episode_id=None):
     """
-    Return all asset type schedule items for given project. If no schedule item
-    exists for a given asset type, it creates one.
+    Return all sequence schedule items for given project. If no schedule item
+    exists for a given sequence, it creates one. When an episode is given,
+    results are restricted to the sequences of that episode.
     """
+    sequences = shots_service.get_sequences_for_project(project_id)
     if episode_id is not None:
-        sequences = shots_service.get_sequences_for_episode(episode_id)
-    else:
-        sequences = shots_service.get_sequences_for_project(project_id)
+        sequences = [
+            sequence
+            for sequence in sequences
+            if sequence["parent_id"] == str(episode_id)
+        ]
     sequence_map = base_service.get_model_map_from_array(sequences)
     sequence_type = shots_service.get_sequence_type()
 
@@ -176,6 +202,41 @@ def get_sequences_schedule_items(project_id, task_type_id, episode_id=None):
         task_type_id,
         sequences,
         sequence_map,
+        existing_schedule_items,
+    )
+
+
+def get_edits_schedule_items(project_id, task_type_id, episode_id=None):
+    """
+    Return all edit schedule items for given project. If no schedule item
+    exists for a given edit, it creates one. Canceled edits are ignored.
+    When an episode is given, results are restricted to the edits of that
+    episode.
+    """
+    edits = edits_service.get_edits_for_project(project_id)
+    edits = [edit for edit in edits if not edit["canceled"]]
+    if episode_id is not None:
+        edits = [
+            edit for edit in edits if edit["parent_id"] == str(episode_id)
+        ]
+    edit_map = base_service.get_model_map_from_array(edits)
+    edit_type = edits_service.get_edit_type()
+
+    query = (
+        ScheduleItem.query.join(Entity, ScheduleItem.object_id == Entity.id)
+        .filter(ScheduleItem.project_id == project_id)
+        .filter(Entity.entity_type_id == edit_type["id"])
+        .filter(ScheduleItem.task_type_id == task_type_id)
+    )
+    if episode_id is not None:
+        query = query.filter(Entity.parent_id == episode_id)
+    existing_schedule_items = set(query.all())
+
+    return get_entity_schedule_items(
+        project_id,
+        task_type_id,
+        edits,
+        edit_map,
         existing_schedule_items,
     )
 

@@ -2,6 +2,7 @@ import pytest
 
 from tests.base import ApiDBTestCase
 
+from zou.app.models.schedule_item import ScheduleItem
 from zou.app.services import edits_service, shots_service
 from zou.app.services.exception import EditNotFoundException
 
@@ -105,3 +106,16 @@ class EditUtilsTestCase(ApiDBTestCase):
         edits_service.remove_edit(edit_id)
         with pytest.raises(EditNotFoundException):
             edits_service.get_edit(edit_id)
+
+    def test_remove_edit_deletes_schedule_items(self):
+        self.generate_fixture_task_type()
+        edit_id = str(self.edit.id)
+        schedule_item = ScheduleItem.create(
+            project_id=self.project.id,
+            task_type_id=self.task_type.id,
+            object_id=self.edit.id,
+        )
+        schedule_item_id = schedule_item.id
+
+        edits_service.remove_edit(edit_id)
+        self.assertIsNone(ScheduleItem.get(schedule_item_id))
