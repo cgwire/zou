@@ -151,6 +151,20 @@ def serialize_datetime(value):
     return value.replace(microsecond=0).isoformat()
 
 
+def pick_fields(entries, field_names):
+    """
+    Keep only the given field names in each serialized entry (id and type
+    are always kept). Runs after full serialization on purpose: any
+    permission-based field masking has already been applied, so picking
+    can only remove data, never expose it. Unknown names are ignored.
+    """
+    kept = set(field_names) | {"id", "type"}
+    return [
+        {key: value for key, value in entry.items() if key in kept}
+        for entry in entries
+    ]
+
+
 def boolean(value):
     """
     Parse "true"/"false" (case insensitive, also "1"/"0"/"on") as a boolean.
