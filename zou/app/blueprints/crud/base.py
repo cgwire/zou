@@ -133,7 +133,10 @@ class BaseModelsResource(MethodView, ArgsMixin):
 
         column_names = inspect(self.model).all_orm_descriptors.keys()
         for key, value in options.items():
-            if key not in ["page", "relations"] and key in column_names:
+            if (
+                key not in ["page", "relations", "fields"]
+                and key in column_names
+            ):
                 field_key = getattr(self.model, key)
 
                 is_many_to_many_field = hasattr(
@@ -247,6 +250,15 @@ class BaseModelsResource(MethodView, ArgsMixin):
             default: false
             example: false
             description: Whether to include relations
+          - in: query
+            name: fields
+            required: false
+            schema:
+              type: string
+            example: first_name,last_name
+            description: Comma-separated list of attributes to return for
+              each entry (id and type are always included). Unknown names
+              are ignored.
         responses:
             200:
               description: Models retrieved successfully
@@ -296,14 +308,27 @@ class BaseModelsResource(MethodView, ArgsMixin):
                 page = self.get_page()
                 limit = self.get_limit()
                 relations = self.get_bool_parameter("relations")
+                field_names = self.get_text_parameter("fields")
+                if field_names:
+                    field_names = [
+                        name.strip() for name in field_names.split(",")
+                    ]
                 is_paginated = page > -1
 
                 if is_paginated:
-                    return self.paginated_entries(
+                    result = self.paginated_entries(
                         query, page, limit=limit, relations=relations
                     )
+                    if field_names:
+                        result["data"] = fields.pick_fields(
+                            result["data"], field_names
+                        )
+                    return result
                 else:
-                    return self.all_entries(query, relations=relations)
+                    result = self.all_entries(query, relations=relations)
+                    if field_names:
+                        result = fields.pick_fields(result, field_names)
+                    return result
         except StatementError as exception:
             if hasattr(exception, "message"):
                 return (
