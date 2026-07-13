@@ -182,11 +182,14 @@ def update_preview_file(preview_file_id, data, silent=False):
 
 
 def update_preview_file_raw(preview_file, data, silent=False):
+    # Read the id while the instance is still live: on StaleDataError,
+    # base.update() rolls the session back, which expires every attribute.
+    # Reading preview_file.id afterwards reloads the (now deleted) row and
+    # raises ObjectDeletedError, masking the real error.
+    preview_file_id = str(preview_file.id)
     try:
         preview_file.update(data)
     except StaleDataError:
-        # Preview file was deleted by another process during update
-        preview_file_id = str(preview_file.id)
         from zou.app import app as current_app
 
         current_app.logger.warning(
@@ -196,12 +199,12 @@ def update_preview_file_raw(preview_file, data, silent=False):
             f"Preview file {preview_file_id} was deleted"
         )
 
-    files_service.clear_preview_file_cache(str(preview_file.id))
+    files_service.clear_preview_file_cache(preview_file_id)
     if not silent:
         task = Task.get(preview_file.task_id)
         events.emit(
             "preview-file:update",
-            {"preview_file_id": str(preview_file.id)},
+            {"preview_file_id": preview_file_id},
             project_id=str(task.project_id),
         )
     return preview_file.serialize()

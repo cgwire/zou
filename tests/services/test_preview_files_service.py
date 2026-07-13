@@ -411,6 +411,46 @@ class PlaylistTestCase(ApiDBTestCase):
                 )
         self.assertEqual(os.listdir(folder), [])
 
+    def test_update_preview_file_raw_deleted_midflight_raises_not_found(self):
+        """
+        When the row is deleted by another process mid-update, base.update()
+        raises StaleDataError then rolls back, which expires the instance.
+        Reading preview_file.id in the error handler would then reload the
+        deleted row and raise ObjectDeletedError, masking the real error.
+        The id must be captured before update() so the handler never touches
+        the ORM instance again.
+
+        Modelled with a fake: the test DB harness runs each test in a single
+        rolled-back transaction, so a committed cross-process delete (the only
+        thing that makes .id reload fail) cannot be reproduced against a real
+        row.
+        """
+        from sqlalchemy.orm.exc import StaleDataError
+
+        from zou.app.services.exception import PreviewFileNotFoundException
+
+        class _VanishingPreviewFile:
+            def __init__(self):
+                self._live = True
+
+            @property
+            def id(self):
+                if not self._live:
+                    raise AssertionError(
+                        "id read after failed update reloads the deleted row"
+                    )
+                return "50aa09cb-3f13-4c12-8669-e3fb8f0d0ac7"
+
+            def update(self, data):
+                # A failed commit rolls back and expires the instance.
+                self._live = False
+                raise StaleDataError("0 rows matched")
+
+        with self.assertRaises(PreviewFileNotFoundException):
+            preview_files_service.update_preview_file_raw(
+                _VanishingPreviewFile(), {"status": "broken"}
+            )
+
     def test_get_preview_file_dimensions(self):
         self.assertFalse(_is_valid_resolution(""))
         self.assertFalse(_is_valid_resolution(None))
