@@ -216,8 +216,12 @@ def _build_plugin_alembic_config(plugin_path):
         "script_location", str(PLUGIN_ALEMBIC_TEMPLATE_DIR)
     )
     alembic_cfg.set_main_option("version_locations", str(versions_dir))
+    # Escape % for configparser, which Alembic uses internally and would
+    # otherwise treat percent-encoded characters in the URI (e.g. a "!" in
+    # the DB password rendered as "%21") as interpolation tokens.
     alembic_cfg.set_main_option(
-        "sqlalchemy.url", current_app.config["SQLALCHEMY_DATABASE_URI"]
+        "sqlalchemy.url",
+        current_app.config["SQLALCHEMY_DATABASE_URI"].replace("%", "%%"),
     )
     alembic_cfg.attributes["plugin_path"] = str(plugin_path)
     return alembic_cfg
