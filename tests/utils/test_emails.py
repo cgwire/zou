@@ -59,3 +59,21 @@ class EmailsLineLengthTestCase(ApiDBTestCase):
         html = "<p>" + ("é" * 2000) + "</p>"
         raw = self._get_message_bytes("Sujet avec accents é", html)
         self._assert_lines_within_rfc5322(raw)
+
+
+class EmailsSendFailureTestCase(ApiDBTestCase):
+    def test_smtp_failure_is_logged_as_error(self):
+        from unittest.mock import patch
+
+        with patch.dict(app.config, {"MAIL_ENABLED": True}):
+            with patch(
+                "zou.app.utils.emails.mail.send",
+                side_effect=Exception("SMTP down"),
+            ):
+                with self.assertLogs(app.logger, level="ERROR") as logs:
+                    emails.send_email(
+                        "Subject", "<p>Hello</p>", "recipient@example.com"
+                    )
+        self.assertTrue(
+            any("recipient@example.com" in line for line in logs.output)
+        )
