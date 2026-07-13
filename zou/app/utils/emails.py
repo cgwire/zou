@@ -53,8 +53,15 @@ def send_email(subject, html, recipient_email, body=None, locale=None):
                         pass
                 mail.send(message)
             except Exception:
-                app.logger.info("Exception when sending a mail notification:")
-                app.logger.info(traceback.format_exc())
+                # Log at error level so failures show up in production and
+                # RQ worker logs: the default Flask logger drops info
+                # messages, which made SMTP errors invisible while the
+                # email job was still reported as successful.
+                app.logger.error(
+                    f"Failed to send email to {recipient_email} "
+                    f"(subject: {subject}):"
+                )
+                app.logger.error(traceback.format_exc())
 
 
 class HTMLStripper(HTMLParser):
