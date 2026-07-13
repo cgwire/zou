@@ -530,6 +530,12 @@ def sync_with_ldap_server():
         elif LDAP_IS_AD:
             user = f"{LDAP_DOMAIN}\\{LDAP_USER}"
             authentication = NTLM
+        elif "=" in LDAP_USER:
+            # LDAP_USER is already a full bind DN, use it as is. OpenLDAP
+            # admin accounts often live outside the users base DN
+            # (e.g. cn=admin,dc=studio,dc=local).
+            user = LDAP_USER
+            authentication = SIMPLE
         else:
             user = f"uid={LDAP_USER},{LDAP_BASE_DN}"
             authentication = SIMPLE
