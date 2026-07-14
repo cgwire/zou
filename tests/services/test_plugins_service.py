@@ -70,6 +70,13 @@ class PluginsServiceTestCase(ApiDBTestCase):
         self.assertTrue(installed_path.exists())
         self.assertTrue((installed_path / "manifest.toml").exists())
 
+    def test_install_plugin_keeps_existing_loggers_enabled(self):
+        from zou.app import app
+
+        plugin_path = self._create_test_plugin("test_plugin", "0.1.0")
+        plugins_service.install_plugin(str(plugin_path))
+        self.assertFalse(app.logger.disabled)
+
     def test_install_plugin_upgrade(self):
         existing_plugin = Plugin.create(
             plugin_id="test_plugin",
