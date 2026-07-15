@@ -140,7 +140,7 @@ class StudiosResource(BaseModelsResource):
 
     def post_creation(self, instance):
         tasks_service.clear_studio_cache(str(instance.id))
-        return instance.serialize()
+        return instance.serialize(relations=True)
 
 
 class StudioResource(BaseModelResource):

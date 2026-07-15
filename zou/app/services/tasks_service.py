@@ -1842,7 +1842,10 @@ def add_preview_file_to_comment(comment_id, person_id, task_id, revision=None):
     events.emit(
         "comment:update", {"comment_id": comment.id}, project_id=project_id
     )
-    return preview_file.serialize()
+    # relations=True so the response has the same shape as a later GET on
+    # data/preview-files/<id> (it includes the comment the preview belongs
+    # to). See cgwire/gazu#385.
+    return preview_file.serialize(relations=True)
 
 
 def update_preview_file_info(preview_file):
@@ -1890,9 +1893,7 @@ def get_tasks_for_project(
     Return all tasks for given project.
     """
     query = (
-        Task.query.options(
-            selectinload(Task.assignees).load_only(Person.id)
-        )
+        Task.query.options(selectinload(Task.assignees).load_only(Person.id))
         .filter(Task.project_id == project_id)
         .order_by(Task.updated_at.desc())
     )

@@ -155,7 +155,7 @@ class PreviewBackgroundFilesResource(BaseModelsResource):
         if instance.is_default:
             files_service.reset_default_preview_background_files(instance.id)
         files_service.clear_preview_background_file_cache(str(instance.id))
-        return instance.serialize()
+        return instance.serialize(relations=True)
 
 
 class PreviewBackgroundFileResource(BaseModelResource):

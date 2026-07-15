@@ -162,7 +162,7 @@ class StatusAutomationsResource(BaseModelsResource):
 
     def post_creation(self, status_automation):
         status_automations_service.clear_status_automation_cache()
-        return status_automation.serialize()
+        return status_automation.serialize(relations=True)
 
 
 class StatusAutomationResource(BaseModelResource):

@@ -173,7 +173,7 @@ class DayOffsResource(BaseModelsResource):
             instance.end_date <= TimeSpent.date,
             person_id=instance.person_id,
         )
-        return instance.serialize()
+        return instance.serialize(relations=True)
 
 
 class DayOffResource(BaseModelResource):

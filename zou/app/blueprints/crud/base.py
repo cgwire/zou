@@ -216,7 +216,9 @@ class BaseModelsResource(MethodView, ArgsMixin):
         return data
 
     def post_creation(self, instance):
-        return instance.serialize()
+        # relations=True so a freshly created entry has the same shape as
+        # the single-instance GET (relations are empty lists at this point).
+        return instance.serialize(relations=True)
 
     @jwt_required()
     def get(self):

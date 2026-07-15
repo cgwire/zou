@@ -152,7 +152,7 @@ class TaskStatusesResource(BaseModelsResource):
 
     def post_creation(self, instance):
         tasks_service.clear_task_status_cache(str(instance.id))
-        return instance.serialize()
+        return instance.serialize(relations=True)
 
     def check_creation_integrity(self, data):
         if data.get("is_default", False):

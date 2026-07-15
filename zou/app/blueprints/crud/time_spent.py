@@ -213,7 +213,7 @@ class TimeSpentsResource(BaseModelsResource):
             {"task_id": task_id},
             project_id=str(task.project_id),
         )
-        return instance.serialize()
+        return instance.serialize(relations=True)
 
 
 class TimeSpentResource(BaseModelResource):
