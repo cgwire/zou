@@ -1,5 +1,4 @@
 import datetime
-import os
 import re
 import random
 import string
@@ -567,12 +566,27 @@ def create_attachment(comment, uploaded_file, randomize=False, reply_id=None):
     )
     attachment_file_id = str(attachment_file.id)
 
+    # On storage failure, drop the database entry to avoid a ghost
+    # attachment pointing to a missing object; the temporary file is
+    # removed in every case.
     tmp_file_path = fs.save_file(tmp_folder, attachment_file_id, uploaded_file)
-    size = fs.get_file_size(tmp_file_path)
-    attachment_file.update({"size": size})
-    file_store.add_file("attachments", attachment_file_id, tmp_file_path)
-    os.remove(tmp_file_path)
-    return attachment_file.present()
+    try:
+        size = fs.get_file_size(tmp_file_path)
+        attachment_file.update({"size": size})
+        file_store.add_file("attachments", attachment_file_id, tmp_file_path)
+        return attachment_file.present()
+    except Exception:
+        try:
+            attachment_file.delete()
+        except Exception:
+            current_app.logger.error(
+                f"Failed to delete attachment file {attachment_file_id} "
+                f"after a storage failure",
+                exc_info=1,
+            )
+        raise
+    finally:
+        fs.rm_file(tmp_file_path)
 
 
 def get_all_attachment_files_for_project(project_id):

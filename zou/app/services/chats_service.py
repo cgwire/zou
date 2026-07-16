@@ -261,20 +261,38 @@ def _create_attachment(message, uploaded_file, randomize=False):
         chat_message_id=message["id"],
     )
 
-    # Store attachment file
+    # Store attachment file. On failure, drop the database entry to avoid
+    # a ghost attachment pointing to a missing object; the temporary file
+    # is removed in every case (it used to leak for non-image files).
     attachment_file_id = str(attachment_file.id)
     tmp_file_path = fs.save_file(tmp_folder, attachment_file_id, uploaded_file)
-    size = fs.get_file_size(tmp_file_path)
-    attachment_file.update({"size": size})
-    file_store.add_file("attachments", attachment_file_id, tmp_file_path)
+    image_path = None
+    try:
+        size = fs.get_file_size(tmp_file_path)
+        attachment_file.update({"size": size})
+        file_store.add_file("attachments", attachment_file_id, tmp_file_path)
 
-    # Create thumbnail for pictures
-    if "png" in mimetype or "jpg" in mimetype:
-        image_path = tmp_file_path
-        if "jpg" in mimetype:
-            image_path = thumbnail.convert_jpg_to_png(tmp_file_path)
-        thumbnail.resize(image_path, (150, 150), True)
-        file_store.add_picture("thumbnails", attachment_file_id, image_path)
-        fs.rm_file(image_path)
+        # Create thumbnail for pictures
+        if "png" in mimetype or "jpg" in mimetype:
+            image_path = tmp_file_path
+            if "jpg" in mimetype:
+                image_path = thumbnail.convert_jpg_to_png(tmp_file_path)
+            thumbnail.resize(image_path, (150, 150), True)
+            file_store.add_picture(
+                "thumbnails", attachment_file_id, image_path
+            )
+        return attachment_file.present()
+    except Exception:
+        try:
+            attachment_file.delete()
+        except Exception:
+            current_app.logger.error(
+                f"Failed to delete attachment file {attachment_file_id} "
+                f"after a storage failure",
+                exc_info=1,
+            )
+        raise
+    finally:
+        if image_path is not None and image_path != tmp_file_path:
+            fs.rm_file(image_path)
         fs.rm_file(tmp_file_path)
-    return attachment_file.present()

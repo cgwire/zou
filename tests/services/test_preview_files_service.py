@@ -1,5 +1,6 @@
 import os
 import tempfile
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
@@ -600,6 +601,67 @@ class PlaylistTestCase(ApiDBTestCase):
         for p in (uploaded_path, norm_path, norm_low_path):
             if os.path.exists(p):
                 os.remove(p)
+
+    @patch("zou.app.services.preview_files_service.movie.generate_thumbnail")
+    @patch("zou.app.services.preview_files_service.movie.get_movie_duration")
+    @patch("zou.app.services.preview_files_service.movie.get_movie_size")
+    @patch("zou.app.services.preview_files_service.movie.normalize_movie")
+    @patch("zou.app.services.preview_files_service.file_store.add_movie")
+    def test_prepare_and_store_movie_thumbnail_failure_marks_broken(
+        self,
+        mock_add_movie,
+        mock_normalize,
+        mock_size,
+        mock_duration,
+        mock_gen_thumbnail,
+    ):
+        preview_file = self.generate_fixture_preview_file(status="processing")
+        preview_file_id = str(preview_file.id)
+
+        tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+        tmp.write(b"\x00" * 1024)
+        tmp.close()
+        uploaded_path = tmp.name
+        norm_path = uploaded_path + "_norm.mp4"
+        norm_low_path = uploaded_path + "_norm_low.mp4"
+        for p in (norm_path, norm_low_path):
+            with open(p, "wb") as f:
+                f.write(b"\x00" * 512)
+
+        mock_normalize.return_value = (norm_path, norm_low_path, None)
+        mock_size.return_value = (1920, 1080)
+        mock_duration.return_value = 10.0
+        mock_gen_thumbnail.side_effect = OSError("ffmpeg thumbnail crashed")
+
+        result = preview_files_service.prepare_and_store_movie(
+            preview_file_id,
+            uploaded_path,
+            normalize=True,
+            add_source_to_file_store=False,
+        )
+
+        self.assertEqual(result["status"], "broken")
+        persisted = files_service.get_preview_file(preview_file_id)
+        self.assertEqual(persisted["status"], "broken")
+        for p in (uploaded_path, norm_path, norm_low_path):
+            self.assertFalse(os.path.exists(p))
+
+    def test_mark_broken_on_job_failure(self):
+        preview_file = self.generate_fixture_preview_file(status="processing")
+        preview_file_id = str(preview_file.id)
+
+        tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+        tmp.write(b"\x00" * 8)
+        tmp.close()
+
+        job = SimpleNamespace(args=(preview_file_id, tmp.name, True, False))
+        preview_files_service.mark_broken_on_job_failure(
+            job, None, Exception, Exception("worker killed"), None
+        )
+
+        persisted = files_service.get_preview_file(preview_file_id)
+        self.assertEqual(persisted["status"], "broken")
+        self.assertFalse(os.path.exists(tmp.name))
 
     def test_extract_skips_metadata_only_previews(self):
         """

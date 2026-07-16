@@ -255,6 +255,22 @@ class BaseNewPreviewFilePicture:
             "height": height,
         }
 
+    @staticmethod
+    def _get_upload_stream_size(uploaded_file):
+        """
+        Return the byte size of the uploaded file stream, or None when the
+        stream is not seekable.
+        """
+        try:
+            stream = uploaded_file.stream
+            position = stream.tell()
+            stream.seek(0, os.SEEK_END)
+            size = stream.tell()
+            stream.seek(position)
+            return size
+        except (AttributeError, OSError, ValueError):
+            return None
+
     def save_movie_preview(
         self, preview_file_id, uploaded_file, normalize=True
     ):
@@ -275,6 +291,15 @@ class BaseNewPreviewFilePicture:
                 "Uploaded movie could not be written to temporary storage "
                 "or is empty; aborting before dispatching normalization."
             )
+        expected_size = self._get_upload_stream_size(uploaded_file)
+        written_size = os.path.getsize(uploaded_movie_path)
+        if expected_size is not None and written_size != expected_size:
+            fs.rm_file(uploaded_movie_path)
+            raise PreviewProcessingFailedException(
+                f"Uploaded movie was only partially written to temporary "
+                f"storage ({written_size}/{expected_size} bytes); the "
+                f"temporary disk may be full."
+            )
         save_source_file = config.PREVIEW_SAVE_SOURCE_FILE
         if normalize and config.ENABLE_JOB_QUEUE and not no_job:
             queue_store.job_queue.enqueue(
@@ -286,6 +311,7 @@ class BaseNewPreviewFilePicture:
                     save_source_file,
                 ),
                 job_timeout=int(config.JOB_QUEUE_TIMEOUT),
+                on_failure=preview_files_service.mark_broken_on_job_failure,
             )
         else:
             preview_files_service.prepare_and_store_movie(
