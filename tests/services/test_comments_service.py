@@ -171,6 +171,30 @@ class CommentsServiceTestCase(ApiDBTestCase):
         self.assertEqual(attachment["extension"], "txt")
         self.assertGreater(attachment["size"], 0)
 
+    def test_is_inline_safe_mimetype(self):
+        for mimetype in [
+            "image/jpeg",
+            "image/png",
+            "image/gif",
+            "image/webp",
+            "IMAGE/PNG",
+            "image/jpeg; charset=binary",
+        ]:
+            self.assertTrue(
+                comments_service.is_inline_safe_mimetype(mimetype), mimetype
+            )
+        for mimetype in [
+            "image/svg+xml",
+            "text/html",
+            "application/pdf",
+            "application/octet-stream",
+            "",
+            None,
+        ]:
+            self.assertFalse(
+                comments_service.is_inline_safe_mimetype(mimetype), mimetype
+            )
+
     def test_get_attachment_file_path(self):
         comment = comments_service.new_comment(
             self.task.id, self.task_status.id, self.user["id"], "comment"

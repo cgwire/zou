@@ -90,10 +90,14 @@ class DownloadAttachmentResource(MethodView):
                 file_path,
                 conditional=True,
                 mimetype=attachment_file["mimetype"],
-                # Force download: the mimetype comes verbatim from the
-                # uploader, so serving inline would let an attacker run
-                # HTML/SVG in Kitsu's origin (stored XSS).
-                as_attachment=True,
+                # Serve safe raster images inline so they display in the
+                # browser; force download for everything else. The mimetype
+                # comes verbatim from the uploader, so serving e.g. HTML/SVG
+                # inline would let an attacker run code in Kitsu's origin
+                # (stored XSS).
+                as_attachment=not comments_service.is_inline_safe_mimetype(
+                    attachment_file["mimetype"]
+                ),
                 download_name=attachment_file["name"],
                 max_age=config.CLIENT_CACHE_MAX_AGE,
                 last_modified=date_helpers.get_datetime_from_string(

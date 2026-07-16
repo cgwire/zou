@@ -77,6 +77,31 @@ def get_attachment_file_path(attachment_file):
     )
 
 
+# Raster image types that are safe to display inline. Paired with the global
+# X-Content-Type-Options: nosniff header, the browser honors the declared type
+# and will not sniff a disguised HTML payload into an executable document.
+# image/svg+xml is deliberately excluded: SVG can embed scripts and would run
+# in Kitsu's origin (stored XSS).
+INLINE_SAFE_MIMETYPES = {
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    "image/bmp",
+    "image/avif",
+}
+
+
+def is_inline_safe_mimetype(mimetype):
+    """
+    Return True when an attachment with this mimetype may be served inline
+    (displayed in the browser) instead of forced as a download.
+    """
+    if not mimetype:
+        return False
+    return mimetype.split(";")[0].strip().lower() in INLINE_SAFE_MIMETYPES
+
+
 def create_comment(
     person_id,
     task_id,
