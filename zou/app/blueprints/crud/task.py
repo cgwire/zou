@@ -223,6 +223,9 @@ class TasksResource(BaseModelsResource, ArgsMixin):
         """
         try:
             data = request.json
+            # task.name is NOT NULL; default it like create_task() does so a
+            # client omitting it gets a task instead of an IntegrityError.
+            data["name"] = data.get("name") or "main"
             is_assignees = "assignees" in data
             assignees = None
 

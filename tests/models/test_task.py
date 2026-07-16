@@ -63,6 +63,17 @@ class TaskTestCase(ApiDBTestCase):
         self.task = self.post("data/tasks", data)
         self.assertEqual(len(tasks), 4)
 
+    def test_create_task_without_name_defaults_to_main(self):
+        data = {
+            "project_id": self.project.id,
+            "task_type_id": self.task_type.id,
+            "task_status_id": self.task_status.id,
+            "entity_id": self.asset.id,
+            "assigner_id": self.assigner.id,
+        }
+        task = self.post("data/tasks", data)
+        self.assertEqual(task["name"], "main")
+
     def test_update_task(self):
         task = self.get_first("data/tasks")
         data = {"name": "Modeling arbre 2"}
