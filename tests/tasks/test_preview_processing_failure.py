@@ -4,6 +4,8 @@ from unittest import mock
 
 from tests.base import ApiDBTestCase
 
+from zou.app.services import preview_files_service
+
 
 class PreviewProcessingFailureTestCase(ApiDBTestCase):
     """
@@ -66,4 +68,24 @@ class PreviewProcessingFailureTestCase(ApiDBTestCase):
         self.assertIn("normalization disabled", message)
         self.assertEqual(
             response.get("data", {}).get("reason"), "ffmpeg exploded"
+        )
+
+    @mock.patch("zou.app.config.ENABLE_JOB_QUEUE", True)
+    @mock.patch("zou.app.stores.queue_store.job_queue")
+    def test_movie_upload_enqueues_with_failure_callback(self, mock_queue):
+        """
+        The movie normalization job must carry an on_failure callback so a
+        killed worker cannot leave the preview file stuck in "processing".
+        """
+        preview_file_id, movie_path = self.add_movie_preview()
+
+        self.upload_file(
+            f"/pictures/preview-files/{preview_file_id}", movie_path
+        )
+
+        self.assertTrue(mock_queue.enqueue.called)
+        kwargs = mock_queue.enqueue.call_args.kwargs
+        self.assertEqual(
+            kwargs.get("on_failure"),
+            preview_files_service.mark_broken_on_job_failure,
         )

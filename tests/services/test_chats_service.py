@@ -1,7 +1,15 @@
+import io
+import os
+
+from unittest.mock import patch
+
+from werkzeug.datastructures import FileStorage
+
 from tests.base import ApiDBTestCase
 
+from zou.app import config
+from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.chat import Chat
-from zou.app.models.chat_message import ChatMessage
 
 from zou.app.services import chats_service
 
@@ -93,6 +101,45 @@ class ChatsServiceTestCase(ApiDBTestCase):
         self.assertEqual(result["id"], message["id"])
         messages = chats_service.get_chat_messages(chat.id)
         self.assertEqual(len(messages), 0)
+
+    def _create_message(self):
+        chat = chats_service.get_chat_raw(self.asset.id)
+        return chats_service.create_chat_message(
+            chat.id, str(self.person.id), "with attachment"
+        )
+
+    def test_create_attachment_non_image_removes_temp_file(self):
+        message = self._create_message()
+        uploaded_file = FileStorage(
+            stream=io.BytesIO(b"%PDF-1.4 fake content"),
+            filename="notes.pdf",
+            content_type="application/pdf",
+        )
+
+        attachment = chats_service._create_attachment(message, uploaded_file)
+
+        tmp_file_path = os.path.join(config.TMP_DIR, f"{attachment['id']}.pdf")
+        self.assertFalse(os.path.exists(tmp_file_path))
+
+    def test_create_attachment_failure_cleans_up(self):
+        message = self._create_message()
+        uploaded_file = FileStorage(
+            stream=io.BytesIO(b"%PDF-1.4 fake content"),
+            filename="notes.pdf",
+            content_type="application/pdf",
+        )
+        os.makedirs(config.TMP_DIR, exist_ok=True)
+        tmp_files_before = set(os.listdir(config.TMP_DIR))
+
+        with patch(
+            "zou.app.services.chats_service.file_store.add_file",
+            side_effect=OSError("storage down"),
+        ):
+            with self.assertRaises(OSError):
+                chats_service._create_attachment(message, uploaded_file)
+
+        self.assertEqual(AttachmentFile.query.count(), 0)
+        self.assertEqual(set(os.listdir(config.TMP_DIR)), tmp_files_before)
 
     def test_get_chat_message_raw(self):
         chat = chats_service.get_chat_raw(self.asset.id)

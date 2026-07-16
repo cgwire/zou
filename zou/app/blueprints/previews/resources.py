@@ -286,6 +286,7 @@ class BaseNewPreviewFilePicture:
                     save_source_file,
                 ),
                 job_timeout=int(config.JOB_QUEUE_TIMEOUT),
+                on_failure=preview_files_service.mark_broken_on_job_failure,
             )
         else:
             preview_files_service.prepare_and_store_movie(

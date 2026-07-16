@@ -255,6 +255,35 @@ def _abort_on_storage_failure(preview_file_id, operation, exc):
     return set_preview_file_as_broken(preview_file_id)
 
 
+def mark_broken_on_job_failure(
+    job, connection, exc_type, exc_value, traceback
+):
+    """
+    RQ failure callback for the movie normalization job: mark the preview
+    file as broken and drop its temporary file. Without it, a job killed by
+    timeout or a dead worker leaves the preview file stuck on "processing"
+    forever.
+    """
+    from zou.app import app as current_app
+
+    preview_file_id = job.args[0]
+    uploaded_movie_path = job.args[1] if len(job.args) > 1 else None
+    with current_app.app_context():
+        current_app.logger.error(
+            f"Normalization job failed for preview file {preview_file_id}: "
+            f"{exc_value}"
+        )
+        if uploaded_movie_path is not None:
+            _remove_temp_files(uploaded_movie_path)
+        try:
+            set_preview_file_as_broken(preview_file_id)
+        except PreviewFileNotFoundException:
+            current_app.logger.warning(
+                f"Preview file {preview_file_id} was deleted before its "
+                f"failed job could mark it as broken"
+            )
+
+
 def prepare_and_store_movie(
     preview_file_id,
     uploaded_movie_path,
@@ -415,42 +444,66 @@ def prepare_and_store_movie(
                 )
             normalized_movie_path = uploaded_movie_path
 
-        # Build thumbnails (skipped when remote v2+, done by Nomad job)
-        size = movie.get_movie_size(normalized_movie_path)
-        width, height = size
-        file_size = os.path.getsize(normalized_movie_path)
-        duration = movie.get_movie_duration(normalized_movie_path)
+        # Build thumbnails (skipped when remote v2+, done by Nomad job).
+        # Any failure here must mark the preview file as broken: an
+        # uncaught exception would kill the job and leave the status
+        # stuck on "processing" forever.
+        try:
+            size = movie.get_movie_size(normalized_movie_path)
+            width, height = size
+            file_size = os.path.getsize(normalized_movie_path)
+            duration = movie.get_movie_duration(normalized_movie_path)
 
-        remote_handles_thumbnails = is_remote and REMOTE_NORMALIZE_VERSION >= 2
-        if not remote_handles_thumbnails:
-            original_picture_path = movie.generate_thumbnail(
-                normalized_movie_path
+            remote_handles_thumbnails = (
+                is_remote and REMOTE_NORMALIZE_VERSION >= 2
             )
-            thumbnail_utils.turn_into_thumbnail(original_picture_path, size)
-            try:
-                save_variants(preview_file_id, original_picture_path)
-            except Exception as exc:
-                _remove_temp_files(
-                    uploaded_movie_path,
-                    normalized_movie_path,
-                    normalized_movie_low_path,
-                    original_picture_path,
+            if not remote_handles_thumbnails:
+                original_picture_path = movie.generate_thumbnail(
+                    normalized_movie_path
                 )
-                return _abort_on_storage_failure(
-                    preview_file_id, "thumbnail variants upload", exc
+                thumbnail_utils.turn_into_thumbnail(
+                    original_picture_path, size
                 )
-            current_app.logger.info(
-                f"thumbnail created {original_picture_path}"
-            )
+                try:
+                    save_variants(preview_file_id, original_picture_path)
+                except Exception as exc:
+                    _remove_temp_files(
+                        uploaded_movie_path,
+                        normalized_movie_path,
+                        normalized_movie_low_path,
+                        original_picture_path,
+                    )
+                    return _abort_on_storage_failure(
+                        preview_file_id, "thumbnail variants upload", exc
+                    )
+                current_app.logger.info(
+                    f"thumbnail created {original_picture_path}"
+                )
 
-            # Build tiles
-            try:
-                tile_path = movie.generate_tile(normalized_movie_path)
-                file_store.add_picture("tiles", preview_file_id, tile_path)
-                os.remove(tile_path)
-                current_app.logger.info(f"tile created {tile_path}")
-            except Exception:
-                current_app.logger.error("Failed to create tile", exc_info=1)
+                # Build tiles
+                try:
+                    tile_path = movie.generate_tile(normalized_movie_path)
+                    file_store.add_picture("tiles", preview_file_id, tile_path)
+                    os.remove(tile_path)
+                    current_app.logger.info(f"tile created {tile_path}")
+                except Exception:
+                    current_app.logger.error(
+                        "Failed to create tile", exc_info=1
+                    )
+        except Exception:
+            current_app.logger.error(
+                f"Failed to build thumbnails for preview file "
+                f"{preview_file_id}",
+                exc_info=1,
+            )
+            preview_file = set_preview_file_as_broken(preview_file_id)
+            _remove_temp_files(
+                uploaded_movie_path,
+                normalized_movie_path,
+                normalized_movie_low_path,
+                original_picture_path,
+            )
+            return preview_file
 
         # Remove files and update status
         try:

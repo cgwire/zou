@@ -1,8 +1,14 @@
 import io
+import os
+
+from unittest.mock import patch
 
 from werkzeug.datastructures import FileStorage
 
 from tests.base import ApiDBTestCase
+
+from zou.app import config
+from zou.app.models.attachment_file import AttachmentFile
 
 from zou.app.services import (
     comments_service,
@@ -194,6 +200,26 @@ class CommentsServiceTestCase(ApiDBTestCase):
             self.assertFalse(
                 comments_service.is_inline_safe_mimetype(mimetype), mimetype
             )
+
+    def test_create_attachment_failure_cleans_up(self):
+        comment = comments_service.new_comment(
+            self.task.id, self.task_status.id, self.user["id"], "comment"
+        )
+        uploaded_file = FileStorage(
+            stream=io.BytesIO(b"attachment content"), filename="notes.txt"
+        )
+        os.makedirs(config.TMP_DIR, exist_ok=True)
+        tmp_files_before = set(os.listdir(config.TMP_DIR))
+
+        with patch(
+            "zou.app.services.comments_service.file_store.add_file",
+            side_effect=OSError("storage down"),
+        ):
+            with self.assertRaises(OSError):
+                comments_service.create_attachment(comment, uploaded_file)
+
+        self.assertEqual(AttachmentFile.query.count(), 0)
+        self.assertEqual(set(os.listdir(config.TMP_DIR)), tmp_files_before)
 
     def test_get_attachment_file_path(self):
         comment = comments_service.new_comment(
