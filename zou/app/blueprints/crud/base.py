@@ -216,7 +216,7 @@ class BaseModelsResource(MethodView, ArgsMixin):
         return data
 
     def post_creation(self, instance):
-        return instance.serialize()
+        return instance.serialize(relations=True)
 
     @jwt_required()
     def get(self):

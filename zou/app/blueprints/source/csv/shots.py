@@ -258,12 +258,22 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
             shot_new_values["data"] = entity.data.copy()
 
         frame_in = row.get("Frame In", None) or row.get("In", None)
-        if frame_in is not None:
-            shot_new_values["data"]["frame_in"] = frame_in
+        if frame_in is not None and frame_in != "":
+            try:
+                shot_new_values["data"]["frame_in"] = int(frame_in)
+            except (ValueError, TypeError):
+                raise RowException(
+                    f"frame_in must be an integer, got '{frame_in}'"
+                )
 
         frame_out = row.get("Frame Out", None) or row.get("Out", None)
-        if frame_out is not None:
-            shot_new_values["data"]["frame_out"] = frame_out
+        if frame_out is not None and frame_out != "":
+            try:
+                shot_new_values["data"]["frame_out"] = int(frame_out)
+            except (ValueError, TypeError):
+                raise RowException(
+                    f"frame_out must be an integer, got '{frame_out}'"
+                )
 
         # Keep the frame count consistent with an imported frame range when
         # the CSV doesn't provide it explicitly.

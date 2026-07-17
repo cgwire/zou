@@ -652,19 +652,23 @@ class PersonResource(BaseModelResource, ArgsMixin):
 
         if "expiration_date" in data and data["expiration_date"] is not None:
             try:
-                if (
-                    datetime.datetime.strptime(
-                        data["expiration_date"], "%Y-%m-%d"
-                    ).date()
-                    < datetime.date.today()
-                ):
-                    raise WrongParameterException(
-                        "Expiration date can't be in the past."
-                    )
-            except WrongParameterException:
-                raise
+                new_expiration_date = datetime.datetime.strptime(
+                    data["expiration_date"], "%Y-%m-%d"
+                ).date()
             except Exception:
                 raise WrongParameterException("Expiration date is not valid.")
+
+            # Reject a past date only when it actually changes. Re-submitting an
+            # already-expired person's own date (e.g. to disable a bot) must
+            # keep working, otherwise expired accounts can never be edited.
+            current_expiration_date = Person.get(instance_id).expiration_date
+            if (
+                new_expiration_date != current_expiration_date
+                and new_expiration_date < datetime.date.today()
+            ):
+                raise WrongParameterException(
+                    "Expiration date can't be in the past."
+                )
 
         if "email" in data:
             try:
@@ -730,7 +734,18 @@ class PersonResource(BaseModelResource, ArgsMixin):
         instance_dict["departments"] = [
             str(department.id) for department in self.instance.departments
         ]
-        if "expiration_date" in data:
+        regenerate_token = "expiration_date" in data
+        if regenerate_token and data["expiration_date"] is not None:
+            # A past date only yields an already-expired token that get_jti()
+            # then rejects (500/401). Skip regeneration so an expired bot
+            # keeps a stable token and stays editable.
+            regenerate_token = (
+                datetime.datetime.strptime(
+                    data["expiration_date"], "%Y-%m-%d"
+                ).date()
+                >= datetime.date.today()
+            )
+        if regenerate_token:
             instance_dict["access_token"] = (
                 persons_service.create_access_token_for_raw_person(
                     self.instance

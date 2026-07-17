@@ -152,7 +152,7 @@ class CustomActionsResource(BaseModelsResource):
 
     def post_creation(self, custom_action):
         custom_actions_service.clear_custom_action_cache()
-        return custom_action.serialize()
+        return custom_action.serialize(relations=True)
 
 
 class CustomActionResource(BaseModelResource):

@@ -140,7 +140,7 @@ class DepartmentsResource(BaseModelsResource):
 
     def post_creation(self, instance):
         tasks_service.clear_department_cache(str(instance.id))
-        return instance.serialize()
+        return instance.serialize(relations=True)
 
 
 class DepartmentResource(BaseModelResource):

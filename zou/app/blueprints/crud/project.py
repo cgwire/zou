@@ -251,14 +251,14 @@ class ProjectsResource(BaseModelsResource):
         return data
 
     def post_creation(self, project):
-        project_dict = project.serialize()
+        project_dict = project.serialize(relations=True)
         if self._template_id_to_apply is not None:
             project_templates_service.apply_template_to_project(
                 str(project.id),
                 self._template_id_to_apply,
                 override_settings=self._template_overrides,
             )
-            project_dict = project.serialize()
+            project_dict = project.serialize(relations=True)
         if project.production_type == "tvshow":
             episode = shots_service.create_episode(
                 project.id,

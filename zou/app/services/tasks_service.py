@@ -18,6 +18,7 @@ from sqlalchemy.exc import StatementError, IntegrityError, DataError
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import case
 from sqlalchemy.orm import aliased, load_only, selectinload
+from sqlalchemy.orm.exc import StaleDataError
 
 from zou.app import config, db
 from zou.app.utils import events
@@ -1676,16 +1677,22 @@ def clear_assignation(task_id, person_id=None):
     task = get_task_raw(task_id)
     project_id = str(task.project_id)
 
-    removed_assignments = []
     if person_id is None:
         removed_assignments = [person.serialize() for person in task.assignees]
-        task.update({"assignees": []})
+        new_assignees = []
     else:
-        assignees = [
+        removed_assignments = [{"id": person_id}]
+        new_assignees = [
             person for person in task.assignees if str(person.id) != person_id
         ]
-        task.update({"assignees": assignees})
-        removed_assignments = [{"id": person_id}]
+
+    try:
+        task.update({"assignees": new_assignees})
+    except StaleDataError:
+        # A concurrent unassign already removed the link, so the desired state
+        # is already reached. task.update() has rolled back its own failed
+        # transaction, so there is nothing left to delete: treat it as cleared.
+        pass
 
     clear_task_cache(task_id)
     task_dict = task.serialize()
@@ -1842,7 +1849,7 @@ def add_preview_file_to_comment(comment_id, person_id, task_id, revision=None):
     events.emit(
         "comment:update", {"comment_id": comment.id}, project_id=project_id
     )
-    return preview_file.serialize()
+    return preview_file.serialize(relations=True)
 
 
 def update_preview_file_info(preview_file):
@@ -1890,9 +1897,7 @@ def get_tasks_for_project(
     Return all tasks for given project.
     """
     query = (
-        Task.query.options(
-            selectinload(Task.assignees).load_only(Person.id)
-        )
+        Task.query.options(selectinload(Task.assignees).load_only(Person.id))
         .filter(Task.project_id == project_id)
         .order_by(Task.updated_at.desc())
     )

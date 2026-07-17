@@ -77,6 +77,18 @@ class PreviewRevisionTestCase(ApiDBTestCase):
         self.assertIn("auto-increment", message)
         self.assertNotIn("ormaliz", message)
 
+    def test_add_preview_response_includes_relations(self):
+        """
+        The add-preview response must have the same shape as a later GET
+        on the preview file: the comments relation is included
+        (see cgwire/gazu#385).
+        """
+        comment = self.create_comment()
+        preview = self.add_preview(comment["id"])
+        self.assertEqual(preview["comments"], [comment["id"]])
+        fetched = self.get(f"data/preview-files/{preview['id']}")
+        self.assertEqual(set(preview.keys()), set(fetched.keys()))
+
     def test_extra_preview_same_revision_allowed(self):
         """
         Extra previews should be allowed to share the same revision.

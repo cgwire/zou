@@ -80,3 +80,27 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
 
         shot = shots[0]
         self.assertEqual(shot["data"].get("contractor", None), "contractor 1")
+
+    def test_import_shots_frame_range_is_normalized(self):
+        path = f"/import/csv/projects/{self.project.id}/shots"
+        self.project.update({"production_type": "tvshow"})
+
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "shots_frame_range.csv")
+        )
+        self.upload_file(path, file_path_fixture)
+
+        shots = {s["name"]: s for s in shots_service.get_shots()}
+
+        # An empty frame value must not be stored as "": the key stays absent
+        # so it reads as None, consistently with a shot never given one.
+        empty = shots["FS01"]
+        self.assertNotIn("frame_in", empty["data"])
+        self.assertNotIn("frame_out", empty["data"])
+
+        # A provided frame value is stored as an int, not the raw CSV string.
+        filled = shots["FS02"]
+        self.assertEqual(filled["data"]["frame_in"], 1001)
+        self.assertEqual(filled["data"]["frame_out"], 1100)
+        self.assertIsInstance(filled["data"]["frame_in"], int)
+        self.assertIsInstance(filled["data"]["frame_out"], int)

@@ -174,6 +174,7 @@ class Project(db.Model, BaseMixin, SerializerMixin):
     is_publish_default_for_artists = db.Column(db.Boolean(), default=False)
     is_bot_collaboration_enabled = db.Column(db.Boolean(), default=False)
     is_single_preview_per_revision = db.Column(db.Boolean(), default=False)
+    is_frame_in_numbering = db.Column(db.Boolean(), default=False)
     revision_padding = db.Column(db.Integer, default=0, nullable=False)
     hd_bitrate_compression = db.Column(db.Integer, default=28)
     ld_bitrate_compression = db.Column(db.Integer, default=6)

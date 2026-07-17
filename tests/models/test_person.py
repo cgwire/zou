@@ -212,6 +212,45 @@ class PersonTestCase(ApiDBTestCase):
         self.assertEqual(bot_again["first_name"], "Renamed Bot")
         self.assertEqual(bot_again["email"], "ema.doe@gmail.com")
 
+    def test_update_expired_person_keeps_its_own_expiration_date(self):
+        import datetime
+
+        yesterday = datetime.date.today() - datetime.timedelta(days=2)
+        bot = Person.create(
+            first_name="Expired",
+            last_name="Bot",
+            email="expired.bot@gmail.com",
+            is_bot=True,
+            expiration_date=yesterday,
+        )
+        bot_id = str(bot.id)
+
+        # Re-submitting the already-expired date (e.g. to disable the bot)
+        # must work: it is unchanged, not a new past date.
+        self.put(
+            f"data/persons/{bot_id}",
+            {"expiration_date": yesterday.isoformat(), "active": False},
+        )
+        bot_again = self.get(f"data/persons/{bot_id}")
+        self.assertFalse(bot_again["active"])
+
+        # Moving the expiration to a different past date is still rejected.
+        other_past = (yesterday - datetime.timedelta(days=1)).isoformat()
+        self.put(
+            f"data/persons/{bot_id}",
+            {"expiration_date": other_past},
+            400,
+        )
+
+        # Renewing to a future date still works and issues a fresh token.
+        future = (
+            datetime.date.today() + datetime.timedelta(days=30)
+        ).isoformat()
+        renewed = self.put(
+            f"data/persons/{bot_id}", {"expiration_date": future}
+        )
+        self.assertIn("access_token", renewed)
+
     def test_update_person(self):
         person = self.get_first("data/persons")
         data = {

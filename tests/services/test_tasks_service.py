@@ -422,6 +422,26 @@ class TaskServiceTestCase(ApiDBTestCase):
         task = tasks_service.get_task(task_id, relations=True)
         self.assertEqual(len(task["assignees"]), 0)
 
+    def test_clear_assignation_swallows_stale_data_error(self):
+        from unittest import mock
+        from sqlalchemy.orm.exc import StaleDataError
+
+        task_id = str(self.task.id)
+        tasks_service.assign_task(self.task.id, self.person.id)
+        task = tasks_service.get_task_raw(task_id)
+
+        # A concurrent unassign makes the assignees flush delete a link that is
+        # already gone, which SQLAlchemy reports as StaleDataError. clear_
+        # assignation must treat that as already-cleared, not raise. (The real
+        # rollback path can't be exercised here: the test harness keeps every
+        # fixture in one uncommitted transaction, so any rollback wipes them.)
+        with mock.patch.object(
+            type(task), "update", side_effect=StaleDataError("stale link")
+        ), mock.patch.object(tasks_service, "get_task_raw", return_value=task):
+            result = tasks_service.clear_assignation(task_id)
+
+        self.assertEqual(result["id"], task_id)
+
     def test_get_tasks_for_person(self):
         projects = [self.project.serialize()]
         tasks = tasks_service.get_person_tasks(self.user["id"], projects)
