@@ -1849,9 +1849,6 @@ def add_preview_file_to_comment(comment_id, person_id, task_id, revision=None):
     events.emit(
         "comment:update", {"comment_id": comment.id}, project_id=project_id
     )
-    # relations=True so the response has the same shape as a later GET on
-    # data/preview-files/<id> (it includes the comment the preview belongs
-    # to). See cgwire/gazu#385.
     return preview_file.serialize(relations=True)
 
 
