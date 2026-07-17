@@ -157,6 +157,11 @@ FS_SWIFT_AES256_KEY = os.getenv("FS_SWIFT_AES256_KEY")
 FS_SWIFT_POOL_SIZE = int(os.getenv("FS_SWIFT_POOL_SIZE", 20))
 FS_SWIFT_TIMEOUT = int(os.getenv("FS_SWIFT_TIMEOUT", 60))
 FS_SWIFT_RETRIES = int(os.getenv("FS_SWIFT_RETRIES", 5))
+# What to do when the ETag returned by Swift does not match the uploaded
+# content: "log", "raise" or "raise_and_delete" (see flask-fs2 SwiftBackend).
+FS_SWIFT_ETAG_MISMATCH_POLICY = os.getenv(
+    "FS_SWIFT_ETAG_MISMATCH_POLICY", "log"
+)
 FS_S3_REGION = os.getenv("FS_S3_REGION")
 FS_S3_ENDPOINT = os.getenv("FS_S3_ENDPOINT")
 FS_S3_ACCESS_KEY = os.getenv("FS_S3_ACCESS_KEY")
