@@ -45,6 +45,17 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         project = self.get(f"data/projects/{self.project_id}")
         self.assertIsNone((project.get("data") or {}).get("ship_code"))
 
+    def test_add_date_metadata_descriptor(self):
+        descriptor = self.post(
+            f"data/projects/{self.project_id}/metadata-descriptors",
+            {
+                "entity_type": "Asset",
+                "name": "Due date",
+                "data_type": "date",
+            },
+        )
+        self.assertEqual(descriptor["data_type"], "date")
+
     def test_all_projects_metadata_descriptor(self):
         first_project_id = str(self.project_id)
         second_project = self.generate_fixture_project(name="Second Project")

@@ -37,6 +37,7 @@ METADATA_DESCRIPTOR_TYPES = [
     ("taglist", "Taglist"),
     ("boolean", "Boolean"),
     ("checklist", "Checklist"),
+    ("date", "Date"),
 ]
 
 
