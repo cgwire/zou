@@ -254,6 +254,7 @@ ASSETS_AND_TASKS_TASK_FIELDS = [
     "task_status_id",
     "task_type_id",
     "assignees",
+    "data",
 ]
 
 
@@ -340,6 +341,7 @@ def prepare_assets_and_tasks(
         Task.last_comment_date,
         cast(Task.last_preview_file_id, Text).label("last_preview_file_id"),
         Task.difficulty,
+        Task.data,
     )
     if assigned_to:
         task_query = task_query.filter(user_service.build_assignee_filter())
@@ -434,6 +436,7 @@ def prepare_assets_and_tasks(
                 row.task_status_id,
                 row.task_type_id,
                 assignees_by_task.get(row.id, []),
+                fields.serialize_value(row.data),
             ]
 
     else:
@@ -462,6 +465,7 @@ def prepare_assets_and_tasks(
                 "task_status_id": row.task_status_id,
                 "task_type_id": row.task_type_id,
                 "assignees": assignees_by_task.get(row.id, []),
+                "data": fields.serialize_value(row.data),
             }
 
     def iterate():
