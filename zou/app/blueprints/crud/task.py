@@ -450,6 +450,10 @@ class TaskResource(BaseModelResource, ArgsMixin):
             self._previous_assignees = {
                 str(person.id) for person in self.instance.assignees
             }
+        # Metadata values pile up in the JSONB bag: merge the incoming
+        # dict instead of replacing the whole field, like entities do.
+        if data.get("data"):
+            data["data"] = {**(self.instance.data or {}), **data["data"]}
         return instance_dict
 
     def post_update(self, instance_dict, data):
