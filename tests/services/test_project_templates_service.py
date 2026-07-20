@@ -298,6 +298,35 @@ class ProjectTemplateServiceTestCase(ApiDBTestCase):
             descriptors[0]["departments"], [str(self.department.id)]
         )
 
+    def test_task_metadata_descriptor_round_trip(self):
+        projects_service.add_metadata_descriptor(
+            project_id=str(self.project.id),
+            entity_type="Task",
+            name="Render layer",
+            data_type="string",
+            choices=[],
+            for_client=False,
+            task_type_id=str(self.task_type.id),
+        )
+        template = project_templates_service.create_template_from_project(
+            str(self.project.id), name="From production"
+        )
+        snapshot = template["metadata_descriptors"]
+        self.assertEqual(len(snapshot), 1)
+        self.assertEqual(snapshot[0]["task_type_id"], str(self.task_type.id))
+
+        project = self.generate_fixture_project(name="Fresh Project")
+        project_templates_service.apply_template_to_project(
+            str(project.id), template["id"]
+        )
+        descriptors = MetadataDescriptor.query.filter_by(
+            project_id=project.id, entity_type="Task"
+        ).all()
+        self.assertEqual(len(descriptors), 1)
+        self.assertEqual(
+            str(descriptors[0].task_type_id), str(self.task_type.id)
+        )
+
     def test_create_template_from_project_does_not_copy_team(self):
         self.generate_fixture_person()
         projects_service.add_team_member(self.project_id, self.person.id)

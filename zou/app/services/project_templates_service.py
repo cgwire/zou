@@ -559,10 +559,12 @@ def _clean_descriptor_dict(descriptor):
     field_name = descriptor.get("field_name") or slugify.slugify(
         name, separator="_"
     )
+    task_type_id = descriptor.get("task_type_id")
     return {
         "name": name,
         "field_name": field_name,
         "entity_type": descriptor.get("entity_type"),
+        "task_type_id": str(task_type_id) if task_type_id else None,
         "data_type": descriptor.get("data_type"),
         "choices": descriptor.get("choices") or [],
         "for_client": bool(descriptor.get("for_client", False)),
@@ -687,6 +689,11 @@ def _snapshot_descriptors(project_id):
                 "name": descriptor.name,
                 "field_name": descriptor.field_name,
                 "entity_type": descriptor.entity_type,
+                "task_type_id": (
+                    str(descriptor.task_type_id)
+                    if descriptor.task_type_id is not None
+                    else None
+                ),
                 "data_type": (
                     descriptor.data_type.code
                     if descriptor.data_type is not None
@@ -860,9 +867,15 @@ def _create_descriptor_from_snapshot(project_id, descriptor):
     entity_type = descriptor.get("entity_type")
     if not name or not entity_type:
         return None
+    task_type_id = descriptor.get("task_type_id")
+    if entity_type == "Task" and task_type_id is None:
+        return None
 
     existing = MetadataDescriptor.query.filter_by(
-        project_id=project_id, entity_type=entity_type, name=name
+        project_id=project_id,
+        entity_type=entity_type,
+        name=name,
+        task_type_id=task_type_id,
     ).first()
     if existing is not None:
         return existing
@@ -876,6 +889,7 @@ def _create_descriptor_from_snapshot(project_id, descriptor):
             choices=descriptor.get("choices") or [],
             for_client=bool(descriptor.get("for_client", False)),
             departments=descriptor.get("departments") or [],
+            task_type_id=task_type_id,
         )
     except WrongParameterException:
         return None
