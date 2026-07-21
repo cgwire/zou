@@ -63,6 +63,11 @@ class AssetTasksTestCase(ApiDBTestCase):
             assets[0]["tasks"][0]["assignees"][0], str(self.person_id)
         )
 
+    def test_get_assets_and_tasks_include_task_data(self):
+        self.task.update({"data": {"render_layer": "bg"}})
+        assets = self.get("data/assets/with-tasks")
+        self.assertEqual(assets[0]["tasks"][0]["data"], {"render_layer": "bg"})
+
     def test_get_assets_and_tasks_compact(self):
         self.generate_fixture_task(name="Secondary")
         reference = self.get("data/assets/with-tasks")

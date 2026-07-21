@@ -268,6 +268,7 @@ SHOTS_AND_TASKS_TASK_FIELDS = [
     "task_status_id",
     "task_type_id",
     "assignees",
+    "data",
 ]
 
 
@@ -378,6 +379,7 @@ def prepare_shots_and_tasks(criterions=None, compact=False):
         Task.nb_assets_ready,
         Task.difficulty,
         Task.nb_drawings,
+        Task.data,
     )
     if assigned_to:
         task_query = task_query.filter(user_service.build_assignee_filter())
@@ -439,6 +441,7 @@ def prepare_shots_and_tasks(criterions=None, compact=False):
                 row.task_status_id,
                 row.task_type_id,
                 assignees_by_task.get(row.id, []),
+                fields.serialize_value(row.data),
             ]
 
     else:
@@ -469,6 +472,7 @@ def prepare_shots_and_tasks(criterions=None, compact=False):
                 "task_status_id": row.task_status_id,
                 "task_type_id": row.task_type_id,
                 "assignees": assignees_by_task.get(row.id, []),
+                "data": fields.serialize_value(row.data),
             }
 
     def iterate():

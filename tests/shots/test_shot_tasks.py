@@ -61,6 +61,11 @@ class ShotTasksTestCase(ApiDBTestCase):
         self.assertEqual(shots[0]["episode_name"], "E01")
         self.assertEqual(shots[0]["sequence_name"], "S01")
 
+    def test_get_shots_and_tasks_include_task_data(self):
+        self.shot_task.update({"data": {"render_layer": "bg"}})
+        shots = self.get("data/shots/with-tasks")
+        self.assertEqual(shots[0]["tasks"][0]["data"], {"render_layer": "bg"})
+
     def test_get_shots_and_tasks_compact(self):
         self.generate_fixture_shot_task(name="Secondary")
         reference = self.get("data/shots/with-tasks")

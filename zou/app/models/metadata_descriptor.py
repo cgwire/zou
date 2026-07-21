@@ -37,6 +37,10 @@ METADATA_DESCRIPTOR_TYPES = [
     ("taglist", "Taglist"),
     ("boolean", "Boolean"),
     ("checklist", "Checklist"),
+    ("date", "Date"),
+    ("url", "URL"),
+    ("textarea", "Textarea"),
+    ("person", "Person"),
 ]
 
 
@@ -53,6 +57,13 @@ class MetadataDescriptor(db.Model, BaseMixin, SerializerMixin):
         index=True,
     )
     entity_type = db.Column(db.String(60), nullable=False, index=True)
+    # Only set for "Task" descriptors: scopes the field to one task type.
+    task_type_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("task_type.id"),
+        nullable=True,
+        index=True,
+    )
     name = db.Column(db.String(120), nullable=False)
     data_type = db.Column(ChoiceType(METADATA_DESCRIPTOR_TYPES))
     field_name = db.Column(db.String(120), nullable=False)
@@ -64,15 +75,44 @@ class MetadataDescriptor(db.Model, BaseMixin, SerializerMixin):
         secondary=DepartmentMetadataDescriptorLink.__table__,
     )
 
+    # Partial indexes instead of plain unique constraints: NULLs are
+    # distinct in Postgres unique constraints, so task_type_id could not
+    # be part of a single constraint without weakening uniqueness for
+    # non-Task descriptors.
     __table_args__ = (
-        db.UniqueConstraint(
-            "project_id", "entity_type", "name", name="metadata_descriptor_uc"
+        db.Index(
+            "metadata_descriptor_uc",
+            "project_id",
+            "entity_type",
+            "name",
+            unique=True,
+            postgresql_where=db.text("task_type_id IS NULL"),
         ),
-        db.UniqueConstraint(
+        db.Index(
+            "metadata_descriptor_uc2",
             "project_id",
             "entity_type",
             "field_name",
-            name="metadata_descriptor_uc2",
+            unique=True,
+            postgresql_where=db.text("task_type_id IS NULL"),
+        ),
+        db.Index(
+            "metadata_descriptor_task_type_uc",
+            "project_id",
+            "entity_type",
+            "task_type_id",
+            "name",
+            unique=True,
+            postgresql_where=db.text("task_type_id IS NOT NULL"),
+        ),
+        db.Index(
+            "metadata_descriptor_task_type_uc2",
+            "project_id",
+            "entity_type",
+            "task_type_id",
+            "field_name",
+            unique=True,
+            postgresql_where=db.text("task_type_id IS NOT NULL"),
         ),
     )
 

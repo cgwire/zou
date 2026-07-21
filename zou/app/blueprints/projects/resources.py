@@ -35,6 +35,7 @@ from zou.app.blueprints.projects.schemas import (
 )
 from zou.app.services.exception import (
     BudgetNotFoundException,
+    TaskTypeNotFoundException,
     WrongDateFormatException,
     WrongParameterException,
 )
@@ -1114,8 +1115,15 @@ class ProductionMetadataDescriptorsResource(MethodView, ArgsMixin):
                       - Episode
                       - Sequence
                       - Project
+                      - Task
                     default: "Asset"
                     example: "Asset"
+                  task_type_id:
+                    type: string
+                    format: uuid
+                    description: Task type the descriptor is scoped to.
+                      Required for Task descriptors, forbidden otherwise.
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
                   name:
                     type: string
                     description: Name of the metadata descriptor
@@ -1176,10 +1184,25 @@ class ProductionMetadataDescriptorsResource(MethodView, ArgsMixin):
             "Episode",
             "Sequence",
             "Project",
+            "Task",
         ]:
             raise WrongParameterException(
                 "Wrong entity type. Please select Asset, Shot, Sequence, "
-                "Episode, Edit, or Project."
+                "Episode, Edit, Project, or Task."
+            )
+
+        if body.entity_type == "Task":
+            if body.task_type_id is None:
+                raise WrongParameterException(
+                    "Task metadata descriptors require a task_type_id."
+                )
+            try:
+                tasks_service.get_task_type(body.task_type_id)
+            except TaskTypeNotFoundException:
+                raise WrongParameterException("Task type not found.")
+        elif body.task_type_id is not None:
+            raise WrongParameterException(
+                "task_type_id only applies to Task metadata descriptors."
             )
 
         types = [type_name for type_name, _ in METADATA_DESCRIPTOR_TYPES]
@@ -1195,6 +1218,7 @@ class ProductionMetadataDescriptorsResource(MethodView, ArgsMixin):
                 body.choices,
                 body.for_client,
                 body.departments,
+                task_type_id=body.task_type_id,
             ),
             201,
         )
@@ -1458,10 +1482,11 @@ class ProductionMetadataDescriptorsReorderResource(MethodView, ArgsMixin):
             "Episode",
             "Sequence",
             "Project",
+            "Task",
         ]:
             raise WrongParameterException(
                 "Wrong entity type. Please select Asset, Shot, Sequence, "
-                "Episode, Edit, or Project."
+                "Episode, Edit, Project, or Task."
             )
 
         return projects_service.reorder_metadata_descriptors(

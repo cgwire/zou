@@ -1,6 +1,7 @@
 from tests.base import ApiDBTestCase
 
 from zou.app.services import projects_service
+from zou.app.utils import fields
 
 
 class ProjectMetadataRouteTestCase(ApiDBTestCase):
@@ -43,6 +44,50 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         )
         project = self.get(f"data/projects/{self.project_id}")
         self.assertIsNone((project.get("data") or {}).get("ship_code"))
+
+    def test_add_date_metadata_descriptor(self):
+        descriptor = self.post(
+            f"data/projects/{self.project_id}/metadata-descriptors",
+            {
+                "entity_type": "Asset",
+                "name": "Due date",
+                "data_type": "date",
+            },
+        )
+        self.assertEqual(descriptor["data_type"], "date")
+
+    def test_add_url_metadata_descriptor(self):
+        descriptor = self.post(
+            f"data/projects/{self.project_id}/metadata-descriptors",
+            {
+                "entity_type": "Asset",
+                "name": "Brief link",
+                "data_type": "url",
+            },
+        )
+        self.assertEqual(descriptor["data_type"], "url")
+
+    def test_add_textarea_metadata_descriptor(self):
+        descriptor = self.post(
+            f"data/projects/{self.project_id}/metadata-descriptors",
+            {
+                "entity_type": "Asset",
+                "name": "Notes",
+                "data_type": "textarea",
+            },
+        )
+        self.assertEqual(descriptor["data_type"], "textarea")
+
+    def test_add_person_metadata_descriptor(self):
+        descriptor = self.post(
+            f"data/projects/{self.project_id}/metadata-descriptors",
+            {
+                "entity_type": "Asset",
+                "name": "Reviewer",
+                "data_type": "person",
+            },
+        )
+        self.assertEqual(descriptor["data_type"], "person")
 
     def test_all_projects_metadata_descriptor(self):
         first_project_id = str(self.project_id)
@@ -242,3 +287,116 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
             f"data/projects/{self.project_id}/metadata-descriptors/{descriptor['id']}",
             403,
         )
+
+    def post_task_descriptor(self, task_type_id, name="Render layer"):
+        return self.post(
+            f"data/projects/{self.project_id}/metadata-descriptors",
+            {
+                "entity_type": "Task",
+                "task_type_id": task_type_id,
+                "name": name,
+                "data_type": "string",
+            },
+        )
+
+    def test_add_task_metadata_descriptor(self):
+        self.generate_fixture_task()
+        task_type_id = str(self.task_type.id)
+        descriptor = self.post_task_descriptor(task_type_id)
+        self.assertEqual(descriptor["entity_type"], "Task")
+        self.assertEqual(descriptor["task_type_id"], task_type_id)
+        self.assertEqual(descriptor["field_name"], "render_layer")
+        # The same field name is allowed on another task type but not
+        # twice on the same one.
+        other = self.post_task_descriptor(str(self.task_type_modeling.id))
+        self.assertEqual(other["field_name"], "render_layer")
+        self.post(
+            f"data/projects/{self.project_id}/metadata-descriptors",
+            {
+                "entity_type": "Task",
+                "task_type_id": task_type_id,
+                "name": "Render layer",
+                "data_type": "string",
+            },
+            400,
+        )
+
+    def test_task_metadata_descriptor_in_open_projects_payload(self):
+        self.generate_fixture_task()
+        task_type_id = str(self.task_type.id)
+        self.post_task_descriptor(task_type_id)
+        projects = self.get("data/projects/open")
+        descriptor = projects[0]["descriptors"][0]
+        self.assertEqual(descriptor["task_type_id"], task_type_id)
+
+    def test_task_metadata_descriptor_requires_valid_task_type(self):
+        self.generate_fixture_task()
+        self.post(
+            f"data/projects/{self.project_id}/metadata-descriptors",
+            {
+                "entity_type": "Task",
+                "name": "Render layer",
+                "data_type": "string",
+            },
+            400,
+        )
+        self.post(
+            f"data/projects/{self.project_id}/metadata-descriptors",
+            {
+                "entity_type": "Task",
+                "task_type_id": str(fields.gen_uuid()),
+                "name": "Render layer",
+                "data_type": "string",
+            },
+            400,
+        )
+        self.post(
+            f"data/projects/{self.project_id}/metadata-descriptors",
+            {
+                "entity_type": "Asset",
+                "task_type_id": str(self.task_type.id),
+                "name": "Render layer",
+                "data_type": "string",
+            },
+            400,
+        )
+
+    def test_update_task_data_merges_metadata(self):
+        self.generate_fixture_task()
+        task_id = str(self.task.id)
+        self.put(f"data/tasks/{task_id}", {"data": {"render_layer": "bg"}})
+        self.put(f"data/tasks/{task_id}", {"data": {"note": "wip"}})
+        task = self.get(f"data/tasks/{task_id}")
+        self.assertEqual(task["data"].get("render_layer"), "bg")
+        self.assertEqual(task["data"].get("note"), "wip")
+
+    def test_rename_and_delete_task_metadata_descriptor(self):
+        self.generate_fixture_task()
+        task_id = str(self.task.id)
+        descriptor = self.post_task_descriptor(str(self.task_type.id))
+        self.post_task_descriptor(str(self.task_type_modeling.id))
+        other_task = self.generate_fixture_task(
+            name="Second", task_type_id=self.task_type_modeling.id
+        )
+        other_task_id = str(other_task.id)
+        self.put(f"data/tasks/{task_id}", {"data": {"render_layer": "bg"}})
+        self.put(
+            f"data/tasks/{other_task_id}", {"data": {"render_layer": "fg"}}
+        )
+        self.put(
+            f"data/projects/{self.project_id}/metadata-descriptors/{descriptor['id']}",
+            {"name": "Layer", "data_type": "string"},
+        )
+        task = self.get(f"data/tasks/{task_id}")
+        self.assertEqual(task["data"].get("layer"), "bg")
+        self.assertNotIn("render_layer", task["data"])
+        # The same field on another task type is left untouched.
+        other_task_data = self.get(f"data/tasks/{other_task_id}")["data"]
+        self.assertEqual(other_task_data.get("render_layer"), "fg")
+        self.delete(
+            f"data/projects/{self.project_id}/metadata-descriptors/{descriptor['id']}"
+        )
+        task = self.get(f"data/tasks/{task_id}")
+        self.assertNotIn("layer", task["data"] or {})
+        other_task_data = self.get(f"data/tasks/{other_task_id}")["data"]
+        self.assertEqual(other_task_data.get("render_layer"), "fg")

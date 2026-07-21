@@ -697,6 +697,7 @@ def check_supervisor_task_access(task, new_data=None):
             "due_date",
             "estimation",
             "difficulty",
+            "data",
         }
         if len(set(new_data.keys()) - allowed_columns) == 0:
             user_departments = persons_service.get_current_user(

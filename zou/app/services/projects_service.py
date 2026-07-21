@@ -16,6 +16,7 @@ from zou.app.models.project import (
 )
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.status_automation import StatusAutomation
+from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.department import Department
@@ -222,6 +223,7 @@ def _serialize_descriptor(descriptor):
         "choices": descriptor.choices,
         "for_client": descriptor.for_client or False,
         "entity_type": descriptor.entity_type,
+        "task_type_id": fields.serialize_value(descriptor.task_type_id),
         "position": descriptor.position,
         "departments": [
             str(department.id) for department in descriptor.departments
@@ -688,6 +690,16 @@ def _entity_query_for_descriptor_entity_type(descriptor):
     return query
 
 
+def _task_query_for_descriptor(descriptor):
+    """
+    Tasks whose `data` may hold values for this Task descriptor.
+    """
+    return Task.query.filter(
+        Task.project_id == descriptor.project_id,
+        Task.task_type_id == descriptor.task_type_id,
+    )
+
+
 def _strip_metadata_field_from_model_data(model, field_name):
     """
     Remove field_name from model.data when `data` is not null.
@@ -711,6 +723,16 @@ def _migrate_descriptor_field_rename(descriptor, new_field_name):
             use_no_commit=False,
         )
         return
+    if descriptor.entity_type == "Task":
+        for task in _task_query_for_descriptor(descriptor).all():
+            _migrate_metadata_field_name(
+                task,
+                descriptor.field_name,
+                new_field_name,
+                use_no_commit=True,
+            )
+        Task.commit()
+        return
     entities = _entity_query_for_descriptor_entity_type(descriptor).all()
     for entity in entities:
         _migrate_metadata_field_name(
@@ -731,6 +753,10 @@ def _remove_stored_values_for_metadata_descriptor(descriptor):
         project = get_project_raw(descriptor.project_id)
         _strip_metadata_field_from_model_data(project, descriptor.field_name)
         return
+    if descriptor.entity_type == "Task":
+        for task in _task_query_for_descriptor(descriptor).all():
+            _strip_metadata_field_from_model_data(task, descriptor.field_name)
+        return
     for entity in Entity.get_all_by(project_id=descriptor.project_id):
         _strip_metadata_field_from_model_data(entity, descriptor.field_name)
 
@@ -743,11 +769,13 @@ def add_metadata_descriptor(
     choices,
     for_client,
     departments=None,
+    task_type_id=None,
 ):
     """
     Register a custom field for the given `entity_type` in this project.
-    Values are stored in `Entity.data` (Asset, Shot, …) or in `Project.data`
-    when `entity_type` is ``Project``.
+    Values are stored in `Entity.data` (Asset, Shot, …), in `Project.data`
+    when `entity_type` is ``Project`` or in `Task.data` when it is
+    ``Task`` (scoped to `task_type_id`).
     """
     if not departments:
         departments = []
@@ -765,6 +793,7 @@ def add_metadata_descriptor(
         descriptor = MetadataDescriptor.create(
             project_id=project_id,
             entity_type=entity_type,
+            task_type_id=task_type_id,
             name=name,
             data_type=data_type,
             choices=choices,

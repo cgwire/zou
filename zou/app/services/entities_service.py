@@ -285,6 +285,7 @@ _TASK_FIELD_BUILDERS = {
     "nb_assets_ready": lambda row: row.nb_assets_ready,
     "difficulty": lambda row: row.difficulty,
     "nb_drawings": lambda row: row.nb_drawings,
+    "data": lambda row: fields.serialize_value(row.data),
 }
 
 ENTITIES_AND_TASKS_TASK_FIELDS = [
@@ -304,6 +305,7 @@ ENTITIES_AND_TASKS_TASK_FIELDS = [
     "difficulty",
     "task_status_id",
     "task_type_id",
+    "data",
 ]
 
 
@@ -347,6 +349,7 @@ def fetch_entity_task_map(
         Task.nb_assets_ready,
         Task.difficulty,
         Task.nb_drawings,
+        Task.data,
     )
     if assigned_to:
         task_query = task_query.filter(user_service.build_assignee_filter())

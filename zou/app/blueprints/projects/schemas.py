@@ -79,6 +79,7 @@ class MetadataDescriptorSchema(BaseSchema):
     """
 
     entity_type: str = "Asset"
+    task_type_id: Optional[str] = None
     name: str = Field(..., min_length=1)
     data_type: str = Field("string", min_length=1)
     for_client: Optional[bool] = False

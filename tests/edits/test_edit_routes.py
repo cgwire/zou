@@ -27,6 +27,16 @@ class EditRoutesTestCase(BaseEditTestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["name"], "Edit")
 
+    def test_get_edits_with_tasks_include_task_data(self):
+        self.task.update({"data": {"render_layer": "bg"}})
+        result = self.get("/data/edits/with-tasks")
+        task = next(
+            task
+            for task in result[0]["tasks"]
+            if task["id"] == str(self.task.id)
+        )
+        self.assertEqual(task["data"], {"render_layer": "bg"})
+
     def test_get_edits_with_tasks_wrong_id_format(self):
         self.get("/data/edits/with-tasks?project_id=not-a-uuid", 400)
         self.get("/data/edits/with-tasks?episode_id=not-a-uuid", 400)

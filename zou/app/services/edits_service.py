@@ -94,6 +94,7 @@ EDITS_AND_TASKS_TASK_FIELDS = [
     "start_date",
     "task_status_id",
     "task_type_id",
+    "data",
 ]
 
 
