@@ -39,6 +39,7 @@ METADATA_DESCRIPTOR_TYPES = [
     ("checklist", "Checklist"),
     ("date", "Date"),
     ("url", "URL"),
+    ("person", "Person"),
 ]
 
 

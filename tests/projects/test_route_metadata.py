@@ -67,6 +67,17 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         )
         self.assertEqual(descriptor["data_type"], "url")
 
+    def test_add_person_metadata_descriptor(self):
+        descriptor = self.post(
+            f"data/projects/{self.project_id}/metadata-descriptors",
+            {
+                "entity_type": "Asset",
+                "name": "Reviewer",
+                "data_type": "person",
+            },
+        )
+        self.assertEqual(descriptor["data_type"], "person")
+
     def test_all_projects_metadata_descriptor(self):
         first_project_id = str(self.project_id)
         second_project = self.generate_fixture_project(name="Second Project")
