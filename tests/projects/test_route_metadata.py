@@ -67,6 +67,17 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         )
         self.assertEqual(descriptor["data_type"], "url")
 
+    def test_add_textarea_metadata_descriptor(self):
+        descriptor = self.post(
+            f"data/projects/{self.project_id}/metadata-descriptors",
+            {
+                "entity_type": "Asset",
+                "name": "Notes",
+                "data_type": "textarea",
+            },
+        )
+        self.assertEqual(descriptor["data_type"], "textarea")
+
     def test_add_person_metadata_descriptor(self):
         descriptor = self.post(
             f"data/projects/{self.project_id}/metadata-descriptors",
