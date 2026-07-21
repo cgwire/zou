@@ -4,6 +4,7 @@ from zou.app.models.person import Person
 from zou.app.models.task import Task
 from zou.app.services import (
     concepts_service,
+    persons_service,
     projects_service,
     tasks_service,
 )
@@ -196,6 +197,39 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.generate_fixture_user_vendor()
         self.log_in_vendor()
         self.get("/data/persons/task-dates", 403)
+
+    def test_supervisor_in_department_can_update_task_data(self):
+        # A supervisor may write task metadata (task.data) when the task
+        # type's department is one of theirs.
+        self.generate_fixture_user_supervisor()
+        supervisor_id = self.user_supervisor["id"]
+        projects_service.add_team_member(self.project_id, supervisor_id)
+        persons_service.add_to_department(
+            str(self.department.id), supervisor_id
+        )
+        self.log_in_supervisor()
+        self.put(
+            f"/data/tasks/{self.task.id}",
+            {"data": {"render_engine": "cycles"}},
+        )
+        task = tasks_service.get_task(str(self.task.id))
+        self.assertEqual(task["data"]["render_engine"], "cycles")
+
+    def test_supervisor_outside_department_cannot_update_task_data(self):
+        # A supervisor whose departments do not include the task type's
+        # department is denied.
+        self.generate_fixture_user_supervisor()
+        supervisor_id = self.user_supervisor["id"]
+        projects_service.add_team_member(self.project_id, supervisor_id)
+        persons_service.add_to_department(
+            str(self.department_animation.id), supervisor_id
+        )
+        self.log_in_supervisor()
+        self.put(
+            f"/data/tasks/{self.task.id}",
+            {"data": {"render_engine": "cycles"}},
+            403,
+        )
 
     def test_assign_person_to_tasks(self):
         result = self.put(
