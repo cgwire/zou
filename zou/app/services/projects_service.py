@@ -34,6 +34,7 @@ from zou.app.services.exception import (
 )
 
 from zou.app.utils import fields, events, cache
+from zou.app import db
 
 from sqlalchemy.exc import StatementError
 from sqlalchemy.orm import joinedload
@@ -419,11 +420,16 @@ def update_project(project_id, data):
     return project.serialize()
 
 
-def add_team_member(project_id, person_id):
+def add_team_member(project_id, person_id, role=None):
     """
-    Add a person listed in database to the the project team.
+    Add a person listed in database to the project team, with an optional
+    project-specific role.
     """
-    return _add_to_list_attr(project_id, Person, person_id, "team")
+    project = _add_to_list_attr(project_id, Person, person_id, "team")
+    if role is not None:
+        update_team_member_role(project_id, person_id, role)
+        project = get_project_raw(project_id).serialize()
+    return project
 
 
 def remove_team_member(project_id, person_id):
@@ -431,6 +437,45 @@ def remove_team_member(project_id, person_id):
     Remove a person listed in database from the the project team.
     """
     return _remove_from_list_attr(project_id, Person, person_id, "team")
+
+
+def update_team_member_role(project_id, person_id, role):
+    """
+    Set the role of given person on given project. A None role restores
+    inheritance of the person's global role.
+    """
+    link = ProjectPersonLink.query.filter_by(
+        project_id=project_id, person_id=person_id
+    ).first()
+    if link is None:
+        raise WrongParameterException(
+            "Person is not a member of the project team"
+        )
+    link.role = role
+    db.session.commit()
+    clear_project_cache(str(project_id))
+    events.emit("project:update", {}, project_id=str(project_id))
+    return {
+        "project_id": str(link.project_id),
+        "person_id": str(link.person_id),
+        "role": (
+            getattr(link.role, "code", link.role)
+            if link.role is not None
+            else None
+        ),
+    }
+
+
+def get_team_roles(project_id):
+    """
+    Return a dict mapping person ids to their explicit role on given
+    project. Persons inheriting their global role are absent from the dict.
+    """
+    return {
+        str(link.person_id): getattr(link.role, "code", link.role)
+        for link in ProjectPersonLink.query.filter_by(project_id=project_id)
+        if link.role is not None
+    }
 
 
 def add_asset_type_setting(project_id, asset_type_id):

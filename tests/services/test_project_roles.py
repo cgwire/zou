@@ -6,6 +6,7 @@ from zou.app import app, db
 from zou.app.models.person import Person
 from zou.app.models.project import ProjectPersonLink
 from zou.app.services import projects_service, user_service
+from zou.app.services.exception import WrongParameterException
 from zou.app.utils import permissions
 
 
@@ -182,3 +183,55 @@ class ProjectRoleSemanticsTestCase(ApiDBTestCase):
         self.add_member(self.project, artist_id, role="vendor")
         self.log_in_cg_artist()
         self.get(f"data/tasks/{self.task.id}", 403)
+
+
+class TeamRoleServiceTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project_status()
+        self.generate_fixture_project()
+        self.generate_fixture_person()
+
+    def test_add_team_member_with_role(self):
+        projects_service.add_team_member(
+            str(self.project.id), str(self.person.id), role="supervisor"
+        )
+        self.assertEqual(
+            projects_service.get_team_roles(str(self.project.id)),
+            {str(self.person.id): "supervisor"},
+        )
+
+    def test_add_team_member_without_role_inherits(self):
+        projects_service.add_team_member(
+            str(self.project.id), str(self.person.id)
+        )
+        self.assertEqual(
+            projects_service.get_team_roles(str(self.project.id)), {}
+        )
+
+    def test_update_team_member_role(self):
+        projects_service.add_team_member(
+            str(self.project.id), str(self.person.id)
+        )
+        projects_service.update_team_member_role(
+            str(self.project.id), str(self.person.id), "manager"
+        )
+        self.assertEqual(
+            projects_service.get_team_roles(str(self.project.id)),
+            {str(self.person.id): "manager"},
+        )
+        projects_service.update_team_member_role(
+            str(self.project.id), str(self.person.id), None
+        )
+        self.assertEqual(
+            projects_service.get_team_roles(str(self.project.id)), {}
+        )
+
+    def test_update_team_member_role_requires_membership(self):
+        self.assertRaises(
+            WrongParameterException,
+            projects_service.update_team_member_role,
+            str(self.project.id),
+            str(self.person.id),
+            "manager",
+        )
