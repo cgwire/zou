@@ -1,3 +1,4 @@
+from flask import g
 from sqlalchemy.orm import aliased
 from sqlalchemy import func, or_, and_
 
@@ -425,17 +426,41 @@ def check_person_access(person_id):
         raise permissions.PermissionDenied
 
 
+def get_project_role(person_id, project_id):
+    """
+    Return the effective role of given person on given project: the
+    project-specific role when one is set on the team link, the person's
+    global role otherwise.
+    """
+    link = ProjectPersonLink.query.filter_by(
+        project_id=str(project_id), person_id=str(person_id)
+    ).first()
+    if link is not None and link.role is not None:
+        return getattr(link.role, "code", link.role)
+    return persons_service.get_person(person_id)["role"]
+
+
 def check_belong_to_project(project_id):
     """
     Return true if current user is assigned to a task of the given project or
-    if current_user is part of the project team.
+    if current_user is part of the project team. As a side effect, resolve
+    the member's effective role for this project into flask.g so that
+    subsequent role checks apply the project role.
     """
     if project_id is None:
         return False
 
     project = projects_service.get_project(str(project_id), relations=True)
     current_user = persons_service.get_current_user()
-    return current_user["id"] in project["team"]
+    if current_user["id"] not in project["team"]:
+        return False
+
+    if current_user["role"] != "admin":
+        # Single slot: a request touching two projects keeps the role of the
+        # last access check performed, which always precedes the role checks
+        # it guards.
+        g.project_role = get_project_role(current_user["id"], project_id)
+    return True
 
 
 def has_project_access(project_id):
