@@ -16,7 +16,7 @@ class ProductionScheduleVersionsResource(BaseModelsResource):
         BaseModelsResource.__init__(self, ProductionScheduleVersion)
 
     def check_read_permissions(self, options=None):
-        if "project_id" in options.keys():
+        if options and "project_id" in options:
             user_service.check_project_access(options["project_id"])
         else:
             permissions.check_admin_permissions()
@@ -339,7 +339,7 @@ class ProductionScheduleVersionTaskLinksResource(BaseModelsResource):
         return [ProductionScheduleVersionTaskLink.assignees]
 
     def check_read_permissions(self, options=None):
-        if "project_id" in options.keys():
+        if options and "project_id" in options:
             user_service.check_project_access(options["project_id"])
         else:
             permissions.check_admin_permissions()

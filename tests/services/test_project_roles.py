@@ -590,6 +590,11 @@ class ProductionScheduleVersionRoleTestCase(ApiDBTestCase):
             f"data/production-schedule-versions/{self.version['id']}", 403
         )
 
+    def test_global_vendor_gets_403_not_500_with_no_query_args(self):
+        self.generate_fixture_user_vendor()
+        self.log_in_vendor()
+        self.get("data/production-schedule-versions", 403)
+
 
 class AllEditsRoleTestCase(ApiDBTestCase):
     """
