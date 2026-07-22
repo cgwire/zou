@@ -850,6 +850,7 @@ class PersonQuotaMixin(ArgsMixin):
         return (project_id, task_type_id, feedback, weighted)
 
     def check_permissions(self, person_id, project_id=None):
+        user_service.check_belong_to_project(project_id)
         if permissions.has_manager_permissions():
             user_service.check_manager_project_access(project_id)
         else:

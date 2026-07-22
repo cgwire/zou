@@ -1,12 +1,15 @@
 from flask import g
+from flask_jwt_extended import verify_jwt_in_request
 
 from tests.base import ApiDBTestCase
 
 from zou.app import app, db
 from zou.app.models.person import Person
 from zou.app.models.project import ProjectPersonLink
+from zou.app.models.studio import Studio
 from zou.app.services import (
     comments_service,
+    entities_service,
     projects_service,
     tasks_service,
     user_service,
@@ -311,3 +314,372 @@ class DirectRoleReadTestCase(ApiDBTestCase):
         self.make_comment(str(self.person.id))
         comment_map = tasks_service.get_last_comment_map([str(self.task.id)])
         self.assertEqual(comment_map, {})
+
+
+class AllShotsRoleTestCase(ApiDBTestCase):
+    """
+    Coverage audit fix: shots/resources.py AllShotsResource.get moves
+    check_project_access above the vendor filter so a project-scoped
+    vendor demotion is honored.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_episode()
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+        self.generate_fixture_shot_task()
+        self.generate_fixture_user_manager()
+
+    def test_demoted_vendor_scoped_to_assigned_shots(self):
+        manager_id = str(self.user_manager["id"])
+        projects_service.add_team_member(
+            str(self.project.id), manager_id, role="vendor"
+        )
+        self.log_in_manager()
+        shots = self.get(f"data/shots?project_id={self.project.id}")
+        self.assertEqual(len(shots), 0)
+        tasks_service.assign_task(str(self.shot_task.id), manager_id)
+        shots = self.get(f"data/shots?project_id={self.project.id}")
+        self.assertEqual(len(shots), 1)
+
+
+class ProjectPersonQuotasRoleTestCase(ApiDBTestCase):
+    """
+    Coverage audit fix: shots/resources.py ProjectPersonQuotasResource.get
+    resolves the project role before branching, so a demoted manager falls
+    to the person-access branch instead of the project-wide one.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_user_manager()
+        self.generate_fixture_person()
+
+    def test_demoted_manager_cannot_view_other_person_quotas(self):
+        manager_id = str(self.user_manager["id"])
+        projects_service.add_team_member(
+            str(self.project.id), manager_id, role="user"
+        )
+        self.log_in_manager()
+        self.get(
+            f"data/projects/{self.project.id}/quotas/persons/"
+            f"{self.person.id}",
+            403,
+        )
+
+
+class TaskCommentDeleteRoleTestCase(ApiDBTestCase):
+    """
+    Coverage audit fix: tasks/resources.py TaskCommentResource.delete
+    resolves the project role before branching, so a demoted manager
+    cannot delete another person's comment.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_asset()
+        self.generate_fixture_task()
+        self.generate_fixture_comment()
+        self.generate_fixture_user_manager()
+
+    def test_demoted_manager_cannot_delete_others_comment(self):
+        manager_id = str(self.user_manager["id"])
+        projects_service.add_team_member(
+            str(self.project.id), manager_id, role="user"
+        )
+        self.log_in_manager()
+        self.delete(
+            f"data/tasks/{self.task.id}/comments/{self.comment['id']}", 403
+        )
+
+
+class CommentUpdateRoleTestCase(ApiDBTestCase):
+    """
+    Coverage audit fix: crud/comments.py
+    CommentResource.check_update_permissions resolves the project role via
+    check_belong_to_project before the has_manager check, so a demoted
+    manager loses comment-edit powers.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_asset()
+        self.generate_fixture_task()
+        self.generate_fixture_comment()
+        self.generate_fixture_user_manager()
+
+    def test_demoted_manager_cannot_edit_others_comment(self):
+        manager_id = str(self.user_manager["id"])
+        projects_service.add_team_member(
+            str(self.project.id), manager_id, role="user"
+        )
+        self.log_in_manager()
+        self.put(
+            f"data/comments/{self.comment['id']}",
+            {"text": "Edited"},
+            403,
+        )
+
+
+class CommentReplyRoleTestCase(ApiDBTestCase):
+    """
+    Coverage audit fix: comments/resources.py reply() runs
+    check_task_action_access (which resolves the project role) before the
+    client-isolation branch, so a demoted client cannot reply across
+    studios.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_asset()
+        self.generate_fixture_task()
+        self.generate_fixture_user_manager()
+        self.generate_fixture_user_client()
+
+    def test_demoted_client_blocked_from_replying_across_studios(self):
+        studio_a = Studio.create(name="Studio A", color="#FF0000")
+        studio_b = Studio.create(name="Studio B", color="#00FF00")
+
+        author_id = str(self.user_client["id"])
+        author = Person.get(author_id)
+        author.update({"studio_id": studio_a.id})
+        projects_service.add_team_member(
+            str(self.project.id), author_id, role="client"
+        )
+        comment = comments_service.create_comment(
+            person_id=author_id,
+            task_id=str(self.task.id),
+            task_status_id=str(self.task_status.id),
+            text="Client note",
+        )
+
+        manager_id = str(self.user_manager["id"])
+        manager = Person.get(manager_id)
+        manager.update({"studio_id": studio_b.id})
+        projects_service.add_team_member(
+            str(self.project.id), manager_id, role="client"
+        )
+
+        self.log_in_manager()
+        self.post(
+            f"data/tasks/{self.task.id}/comments/{comment['id']}/reply",
+            {"text": "reply"},
+            403,
+        )
+
+
+class PreviewThumbnailRoleTestCase(ApiDBTestCase):
+    """
+    Coverage audit fix: previews/resources.py
+    BasePreviewFileThumbnailResource.is_allowed resolves the project role
+    before checking has_vendor_permissions, so a demoted vendor does not
+    get the shared-preview shortcut.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_asset()
+        self.generate_fixture_task()
+        self.generate_fixture_preview_file()
+        self.asset.update(
+            {
+                "preview_file_id": str(self.preview_file.id),
+                "is_shared": True,
+            }
+        )
+        self.generate_fixture_user_manager()
+
+    def test_demoted_vendor_must_be_assigned_for_shared_thumbnail(self):
+        manager_id = str(self.user_manager["id"])
+        projects_service.add_team_member(
+            str(self.project.id), manager_id, role="vendor"
+        )
+        self.log_in_manager()
+        self.get(
+            f"/pictures/thumbnails/preview-files/{self.preview_file.id}.png",
+            403,
+        )
+
+
+class PreviewFileReadRoleTestCase(ApiDBTestCase):
+    """
+    Coverage audit fix: crud/preview_file.py
+    PreviewFileResource.check_read_permissions resolves the project role
+    before checking has_vendor_permissions, so a demoted vendor must be
+    working on the task.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_asset()
+        self.generate_fixture_task()
+        self.generate_fixture_preview_file()
+        self.generate_fixture_user_manager()
+
+    def test_demoted_vendor_not_working_on_task_cannot_read(self):
+        manager_id = str(self.user_manager["id"])
+        projects_service.add_team_member(
+            str(self.project.id), manager_id, role="vendor"
+        )
+        self.log_in_manager()
+        self.get(f"data/preview-files/{self.preview_file.id}", 403)
+
+
+class OutputFileUpdateRoleTestCase(ApiDBTestCase):
+    """
+    Coverage audit fix: crud/output_file.py
+    OutputFileResource.check_update_permissions checks
+    has_manager_project_access instead of the global
+    has_manager_permissions, so a demoted manager must be working on the
+    entity.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_asset()
+        self.generate_fixture_output_type()
+        self.generate_fixture_output_file()
+        self.generate_fixture_user_manager()
+
+    def test_demoted_manager_must_be_working_on_entity(self):
+        manager_id = str(self.user_manager["id"])
+        projects_service.add_team_member(
+            str(self.project.id), manager_id, role="user"
+        )
+        self.log_in_manager()
+        self.put(
+            f"data/output-files/{self.output_file.id}",
+            {"comment": "Updated"},
+            403,
+        )
+
+
+class ProductionScheduleVersionRoleTestCase(ApiDBTestCase):
+    """
+    Coverage audit fix: crud/production_schedule_version.py
+    check_read_permissions methods run check_project_access before the
+    has_vendor/has_client deny, so a demoted client is caught by the deny
+    instead of slipping through on a stale global role.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_user_manager()
+        self.version = self.post(
+            "data/production-schedule-versions",
+            {"name": "Version 1", "project_id": str(self.project.id)},
+        )
+
+    def test_demoted_client_cannot_read_production_schedule_version(self):
+        manager_id = str(self.user_manager["id"])
+        projects_service.add_team_member(
+            str(self.project.id), manager_id, role="client"
+        )
+        self.log_in_manager()
+        self.get(
+            f"data/production-schedule-versions/{self.version['id']}", 403
+        )
+
+
+class AllEditsRoleTestCase(ApiDBTestCase):
+    """
+    Coverage audit fix: edits/resources.py AllEditsResource.get moves
+    check_project_access above the vendor filter so a project-scoped
+    vendor demotion is honored.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_edit()
+        self.generate_fixture_edit_task()
+        self.generate_fixture_user_manager()
+
+    def test_demoted_vendor_scoped_to_assigned_edits(self):
+        manager_id = str(self.user_manager["id"])
+        projects_service.add_team_member(
+            str(self.project.id), manager_id, role="vendor"
+        )
+        self.log_in_manager()
+        edits = self.get(f"data/edits?project_id={self.project.id}")
+        self.assertEqual(len(edits), 0)
+        tasks_service.assign_task(str(self.edit_task.id), manager_id)
+        edits = self.get(f"data/edits?project_id={self.project.id}")
+        self.assertEqual(len(edits), 1)
+
+
+class EntityMetadataRoleTestCase(ApiDBTestCase):
+    """
+    Coverage audit fix: user_service.check_metadata_department_access
+    resolves check_belong_to_project before has_manager/has_supervisor, so
+    a demoted manager loses entity metadata write access.
+
+    Exercised at the service level: crud/entity.py's EntityResource.put
+    wraps check_update_permissions in a bare `except Exception` that
+    downgrades PermissionDenied (403) to 400 before the response reaches
+    the client, a pre-existing bug unrelated to this fix. Calling the
+    service directly under a real, JWT-verified request context isolates
+    the ordering fix from that unrelated bug.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_asset()
+        self.generate_fixture_user_manager()
+
+    def test_demoted_manager_cannot_update_entity_metadata(self):
+        manager_id = str(self.user_manager["id"])
+        projects_service.add_team_member(
+            str(self.project.id), manager_id, role="user"
+        )
+        self.log_in_manager()
+        entity = entities_service.get_entity(str(self.asset.id))
+        with app.test_request_context(headers=self.auth_headers):
+            verify_jwt_in_request()
+            self.assertRaises(
+                permissions.PermissionDenied,
+                user_service.check_metadata_department_access,
+                entity,
+                {"name": "Updated Tree"},
+            )
+
+
+class AllDepartmentsAccessRoleTestCase(ApiDBTestCase):
+    """
+    Coverage audit fix: user_service.check_all_departments_access resolves
+    check_belong_to_project before has_manager/has_supervisor, so a
+    demoted manager loses department-wide access.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_user_manager()
+
+    def test_demoted_manager_cannot_create_metadata_descriptor(self):
+        manager_id = str(self.user_manager["id"])
+        projects_service.add_team_member(
+            str(self.project.id), manager_id, role="user"
+        )
+        self.log_in_manager()
+        data = {
+            "name": "Custom Field",
+            "data_type": "string",
+            "entity_type": "Asset",
+        }
+        self.post(
+            f"data/projects/{self.project.id}/metadata-descriptors",
+            data,
+            403,
+        )

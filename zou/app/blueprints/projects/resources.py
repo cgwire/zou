@@ -2798,14 +2798,14 @@ class ProductionScheduleVersionTaskLinksResource(MethodView, ArgsMixin):
                 production_schedule_version_id
             )
         )
+        user_service.check_project_access(
+            production_schedule_version["project_id"]
+        )
         if (
             permissions.has_vendor_permissions()
             or permissions.has_client_permissions()
         ):
             raise permissions.PermissionDenied
-        user_service.check_project_access(
-            production_schedule_version["project_id"]
-        )
 
         args = self.get_args(
             [

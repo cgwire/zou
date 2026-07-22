@@ -753,17 +753,16 @@ def check_metadata_department_access(entity, new_data=None):
     if new_data is None:
         new_data = {}
     is_allowed = False
+    belongs = check_belong_to_project(entity["project_id"])
     if permissions.has_admin_permissions() or (
-        (
+        belongs
+        and (
             permissions.has_manager_permissions()
             or entity["created_by"] == persons_service.get_current_user()["id"]
         )
-        and check_belong_to_project(entity["project_id"])
     ):
         is_allowed = True
-    elif permissions.has_supervisor_permissions() and check_belong_to_project(
-        entity["project_id"]
-    ):
+    elif belongs and permissions.has_supervisor_permissions():
         # checks that the supervisor only modifies columns
         # for which he is authorized
         allowed_columns = {"data"}
@@ -915,14 +914,12 @@ def check_all_departments_access(project_id, departments=None):
     if not isinstance(departments, list):
         departments = [departments]
     is_allowed = False
+    belongs = check_belong_to_project(project_id)
     if permissions.has_admin_permissions() or (
-        permissions.has_manager_permissions()
-        and check_belong_to_project(project_id)
+        belongs and permissions.has_manager_permissions()
     ):
         is_allowed = True
-    elif permissions.has_supervisor_permissions() and check_belong_to_project(
-        project_id
-    ):
+    elif belongs and permissions.has_supervisor_permissions():
         user_departments = persons_service.get_current_user(relations=True)[
             "departments"
         ]

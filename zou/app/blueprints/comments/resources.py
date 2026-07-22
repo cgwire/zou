@@ -673,6 +673,7 @@ class ReplyCommentResource(MethodView, ArgsMixin):
             raise permissions.PermissionDenied()
         current_user = persons_service.get_current_user()
         if comment["person_id"] != current_user["id"]:
+            user_service.check_task_action_access(task_id)
             if permissions.has_client_permissions():
                 author = persons_service.get_person(comment["person_id"])
                 task = tasks_service.get_task(task_id)
@@ -684,7 +685,6 @@ class ReplyCommentResource(MethodView, ArgsMixin):
                     == "client"
                 ):
                     raise permissions.PermissionDenied()
-            user_service.check_task_action_access(task_id)
 
         body = validation.validate_request_body(CommentReplySchema)
         files = request.files
