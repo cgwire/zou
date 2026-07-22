@@ -244,6 +244,18 @@ class TeamRoleServiceTestCase(ApiDBTestCase):
             "manager",
         )
 
+    def test_update_team_member_role_rejects_admin(self):
+        projects_service.add_team_member(
+            str(self.project.id), str(self.person.id)
+        )
+        self.assertRaises(
+            WrongParameterException,
+            projects_service.update_team_member_role,
+            str(self.project.id),
+            str(self.person.id),
+            "admin",
+        )
+
 
 class TeamRoleApiTestCase(ApiDBTestCase):
     def setUp(self):
@@ -287,6 +299,18 @@ class TeamRoleApiTestCase(ApiDBTestCase):
         self.put(
             f"data/projects/{self.project.id}/team/{self.person.id}",
             {"role": "manager"},
+            400,
+        )
+
+    def test_put_team_member_role_rejects_admin(self):
+        self.post(
+            f"data/projects/{self.project.id}/team",
+            {"person_id": str(self.person.id)},
+            201,
+        )
+        self.put(
+            f"data/projects/{self.project.id}/team/{self.person.id}",
+            {"role": "admin"},
             400,
         )
 

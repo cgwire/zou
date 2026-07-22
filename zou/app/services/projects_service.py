@@ -444,6 +444,10 @@ def update_team_member_role(project_id, person_id, role):
     Set the role of given person on given project. A None role restores
     inheritance of the person's global role.
     """
+    if role == "admin":
+        raise WrongParameterException(
+            "admin is a global role and cannot be set per project"
+        )
     link = ProjectPersonLink.query.filter_by(
         project_id=project_id, person_id=person_id
     ).first()
