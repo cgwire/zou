@@ -577,12 +577,13 @@ def check_supervisor_project_task_type_access(project_id, task_type_id):
     """
     is_allowed = False
     if permissions.has_admin_permissions() or (
-        permissions.has_manager_permissions()
-        and check_belong_to_project(project_id)
+        check_belong_to_project(project_id)
+        and permissions.has_manager_permissions()
     ):
         is_allowed = True
-    elif permissions.has_supervisor_permissions() and check_belong_to_project(
-        project_id
+    elif (
+        check_belong_to_project(project_id)
+        and permissions.has_supervisor_permissions()
     ):
         user = persons_service.get_current_user(relations=True)
         is_allowed = (
@@ -644,8 +645,8 @@ def has_manager_project_access(project_id):
     project.
     """
     return permissions.has_admin_permissions() or (
-        permissions.has_manager_permissions()
-        and check_belong_to_project(project_id)
+        check_belong_to_project(project_id)
+        and permissions.has_manager_permissions()
     )
 
 
@@ -670,8 +671,8 @@ def check_time_spent_access(task_id, person_id):
         persons_service.get_current_user()["id"] == person_id
         or permissions.has_admin_permissions()
         or (
-            permissions.has_manager_permissions()
-            and check_belong_to_project(task["project_id"])
+            check_belong_to_project(task["project_id"])
+            and permissions.has_manager_permissions()
         )
     )
 
@@ -686,11 +687,11 @@ def check_supervisor_project_access(project_id):
     assigned for this project.
     """
     is_allowed = permissions.has_admin_permissions() or (
-        (
+        check_belong_to_project(project_id)
+        and (
             permissions.has_manager_permissions()
             or permissions.has_supervisor_permissions()
         )
-        and check_belong_to_project(project_id)
     )
     if not is_allowed:
         raise permissions.PermissionDenied
@@ -707,12 +708,13 @@ def check_supervisor_task_access(task, new_data=None):
         new_data = {}
     is_allowed = False
     if permissions.has_admin_permissions() or (
-        permissions.has_manager_permissions()
-        and check_belong_to_project(task["project_id"])
+        check_belong_to_project(task["project_id"])
+        and permissions.has_manager_permissions()
     ):
         is_allowed = True
-    elif permissions.has_supervisor_permissions() and check_belong_to_project(
-        task["project_id"]
+    elif (
+        check_belong_to_project(task["project_id"])
+        and permissions.has_supervisor_permissions()
     ):
         # checks that the supervisor only modifies columns
         # for which he is authorized
