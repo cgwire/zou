@@ -5,7 +5,12 @@ from tests.base import ApiDBTestCase
 from zou.app import app, db
 from zou.app.models.person import Person
 from zou.app.models.project import ProjectPersonLink
-from zou.app.services import projects_service, user_service
+from zou.app.services import (
+    comments_service,
+    projects_service,
+    tasks_service,
+    user_service,
+)
 from zou.app.services.exception import WrongParameterException
 from zou.app.utils import permissions
 
@@ -281,3 +286,28 @@ class TeamRoleApiTestCase(ApiDBTestCase):
             {"role": "manager"},
             400,
         )
+
+
+class DirectRoleReadTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_asset()
+        self.generate_fixture_task()
+        self.generate_fixture_person()
+
+    def make_comment(self, author_id):
+        return comments_service.create_comment(
+            person_id=author_id,
+            task_id=str(self.task.id),
+            task_status_id=str(self.task_status.id),
+            text="hello",
+        )
+
+    def test_last_comment_map_uses_project_role(self):
+        projects_service.add_team_member(
+            str(self.project.id), str(self.person.id), role="client"
+        )
+        self.make_comment(str(self.person.id))
+        comment_map = tasks_service.get_last_comment_map([str(self.task.id)])
+        self.assertEqual(comment_map, {})

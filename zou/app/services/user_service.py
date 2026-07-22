@@ -627,13 +627,13 @@ def check_comment_access(comment_id):
                     "id"
                 ] and not comment.get("for_client", False):
                     raise permissions.PermissionDenied
-            if persons_service.get_person(person_id)[
-                "role"
-            ] == "client" or comment.get("for_client", False):
+            if get_project_role(
+                person_id, task["project_id"]
+            ) == "client" or comment.get("for_client", False):
                 return True
             else:
                 raise permissions.PermissionDenied
-        elif persons_service.get_person(person_id)["role"] == "client":
+        elif get_project_role(person_id, task["project_id"]) == "client":
             raise permissions.PermissionDenied
 
         return True

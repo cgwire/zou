@@ -1,4 +1,5 @@
 from sqlalchemy.exc import StatementError
+from sqlalchemy.sql import func
 
 from zou.app.models.project import Project, ProjectPersonLink
 from zou.app.models.entity import Entity
@@ -513,7 +514,7 @@ def notify_clients_playlist_ready(
     query = (
         Person.query.join(ProjectPersonLink)
         .filter(Person.is_bot == False)
-        .filter(Person.role == "client")
+        .filter(func.coalesce(ProjectPersonLink.role, Person.role) == "client")
         .filter(ProjectPersonLink.project_id == project_id)
     )
 
