@@ -1,3 +1,5 @@
+from unittest import mock
+
 from flask import g
 from flask_jwt_extended import verify_jwt_in_request
 
@@ -83,6 +85,26 @@ class GetProjectRoleTestCase(ApiDBTestCase):
             ),
             self.person.role.code,
         )
+
+    def test_failed_membership_check_clears_the_role_slot(self):
+        project_a = self.project
+        self.add_to_team(self.person, role="supervisor")
+        project_b = self.generate_fixture_project("Other project")
+        current_user = self.person.serialize()
+        with app.test_request_context():
+            with mock.patch.object(
+                user_service.persons_service,
+                "get_current_user",
+                return_value=current_user,
+            ):
+                self.assertTrue(
+                    user_service.check_belong_to_project(str(project_a.id))
+                )
+                self.assertEqual(g.get("project_role"), "supervisor")
+                self.assertFalse(
+                    user_service.check_belong_to_project(str(project_b.id))
+                )
+                self.assertIsNone(g.get("project_role"))
 
 
 class PermissionOverrideTestCase(ApiDBTestCase):

@@ -445,14 +445,18 @@ def check_belong_to_project(project_id):
     Return true if current user is assigned to a task of the given project or
     if current_user is part of the project team. As a side effect, resolve
     the member's effective role for this project into flask.g so that
-    subsequent role checks apply the project role.
+    subsequent role checks apply the project role. A failed check clears the
+    slot so a role resolved for another project earlier in the request never
+    leaks into this one.
     """
     if project_id is None:
+        g.project_role = None
         return False
 
     project = projects_service.get_project(str(project_id), relations=True)
     current_user = persons_service.get_current_user()
     if current_user["id"] not in project["team"]:
+        g.project_role = None
         return False
 
     if current_user["role"] != "admin":
