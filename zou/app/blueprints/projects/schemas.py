@@ -3,7 +3,6 @@ Pydantic schemas for request body validation in the projects blueprint.
 """
 
 from typing import List, Literal, Optional
-from uuid import UUID
 
 from pydantic import Field
 

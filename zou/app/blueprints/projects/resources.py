@@ -1,4 +1,3 @@
-from flask import abort
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
