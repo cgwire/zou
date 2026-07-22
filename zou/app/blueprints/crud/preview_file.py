@@ -190,7 +190,7 @@ class PreviewFileResource(BaseModelResource):
         If it's an artist, check if preview file belongs to user projects.
         """
         task = tasks_service.get_task(preview_file["task_id"])
-        user_service.check_belong_to_project(task["project_id"])
+        user_service.resolve_project_role(task["project_id"])
         if permissions.has_vendor_permissions():
             user_service.check_working_on_task(preview_file["task_id"])
         else:

@@ -467,6 +467,17 @@ def check_belong_to_project(project_id):
     return True
 
 
+def resolve_project_role(project_id):
+    """
+    Resolve the current user's effective role for given project into
+    flask.g so that subsequent role checks apply the project role. Side
+    effect variant of check_belong_to_project for call sites where access
+    is enforced later: it never raises and its return value carries no
+    access guarantee.
+    """
+    return check_belong_to_project(project_id)
+
+
 def has_project_access(project_id):
     """
     Return true if current user is an admin or has a task assigned for this

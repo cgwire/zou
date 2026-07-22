@@ -566,7 +566,7 @@ class CommentResource(BaseModelResource):
         """
         comment = tasks_service.get_comment(instance_id)
         task = tasks_service.get_task(comment["object_id"])
-        user_service.check_belong_to_project(task["project_id"])
+        user_service.resolve_project_role(task["project_id"])
         if permissions.has_manager_permissions():
             user_service.check_project_access(task["project_id"])
         else:

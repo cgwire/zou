@@ -2987,7 +2987,7 @@ class ProjectPersonQuotasResource(MethodView, ArgsMixin):
                 description: Invalid count_mode or parameter
         """
         projects_service.get_project(project_id)
-        user_service.check_belong_to_project(project_id)
+        user_service.resolve_project_role(project_id)
         if (
             permissions.has_manager_permissions()
             or permissions.has_supervisor_permissions()
