@@ -2,12 +2,15 @@
 Pydantic schemas for request body validation in the projects blueprint.
 """
 
-from typing import List, Optional
+from typing import List, Literal, Optional
 from uuid import UUID
 
 from pydantic import Field
 
 from zou.app.utils.validation import BaseSchema
+
+# Mirrors ROLE_TYPES minus admin: admin stays a global-only role.
+ProjectRole = Literal["user", "supervisor", "manager", "client", "vendor"]
 
 
 class ProjectTeamSchema(BaseSchema):
@@ -16,6 +19,16 @@ class ProjectTeamSchema(BaseSchema):
     """
 
     person_id: str = Field(..., min_length=1)
+    role: Optional[ProjectRole] = None
+
+
+class ProjectTeamRoleSchema(BaseSchema):
+    """
+    Body for setting the role of a team member on this project only. A null
+    role restores inheritance of the person's global role.
+    """
+
+    role: Optional[ProjectRole] = None
 
 
 class ProjectAssetTypeSchema(BaseSchema):

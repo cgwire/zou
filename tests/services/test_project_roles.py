@@ -235,3 +235,49 @@ class TeamRoleServiceTestCase(ApiDBTestCase):
             str(self.person.id),
             "manager",
         )
+
+
+class TeamRoleApiTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project_status()
+        self.generate_fixture_project()
+        self.generate_fixture_person()
+
+    def test_add_team_member_with_role(self):
+        data = {"person_id": str(self.person.id), "role": "supervisor"}
+        self.post(f"data/projects/{self.project.id}/team", data, 201)
+        team = self.get(f"data/projects/{self.project.id}/team")
+        self.assertEqual(team[0]["project_role"], "supervisor")
+
+    def test_add_team_member_rejects_admin_role(self):
+        data = {"person_id": str(self.person.id), "role": "admin"}
+        self.post(f"data/projects/{self.project.id}/team", data, 400)
+
+    def test_put_team_member_role(self):
+        self.post(
+            f"data/projects/{self.project.id}/team",
+            {"person_id": str(self.person.id)},
+            201,
+        )
+        result = self.put(
+            f"data/projects/{self.project.id}/team/{self.person.id}",
+            {"role": "manager"},
+        )
+        self.assertEqual(result["role"], "manager")
+        result = self.put(
+            f"data/projects/{self.project.id}/team/{self.person.id}",
+            {"role": None},
+        )
+        self.assertIsNone(result["role"])
+        team = self.get(f"data/projects/{self.project.id}/team")
+        self.assertIsNone(team[0]["project_role"])
+
+    def test_put_team_member_role_requires_membership(self):
+        # update_team_member_role raises WrongParameterException for a
+        # non-member, which maps to 400, not 404.
+        self.put(
+            f"data/projects/{self.project.id}/team/{self.person.id}",
+            {"role": "manager"},
+            400,
+        )

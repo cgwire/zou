@@ -5,7 +5,7 @@ from zou.app.blueprints.projects.resources import (
     AllProjectsResource,
     OpenProjectsResource,
     ProductionTeamResource,
-    ProductionTeamRemoveResource,
+    ProductionTeamMemberResource,
     ProductionAssetTypeResource,
     ProductionAssetTypeRemoveResource,
     ProductionPreviewBackgroundFileResource,
@@ -60,7 +60,7 @@ routes = [
     ("/data/projects/<project_id>/day-offs", ProductionDayOffsResource),
     (
         "/data/projects/<project_id>/team/<person_id>",
-        ProductionTeamRemoveResource,
+        ProductionTeamMemberResource,
     ),
     (
         "/data/projects/<project_id>/settings/asset-types",
