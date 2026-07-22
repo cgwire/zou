@@ -482,8 +482,9 @@ def get_team_roles(project_id):
     """
     return {
         str(link.person_id): getattr(link.role, "code", link.role)
-        for link in ProjectPersonLink.query.filter_by(project_id=project_id)
-        if link.role is not None
+        for link in ProjectPersonLink.query.filter_by(
+            project_id=project_id
+        ).filter(ProjectPersonLink.role.isnot(None))
     }
 
 
