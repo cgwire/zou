@@ -278,6 +278,17 @@ class TeamRoleServiceTestCase(ApiDBTestCase):
             "admin",
         )
 
+    def test_add_team_member_rejects_admin_without_partial_state(self):
+        self.assertRaises(
+            WrongParameterException,
+            projects_service.add_team_member,
+            str(self.project.id),
+            str(self.person.id),
+            "admin",
+        )
+        project = projects_service.get_project_raw(str(self.project.id))
+        self.assertEqual(len(project.team), 0)
+
 
 class TeamRoleApiTestCase(ApiDBTestCase):
     def setUp(self):

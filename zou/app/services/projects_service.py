@@ -423,8 +423,13 @@ def update_project(project_id, data):
 def add_team_member(project_id, person_id, role=None):
     """
     Add a person listed in database to the project team, with an optional
-    project-specific role.
+    project-specific role. The role is validated before the membership is
+    created so an invalid role leaves no partial state behind.
     """
+    if role == "admin":
+        raise WrongParameterException(
+            "admin is a global role and cannot be set per project"
+        )
     project = _add_to_list_attr(project_id, Person, person_id, "team")
     if role is not None:
         update_team_member_role(project_id, person_id, role)
