@@ -45,15 +45,22 @@ def _auth_type():
         return None
 
 
+def _effective_role():
+    """
+    Return the current identity's effective role: the project role when a
+    project context is resolved, the global role otherwise. The project
+    slot never holds "admin", so comparing the effective role against role
+    sets that include "admin" stays correct in both contexts.
+    """
+    return _project_role() or _global_role()
+
+
 def has_manager_permissions():
     """
     Return True if user is an admin or a manager, using the project role
     when a project context is resolved.
     """
-    role = _project_role()
-    if role is not None:
-        return role == "manager"
-    return _global_role() in ("admin", "manager")
+    return _effective_role() in ("admin", "manager")
 
 
 def has_artist_permissions():
@@ -62,15 +69,13 @@ def has_artist_permissions():
     project context this is always False: Flask-Principal never granted a
     "user" need, so the historical global fallback is preserved as-is.
     """
-    role = _project_role()
-    if role is not None:
-        return role == "user"
-    return False
+    return _project_role() == "user"
 
 
 def has_admin_permissions():
     """
-    Return True if user is an admin.
+    Return True if user is an admin. Admin is a global-only role, so this
+    check ignores any resolved project role.
     """
     return _global_role() == "admin"
 
@@ -80,10 +85,7 @@ def has_client_permissions():
     Return True if user is a client, using the project role when a project
     context is resolved.
     """
-    role = _project_role()
-    if role is not None:
-        return role == "client"
-    return _global_role() == "client"
+    return _effective_role() == "client"
 
 
 def has_vendor_permissions():
@@ -91,10 +93,7 @@ def has_vendor_permissions():
     Return True if user is a vendor, using the project role when a project
     context is resolved.
     """
-    role = _project_role()
-    if role is not None:
-        return role == "vendor"
-    return _global_role() == "vendor"
+    return _effective_role() == "vendor"
 
 
 def has_supervisor_permissions():
@@ -102,10 +101,7 @@ def has_supervisor_permissions():
     Return True if user is a supervisor, using the project role when a
     project context is resolved.
     """
-    role = _project_role()
-    if role is not None:
-        return role == "supervisor"
-    return _global_role() == "supervisor"
+    return _effective_role() == "supervisor"
 
 
 def has_person_permissions():
@@ -120,10 +116,7 @@ def has_at_least_supervisor_permissions():
     Return True if user is a supervisor, a manager or an admin, using the
     project role when a project context is resolved.
     """
-    role = _project_role()
-    if role is not None:
-        return role in ("supervisor", "manager")
-    return _global_role() in ("admin", "manager", "supervisor")
+    return _effective_role() in ("admin", "manager", "supervisor")
 
 
 def check_at_least_supervisor_permissions():
