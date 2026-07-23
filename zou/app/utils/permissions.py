@@ -48,11 +48,12 @@ def _auth_type():
 def _effective_role():
     """
     Return the current identity's effective role: the project role when a
-    project context is resolved, the global role otherwise. The project
-    slot never holds "admin", so comparing the effective role against role
-    sets that include "admin" stays correct in both contexts.
+    project context is resolved, the global role otherwise. Admin is a
+    global-only role: a project slot holding "admin" is invalid data and
+    falls back to the global role instead of granting admin-tier rights.
     """
-    return _project_role() or _global_role()
+    role = _project_role()
+    return role if role not in (None, "admin") else _global_role()
 
 
 def has_manager_permissions():
