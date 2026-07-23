@@ -1,6 +1,9 @@
 # -*- coding: UTF-8 -*-
+from flask_jwt_extended import verify_jwt_in_request
+
 from tests.base import ApiDBTestCase
 
+from zou.app import app
 from zou.app.models.person import Person
 from zou.app.services import (
     comments_service,
@@ -95,10 +98,16 @@ class UserServiceTestCase(ApiDBTestCase):
         self.log_in_vendor()
         person_id = str(self.get_current_user_raw().id)
         projects_service.add_team_member(self.project_id, person_id)
-        with self.assertRaises(permissions.PermissionDenied):
-            user_service.check_entity_access(str(self.asset_id))
-        tasks_service.assign_task(self.task_id, person_id)
-        self.assertTrue(user_service.check_entity_access(str(self.asset_id)))
+        # The permission helpers read the JWT identity: run the checks in a
+        # verified request context, as production does.
+        with app.test_request_context(headers=self.auth_headers):
+            verify_jwt_in_request()
+            with self.assertRaises(permissions.PermissionDenied):
+                user_service.check_entity_access(str(self.asset_id))
+            tasks_service.assign_task(self.task_id, person_id)
+            self.assertTrue(
+                user_service.check_entity_access(str(self.asset_id))
+            )
 
     def _log_in_cg_artist_as_current_user(self, team_member=True):
         """

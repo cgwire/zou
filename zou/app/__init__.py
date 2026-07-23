@@ -1,18 +1,9 @@
 import traceback
-import uuid
 
 from flask import Flask, jsonify, current_app, request
 from flasgger import Swagger
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
-from flask_principal import (
-    Principal,
-    Identity,
-    identity_changed,
-    RoleNeed,
-    UserNeed,
-    identity_loaded,
-)
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_mail import Mail
@@ -285,51 +276,7 @@ def configure_auth(app):
             if request.path not in allowed_paths:
                 raise TwoFactorAuthenticationRequiredException()
 
-        identity_changed.send(
-            current_app._get_current_object(),
-            identity=Identity(identity.id, identity_type),
-        )
         return identity
-
-    @identity_loaded.connect_via(app)
-    def on_identity_loaded(_, identity):
-        try:
-            if isinstance(identity.id, (str, uuid.UUID)):
-                identity.user = persons_service.get_person_raw_cached(
-                    identity.id
-                )
-
-                if hasattr(identity.user, "id"):
-                    identity.provides.add(UserNeed(identity.user.id))
-
-                if identity.user.role == "admin":
-                    identity.provides.add(RoleNeed("admin"))
-                    identity.provides.add(RoleNeed("manager"))
-
-                elif identity.user.role == "manager":
-                    identity.provides.add(RoleNeed("manager"))
-
-                elif identity.user.role == "supervisor":
-                    identity.provides.add(RoleNeed("supervisor"))
-
-                elif identity.user.role == "client":
-                    identity.provides.add(RoleNeed("client"))
-
-                elif identity.user.role == "vendor":
-                    identity.provides.add(RoleNeed("vendor"))
-
-                identity.provides.add(RoleNeed(identity.auth_type))
-
-            return identity
-
-        except (PersonNotFoundException, UnactiveUserException):
-            return wrong_auth_handler()
-        except TimeoutError:
-            current_app.logger.error("Identity loading timed out")
-            return wrong_auth_handler()
-        except Exception as e:
-            current_app.logger.error(e, exc_info=1)
-            return wrong_auth_handler()
 
 
 def load_api(app):
@@ -369,7 +316,6 @@ def create_app(config_object=config):
 
     app.secret_key = app.config["SECRET_KEY"]
     jwt.init_app(app)
-    Principal(app)
     cache.cache.init_app(app)
     mail.init_app(app)
     swagger = Swagger(

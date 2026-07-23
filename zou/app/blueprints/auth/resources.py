@@ -3,11 +3,6 @@ import secrets
 
 from flask import request, jsonify, current_app, redirect, make_response
 from flask.views import MethodView
-from flask_principal import (
-    Identity,
-    AnonymousIdentity,
-    identity_changed,
-)
 from flask_jwt_extended import (
     jwt_required,
     create_access_token,
@@ -143,9 +138,6 @@ class LogoutResource(MethodView):
         try:
             payload = get_jwt()
             auth_service.logout(payload["jti"], payload.get("refresh_jti"))
-            identity_changed.send(
-                current_app._get_current_object(), identity=AnonymousIdentity()
-            )
         except KeyError:
             return {"Access token not found."}, 500
 
@@ -262,10 +254,6 @@ class LoginResource(MethodView, ArgsMixin):
 
             access_token, refresh_token = auth_service.create_auth_tokens(
                 user["id"], additional_claims
-            )
-            identity_changed.send(
-                current_app._get_current_object(),
-                identity=Identity(user["id"], "person"),
             )
 
             ip_address = request.environ.get(
@@ -1154,8 +1142,8 @@ class FIDOResource(MethodView, ArgsMixin):
             persons_service.get_current_user()["id"]
         )
 
-    @permissions.require_person
     @jwt_required()
+    @permissions.require_person
     def post(self):
         """
         Register FIDO device
@@ -1436,10 +1424,6 @@ class SAMLSSOResource(MethodView, ArgsMixin):
             access_token, refresh_token = auth_service.create_auth_tokens(
                 user["id"], additional_claims
             )
-            identity_changed.send(
-                current_app._get_current_object(),
-                identity=Identity(user["id"], "person"),
-            )
 
             ip_address = request.environ.get(
                 "HTTP_X_REAL_IP", request.remote_addr
@@ -1604,10 +1588,6 @@ class OIDCCallbackResource(MethodView, ArgsMixin):
 
             access_token, refresh_token = auth_service.create_auth_tokens(
                 user["id"], additional_claims
-            )
-            identity_changed.send(
-                current_app._get_current_object(),
-                identity=Identity(user["id"], "person"),
             )
 
             ip_address = request.environ.get(
