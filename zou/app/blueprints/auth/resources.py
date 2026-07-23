@@ -1154,8 +1154,8 @@ class FIDOResource(MethodView, ArgsMixin):
             persons_service.get_current_user()["id"]
         )
 
-    @permissions.require_person
     @jwt_required()
+    @permissions.require_person
     def post(self):
         """
         Register FIDO device
