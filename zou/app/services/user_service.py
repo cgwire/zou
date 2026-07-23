@@ -1724,6 +1724,22 @@ def get_timezone():
     return timezone or persons_service.get_default_timezone()
 
 
+def get_project_roles():
+    """
+    Return a dict mapping project ids to the explicit role the current user
+    holds on them. Projects where the user inherits their global role are
+    absent from the dict.
+    """
+    current_user = persons_service.get_current_user()
+    return {
+        str(link.project_id): getattr(link.role, "code", link.role)
+        for link in ProjectPersonLink.query.filter(
+            ProjectPersonLink.person_id == current_user["id"],
+            ProjectPersonLink.role.isnot(None),
+        )
+    }
+
+
 def get_context():
     context = {
         "asset_types": assets_service.get_asset_types(),
@@ -1736,6 +1752,7 @@ def get_context():
             minimal=not permissions.has_manager_permissions()
         ),
         "project_status": projects_service.get_project_statuses(),
+        "project_roles": get_project_roles(),
         "projects": get_open_projects(),
         "task_types": tasks_service.get_task_types(),
         "task_status": tasks_service.get_task_statuses(),

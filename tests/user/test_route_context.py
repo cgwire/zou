@@ -866,3 +866,26 @@ class UserContextRoutesTestCase(ApiDBTestCase):
 
     def create_test_folder(self):
         return super().create_test_folder()
+
+
+class UserContextProjectRolesTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project_status()
+        self.generate_fixture_project()
+        self.user_id = self.user["id"]
+        projects_service.add_team_member(str(self.project.id), self.user_id)
+
+    def test_context_exposes_explicit_project_roles(self):
+        projects_service.update_team_member_role(
+            str(self.project.id), self.user_id, "supervisor"
+        )
+        context = self.get("data/user/context")
+        self.assertEqual(
+            context["project_roles"],
+            {str(self.project.id): "supervisor"},
+        )
+
+    def test_context_project_roles_empty_when_inherited(self):
+        context = self.get("data/user/context")
+        self.assertEqual(context["project_roles"], {})
