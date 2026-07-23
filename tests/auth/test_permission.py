@@ -136,3 +136,87 @@ class PermissionTestCase(ApiDBTestCase):
             self.project_id, self.user_cg_artist["id"]
         )
         self.get(f"data/assets/{asset_id}", 200)
+
+
+class GlobalRoleFallbackTestCase(ApiDBTestCase):
+    """
+    Unit coverage of the permission helpers' global fallback, which reads
+    the JWT identity directly since the Flask-Principal removal.
+    """
+
+    def helpers_for(self, role):
+        from unittest import mock
+
+        from zou.app import app
+        from zou.app.utils import permissions
+
+        fake_user = mock.Mock()
+        fake_user.role = role
+        with app.test_request_context():
+            with mock.patch.object(
+                permissions, "get_current_user", return_value=fake_user
+            ):
+                return {
+                    "admin": permissions.has_admin_permissions(),
+                    "manager": permissions.has_manager_permissions(),
+                    "supervisor": permissions.has_supervisor_permissions(),
+                    "at_least_supervisor": (
+                        permissions.has_at_least_supervisor_permissions()
+                    ),
+                    "client": permissions.has_client_permissions(),
+                    "vendor": permissions.has_vendor_permissions(),
+                    "artist": permissions.has_artist_permissions(),
+                }
+
+    def test_admin_implies_manager(self):
+        helpers = self.helpers_for("admin")
+        self.assertTrue(helpers["admin"])
+        self.assertTrue(helpers["manager"])
+        self.assertTrue(helpers["at_least_supervisor"])
+        self.assertFalse(helpers["supervisor"])
+
+    def test_manager_is_not_admin(self):
+        helpers = self.helpers_for("manager")
+        self.assertFalse(helpers["admin"])
+        self.assertTrue(helpers["manager"])
+        self.assertTrue(helpers["at_least_supervisor"])
+
+    def test_single_role_mappings(self):
+        self.assertTrue(self.helpers_for("supervisor")["supervisor"])
+        self.assertTrue(self.helpers_for("client")["client"])
+        self.assertTrue(self.helpers_for("vendor")["vendor"])
+
+    def test_artist_global_fallback_stays_false(self):
+        # Flask-Principal never granted a "user" need: the historical
+        # always-False global fallback is preserved on purpose.
+        helpers = self.helpers_for("user")
+        self.assertFalse(helpers["artist"])
+        self.assertFalse(helpers["at_least_supervisor"])
+
+    def test_person_permissions_follow_identity_type(self):
+        from unittest import mock
+
+        from zou.app import app
+        from zou.app.utils import permissions
+
+        for identity_type, expected in [
+            ("person", True),
+            ("person_api", True),
+            ("bot", False),
+        ]:
+            with app.test_request_context():
+                with mock.patch.object(
+                    permissions,
+                    "get_jwt",
+                    return_value={"identity_type": identity_type},
+                ):
+                    self.assertEqual(
+                        permissions.has_person_permissions(), expected
+                    )
+
+    def test_all_false_outside_request_context(self):
+        from zou.app.utils import permissions
+
+        self.assertFalse(permissions.has_admin_permissions())
+        self.assertFalse(permissions.has_manager_permissions())
+        self.assertFalse(permissions.has_person_permissions())
