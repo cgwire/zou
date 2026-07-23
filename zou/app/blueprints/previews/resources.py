@@ -1159,6 +1159,7 @@ class BasePreviewFileThumbnailResource(BasePreviewPictureResource):
         )
         task = tasks_service.get_task(self.preview_file["task_id"])
         entity = entities_service.get_entity(task["entity_id"])
+        user_service.resolve_project_role(task["project_id"])
         if (
             entity["preview_file_id"] != preview_file_id
             or not entity["is_shared"]

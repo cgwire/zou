@@ -1,4 +1,3 @@
-from flask import abort
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
@@ -16,6 +15,7 @@ from zou.app.services import (
 from zou.app.utils import permissions, validation
 from zou.app.blueprints.projects.schemas import (
     ProjectTeamSchema,
+    ProjectTeamRoleSchema,
     ProjectAssetTypeSchema,
     ProjectTaskTypeSchema,
     ProjectTaskStatusSchema,
@@ -209,15 +209,24 @@ class ProductionTeamResource(MethodView, ArgsMixin):
                         type: string
                         description: Person email address
                         example: "john.doe@example.com"
+                      project_role:
+                        type: string
+                        nullable: true
+                        description: Person role on this project only. Null
+                          means the person's global role applies.
+                        example: "supervisor"
         """
         user_service.check_project_access(project_id)
         project = projects_service.get_project_raw(project_id)
+        role_map = projects_service.get_team_roles(project_id)
         persons = []
         for person in project.team:
             if permissions.has_manager_permissions():
-                persons.append(person.serialize_safe(relations=True))
+                data = person.serialize_safe(relations=True)
             else:
-                persons.append(person.present_minimal())
+                data = person.present_minimal()
+            data["project_role"] = role_map.get(str(person.id))
+            persons.append(data)
         return persons
 
     @jwt_required()
@@ -251,6 +260,12 @@ class ProductionTeamResource(MethodView, ArgsMixin):
                     format: uuid
                     description: Person unique identifier
                     example: b35b7fb5-df86-5776-b181-68564193d36
+                  role:
+                    type: string
+                    nullable: true
+                    description: Role of the person on this project only.
+                      Null means the person's global role applies.
+                    enum: [user, supervisor, manager, client, vendor, null]
         responses:
           201:
             description: Person added to the production team
@@ -275,12 +290,14 @@ class ProductionTeamResource(MethodView, ArgsMixin):
 
         user_service.check_manager_project_access(project_id)
         return (
-            projects_service.add_team_member(project_id, body.person_id),
+            projects_service.add_team_member(
+                project_id, body.person_id, role=body.role
+            ),
             201,
         )
 
 
-class ProductionTeamRemoveResource(MethodView):
+class ProductionTeamMemberResource(MethodView):
 
     @jwt_required()
     def delete(self, project_id, person_id):
@@ -314,6 +331,51 @@ class ProductionTeamRemoveResource(MethodView):
         user_service.check_manager_project_access(project_id)
         projects_service.remove_team_member(project_id, person_id)
         return "", 204
+
+    @jwt_required()
+    def put(self, project_id, person_id):
+        """
+        Set team member role
+        ---
+        description: Set the role of a person on this production only.
+                     A null role restores the person's global role.
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+          - in: path
+            name: person_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  role:
+                    type: string
+                    nullable: true
+                    enum: [user, supervisor, manager, client, vendor, null]
+        responses:
+          200:
+            description: Role updated
+          400:
+            description: Person is not a member of the project team
+        """
+        body = validation.validate_request_body(ProjectTeamRoleSchema)
+        user_service.check_manager_project_access(project_id)
+        return projects_service.update_team_member_role(
+            project_id, person_id, body.role
+        )
 
 
 class ProductionAssetTypeResource(MethodView, ArgsMixin):
@@ -2735,14 +2797,14 @@ class ProductionScheduleVersionTaskLinksResource(MethodView, ArgsMixin):
                 production_schedule_version_id
             )
         )
+        user_service.check_project_access(
+            production_schedule_version["project_id"]
+        )
         if (
             permissions.has_vendor_permissions()
             or permissions.has_client_permissions()
         ):
             raise permissions.PermissionDenied
-        user_service.check_project_access(
-            production_schedule_version["project_id"]
-        )
 
         args = self.get_args(
             [

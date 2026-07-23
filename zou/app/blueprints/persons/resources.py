@@ -1,7 +1,7 @@
 import datetime
 import ipaddress
 
-from flask import abort, request, current_app
+from flask import request, current_app
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
@@ -850,6 +850,7 @@ class PersonQuotaMixin(ArgsMixin):
         return (project_id, task_type_id, feedback, weighted)
 
     def check_permissions(self, person_id, project_id=None):
+        user_service.resolve_project_role(project_id)
         if permissions.has_manager_permissions():
             user_service.check_manager_project_access(project_id)
         else:

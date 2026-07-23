@@ -578,13 +578,21 @@ class CommentManyTasksResource(MethodView):
 
     def get_allowed_comments_only(self, comments, person):
         allowed_comments = []
+        # The person is constant and the comments almost always share one
+        # project: memoize the role lookups instead of querying per comment.
+        role_cache = {}
         for comment in comments:
             try:
                 task = tasks_service.get_task(
                     comment["object_id"], relations=True
                 )
+                project_id = task["project_id"]
+                if project_id not in role_cache:
+                    role_cache[project_id] = user_service.get_project_role(
+                        person["id"], project_id
+                    )
                 if (
-                    person["role"] == "supervisor"
+                    role_cache[project_id] == "supervisor"
                     and (
                         len(person["departments"]) == 0
                         or tasks_service.get_task_type(task["task_type_id"])[
@@ -670,14 +678,18 @@ class ReplyCommentResource(MethodView, ArgsMixin):
             raise permissions.PermissionDenied()
         current_user = persons_service.get_current_user()
         if comment["person_id"] != current_user["id"]:
+            user_service.check_task_action_access(task_id)
             if permissions.has_client_permissions():
                 author = persons_service.get_person(comment["person_id"])
+                task = tasks_service.get_task(task_id)
                 if (
                     current_user["studio_id"] != author["studio_id"]
-                    and author["role"] == "client"
+                    and user_service.get_project_role(
+                        author["id"], task["project_id"]
+                    )
+                    == "client"
                 ):
                     raise permissions.PermissionDenied()
-            user_service.check_task_action_access(task_id)
 
         body = validation.validate_request_body(CommentReplySchema)
         files = request.files

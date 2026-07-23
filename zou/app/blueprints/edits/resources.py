@@ -274,11 +274,11 @@ class AllEditsResource(MethodView):
                         example: "2023-01-01T12:30:00Z"
         """
         criterions = query.get_query_criterions_from_request(request)
+        user_service.check_project_access(criterions.get("project_id", None))
         if permissions.has_vendor_permissions():
             criterions["assigned_to"] = persons_service.get_current_user()[
                 "id"
             ]
-        user_service.check_project_access(criterions.get("project_id", None))
         return edits_service.get_edits(criterions)
 
 

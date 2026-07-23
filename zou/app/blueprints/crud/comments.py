@@ -11,7 +11,6 @@ from zou.app.services import (
     persons_service,
     tasks_service,
     user_service,
-    projects_service,
 )
 from zou.app.utils import events, permissions
 
@@ -432,11 +431,8 @@ class CommentResource(BaseModelResource):
                 instance["object_id"], relations=True
             )
             task_type = tasks_service.get_task_type(task["task_type_id"])
-            project = projects_service.get_project(
-                task["project_id"], relations=True
-            )
             current_user = persons_service.get_current_user(relations=True)
-            if current_user["id"] not in project["team"]:
+            if not user_service.check_belong_to_project(task["project_id"]):
                 raise permissions.PermissionDenied
 
             if permissions.has_manager_permissions():
@@ -570,6 +566,7 @@ class CommentResource(BaseModelResource):
         """
         comment = tasks_service.get_comment(instance_id)
         task = tasks_service.get_task(comment["object_id"])
+        user_service.resolve_project_role(task["project_id"])
         if permissions.has_manager_permissions():
             user_service.check_project_access(task["project_id"])
         else:

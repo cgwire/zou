@@ -405,11 +405,11 @@ class AllShotsResource(MethodView):
             criterions["project_id"] = sequence["project_id"]
             criterions["parent_id"] = sequence["id"]
             del criterions["sequence_id"]
+        user_service.check_project_access(criterions.get("project_id", None))
         if permissions.has_vendor_permissions():
             criterions["assigned_to"] = persons_service.get_current_user()[
                 "id"
             ]
-        user_service.check_project_access(criterions.get("project_id", None))
         return shots_service.get_shots(criterions)
 
 
@@ -2987,6 +2987,7 @@ class ProjectPersonQuotasResource(MethodView, ArgsMixin):
                 description: Invalid count_mode or parameter
         """
         projects_service.get_project(project_id)
+        user_service.resolve_project_role(project_id)
         if (
             permissions.has_manager_permissions()
             or permissions.has_supervisor_permissions()

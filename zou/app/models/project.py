@@ -42,6 +42,8 @@ class ProjectPersonLink(db.Model):
         index=True,
     )
     shotgun_id = db.Column(db.Integer)
+    # NULL means the person inherits their global Person.role.
+    role = db.Column(ChoiceType(ROLE_TYPES), nullable=True)
 
 
 class ProjectTaskTypeLink(db.Model, BaseMixin, SerializerMixin):

@@ -54,7 +54,8 @@ class OutputFileResource(BaseModelResource):
         return True
 
     def check_update_permissions(self, output_file, data):
-        if permissions.has_manager_permissions():
+        entity = entities_service.get_entity(output_file["entity_id"])
+        if user_service.has_manager_project_access(entity["project_id"]):
             return True
         else:
             return user_service.check_working_on_entity(

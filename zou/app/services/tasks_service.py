@@ -14,10 +14,11 @@ Two conventions matter when editing this module:
 import collections
 import uuid
 
+from sqlalchemy import and_
 from sqlalchemy.exc import StatementError, IntegrityError, DataError
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import case
-from sqlalchemy.orm import aliased, load_only, selectinload
+from sqlalchemy.orm import aliased, selectinload
 from sqlalchemy.orm.exc import StaleDataError
 
 from zou.app import config, db
@@ -37,7 +38,11 @@ from zou.app.models.entity_type import EntityType, TaskTypeAssetTypeLink
 from zou.app.models.news import News
 from zou.app.models.person import Person
 from zou.app.models.preview_file import PreviewFile
-from zou.app.models.project import Project, ProjectTaskTypeLink
+from zou.app.models.project import (
+    Project,
+    ProjectPersonLink,
+    ProjectTaskTypeLink,
+)
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.task import Task, TaskPersonLink
 from zou.app.models.task_type import TaskType
@@ -761,7 +766,16 @@ def _prepare_query(task_id, is_client, is_manager):
         )
     )
     if not is_manager and not is_client:
-        query = query.filter(Person.role != "client")
+        task = get_task(task_id)
+        query = query.outerjoin(
+            ProjectPersonLink,
+            and_(
+                ProjectPersonLink.person_id == Person.id,
+                ProjectPersonLink.project_id == task["project_id"],
+            ),
+        ).filter(
+            func.coalesce(ProjectPersonLink.role, Person.role) != "client"
+        )
     return query
 
 
@@ -1230,7 +1244,15 @@ def get_last_comment_map(task_ids):
     comments = (
         Comment.query.filter(Comment.object_id.in_(task_ids))
         .join(Person, Comment.person_id == Person.id)
-        .filter(Person.role != "client")
+        .join(Task, Comment.object_id == Task.id)
+        .outerjoin(
+            ProjectPersonLink,
+            and_(
+                ProjectPersonLink.person_id == Person.id,
+                ProjectPersonLink.project_id == Task.project_id,
+            ),
+        )
+        .filter(func.coalesce(ProjectPersonLink.role, Person.role) != "client")
         .order_by(Comment.object_id, Comment.created_at)
         .all()
     )

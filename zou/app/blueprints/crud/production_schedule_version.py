@@ -16,15 +16,15 @@ class ProductionScheduleVersionsResource(BaseModelsResource):
         BaseModelsResource.__init__(self, ProductionScheduleVersion)
 
     def check_read_permissions(self, options=None):
+        if options and "project_id" in options:
+            user_service.check_project_access(options["project_id"])
+        else:
+            permissions.check_admin_permissions()
         if (
             permissions.has_vendor_permissions()
             or permissions.has_client_permissions()
         ):
             raise permissions.PermissionDenied
-        if "project_id" in options.keys():
-            return user_service.check_project_access(options["project_id"])
-        else:
-            return permissions.check_admin_permissions()
 
     @jwt_required()
     def get(self):
@@ -175,12 +175,12 @@ class ProductionScheduleVersionResource(BaseModelResource):
         BaseModelResource.__init__(self, ProductionScheduleVersion)
 
     def check_read_permissions(self, instance_dict):
+        user_service.check_project_access(instance_dict["project_id"])
         if (
             permissions.has_vendor_permissions()
             or permissions.has_client_permissions()
         ):
             raise permissions.PermissionDenied
-        return user_service.check_project_access(instance_dict["project_id"])
 
     @jwt_required()
     def get(self, instance_id):
@@ -339,15 +339,15 @@ class ProductionScheduleVersionTaskLinksResource(BaseModelsResource):
         return [ProductionScheduleVersionTaskLink.assignees]
 
     def check_read_permissions(self, options=None):
+        if options and "project_id" in options:
+            user_service.check_project_access(options["project_id"])
+        else:
+            permissions.check_admin_permissions()
         if (
             permissions.has_vendor_permissions()
             or permissions.has_client_permissions()
         ):
             raise permissions.PermissionDenied
-        if "project_id" in options.keys():
-            return user_service.check_project_access(options["project_id"])
-        else:
-            return permissions.check_admin_permissions()
 
     @jwt_required()
     def get(self):
@@ -520,13 +520,13 @@ class ProductionScheduleVersionTaskLinkResource(BaseModelResource):
         ]
 
     def check_read_permissions(self, instance_dict):
+        task = tasks_service.get_task(instance_dict["task_id"])
+        user_service.check_project_access(task["project_id"])
         if (
             permissions.has_vendor_permissions()
             or permissions.has_client_permissions()
         ):
             raise permissions.PermissionDenied
-        task = tasks_service.get_task(instance_dict["task_id"])
-        return user_service.check_project_access(task["project_id"])
 
     @jwt_required()
     def get(self, instance_id):

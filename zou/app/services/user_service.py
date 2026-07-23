@@ -1,3 +1,4 @@
+from flask import g
 from sqlalchemy.orm import aliased
 from sqlalchemy import func, or_, and_
 
@@ -425,17 +426,56 @@ def check_person_access(person_id):
         raise permissions.PermissionDenied
 
 
+def get_project_role(person_id, project_id):
+    """
+    Return the effective role of given person on given project: the
+    project-specific role when one is set on the team link, the person's
+    global role otherwise.
+    """
+    link = ProjectPersonLink.query.filter_by(
+        project_id=str(project_id), person_id=str(person_id)
+    ).first()
+    if link is not None and link.role is not None:
+        return getattr(link.role, "code", link.role)
+    return persons_service.get_person(person_id)["role"]
+
+
 def check_belong_to_project(project_id):
     """
     Return true if current user is assigned to a task of the given project or
-    if current_user is part of the project team.
+    if current_user is part of the project team. As a side effect, resolve
+    the member's effective role for this project into flask.g so that
+    subsequent role checks apply the project role. A failed check clears the
+    slot so a role resolved for another project earlier in the request never
+    leaks into this one.
     """
     if project_id is None:
+        g.project_role = None
         return False
 
     project = projects_service.get_project(str(project_id), relations=True)
     current_user = persons_service.get_current_user()
-    return current_user["id"] in project["team"]
+    if current_user["id"] not in project["team"]:
+        g.project_role = None
+        return False
+
+    if current_user["role"] != "admin":
+        # Single slot: a request touching two projects keeps the role of the
+        # last access check performed, which always precedes the role checks
+        # it guards.
+        g.project_role = get_project_role(current_user["id"], project_id)
+    return True
+
+
+def resolve_project_role(project_id):
+    """
+    Resolve the current user's effective role for given project into
+    flask.g so that subsequent role checks apply the project role. Side
+    effect variant of check_belong_to_project for call sites where access
+    is enforced later: it never raises and its return value carries no
+    access guarantee.
+    """
+    return check_belong_to_project(project_id)
 
 
 def has_project_access(project_id):
@@ -552,12 +592,13 @@ def check_supervisor_project_task_type_access(project_id, task_type_id):
     """
     is_allowed = False
     if permissions.has_admin_permissions() or (
-        permissions.has_manager_permissions()
-        and check_belong_to_project(project_id)
+        check_belong_to_project(project_id)
+        and permissions.has_manager_permissions()
     ):
         is_allowed = True
-    elif permissions.has_supervisor_permissions() and check_belong_to_project(
-        project_id
+    elif (
+        check_belong_to_project(project_id)
+        and permissions.has_supervisor_permissions()
     ):
         user = persons_service.get_current_user(relations=True)
         is_allowed = (
@@ -601,13 +642,13 @@ def check_comment_access(comment_id):
                     "id"
                 ] and not comment.get("for_client", False):
                     raise permissions.PermissionDenied
-            if persons_service.get_person(person_id)[
-                "role"
-            ] == "client" or comment.get("for_client", False):
+            if get_project_role(
+                person_id, task["project_id"]
+            ) == "client" or comment.get("for_client", False):
                 return True
             else:
                 raise permissions.PermissionDenied
-        elif persons_service.get_person(person_id)["role"] == "client":
+        elif get_project_role(person_id, task["project_id"]) == "client":
             raise permissions.PermissionDenied
 
         return True
@@ -619,8 +660,8 @@ def has_manager_project_access(project_id):
     project.
     """
     return permissions.has_admin_permissions() or (
-        permissions.has_manager_permissions()
-        and check_belong_to_project(project_id)
+        check_belong_to_project(project_id)
+        and permissions.has_manager_permissions()
     )
 
 
@@ -645,8 +686,8 @@ def check_time_spent_access(task_id, person_id):
         persons_service.get_current_user()["id"] == person_id
         or permissions.has_admin_permissions()
         or (
-            permissions.has_manager_permissions()
-            and check_belong_to_project(task["project_id"])
+            check_belong_to_project(task["project_id"])
+            and permissions.has_manager_permissions()
         )
     )
 
@@ -661,11 +702,11 @@ def check_supervisor_project_access(project_id):
     assigned for this project.
     """
     is_allowed = permissions.has_admin_permissions() or (
-        (
+        check_belong_to_project(project_id)
+        and (
             permissions.has_manager_permissions()
             or permissions.has_supervisor_permissions()
         )
-        and check_belong_to_project(project_id)
     )
     if not is_allowed:
         raise permissions.PermissionDenied
@@ -682,12 +723,13 @@ def check_supervisor_task_access(task, new_data=None):
         new_data = {}
     is_allowed = False
     if permissions.has_admin_permissions() or (
-        permissions.has_manager_permissions()
-        and check_belong_to_project(task["project_id"])
+        check_belong_to_project(task["project_id"])
+        and permissions.has_manager_permissions()
     ):
         is_allowed = True
-    elif permissions.has_supervisor_permissions() and check_belong_to_project(
-        task["project_id"]
+    elif (
+        check_belong_to_project(task["project_id"])
+        and permissions.has_supervisor_permissions()
     ):
         # checks that the supervisor only modifies columns
         # for which he is authorized
@@ -726,17 +768,16 @@ def check_metadata_department_access(entity, new_data=None):
     if new_data is None:
         new_data = {}
     is_allowed = False
+    belongs = check_belong_to_project(entity["project_id"])
     if permissions.has_admin_permissions() or (
-        (
+        belongs
+        and (
             permissions.has_manager_permissions()
             or entity["created_by"] == persons_service.get_current_user()["id"]
         )
-        and check_belong_to_project(entity["project_id"])
     ):
         is_allowed = True
-    elif permissions.has_supervisor_permissions() and check_belong_to_project(
-        entity["project_id"]
-    ):
+    elif belongs and permissions.has_supervisor_permissions():
         # checks that the supervisor only modifies columns
         # for which he is authorized
         allowed_columns = {"data"}
@@ -888,14 +929,12 @@ def check_all_departments_access(project_id, departments=None):
     if not isinstance(departments, list):
         departments = [departments]
     is_allowed = False
+    belongs = check_belong_to_project(project_id)
     if permissions.has_admin_permissions() or (
-        permissions.has_manager_permissions()
-        and check_belong_to_project(project_id)
+        belongs and permissions.has_manager_permissions()
     ):
         is_allowed = True
-    elif permissions.has_supervisor_permissions() and check_belong_to_project(
-        project_id
-    ):
+    elif belongs and permissions.has_supervisor_permissions():
         user_departments = persons_service.get_current_user(relations=True)[
             "departments"
         ]
