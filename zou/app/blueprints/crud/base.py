@@ -690,7 +690,7 @@ class BaseModelResource(MethodView, ArgsMixin):
             self.post_delete(instance_dict)
 
         except (IntegrityError, StatementError) as exception:
-            current_app.logger.error(str(exception), exc_info=1)
+            current_app.logger.warning(str(exception), exc_info=1)
             return {"message": build_db_error_message(exception)}, 400
 
         return "", 204
