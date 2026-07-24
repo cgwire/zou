@@ -566,6 +566,29 @@ class ScheduleServiceTestCase(ApiDBTestCase):
             400,
         )
 
+    def test_set_task_links_from_version_rejects_case_mismatched_self_copy(
+        self,
+    ):
+        # An uppercase UUID in the path resolves (in SQL) to the same version
+        # as the normalized source id, so the self-copy guard must still fire
+        # and the assignees must not be wiped.
+        psv = ProductionScheduleVersion.create(
+            name="v1", project_id=self.project.id
+        )
+        schedule_service.set_production_schedule_version_task_links_from_production(
+            str(psv.id)
+        )
+        self.post(
+            f"/actions/production-schedule-versions/{str(psv.id).upper()}"
+            "/set-task-links-from-production-schedule-version",
+            {"production_schedule_version_id": str(psv.id)},
+            400,
+        )
+        self.assertEqual(
+            self._assignees_by_task(str(psv.id)),
+            {str(self.task.id): {str(self.person.id)}},
+        )
+
     def test_apply_production_schedule_version_to_production(self):
         # apply copies the version's task-link values back onto the tasks,
         # locks the version and records it as the project's source version.

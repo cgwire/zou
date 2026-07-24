@@ -390,7 +390,9 @@ def _upsert_task_links_from_select(source_select):
     generated id, the target production schedule version id, the task id and
     the copied start_date, due_date and estimation. The whole copy runs in the
     database (INSERT ... SELECT), so it scales to productions with tens of
-    thousands of tasks without loading them into Python.
+    thousands of tasks without loading them into Python. Returns the number
+    of task links copied, taken from the statement RETURNING rows (rowcount
+    is unreliable for INSERT ... SELECT).
     """
     tl = ProductionScheduleVersionTaskLink
     insert_stmt = insert(tl).from_select(
@@ -411,8 +413,9 @@ def _upsert_task_links_from_select(source_select):
             "due_date": insert_stmt.excluded.due_date,
             "estimation": insert_stmt.excluded.estimation,
         },
-    )
-    db.session.execute(insert_stmt)
+    ).returning(tl.id)
+    result = db.session.execute(insert_stmt)
+    return len(result.all())
 
 
 def _replace_task_link_assignees(refreshed_link_ids, person_source):
@@ -460,12 +463,7 @@ def set_production_schedule_version_task_links_from_production(
     )
 
     tl = ProductionScheduleVersionTaskLink
-    copied_count = (
-        db.session.query(func.count(Task.id))
-        .filter(Task.project_id == production_schedule_version["project_id"])
-        .scalar()
-    )
-    _upsert_task_links_from_select(
+    copied_count = _upsert_task_links_from_select(
         select(
             _generate_task_link_id(),
             literal(
@@ -512,15 +510,7 @@ def set_production_schedule_version_task_links_from_production_schedule_version(
     other_tl = aliased(ProductionScheduleVersionTaskLink)
     pl = ProductionScheduleVersionTaskLinkPersonLink
 
-    copied_count = (
-        db.session.query(func.count(tl.id))
-        .filter(
-            tl.production_schedule_version_id
-            == other_production_schedule_version_id
-        )
-        .scalar()
-    )
-    _upsert_task_links_from_select(
+    copied_count = _upsert_task_links_from_select(
         select(
             _generate_task_link_id(),
             literal(

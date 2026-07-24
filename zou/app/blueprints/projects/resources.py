@@ -3005,7 +3005,7 @@ class ProductionScheduleVersionSetTaskLinksFromProductionScheduleVersionResource
             )
 
         return schedule_service.set_production_schedule_version_task_links_from_production_schedule_version(
-            production_schedule_version_id,
+            production_schedule_version["id"],
             other_production_schedule_version_id=other_production_schedule_version[
                 "id"
             ],
