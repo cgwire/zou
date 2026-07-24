@@ -2850,6 +2850,12 @@ class ProductionScheduleVersionSetTaskLinksFromTasksResource(
               application/json:
                 schema:
                   type: object
+                  properties:
+                    success:
+                      type: boolean
+                    task_link_count:
+                      type: integer
+                      description: Number of task links copied
           400:
             description: Wrong ID format
         """
@@ -2895,6 +2901,12 @@ class ProductionScheduleVersionApplyToProductionResource(
               application/json:
                 schema:
                   type: object
+                  properties:
+                    success:
+                      type: boolean
+                    task_count:
+                      type: integer
+                      description: Number of tasks updated
           400:
             description: Wrong ID format
         """
@@ -2958,6 +2970,12 @@ class ProductionScheduleVersionSetTaskLinksFromProductionScheduleVersionResource
               application/json:
                 schema:
                   type: object
+                  properties:
+                    success:
+                      type: boolean
+                    task_link_count:
+                      type: integer
+                      description: Number of task links copied
           400:
             description: Wrong ID format
         """
@@ -2987,7 +3005,7 @@ class ProductionScheduleVersionSetTaskLinksFromProductionScheduleVersionResource
             )
 
         return schedule_service.set_production_schedule_version_task_links_from_production_schedule_version(
-            production_schedule_version_id,
+            production_schedule_version["id"],
             other_production_schedule_version_id=other_production_schedule_version[
                 "id"
             ],
