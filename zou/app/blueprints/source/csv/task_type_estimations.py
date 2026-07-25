@@ -92,6 +92,13 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
         self.assets_map = {}
         self.shots_map = {}
         self.tasks_map = {}
+        self.descriptor_fields = {
+            name: descriptor
+            for name, descriptor in self.get_descriptor_field_map(
+                project_id, "Task"
+            ).items()
+            if descriptor["task_type_id"] == task_type["id"]
+        }
 
         if task_type["for_entity"] == "Asset":
             asset_types_map = {}
@@ -130,7 +137,7 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
         for task in tasks_service.get_tasks_for_project_and_task_type(
             project_id, task_type["id"]
         ):
-            self.tasks_map[task["entity_id"]] = task["id"]
+            self.tasks_map[task["entity_id"]] = task
 
     def import_row(self, row, project_id, task_type, episode_id=None):
         key = slugify(f"{row['Parent']}{row['Entity']}")
@@ -173,7 +180,14 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
         if row.get("Difficulty") not in [None, ""]:
             new_data["difficulty"] = int(row["Difficulty"])
 
-        tasks_service.update_task(self.tasks_map[entity_id], new_data)
+        task = self.tasks_map[entity_id]
+
+        # Merge descriptor cells into the task's own metadata instead of
+        # replacing it, so columns absent from the CSV are preserved.
+        if any(name in row for name in self.descriptor_fields):
+            new_data["data"] = self.get_descriptor_values(row, task["data"])
+
+        tasks_service.update_task(task["id"], new_data)
 
 
 class TaskTypeEstimationsEpisodeCsvImportResource(

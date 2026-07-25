@@ -4,6 +4,7 @@ from tests.base import ApiDBTestCase
 from zou.app import db
 
 from zou.app.models.entity import Entity
+from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
@@ -104,6 +105,41 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
 
         entities = Entity.query.all()
         self.assertEqual(len(entities), 3)
+
+    def generate_person_descriptor(self):
+        self.generate_fixture_person()
+        MetadataDescriptor.create(
+            project_id=self.project.id,
+            name="Reviewer",
+            data_type="person",
+            field_name="reviewer",
+            entity_type="Asset",
+        )
+
+    def test_import_assets_person_metadata(self):
+        self.generate_person_descriptor()
+        path = f"/import/csv/projects/{self.project.id}/assets"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets_person_metadata.csv")
+        )
+        self.upload_file(path, file_path_fixture)
+
+        # One row matches by full name, the other by email: both must
+        # resolve to the person id, not store the raw cell.
+        entities = Entity.query.all()
+        self.assertEqual(len(entities), 2)
+        for asset in entities:
+            self.assertEqual(asset.data.get("reviewer"), str(self.person.id))
+
+    def test_import_assets_person_metadata_unknown(self):
+        self.generate_person_descriptor()
+        path = f"/import/csv/projects/{self.project.id}/assets"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets_person_metadata_unknown.csv")
+        )
+        error = self.upload_file(path, file_path_fixture, 400)
+        self.assertIn("Person not found", error["message"])
+        self.assertEqual(len(Entity.query.all()), 0)
 
     def test_import_assets_with_non_comma_delimiter(self):
         path = f"/import/csv/projects/{self.project.id}/assets"

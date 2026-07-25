@@ -16,7 +16,7 @@ from zou.app.services import (
 )
 from zou.app.models.entity import Entity
 from zou.app.services.exception import WrongParameterException
-from zou.app.utils import events, cache, string
+from zou.app.utils import events, cache
 
 
 class AssetsCsvImportResource(BaseCsvProjectImportResource):
@@ -242,25 +242,13 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         if description is not None:
             asset_new_values["description"] = description
 
-        if entity is None or not entity.data:
-            asset_new_values["data"] = {}
-        else:
-            asset_new_values["data"] = entity.data.copy()
+        data = {} if entity is None else entity.data
 
         resolution = row.get("Resolution", None)
         if resolution is not None:
-            asset_new_values["data"]["resolution"] = resolution
+            data = {**(data or {}), "resolution": resolution}
 
-        for name, descriptor in self.descriptor_fields.items():
-            if name in row:
-                if descriptor["data_type"] == "boolean":
-                    asset_new_values["data"][descriptor["field_name"]] = (
-                        "true" if string.strtobool(row[name]) else "false"
-                    )
-                else:
-                    asset_new_values["data"][descriptor["field_name"]] = row[
-                        name
-                    ]
+        asset_new_values["data"] = self.get_descriptor_values(row, data)
 
         ready_for = row.get("Ready for", None)
         if ready_for is not None:
