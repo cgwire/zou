@@ -21,7 +21,7 @@ from zou.app.services.tasks_service import (
 )
 from zou.app.services.comments_service import create_comment
 from zou.app.services.exception import WrongParameterException
-from zou.app.utils import events, string
+from zou.app.utils import events
 
 
 class EditsCsvImportResource(BaseCsvProjectImportResource):
@@ -225,21 +225,9 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
         if description is not None:
             edit_new_values["description"] = description
 
-        if entity is None or not entity.data:
-            edit_new_values["data"] = {}
-        else:
-            edit_new_values["data"] = entity.data.copy()
-
-        for name, descriptor in self.descriptor_fields.items():
-            if name in row:
-                if descriptor["data_type"] == "boolean":
-                    edit_new_values["data"][descriptor["field_name"]] = (
-                        "true" if string.strtobool(row[name]) else "false"
-                    )
-                else:
-                    edit_new_values["data"][descriptor["field_name"]] = row[
-                        name
-                    ]
+        edit_new_values["data"] = self.get_descriptor_values(
+            row, {} if entity is None else entity.data
+        )
 
         tasks_update = self.get_tasks_update(row)
 

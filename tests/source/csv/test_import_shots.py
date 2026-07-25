@@ -4,6 +4,7 @@ from tests.base import ApiDBTestCase
 from zou.app import db
 
 from zou.app.models.entity_type import EntityType
+from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.models.task import Task
 from zou.app.services import shots_service
@@ -80,6 +81,28 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
 
         shot = shots[0]
         self.assertEqual(shot["data"].get("contractor", None), "contractor 1")
+
+    def test_import_shots_empty_boolean_descriptor(self):
+        MetadataDescriptor.create(
+            project_id=self.project.id,
+            name="Delivery",
+            data_type="boolean",
+            field_name="delivery",
+            choices=[],
+            entity_type="Shot",
+        )
+        path = f"/import/csv/projects/{self.project.id}/shots"
+        self.project.update({"production_type": "tvshow"})
+
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "shots_boolean_metadata.csv")
+        )
+        self.upload_file(path, file_path_fixture)
+
+        shots = {s["name"]: s for s in shots_service.get_shots()}
+        self.assertEqual(shots["BS01"]["data"]["delivery"], "true")
+        # An empty boolean cell must not fail the import.
+        self.assertEqual(shots["BS02"]["data"]["delivery"], "")
 
     def test_import_shots_frame_range_is_normalized(self):
         path = f"/import/csv/projects/{self.project.id}/shots"
