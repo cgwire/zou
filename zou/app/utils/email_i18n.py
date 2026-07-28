@@ -4,13 +4,26 @@ Emails are sent in the recipient's preferred locale when available.
 
 Supported locales: en_US, fr_FR, es_ES, ja_JP, de_DE, nl_NL, zh_CN, pt_BR.
 To add a language: copy the en_US block, change the key (e.g. de_DE) and translate
-all values. Then add the 2-letter code to _normalize_locale's lang_map if desired.
+all values. Then add the language code to LANGUAGE_LOCALES if desired.
 """
 
 from zou.app import config
 
 # Default locale used when user locale is missing or unsupported
 DEFAULT_EMAIL_LOCALE = "en_US"
+
+# Locale used for a given language when the region is missing or unsupported:
+# "zh", "zh_Hant_TW" and "zh_SG" all end up on the zh_CN strings.
+LANGUAGE_LOCALES = {
+    "en": "en_US",
+    "fr": "fr_FR",
+    "es": "es_ES",
+    "ja": "ja_JP",
+    "de": "de_DE",
+    "nl": "nl_NL",
+    "zh": "zh_CN",
+    "pt": "pt_BR",
+}
 
 # Email translation strings per locale.
 # Use {name} placeholders for interpolation.
@@ -797,24 +810,31 @@ O IP de quem solicitou é: {person_IP}.</p>
 def _normalize_locale(locale):
     """
     Return a locale string suitable for lookup (e.g. en_US, fr_FR).
+
+    Accepts the forms Babel, browsers and SSO providers emit: dash
+    separators (fr-FR), any casing (fr_fr), bare language codes (fr) and
+    script subtags (zh_Hans_CN, which is Babel's canonical form of zh_CN).
+    An unsupported region falls back to the language default (fr_CA gives
+    fr_FR); an unsupported language is returned as-is so that
+    get_email_translation falls back to en_US.
     """
     if not locale or not isinstance(locale, str):
-        locale = "en_US"
+        return DEFAULT_EMAIL_LOCALE
 
     locale = locale.strip()
-    if len(locale) == 2:
-        lang_map = {
-            "en": "en_US",
-            "fr": "fr_FR",
-            "es": "es_ES",
-            "ja": "ja_JP",
-            "de": "de_DE",
-            "nl": "nl_NL",
-            "zh": "zh_CN",
-            "pt": "pt_BR",
-        }
-        return lang_map.get(locale.lower(), locale)
-    return locale
+    parts = [part for part in locale.replace("-", "_").split("_") if part]
+    if not parts:
+        return DEFAULT_EMAIL_LOCALE
+
+    language = parts[0].lower()
+    # A 4-letter subtag is a script (Hans in zh_Hans_CN); translation keys
+    # are language_REGION only, so scripts are dropped.
+    regions = [part for part in parts[1:] if len(part) != 4]
+    if regions:
+        candidate = f"{language}_{regions[-1].upper()}"
+        if candidate in EMAIL_TRANSLATIONS:
+            return candidate
+    return LANGUAGE_LOCALES.get(language, locale)
 
 
 def get_email_translation(locale, key, **params):

@@ -83,6 +83,35 @@ class EmailI18nTestCase(unittest.TestCase):
         result_pt = get_email_translation("pt", "comment_title")
         self.assertEqual(result_pt, "Novo comentário")
 
+    def test_get_email_translation_with_script_subtag(self):
+        # Babel's canonical form of zh_CN, also used as DEFAULT_LOCALE value
+        result = get_email_translation("zh_Hans_CN", "comment_title")
+        self.assertEqual(result, "新评论")
+
+        result_dashed = get_email_translation("zh-Hans-CN", "comment_title")
+        self.assertEqual(result_dashed, "新评论")
+
+        result_script_only = get_email_translation("zh_Hans", "comment_title")
+        self.assertEqual(result_script_only, "新评论")
+
+        # No Traditional Chinese strings: fall back on the zh_CN ones
+        result_hant = get_email_translation("zh_Hant_TW", "comment_title")
+        self.assertEqual(result_hant, "新评论")
+
+    def test_get_email_translation_separator_and_case(self):
+        result_dashed = get_email_translation("fr-FR", "comment_title")
+        self.assertEqual(result_dashed, "Nouveau commentaire")
+
+        result_lower = get_email_translation("fr_fr", "comment_title")
+        self.assertEqual(result_lower, "Nouveau commentaire")
+
+    def test_get_email_translation_unsupported_region(self):
+        result_fr_ca = get_email_translation("fr_CA", "comment_title")
+        self.assertEqual(result_fr_ca, "Nouveau commentaire")
+
+        result_en_gb = get_email_translation("en_GB", "comment_title")
+        self.assertEqual(result_en_gb, "New Comment")
+
     def test_all_locales_have_all_keys(self):
         en_keys = set(EMAIL_TRANSLATIONS["en_US"].keys())
 
