@@ -466,9 +466,12 @@ class DayOffResource(MethodView):
             description: Wrong date format
         """
         user_service.check_person_is_not_bot(person_id)
-        current_user = persons_service.get_current_user()
-        if current_user["id"] != person_id:
-            permissions.check_at_least_supervisor_permissions()
+        # Same policy as the year, month, week and day routes below and as
+        # the day off CRUD: leave is between the person and the admins.
+        # Seeing a team calendar goes through
+        # /data/projects/<id>/day-offs, which scopes to the production and
+        # hands the detail to its managers only.
+        user_service.check_person_access(person_id)
         try:
             return time_spents_service.get_day_off(person_id, date)
         except WrongDateFormatException:

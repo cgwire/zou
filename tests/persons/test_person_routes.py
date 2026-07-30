@@ -122,6 +122,25 @@ class PersonRoutesTestCase(ApiDBTestCase):
         )
         self.assertIsNotNone(result)
 
+    def test_get_person_day_off_for_date_is_admin_or_self(self):
+        # Leave is between the person and the admins, like the week, month
+        # and year routes and like the day off CRUD. A team calendar goes
+        # through /data/projects/<id>/day-offs, which scopes to the
+        # production and hands the detail to its managers only.
+        DayOff.create(
+            date="2024-06-10",
+            end_date="2024-06-10",
+            person_id=self.person.id,
+        )
+        path = f"/data/persons/{self.person_id}/day-offs/2024-06-10"
+
+        self.generate_fixture_user_supervisor()
+        self.log_in_supervisor()
+        self.get(path, 403)
+
+        self.log_in_admin()
+        self.assertIsNotNone(self.get(path))
+
     def test_get_person_day_offs_week(self):
         result = self.get(
             f"/data/persons/{self.person_id}/day-offs/week/2024/23"
