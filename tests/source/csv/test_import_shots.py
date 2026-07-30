@@ -20,6 +20,33 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
         self.generate_fixture_department()
         self.generate_fixture_task_type()
 
+    def _tmp_csv_files(self):
+        tmp_dir = self.app.application.config["TMP_DIR"]
+        return {name for name in os.listdir(tmp_dir) if name.endswith(".csv")}
+
+    def test_import_leaves_no_file_behind(self):
+        path = f"/import/csv/projects/{self.project.id}/shots"
+        self.project.update({"production_type": "tvshow"})
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "shots.csv")
+        )
+        before = self._tmp_csv_files()
+        self.upload_file(path, file_path_fixture)
+        self.assertEqual(self._tmp_csv_files(), before)
+
+    def test_a_refused_import_writes_nothing(self):
+        # The upload used to be saved before the permission check ran, and
+        # never removed, so a 403 still cost a file in TMP_DIR.
+        path = f"/import/csv/projects/{self.project.id}/shots"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "shots.csv")
+        )
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        before = self._tmp_csv_files()
+        self.upload_file(path, file_path_fixture, 403)
+        self.assertEqual(self._tmp_csv_files(), before)
+
     def test_import_shots(self):
         self.assertEqual(len(Task.query.all()), 0)
         db.session.add(

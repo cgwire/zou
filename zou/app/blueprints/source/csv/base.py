@@ -37,6 +37,11 @@ class RowException(Exception):
 class BaseCsvImportResource(MethodView, ArgsMixin):
     @jwt_required()
     def post(self, *args):
+        # Authorize before anything reaches the disk, and drop the file
+        # whatever happens next: the upload used to be written first and
+        # never removed, so any account could fill TMP_DIR by posting to an
+        # import route it is not allowed to use and collecting the 403.
+        self.check_permissions(*args)
         uploaded_file = request.files["file"]
         file_name = f"{uuid.uuid4()}.csv"
 
@@ -55,6 +60,9 @@ class BaseCsvImportResource(MethodView, ArgsMixin):
         except csv.Error as e:
             current_app.logger.error(f"Import failed: {e}")
             return self.format_error(e), 400
+        finally:
+            if os.path.exists(file_path):
+                os.remove(file_path)
 
     def format_row_error(self, exception):
         return {
@@ -74,8 +82,8 @@ class BaseCsvImportResource(MethodView, ArgsMixin):
         the error payload tells the client how many). Fixing the file and
         re-importing with update=true completes the job idempotently.
         """
+        # Permissions are checked by post(), before the upload is written.
         result = []
-        self.check_permissions(*args)
         self.prepare_import(*args)
         with open(file_path, newline="", encoding="utf-8") as csvfile:
             reader = csv.DictReader(csvfile, dialect=self.get_dialect(csvfile))
