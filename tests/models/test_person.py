@@ -290,6 +290,14 @@ class PersonTestCase(ApiDBTestCase):
         for field in SENSITIVE_FIELDS:
             self.assertNotIn(field, created)
 
+        self.generate_fixture_department()
+        joined = self.post(
+            f"actions/persons/{person['id']}/departments/add",
+            {"department_id": str(self.department.id)},
+        )
+        for field in SENSITIVE_FIELDS:
+            self.assertNotIn(field, joined)
+
     def test_person_country_round_trip(self):
         data = {
             "first_name": "Country",

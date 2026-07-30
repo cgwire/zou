@@ -822,7 +822,7 @@ def add_to_department(department_id, person_id):
     person.departments.append(department)
     person.save()
     clear_person_cache()
-    return person.serialize(relations=True)
+    return person.serialize_safe(relations=True)
 
 
 def remove_from_department(department_id, person_id):
@@ -837,7 +837,7 @@ def remove_from_department(department_id, person_id):
     ]
     person.save()
     clear_person_cache()
-    return person.serialize(relations=True)
+    return person.serialize_safe(relations=True)
 
 
 def clear_avatar(person_id):
