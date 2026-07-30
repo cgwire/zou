@@ -3,6 +3,7 @@ import orjson
 from tests.base import ApiDBTestCase
 
 from zou.app.models.entity import EntityLink
+from zou.app.models.person import Person
 from zou.app.services import (
     projects_service,
     tasks_service,
@@ -139,6 +140,53 @@ class AssetTasksTestCase(ApiDBTestCase):
         )
         self.assertEqual(len(main_assets), 1)
         self.assertEqual(main_assets[0]["id"], str(self.asset_character.id))
+
+    def _add_asset_in_another_project(self, name="Elsewhere"):
+        self.generate_fixture_project_standard()
+        return self.generate_fixture_asset(
+            name=name, project_id=self.project_standard.id
+        )
+
+    def _log_in_artist_of_this_project(self):
+        self.generate_fixture_user_cg_artist()
+        self.project.team.append(Person.get(self.user_cg_artist["id"]))
+        self.project.save()
+        self.log_in_cg_artist()
+
+    def test_scope_applies_to_compact_and_stream(self):
+        self._add_asset_in_another_project()
+        self._log_in_artist_of_this_project()
+
+        payload = self.get("data/assets/with-tasks?compact=true")
+        rebuilt = rebuild_from_compact(
+            payload["asset_fields"], payload["task_fields"], payload["rows"]
+        )
+        self.assertEqual([asset["name"] for asset in rebuilt], ["Tree"])
+
+        response = self.app.get(
+            "data/assets/with-tasks?stream=true", headers=self.base_headers
+        )
+        lines = response.data.decode("utf-8").strip().split("\n")
+        streamed = [orjson.loads(line) for line in lines[1:]]
+        self.assertEqual([asset["name"] for asset in streamed], ["Tree"])
+
+    def test_scope_applies_to_episode_casting(self):
+        # An asset of another project cast into an episode of this one goes
+        # through the second query of get_assets, where the team filter is
+        # applied again by hand.
+        elsewhere = self._add_asset_in_another_project()
+        self.generate_fixture_episode("E01")
+        EntityLink.create(
+            entity_in_id=self.episode.id, entity_out_id=elsewhere.id
+        )
+        path = f"data/assets/all?episode_id={self.episode.id}"
+
+        names = [asset["name"] for asset in self.get(path)]
+        self.assertIn("Elsewhere", names)
+
+        self._log_in_artist_of_this_project()
+        names = [asset["name"] for asset in self.get(path)]
+        self.assertNotIn("Elsewhere", names)
 
     def test_get_assets_and_tasks_vendor(self):
         self.generate_fixture_task(name="Secondary")
