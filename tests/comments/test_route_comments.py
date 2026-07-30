@@ -478,6 +478,47 @@ class CommentRoutesTestCase(ApiDBTestCase):
         self.assertEqual(len(attachments), 1)
         self.assertEqual(attachments[0].name, "brief.pdf")
 
+    def test_delete_attachment_rejects_a_foreign_attachment(self):
+        # Deleting one's own comment attachment skips the project check, so
+        # the attachment has to belong to the named comment: otherwise
+        # pointing at one's own comment removes any attachment at all.
+        sibling = self._make_sibling_task()
+        other_comment = comments_service.new_comment(
+            sibling.id,
+            self.task_status.id,
+            self.person.id,
+            "another comment",
+        )
+        attachment = AttachmentFile.create(
+            name="brief.pdf",
+            size=0,
+            extension="pdf",
+            mimetype="application/pdf",
+            comment_id=other_comment["id"],
+        )
+        self.delete(
+            f"/data/tasks/{self.task.id}"
+            f"/comments/{self.comment['id']}"
+            f"/attachments/{attachment.id}",
+            403,
+        )
+        self.assertIsNotNone(AttachmentFile.get(attachment.id))
+
+    def test_delete_attachment_of_own_comment(self):
+        attachment = AttachmentFile.create(
+            name="brief.pdf",
+            size=0,
+            extension="pdf",
+            mimetype="application/pdf",
+            comment_id=self.comment["id"],
+        )
+        self.delete(
+            f"/data/tasks/{self.task.id}"
+            f"/comments/{self.comment['id']}"
+            f"/attachments/{attachment.id}"
+        )
+        self.assertIsNone(AttachmentFile.get(attachment.id))
+
     def test_move_comment_rebuilds_notifications(self):
         self.generate_fixture_user_manager()
         self.generate_fixture_user_cg_artist()

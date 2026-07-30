@@ -341,6 +341,14 @@ class AttachmentResource(MethodView):
         comment = tasks_service.get_comment(comment_id)
         if comment["object_id"] != task_id:
             raise permissions.PermissionDenied()
+        # The author branch below skips the project check, so the attachment
+        # must be tied to the comment too: otherwise pointing at one's own
+        # comment deletes any attachment whose id the caller knows.
+        attachment_file = comments_service.get_attachment_file(
+            attachment_file_id
+        )
+        if str(attachment_file["comment_id"]) != str(comment_id):
+            raise permissions.PermissionDenied()
         if comment["person_id"] != user["id"]:
             task = tasks_service.get_task(task_id)
             user_service.check_manager_project_access(task["project_id"])
