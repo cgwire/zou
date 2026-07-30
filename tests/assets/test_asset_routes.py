@@ -1,5 +1,6 @@
 from tests.base import ApiDBTestCase
 
+from zou.app.models.person import Person
 from zou.app.services import breakdown_service
 
 
@@ -160,3 +161,26 @@ class AssetRoutesTestCase(ApiDBTestCase):
             f"/episodes/{self.episode.id}/assets/shared-used"
         )
         self.assertIsInstance(result, list)
+
+    def test_list_routes_scope_to_user_projects(self):
+        list_paths = ["data/assets/all", "data/assets/with-tasks"]
+        self.generate_fixture_project_standard()
+        self.generate_fixture_asset(
+            name="Elsewhere", project_id=self.project_standard.id
+        )
+        self.generate_fixture_user_cg_artist()
+
+        for path in list_paths:
+            names = {asset["name"] for asset in self.get(path)}
+            self.assertEqual(names, {"Tree", "Rabbit", "Elsewhere"})
+
+        self.log_in_cg_artist()
+        for path in list_paths:
+            self.assertEqual(self.get(path), [])
+
+        self.project.team.append(Person.get(self.user_cg_artist["id"]))
+        self.project.save()
+        self.log_in_cg_artist()
+        for path in list_paths:
+            names = {asset["name"] for asset in self.get(path)}
+            self.assertEqual(names, {"Tree", "Rabbit"})

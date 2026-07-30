@@ -212,7 +212,7 @@ class AllAssetsResource(MethodView):
             ]
         return assets_service.get_assets(
             criterions,
-            is_admin=permissions.has_admin_permissions(),
+            only_user_projects=not permissions.has_admin_permissions(),
         )
 
 
@@ -325,11 +325,16 @@ class AssetsAndTasksResource(MethodView, ArgsMixin):
                 str(department.id)
                 for department in persons_service.get_current_user_raw().departments
             ]
+        only_user_projects = not permissions.has_admin_permissions()
         if not stream and not compact:
-            return assets_service.get_assets_and_tasks(criterions)
+            return assets_service.get_assets_and_tasks(
+                criterions, only_user_projects=only_user_projects
+            )
 
         rows = assets_service.prepare_assets_and_tasks(
-            criterions, compact=compact
+            criterions,
+            compact=compact,
+            only_user_projects=only_user_projects,
         )
         header = {"compact": compact}
         if compact:

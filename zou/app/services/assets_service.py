@@ -85,9 +85,11 @@ def build_entity_type_asset_type_filter():
     return ~EntityType.id.in_(ids_to_exclude)
 
 
-def get_assets(criterions=None, is_admin=False):
+def get_assets(criterions=None, only_user_projects=False):
     """
-    Get all assets for given criterions.
+    Get all assets for given criterions. Set only_user_projects on routes
+    taking their criterions from a client: criterions carrying no project
+    restrict nothing.
     """
     if criterions is None:
         criterions = {}
@@ -105,11 +107,10 @@ def get_assets(criterions=None, is_admin=False):
         query = query.outerjoin(Task)
         query = query.filter(user_service.build_assignee_filter())
 
-    if "is_shared" in criterions:
-        if not is_admin:
-            query = query.join(Project).filter(
-                user_service.build_team_filter()
-            )
+    team_filter = None
+    if only_user_projects:
+        team_filter = user_service.build_team_exists_filter(Entity.project_id)
+        query = query.filter(team_filter)
 
     if episode_id is not None:
         # Filter based on main episode.
@@ -126,6 +127,8 @@ def get_assets(criterions=None, is_admin=False):
         query = query_utils.apply_criterions_to_db_query(
             Entity, query, criterions
         )
+        if team_filter is not None:
+            query = query.filter(team_filter)
         # Add non duplicated assets to the list.
         result += [a for a in query.all() if a.source_id != episode_id]
     else:
@@ -174,7 +177,9 @@ def get_full_assets(criterions=None):
     return assets
 
 
-def _apply_asset_and_tasks_criterions(query, criterions, assigned_to):
+def _apply_asset_and_tasks_criterions(
+    query, criterions, assigned_to, only_user_projects=False
+):
     """
     Apply the with-tasks asset filters (asset types only, id, project,
     episode casting, assigned to current user) on a query that has Entity
@@ -212,6 +217,11 @@ def _apply_asset_and_tasks_criterions(query, criterions, assigned_to):
             .exists()
         )
         query = query.filter(has_assigned_task)
+
+    if only_user_projects:
+        query = query.filter(
+            user_service.build_team_exists_filter(Entity.project_id)
+        )
 
     return query
 
@@ -259,7 +269,10 @@ ASSETS_AND_TASKS_TASK_FIELDS = [
 
 
 def prepare_assets_and_tasks(
-    criterions=None, with_episode_ids=False, compact=False
+    criterions=None,
+    with_episode_ids=False,
+    compact=False,
+    only_user_projects=False,
 ):
     """
     Run the with-tasks queries and return a generator yielding one asset
@@ -297,6 +310,7 @@ def prepare_assets_and_tasks(
             ),
             criterions,
             assigned_to,
+            only_user_projects,
         )
         .with_entities(
             Entity.id,
@@ -321,6 +335,7 @@ def prepare_assets_and_tasks(
         Task.query.join(Entity, Task.entity_id == Entity.id),
         criterions,
         assigned_to,
+        only_user_projects,
     ).with_entities(
         # uuid::text in SQL: casting 4-5 uuids per task row in Python
         # (uuid.__str__ + the UUID result processor) shows up in profiles
@@ -353,6 +368,7 @@ def prepare_assets_and_tasks(
         .join(Entity, Task.entity_id == Entity.id),
         criterions,
         assigned_to,
+        only_user_projects,
     ).with_entities(
         cast(TaskPersonLink.task_id, Text),
         cast(TaskPersonLink.person_id, Text),
@@ -522,12 +538,20 @@ def prepare_assets_and_tasks(
     return iterate()
 
 
-def get_assets_and_tasks(criterions=None, with_episode_ids=False):
+def get_assets_and_tasks(
+    criterions=None, with_episode_ids=False, only_user_projects=False
+):
     """
     Get all assets for given criterions with related tasks for each
     asset, as a list of dicts.
     """
-    return list(prepare_assets_and_tasks(criterions, with_episode_ids))
+    return list(
+        prepare_assets_and_tasks(
+            criterions,
+            with_episode_ids,
+            only_user_projects=only_user_projects,
+        )
+    )
 
 
 def get_asset_types(criterions=None):

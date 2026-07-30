@@ -75,6 +75,21 @@ def build_team_filter():
     return Project.team.contains(current_user)
 
 
+def build_team_exists_filter(project_id):
+    """
+    Query filter to keep only rows whose project the user is part of the
+    team of. Expressed as an EXISTS so it never multiplies result rows.
+    """
+    current_user = persons_service.get_current_user()
+    return (
+        ProjectPersonLink.query.filter(
+            ProjectPersonLink.project_id == project_id
+        )
+        .filter(ProjectPersonLink.person_id == current_user["id"])
+        .exists()
+    )
+
+
 def build_open_project_filter():
     """
     Query filter for project to retrieve only open projects.
