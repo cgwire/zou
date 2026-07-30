@@ -149,6 +149,33 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
                 any(d["field_name"] == "ship_code" for d in descriptors)
             )
 
+    def test_all_projects_metadata_descriptor_follows_the_project_role(self):
+        # A role on the team link replaces the global one, so belonging to a
+        # production is not enough to reshape its metadata: these routes
+        # used to touch every project of the team on a global manager check,
+        # which the per project routes refuse.
+        managed = self.generate_fixture_project(name="Managed Project")
+        joined = self.generate_fixture_project(name="Joined Project")
+        self.generate_fixture_user_manager()
+        manager_id = self.user_manager["id"]
+        for project in (managed, joined):
+            projects_service.add_team_member(project.id, manager_id)
+        projects_service.update_team_member_role(joined.id, manager_id, "user")
+        self.log_in_manager()
+
+        created = self.post(
+            "data/metadata-descriptors/all-projects",
+            {
+                "entity_type": "Project",
+                "name": "Delivery code",
+                "data_type": "string",
+            },
+            201,
+        )
+        touched = {descriptor["project_id"] for descriptor in created}
+        self.assertIn(str(managed.id), touched)
+        self.assertNotIn(str(joined.id), touched)
+
     def test_new_project_copies_project_descriptors(self):
         # A Project descriptor on an open project and one on a closed
         # project: only the open one is copied onto a new project.

@@ -1568,14 +1568,23 @@ VALID_METADATA_ENTITY_TYPES = [
 
 def _accessible_open_project_ids():
     """
-    Open projects the current user can act on: every open project for an
-    admin, only the user's team open projects otherwise. Keeps the
-    all-projects metadata routes from touching projects a manager has no
-    access to.
+    Open projects the current user may manage: every open project for an
+    admin, otherwise the team ones where their effective role is manager.
+
+    Membership alone is not enough. A role set on the team link replaces
+    the global one, so someone holding manager globally and user on a
+    production would otherwise reshape its metadata through these routes,
+    which the per project ones refuse.
     """
     if permissions.has_admin_permissions():
         return projects_service.open_project_ids()
-    return [project["id"] for project in user_service.related_projects()]
+    global_role = persons_service.get_current_user()["role"]
+    project_roles = user_service.get_project_roles()
+    return [
+        project["id"]
+        for project in user_service.related_projects()
+        if project_roles.get(project["id"], global_role) == "manager"
+    ]
 
 
 def _check_metadata_entity_type(entity_type):
