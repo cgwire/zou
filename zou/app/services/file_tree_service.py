@@ -294,10 +294,21 @@ def get_tree_from_project(project):
 
 _file_tree_cache = {}
 
+_FILE_TREE_NAME_PATTERN = re.compile(r"[A-Za-z0-9_-]+")
+
 
 def get_tree_from_file(tree_name):
+    """
+    Read a file tree shipped in zou/app/file_trees. The name comes from the
+    client on the set-file-tree route, so it is matched against a plain
+    identifier first: os.path.join neither normalizes ".." nor keeps the
+    prefix when the second argument is absolute, and the file content ends
+    up in the response.
+    """
     from zou.app import app
 
+    if not _FILE_TREE_NAME_PATTERN.fullmatch(tree_name or ""):
+        raise WrongFileTreeFileException(f"Wrong file tree name: {tree_name}.")
     if tree_name in _file_tree_cache:
         return _file_tree_cache[tree_name]
     try:

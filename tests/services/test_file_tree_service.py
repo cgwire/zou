@@ -1,7 +1,13 @@
+import os
+import tempfile
+
 from tests.base import ApiDBTestCase
 
 from zou.app.services import file_tree_service, files_service
-from zou.app.services.exception import MalformedFileTreeException
+from zou.app.services.exception import (
+    MalformedFileTreeException,
+    WrongFileTreeFileException,
+)
 
 from zou.app.models.entity import Entity
 
@@ -61,6 +67,27 @@ class FileTreeTestCase(ApiDBTestCase):
     def test_get_tree_from_file(self):
         simple_tree = file_tree_service.get_tree_from_file("simple")
         self.assertIsNotNone(simple_tree["working"])
+
+    def test_get_tree_from_file_rejects_a_path(self):
+        # The name reaches this from the request body, and the file content
+        # ends up in the response: anything but a plain identifier is out.
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False
+        ) as secret:
+            secret.write('{"stolen": true}')
+        stem = secret.name[: -len(".json")]
+        try:
+            for tree_name in [
+                stem,
+                f"../../../../{stem.lstrip('/')}",
+                "../../file_trees/simple",
+                "",
+                None,
+            ]:
+                with self.assertRaises(WrongFileTreeFileException):
+                    file_tree_service.get_tree_from_file(tree_name)
+        finally:
+            os.remove(secret.name)
 
     def test_get_tree_from_project(self):
         simple_tree = file_tree_service.get_tree_from_project(
