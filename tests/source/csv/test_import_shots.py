@@ -7,7 +7,7 @@ from zou.app.models.entity_type import EntityType
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.models.task import Task
-from zou.app.services import shots_service
+from zou.app.services import projects_service, shots_service
 
 
 class ImportCsvShotsTestCase(ApiDBTestCase):
@@ -46,6 +46,25 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
         before = self._tmp_csv_files()
         self.upload_file(path, file_path_fixture, 403)
         self.assertEqual(self._tmp_csv_files(), before)
+
+    def test_import_needs_managing_this_project(self):
+        # Holding the manager role somewhere is not enough: the OTIO import
+        # and the CSV exports both scope to the production, and
+        # check_project_permissions was written for this and never wired.
+        path = f"/import/csv/projects/{self.project.id}/shots"
+        self.project.update({"production_type": "tvshow"})
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "shots.csv")
+        )
+        self.generate_fixture_user_manager()
+        self.log_in_manager()
+        self.upload_file(path, file_path_fixture, 403)
+
+        projects_service.add_team_member(
+            self.project.id, self.user_manager["id"]
+        )
+        self.upload_file(path, file_path_fixture)
+        self.assertEqual(len(shots_service.get_shots()), 4)
 
     def test_import_shots(self):
         self.assertEqual(len(Task.query.all()), 0)

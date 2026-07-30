@@ -149,8 +149,13 @@ class BaseCsvImportResource(MethodView, ArgsMixin):
 
 
 class BaseCsvProjectImportResource(BaseCsvImportResource, ArgsMixin):
-    @jwt_required()
-    def check_project_permissions(self, project_id):
+    def check_permissions(self, project_id, *args):
+        """
+        Importing into a production requires managing that production, not
+        just holding the manager role somewhere. This mirrors the OTIO
+        import next door and the CSV exports, which all scope to the
+        project.
+        """
         return user_service.check_manager_project_access(project_id)
 
     def get_descriptor_field_map(self, project_id, entity_type):
