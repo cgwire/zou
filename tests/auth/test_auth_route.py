@@ -1,9 +1,11 @@
 import pyotp
 import orjson as json
 
+from datetime import timedelta
+
 from tests.base import ApiDBTestCase
 
-from zou.app.utils import auth, fields
+from zou.app.utils import auth, date_helpers, fields
 from zou.app.models.person import Person
 from zou.app.stores import auth_tokens_store
 from zou.app.services import persons_service
@@ -114,6 +116,74 @@ class AuthTestCase(ApiDBTestCase):
         result = self.post("auth/login", credentials, 400)
         self.assertFalse(result["login"])
         self.assertIsNotAuthenticated(result, 422)
+
+    def _fail_login(self, times):
+        credentials = {
+            "email": self.person_dict["email"],
+            "password": "wrongpassword",
+        }
+        for _ in range(times):
+            self.post("auth/login", credentials, 400)
+
+    def _expire_the_lockout_window(self):
+        person = Person.get(self.person_dict["id"])
+        person.update(
+            {
+                "last_login_failed": date_helpers.get_utc_now_datetime()
+                - timedelta(minutes=2)
+            }
+        )
+        persons_service.clear_person_cache()
+
+    def test_login_lockout_expires_instead_of_rearming(self):
+        # Leaving the counter at its ceiling let one wrong password a
+        # minute hold the account shut for good, its owner included.
+        self._fail_login(5)
+        result = self.post("auth/login", self.credentials, 400)
+        self.assertTrue(result["too_many_failed_login_attemps"])
+
+        self._expire_the_lockout_window()
+        self._fail_login(1)
+
+        # A single wrong password used to lock it straight back.
+        self.assertIsAuthenticated(
+            self.post("auth/login", self.credentials, 200)
+        )
+
+    def test_login_still_locks_after_a_burst(self):
+        self._fail_login(5)
+        result = self.post("auth/login", self.credentials, 400)
+        self.assertTrue(result["too_many_failed_login_attemps"])
+
+        # And a fresh burst locks it again once the window has passed.
+        self._expire_the_lockout_window()
+        self._fail_login(5)
+        result = self.post("auth/login", self.credentials, 400)
+        self.assertTrue(result["too_many_failed_login_attemps"])
+
+    def test_unknown_address_costs_a_password_check(self):
+        # Answering an unknown address without hashing returned in
+        # milliseconds where a real one paid the ~100 ms bcrypt costs, which
+        # tells the two apart through responses that are identical. Counted
+        # rather than timed, so the check does not depend on the machine.
+        calls = []
+        original = auth.check_password
+
+        def counting_check_password(password_hash, password):
+            calls.append(password_hash)
+            return original(password_hash, password)
+
+        auth.check_password = counting_check_password
+        try:
+            self.post(
+                "auth/login",
+                {"email": "nobody@example.com", "password": "wrongpassword"},
+                400,
+            )
+        finally:
+            auth.check_password = original
+
+        self.assertEqual(len(calls), 1)
 
     def test_logout(self):
         tokens = self.post("auth/login", self.credentials, 200)

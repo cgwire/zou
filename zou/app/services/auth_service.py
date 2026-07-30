@@ -46,6 +46,33 @@ from sqlalchemy.orm.attributes import flag_modified
 from fido2.utils import bytes2int, int2bytes
 from fido2.webauthn import AttestedCredentialData
 
+MAX_LOGIN_FAILED_ATTEMPS = 5
+LOGIN_LOCKOUT_DELAY = timedelta(minutes=1)
+
+# Hash compared against when the address is unknown, so that a login costs
+# the same bcrypt round whether or not the account exists. Built on first
+# use to keep it out of the import path.
+_dummy_password_hash = None
+
+
+def _spend_password_check_time(password):
+    """
+    Run a bcrypt comparison that cannot succeed. Returning right away for
+    an unknown address answered in a few milliseconds where a real one
+    took the ~100 ms bcrypt deliberately costs, an order of magnitude
+    above network jitter and enough to enumerate registered addresses from
+    responses that are otherwise identical.
+
+    Only levels the local strategy: an LDAP bind has its own profile.
+    """
+    global _dummy_password_hash
+    if _dummy_password_hash is None:
+        _dummy_password_hash = auth.encrypt_password("dummy password")
+    try:
+        auth.check_password(_dummy_password_hash, password or "")
+    except Exception:
+        pass
+
 
 def check_auth(
     app,
@@ -70,6 +97,7 @@ def check_auth(
     try:
         person = persons_service.get_person_by_email_desktop_login(email)
     except PersonNotFoundException:
+        _spend_password_check_time(password)
         raise WrongUserException()
 
     if not person.get("active", False):
@@ -765,19 +793,30 @@ def hash_recovery_codes(recovery_codes):
 
 def check_login_failed_attemps(person):
     """
-    Check login failed attemps for a person.
+    Return the count to keep going from, raising while the account sits in
+    a lockout window.
+
+    An elapsed window closes the burst and clears the counter. Leaving it
+    at its ceiling meant a single wrong password re-locked the account for
+    another minute, so anyone knowing an address could hold it shut
+    indefinitely at one request a minute — the owner included, correct
+    password and all. Rearming now costs a fresh burst.
     """
-    login_failed_attemps = person["login_failed_attemps"]
-    if login_failed_attemps is None:
-        login_failed_attemps = 0
-    if (
-        login_failed_attemps >= 5
-        and date_helpers.get_datetime_from_string(person["last_login_failed"])
-        + timedelta(minutes=1)
-        > date_helpers.get_utc_now_datetime()
-    ):
-        raise TooMuchLoginFailedAttemps()
-    return login_failed_attemps
+    login_failed_attemps = person["login_failed_attemps"] or 0
+    if login_failed_attemps < MAX_LOGIN_FAILED_ATTEMPS:
+        return login_failed_attemps
+
+    last_login_failed = person["last_login_failed"]
+    if last_login_failed is not None:
+        locked_until = (
+            date_helpers.get_datetime_from_string(last_login_failed)
+            + LOGIN_LOCKOUT_DELAY
+        )
+        if locked_until > date_helpers.get_utc_now_datetime():
+            raise TooMuchLoginFailedAttemps()
+
+    update_login_failed_attemps(person["id"], 0)
+    return 0
 
 
 def logout(jti, refresh_jti=None):
