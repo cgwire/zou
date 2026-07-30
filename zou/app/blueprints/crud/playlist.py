@@ -8,7 +8,7 @@ from zou.app.services import user_service, playlists_service, persons_service
 from zou.app.services.exception import WrongParameterException
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
-from zou.app.utils import fields
+from zou.app.utils import fields, permissions
 
 
 def _check_for_entity(data):
@@ -30,7 +30,15 @@ class PlaylistsResource(BaseModelsResource):
         return [Playlist.build_jobs]
 
     def check_read_permissions(self, options=None):
+        user_service.block_access_to_vendor()
         return True
+
+    def add_project_permission_filter(self, query):
+        if permissions.has_admin_permissions():
+            return query
+        return query.filter(
+            user_service.build_team_exists_filter(Playlist.project_id)
+        )
 
     @jwt_required()
     def get(self):

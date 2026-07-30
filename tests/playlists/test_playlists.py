@@ -1,6 +1,7 @@
 from tests.base import ApiDBTestCase
 
 from zou.app.models.notification import Notification
+from zou.app.models.person import Person
 from zou.app.models.playlist_share_link import PlaylistShareLink
 from zou.app.services import (
     playlist_sharing_service,
@@ -35,6 +36,32 @@ class PlaylistTestCase(ApiDBTestCase):
         self.generate_fixture_playlist("Playlist 1")
         playlists = self.get(f"data/projects/{self.project_id}/playlists")
         self.assertEqual(len(playlists), 1)
+
+    def test_crud_list_scopes_to_user_projects(self):
+        self.generate_fixture_playlist("In project")
+        self.generate_fixture_project_standard()
+        self.generate_fixture_playlist(
+            "Elsewhere", project_id=self.project_standard.id
+        )
+        self.generate_fixture_user_cg_artist()
+        self.generate_fixture_user_vendor()
+
+        names = {playlist["name"] for playlist in self.get("data/playlists")}
+        self.assertEqual(names, {"In project", "Elsewhere"})
+
+        self.log_in_cg_artist()
+        self.assertEqual(self.get("data/playlists"), [])
+
+        self.project.team.append(Person.get(self.user_cg_artist["id"]))
+        self.project.save()
+        self.log_in_cg_artist()
+        names = {playlist["name"] for playlist in self.get("data/playlists")}
+        self.assertEqual(names, {"In project"})
+
+        self.project.team.append(Person.get(self.user_vendor["id"]))
+        self.project.save()
+        self.log_in_vendor()
+        self.get("data/playlists", 403)
 
     def test_get_playlists_by_task_type(self):
         self.generate_fixture_department()
