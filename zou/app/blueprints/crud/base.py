@@ -434,6 +434,13 @@ class BaseModelResource(MethodView, ArgsMixin):
     def __init__(self, model):
         MethodView.__init__(self)
         self.protected_fields = ["id", "created_at", "updated_at"]
+        if "project_id" in model.__table__.columns:
+            # check_update_permissions validates the project read from the
+            # stored instance, never the one in the body, so a payload
+            # carrying another project_id moved the row into a production
+            # the caller was never checked against. Creation is unaffected:
+            # BaseModelsResource needs the project to be given.
+            self.protected_fields.append("project_id")
         self.model = model
         self.instance = None
 
