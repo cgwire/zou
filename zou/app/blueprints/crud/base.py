@@ -125,13 +125,22 @@ class BaseModelsResource(MethodView, ArgsMixin):
             }
         return result
 
+    def get_filterable_column_names(self):
+        """
+        Names accepted as query filters. Filters run before serialization,
+        so a column the resource hides from its response is still queryable
+        by equality unless it is dropped here: subclasses that narrow what
+        they return must narrow this too.
+        """
+        return inspect(self.model).all_orm_descriptors.keys()
+
     def build_filters(self, options):
         many_join_filter = []
         in_filter = []
         name_filter = []
         filters = {}
 
-        column_names = inspect(self.model).all_orm_descriptors.keys()
+        column_names = self.get_filterable_column_names()
         for key, value in options.items():
             if (
                 key not in ["page", "relations", "fields"]

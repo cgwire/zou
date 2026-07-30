@@ -57,6 +57,19 @@ class OrganisationTestCase(ApiDBTestCase):
             self.assertNotIn(field, listed)
             self.assertNotIn(field, alone)
 
+    def test_chat_tokens_are_not_filterable(self):
+        # Hiding the tokens from the payload is not enough: filters run
+        # before serialization, so they stay answerable by equality.
+        organisation = Organisation.query.first()
+        organisation.update({field: "a-secret" for field in SENSITIVE_FIELDS})
+        total = len(self.get("data/organisations"))
+
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        for field in SENSITIVE_FIELDS:
+            organisations = self.get(f"data/organisations?{field}=a-secret")
+            self.assertEqual(len(organisations), total)
+
     def get_listed_organisation(self, organisation_id):
         return next(
             organisation

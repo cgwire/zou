@@ -2,16 +2,34 @@ import datetime
 
 import sqlalchemy.orm as orm
 from flask_jwt_extended import jwt_required
+from sqlalchemy.inspection import inspect
 
 from zou.app.models.person import (
     Person,
     ROLE_TYPES,
     CONTRACT_TYPES,
     DISPLAY_DATE_FORMATS,
+    SENSITIVE_FIELDS,
     TWO_FACTOR_AUTHENTICATION_TYPES,
     normalize_country,
     normalize_locale,
 )
+
+# Columns behind Person.present_minimal, the payload every non admin gets
+# from the list route.
+MINIMAL_PERSON_FILTER_FIELDS = [
+    "id",
+    "first_name",
+    "last_name",
+    "full_name",
+    "has_avatar",
+    "active",
+    "departments",
+    "studio_id",
+    "role",
+    "desktop_login",
+    "is_bot",
+]
 from zou.app.services import (
     deletion_service,
     index_service,
@@ -303,6 +321,21 @@ class PersonsResource(BaseModelsResource):
                 person.present_minimal(relations=relations)
                 for person in query.all()
             ]
+
+    def get_filterable_column_names(self):
+        """
+        Mirror what all_entries actually returns. Without this, filtering
+        answers questions the response refuses to: ?daily_salary=320 walks
+        the payroll one value at a time, and email, phone, contract_type or
+        seniority go the same way.
+        """
+        if permissions.has_admin_permissions():
+            return [
+                name
+                for name in inspect(self.model).all_orm_descriptors.keys()
+                if name not in SENSITIVE_FIELDS
+            ]
+        return MINIMAL_PERSON_FILTER_FIELDS
 
     def check_read_permissions(self, options=None):
         return True

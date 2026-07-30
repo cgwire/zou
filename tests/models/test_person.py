@@ -408,6 +408,48 @@ class PersonTestCase(ApiDBTestCase):
         person.update({"country": " us "})
         self.assertEqual(person.country, "US")
 
+    def test_hidden_columns_are_not_filterable(self):
+        # Filters run before serialization, so a column absent from
+        # present_minimal stays answerable by equality unless the filter
+        # keys are narrowed too: ?daily_salary=320 would walk the payroll.
+        person = Person.get_by(email="ema.doe@gmail.com")
+        person.update({"daily_salary": 320, "phone": "0600000000"})
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+
+        for query in [
+            "daily_salary=320",
+            "phone=0600000000",
+            "email=ema.doe@gmail.com",
+        ]:
+            persons = self.get(f"data/persons?{query}")
+            self.assertGreater(
+                len(persons),
+                1,
+                f"{query} was answered as a filter",
+            )
+
+    def test_visible_columns_stay_filterable(self):
+        person = Person.get_by(email="ema.doe@gmail.com")
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        persons = self.get(f"data/persons?first_name={person.first_name}")
+        self.assertEqual(len(persons), 1)
+        self.assertEqual(persons[0]["id"], str(person.id))
+
+    def test_admin_still_filters_on_the_safe_columns(self):
+        person = Person.get_by(email="ema.doe@gmail.com")
+        person.update({"daily_salary": 320})
+        persons = self.get("data/persons?daily_salary=320")
+        self.assertEqual(len(persons), 1)
+        self.assertEqual(persons[0]["id"], str(person.id))
+
+    def test_secrets_are_never_filterable(self):
+        person = Person.get_by(email="ema.doe@gmail.com")
+        person.update({"totp_secret": "SECRETSEED"})
+        persons = self.get("data/persons?totp_secret=SECRETSEED")
+        self.assertGreater(len(persons), 1)
+
     def test_country_not_exposed_in_present_minimal(self):
         # The minimal representation is served to non-managers (including
         # external client/vendor roles), so it must not leak the country.

@@ -1,6 +1,8 @@
 from flask_jwt_extended import jwt_required
 
-from zou.app.models.organisation import Organisation
+from sqlalchemy.inspection import inspect
+
+from zou.app.models.organisation import Organisation, SENSITIVE_FIELDS
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 from zou.app.services import persons_service
@@ -13,6 +15,16 @@ class OrganisationsResource(BaseModelsResource):
 
     def check_read_permissions(self, options=None):
         return True
+
+    def get_filterable_column_names(self):
+        """
+        The chat tokens are stripped from the payload for non admins, so
+        they must not be answerable through a filter either.
+        """
+        names = inspect(self.model).all_orm_descriptors.keys()
+        if has_admin_permissions():
+            return names
+        return [name for name in names if name not in SENSITIVE_FIELDS]
 
     def serialize_list(self, entries, relations=False):
         if has_admin_permissions():
