@@ -15,8 +15,8 @@ from zou.app.services import (
     projects_service,
     stats_service,
 )
-from zou.app.utils import date_helpers, permissions, shell
-from zou.app.utils.redis import get_redis_url
+from zou.app.stores import redis_client
+from zou.app.utils import date_helpers, permissions
 
 
 class IndexResource(MethodView):
@@ -95,15 +95,18 @@ class BaseStatusResource(MethodView):
             return False
 
     def _check_job_queue(self):
+        # Count the workers in-process rather than shelling out to `rq info
+        # --url redis://:<password>@...`: that put the Redis password in the
+        # argv of a subprocess any local user can read in ps, and this probe
+        # is reachable without authentication, so its timing was the
+        # attacker's to choose.
         try:
-            args = [
-                "rq",
-                "info",
-                "--url",
-                get_redis_url(config.KV_JOB_DB_INDEX),
-            ]
-            out = shell.run_command(args)
-            return b"0 workers" not in out
+            from rq import Worker
+
+            connection = redis_client.get_client(
+                config.KV_JOB_DB_INDEX, decode_responses=False
+            )
+            return Worker.count(connection=connection) > 0
         except Exception:
             app.logger.error("Job queue is not accessible", exc_info=1)
             return False
