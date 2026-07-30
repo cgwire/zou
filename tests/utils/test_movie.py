@@ -6,7 +6,6 @@ from PIL import Image
 import math
 
 from pathlib import Path
-from urllib import request
 
 import ffmpeg
 
@@ -14,14 +13,31 @@ from zou.utils import movie
 
 
 class MovieTestCase(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # Generate the source clip once for the whole class. The tests only
+        # need a 320x240 clip without soundtrack, and downloading one made
+        # the suite depend on an external host.
+        cls.source_dir = tempfile.mkdtemp()
+        cls.source_path = str(Path(cls.source_dir) / "demo.m4v")
+        ffmpeg.input(
+            "testsrc=size=320x240:rate=25:duration=2", f="lavfi"
+        ).output(
+            cls.source_path, vcodec="mpeg4", pix_fmt="yuv420p", an=None
+        ).overwrite_output().run(
+            quiet=True
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.source_dir)
+
     def setUp(self):
-        # download test file once
+        # Each test works on its own copy: add_empty_soundtrack() rewrites
+        # the file in place.
         self.tmpdir = tempfile.mkdtemp()
         self.video_only_path = str(Path(self.tmpdir) / "demo.m4v")
-        test_url = os.getenv(
-            "ZOU_TEST_VIDEO_URL", "http://fate-suite.ffmpeg.org/mpeg4/demo.m4v"
-        )
-        request.urlretrieve(test_url, self.video_only_path)
+        shutil.copyfile(self.source_path, self.video_only_path)
 
     def tearDown(self):
         super(MovieTestCase, self).tearDown()
