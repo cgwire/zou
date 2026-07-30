@@ -2662,6 +2662,7 @@ class SceneTasksResource(MethodView):
                             example: e24a6ea4-ce75-4665-a070-57453082c25
         """
         scene = shots_service.get_scene(scene_id)
+        user_service.check_project_access(scene["project_id"])
         user_service.check_entity_access(scene["id"])
         return tasks_service.get_tasks_for_scene(scene_id)
 
@@ -2705,6 +2706,7 @@ class SceneShotsResource(MethodView, ArgsMixin):
                             example: b24a6ea4-ce75-4665-a070-57453082c25
         """
         scene = shots_service.get_scene(scene_id)
+        user_service.check_project_access(scene["project_id"])
         user_service.check_entity_access(scene["id"])
         return scenes_service.get_shots_by_scene(scene_id)
 

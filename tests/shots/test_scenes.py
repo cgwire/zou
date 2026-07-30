@@ -1,5 +1,6 @@
 from tests.base import ApiDBTestCase
 
+from zou.app.models.person import Person
 from zou.app.services import scenes_service
 
 
@@ -93,6 +94,35 @@ class SceneTestCase(ApiDBTestCase):
         self.assertEqual(len(shots), 2)
         self.assertEqual(shots[0]["id"], self.serialized_shot["id"])
         self.assertEqual(shots[1]["id"], self.serialized_shot_02["id"])
+
+    def test_scene_tasks_and_shots_need_project_access(self):
+        # check_entity_access only filters vendors, so without a project
+        # check these two routes handed the scene of any production to any
+        # authenticated account.
+        self.generate_fixture_scene_task()
+        scenes_service.add_shot_to_scene(
+            self.serialized_scene, self.serialized_shot
+        )
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+
+        self.get(f"data/scenes/{self.scene.id}/tasks", 403)
+        self.get(f"data/scenes/{self.serialized_scene['id']}/shots", 403)
+
+    def test_scene_tasks_and_shots_allowed_for_the_team(self):
+        self.generate_fixture_scene_task()
+        scenes_service.add_shot_to_scene(
+            self.serialized_scene, self.serialized_shot
+        )
+        self.generate_fixture_user_cg_artist()
+        self.project.team.append(Person.get(self.user_cg_artist["id"]))
+        self.project.save()
+        self.log_in_cg_artist()
+
+        tasks = self.get(f"data/scenes/{self.scene.id}/tasks")
+        self.assertEqual(len(tasks), 1)
+        shots = self.get(f"data/scenes/{self.serialized_scene['id']}/shots")
+        self.assertEqual(len(shots), 1)
 
     def test_add_shot_to_scene(self):
         path = f"data/scenes/{self.serialized_scene['id']}/shots"
