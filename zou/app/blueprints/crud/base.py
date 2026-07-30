@@ -493,6 +493,9 @@ class BaseModelResource(MethodView, ArgsMixin):
     def serialize_instance(self, data, relations=True):
         return data.serialize(relations=relations)
 
+    def serialize_update_response(self, instance):
+        return instance.serialize()
+
     def clean_get_result(self, data):
         return data
 
@@ -643,7 +646,7 @@ class BaseModelResource(MethodView, ArgsMixin):
             self.pre_update(instance_dict, data)
             data = self.update_data(data, instance_id)
             self.instance.update(data)
-            instance_dict = self.instance.serialize()
+            instance_dict = self.serialize_update_response(self.instance)
             self.post_update(instance_dict, data)
             self.emit_update_event(instance_dict)
             return instance_dict, 200

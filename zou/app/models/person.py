@@ -67,6 +67,16 @@ DISPLAY_DATE_FORMATS = [
     "MM/DD/YYYY",
 ]
 
+SENSITIVE_FIELDS = [
+    "password",
+    "totp_secret",
+    "email_otp_secret",
+    "otp_recovery_codes",
+    "fido_credentials",
+    "fido_devices",
+    "jti",
+]
+
 
 def normalize_country(value):
     """
@@ -316,15 +326,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
 
     def serialize_safe(self, **kwargs):
         return super().serialize(
-            ignored_attrs=[
-                "password",
-                "totp_secret",
-                "email_otp_secret",
-                "otp_recovery_codes",
-                "fido_credentials",
-                "fido_devices",
-                "jti",
-            ],
+            ignored_attrs=SENSITIVE_FIELDS,
             **kwargs,
         )
 

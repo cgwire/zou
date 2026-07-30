@@ -382,7 +382,7 @@ class PersonsResource(BaseModelsResource):
         return data
 
     def post_creation(self, instance):
-        instance_dict = instance.serialize(relations=True)
+        instance_dict = instance.serialize_safe(relations=True)
         if instance.is_bot:
             instance_dict["access_token"] = (
                 persons_service.create_access_token_for_raw_person(instance)
@@ -608,6 +608,9 @@ class PersonResource(BaseModelResource, ArgsMixin):
               description: Invalid data format or validation error or user limit reached or protected account restriction
         """
         return super().put(instance_id)
+
+    def serialize_update_response(self, instance):
+        return instance.serialize_safe()
 
     def check_update_permissions(self, instance_dict, data):
         if instance_dict["id"] != persons_service.get_current_user()["id"]:

@@ -5,6 +5,7 @@ from tests.base import ApiDBTestCase
 from zou.app.models.department import Department
 from zou.app.models.person import (
     Person,
+    SENSITIVE_FIELDS,
     normalize_country,
     normalize_locale,
 )
@@ -260,6 +261,34 @@ class PersonTestCase(ApiDBTestCase):
         person_again = self.get(f"data/persons/{person['id']}")
         self.assertEqual(data["first_name"], person_again["first_name"])
         self.put_404(f"data/persons/{fields.gen_uuid()}", data)
+
+    def test_write_routes_never_return_secrets(self):
+        person = self.get_first("data/persons")
+        Person.get(person["id"]).update(
+            {
+                "password": b"$2b$12$notarealbcrypthashbutlongenough",
+                "totp_secret": "JBSWY3DPEHPK3PXP",
+                "email_otp_secret": "KRSXG5CTMVRXEZLU",
+                "otp_recovery_codes": [b"$2b$12$notarealrecoverycodehash"],
+            }
+        )
+
+        updated = self.put(
+            f"data/persons/{person['id']}", {"last_name": "Doe"}
+        )
+        for field in SENSITIVE_FIELDS:
+            self.assertNotIn(field, updated)
+
+        created = self.post(
+            "data/persons",
+            {
+                "first_name": "No",
+                "last_name": "Secret",
+                "email": "no.secret@gmail.com",
+            },
+        )
+        for field in SENSITIVE_FIELDS:
+            self.assertNotIn(field, created)
 
     def test_person_country_round_trip(self):
         data = {
