@@ -37,6 +37,20 @@ class PlaylistTestCase(ApiDBTestCase):
         playlists = self.get(f"data/projects/{self.project_id}/playlists")
         self.assertEqual(len(playlists), 1)
 
+    def test_crud_list_hides_internal_playlists_from_clients(self):
+        self.generate_fixture_playlist("Internal")
+        self.generate_fixture_playlist("For client", for_client=True)
+        self.generate_fixture_user_client()
+        self.project.team.append(Person.get(self.user_client["id"]))
+        self.project.save()
+        self.log_in_client()
+
+        names = {playlist["name"] for playlist in self.get("data/playlists")}
+        self.assertEqual(names, {"For client"})
+
+        dedicated = self.get(f"data/projects/{self.project_id}/playlists")
+        self.assertEqual({p["name"] for p in dedicated}, {"For client"})
+
     def test_crud_list_scopes_to_user_projects(self):
         self.generate_fixture_playlist("In project")
         self.generate_fixture_project_standard()

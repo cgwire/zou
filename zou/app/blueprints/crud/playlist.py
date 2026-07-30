@@ -36,6 +36,8 @@ class PlaylistsResource(BaseModelsResource):
     def add_project_permission_filter(self, query):
         if permissions.has_admin_permissions():
             return query
+        if permissions.has_client_permissions():
+            query = query.filter(Playlist.for_client)
         return query.filter(
             user_service.build_team_exists_filter(Playlist.project_id)
         )
