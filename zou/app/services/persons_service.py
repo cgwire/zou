@@ -754,7 +754,9 @@ def get_organisation(sensitive=False):
     organisation = Organisation.query.first()
     if organisation is None:
         organisation = Organisation.create(name="Kitsu")
-    return organisation.present(sensitive=sensitive)
+    if sensitive:
+        return organisation.present()
+    return organisation.present_minimal()
 
 
 def update_organisation(organisation_id, data):
@@ -765,7 +767,7 @@ def update_organisation(organisation_id, data):
     organisation.update(data)
     events.emit("organisation:update", {"organisation_id": organisation_id})
     clear_organisation_cache()
-    return organisation.present()
+    return organisation.present_minimal()
 
 
 def get_user_limit():

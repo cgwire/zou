@@ -2,6 +2,12 @@ from zou.app import db
 from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
 
+SENSITIVE_FIELDS = [
+    "chat_token_slack",
+    "chat_webhook_mattermost",
+    "chat_token_discord",
+]
+
 
 class Organisation(db.Model, BaseMixin, SerializerMixin):
     """
@@ -21,15 +27,12 @@ class Organisation(db.Model, BaseMixin, SerializerMixin):
     dark_theme_by_default = db.Column(db.Boolean(), default=False)
     format_duration_in_hours = db.Column(db.Boolean(), default=False)
 
-    def present(self, sensitive=False):
+    def present(self, relations=False, milliseconds=False):
+        return self.serialize(relations=relations, milliseconds=milliseconds)
+
+    def present_minimal(self, relations=False, milliseconds=False):
         return self.serialize(
-            ignored_attrs=(
-                []
-                if sensitive
-                else [
-                    "chat_token_slack",
-                    "chat_webhook_mattermost",
-                    "chat_token_discord",
-                ]
-            )
+            ignored_attrs=SENSITIVE_FIELDS,
+            relations=relations,
+            milliseconds=milliseconds,
         )

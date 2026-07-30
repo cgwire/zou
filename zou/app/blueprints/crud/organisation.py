@@ -14,6 +14,13 @@ class OrganisationsResource(BaseModelsResource):
     def check_read_permissions(self, options=None):
         return True
 
+    def serialize_list(self, entries, relations=False):
+        if has_admin_permissions():
+            return [entry.present(relations=relations) for entry in entries]
+        return [
+            entry.present_minimal(relations=relations) for entry in entries
+        ]
+
     @jwt_required()
     def get(self):
         """
@@ -295,18 +302,9 @@ class OrganisationResource(BaseModelResource):
         return data
 
     def serialize_instance(self, data, relations=True):
-        return data.serialize(
-            relations=relations,
-            ignored_attrs=(
-                []
-                if has_admin_permissions()
-                else [
-                    "chat_token_slack",
-                    "chat_webhook_mattermost",
-                    "chat_token_discord",
-                ]
-            ),
-        )
+        if has_admin_permissions():
+            return data.present(relations=relations)
+        return data.present_minimal(relations=relations)
 
     def post_update(self, instance_dict, data):
         persons_service.clear_organisation_cache()

@@ -1,5 +1,5 @@
 from tests.base import ApiDBTestCase
-from zou.app.models.organisation import Organisation
+from zou.app.models.organisation import Organisation, SENSITIVE_FIELDS
 from zou.app.utils import fields
 
 
@@ -39,6 +39,30 @@ class OrganisationTestCase(ApiDBTestCase):
             data["hours_by_day"], organisation_again["hours_by_day"]
         )
         self.put_404(f"data/organisations/{fields.gen_uuid()}", data)
+
+    def test_chat_tokens_are_admin_only(self):
+        organisation = Organisation.query.first()
+        organisation.update({field: "a-secret" for field in SENSITIVE_FIELDS})
+        organisation_id = str(organisation.id)
+
+        listed = self.get_listed_organisation(organisation_id)
+        for field in SENSITIVE_FIELDS:
+            self.assertEqual(listed[field], "a-secret")
+
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        listed = self.get_listed_organisation(organisation_id)
+        alone = self.get(f"data/organisations/{organisation_id}")
+        for field in SENSITIVE_FIELDS:
+            self.assertNotIn(field, listed)
+            self.assertNotIn(field, alone)
+
+    def get_listed_organisation(self, organisation_id):
+        return next(
+            organisation
+            for organisation in self.get("data/organisations")
+            if organisation["id"] == organisation_id
+        )
 
     def test_delete_organisation(self):
         organisations = self.get("data/organisations")
