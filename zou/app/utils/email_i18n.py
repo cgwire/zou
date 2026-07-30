@@ -7,6 +7,8 @@ To add a language: copy the en_US block, change the key (e.g. de_DE) and transla
 all values. Then add the language code to LANGUAGE_LOCALES if desired.
 """
 
+import html
+
 from zou.app import config
 
 # Default locale used when user locale is missing or unsupported
@@ -837,10 +839,33 @@ def _normalize_locale(locale):
     return LANGUAGE_LOCALES.get(language, locale)
 
 
+#  Keys whose template is plain text rather than HTML. Everything else is
+#  escaped, so a key that stops following the convention loses its ampersands
+#  in a subject line instead of letting markup into a body.
+PLAIN_TEXT_KEY_SUFFIXES = ("_subject", "_title")
+
+
+def _escape_params(key, params):
+    """
+    Escape the values interpolated into an HTML template. Several of them
+    are request data — the X-Forwarded-For header on the password reset,
+    a comment body on the notifications — and str.format does not escape
+    anything, so they used to reach the recipient as markup in a mail the
+    studio genuinely sends, SPF and DKIM included.
+    """
+    if key.endswith(PLAIN_TEXT_KEY_SUFFIXES):
+        return params
+    return {
+        name: html.escape(value) if isinstance(value, str) else value
+        for name, value in params.items()
+    }
+
+
 def get_email_translation(locale, key, **params):
     """
     Return the translated string for the given locale and key.
-    Interpolates params with {name} placeholders.
+    Interpolates params with {name} placeholders, escaping them unless the
+    key names a plain text template (see PLAIN_TEXT_KEY_SUFFIXES).
 
     Fallback order if the locale is missing or not supported:
     1. User's locale (e.g. fr_FR, ja_JP)
@@ -848,6 +873,7 @@ def get_email_translation(locale, key, **params):
     3. config.DEFAULT_LOCALE (usually en_US)
     """
     normalized = _normalize_locale(locale)
+    params = _escape_params(key, params)
     fallback_chain = (
         normalized,
         "en_US",  # Always fall back to US English if locale unsupported

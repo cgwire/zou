@@ -170,3 +170,60 @@ class EmailI18nTestCase(unittest.TestCase):
         )
         self.assertIn("Studio XYZ", result_fr)
         self.assertIn("Cordialement", result_fr)
+
+
+class EmailEscapingTestCase(unittest.TestCase):
+    """
+    Values interpolated into an HTML body reach it from requests: the
+    X-Forwarded-For header on the password reset, a comment body on the
+    notifications. str.format escapes nothing, so they used to arrive as
+    markup in a mail the studio genuinely sends.
+    """
+
+    def test_html_body_params_are_escaped(self):
+        body = get_email_translation(
+            "en_US",
+            "auth_password_recovery_body",
+            first_name="John",
+            reset_url="https://kitsu.example/reset",
+            time_string="today",
+            person_IP='</p><p><a href="https://evil.tld">Click</a>',
+        )
+        self.assertNotIn("<a href=", body)
+        self.assertIn("&lt;/p&gt;", body)
+
+    def test_comment_text_is_escaped(self):
+        body = get_email_translation(
+            "en_US",
+            "comment_body_with_text",
+            comment_text="<script>alert(1)</script>",
+            author_full_name="John Doe",
+            task_url="https://kitsu.example/task",
+            task_name="Task 1",
+            task_status_name="WIP",
+        )
+        self.assertNotIn("<script>", body)
+        self.assertIn("&lt;script&gt;", body)
+
+    def test_subjects_stay_plain_text(self):
+        # Subjects are not HTML: escaping them would show &amp; to the
+        # recipient.
+        result = get_email_translation(
+            "en_US",
+            "comment_subject",
+            task_status_name="WIP",
+            author_first_name="Doe & Sons",
+            task_name="Task 1",
+        )
+        self.assertIn("Doe & Sons", result)
+        self.assertNotIn("&amp;", result)
+
+    def test_every_body_template_carries_markup(self):
+        # The escaping decision keys off the name, so a body that stopped
+        # following the convention would silently go unescaped.
+        for locale, translations in EMAIL_TRANSLATIONS.items():
+            for key, value in translations.items():
+                if key.endswith("_body"):
+                    self.assertIn("<", value, f"{locale}/{key}")
+                if key.endswith(("_subject", "_title")):
+                    self.assertNotIn("<", value, f"{locale}/{key}")
