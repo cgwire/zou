@@ -239,6 +239,91 @@ permissions.check_at_least_supervisor_permissions()  # supervisor+
 user_service.check_project_access(project_id)        # user is team member
 ```
 
+### Order matters: resolve the project first
+
+A role can be set **per project** (`project_person_link.role`), and
+`permissions._effective_role()` returns that role when one is resolved,
+falling back to the global role otherwise. The resolution is a **side effect**
+of the project access check:
+
+```python
+check_belong_to_project(project_id)   # sets g.project_role, clears it on failure
+check_project_access(project_id)      # same, and raises
+resolve_project_role(project_id)      # named variant, when you only want the side effect
+```
+
+So any `has_*_permissions()` / `check_*_permissions()` called **before** one of
+those reads the *global* role, silently:
+
+```python
+# Wrong — reads the global role, per-project role never applies
+if permissions.has_client_permissions():
+    raise permissions.PermissionDenied
+user_service.check_project_access(task["project_id"])
+
+# Right
+user_service.check_project_access(task["project_id"])
+if permissions.has_client_permissions():
+    raise permissions.PermissionDenied
+```
+
+Nothing in the signatures says this — it is the single most common source of
+authorization bugs in this codebase.
+
+Two more traps in the same family:
+
+- `check_entity_access(entity_id)` is **only a vendor filter**. It returns
+  `True` immediately for every other role and never looks at the project. It
+  complements `check_project_access`, it never replaces it.
+- `check_person_access(person_id)` is **admin or self**, nothing else.
+- Prefer the `check_*` variants that raise over the `has_*` booleans. When you
+  do use a boolean, make sure every branch ends in a denial.
+
+## Security review rules
+
+Findings live in `.audit/` (generated, gitignored — not part of the codebase).
+The rules below are what repeated audits actually caught; follow them when
+adding or reviewing a route.
+
+**One data path, one policy.** The dominant defect class here is two routes
+serving the same data with different guards — list vs. single, bulk vs. unit,
+export vs. import. When you add a route next to an existing one, copy its
+guard or change both. `tests/misc/test_crud_permission_symmetry.py` enforces
+this for CRUD list/single pairs.
+
+**Never trust a client-supplied id to belong to its parent.** A route that
+takes `<task_id>/<comment_id>/<attachment_file_id>` must check each link, not
+just the first. Load the child and compare its foreign key.
+
+**Filters run before serialization.** `BaseModelsResource.build_filters`
+accepts any ORM descriptor, so a column hidden from the response is still
+queryable (`?daily_salary=320`). Masking output is not masking data.
+
+**Protect `project_id` on write.** `BaseModelResource.protected_fields`
+defaults to `["id", "created_at", "updated_at"]`. Permission hooks validate the
+*current* project read from the instance; without protection, a `PUT` body can
+move the row to another project.
+
+**Never put a caller-dependent filter inside a memoized service.**
+`@cache.memoize_function` keys on the arguments only. A filter that depends on
+`g.project_role` or `get_current_user()` inside a memoized function serves the
+first caller's scoped result to everyone for the TTL. Pass the scoping in as an
+argument, or apply it in the resource.
+
+**File paths derive from server-side identifiers.** Never join a client string
+onto a path: `os.path.join` does not normalize `..` and silently discards the
+prefix when the second argument is absolute. Use a generated UUID for the
+stem, and validate any extension against an allowlist.
+
+**Sanitize DB errors before returning them.** Use
+`crud.base.build_db_error_message`; raw SQLAlchemy text carries constraint
+names, column names and bound values.
+
+**Escape values interpolated into email templates.**
+`utils/email_i18n.get_email_translation` uses `str.format()` on HTML
+templates. Anything reaching it from a request — a header, a comment body — is
+injected raw into a mail the studio genuinely sends.
+
 ## Events
 
 ```python

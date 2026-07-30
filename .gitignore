@@ -110,3 +110,6 @@ previews-test
 
 # Local-only Claude Code instructions
 CLAUDE.local.md
+
+# Generated audit reports
+.audit/
