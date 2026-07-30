@@ -115,7 +115,10 @@ class SearchResource(MethodView, ArgsMixin):
 
         if "persons" in index_names:
             results["persons"] = index_service.search_persons(
-                query, limit=limit, offset=offset
+                query,
+                limit=limit,
+                offset=offset,
+                minimal=not permissions.has_admin_permissions(),
             )
         if "assets" in index_names:
             if (

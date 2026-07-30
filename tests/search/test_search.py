@@ -108,6 +108,17 @@ class AssetSearchTestCase(ApiDBTestCase):
         persons = self.post("data/search", {"query": "john"}, 200)["persons"]
         self.assertEqual(len(persons), 2)
 
+    def test_search_persons_is_minimal_for_non_admin(self):
+        persons = self.post("data/search", {"query": "john"}, 200)["persons"]
+        self.assertIn("email", persons[0])
+
+        self.generate_fixture_user_manager()
+        self.log_in_manager()
+        persons = self.post("data/search", {"query": "john"}, 200)["persons"]
+        self.assertEqual(len(persons), 2)
+        for field in ["email", "phone", "daily_salary", "expiration_date"]:
+            self.assertNotIn(field, persons[0])
+
     def test_search_persons_after_creation(self):
         persons = self.post("data/search", {"query": "alicia"}, 200)["persons"]
         self.assertEqual(len(persons), 0)

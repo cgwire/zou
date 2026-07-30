@@ -295,10 +295,12 @@ def search_shots(query, project_ids=None, limit=3, offset=0):
     return shots
 
 
-def search_persons(query, limit=3, offset=0):
+def search_persons(query, limit=3, offset=0, minimal=True):
     """
     Perform a search on the index. The query is a simple string. The result is
-    a list of persons (3 results maximum by default).
+    a list of persons (3 results maximum by default). Unless minimal is
+    unset, persons are presented like the /data/persons list does for a non
+    admin.
     """
     index = get_person_index()
     results = indexing.search(index, query, limit=limit, offset=offset)
@@ -307,8 +309,10 @@ def search_persons(query, limit=3, offset=0):
 
     person_ids = [person_id for person_id, _ in results]
     persons_map = {
-        str(p.id): p.serialize_safe()
-        for p in Person.query.filter(Person.id.in_(person_ids)).all()
+        str(person.id): (
+            person.present_minimal() if minimal else person.serialize_safe()
+        )
+        for person in Person.query.filter(Person.id.in_(person_ids)).all()
     }
 
     persons = []
