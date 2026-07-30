@@ -78,8 +78,12 @@ class OTIOBaseResource(MethodView, ArgsMixin):
         args = self.post_args()
         user_service.check_manager_project_access(project_id)
         uploaded_file = request.files["file"]
-        file_name = uploaded_file.filename
-        file_path = os.path.join(config.TMP_DIR, file_name)
+        # run_import selects the OTIO adapter from the extension.
+        extension = os.path.splitext(uploaded_file.filename or "")[1]
+        extension = re.sub(r"[^A-Za-z0-9.]", "", extension)
+        file_path = os.path.join(
+            config.TMP_DIR, f"{fields.gen_uuid()}{extension}"
+        )
         uploaded_file.save(file_path)
         try:
             result = self.run_import(

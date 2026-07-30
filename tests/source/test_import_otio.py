@@ -1,6 +1,8 @@
 import os
 import tempfile
 
+from io import BytesIO
+
 from tests.base import ApiDBTestCase
 
 from zou.app.services import shots_service
@@ -90,6 +92,27 @@ class ImportOTIOEdlTestCase(ApiDBTestCase):
     def test_import_unparseable_file(self):
         result = self._upload_bad_file(".edl", "this is not an edl\n")
         self.assertIn("Failed to parse OTIO file", result["message"])
+
+    def test_import_ignores_uploaded_file_name(self):
+        # The temporary file is named from a uuid, so an uploaded name
+        # holding an absolute path (or a "../" prefix) leaves the file it
+        # points at alone.
+        path = f"/import/otio/projects/{self.project.id}"
+        with tempfile.TemporaryDirectory() as target_dir:
+            canary_path = os.path.join(target_dir, "canary.edl")
+            with open(canary_path, "w") as canary:
+                canary.write("keep me")
+
+            response = self.app.post(
+                path,
+                data={"file": (BytesIO(b"not an edl\n"), canary_path)},
+                headers=self.base_headers,
+            )
+            self.assertEqual(response.status_code, 400)
+
+            self.assertTrue(os.path.exists(canary_path))
+            with open(canary_path) as canary:
+                self.assertEqual(canary.read(), "keep me")
 
     def test_import_edl_updates_existing_shots(self):
         self.import_edl("no_offset.edl")
