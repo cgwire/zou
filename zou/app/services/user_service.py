@@ -980,12 +980,18 @@ def check_playlist_access(playlist, supervisor_access=False):
 
 def check_playlist_update_access(playlist):
     """
-    Allow manager with project access, or supervisor who created the
-    playlist (or playlist with no creator).
+    Allow manager with project access, or supervisor of the project who
+    created the playlist (or playlist with no creator).
+
+    The supervisor branch checks team membership on its own: a failed
+    has_manager_project_access clears the project role slot, so
+    has_supervisor_permissions would otherwise fall back to the global
+    role and let a supervisor of another production through.
     """
     is_manager = has_manager_project_access(playlist["project_id"])
     is_creator_supervisor = (
-        permissions.has_supervisor_permissions()
+        check_belong_to_project(playlist["project_id"])
+        and permissions.has_supervisor_permissions()
         and playlist["created_by"]
         in [None, persons_service.get_current_user()["id"]]
     )

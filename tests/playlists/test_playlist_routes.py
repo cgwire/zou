@@ -1,5 +1,6 @@
 from tests.base import ApiDBTestCase
 
+from zou.app.models.person import Person
 from zou.app.models.playlist import Playlist
 from zou.app.services import projects_service, tasks_service
 
@@ -277,8 +278,18 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
             created_by=creator_id,
         ).serialize()
 
+    def _add_supervisor_to_team(self):
+        """
+        A supervisor can only create a playlist on a project they belong to
+        (check_supervisor_project_access), so the ones editing theirs are on
+        the team. Building the playlist through the model skips that.
+        """
+        self.project.team.append(Person.get(self.user_supervisor["id"]))
+        self.project.save()
+
     def test_add_entity_as_supervisor_creator(self):
         self.generate_fixture_user_supervisor()
+        self._add_supervisor_to_team()
         playlist = self._create_playlist(
             "Supervisor Playlist", creator_id=self.user_supervisor["id"]
         )
@@ -317,6 +328,7 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
 
     def test_update_playlist_as_supervisor_creator(self):
         self.generate_fixture_user_supervisor()
+        self._add_supervisor_to_team()
         playlist = self._create_playlist(
             "Supervisor Playlist", creator_id=self.user_supervisor["id"]
         )
@@ -340,8 +352,36 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
             403,
         )
 
+    def test_update_playlist_as_supervisor_outside_the_team_is_forbidden(self):
+        # created_by is null on every playlist predating the column, and a
+        # failed has_manager_project_access clears the project role slot, so
+        # the supervisor branch used to read the global role and let a
+        # supervisor of another production through.
+        self.generate_fixture_user_supervisor()
+        playlist = self._create_playlist("Orphan Playlist")
+        self.assertIsNone(playlist["created_by"])
+        self.log_in_supervisor()
+        self.put(
+            f"/data/playlists/{playlist['id']}",
+            {"name": "Renamed from outside"},
+            403,
+        )
+        self.delete(f"/data/playlists/{playlist['id']}", 403)
+
+    def test_update_orphan_playlist_as_supervisor_of_the_team(self):
+        self.generate_fixture_user_supervisor()
+        self._add_supervisor_to_team()
+        playlist = self._create_playlist("Orphan Playlist")
+        self.log_in_supervisor()
+        self.put(
+            f"/data/playlists/{playlist['id']}",
+            {"name": "Renamed by the team supervisor"},
+            200,
+        )
+
     def test_delete_playlist_as_supervisor_creator(self):
         self.generate_fixture_user_supervisor()
+        self._add_supervisor_to_team()
         playlist = self._create_playlist(
             "Supervisor Playlist", creator_id=self.user_supervisor["id"]
         )
