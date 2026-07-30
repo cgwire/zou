@@ -327,6 +327,31 @@ class TaskRoutesTestCase(ApiDBTestCase):
             entity = self.get(f"/data/entities/{task['entity_id']}")
             self.assertIsNotNone(entity.get("preview_file_id"))
 
+    def test_set_main_preview_as_a_client_of_this_project_only(self):
+        # Global role user, client on this production: the bulk route read
+        # the global role because it tested before check_project_access, so
+        # it let the request through while the single task route refused it.
+        self.generate_fixture_preview_file(task_id=self.task.id)
+        self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"]
+        )
+        projects_service.update_team_member_role(
+            self.project_id, self.user_cg_artist["id"], "client"
+        )
+        self.log_in_cg_artist()
+
+        self.put(
+            "/actions/tasks/set-main-preview",
+            {"task_ids": [str(self.task.id)]},
+            403,
+        )
+        self.put(
+            f"/actions/tasks/{self.task.id}/set-main-preview",
+            {},
+            403,
+        )
+
     def test_set_tasks_main_preview_as_client(self):
         # A client can review but must not redefine entity thumbnails.
         self.generate_fixture_preview_file()

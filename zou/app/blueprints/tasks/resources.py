@@ -2781,15 +2781,18 @@ class SetTasksMainPreviewResource(MethodView):
                         type: object
         """
         body = validation.validate_request_body(SetTasksMainPreviewSchema)
-        # Clients review content but must not redefine how an entity is
-        # illustrated.
-        if permissions.has_client_permissions():
-            raise permissions.PermissionDenied
         entities = []
         for task_id in body.task_ids:
             task = tasks_service.get_task(task_id)
             user_service.check_project_access(task["project_id"])
             user_service.check_entity_access(task["entity_id"])
+            # Clients review content but must not redefine how an entity is
+            # illustrated. The test comes after check_project_access, which
+            # resolves the project role: before it, it reads the global one
+            # and a client on this production goes through. The single task
+            # route already orders it this way.
+            if permissions.has_client_permissions():
+                raise permissions.PermissionDenied
             preview_file = (
                 preview_files_service.get_last_preview_file_for_task(task_id)
             )
