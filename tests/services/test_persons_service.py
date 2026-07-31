@@ -71,6 +71,28 @@ class PersonServiceTestCase(ApiDBTestCase):
             self.person_desktop_login,
         )
 
+    def test_get_person_by_empty_desktop_login(self):
+        # create_person defaults desktop_login to "" and the column is not
+        # unique, so an empty lookup used to return the first account
+        # without a desktop login.
+        persons_service.create_person(
+            "no.login@gmail.com",
+            auth.encrypt_password("passwordhash"),
+            "No",
+            "Login",
+        )
+        for empty in ["", None]:
+            self.assertRaises(
+                PersonNotFoundException,
+                persons_service.get_person_by_desktop_login,
+                empty,
+            )
+            self.assertRaises(
+                PersonNotFoundException,
+                persons_service.get_person_by_email_desktop_login,
+                empty,
+            )
+
     def test_create_person(self):
         person = persons_service.create_person(
             "john.doe2@gmail.com",

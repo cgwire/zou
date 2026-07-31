@@ -241,6 +241,11 @@ def get_person_by_desktop_login(desktop_login):
     Return person that matches given desktop login as a dictionary. It is useful
     to authenticate user from their desktop session login.
     """
+    # An empty desktop login is what create_person gives anybody who has
+    # none, and the column is not unique, so matching on it handed out the
+    # first such account, usually the admin created at install time.
+    if not desktop_login:
+        raise PersonNotFoundException()
     try:
         person = Person.get_by(desktop_login=desktop_login, is_bot=False)
     except StatementError:
@@ -312,6 +317,11 @@ def get_person_by_email_desktop_login(email_or_desktop_login):
     """
     Return person that matches given email or desktop login as a dictionary.
     """
+    # Neither column is unique nor NOT NULL, so a falsy identifier must
+    # never reach a query: it would resolve to whichever account happens to
+    # have a blank one. Public routes pass a raw query parameter here.
+    if not email_or_desktop_login:
+        raise PersonNotFoundException()
     try:
         return get_person_by_email(email_or_desktop_login, unsafe=True)
     except PersonNotFoundException:

@@ -858,6 +858,25 @@ class EmailOTPTestCase(ApiDBTestCase):
         self.assertEqual(unknown.status_code, 200)
         self.assertEqual(unknown.data, known.data)
 
+    def test_send_email_otp_empty_email(self):
+        """
+        An empty ?email= used to fall through to the desktop login lookup
+        and match the first account created without one.
+        """
+        email = self.credentials["email"]
+        self.person.update(
+            {
+                "desktop_login": "",
+                "email_otp_enabled": True,
+                "email_otp_secret": pyotp.random_base32(),
+            }
+        )
+        persons_service.clear_person_cache()
+
+        response = self.app.get("auth/email-otp?email=")
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(auth_tokens_store.get(f"email-otp-count-{email}"))
+
     def test_send_email_otp_unactive_user(self):
         """
         A deactivated account gets no OTP email, and is not told apart
