@@ -5,19 +5,10 @@ from zou.app.mixin import ArgsMixin
 from zou.app.utils import fields, permissions
 
 from zou.app.services import events_service, user_service
-from zou.app.services.exception import WrongParameterException
-
-
-def check_person_ids(person_ids):
-    """
-    Make sure every entry of a person_ids filter is a valid id.
-    """
-    for person_id in person_ids or []:
-        if not fields.is_valid_id(person_id):
-            raise WrongParameterException(
-                "The person_ids parameter contains an invalid id"
-            )
-    return person_ids
+from zou.app.services.exception import (
+    ProjectNotFoundException,
+    WrongParameterException,
+)
 
 
 class EventsResource(MethodView, ArgsMixin):
@@ -152,19 +143,34 @@ class EventsResource(MethodView, ArgsMixin):
             ],
         )
 
+        project_id = args.get("project_id", None)
+        if project_id is not None and not fields.is_valid_id(project_id):
+            raise WrongParameterException(
+                "The project_id parameter is not a valid id"
+            )
+
+        # A manager role can be held per production, so resolve it before the
+        # role check reads it, otherwise the global role silently wins. An
+        # unknown project is reported as a denial rather than a 404: the
+        # caller has no right to learn whether it exists. The check stays
+        # ahead of every other parameter so an unauthorized caller never
+        # gets a validation error instead of a denial.
+        if (
+            project_id is not None
+            and not permissions.has_manager_permissions()
+        ):
+            try:
+                user_service.resolve_project_role(project_id)
+            except ProjectNotFoundException:
+                raise permissions.PermissionDenied
         permissions.check_manager_permissions()
+
         before = self.parse_date_parameter(args["before"])
         after = self.parse_date_parameter(args["after"])
         cursor_event_id = args["cursor_event_id"]
         limit = min(args["limit"], 1000)
         only_files = args["only_files"] == "true"
-        project_id = args.get("project_id", None)
         name = args["name"]
-        person_ids = check_person_ids(args["person_ids"])
-        if project_id is not None and not fields.is_valid_id(project_id):
-            raise WrongParameterException(
-                "The project_id parameter is not a valid id"
-            )
         if cursor_event_id is not None and not fields.is_valid_id(
             cursor_event_id
         ):
@@ -194,7 +200,7 @@ class EventsResource(MethodView, ArgsMixin):
             name=name,
             name_prefixes=args["name_prefixes"],
             name_suffixes=args["name_suffixes"],
-            person_ids=person_ids,
+            person_ids=args["person_ids"],
         )
 
 
@@ -295,7 +301,6 @@ class LoginLogsResource(MethodView, ArgsMixin):
         after = self.parse_date_parameter(args["after"])
         cursor_login_log_id = args["cursor_login_log_id"]
         limit = min(args["limit"], 1000)
-        person_ids = check_person_ids(args["person_ids"])
         if cursor_login_log_id is not None and not fields.is_valid_id(
             cursor_login_log_id
         ):
@@ -307,7 +312,7 @@ class LoginLogsResource(MethodView, ArgsMixin):
             before=before,
             cursor_login_log_id=cursor_login_log_id,
             limit=limit,
-            person_ids=person_ids,
+            person_ids=args["person_ids"],
         )
 
 

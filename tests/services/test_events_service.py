@@ -7,6 +7,7 @@ from tests.base import ApiDBTestCase
 from zou.app.models.event import ApiEvent
 from zou.app.services import events_service, assets_service
 from zou.app.services.exception import WrongParameterException
+from zou.app.utils import events
 
 
 # Frozen mid-day time: these tests build date-boundary filters (before/
@@ -58,7 +59,8 @@ class EventsServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(events), 0)
 
     def test_get_last_events_rejects_like_wildcards(self):
-        for value in ["%", "_", "task:", "Task", ""]:
+        # "task\n" is the fullmatch case: "$" alone would accept it.
+        for value in ["%", "_", "task:", "Task", "", "task\n"]:
             self.assertRaises(
                 WrongParameterException,
                 events_service.get_last_events,
@@ -77,6 +79,29 @@ class EventsServiceTestCase(ApiDBTestCase):
         self.assertEqual(
             events_service.get_event_names(), ["comment:new", "task:update"]
         )
+
+    def test_invalidate_event_names_cache(self):
+        names = events_service.get_event_names()
+        self.assertNotIn("tests:brand-new", names)
+
+        ApiEvent.create(name="tests:brand-new")
+        # The memoized list still ignores the fresh name.
+        self.assertEqual(events_service.get_event_names(), names)
+
+        self.assertTrue(
+            events_service.invalidate_event_names_cache("tests:brand-new")
+        )
+        self.assertIn("tests:brand-new", events_service.get_event_names())
+
+        # A name already in the list costs a cache hit and nothing else.
+        self.assertFalse(
+            events_service.invalidate_event_names_cache("tests:brand-new")
+        )
+
+    def test_get_event_names_reflects_a_freshly_emitted_event(self):
+        self.assertNotIn("tests:brand-new", events_service.get_event_names())
+        events.emit("tests:brand-new", project_id=str(self.project.id))
+        self.assertIn("tests:brand-new", events_service.get_event_names())
 
     def test_get_last_login_logs(self):
         self.generate_fixture_person()

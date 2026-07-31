@@ -8,8 +8,9 @@ from sqlalchemy import distinct, func, or_
 
 # Event names are made of lowercase words, digits and dashes on both sides of
 # the colon separator. Anything else is rejected before it can reach a LIKE
-# pattern: "%" and "_" would otherwise be interpreted as wildcards.
-ALLOWED_NAME_PART = re.compile(r"^[a-z0-9-]+$")
+# pattern: "%" and "_" would otherwise be interpreted as wildcards. Matched
+# with fullmatch, so no anchor is needed and a trailing newline is rejected.
+ALLOWED_NAME_PART = re.compile(r"[a-z0-9-]+")
 
 
 def check_name_parts(values, parameter_name):
@@ -18,9 +19,22 @@ def check_name_parts(values, parameter_name):
     not a plain lowercase word usable in a LIKE pattern.
     """
     for value in values:
-        if not ALLOWED_NAME_PART.match(value or ""):
+        if not ALLOWED_NAME_PART.fullmatch(value or ""):
             raise WrongParameterException(
                 f"The {parameter_name} parameter contains an invalid value"
+            )
+    return True
+
+
+def check_person_ids(person_ids):
+    """
+    Raise a WrongParameterException if one entry of a person_ids filter is
+    not a valid id.
+    """
+    for person_id in person_ids or []:
+        if not fields.is_valid_id(person_id):
+            raise WrongParameterException(
+                "The person_ids parameter contains an invalid id"
             )
     return True
 
@@ -78,6 +92,7 @@ def get_last_events(
         query = query.filter(ApiEvent.project_id.in_(project_ids))
 
     if person_ids:
+        check_person_ids(person_ids)
         query = query.filter(ApiEvent.user_id.in_(person_ids))
 
     if name is not None:
@@ -137,9 +152,26 @@ def get_event_names():
     Return the sorted list of the event names present in the log. It is used
     to build the object and action filters, so it must stay caller
     independent: no scoping is applied here.
+
+    The DISTINCT is served by the index on api_event.name, but it still walks
+    the whole index: the result is memoized and only invalidated when an
+    unseen name is stored.
     """
     names = ApiEvent.query.with_entities(distinct(ApiEvent.name)).all()
     return sorted(name for (name,) in names)
+
+
+def invalidate_event_names_cache(name):
+    """
+    Drop the memoized name list when an unseen event name is stored. The list
+    feeds the log filters, so a brand new event type must show up without
+    waiting for the TTL. Reading the cached list first keeps the common case
+    to a single cache hit.
+    """
+    if name not in get_event_names():
+        cache.cache.delete_memoized(get_event_names)
+        return True
+    return False
 
 
 def create_login_log(person_id, ip_address, origin):
@@ -166,6 +198,7 @@ def get_last_login_logs(
     query = LoginLog.query.order_by(LoginLog.created_at.desc())
 
     if person_ids:
+        check_person_ids(person_ids)
         query = query.filter(LoginLog.person_id.in_(person_ids))
 
     if after is not None:

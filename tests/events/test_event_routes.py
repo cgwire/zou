@@ -3,10 +3,12 @@ from datetime import datetime, timedelta
 from freezegun import freeze_time
 
 from tests.base import ApiDBTestCase
+from zou.app import db
 from zou.app.models.event import ApiEvent
 from zou.app.models.login_log import LoginLog
 from zou.app.models.person import Person
-from zou.app.models.project import Project
+from zou.app.models.project import Project, ProjectPersonLink
+from zou.app.utils import fields
 
 from zou.app.services import assets_service
 
@@ -148,6 +150,44 @@ class EventsRoutesTestCase(ApiDBTestCase):
         self.log_in_manager()
         self.get(f"/data/events/last?project_id={other_project.id}", 403)
         self.get(f"/data/events/last?project_id={self.project.id}", 200)
+
+    def test_get_last_events_project_manager_reads_his_project(self):
+        # Global role "user", manager on this production only: the project
+        # role must be resolved before the manager check reads it.
+        other_project = Project.create(
+            name="Other project", project_status_id=self.open_status.id
+        )
+        self.generate_fixture_user_cg_artist()
+        artist = Person.get(self.user_cg_artist["id"])
+        self.project.team.append(artist)
+        self.project.save()
+        link = ProjectPersonLink.query.filter_by(
+            project_id=self.project.id, person_id=artist.id
+        ).first()
+        link.role = "manager"
+        db.session.commit()
+
+        ApiEvent.create(name="task:update", project_id=self.project.id)
+        ApiEvent.create(name="task:update", project_id=other_project.id)
+
+        self.log_in_cg_artist()
+
+        # The denials come first on purpose: tests share a single application
+        # context, so a project role resolved by an earlier call would still
+        # sit in flask.g for the next one. In production g is per request.
+        # The per-project role opens neither the cross-production log nor a
+        # production he is not a member of.
+        self.get("/data/events/last", 403)
+        self.get(f"/data/events/last?project_id={other_project.id}", 403)
+
+        events = self.get(f"/data/events/last?project_id={self.project.id}")
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["project_id"], str(self.project.id))
+
+    def test_get_last_events_unknown_project_is_denied_not_disclosed(self):
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        self.get(f"/data/events/last?project_id={fields.gen_uuid()}", 403)
 
     def test_get_event_names(self):
         ApiEvent.create(name="task:update")
