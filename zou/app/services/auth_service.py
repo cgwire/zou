@@ -85,10 +85,17 @@ def check_auth(
     no_otp=False,
 ):
     """
-    Depending on configured strategy, it checks if given email and password
-    mach an active user in the database. It raises exceptions adapted to
-    encountered error (no auth strategy configured, wrong email, wrong passwor
-    or unactive user).
+    Depending on the configured strategy, check that the given email and
+    password match an active user in the database. Raise the exception
+    fitting the error met (no auth strategy configured, wrong email, wrong
+    password, unactive user).
+
+    The account state is read only once the password has been proven.
+    Reading it earlier answered "this account exists and is deactivated" to
+    anybody holding an address and no credential at all, which enumerates
+    registered addresses the same way the timing gap closed by
+    _spend_password_check_time did.
+
     App is needed as parameter to give access to configuration while avoiding
     cyclic imports.
     """
@@ -99,9 +106,6 @@ def check_auth(
     except PersonNotFoundException:
         _spend_password_check_time(password)
         raise WrongUserException()
-
-    if not person.get("active", False):
-        raise UnactiveUserException()
 
     login_failed_attemps = check_login_failed_attemps(person)
 
@@ -122,6 +126,11 @@ def check_auth(
             date_helpers.get_utc_now_datetime(),
         )
         raise WrongPasswordException()
+
+    # Past the password, and before the second factor: a deactivated
+    # account does not hand out the list of its enabled 2FA methods.
+    if not person.get("active", False):
+        raise UnactiveUserException()
 
     if not no_otp and person_two_factor_authentication_enabled(person):
         if not check_two_factor_authentication(

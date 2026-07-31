@@ -92,8 +92,31 @@ class AuthTestCase(ApiDBTestCase):
         self.person.update({"active": False})
         self.person.save()
         tokens = self.post("auth/login", self.credentials, 401)
+        # Flagged rather than spelled out only in the message, so a client
+        # does not have to parse English to tell this case apart.
+        self.assertTrue(tokens["unactive"])
         self.assertIsNotAuthenticated(tokens, 422)
         self.logout(tokens)
+
+    def test_unactive_login_is_hidden_from_a_wrong_password(self):
+        # Reading the account state before the password answered "user is
+        # unactive" to anybody holding an address and no credential at all,
+        # which tells a registered address from an unknown one.
+        self.person.update({"active": False})
+        persons_service.clear_person_cache()
+
+        credentials = {
+            "email": self.person_dict["email"],
+            "password": "wrongpassword",
+        }
+        result = self.post("auth/login", credentials, 400)
+        unknown = self.post(
+            "auth/login",
+            {"email": "nobody@example.com", "password": "wrongpassword"},
+            400,
+        )
+        self.assertFalse(result["login"])
+        self.assertEqual(result, unknown)
 
     def test_login_with_desktop_login(self):
         self.credentials = {

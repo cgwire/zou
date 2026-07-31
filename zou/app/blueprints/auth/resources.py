@@ -207,6 +207,8 @@ class LoginResource(MethodView, ArgsMixin):
             description: Login successful
           400:
             description: Login failed
+          401:
+            description: User is unactive, flagged by "unactive" in the body
         """
         body = validation.validate_request_body(LoginSchema)
         email = body.email
@@ -323,6 +325,7 @@ class LoginResource(MethodView, ArgsMixin):
                 {
                     "error": True,
                     "login": False,
+                    "unactive": True,
                     "message": "User is unactive, he cannot log in.",
                 },
                 401,
