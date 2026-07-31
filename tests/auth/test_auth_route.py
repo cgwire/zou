@@ -837,19 +837,45 @@ class EmailOTPTestCase(ApiDBTestCase):
 
     def test_send_email_otp_not_enabled(self):
         """
-        GET /auth/email-otp returns 400 if email OTP not enabled.
+        GET /auth/email-otp answers like a sent OTP when the account has
+        none enabled, and sends nothing.
         """
-        response = self.app.get(
-            f"auth/email-otp?email={self.credentials['email']}"
-        )
-        self.assertEqual(response.status_code, 400)
+        email = self.credentials["email"]
+        response = self.app.get(f"auth/email-otp?email={email}")
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(auth_tokens_store.get(f"email-otp-count-{email}"))
 
     def test_send_email_otp_unknown_user(self):
         """
-        GET /auth/email-otp returns 404 for unknown email.
+        GET /auth/email-otp answers an unknown address exactly like a known
+        one. Answering 404 "User not found." told the two apart in a single
+        unauthenticated request.
         """
-        response = self.app.get("auth/email-otp?email=unknown@test.com")
-        self.assertEqual(response.status_code, 404)
+        known = self.app.get(
+            f"auth/email-otp?email={self.credentials['email']}"
+        )
+        unknown = self.app.get("auth/email-otp?email=unknown@test.com")
+        self.assertEqual(unknown.status_code, 200)
+        self.assertEqual(unknown.data, known.data)
+
+    def test_send_email_otp_unactive_user(self):
+        """
+        A deactivated account gets no OTP email, and is not told apart
+        from any other address.
+        """
+        email = self.credentials["email"]
+        self.person.update(
+            {
+                "active": False,
+                "email_otp_enabled": True,
+                "email_otp_secret": pyotp.random_base32(),
+            }
+        )
+        persons_service.clear_person_cache()
+
+        response = self.app.get(f"auth/email-otp?email={email}")
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(auth_tokens_store.get(f"email-otp-count-{email}"))
 
 
 class TOTPTestCase(ApiDBTestCase):
