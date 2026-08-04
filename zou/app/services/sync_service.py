@@ -231,6 +231,35 @@ special_events = [
 ]
 
 
+def check_sync_account():
+    """
+    Warn when the sync account is not an admin on the source instance. The log
+    routes are scoped to the caller's productions, so a non-admin account
+    never sees the events carrying no project at all, nor the productions it
+    is not a member of. Never raises: syncing a single production with a
+    manager account stays legitimate.
+    """
+    try:
+        user = gazu.client.get_current_user()
+    except Exception:
+        logger.warning(
+            "Could not read the role of the sync account on the source "
+            "instance."
+        )
+        return False
+
+    if user.get("role") != "admin":
+        logger.warning(
+            f"The sync account ({user.get('email')}) is not an admin on the "
+            "source instance: the event log is scoped to its productions. "
+            "Events carrying no project (organisation and person thumbnails, "
+            "settings) and events of productions it does not belong to will "
+            "be missing from the sync."
+        )
+        return False
+    return True
+
+
 def init(source, login, password, multithreaded=False, number_workers=30):
     """
     Set parameters for the client that will retrieve data from the source.
@@ -248,6 +277,7 @@ def init(source, login, password, multithreaded=False, number_workers=30):
 
     gazu.set_host(source)
     gazu.log_in(login, password)
+    check_sync_account()
 
 
 def init_events_listener(source, event_source, login, password, logs_dir=None):
@@ -259,6 +289,7 @@ def init_events_listener(source, event_source, login, password, logs_dir=None):
     gazu.log_in(login, password)
     if logs_dir is not None:
         set_logger(logs_dir)
+    check_sync_account()
 
     return gazu.events.init()
 

@@ -111,6 +111,21 @@ def save_event(event, data, project_id=None):
     if project_id == "None":
         project_id = None
 
-    return ApiEvent.create(
+    api_event = ApiEvent.create(
         name=event, data=data, user_id=person_id, project_id=project_id
     )
+
+    try:
+        from zou.app.services.events_service import (
+            invalidate_event_names_cache,
+        )
+
+        invalidate_event_names_cache(event)
+    except Exception:
+        # Refreshing the name list must never break the write path: an
+        # unreachable cache only means the log filters stay stale until the
+        # entry expires.
+        current_app.logger.warning(
+            "Could not invalidate the event name list cache.", exc_info=1
+        )
+    return api_event
