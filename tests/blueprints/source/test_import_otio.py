@@ -122,3 +122,35 @@ class ImportOTIOEdlTestCase(ApiDBTestCase):
         self.import_edl("no_offset.edl")
         shots = shots_service.get_shots()
         self.assertEqual(len(shots), 3)
+
+    def test_import_edl_into_an_episode(self):
+        """
+        The episode variant of the route. A series cuts one edl per episode,
+        and the sequences it creates have to hang from that episode instead
+        of from the production root.
+        """
+        self.project.update({"production_type": "tvshow"})
+        episode = self.generate_fixture_episode("E01", self.project.id)
+        path = (
+            f"/import/otio/projects/{self.project.id}"
+            f"/episodes/{episode.id}"
+        )
+        # The episode route defaults to a four part convention that carries
+        # the episode name. The fixture edl names clips with three, so the
+        # convention travels with the upload.
+        self.upload_file(
+            path,
+            self.get_fixture_file_path(os.path.join("edl", "no_offset.edl")),
+            extra_fields={
+                "naming_convention": (
+                    "${project_name}_${sequence_name}-${shot_name}"
+                )
+            },
+        )
+
+        sequences = shots_service.get_sequences()
+        self.assertEqual(len(sequences), 2)
+        self.assertEqual(
+            {sequence["parent_id"] for sequence in sequences},
+            {str(episode.id)},
+        )
