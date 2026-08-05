@@ -1,4 +1,5 @@
 import pyotp
+import pytest
 import orjson as json
 
 from datetime import timedelta
@@ -9,6 +10,8 @@ from zou.app.utils import auth, date_helpers, fields
 from zou.app.models.person import Person
 from zou.app.stores import auth_tokens_store
 from zou.app.services import auth_service, persons_service
+
+pytestmark = pytest.mark.real_bcrypt
 
 
 class AuthTestCase(ApiDBTestCase):

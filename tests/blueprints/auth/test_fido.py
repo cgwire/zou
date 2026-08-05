@@ -5,6 +5,7 @@ through the real fido2 server; only the cryptographic attestation check
 """
 
 import orjson as json
+import pytest
 
 from unittest import mock
 
@@ -12,6 +13,10 @@ from tests.base import ApiDBTestCase
 
 from zou.app.models.person import Person
 from zou.app.services import persons_service
+
+# Recovery codes are hashed with bcrypt and their verification is exactly
+# what the unregister tests assert.
+pytestmark = pytest.mark.real_bcrypt
 
 
 class FidoRoutesTestCase(ApiDBTestCase):

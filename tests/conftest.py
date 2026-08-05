@@ -15,17 +15,6 @@ os.environ.setdefault("DB_POOL_PRE_PING", "false")
 # tests then write into and which teardowns may remove entirely.
 os.environ["PREVIEW_FOLDER"] = tempfile.mkdtemp(prefix="zou-test-previews-")
 
-_REAL_BCRYPT_FILES = {
-    "test_auth_route.py",
-    "test_auth_service.py",
-    # Share-link passwords are hashed with bcrypt; the verification
-    # path must not be patched to always-True for this file.
-    "test_playlist_sharing.py",
-    # Recovery codes are hashed with bcrypt and their verification is
-    # exactly what the FIDO unregister tests assert.
-    "test_fido.py",
-}
-
 # flask_bcrypt module-level functions create a Bcrypt() instance without
 # the app, so BCRYPT_LOG_ROUNDS is ignored and rounds default to 12.
 # Wrap them to force 4 rounds in tests.
@@ -43,9 +32,12 @@ flask_bcrypt.generate_password_hash = _fast_generate
 @pytest.fixture(autouse=True)
 def _skip_bcrypt_check(request, monkeypatch):
     """
-    Bypass bcrypt verification during login for non-auth tests.
+    Bypass bcrypt verification during login, since paying ~100 ms per
+    login would dominate the suite. A test that asserts on the
+    verification itself opts out with the real_bcrypt marker, set at
+    module level: pytestmark = pytest.mark.real_bcrypt.
     """
-    if request.fspath.basename not in _REAL_BCRYPT_FILES:
+    if request.node.get_closest_marker("real_bcrypt") is None:
         monkeypatch.setattr(
             "flask_bcrypt.check_password_hash",
             lambda *args, **kwargs: True,

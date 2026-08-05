@@ -1,4 +1,5 @@
 import flask_bcrypt as bcrypt
+import pytest
 
 from unittest import mock
 
@@ -16,6 +17,8 @@ from zou.app.services.exception import (
     WrongPasswordException,
     WrongUserException,
 )
+
+pytestmark = pytest.mark.real_bcrypt
 
 
 class AuthTestCase(ApiDBTestCase):

@@ -1,6 +1,12 @@
+import pytest
+
 from tests.base import ApiDBTestCase
 
 from zou.app.utils import events
+
+# Share-link passwords are hashed with bcrypt; the verification path must
+# not be patched to always-True here.
+pytestmark = pytest.mark.real_bcrypt
 
 
 class PlaylistSharingTestCase(ApiDBTestCase):

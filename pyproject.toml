@@ -8,4 +8,5 @@ line-length = 79
 testpaths = ["tests"]
 markers = [
     "integration: needs an external service (e.g. a running Meilisearch)",
+    "real_bcrypt: assert on password verification, keep the real bcrypt",
 ]
