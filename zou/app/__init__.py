@@ -32,7 +32,7 @@ from zou.app.services.exception import (
     UnactiveUserException,
 )
 
-from zou.app.utils import cache, fs, logs, monitoring
+from zou.app.utils import cache, fs, monitoring
 from zou.app.utils.flask import (
     ParsedUserAgent,
     ORJSONProvider,
@@ -308,7 +308,6 @@ def create_app(config_object=config):
     app.config.from_object(config_object)
 
     monitoring.init_monitoring(app)
-    logs.configure_logs_ovh(app)
 
     db.init_app(app)
     migrate.init_app(app, db)
