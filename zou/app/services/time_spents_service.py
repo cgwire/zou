@@ -282,9 +282,13 @@ def get_time_spents(
         if department_ids:
             query = query.join(TaskType)
             query = query.filter(TaskType.department_id.in_(department_ids))
+
+        # Inside the try: the query is lazy, so a date the driver rejects
+        # raises here and not while the filters are being stacked.
+        time_spents = query.all()
     except DataError:
         raise WrongDateFormatException
-    return fields.serialize_list(query.all())
+    return fields.serialize_list(time_spents)
 
 
 def get_time_spents_range(person_id, start_date, end_date):
