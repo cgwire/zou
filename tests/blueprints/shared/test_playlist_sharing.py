@@ -1068,3 +1068,68 @@ class PlaylistSharingTestCase(ApiDBTestCase):
 
         response = self.app.delete(path, json={"guest_id": other["id"]})
         self.assertEqual(response.status_code, 403)
+
+    def _attach_to_guest_comment(self, link, guest, comment):
+        import os
+
+        fixture = self.get_fixture_file_path(
+            os.path.join("thumbnails", "th01.png")
+        )
+        response = self.app.post(
+            f"/shared/playlists/{link['token']}"
+            f"/comments/{comment['id']}/attachments",
+            data={
+                "file": (open(fixture, "rb"), "th01.png"),
+                "guest_id": guest["id"],
+            },
+        )
+        self.assertEqual(response.status_code, 201, response.data[:200])
+        return response.json
+
+    def test_guest_attaches_a_file_to_own_comment(self):
+        link, guest, comment = self._guest_comment()
+
+        result = self._attach_to_guest_comment(link, guest, comment)
+        self.assertEqual(len(result["attachment_files"]), 1)
+        self.assertEqual(result["attachment_files"][0]["name"], "th01.png")
+
+    def test_guest_removes_own_attachment(self):
+        link, guest, comment = self._guest_comment()
+        attachment = self._attach_to_guest_comment(link, guest, comment)[
+            "attachment_files"
+        ][0]
+
+        response = self.app.delete(
+            f"/shared/playlists/{link['token']}/comments/{comment['id']}"
+            f"/attachments/{attachment['id']}",
+            json={"guest_id": guest["id"]},
+        )
+        self.assertEqual(response.status_code, 204)
+
+    def test_guest_cannot_remove_an_attachment_of_another_comment(self):
+        """
+        Three ids travel together here, and owning the comment is not enough:
+        the attachment has to hang from that very comment, otherwise naming
+        one's own comment would remove any attachment at all.
+        """
+        link, guest, comment = self._guest_comment()
+        other_comment = self.post(
+            f"/shared/playlists/{link['token']}/comments",
+            {
+                "guest_id": guest["id"],
+                "task_id": str(self.task.id),
+                "task_status_id": str(self.task_status.id),
+                "text": "second comment",
+            },
+            201,
+        )
+        attachment = self._attach_to_guest_comment(link, guest, other_comment)[
+            "attachment_files"
+        ][0]
+
+        response = self.app.delete(
+            f"/shared/playlists/{link['token']}/comments/{comment['id']}"
+            f"/attachments/{attachment['id']}",
+            json={"guest_id": guest["id"]},
+        )
+        self.assertEqual(response.status_code, 404)
