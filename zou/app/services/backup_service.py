@@ -7,6 +7,7 @@ from zou.app.models.person import Person
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
 
+from zou.app.services.exception import BackupFailedException
 from zou.app.stores import file_store
 from zou.app.utils import date_helpers
 
@@ -29,6 +30,10 @@ local_file = LocalBackend(
 def generate_db_backup(host, port, user, password, database, filename):
     """
     Generate a Postgres dump file from the database.
+
+    Raises BackupFailedException when pg_dump exits non-zero: whatever it
+    wrote before failing is a truncated dump, and returning the file name
+    would advertise a backup that cannot be restored.
     """
     cmd = ["pg_dump", "-h", host, "-p", port, "-U", user, database]
     with gzip.open(filename, "wb") as f:
@@ -43,8 +48,13 @@ def generate_db_backup(host, port, user, password, database, filename):
             f.write(stdout_line.encode("utf-8"))
 
         popen.stdout.close()
-        popen.wait()
+        return_code = popen.wait()
 
+    if return_code != 0:
+        raise BackupFailedException(
+            f"pg_dump exited with code {return_code} while dumping "
+            f"{database}, {filename} is incomplete."
+        )
     return filename
 
 

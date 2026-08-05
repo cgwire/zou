@@ -347,3 +347,7 @@ class IsUserLimitReachedException(Exception):
 
 class ProductionScheduleVersionNotFoundException(NotFound):
     pass
+
+
+class BackupFailedException(Exception):
+    pass
