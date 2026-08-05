@@ -8,6 +8,7 @@ from tests.base import ApiDBTestCase
 from zou.app.models.entity import Entity
 from zou.app.services import breakdown_service, shots_service
 from zou.app.services.exception import (
+    EpisodeNotFoundException,
     SceneNotFoundException,
     ShotNotFoundException,
     SequenceNotFoundException,
@@ -187,6 +188,48 @@ class ShotUtilsTestCase(ApiDBTestCase):
     def test_get_sequence_type(self):
         sequence_type = shots_service.get_sequence_type()
         self.assertEqual(sequence_type["name"], "Sequence")
+
+    def test_get_episode_by_name(self):
+        episode = shots_service.get_episode_by_name(self.project.id, "e01")
+        self.assertEqual(episode["id"], str(self.episode.id))
+        self.assertRaises(
+            EpisodeNotFoundException,
+            shots_service.get_episode_by_name,
+            self.project.id,
+            "E02",
+        )
+
+    def test_get_entities_by_shotgun_id(self):
+        """
+        The shotgun id is stored at import time and is the only handle the
+        importer has to match a row it already created. Shotgun numbers its
+        entities per type, so the same id is given to all four here: the
+        entity type is what tells them apart.
+        """
+        entities = {
+            "shot": (self.shot, shots_service.get_shot_by_shotgun_id),
+            "scene": (self.scene, shots_service.get_scene_by_shotgun_id),
+            "sequence": (
+                self.sequence,
+                shots_service.get_sequence_by_shotgun_id,
+            ),
+            "episode": (self.episode, shots_service.get_episode_by_shotgun_id),
+        }
+        for entity, _ in entities.values():
+            entity.update({"shotgun_id": 42})
+        for name, (entity, getter) in entities.items():
+            with self.subTest(entity=name):
+                self.assertEqual(getter(42)["id"], str(entity.id))
+
+    def test_get_shot_by_shotgun_id_not_found(self):
+        self.assertRaises(
+            ShotNotFoundException, shots_service.get_shot_by_shotgun_id, 404
+        )
+
+    def test_get_all_raw_shots(self):
+        # The indexer walks every shot of the instance, productions included.
+        shots = shots_service.get_all_raw_shots()
+        self.assertEqual([shot.id for shot in shots], [self.shot.id])
 
     def test_create_episode(self):
         episode_name = "NE01"

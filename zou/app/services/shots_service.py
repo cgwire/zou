@@ -1867,7 +1867,7 @@ def _get_timezoned_interval(start, end):
 
 def get_all_raw_shots():
     """
-    Get all assets from the database.
+    Get all shots from the database.
     """
     query = Entity.query.filter(Entity.entity_type_id == get_shot_type()["id"])
     return query.all()
