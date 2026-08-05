@@ -11,9 +11,9 @@ from zou.app.services import (
 from zou.app.utils import fields
 
 
-class TaskRoutesTestCase(ApiDBTestCase):
+class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
     def setUp(self):
-        super(TaskRoutesTestCase, self).setUp()
+        super(TaskDatesAndPreviewsTestCase, self).setUp()
         self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_asset_type()
