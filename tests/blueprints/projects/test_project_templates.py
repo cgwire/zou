@@ -381,6 +381,40 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
         result = self.put(path, {"default_preview_background_file_id": None})
         self.assertIsNone(result["default_preview_background_file_id"])
 
+    def test_removing_the_default_background_clears_it(self):
+        """
+        Unlinking a background that was the template default has to clear the
+        default too, otherwise the template keeps pointing at a file it no
+        longer carries.
+        """
+        template = self._new_template()
+        background = self.generate_fixture_preview_background_file()
+        self.post(
+            f"/data/project-templates/{template['id']}"
+            f"/preview-background-files",
+            {"preview_background_file_id": str(background.id)},
+        )
+        self.put(
+            f"/data/project-templates/{template['id']}"
+            f"/default-preview-background-file",
+            {"default_preview_background_file_id": str(background.id)},
+        )
+
+        self.delete(
+            f"/data/project-templates/{template['id']}"
+            f"/preview-background-files/{background.id}"
+        )
+
+        template_again = self.get(f"/data/project-templates/{template['id']}")
+        self.assertIsNone(template_again["default_preview_background_file_id"])
+        self.assertEqual(
+            self.get(
+                f"/data/project-templates/{template['id']}"
+                f"/preview-background-files"
+            ),
+            [],
+        )
+
     def test_set_template_default_background_not_linked(self):
         """
         The default has to be one of the template's own backgrounds, so a

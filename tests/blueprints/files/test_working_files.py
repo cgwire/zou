@@ -239,3 +239,31 @@ class WorkingFilesTestCase(ApiDBTestCase):
         self.assertEqual(len(new_files), 2)
         for new_file in new_files:
             self.assertEqual(new_file["entity_id"], entity_id)
+
+    def test_working_file_round_trip(self):
+        """
+        The two verbs of the file route: the DCC pushes the scene file, then
+        anyone with access to the task pulls it back.
+        """
+        import os
+
+        working_file = self.generate_fixture_working_file()
+        path = f"/data/working-files/{working_file.id}/file"
+        fixture = self.get_fixture_file_path(
+            os.path.join("thumbnails", "th01.png")
+        )
+
+        self.upload_file(path, fixture)
+
+        response = self.app.get(path, headers=self.base_headers)
+        self.assertEqual(response.status_code, 200)
+        with open(fixture, "rb") as f:
+            self.assertEqual(response.data, f.read())
+
+    def test_working_file_needs_task_access(self):
+        working_file = self.generate_fixture_working_file()
+        path = f"/data/working-files/{working_file.id}/file"
+
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        self.get(path, 403)
