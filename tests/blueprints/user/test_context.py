@@ -486,6 +486,28 @@ class UserContextRoutesTestCase(ApiDBTestCase):
             notification_again["full_entity_name"], "Props / Tree"
         )
 
+    def test_mark_all_notifications_as_read(self):
+        tasks_service.assign_task(self.task.id, self.user_id)
+        self.generate_fixture_comment()
+        notifications_service.create_notifications_for_task_and_comment(
+            self.task.serialize(relations=True), self.comment
+        )
+        self.assertFalse(self.get("/data/user/notifications")[0]["read"])
+
+        self.post("/actions/user/notifications/mark-all-as-read", {}, 200)
+
+        self.assertTrue(self.get("/data/user/notifications")[0]["read"])
+
+    def test_clear_avatar(self):
+        persons_service.update_person(self.user_id, {"has_avatar": True})
+        self.assertTrue(persons_service.get_person(self.user_id)["has_avatar"])
+
+        self.delete("/actions/user/clear-avatar")
+
+        self.assertFalse(
+            persons_service.get_person(self.user_id)["has_avatar"]
+        )
+
     def test_subscribe_task(self):
         recipients = notifications_service.get_notification_recipients(
             self.task_dict
