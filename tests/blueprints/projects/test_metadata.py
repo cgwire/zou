@@ -427,3 +427,62 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         self.assertNotIn("layer", task["data"] or {})
         other_task_data = self.get(f"data/tasks/{other_task_id}")["data"]
         self.assertEqual(other_task_data.get("render_layer"), "fg")
+
+    def _new_descriptor(self, name):
+        return self.post(
+            f"data/projects/{self.project_id}/metadata-descriptors",
+            {"entity_type": "Asset", "name": name, "data_type": "string"},
+        )
+
+    def test_reorder_metadata_descriptors(self):
+        first = self._new_descriptor("Alpha")
+        second = self._new_descriptor("Beta")
+        third = self._new_descriptor("Gamma")
+
+        result = self.post(
+            f"data/projects/{self.project_id}/metadata-descriptors/reorder",
+            {
+                "entity_type": "Asset",
+                "descriptor_ids": [third["id"], first["id"], second["id"]],
+            },
+            200,
+        )
+
+        positions = {
+            descriptor["id"]: descriptor["position"] for descriptor in result
+        }
+        self.assertEqual(positions[third["id"]], 1)
+        self.assertEqual(positions[first["id"]], 2)
+        self.assertEqual(positions[second["id"]], 3)
+
+    def test_reorder_rejects_a_descriptor_of_another_project(self):
+        """
+        The ids come from the client next to a project id it manages. A
+        descriptor belonging to another project, or to another entity type,
+        must not be reachable through this route.
+        """
+        descriptor = self._new_descriptor("Alpha")
+        # generate_fixture_project repoints self.project_id at the project it
+        # creates, so keep this one before asking for a second production.
+        project_id = self.project_id
+        other_project = self.generate_fixture_project("Other Production")
+        other_descriptor = self.post(
+            f"data/projects/{other_project.id}/metadata-descriptors",
+            {"entity_type": "Asset", "name": "Foreign", "data_type": "string"},
+        )
+
+        path = f"data/projects/{project_id}/metadata-descriptors/reorder"
+        self.post(
+            path,
+            {
+                "entity_type": "Asset",
+                "descriptor_ids": [other_descriptor["id"]],
+            },
+            400,
+        )
+        # Same descriptor, wrong entity type, is refused too.
+        self.post(
+            path,
+            {"entity_type": "Shot", "descriptor_ids": [descriptor["id"]]},
+            400,
+        )
