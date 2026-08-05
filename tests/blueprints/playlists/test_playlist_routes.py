@@ -1,5 +1,7 @@
 from tests.base import ApiDBTestCase
 
+from zou.app.models.build_job import BuildJob
+from zou.app.models.notification import Notification
 from zou.app.models.person import Person
 from zou.app.models.playlist import Playlist
 from zou.app.services import projects_service, tasks_service
@@ -387,3 +389,68 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
         )
         self.log_in_supervisor()
         self.delete(f"/data/playlists/{playlist['id']}")
+
+    def test_get_build_job(self):
+        self.generate_fixture_playlist("Playlist")
+        playlist_id = str(self.playlist.id)
+        build_job = self.generate_fixture_build_job("2026-08-05T12:00:00")
+
+        result = self.get(
+            f"/data/playlists/{playlist_id}/jobs/{build_job['id']}"
+        )
+        self.assertEqual(result["id"], build_job["id"])
+
+    def test_build_job_must_belong_to_the_playlist(self):
+        """
+        The job id comes from the client next to a playlist id it has access
+        to. Loading it without checking the link would serve, and let delete,
+        the build job of any other playlist.
+        """
+        self.generate_fixture_playlist("Playlist")
+        build_job = self.generate_fixture_build_job("2026-08-05T12:00:00")
+        other_playlist = self.generate_fixture_playlist("Other Playlist")
+
+        path = f"/data/playlists/{other_playlist['id']}/jobs/{build_job['id']}"
+        self.get_404(path)
+        self.get_404(f"{path}/build/mp4")
+        self.delete_404(path)
+
+    def test_download_unfinished_build(self):
+        """
+        The download route reads the movie from the store, so it must turn a
+        build that never succeeded away before looking for a file that is not
+        there.
+        """
+        self.generate_fixture_playlist("Playlist")
+        playlist_id = str(self.playlist.id)
+        build_job = self.generate_fixture_build_job("2026-08-05T12:00:00")
+        BuildJob.get(build_job["id"]).update({"status": "running"})
+
+        self.get(
+            f"/data/playlists/{playlist_id}/jobs/{build_job['id']}/build/mp4",
+            400,
+        )
+
+    def test_delete_build_job(self):
+        self.generate_fixture_playlist("Playlist")
+        playlist_id = str(self.playlist.id)
+        build_job = self.generate_fixture_build_job("2026-08-05T12:00:00")
+
+        path = f"/data/playlists/{playlist_id}/jobs/{build_job['id']}"
+        self.delete(path)
+        self.get_404(path)
+
+    def test_notify_clients(self):
+        self.generate_fixture_playlist("Playlist")
+        playlist_id = str(self.playlist.id)
+        self.generate_fixture_user_client()
+        client_id = self.user_client["id"]
+        projects_service.add_team_member(self.project_id, client_id)
+
+        self.post(f"/data/playlists/{playlist_id}/notify-clients", {}, 200)
+
+        notifications = Notification.query.filter_by(
+            person_id=client_id, type="playlist-ready"
+        ).all()
+        self.assertEqual(len(notifications), 1)
+        self.assertEqual(str(notifications[0].playlist_id), playlist_id)
