@@ -247,10 +247,10 @@ def upgrade_db(no_telemetry=False):
     )
     if not no_telemetry and is_self_hosted:
         with _get_app().app_context():
-            from zou.app.services import telemetry_services
+            from zou.app.services import telemetry_service
 
             try:
-                telemetry_services.send_main_infos()
+                telemetry_service.send_main_infos()
             except Exception:
                 traceback.print_exc()
 

@@ -21,9 +21,9 @@ class ToReviewHandler(object):
         self.data = data
 
 
-class EntityServiceTestCase(ApiDBTestCase):
+class EntitiesServiceTestCase(ApiDBTestCase):
     def setUp(self):
-        super(EntityServiceTestCase, self).setUp()
+        super(EntitiesServiceTestCase, self).setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()

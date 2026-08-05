@@ -13,9 +13,9 @@ from zou.app.services import (
 )
 
 
-class StatusAutomationServiceTestCase(ApiDBTestCase):
+class StatusAutomationsServiceTestCase(ApiDBTestCase):
     def setUp(self):
-        super(StatusAutomationServiceTestCase, self).setUp()
+        super(StatusAutomationsServiceTestCase, self).setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()
