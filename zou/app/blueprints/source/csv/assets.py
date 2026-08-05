@@ -1,3 +1,5 @@
+from sqlalchemy import or_
+
 from zou.app.blueprints.source.csv.base import (
     BaseCsvProjectImportResource,
     RowException,
@@ -101,7 +103,16 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         self.task_types_in_project_for_assets = (
             TaskType.query.join(ProjectTaskTypeLink)
             .filter(ProjectTaskTypeLink.project_id == project_id)
-            .filter(TaskType.for_entity == "Asset")
+            # for_entity was added nullable in 2018 and only ever backfilled
+            # for shots, so a task type predating it reads NULL and means
+            # "Asset", the model default. Databases we cannot inspect still
+            # carry those rows.
+            .filter(
+                or_(
+                    TaskType.for_entity == "Asset",
+                    TaskType.for_entity.is_(None),
+                )
+            )
             .all()
         )
         self.task_type_ids_in_project_for_assets = [

@@ -204,6 +204,35 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
             len(Task.query.all()), len(task_types) * len(entities)
         )
 
+    def test_import_assets_task_type_without_for_entity(self):
+        # for_entity was added nullable in 2018 and only ever backfilled for
+        # shots, so long lived databases still hold asset task types reading
+        # NULL. They must not be dropped from the import.
+        legacy_task_type = TaskType.create(
+            name="Legacy",
+            short_name="lgc",
+            department_id=self.department.id,
+        )
+        # The column default only applies on insert, so this really stores
+        # NULL, as a database migrated from before 2018 would hold.
+        legacy_task_type.for_entity = None
+        db.session.add(
+            ProjectTaskTypeLink(
+                project_id=self.project_id, task_type_id=legacy_task_type.id
+            )
+        )
+        db.session.commit()
+
+        path = f"/import/csv/projects/{self.project.id}/assets"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets_no_metadata.csv")
+        )
+        self.upload_file(path, file_path_fixture)
+
+        self.assertEqual(len(Entity.query.all()), 3)
+        tasks = Task.query.filter_by(task_type_id=legacy_task_type.id).all()
+        self.assertEqual(len(tasks), 3)
+
     def test_import_assets_duplicates(self):
         path = f"/import/csv/projects/{self.project.id}/assets"
 

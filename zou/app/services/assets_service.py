@@ -47,6 +47,9 @@ def clear_asset_cache(asset_id):
 
 def clear_asset_type_cache():
     cache.cache.delete_memoized(get_all_asset_types)
+    # get_asset_type carries the task types of the workflow, so editing it
+    # must not keep serving the previous one for the whole TTL.
+    cache.cache.delete_memoized(get_asset_type)
 
 
 def get_temporal_type_ids():
