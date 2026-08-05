@@ -681,6 +681,16 @@ def update_preview_file_annotations(
         return preview_file
 
 
+def _ensure_object_id(drawing_object):
+    """
+    Give a drawing object an id when it carries none, so later updates and
+    deletions can address it. A missing key, an empty string and an
+    explicit null all count as none.
+    """
+    if not drawing_object.get("id"):
+        drawing_object["id"] = str(fields.gen_uuid())
+
+
 def _clean_annotations(annotations):
     """
     Give every drawing object an id, so later updates and deletions can
@@ -689,12 +699,7 @@ def _clean_annotations(annotations):
     for annotation in annotations:
         objects = annotation.get("drawing", {}).get("objects", [])
         for current_object in objects:
-            if (
-                "id" not in current_object
-                or len(current_object["id"]) == 0
-                or current_object["id"] is None
-            ):
-                current_object["id"] = str(fields.gen_uuid())
+            _ensure_object_id(current_object)
     return annotations
 
 
@@ -711,12 +716,7 @@ def _apply_annotation_additions(previous_annotations, new_annotations):
         if previous_annotation is None:
             new_objects = new_annotation.get("drawing", {}).get("objects", [])
             for new_object in new_objects:
-                if (
-                    "id" not in new_object
-                    or len(new_object["id"]) == 0
-                    or new_object["id"] is None
-                ):
-                    new_object["id"] = str(fields.gen_uuid())
+                _ensure_object_id(new_object)
             annotations.append(new_annotation)
         else:
             previous_objects = previous_annotation.get("drawing", {}).get(
@@ -724,8 +724,7 @@ def _apply_annotation_additions(previous_annotations, new_annotations):
             )
             new_objects = new_annotation.get("drawing", {}).get("objects", [])
             for new_object in new_objects:
-                if "id" not in new_object or len(new_object["id"]) == 0:
-                    new_object["id"] = str(fields.gen_uuid())
+                _ensure_object_id(new_object)
             previous_annotation["drawing"]["objects"] = _get_new_annotations(
                 previous_objects, new_objects
             )
@@ -740,8 +739,7 @@ def _get_new_annotations(previous_objects, new_objects):
     result = list(previous_objects)
     previous_map = {}
     for previous_object in result:
-        if "id" not in previous_object or len(previous_object["id"]) == 0:
-            previous_object["id"] = str(fields.gen_uuid())
+        _ensure_object_id(previous_object)
         previous_map[previous_object["id"]] = True
 
     for new_object in new_objects:
