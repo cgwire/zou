@@ -830,7 +830,7 @@ def get_comment_mentions(project_id, text):
     return [
         person
         for person in project.team
-        if re.search(f"@{person.full_name}( |$)", text) is not None
+        if re.search(f"@{re.escape(person.full_name)}( |$)", text) is not None
     ]
 
 
@@ -851,7 +851,7 @@ def get_comment_department_mentions(project_id, text):
     return [
         department
         for department in Department.query.all()
-        if re.search(f"@{department.name}( |$)", text) is not None
+        if re.search(f"@{re.escape(department.name)}( |$)", text) is not None
     ]
 
 
