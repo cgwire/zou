@@ -151,6 +151,14 @@ class CommentNotFoundException(NotFound):
     pass
 
 
+class ChatNotFoundException(NotFound):
+    pass
+
+
+class OrganisationNotFoundException(NotFound):
+    pass
+
+
 class ReplyNotFoundException(NotFound):
     pass
 

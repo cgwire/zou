@@ -15,7 +15,8 @@ from zou.app.utils import cache, events, fs, thumbnail
 
 from zou.app.stores import file_store
 
-from zou.app.services import names_service, persons_service
+from zou.app.services import base_service, names_service, persons_service
+from zou.app.services.exception import ChatNotFoundException
 
 
 def clear_chat_message_cache(chat_message_id):
@@ -140,7 +141,7 @@ def create_chat_message(chat_id, person_id, message, files=None):
     """
     Create a new chat message.
     """
-    chat = Chat.get(chat_id)
+    chat = base_service.get_instance(Chat, chat_id, ChatNotFoundException)
     chat_message = ChatMessage.create(
         chat_id=chat_id, person_id=person_id, text=message
     )

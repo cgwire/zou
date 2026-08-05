@@ -1680,7 +1680,7 @@ def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
     except DataError:
         raise WrongDateFormatException
 
-    task = Task.get(task_id)
+    task = base_service.get_instance(Task, task_id, TaskNotFoundException)
     project_id = str(task.project_id)
     if time_spent is not None:
         if add:
@@ -1730,7 +1730,7 @@ def delete_time_spent(task_id, person_id, date):
     if time_spent is None:
         raise TimeSpentNotFoundException
 
-    task = Task.get(task_id)
+    task = base_service.get_instance(Task, task_id, TaskNotFoundException)
     project_id = str(task.project_id)
     time_spent.duration = 0
     time_spent.delete()
@@ -2073,7 +2073,7 @@ def reset_task_data(task_id):
     Recompute the fields derived from the task comment history: status,
     retake count, start, end and last comment dates.
     """
-    task = Task.get(task_id)
+    task = base_service.get_instance(Task, task_id, TaskNotFoundException)
     retake_count = 0
     real_start_date = None
     last_comment_date = None

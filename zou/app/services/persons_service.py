@@ -20,9 +20,15 @@ from zou.app.models.time_spent import TimeSpent
 from zou.app import config, file_store, db
 from zou.app.utils import fields, events, cache, emails, date_helpers
 from zou.app.utils.email_i18n import get_email_translation
-from zou.app.services import index_service, auth_service, templates_service
+from zou.app.services import (
+    base_service,
+    index_service,
+    auth_service,
+    templates_service,
+)
 from zou.app.stores import auth_tokens_store
 from zou.app.services.exception import (
+    OrganisationNotFoundException,
     PersonNotFoundException,
     PersonInProtectedAccounts,
     WrongParameterException,
@@ -501,7 +507,9 @@ def delete_person(person_id):
     """
     Delete person entry from database.
     """
-    person = Person.get(person_id)
+    person = base_service.get_instance(
+        Person, person_id, PersonNotFoundException
+    )
     person_dict = person.serialize()
     person.delete()
     index_service.remove_person_index(person_id)
@@ -773,7 +781,9 @@ def update_organisation(organisation_id, data):
     """
     Update organisation entry with data given in parameter.
     """
-    organisation = Organisation.get(organisation_id)
+    organisation = base_service.get_instance(
+        Organisation, organisation_id, OrganisationNotFoundException
+    )
     organisation.update(data)
     events.emit("organisation:update", {"organisation_id": organisation_id})
     clear_organisation_cache()

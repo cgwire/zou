@@ -41,7 +41,9 @@ from zou.app.utils import events, fields, date_helpers
 from zou.app.stores import file_store
 from zou.app import config
 
+from zou.app.services import base_service
 from zou.app.services.exception import (
+    ProjectNotFoundException,
     AttachmentFileNotFoundException,
     CommentNotFoundException,
     EntityNotFoundException,
@@ -521,7 +523,9 @@ def remove_project(project_id):
     News.query.filter(
         News.task_id == Task.id, Task.project_id == project_id
     ).delete()
-    project = Project.get(project_id)
+    project = base_service.get_instance(
+        Project, project_id, ProjectNotFoundException
+    )
     project.delete()
     events.emit("project:delete", {"project_id": project.id})
     return project_id

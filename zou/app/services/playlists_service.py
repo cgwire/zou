@@ -676,7 +676,9 @@ def _add_entity_to_playlist_db(playlist_id, entity_id_str, preview_file_id):
     Internal helper function to add an entity to playlist in the database.
     Assumes the caller has acquired appropriate locking (Redis).
     """
-    playlist = Playlist.get(playlist_id)
+    playlist = base_service.get_instance(
+        Playlist, playlist_id, PlaylistNotFoundException
+    )
     shots = list(playlist.shots or [])
 
     if not any(shot.get("entity_id") == entity_id_str for shot in shots):

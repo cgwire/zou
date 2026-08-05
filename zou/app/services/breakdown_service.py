@@ -14,12 +14,14 @@ from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.utils import fields, events
 
 from zou.app.services import (
+    base_service,
     assets_service,
     entities_service,
     projects_service,
     shots_service,
     tasks_service,
 )
+from zou.app.services.exception import AssetNotFoundException
 
 from flask import current_app
 
@@ -735,7 +737,7 @@ def build_asset_instance_name(asset_id, number):
     Helpers to generate normalized asset instance name. It is used to build
     default instance names.
     """
-    asset = Entity.get(asset_id)
+    asset = base_service.get_instance(Entity, asset_id, AssetNotFoundException)
     asset_name = slugify(asset.name, separator="_", lowercase=False)
     number = str(number).zfill(4)
     return f"{asset_name}_{number}"
