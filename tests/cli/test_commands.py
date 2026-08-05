@@ -308,3 +308,60 @@ class RenormalizeMoviePreviewFilesTestCase(ApiDBTestCase):
         mock_cmd.assert_called_once()
         args, kwargs = mock_cmd.call_args
         self.assertEqual(args[0], ("id1", "id2"))
+
+
+class CreateAdminCommandTestCase(ApiDBTestCase):
+    """
+    The command a studio runs on an empty instance, and the one it reaches
+    for when it has locked itself out.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.runner = CliRunner()
+
+    def test_create_admin(self):
+        # admin@example.com is the one address the command lets through
+        # without the deliverability check, which is what makes it usable on
+        # a fresh instance with no real mailbox yet.
+        result = self.runner.invoke(
+            cli,
+            ["create-admin", "admin@example.com", "--password", "mysecretpwd"],
+        )
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertIn("Admin successfully created", result.output)
+
+        person = Person.get_by(email="admin@example.com")
+        self.assertEqual(person.role.code, "admin")
+
+    def test_create_admin_upgrades_an_existing_person(self):
+        """
+        Given an email that is already known, the command promotes that
+        person instead of failing. It is how a studio recovers from having
+        no admin left, and it bypasses the protected accounts guard, so it
+        deserves to be stated.
+        """
+        self.generate_fixture_person()
+        self.assertNotEqual(self.person.role.code, "admin")
+
+        result = self.runner.invoke(
+            cli, ["create-admin", self.person.email, "--password", "unused"]
+        )
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertIn("upgraded to 'admin'", result.output)
+        self.assertEqual(Person.get(self.person.id).role.code, "admin")
+
+    def test_create_admin_refuses_a_short_password(self):
+        result = self.runner.invoke(
+            cli, ["create-admin", "admin@example.com", "--password", "short"]
+        )
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("Password is too short", result.output)
+        self.assertIsNone(Person.get_by(email="admin@example.com"))
+
+    def test_create_admin_refuses_an_invalid_email(self):
+        result = self.runner.invoke(
+            cli, ["create-admin", "not-an-email", "--password", "mysecretpwd"]
+        )
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("Email is not valid", result.output)
