@@ -133,12 +133,16 @@ jobs:
           pip install -r requirements.txt
       # The cryptography/pyopenssl advisories below cannot be fixed yet:
       # pysaml2 7.5.4 (latest) caps pyopenssl<24.3, which caps
-      # cryptography<44. Re-check whenever pysaml2 releases.
+      # cryptography<44 — while the fixes require cryptography>=49 (i.e.
+      # pyopenssl>=26.4). Blocked on IdentityPython/pysaml2#1021.
+      # Drop the ignores below once pysaml2 ships a release lifting the cap.
       - name: Run pip-audit 🔒
         run: >-
           pip install pip-audit &&
           pip-audit --skip-editable
           --ignore-vuln PYSEC-2026-35
+          --ignore-vuln PYSEC-2026-3553
+          --ignore-vuln PYSEC-2026-3554
           --ignore-vuln CVE-2024-12797
           --ignore-vuln CVE-2026-26007
           --ignore-vuln GHSA-537c-gmf6-5ccf
