@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 import uuid
 
-from tests.source.shotgun.base import ShotgunTestCase
+from tests.blueprints.source.shotgun.base import ShotgunTestCase
 from zou.app.models.data_import_error import DataImportError
 
 event = {

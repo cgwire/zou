@@ -1,4 +1,4 @@
-from tests.edits.base import BaseEditTestCase
+from tests.blueprints.edits.base import BaseEditTestCase
 
 
 class EditRoutesTestCase(BaseEditTestCase):

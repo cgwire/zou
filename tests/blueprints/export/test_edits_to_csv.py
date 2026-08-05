@@ -1,6 +1,6 @@
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 
-from tests.edits.base import BaseEditTestCase
+from tests.blueprints.edits.base import BaseEditTestCase
 
 
 class EditCsvExportTestCase(BaseEditTestCase):

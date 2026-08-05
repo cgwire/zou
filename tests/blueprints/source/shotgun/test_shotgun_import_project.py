@@ -1,4 +1,4 @@
-from tests.source.shotgun.base import ShotgunTestCase
+from tests.blueprints.source.shotgun.base import ShotgunTestCase
 
 from zou.app.config import DEFAULT_FILE_TREE
 from zou.app.services import file_tree_service

@@ -1,4 +1,4 @@
-from tests.source.shotgun.base import ShotgunTestCase
+from tests.blueprints.source.shotgun.base import ShotgunTestCase
 
 
 class ImportShotgunPersonTestCase(ShotgunTestCase):
