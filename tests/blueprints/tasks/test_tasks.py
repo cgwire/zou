@@ -1,4 +1,5 @@
 from tests.base import ApiDBTestCase
+from zou.app.models.entity import Entity
 from zou.app.models.project import Project, ProjectTaskTypeLink
 from zou.app.models.task_type import TaskType
 
@@ -8,6 +9,7 @@ from zou.app.services import (
     notifications_service,
     persons_service,
     projects_service,
+    shots_service,
     tasks_service,
 )
 
@@ -851,3 +853,49 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.put(f"/actions/tasks/{self.shot_task.id}/assign", data, 200)
         tasks = self.get(f"/data/tasks/open-tasks?person_id={jane.id}")
         self.assertEqual(len(tasks["data"]), 2)
+
+    def test_create_entity_tasks(self):
+        """
+        The generic route takes the entity type by name, so it reaches the
+        kinds the four hardcoded routes do not, sequences among them.
+        """
+        path = (
+            f"/actions/projects/{self.project.id}"
+            f"/task-types/{self.task_type_id}/create-tasks/sequence"
+        )
+        tasks = self.post(path, {})
+        self.assertEqual(len(tasks), 1)
+        self.assertEqual(tasks[0]["entity_id"], str(self.sequence.id))
+
+    def test_create_entity_tasks_skips_another_project(self):
+        """
+        The entity ids come from the body next to a project id the caller
+        manages. An entity of another production is dropped rather than given
+        a task.
+        """
+        # generate_fixture_project repoints self.project_id at what it
+        # creates, and the sequence fixture would then try to recreate the
+        # default production, so the foreign row is built by hand.
+        project_id = self.project_id
+        sequence_id = str(self.sequence.id)
+        other_project = self.generate_fixture_project("Other Production")
+        foreign_sequence = Entity.create(
+            name="Foreign",
+            project_id=other_project.id,
+            entity_type_id=shots_service.get_sequence_type()["id"],
+        )
+
+        path = (
+            f"/actions/projects/{project_id}"
+            f"/task-types/{self.task_type_id}/create-tasks/sequence"
+        )
+        tasks = self.post(path, [sequence_id, str(foreign_sequence.id)])
+        self.assertEqual(len(tasks), 1)
+        self.assertEqual(tasks[0]["entity_id"], sequence_id)
+
+    def test_create_entity_tasks_unknown_type(self):
+        path = (
+            f"/actions/projects/{self.project.id}"
+            f"/task-types/{self.task_type_id}/create-tasks/unicorn"
+        )
+        self.post(path, {}, 404)
