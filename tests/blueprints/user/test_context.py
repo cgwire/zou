@@ -159,6 +159,32 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         tasks = self.get(path)
         self.assertEqual(len(tasks), 1)
 
+    def test_get_sequence_tasks(self):
+        sequence_task = self.generate_fixture_task(
+            "sequence task", self.sequence.id
+        )
+        path = f"data/user/sequences/{self.sequence.id}/tasks"
+
+        self.assertEqual(len(self.get(path)), 0)
+
+        self.assign_user(sequence_task.id)
+        tasks = self.get(path)
+        self.assertEqual(len(tasks), 1)
+        self.assertEqual(tasks[0]["id"], str(sequence_task.id))
+
+    def test_get_sequence_task_types(self):
+        sequence_task = self.generate_fixture_task(
+            "sequence task", self.sequence.id
+        )
+        path = f"data/user/sequences/{self.sequence.id}/task-types"
+
+        self.assertEqual(len(self.get(path)), 0)
+
+        self.assign_user(sequence_task.id)
+        task_types = self.get(path)
+        self.assertEqual(len(task_types), 1)
+        self.assertEqual(task_types[0]["id"], str(sequence_task.task_type_id))
+
     def test_get_asset_task_types(self):
         path = f"data/user/assets/{self.asset.id}/task-types"
         task_id = self.task.id
@@ -608,6 +634,17 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         # Another day sees nothing.
         self.assertEqual(len(self.get("data/user/time-spents/2026-08-06")), 0)
         self.get("data/user/time-spents/not-a-date", 400)
+
+    def test_get_task_time_spent_for_date(self):
+        path = f"data/user/tasks/{self.task_id}/time-spents/2026-08-05"
+        tasks_service.create_or_update_time_spent(
+            self.task_id, self.user_id, "2026-08-05", 3600
+        )
+
+        time_spent = self.get(path)
+        self.assertEqual(time_spent["duration"], 3600)
+        self.assertEqual(time_spent["task_id"], str(self.task_id))
+        self.get(f"data/user/tasks/{self.task_id}/time-spents/nope", 400)
 
     def test_get_time_spents_range(self):
         tasks_service.create_or_update_time_spent(
