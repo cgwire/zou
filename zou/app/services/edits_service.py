@@ -355,14 +355,14 @@ def create_edit(
             description=description,
             created_by=created_by,
         )
-    events.emit(
-        "edit:new",
-        {
-            "edit_id": edit.id,
-            "parent_id": parent_id,
-        },
-        project_id=project_id,
-    )
+        events.emit(
+            "edit:new",
+            {
+                "edit_id": edit.id,
+                "parent_id": parent_id,
+            },
+            project_id=project_id,
+        )
     return edit.serialize(obj_type="Edit")
 
 
