@@ -7,6 +7,7 @@ from zou.app.services import (
     playlists_service,
     concepts_service,
     tasks_service,
+    permissions_service,
     user_service,
     persons_service,
 )
@@ -73,8 +74,8 @@ class ConceptResource(MethodView, ArgsMixin):
                       example: "2023-01-01T12:30:00Z"
         """
         concept = concepts_service.get_full_concept(concept_id)
-        user_service.check_project_access(concept["project_id"])
-        user_service.check_entity_access(concept["id"])
+        permissions_service.check_project_access(concept["project_id"])
+        permissions_service.check_entity_access(concept["id"])
         if permissions.has_client_permissions():
             raise permissions.PermissionDenied
         return concept
@@ -109,9 +110,11 @@ class ConceptResource(MethodView, ArgsMixin):
         force = self.get_force()
         concept = concepts_service.get_concept(concept_id)
         if concept["created_by"] == persons_service.get_current_user()["id"]:
-            user_service.check_belong_to_project(concept["project_id"])
+            permissions_service.check_belong_to_project(concept["project_id"])
         else:
-            user_service.check_manager_project_access(concept["project_id"])
+            permissions_service.check_manager_project_access(
+                concept["project_id"]
+            )
         concepts_service.remove_concept(concept_id, force=force)
         return "", 204
 
@@ -188,7 +191,9 @@ class AllConceptsResource(MethodView):
                         example: "2023-01-01T12:30:00Z"
         """
         criterions = query.get_query_criterions_from_request(request)
-        user_service.check_project_access(criterions.get("project_id", None))
+        permissions_service.check_project_access(
+            criterions.get("project_id", None)
+        )
         if (
             permissions.has_vendor_permissions()
             or permissions.has_client_permissions()
@@ -249,8 +254,8 @@ class ConceptTaskTypesResource(MethodView):
                         example: "Concept"
         """
         concept = concepts_service.get_concept(concept_id)
-        user_service.check_project_access(concept["project_id"])
-        user_service.check_entity_access(concept["id"])
+        permissions_service.check_project_access(concept["project_id"])
+        permissions_service.check_entity_access(concept["id"])
         if permissions.has_client_permissions():
             raise permissions.PermissionDenied
         return tasks_service.get_task_types_for_concept(concept_id)
@@ -331,8 +336,8 @@ class ConceptTasksResource(MethodView, ArgsMixin):
                         example: "2023-01-01T12:30:00Z"
         """
         concept = concepts_service.get_concept(concept_id)
-        user_service.check_project_access(concept["project_id"])
-        user_service.check_entity_access(concept["id"])
+        permissions_service.check_project_access(concept["project_id"])
+        permissions_service.check_entity_access(concept["id"])
         if permissions.has_client_permissions():
             raise permissions.PermissionDenied
         relations = self.get_relations()
@@ -402,8 +407,8 @@ class ConceptPreviewsResource(MethodView):
                           example: "2023-01-01T12:00:00Z"
         """
         concept = concepts_service.get_concept(concept_id)
-        user_service.check_project_access(concept["project_id"])
-        user_service.check_entity_access(concept["id"])
+        permissions_service.check_project_access(concept["project_id"])
+        permissions_service.check_entity_access(concept["id"])
         if permissions.has_client_permissions():
             raise permissions.PermissionDenied
         return playlists_service.get_preview_files_for_entity(concept_id)
@@ -495,7 +500,9 @@ class ConceptsAndTasksResource(MethodView):
         """
         criterions = query.get_query_criterions_from_request(request)
         query.check_criterion_id_format(criterions, ["id", "project_id"])
-        user_service.check_project_access(criterions.get("project_id", None))
+        permissions_service.check_project_access(
+            criterions.get("project_id", None)
+        )
         if (
             permissions.has_vendor_permissions()
             or permissions.has_client_permissions()
@@ -562,7 +569,7 @@ class ProjectConceptsResource(MethodView, ArgsMixin):
                         example: "2023-01-01T12:30:00Z"
         """
         projects_service.get_project(project_id)
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         if (
             permissions.has_vendor_permissions()
             or permissions.has_client_permissions()
@@ -663,7 +670,7 @@ class ProjectConceptsResource(MethodView, ArgsMixin):
         """
         body = validation.validate_request_body(NewConceptSchema)
         projects_service.get_project(project_id)
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         if (
             permissions.has_vendor_permissions()
             or permissions.has_client_permissions()

@@ -21,6 +21,7 @@ from zou.app.services import (
     entities_service,
     persons_service,
     tasks_service,
+    permissions_service,
     user_service,
 )
 from zou.app import config
@@ -71,15 +72,15 @@ class DownloadAttachmentResource(MethodView):
         )
         if attachment_file["comment_id"] is not None:
             comment = tasks_service.get_comment(attachment_file["comment_id"])
-            user_service.check_task_access(comment["object_id"])
+            permissions_service.check_task_access(comment["object_id"])
         elif attachment_file["chat_message_id"] is not None:
             message = chats_service.get_chat_message(
                 attachment_file["chat_message_id"]
             )
             chat = chats_service.get_chat_by_id(message["chat_id"])
             entity = entities_service.get_entity(chat["object_id"])
-            user_service.check_project_access(entity["project_id"])
-            user_service.check_entity_access(chat["object_id"])
+            permissions_service.check_project_access(entity["project_id"])
+            permissions_service.check_entity_access(chat["object_id"])
         else:
             raise permissions.PermissionDenied()
         try:
@@ -156,7 +157,7 @@ class AckCommentResource(MethodView):
                       description: Whether the comment is acknowledged
                       example: true
         """
-        user_service.check_task_access(task_id)
+        permissions_service.check_task_access(task_id)
         return comments_service.acknowledge_comment(comment_id)
 
 
@@ -267,8 +268,8 @@ class CommentTaskResource(MethodView):
             for_client,
         ) = self.get_arguments()
 
-        user_service.check_task_action_access(task_id)
-        user_service.check_task_status_access(task_status_id)
+        permissions_service.check_task_action_access(task_id)
+        permissions_service.check_task_status_access(task_status_id)
         files = request.files
 
         if not permissions.has_manager_permissions():
@@ -351,7 +352,9 @@ class AttachmentResource(MethodView):
             raise permissions.PermissionDenied()
         if comment["person_id"] != user["id"]:
             task = tasks_service.get_task(task_id)
-            user_service.check_manager_project_access(task["project_id"])
+            permissions_service.check_manager_project_access(
+                task["project_id"]
+            )
 
         deletion_service.remove_attachment_file_by_id(attachment_file_id)
         return "", 204
@@ -437,7 +440,9 @@ class AddAttachmentToCommentResource(MethodView):
             raise permissions.PermissionDenied()
         if comment["person_id"] != user["id"]:
             task = tasks_service.get_task(task_id)
-            user_service.check_manager_project_access(task["project_id"])
+            permissions_service.check_manager_project_access(
+                task["project_id"]
+            )
 
         files = request.files
         comment, _ = comments_service.add_attachments_to_comment(
@@ -559,7 +564,7 @@ class CommentManyTasksResource(MethodView):
             raise WrongParameterException("Request body must be a JSON array.")
         person = persons_service.get_current_user(relations=True)
         try:
-            user_service.check_manager_project_access(project_id)
+            permissions_service.check_manager_project_access(project_id)
         except permissions.PermissionDenied:
             comments = self.get_allowed_comments_only(comments, person)
         result = []
@@ -570,7 +575,9 @@ class CommentManyTasksResource(MethodView):
                 or "comment" not in comment
             ):
                 continue
-            user_service.check_task_status_access(comment["task_status_id"])
+            permissions_service.check_task_status_access(
+                comment["task_status_id"]
+            )
             comment = comments_service.create_comment(
                 person["id"],
                 comment["object_id"],
@@ -596,8 +603,10 @@ class CommentManyTasksResource(MethodView):
                 )
                 project_id = task["project_id"]
                 if project_id not in role_cache:
-                    role_cache[project_id] = user_service.get_project_role(
-                        person["id"], project_id
+                    role_cache[project_id] = (
+                        permissions_service.get_project_role(
+                            person["id"], project_id
+                        )
                     )
                 if (
                     role_cache[project_id] == "supervisor"
@@ -686,13 +695,13 @@ class ReplyCommentResource(MethodView, ArgsMixin):
             raise permissions.PermissionDenied()
         current_user = persons_service.get_current_user()
         if comment["person_id"] != current_user["id"]:
-            user_service.check_task_action_access(task_id)
+            permissions_service.check_task_action_access(task_id)
             if permissions.has_client_permissions():
                 author = persons_service.get_person(comment["person_id"])
                 task = tasks_service.get_task(task_id)
                 if (
                     current_user["studio_id"] != author["studio_id"]
-                    and user_service.get_project_role(
+                    and permissions_service.get_project_role(
                         author["id"], task["project_id"]
                     )
                     == "client"
@@ -941,8 +950,8 @@ class MoveCommentResource(MethodView):
         """
         permissions.check_manager_permissions()
         body = validation.validate_request_body(MoveCommentSchema)
-        user_service.check_task_access(task_id)
-        user_service.check_task_access(body.target_task_id)
+        permissions_service.check_task_access(task_id)
+        permissions_service.check_task_access(body.target_task_id)
         comment = tasks_service.get_comment(comment_id)
         if str(comment["object_id"]) != str(task_id):
             raise WrongParameterException(

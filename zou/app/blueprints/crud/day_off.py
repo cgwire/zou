@@ -5,7 +5,11 @@ from zou.app.models.time_spent import TimeSpent
 
 from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
 
-from zou.app.services import user_service, time_spents_service
+from zou.app.services import (
+    permissions_service,
+    time_spents_service,
+    user_service,
+)
 
 from zou.app.services.exception import WrongParameterException
 
@@ -17,7 +21,7 @@ class DayOffsResource(BaseModelsResource):
         BaseModelsResource.__init__(self, DayOff)
 
     def check_create_permissions(self, data):
-        return user_service.check_day_off_access(data)
+        return permissions_service.check_day_off_access(data)
 
     @jwt_required()
     def get(self):
@@ -338,10 +342,10 @@ class DayOffResource(BaseModelResource):
         return super().delete(instance_id)
 
     def check_delete_permissions(self, instance_dict):
-        return user_service.check_day_off_access(instance_dict)
+        return permissions_service.check_day_off_access(instance_dict)
 
     def check_read_permissions(self, instance_dict):
-        return user_service.check_day_off_access(instance_dict)
+        return permissions_service.check_day_off_access(instance_dict)
 
     def check_update_permissions(self, instance_dict, data):
         if (
@@ -350,7 +354,7 @@ class DayOffResource(BaseModelResource):
             and not permissions.has_admin_permissions()
         ):
             raise permissions.PermissionDenied()
-        return user_service.check_day_off_access(instance_dict)
+        return permissions_service.check_day_off_access(instance_dict)
 
     def post_update(self, instance_dict, data):
         TimeSpent.delete_all_by(

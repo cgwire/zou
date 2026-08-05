@@ -8,6 +8,7 @@ from zou.app.services import (
     entities_service,
     projects_service,
     shots_service,
+    permissions_service,
     user_service,
 )
 
@@ -76,7 +77,7 @@ class CastingResource(MethodView):
                             description: Asset name
                             example: "Main Character"
         """
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         if permissions.has_vendor_permissions():
             raise permissions.PermissionDenied
         entity = entities_service.get_entity(entity_id)
@@ -168,7 +169,7 @@ class CastingResource(MethodView):
                 "error": True,
                 "message": "Request body must be a JSON array",
             }, 400
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         entity = entities_service.get_entity(entity_id)
         if entity["project_id"] != project_id:
             raise permissions.PermissionDenied
@@ -231,7 +232,7 @@ class EntitiesCastingResource(MethodView):
                 "message": "Request body must be a JSON object mapping "
                 "entity ids to casting arrays",
             }, 400
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         # Validate every entity before updating anything.
         for entity_id in castings.keys():
             entity = entities_service.get_entity(entity_id)
@@ -294,7 +295,7 @@ class EpisodesCastingResource(MethodView):
                               description: Asset name
                               example: "Main Character"
         """
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         if permissions.has_vendor_permissions():
             raise permissions.PermissionDenied
         return breakdown_service.get_production_episodes_casting(project_id)
@@ -358,7 +359,7 @@ class EpisodeSequenceAllCastingResource(MethodView):
                               description: Asset name
                               example: "Main Character"
         """
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         if permissions.has_vendor_permissions():
             raise permissions.PermissionDenied
         return breakdown_service.get_all_sequences_casting(
@@ -426,7 +427,7 @@ class SequenceAllCastingResource(MethodView):
                               description: Asset name
                               example: "Main Character"
         """
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         if permissions.has_vendor_permissions():
             raise permissions.PermissionDenied
         return breakdown_service.get_all_sequences_casting(project_id)
@@ -495,7 +496,7 @@ class SequenceCastingResource(MethodView):
                               description: Asset name
                               example: "Main Character"
         """
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         if permissions.has_vendor_permissions():
             raise permissions.PermissionDenied
         sequence = shots_service.get_sequence(sequence_id)
@@ -571,7 +572,7 @@ class AssetTypeCastingResource(MethodView):
                               description: Entity type (shot/sequence)
                               example: "shot"
         """
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         if permissions.has_vendor_permissions():
             raise permissions.PermissionDenied
         assets_service.get_asset_type(asset_type_id)
@@ -632,8 +633,8 @@ class ShotAssetInstancesResource(MethodView, ArgsMixin):
                         example: "Main character instance"
         """
         shot = shots_service.get_shot(shot_id)
-        user_service.check_project_access(shot["project_id"])
-        user_service.check_entity_access(shot_id)
+        permissions_service.check_project_access(shot["project_id"])
+        permissions_service.check_entity_access(shot_id)
         return breakdown_service.get_asset_instances_for_shot(shot_id)
 
     @jwt_required()
@@ -702,7 +703,7 @@ class ShotAssetInstancesResource(MethodView, ArgsMixin):
         body = validation.validate_request_body(AddAssetInstanceSchema)
 
         shot = shots_service.get_shot(shot_id)
-        user_service.check_project_access(shot["project_id"])
+        permissions_service.check_project_access(shot["project_id"])
         shot = breakdown_service.add_asset_instance_to_shot(
             shot_id, str(body.asset_instance_id)
         )
@@ -738,7 +739,7 @@ class RemoveShotAssetInstanceResource(MethodView, ArgsMixin):
             description: Asset instance successfully removed from shot
         """
         shot = shots_service.get_shot(shot_id)
-        user_service.check_project_access(shot["project_id"])
+        permissions_service.check_project_access(shot["project_id"])
         shot = breakdown_service.remove_asset_instance_for_shot(
             shot_id, asset_instance_id
         )
@@ -797,8 +798,8 @@ class SceneAssetInstancesResource(MethodView, ArgsMixin):
                         example: "Main character instance"
         """
         scene = shots_service.get_scene(scene_id)
-        user_service.check_project_access(scene["project_id"])
-        user_service.check_entity_access(scene_id)
+        permissions_service.check_project_access(scene["project_id"])
+        permissions_service.check_entity_access(scene_id)
         return breakdown_service.get_asset_instances_for_scene(scene_id)
 
     @jwt_required()
@@ -870,7 +871,7 @@ class SceneAssetInstancesResource(MethodView, ArgsMixin):
         body = validation.validate_request_body(AddSceneAssetInstanceSchema)
 
         scene = shots_service.get_scene(scene_id)
-        user_service.check_project_access(scene["project_id"])
+        permissions_service.check_project_access(scene["project_id"])
         asset_instance = breakdown_service.add_asset_instance_to_scene(
             scene_id, str(body.asset_id), body.description
         )
@@ -929,8 +930,8 @@ class SceneCameraInstancesResource(MethodView):
                         example: "Main camera instance"
         """
         scene = shots_service.get_scene(scene_id)
-        user_service.check_project_access(scene["project_id"])
-        user_service.check_entity_access(scene_id)
+        permissions_service.check_project_access(scene["project_id"])
+        permissions_service.check_entity_access(scene_id)
         return breakdown_service.get_camera_instances_for_scene(scene_id)
 
 
@@ -1001,7 +1002,7 @@ class ProjectEntityLinksResource(MethodView, ArgsMixin):
                         description: Creation timestamp
                         example: "2020-01-01T00:00:00"
         """
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         projects_service.get_project(project_id)
         page = self.get_page()
         limit = self.get_limit()
@@ -1042,7 +1043,7 @@ class ProjectEntityLinkResource(MethodView):
           200:
             description: Entity link successfully deleted
         """
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         link = entities_service.get_entity_link(entity_link_id)
         entity = entities_service.get_entity(link["entity_in_id"])
         if entity["project_id"] != project_id:

@@ -14,6 +14,7 @@ from zou.app.services import (
     entities_service,
     projects_service,
     tasks_service,
+    permissions_service,
     user_service,
 )
 from zou.app.services.exception import WrongParameterException
@@ -63,7 +64,7 @@ class GetProjectRoleTestCase(ApiDBTestCase):
     def test_explicit_link_role_wins(self):
         self.add_to_team(self.person, role="supervisor")
         self.assertEqual(
-            user_service.get_project_role(
+            permissions_service.get_project_role(
                 str(self.person.id), str(self.project.id)
             ),
             "supervisor",
@@ -72,7 +73,7 @@ class GetProjectRoleTestCase(ApiDBTestCase):
     def test_null_link_role_inherits_global_role(self):
         self.add_to_team(self.person)
         self.assertEqual(
-            user_service.get_project_role(
+            permissions_service.get_project_role(
                 str(self.person.id), str(self.project.id)
             ),
             self.person.role.code,
@@ -80,7 +81,7 @@ class GetProjectRoleTestCase(ApiDBTestCase):
 
     def test_no_link_falls_back_to_global_role(self):
         self.assertEqual(
-            user_service.get_project_role(
+            permissions_service.get_project_role(
                 str(self.person.id), str(self.project.id)
             ),
             self.person.role.code,
@@ -98,11 +99,15 @@ class GetProjectRoleTestCase(ApiDBTestCase):
                 return_value=current_user,
             ):
                 self.assertTrue(
-                    user_service.check_belong_to_project(str(project_a.id))
+                    permissions_service.check_belong_to_project(
+                        str(project_a.id)
+                    )
                 )
                 self.assertEqual(g.get("project_role"), "supervisor")
                 self.assertFalse(
-                    user_service.check_belong_to_project(str(project_b.id))
+                    permissions_service.check_belong_to_project(
+                        str(project_b.id)
+                    )
                 )
                 self.assertIsNone(g.get("project_role"))
 
@@ -682,7 +687,7 @@ class AllEditsRoleTestCase(ApiDBTestCase):
 
 class EntityMetadataRoleTestCase(ApiDBTestCase):
     """
-    Coverage audit fix: user_service.check_metadata_department_access
+    Coverage audit fix: permissions_service.check_metadata_department_access
     resolves check_belong_to_project before has_manager/has_supervisor, so
     a demoted manager loses entity metadata write access.
 
@@ -711,7 +716,7 @@ class EntityMetadataRoleTestCase(ApiDBTestCase):
             verify_jwt_in_request()
             self.assertRaises(
                 permissions.PermissionDenied,
-                user_service.check_metadata_department_access,
+                permissions_service.check_metadata_department_access,
                 entity,
                 {"name": "Updated Tree"},
             )
@@ -719,7 +724,7 @@ class EntityMetadataRoleTestCase(ApiDBTestCase):
 
 class AllDepartmentsAccessRoleTestCase(ApiDBTestCase):
     """
-    Coverage audit fix: user_service.check_all_departments_access resolves
+    Coverage audit fix: permissions_service.check_all_departments_access resolves
     check_belong_to_project before has_manager/has_supervisor, so a
     demoted manager loses department-wide access.
     """

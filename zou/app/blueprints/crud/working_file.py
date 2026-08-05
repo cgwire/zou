@@ -10,7 +10,7 @@ from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
 from zou.app.models.entity import Entity
 from zou.app.models.project import Project
 from zou.app.models.working_file import WorkingFile
-from zou.app.services import user_service, files_service
+from zou.app.services import files_service, permissions_service, user_service
 from zou.app.utils import permissions
 
 
@@ -26,7 +26,7 @@ class WorkingFilesResource(BaseModelsResource):
         Overriding so that people without admin credentials can still access
         this resource.
         """
-        user_service.block_access_to_vendor()
+        permissions_service.block_access_to_vendor()
         return True
 
     @jwt_required()
@@ -195,12 +195,12 @@ class WorkingFileResource(BaseModelResource):
 
     def check_read_permissions(self, instance):
         working_file = files_service.get_working_file(instance["id"])
-        user_service.check_task_access(working_file["task_id"])
+        permissions_service.check_task_access(working_file["task_id"])
         return True
 
     def check_update_permissions(self, instance, data):
         working_file = files_service.get_working_file(instance["id"])
-        user_service.check_task_action_access(working_file["task_id"])
+        permissions_service.check_task_action_access(working_file["task_id"])
         return True
 
     @jwt_required()

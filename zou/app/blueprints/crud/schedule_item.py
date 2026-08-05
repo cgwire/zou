@@ -4,6 +4,7 @@ from zou.app.models.schedule_item import ScheduleItem
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
+from zou.app.services import permissions_service
 from zou.app.services import user_service
 from zou.app.services.exception import WrongParameterException
 
@@ -175,7 +176,7 @@ class ScheduleItemResource(BaseModelResource):
         BaseModelResource.__init__(self, ScheduleItem)
 
     def check_update_permissions(self, instance, data):
-        return user_service.check_supervisor_project_task_type_access(
+        return permissions_service.check_supervisor_project_task_type_access(
             instance["project_id"], instance["task_type_id"]
         )
 

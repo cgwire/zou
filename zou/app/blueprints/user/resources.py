@@ -10,6 +10,7 @@ from zou.app.services import (
     projects_service,
     shots_service,
     time_spents_service,
+    permissions_service,
     user_service,
 )
 from zou.app.utils import date_helpers, validation
@@ -3357,8 +3358,8 @@ class JoinChatResource(MethodView):
                         example: "2023-01-01T12:30:00Z"
         """
         entity = entities_service.get_entity(entity_id)
-        user_service.check_project_access(entity["project_id"])
-        user_service.check_entity_access(entity["id"])
+        permissions_service.check_project_access(entity["project_id"])
+        permissions_service.check_entity_access(entity["id"])
         person = persons_service.get_current_user()
         return chats_service.join_chat(entity_id, person["id"])
 
@@ -3385,8 +3386,8 @@ class JoinChatResource(MethodView):
               description: Chat left successfully
         """
         entity = entities_service.get_entity(entity_id)
-        user_service.check_project_access(entity["project_id"])
-        user_service.check_entity_access(entity["id"])
+        permissions_service.check_project_access(entity["project_id"])
+        permissions_service.check_entity_access(entity["id"])
         person = persons_service.get_current_user()
         chats_service.leave_chat(entity_id, person["id"])
         return "", 204

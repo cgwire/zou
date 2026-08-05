@@ -9,7 +9,12 @@ from zou.app.utils import events
 from zou.app.models.output_file import OutputFile
 from zou.app.models.entity import Entity
 from zou.app.models.project import Project
-from zou.app.services import user_service, entities_service, files_service
+from zou.app.services import (
+    entities_service,
+    files_service,
+    permissions_service,
+    user_service,
+)
 from zou.app.utils import permissions
 
 from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
@@ -20,7 +25,7 @@ class OutputFilesResource(BaseModelsResource):
         BaseModelsResource.__init__(self, OutputFile)
 
     def check_read_permissions(self, options=None):
-        user_service.block_access_to_vendor()
+        permissions_service.block_access_to_vendor()
         return True
 
     def add_project_permission_filter(self, query):
@@ -49,16 +54,18 @@ class OutputFileResource(BaseModelResource):
 
     def check_read_permissions(self, instance):
         entity = entities_service.get_entity(instance["entity_id"])
-        user_service.check_project_access(entity["project_id"])
-        user_service.check_entity_access(entity["id"])
+        permissions_service.check_project_access(entity["project_id"])
+        permissions_service.check_entity_access(entity["id"])
         return True
 
     def check_update_permissions(self, output_file, data):
         entity = entities_service.get_entity(output_file["entity_id"])
-        if user_service.has_manager_project_access(entity["project_id"]):
+        if permissions_service.has_manager_project_access(
+            entity["project_id"]
+        ):
             return True
         else:
-            return user_service.check_working_on_entity(
+            return permissions_service.check_working_on_entity(
                 output_file["temporal_entity_id"] or output_file["entity_id"]
             )
 

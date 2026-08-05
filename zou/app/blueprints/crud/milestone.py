@@ -1,6 +1,7 @@
 from flask_jwt_extended import jwt_required
 
 from zou.app.models.milestone import Milestone
+from zou.app.services import permissions_service
 from zou.app.services import user_service
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
@@ -11,7 +12,9 @@ class MilestonesResource(BaseModelsResource):
         BaseModelsResource.__init__(self, Milestone)
 
     def check_create_permissions(self, milestone):
-        user_service.check_manager_project_access(milestone["project_id"])
+        permissions_service.check_manager_project_access(
+            milestone["project_id"]
+        )
 
     @jwt_required()
     def get(self):
@@ -156,8 +159,8 @@ class MilestoneResource(BaseModelResource):
         BaseModelResource.__init__(self, Milestone)
 
     def check_read_permissions(self, milestone):
-        user_service.check_project_access(milestone["project_id"])
-        user_service.block_access_to_vendor()
+        permissions_service.check_project_access(milestone["project_id"])
+        permissions_service.block_access_to_vendor()
 
     @jwt_required()
     def get(self, instance_id):
@@ -315,11 +318,11 @@ class MilestoneResource(BaseModelResource):
         return super().delete(instance_id)
 
     def check_update_permissions(self, milestone, data):
-        return user_service.check_manager_project_access(
+        return permissions_service.check_manager_project_access(
             milestone["project_id"]
         )
 
     def check_delete_permissions(self, milestone):
-        return user_service.check_manager_project_access(
+        return permissions_service.check_manager_project_access(
             milestone["project_id"]
         )

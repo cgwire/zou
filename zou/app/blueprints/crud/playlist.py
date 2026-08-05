@@ -4,7 +4,12 @@ from zou.app.models.playlist import Playlist
 from zou.app.models.build_job import BuildJob
 from zou.app.models.notification import Notification
 from zou.app.models.playlist_share_link import PlaylistShareLink
-from zou.app.services import user_service, playlists_service, persons_service
+from zou.app.services import (
+    permissions_service,
+    persons_service,
+    playlists_service,
+    user_service,
+)
 from zou.app.services.exception import WrongParameterException
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
@@ -30,7 +35,7 @@ class PlaylistsResource(BaseModelsResource):
         return [Playlist.build_jobs]
 
     def check_read_permissions(self, options=None):
-        user_service.block_access_to_vendor()
+        permissions_service.block_access_to_vendor()
         return True
 
     def add_project_permission_filter(self, query):
@@ -187,7 +192,9 @@ class PlaylistsResource(BaseModelsResource):
         return super().post()
 
     def check_create_permissions(self, playlist):
-        user_service.check_supervisor_project_access(playlist["project_id"])
+        permissions_service.check_supervisor_project_access(
+            playlist["project_id"]
+        )
 
     def update_data(self, data):
         data = super().update_data(data)
@@ -207,8 +214,8 @@ class PlaylistResource(BaseModelResource):
         BaseModelResource.__init__(self, Playlist)
 
     def check_read_permissions(self, playlist):
-        user_service.check_project_access(playlist["project_id"])
-        user_service.block_access_to_vendor()
+        permissions_service.check_project_access(playlist["project_id"])
+        permissions_service.block_access_to_vendor()
 
     @jwt_required()
     def get(self, instance_id):
@@ -401,7 +408,7 @@ class PlaylistResource(BaseModelResource):
             share_link.delete()
 
     def check_update_permissions(self, playlist, data):
-        return user_service.check_playlist_update_access(playlist)
+        return permissions_service.check_playlist_update_access(playlist)
 
     def pre_update(self, instance_dict, data):
         _check_for_entity(data)
@@ -418,4 +425,4 @@ class PlaylistResource(BaseModelResource):
         return data
 
     def check_delete_permissions(self, playlist):
-        return user_service.check_playlist_update_access(playlist)
+        return permissions_service.check_playlist_update_access(playlist)

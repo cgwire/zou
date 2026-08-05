@@ -11,6 +11,7 @@ from zou.app.models.project import Project
 from zou.app.models.task import Task
 
 from zou.app.services import (
+    permissions_service,
     user_service,
     tasks_service,
     deletion_service,
@@ -276,8 +277,8 @@ class TaskResource(BaseModelResource, ArgsMixin):
         BaseModelResource.__init__(self, Task)
 
     def check_read_permissions(self, task):
-        user_service.check_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
+        permissions_service.check_project_access(task["project_id"])
+        permissions_service.check_entity_access(task["entity_id"])
 
     @jwt_required()
     def get(self, instance_id):
@@ -440,10 +441,10 @@ class TaskResource(BaseModelResource, ArgsMixin):
         return super().put(instance_id)
 
     def check_update_permissions(self, task, data):
-        user_service.check_supervisor_task_access(task, data)
+        permissions_service.check_supervisor_task_access(task, data)
 
     def check_delete_permissions(self, task):
-        user_service.check_manager_project_access(task["project_id"])
+        permissions_service.check_manager_project_access(task["project_id"])
 
     def pre_update(self, instance_dict, data):
         if "assignees" in data:

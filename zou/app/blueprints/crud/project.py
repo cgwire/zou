@@ -12,6 +12,7 @@ from zou.app.services import (
     project_templates_service,
     projects_service,
     shots_service,
+    permissions_service,
     user_service,
     persons_service,
     files_service,
@@ -284,7 +285,7 @@ class ProjectResource(BaseModelResource, ArgsMixin):
         self.protected_fields.append("team")
 
     def check_read_permissions(self, project):
-        return user_service.check_project_access(project["id"])
+        return permissions_service.check_project_access(project["id"])
 
     @jwt_required()
     def get(self, instance_id):
@@ -430,7 +431,7 @@ class ProjectResource(BaseModelResource, ArgsMixin):
         return super().put(instance_id)
 
     def check_update_permissions(self, project, data):
-        return user_service.check_manager_project_access(project["id"])
+        return permissions_service.check_manager_project_access(project["id"])
 
     def pre_update(self, project_dict, data):
         if "resolution" in data:
@@ -624,7 +625,7 @@ class ProjectTaskTypeLinksResource(MethodView, ArgsMixin):
             ]
         )
 
-        user_service.check_manager_project_access(args["project_id"])
+        permissions_service.check_manager_project_access(args["project_id"])
 
         task_type_link = projects_service.create_project_task_type_link(
             args["project_id"],
@@ -720,7 +721,7 @@ class ProjectTaskStatusLinksResource(MethodView, ArgsMixin):
             ]
         )
 
-        user_service.check_manager_project_access(args["project_id"])
+        permissions_service.check_manager_project_access(args["project_id"])
 
         task_status_link = projects_service.create_project_task_status_link(
             args["project_id"],
@@ -777,7 +778,7 @@ class ProjectTaskTypeLinksReorderResource(MethodView):
             200:
               description: Updated task type links
         """
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         task_type_ids = _validate_id_list_body("task_type_ids")
         return projects_service.set_project_task_type_link_priorities(
             project_id, task_type_ids
@@ -820,7 +821,7 @@ class ProjectTaskStatusLinksReorderResource(MethodView):
             200:
               description: Updated task status links
         """
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         task_status_ids = _validate_id_list_body("task_status_ids")
         return projects_service.set_project_task_status_link_priorities(
             project_id, task_status_ids

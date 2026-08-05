@@ -14,6 +14,7 @@ from zou.app.services import (
     projects_service,
     tasks_service,
     time_spents_service,
+    permissions_service,
     user_service,
 )
 from zou.app.utils import permissions, validation
@@ -88,8 +89,8 @@ class EntityNewsResource(MethodView):
                         example: "2023-01-01T12:30:00Z"
         """
         entity = entities_service.get_entity(entity_id)
-        user_service.check_project_access(entity["project_id"])
-        user_service.check_entity_access(entity_id)
+        permissions_service.check_project_access(entity["project_id"])
+        permissions_service.check_entity_access(entity_id)
         return news_service.get_news_for_entity(entity_id)
 
 
@@ -156,8 +157,8 @@ class EntityPreviewFilesResource(MethodView):
                         example: c46c8gc6-eg97-6887-c292-79675204e47
         """
         entity = entities_service.get_entity(entity_id)
-        user_service.check_project_access(entity["project_id"])
-        user_service.check_entity_access(entity_id)
+        permissions_service.check_project_access(entity["project_id"])
+        permissions_service.check_entity_access(entity_id)
         return preview_files_service.get_preview_files_for_entity(entity_id)
 
 
@@ -221,8 +222,8 @@ class EntityTimeSpentsResource(MethodView):
                         example: c46c8gc6-eg97-6887-c292-79675204e47
         """
         entity = entities_service.get_entity(entity_id)
-        user_service.check_project_access(entity["project_id"])
-        user_service.check_entity_access(entity_id)
+        permissions_service.check_project_access(entity["project_id"])
+        permissions_service.check_entity_access(entity_id)
         return time_spents_service.get_time_spents_for_entity(entity_id)
 
 
@@ -300,8 +301,8 @@ class EntitiesLinkedWithTasksResource(MethodView):
                               example: f79f1jf9-hj20-9010-f625-02998537h80
         """
         entity = entities_service.get_entity(entity_id)
-        user_service.check_project_access(entity["project_id"])
-        user_service.check_entity_access(entity_id)
+        permissions_service.check_project_access(entity["project_id"])
+        permissions_service.check_entity_access(entity_id)
         return entities_service.get_linked_entities_with_tasks(entity_id)
 
 
@@ -356,8 +357,8 @@ class EntityTaskCreationResource(MethodView):
               entity
         """
         entity = entities_service.get_entity(entity_id)
-        user_service.check_project_access(entity["project_id"])
-        user_service.check_entity_access(entity_id)
+        permissions_service.check_project_access(entity["project_id"])
+        permissions_service.check_entity_access(entity_id)
         if (
             permissions.has_vendor_permissions()
             or permissions.has_client_permissions()
@@ -440,9 +441,9 @@ class ProjectDeleteEntitiesResource(MethodView, ArgsMixin):
                 # Nothing to authorize for an entity that is already gone.
                 continue
             if entity["created_by"] == current_user_id:
-                user_service.check_belong_to_project(project_id)
+                permissions_service.check_belong_to_project(project_id)
             else:
-                user_service.check_manager_project_access(project_id)
+                permissions_service.check_manager_project_access(project_id)
 
         return (
             deletion_service.remove_entities(

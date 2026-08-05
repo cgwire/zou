@@ -86,6 +86,7 @@ from zou.app.services import (
     persons_service,
     projects_service,
     shots_service,
+    permissions_service,
     user_service,
 )
 
@@ -2204,7 +2205,7 @@ def get_open_tasks(
         TaskType.name,
     )
 
-    if project_id is not None and user_service.check_project_access(
+    if project_id is not None and permissions_service.check_project_access(
         project_id
     ):
         query = query.filter(Project.id == project_id)
