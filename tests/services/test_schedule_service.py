@@ -11,7 +11,7 @@ from zou.app.models.production_schedule_version import (
     ProductionScheduleVersionTaskLinkPersonLink,
 )
 from zou.app.models.task import Task
-from zou.app.services import schedule_service
+from zou.app.services import projects_service, schedule_service
 from zou.app.services.exception import (
     ProductionScheduleVersionNotFoundException,
     WrongParameterException,
@@ -625,4 +625,57 @@ class ScheduleServiceTestCase(ApiDBTestCase):
         db.session.refresh(self.project)
         self.assertEqual(
             str(self.project.from_schedule_version_id), str(psv.id)
+        )
+
+    def test_get_production_schedule_version_task_links_route(self):
+        psv = ProductionScheduleVersion.create(
+            name="v1", project_id=self.project.id
+        )
+        schedule_service.set_production_schedule_version_task_links_from_production(
+            str(psv.id)
+        )
+
+        links = self.get(
+            f"/data/production-schedule-versions/{psv.id}/task-links"
+        )
+        self.assertEqual(len(links), 1)
+        self.assertEqual(links[0]["task_id"], str(self.task.id))
+
+        # The optional filter narrows on the task type of the linked task.
+        self.assertEqual(
+            len(
+                self.get(
+                    f"/data/production-schedule-versions/{psv.id}"
+                    f"/task-links?task_type_id={self.task_type_id}"
+                )
+            ),
+            1,
+        )
+        self.assertEqual(
+            len(
+                self.get(
+                    f"/data/production-schedule-versions/{psv.id}"
+                    f"/task-links?task_type_id={self.task_type_animation.id}"
+                )
+            ),
+            0,
+        )
+
+    def test_task_links_route_denies_a_client(self):
+        """
+        A schedule carries dates and assignees the studio does not show to a
+        client, so the route turns clients and vendors away even when they
+        are on the production.
+        """
+        psv = ProductionScheduleVersion.create(
+            name="v1", project_id=self.project.id
+        )
+        self.generate_fixture_user_client()
+        projects_service.add_team_member(
+            self.project_id, self.user_client["id"]
+        )
+        self.log_in_client()
+
+        self.get(
+            f"/data/production-schedule-versions/{psv.id}/task-links", 403
         )
