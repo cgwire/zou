@@ -5,9 +5,9 @@ from zou.app.services import (
 )
 
 
-class BreakdownServiceTestCase(ApiDBTestCase):
+class BreakdownCastingTestCase(ApiDBTestCase):
     def setUp(self):
-        super(BreakdownServiceTestCase, self).setUp()
+        super(BreakdownCastingTestCase, self).setUp()
         self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_asset_type()

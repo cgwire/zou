@@ -61,6 +61,12 @@ class ChatsServiceTestCase(ApiDBTestCase):
         chat = chats_service.leave_chat(self.asset.id, str(self.person.id))
         self.assertIsNotNone(chat)
 
+    def test_get_chats_for_person(self):
+        chat = chats_service.join_chat(self.asset.id, str(self.person.id))
+        chats = chats_service.get_chats_for_person(self.person.id)
+        self.assertEqual(len(chats), 1)
+        self.assertEqual(chats[0]["id"], chat["id"])
+
     def test_create_chat_message(self):
         chat = chats_service.get_chat_raw(self.asset.id)
         message = chats_service.create_chat_message(
@@ -149,3 +155,12 @@ class ChatsServiceTestCase(ApiDBTestCase):
         raw = chats_service.get_chat_message_raw(message["id"])
         self.assertEqual(str(raw.id), message["id"])
         self.assertEqual(raw.text, "Test")
+
+    def test_get_chat_message(self):
+        chat = chats_service.get_chat_raw(self.asset.id)
+        message = chats_service.create_chat_message(
+            chat.id, str(self.person.id), "Test"
+        )
+        result = chats_service.get_chat_message(message["id"])
+        self.assertEqual(result["id"], message["id"])
+        self.assertEqual(result["text"], "Test")
