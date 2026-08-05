@@ -66,6 +66,7 @@ def clear_entity_type_cache(entity_type_id):
     """
     cache.cache.delete_memoized(get_entity_type, entity_type_id)
     cache.cache.delete_memoized(get_entity_type_by_name)
+    cache.cache.delete_memoized(get_entity_type_by_name_or_not_found)
 
 
 def get_temporal_entity_type_by_name(name):

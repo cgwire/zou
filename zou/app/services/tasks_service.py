@@ -93,8 +93,9 @@ from zou.app.services import (
 
 def clear_task_status_cache(task_status_id):
     """
-    Drop the memoized task status list.
+    Drop the memoized serialization of given task status, and the list.
     """
+    cache.cache.delete_memoized(get_task_status, task_status_id)
     cache.cache.delete_memoized(get_task_statuses)
 
 

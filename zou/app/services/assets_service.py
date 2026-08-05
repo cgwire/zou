@@ -48,10 +48,13 @@ def clear_asset_cache(asset_id):
     cache.cache.delete_memoized(get_full_asset, asset_id)
 
 
-def clear_asset_type_cache():
+def clear_asset_type_cache(asset_type_id=None):
     """
-    Drop the memoized asset type list.
+    Drop the memoized asset type list, and the serialization of given
+    asset type when one is named.
     """
+    if asset_type_id is not None:
+        cache.cache.delete_memoized(get_asset_type, asset_type_id)
     cache.cache.delete_memoized(get_all_asset_types)
     # get_asset_type carries the task types of the workflow, so editing it
     # must not keep serving the previous one for the whole TTL.

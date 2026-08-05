@@ -329,7 +329,7 @@ class EntityTypeResource(BaseModelResource):
 
     def post_update(self, instance_dict, data):
         entities_service.clear_entity_type_cache(instance_dict["id"])
-        assets_service.clear_asset_type_cache()
+        assets_service.clear_asset_type_cache(instance_dict["id"])
         instance_dict["task_types"] = [
             str(task_types.id) for task_types in self.instance.task_types
         ]
@@ -337,5 +337,5 @@ class EntityTypeResource(BaseModelResource):
 
     def post_delete(self, instance_dict):
         entities_service.clear_entity_type_cache(instance_dict["id"])
-        assets_service.clear_asset_type_cache()
+        assets_service.clear_asset_type_cache(instance_dict["id"])
         return instance_dict
