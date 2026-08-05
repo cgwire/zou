@@ -3,13 +3,16 @@ from tests.base import ApiDBTestCase
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.build_job import BuildJob
 from zou.app.models.comment import Comment
+from zou.app.models.entity import Entity, EntityLink
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.milestone import Milestone
 from zou.app.models.news import News
 from zou.app.models.notification import Notification
 from zou.app.models.playlist import Playlist
 from zou.app.models.preview_file import PreviewFile
+from zou.app.models.project import Project
 from zou.app.models.schedule_item import ScheduleItem
+from zou.app.models.task import Task
 from zou.app.models.subscription import Subscription
 from zou.app.models.time_spent import TimeSpent
 from zou.app.utils import fields
@@ -320,3 +323,77 @@ class ImportKitsuRoutesTestCase(ApiDBTestCase):
         payload[0]["name"] = "Noisy milestone"
         self._post_kitsu("/import/kitsu/milestones", payload)
         self.assertGreater(ApiEvent.query.count(), events_before)
+
+    def test_import_projects(self):
+        new_id = str(fields.gen_uuid())
+        payload = [
+            {
+                "id": new_id,
+                "name": "Imported Production",
+                "project_status_id": str(self.open_status.id),
+                "production_type": "short",
+                "team": [],
+            }
+        ]
+        self._post_kitsu("/import/kitsu/projects", payload)
+        self.assertEqual(Project.get(new_id).name, "Imported Production")
+        self._post_kitsu("/import/kitsu/projects", payload)
+
+    def test_import_entities(self):
+        new_id = str(fields.gen_uuid())
+        payload = [
+            {
+                "id": new_id,
+                "name": "Imported Asset",
+                "project_id": self.project_id,
+                "entity_type_id": str(self.asset_type.id),
+                "entities_in": [],
+                "entities_out": [],
+            }
+        ]
+        self._post_kitsu("/import/kitsu/entities", payload)
+        self.assertEqual(Entity.get(new_id).name, "Imported Asset")
+        self._post_kitsu("/import/kitsu/entities", payload)
+
+    def test_import_entity_links(self):
+        other_asset = self.generate_fixture_asset(
+            "Linked Tree", "Another asset"
+        )
+        new_id = str(fields.gen_uuid())
+        payload = [
+            {
+                "id": new_id,
+                "entity_in_id": str(self.asset.id),
+                "entity_out_id": str(other_asset.id),
+                "nb_occurences": 1,
+                "label": "animation",
+                # EntityLink.create_from_import deletes this key without
+                # checking it is there, unlike every other model. The sync
+                # push always sends it, so the payload does too.
+                "type": "EntityLink",
+            }
+        ]
+        self._post_kitsu("/import/kitsu/entity-links", payload)
+        # EntityLink has a composite primary key, get(id) cannot serve it.
+        self.assertEqual(EntityLink.get_by(id=new_id).label, "animation")
+        self._post_kitsu("/import/kitsu/entity-links", payload)
+
+    def test_import_tasks(self):
+        new_id = str(fields.gen_uuid())
+        payload = [
+            {
+                "id": new_id,
+                "name": "imported",
+                "project_id": self.project_id,
+                "task_type_id": str(self.task_type.id),
+                "task_status_id": str(self.task_status.id),
+                "entity_id": str(self.asset.id),
+                "assignees": [],
+            }
+        ]
+        self._post_kitsu("/import/kitsu/tasks", payload)
+        self.assertEqual(Task.get(new_id).name, "imported")
+        self._post_kitsu("/import/kitsu/tasks", payload)
+
+    def test_import_rejects_a_body_that_is_not_a_list(self):
+        self._post_kitsu("/import/kitsu/entities", {"id": "nope"}, code=400)
