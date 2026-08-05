@@ -322,10 +322,11 @@ class EventNamesResource(MethodView):
         """
         Get event names
         ---
-        description: Retrieve the distinct event names present in the log. It
-          is meant to build the object and action filters of the log screen.
-          The list is not scoped to the caller's productions: it exposes the
-          event vocabulary, not any production data.
+        description: >-
+          Retrieve the distinct event names present in the log. It is meant to
+          build the object and action filters of the log screen. The list is
+          not scoped to the caller's productions: it exposes the event
+          vocabulary, not any production data.
         tags:
           - Events
         responses:
