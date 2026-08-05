@@ -9,9 +9,9 @@ from zou.app.services import (
     projects_service,
     shots_service,
     tasks_service,
+    templates_service,
 )
 from zou.app.stores import queue_store
-from zou.app.services.templates_service import generate_html_body
 
 
 def send_notification(
@@ -30,7 +30,7 @@ def send_notification(
     email_locale = (
         locale or person.get("locale") or persons_service.get_default_locale()
     )
-    email_html_body = generate_html_body(
+    email_html_body = templates_service.generate_html_body(
         title, email_message, locale=email_locale
     )
 
@@ -474,7 +474,7 @@ def send_share_invitation(
             "share_invitation_message_segment",
             message=message,
         )
-    email_html_body = generate_html_body(
+    email_html_body = templates_service.generate_html_body(
         title, email_message, locale=email_locale
     )
     if config.ENABLE_JOB_QUEUE:
