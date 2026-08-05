@@ -105,6 +105,27 @@ class EntityRoutesTestCase(ApiDBTestCase):
         self.post(path, [asset_id], 200)
         self.get(f"/data/assets/{asset_id}", 404)
 
+    def test_delete_entities_with_force(self):
+        # Force removes the entities and their tasks for real, even though
+        # they have tasks and were never canceled before.
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+        self.generate_fixture_shot_task()
+        asset_id = str(self.asset.id)
+        shot_id = str(self.shot.id)
+        asset_task_id = str(self.task.id)
+        shot_task_id = str(self.shot_task.id)
+        path = (
+            f"/actions/projects/{self.project.id}"
+            "/delete-entities?force=true"
+        )
+        result = self.post(path, [asset_id, shot_id], 200)
+        self.assertEqual(result, [asset_id, shot_id])
+        self.get(f"/data/assets/{asset_id}", 404)
+        self.get(f"/data/shots/{shot_id}", 404)
+        self.get(f"/data/tasks/{asset_task_id}", 404)
+        self.get(f"/data/tasks/{shot_task_id}", 404)
+
     def test_delete_entities_ignores_absent_entities(self):
         # An id that no longer exists (e.g. deleted by someone else) must not
         # fail the whole batch: it is skipped and the others are processed.
