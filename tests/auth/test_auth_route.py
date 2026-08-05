@@ -1224,6 +1224,33 @@ class ChangePasswordErrorsTestCase(ApiDBTestCase):
         )
         self.assertEqual(response.status_code, 400)
 
+    def test_change_password_while_locked_out(self):
+        """
+        check_auth applies the login lockout here too, and the handler
+        used to let TooMuchLoginFailedAttemps out as a 500.
+        """
+        _, headers = self.login()
+        Person.get(self.person_dict["id"]).update(
+            {
+                "login_failed_attemps": 5,
+                "last_login_failed": date_helpers.get_utc_now_datetime(),
+            }
+        )
+        response = self.app.post(
+            "auth/change-password",
+            data=json.dumps(
+                {
+                    "old_password": "secretpassword",
+                    "password": "newpassword1",
+                    "password_2": "newpassword1",
+                }
+            ),
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 400)
+        data = json.loads(response.data.decode("utf-8"))
+        self.assertTrue(data["too_many_failed_login_attemps"])
+
     def test_change_password_mismatch(self):
         """
         Change password with mismatched passwords returns 400.

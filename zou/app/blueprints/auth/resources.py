@@ -545,6 +545,19 @@ class ChangePasswordResource(MethodView, ArgsMixin):
             return {"error": True, "message": "User is unactive."}, 400
         except WrongPasswordException:
             return {"error": True, "message": "Old password is wrong."}, 400
+        except TooMuchLoginFailedAttemps:
+            # check_auth applies the login lockout here too, so a user who
+            # just failed five logins and then changes his password used to
+            # get a 500. The caller holds a token for the account, telling
+            # him the truth discloses nothing.
+            return (
+                {
+                    "error": True,
+                    "message": "Too many failed login attempts.",
+                    "too_many_failed_login_attemps": True,
+                },
+                400,
+            )
 
     def get_arguments(self):
         body = validation.validate_request_body(ChangePasswordSchema)
