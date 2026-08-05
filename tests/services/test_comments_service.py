@@ -479,6 +479,12 @@ class CommentsServiceTestCase(ApiDBTestCase):
             name="main", task_type_id=self.task_type_concept.id
         )
 
+        # A distinct status on the siblings, so that "the propagated comment
+        # keeps the target's own status" is a statement that can fail.
+        sibling_status_id = str(self.wfa_status["id"])
+        for sibling in [modeling_task, concept_task]:
+            sibling.update({"task_status_id": sibling_status_id})
+
         comment_text = "Great shot! Please check #modeling #concept"
         comment = comments_service.create_comment(
             person_id=self.person_id,
@@ -488,23 +494,18 @@ class CommentsServiceTestCase(ApiDBTestCase):
         )
         self.assertIsNotNone(comment["id"])
         self.assertEqual(comment["text"], comment_text)
-        comments = tasks_service.get_comments(modeling_task.id)
-        self.assertEqual(len(comments), 1)
-        self.assertTrue("Animation" in comments[0]["text"])
-        modeling_task = tasks_service.get_task_raw(modeling_task.id)
-        self.assertEqual(
-            str(modeling_task.task_status_id),
-            str(modeling_task.task_status_id),
-        )
-        comments = tasks_service.get_comments(concept_task.id)
-        self.assertEqual(len(comments), 1)
-        self.assertTrue("Animation" in comments[0]["text"])
 
-        modeling_task = tasks_service.get_task_raw(modeling_task.id)
-        self.assertEqual(
-            str(modeling_task.task_status_id),
-            str(modeling_task.task_status_id),
-        )
+        for sibling in [modeling_task, concept_task]:
+            comments = tasks_service.get_comments(sibling.id)
+            self.assertEqual(len(comments), 1)
+            self.assertTrue("Animation" in comments[0]["text"])
+            # _handle_hashtags reposts with the target's current status, not
+            # with the one the author picked, so the sibling does not move.
+            self.assertEqual(comments[0]["task_status_id"], sibling_status_id)
+            self.assertEqual(
+                str(tasks_service.get_task_raw(sibling.id).task_status_id),
+                sibling_status_id,
+            )
         comment = comments_service.create_comment(
             person_id=self.person_id,
             task_id=str(self.task.id),
