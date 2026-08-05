@@ -999,3 +999,72 @@ class PlaylistSharingTestCase(ApiDBTestCase):
             f"/pictures/originals/preview-files/{preview_file.id}.gif"
         )
         self.assertEqual(response.status_code, 404)
+
+    def _guest_comment(self, first_name="Reviewer"):
+        """
+        A share link that allows comments, a guest on it, and one comment
+        posted by that guest.
+        """
+        link = self.post(
+            f"/data/playlists/{self.playlist['id']}/share",
+            {"can_comment": True},
+            201,
+        )
+        self.log_out()
+        guest = self.post(
+            f"/shared/playlists/{link['token']}/guest",
+            {"first_name": first_name},
+            201,
+        )
+        comment = self.post(
+            f"/shared/playlists/{link['token']}/comments",
+            {
+                "guest_id": guest["id"],
+                "task_id": str(self.task.id),
+                "task_status_id": str(self.task_status.id),
+                "text": "Great work!",
+            },
+            201,
+        )
+        return link, guest, comment
+
+    def test_guest_edits_own_comment(self):
+        link, guest, comment = self._guest_comment()
+
+        result = self.put(
+            f"/shared/playlists/{link['token']}/comments/{comment['id']}",
+            {"guest_id": guest["id"], "text": "Second thought"},
+            200,
+        )
+        self.assertEqual(result["text"], "Second thought")
+
+    def test_guest_deletes_own_comment(self):
+        link, guest, comment = self._guest_comment()
+        path = f"/shared/playlists/{link['token']}/comments/{comment['id']}"
+
+        response = self.app.delete(path, json={"guest_id": guest["id"]})
+        self.assertEqual(response.status_code, 204)
+
+        # Gone is 404, someone else's is 403: the loader tells the two apart
+        # so a guest cannot probe for comments they do not own.
+        response = self.app.delete(path, json={"guest_id": guest["id"]})
+        self.assertEqual(response.status_code, 404)
+
+    def test_guest_cannot_touch_another_guest_comment(self):
+        """
+        The guest id travels in the body, so nothing stops a reviewer from
+        naming someone else's. The comment has to belong to the guest that
+        claims it, on that very share link.
+        """
+        link, _, comment = self._guest_comment("Alice")
+        other = self.post(
+            f"/shared/playlists/{link['token']}/guest",
+            {"first_name": "Bob"},
+            201,
+        )
+        path = f"/shared/playlists/{link['token']}/comments/{comment['id']}"
+
+        self.put(path, {"guest_id": other["id"], "text": "hijacked"}, 403)
+
+        response = self.app.delete(path, json={"guest_id": other["id"]})
+        self.assertEqual(response.status_code, 403)
