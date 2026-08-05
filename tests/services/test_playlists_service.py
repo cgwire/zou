@@ -1,5 +1,6 @@
 from tests.base import ApiDBTestCase
 
+from zou.app.models.build_job import BuildJob
 from zou.app.models.playlist import Playlist
 from zou.app.services import (
     playlists_service,
@@ -193,3 +194,37 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         )
         self.assertEqual(len(result["shots"]), 5)
         self.assertEqual(result["shots"][-1]["id"], str(self.shot.id))
+
+    def test_get_playlist_file_name(self):
+        playlist = self.generate_fixture_playlists()
+        self.assertEqual(
+            playlists_service.get_playlist_file_name(playlist),
+            "cosmos-landromat-playlist-4",
+        )
+
+    def test_start_and_end_build_job(self):
+        """
+        The two ends of a playlist build: the row the clients poll while the
+        movie is being encoded, then its final status.
+        """
+        playlist = self.generate_fixture_playlists()
+
+        job = playlists_service.start_build_job(playlist)
+        self.assertEqual(job["status"], "running")
+        self.assertEqual(job["playlist_id"], playlist["id"])
+        self.assertIsNone(job["ended_at"])
+
+        job = playlists_service.end_build_job(playlist, job, False)
+        self.assertEqual(job["status"], "failed")
+        self.assertIsNotNone(job["ended_at"])
+
+    def test_end_build_job_of_a_deleted_job(self):
+        # The job row may be gone by the time the build ends: the clients
+        # still get the event, and the caller an empty dict rather than a
+        # crash inside the queue worker.
+        playlist = self.generate_fixture_playlists()
+        job = playlists_service.start_build_job(playlist)
+        BuildJob.get(job["id"]).delete()
+        self.assertEqual(
+            playlists_service.end_build_job(playlist, job, True), {}
+        )

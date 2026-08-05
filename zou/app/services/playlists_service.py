@@ -945,8 +945,8 @@ def _run_remote_job_build_playlist(
 
 def start_build_job(playlist):
     """
-    clients that a new job is running.
     Register in database that a new build is running. Emits an event to notify
+    clients that a new job is running.
     """
     job = BuildJob.create(
         status="running", job_type="movie", playlist_id=playlist["id"]
