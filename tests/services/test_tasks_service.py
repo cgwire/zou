@@ -3,6 +3,8 @@ import datetime
 
 from tests.base import ApiDBTestCase
 
+from zou.app.models.comment import Comment
+from zou.app.models.studio import Studio
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 from zou.app.models.time_spent import TimeSpent
@@ -18,6 +20,7 @@ from zou.app.utils import events, fields
 
 from zou.app.services.exception import (
     RevisionAlreadyExistsException,
+    StudioNotFoundException,
     TaskNotFoundException,
 )
 
@@ -593,6 +596,61 @@ class TaskServiceTestCase(ApiDBTestCase):
 
         task = tasks_service.get_full_task(self.shot_task.id, self.person.id)
         self.assertEqual(task["sequence"]["id"], str(self.sequence.id))
+
+    def test_get_studio(self):
+        studio = Studio.create(name="Blue Spirit", color="#000000")
+        self.assertEqual(
+            tasks_service.get_studio(studio.id)["name"], "Blue Spirit"
+        )
+        self.assertRaises(
+            StudioNotFoundException,
+            tasks_service.get_studio,
+            fields.gen_uuid(),
+        )
+
+    def test_get_task_by_shotgun_id(self):
+        self.task.update({"shotgun_id": 12})
+        self.assertEqual(
+            tasks_service.get_task_by_shotgun_id(12)["id"], self.task_id
+        )
+        self.assertRaises(
+            TaskNotFoundException, tasks_service.get_task_by_shotgun_id, 13
+        )
+
+    def test_get_comment_by_preview_file_id(self):
+        preview_file = self.generate_fixture_preview_file()
+        self.generate_fixture_comment()
+        self.assertIsNone(
+            tasks_service.get_comment_by_preview_file_id(preview_file.id)
+        )
+
+        comment = Comment.get(self.comment["id"])
+        comment.previews = [preview_file]
+        comment.save()
+        self.assertEqual(
+            tasks_service.get_comment_by_preview_file_id(preview_file.id)[
+                "id"
+            ],
+            self.comment["id"],
+        )
+
+    def test_reset_tasks_data(self):
+        """
+        The command that rebuilds the fields derived from the comment
+        history, for every task of a production at once.
+        """
+        comments_service.new_comment(
+            self.task_id, self.wip_status_id, self.person.id, "wip"
+        )
+        self.task.update({"task_status_id": self.open_status_id})
+        self.shot_task.update({"retake_count": 42})
+
+        tasks_service.reset_tasks_data(self.project_id)
+
+        self.assertEqual(
+            str(Task.get(self.task_id).task_status_id), str(self.wip_status_id)
+        )
+        self.assertEqual(Task.get(self.shot_task.id).retake_count, 0)
 
     def test_get_next_position(self):
         self.generate_fixture_preview_file(revision=1)
