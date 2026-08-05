@@ -413,6 +413,47 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         )
         self.assertEqual(len(instances[self.scene_id]), 2)
 
+    def test_get_entity_link(self):
+        breakdown_service.update_casting(
+            self.shot.id,
+            [{"asset_id": self.asset_id, "nb_occurences": 3}],
+        )
+        link = breakdown_service.get_entity_link(self.shot_id, self.asset_id)
+        self.assertEqual(link["nb_occurences"], 3)
+        self.assertIsNone(
+            breakdown_service.get_entity_link(
+                self.shot_id, self.asset_character_id
+            )
+        )
+
+    def test_refresh_all_shot_casting_stats(self):
+        """
+        The command that rebuilds the casting stats of the whole instance,
+        used after a change that invalidates them in bulk.
+        """
+        self.generate_fixture_department()
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status()
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
+        projects_service.create_project_task_type_link(
+            self.project_id, str(self.task_type_animation.id), 1
+        )
+        task = self.generate_fixture_shot_task(
+            task_type_id=str(self.task_type_animation.id)
+        )
+        self.asset.update({"ready_for": str(self.task_type_animation.id)})
+        breakdown_service.update_casting(
+            self.shot.id, [{"asset_id": self.asset_id, "nb_occurences": 1}]
+        )
+        task.update({"nb_assets_ready": 0})
+
+        breakdown_service.refresh_all_shot_casting_stats()
+
+        self.assertEqual(
+            tasks_service.get_task(str(task.id))["nb_assets_ready"], 1
+        )
+
     def test_is_asset_ready(self):
         self.generate_fixture_department()
         self.generate_fixture_task_type()

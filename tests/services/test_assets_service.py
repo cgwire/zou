@@ -192,6 +192,30 @@ class AssetServiceTestCase(ApiDBTestCase):
         asset = assets_service.get_asset(asset_id)
         self.assertTrue(asset["canceled"])
 
+    def test_get_all_raw_assets(self):
+        # The indexer walks every asset of the instance, productions included.
+        assets = assets_service.get_all_raw_assets()
+        self.assertEqual([asset.id for asset in assets], [self.asset.id])
+
+    def test_set_shared_assets(self):
+        self.generate_fixture_asset_types()
+        self.generate_fixture_asset_character()
+        # The invalidation keys on the string id, as the routes pass it.
+        character_id = str(self.asset_character.id)
+
+        assets_service.set_shared_assets(
+            asset_type_id=self.asset_type_character.id
+        )
+        self.assertTrue(assets_service.get_asset(character_id)["is_shared"])
+        self.assertFalse(
+            assets_service.get_asset(str(self.asset.id))["is_shared"]
+        )
+
+        assets_service.set_shared_assets(
+            is_shared=False, asset_ids=[character_id]
+        )
+        self.assertFalse(assets_service.get_asset(character_id)["is_shared"])
+
     def test_add_asset_link(self):
         self.generate_fixture_asset_types()
         self.generate_fixture_asset_character()
