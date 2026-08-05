@@ -842,6 +842,7 @@ def add_to_department(department_id, person_id):
     person.departments.append(department)
     person.save()
     clear_person_cache()
+    events.emit("person:update", {"person_id": person_id})
     return person.serialize_safe(relations=True)
 
 
@@ -857,6 +858,7 @@ def remove_from_department(department_id, person_id):
     ]
     person.save()
     clear_person_cache()
+    events.emit("person:update", {"person_id": person_id})
     return person.serialize_safe(relations=True)
 
 

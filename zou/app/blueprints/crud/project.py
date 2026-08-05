@@ -632,7 +632,6 @@ class ProjectTaskTypeLinksResource(MethodView, ArgsMixin):
             args["task_type_id"],
             args["priority"],
         )
-        projects_service.clear_project_cache(task_type_link["project_id"])
         return task_type_link, 201
 
 
@@ -729,7 +728,6 @@ class ProjectTaskStatusLinksResource(MethodView, ArgsMixin):
             args["priority"],
             args["roles_for_board"],
         )
-        projects_service.clear_project_cache(task_status_link["project_id"])
         return task_status_link, 201
 
 

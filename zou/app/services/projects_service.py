@@ -1215,6 +1215,17 @@ def is_open(project):
     return project["project_status_id"] == open_status["id"]
 
 
+def _notify_project_settings_change(project_id):
+    """
+    Drop the project cache and notify the clients after a change on one of its
+    task type or task status links. Those tables are not the project, but the
+    clients read them through it, so the project is what they have to refetch.
+    """
+    project_id = str(project_id)
+    clear_project_cache(project_id)
+    events.emit("project:update", {}, project_id=project_id)
+
+
 def create_project_task_type_link(project_id, task_type_id, priority):
     """
     Link a task type to given project with a priority, or update the
@@ -1239,7 +1250,9 @@ def create_project_task_type_link(project_id, task_type_id, priority):
     else:
         task_type_link.update({"priority": priority})
 
-    return task_type_link.serialize()
+    task_type_link_dict = task_type_link.serialize()
+    _notify_project_settings_change(task_type_link_dict["project_id"])
+    return task_type_link_dict
 
 
 def create_project_task_status_link(
@@ -1273,7 +1286,9 @@ def create_project_task_status_link(
             {"priority": priority, "roles_for_board": roles_for_board}
         )
 
-    return task_status_link.serialize()
+    task_status_link_dict = task_status_link.serialize()
+    _notify_project_settings_change(task_status_link_dict["project_id"])
+    return task_status_link_dict
 
 
 def set_project_task_type_link_priorities(project_id, task_type_ids):
@@ -1290,7 +1305,7 @@ def set_project_task_type_link_priorities(project_id, task_type_ids):
         if link is not None:
             link.update({"priority": priority})
             links.append(link.serialize())
-    clear_project_cache(project_id)
+    _notify_project_settings_change(project_id)
     return links
 
 
@@ -1308,7 +1323,7 @@ def set_project_task_status_link_priorities(project_id, task_status_ids):
         if link is not None:
             link.update({"priority": priority})
             links.append(link.serialize())
-    clear_project_cache(project_id)
+    _notify_project_settings_change(project_id)
     return links
 
 
