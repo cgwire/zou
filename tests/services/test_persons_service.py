@@ -6,7 +6,7 @@ from zou.app.services.exception import (
     PersonNotFoundException,
     WrongParameterException,
 )
-from zou.app.utils import auth
+from zou.app.utils import auth, fields
 
 
 class PersonServiceTestCase(ApiDBTestCase):
@@ -319,6 +319,31 @@ class PersonServiceTestCase(ApiDBTestCase):
         persons_service.create_desktop_login_logs(self.person_id, "2021-06-15")
         result = persons_service.update_person_last_presence(self.person_id)
         self.assertIsNotNone(result)
+
+    def test_get_person_raw_cached(self):
+        """
+        The JWT identity loader goes through here on every request, so the
+        record it hands back has to be attached to the running session.
+        """
+        person = persons_service.get_person_raw_cached(self.person_id)
+        self.assertEqual(str(person.id), self.person_id)
+        self.assertEqual(
+            [department.id for department in person.departments], []
+        )
+        self.assertRaises(
+            PersonNotFoundException,
+            persons_service.get_person_raw_cached,
+            fields.gen_uuid(),
+        )
+
+    def test_is_jti_revoked(self):
+        """
+        A bot or api token carries its jti on the person row: dropping it
+        there is what revokes the token.
+        """
+        self.person.update({"jti": "a-token-id"})
+        self.assertFalse(persons_service.is_jti_revoked("a-token-id"))
+        self.assertTrue(persons_service.is_jti_revoked("another-token-id"))
 
     def test_get_person_by_ldap_uid(self):
         self.assertRaises(

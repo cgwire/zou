@@ -13,6 +13,7 @@ from zou.app.stores import auth_tokens_store
 from zou.app.services import persons_service, auth_service
 from zou.app.services.exception import (
     PersonNotFoundException,
+    TwoFactorAuthenticationNotEnabledException,
     UnactiveUserException,
     WrongPasswordException,
     WrongUserException,
@@ -165,6 +166,46 @@ class AuthTestCase(ApiDBTestCase):
             result = auth_service.check_auth(app, email, "secretpassword")
         self.assertNotIn("password", result)
         self.assertIn("password", person)
+
+    def test_disable_two_factor_authentication_for_person(self):
+        """
+        The admin escape hatch: it turns every method off at once, for a user
+        who lost the device they were enrolled with.
+        """
+        self.assertFalse(
+            auth_service.person_two_factor_authentication_enabled_raw(
+                self.person
+            )
+        )
+        self.assertRaises(
+            TwoFactorAuthenticationNotEnabledException,
+            auth_service.disable_two_factor_authentication_for_person,
+            self.person.id,
+        )
+
+        self.person.update(
+            {
+                "totp_enabled": True,
+                "totp_secret": "secret",
+                "otp_recovery_codes": [b"code"],
+            }
+        )
+        self.assertTrue(
+            auth_service.person_two_factor_authentication_enabled_raw(
+                self.person
+            )
+        )
+
+        auth_service.disable_two_factor_authentication_for_person(
+            self.person.id
+        )
+        self.assertFalse(
+            auth_service.person_two_factor_authentication_enabled_raw(
+                self.person
+            )
+        )
+        self.assertIsNone(self.person.totp_secret)
+        self.assertIsNone(self.person.otp_recovery_codes)
 
     def test_revoke_tokens(self):
         auth_service.revoke_tokens(
