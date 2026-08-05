@@ -3,9 +3,9 @@ from tests.base import ApiDBTestCase
 from zou.app.models.entity import Entity
 
 
-class BreakdownTestCase(ApiDBTestCase):
+class ShotCastingTestCase(ApiDBTestCase):
     def setUp(self):
-        super(BreakdownTestCase, self).setUp()
+        super(ShotCastingTestCase, self).setUp()
         self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_asset_type()
