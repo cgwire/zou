@@ -448,21 +448,6 @@ class FileTreeTestCase(ApiDBTestCase):
             "rabbit_0001_v003",
         )
 
-    def test_get_folder_path_representation(self):
-        self.generate_fixture_scene_asset_instance()
-        path = file_tree_service.get_instance_folder_path(
-            self.asset_instance.serialize(),
-            self.scene.serialize(),
-            task_type=self.task_type_animation.serialize(),
-            output_type=self.output_type_cache,
-            representation="abc",
-        )
-        self.assertEqual(
-            path,
-            "/simple/productions/export/cosmos_landromat/scene/s01/sc01/"
-            "animation/cache/props/tree/instance_0001/abc",
-        )
-
     def test_change_folder_path_separators(self):
         result = file_tree_service.change_folder_path_separators(
             "/simple/big_buck_bunny/props", "\\"

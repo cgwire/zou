@@ -244,8 +244,3 @@ class CreateFromImportTestCase(ApiDBTestCase):
         Task.create_from_import(task_dict)
         task = Task.get(task_dict["id"])
         self.assertEqual(task.name, task_dict["name"])
-
-    """
-    def test_notification(self):
-        pass
-    """

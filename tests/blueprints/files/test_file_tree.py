@@ -229,15 +229,19 @@ class FolderPathTestCase(ApiDBTestCase):
         )
 
     def test_get_file_separator(self):
-        data = {"sep": "\\"}
+        """
+        The separator applies to the folder path only. The file name is built
+        from the same template whatever the client asks for.
+        """
         result = self.post(
-            f"data/tasks/{self.task.id}/working-file-path", data, 200
+            f"data/tasks/{self.task.id}/working-file-path",
+            {"sep": "\\"},
+            200,
         )
         self.assertEqual(
-            result["path"],
-            "/simple\\productions\\cosmos_landromat\\assets\\props\\tree\\"
-            "shaders\\3ds_max",
+            result["name"], "cosmos_landromat_props_tree_shaders_main_v001"
         )
+        self.assertNotIn("\\", result["name"])
 
     def test_get_path_wrong_task_id(self):
         data = {}

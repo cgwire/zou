@@ -29,14 +29,18 @@ class BaseModelTestCase(ApiDBTestCase):
         self.assertEqual(project.id, project_id)
 
     def test_create(self):
+        """
+        create() persists the row and fills what the mixin owns: an id and
+        the two timestamps, none of which the caller provides.
+        """
         self.generate_fixture_project_status()
-        self.generate_fixture_project()
-        project_id = self.generate_fixture_project("Second project").id
-        projects = Project.get_all_by(name="Second project")
-        self.assertEqual(len(projects), 1)
-
-        project = projects[0]
-        self.assertEqual(project.id, project_id)
+        project = Project.create(
+            name="Fresh project", project_status_id=self.open_status.id
+        )
+        self.assertIsNotNone(project.id)
+        self.assertIsNotNone(project.created_at)
+        self.assertIsNotNone(project.updated_at)
+        self.assertEqual(Project.get(project.id).name, "Fresh project")
 
     def test_get_id_map(self):
         self.generate_fixture_project_status()

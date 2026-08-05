@@ -387,36 +387,34 @@ class TaskServiceTestCase(ApiDBTestCase):
 
     def test_get_time_spents(self):
         """
-        person_id = self.person.id
-        user_id = self.user["id"]
-        task_id = self.task.id
-        ts1 = TimeSpent.create(
-            person_id=person_id,
-            task_id=task_id,
-            date=datetime.date(2017, 9, 23),
-            duration=3600
-        )
-        ts2 = TimeSpent.create(
-            person_id=user_id,
-            task_id=task_id,
-            date=datetime.date(2017, 9, 23),
-            duration=7200
-        )
-        ts3 = TimeSpent.create(
-            person_id=user_id,
-            task_id=task_id,
-            date=datetime.date(2017, 9, 24),
-            duration=7200
-        )
-        time_spents = self.get(
-            f"/data/time-spents?task_id={task_id}"
-        )
-        self.assertEqual(
-            time_spents["total"],
-            sum([ts.duration for ts in [ts1, ts2, ts3]]))
-        self.assertEqual(len(time_spents[str(user_id)]), 1)
-        self.assertEqual(len(time_spents[str(person_id)]), 2)
+        Time spents of a task come back grouped by person, with the total
+        alongside. The optional date narrows the group without touching the
+        grouping itself.
         """
+        person_id = str(self.person.id)
+        user_id = str(self.user["id"])
+        first_day = datetime.date(2017, 9, 23)
+        second_day = datetime.date(2017, 9, 24)
+        for person, date, duration in [
+            (person_id, first_day, 3600),
+            (user_id, first_day, 7200),
+            (user_id, second_day, 7200),
+        ]:
+            TimeSpent.create(
+                person_id=person,
+                task_id=self.task_id,
+                date=date,
+                duration=duration,
+            )
+
+        time_spents = tasks_service.get_time_spents(self.task_id)
+        self.assertEqual(time_spents["total"], 18000)
+        self.assertEqual(len(time_spents[person_id]), 1)
+        self.assertEqual(len(time_spents[user_id]), 2)
+
+        one_day = tasks_service.get_time_spents(self.task_id, first_day)
+        self.assertEqual(one_day["total"], 10800)
+        self.assertEqual(len(one_day[user_id]), 1)
 
     def test_clear_assignation(self):
         task_id = self.task.id
