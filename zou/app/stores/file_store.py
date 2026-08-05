@@ -146,6 +146,25 @@ def _safe_size(path):
 
 
 def path(self, filename):
+    """
+    Resolve a storage key to its absolute path on disk (LocalBackend only).
+
+    Keys follow ``{prefix}-{id}`` (see ``make_key``): the first dash separates
+    the logical folder (e.g. ``thumbnails``, ``dbbackup``) from the file id.
+
+    Layout rules:
+    - ``dbbackup`` keys are flat: ``{root}/dbbackup/{id}``. The id may contain
+      dashes (backup timestamps), so UUID-style sharding is skipped.
+    - All other keys are sharded by the first six characters of the id to
+      avoid huge directories: ``{root}/{prefix}/{id[0:3]}/{id[3:6]}/{id}``.
+
+    Example::
+
+        thumbnails-63e453f1-9655-49ad-acba-ff7f27c49e9d
+        -> {root}/thumbnails/63e/453/63e453f1-9655-49ad-acba-ff7f27c49e9d
+
+    Also exposed as ``file_store.path(bucket, key)`` for direct lookups.
+    """
     folder_one = filename.split("-")[0]
     file_name = "-".join(filename.split("-")[1:])
 
@@ -190,6 +209,9 @@ LocalBackend.default_root = _default_root
 
 
 def configure_storages(app):
+    """
+    Configure the storage buckets for the application.
+    """
     global pictures, movies, files
     pictures = make_storage("pictures")
     movies = make_storage("movies")
@@ -199,6 +221,9 @@ def configure_storages(app):
 
 
 def clear_bucket(bucket):
+    """
+    Delete all files in a storage bucket.
+    """
     for filename in bucket.list_files():
         if isinstance(bucket.backend, LocalBackend):
             parts = filename.split("/")
@@ -211,6 +236,9 @@ def clear_bucket(bucket):
 
 
 def make_key(prefix, id):
+    """
+    Build a storage key as ``{prefix}-{id}`` (see ``path``).
+    """
     return f"{prefix}-{id}"
 
 
