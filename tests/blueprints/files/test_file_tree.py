@@ -252,3 +252,44 @@ class FolderPathTestCase(ApiDBTestCase):
     def test_get_path_wrong_mode(self):
         data = {"mode": "unknown"}
         self.post(f"/data/tasks/{self.task.id}/working-file-path", data, 400)
+
+    def test_get_entity_output_file_path(self):
+        """
+        The plain entity variant of the output path, next to the asset
+        instance one above. It resolves the revision itself when the client
+        does not pin one.
+        """
+        output_type = files_service.get_or_create_output_type("Cache")
+        data = {
+            "name": "main",
+            "output_type_id": output_type["id"],
+            "task_type_id": str(self.task_type.id),
+            "revision": 3,
+        }
+        result = self.post(
+            f"/data/entities/{self.asset.id}/output-file-path", data, 200
+        )
+        self.assertEqual(
+            result["folder_path"],
+            "/simple/productions/export/cosmos_landromat/assets/props/tree/"
+            "shaders/cache",
+        )
+        self.assertEqual(
+            result["file_name"],
+            "cosmos_landromat_props_tree_shaders_cache_main_v003",
+        )
+
+    def test_get_entity_output_file_path_next_revision(self):
+        output_type = files_service.get_or_create_output_type("Cache")
+        data = {
+            "name": "main",
+            "output_type_id": output_type["id"],
+            "task_type_id": str(self.task_type.id),
+            "revision": 0,
+        }
+        result = self.post(
+            f"/data/entities/{self.asset.id}/output-file-path", data, 200
+        )
+        self.assertTrue(
+            result["file_name"].endswith("_v001"), result["file_name"]
+        )
