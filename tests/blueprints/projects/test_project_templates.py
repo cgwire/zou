@@ -351,3 +351,47 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
         ).all()
         self.assertEqual(len(descriptors), 1)
         self.assertEqual(descriptors[0].name, "Difficulty")
+
+    # --- Default preview background file --------------------------------
+
+    def _new_template(self, name="Series Setup"):
+        return self.post("/data/project-templates", {"name": name})
+
+    def test_set_template_default_background(self):
+        template = self._new_template()
+        background = self.generate_fixture_preview_background_file()
+        self.post(
+            f"/data/project-templates/{template['id']}"
+            f"/preview-background-files",
+            {"preview_background_file_id": str(background.id)},
+        )
+
+        path = (
+            f"/data/project-templates/{template['id']}"
+            f"/default-preview-background-file"
+        )
+        result = self.put(
+            path, {"default_preview_background_file_id": str(background.id)}
+        )
+        self.assertEqual(
+            result["default_preview_background_file_id"], str(background.id)
+        )
+
+        # Passing null clears it, which is how a studio drops the default.
+        result = self.put(path, {"default_preview_background_file_id": None})
+        self.assertIsNone(result["default_preview_background_file_id"])
+
+    def test_set_template_default_background_not_linked(self):
+        """
+        The default has to be one of the template's own backgrounds, so a
+        file that was never linked to it is refused.
+        """
+        template = self._new_template()
+        background = self.generate_fixture_preview_background_file()
+
+        self.put(
+            f"/data/project-templates/{template['id']}"
+            f"/default-preview-background-file",
+            {"default_preview_background_file_id": str(background.id)},
+            400,
+        )
