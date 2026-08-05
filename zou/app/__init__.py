@@ -33,7 +33,7 @@ from zou.app.services.exception import (
 )
 
 from zou.app.utils import cache, fs, monitoring
-from zou.app.utils.flask import (
+from zou.app.utils.flask_utils import (
     ParsedUserAgent,
     ORJSONProvider,
     wrong_auth_handler,

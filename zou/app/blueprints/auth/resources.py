@@ -40,7 +40,7 @@ from zou.app.services import (
     templates_service,
 )
 
-from zou.app.utils.flask import is_from_browser
+from zou.app.utils.flask_utils import is_from_browser
 from zou.app.utils.saml import saml_client_for
 from zou.app.utils import oidc
 
