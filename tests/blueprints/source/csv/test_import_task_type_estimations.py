@@ -73,3 +73,46 @@ class ImportCsvTaskTypeEstimationsTestCase(ApiDBTestCase):
         self.assertIsNone(task.data.get("other"))
         # Metadata absent from the CSV must survive the import.
         self.assertEqual(task.data.get("note"), "keep me")
+
+    def test_import_scoped_to_an_episode(self):
+        """
+        The episode variant of the route. A tv show repeats sequence and shot
+        names across episodes, so the episode in the path is what tells two
+        identically named shots apart.
+        """
+        self.generate_fixture_episode("E01")
+        first_episode = self.episode
+        self.generate_fixture_sequence("S01", episode_id=first_episode.id)
+        first_shot = self.generate_fixture_shot("P01")
+        # The lookup branches on task_type["for_entity"], so a shot import
+        # needs a shot task type, not the asset one the other tests use.
+        shot_task_type = self.task_type_animation
+        first_task = self.generate_fixture_shot_task(
+            "main", shot_id=first_shot.id, task_type_id=shot_task_type.id
+        )
+
+        self.generate_fixture_episode("E02")
+        second_episode = self.episode
+        self.generate_fixture_sequence("S01", episode_id=second_episode.id)
+        second_shot = self.generate_fixture_shot("P01")
+        second_task = self.generate_fixture_shot_task(
+            "main", shot_id=second_shot.id, task_type_id=shot_task_type.id
+        )
+
+        # Scoped on the first episode on purpose. Both shots slugify to the
+        # same key, and without the scoping the map keeps the last one built,
+        # which is the second episode's: the row would then land on the wrong
+        # shot and this assertion would fail.
+        path = (
+            f"/import/csv/projects/{self.project.id}"
+            f"/episodes/{first_episode.id}"
+            f"/task-types/{shot_task_type.id}/estimations"
+        )
+        content = "Parent,Entity,Start date\nS01,P01,2024-03-08\n"
+        self.upload_file(path, self.write_csv(content))
+
+        self.assertEqual(
+            Task.get(first_task.id).start_date.strftime("%Y-%m-%d"),
+            "2024-03-08",
+        )
+        self.assertIsNone(Task.get(second_task.id).start_date)
