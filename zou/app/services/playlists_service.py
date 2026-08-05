@@ -1258,19 +1258,35 @@ def generate_playlisted_entity_from_task(task_id, task_type_links):
     return playlisted_entity
 
 
+def _build_playlisted_entity(entity, task_id, parent_name="", **extra):
+    """
+    Build a playlist entry carrying the whole key set, whatever the kind of
+    entity: a consumer reads episode_id or sequence_name on any entry
+    without having to know which builder produced it. Keys that do not
+    apply stay empty, which the clients already treat as absent.
+    """
+    entry = {
+        "id": entity["id"],
+        "name": entity["name"],
+        "preview_file_task_id": task_id,
+        "parent_name": parent_name,
+        "episode_id": "",
+        "episode_name": "",
+        "sequence_id": "",
+        "sequence_name": "",
+        "asset_type_id": "",
+        "asset_type_name": "",
+    }
+    entry.update(extra)
+    return entry
+
+
 def get_base_episode_for_playlist(entity, task_id):
     """
     Build the playlist entry of an episode: it has no parent to show.
     """
     episode = shots_service.get_episode(entity["id"])
-    return {
-        "id": episode["id"],
-        "name": episode["name"],
-        "preview_file_task_id": task_id,
-        "sequence_id": "",
-        "sequence_name": "",
-        "parent_name": "",
-    }
+    return _build_playlisted_entity(episode, task_id)
 
 
 def get_base_sequence_for_playlist(entity, task_id):
@@ -1288,22 +1304,14 @@ def get_base_sequence_for_playlist(entity, task_id):
             e,
         )
     if episode is None:
-        return {
-            "id": sequence["id"],
-            "name": sequence["name"],
-            "preview_file_task_id": task_id,
-            "sequence_id": "",
-            "sequence_name": "",
-            "parent_name": "",
-        }
-    return {
-        "id": sequence["id"],
-        "name": sequence["name"],
-        "preview_file_task_id": task_id,
-        "episode_id": episode["id"],
-        "episode_name": episode["name"],
-        "parent_name": episode["name"],
-    }
+        return _build_playlisted_entity(sequence, task_id)
+    return _build_playlisted_entity(
+        sequence,
+        task_id,
+        parent_name=episode["name"],
+        episode_id=episode["id"],
+        episode_name=episode["name"],
+    )
 
 
 def get_base_shot_for_playlist(entity, task_id):
@@ -1312,14 +1320,13 @@ def get_base_shot_for_playlist(entity, task_id):
     """
     shot = shots_service.get_shot(entity["id"])
     sequence = shots_service.get_sequence(shot["parent_id"])
-    playlisted_entity = {
-        "id": shot["id"],
-        "name": shot["name"],
-        "preview_file_task_id": task_id,
-        "sequence_id": sequence["id"],
-        "sequence_name": sequence["name"],
-        "parent_name": sequence["name"],
-    }
+    return _build_playlisted_entity(
+        shot,
+        task_id,
+        parent_name=sequence["name"],
+        sequence_id=sequence["id"],
+        sequence_name=sequence["name"],
+    )
 
 
 def get_base_edit_for_playlist(entity, task_id):
@@ -1335,22 +1342,14 @@ def get_base_edit_for_playlist(entity, task_id):
             f"No episode for edit parent_id={edit.get('parent_id')}: {e}"
         )
     if episode is None:
-        return {
-            "id": edit["id"],
-            "name": edit["name"],
-            "preview_file_task_id": task_id,
-            "episode_id": "",
-            "episode_name": "",
-            "parent_name": "",
-        }
-    return {
-        "id": edit["id"],
-        "name": edit["name"],
-        "preview_file_task_id": task_id,
-        "episode_id": episode["id"],
-        "episode_name": episode["name"],
-        "parent_name": episode["name"],
-    }
+        return _build_playlisted_entity(edit, task_id)
+    return _build_playlisted_entity(
+        edit,
+        task_id,
+        parent_name=episode["name"],
+        episode_id=episode["id"],
+        episode_name=episode["name"],
+    )
 
 
 def get_base_asset_for_playlist(entity, task_id):
@@ -1359,14 +1358,13 @@ def get_base_asset_for_playlist(entity, task_id):
     """
     asset = assets_service.get_asset(entity["id"])
     asset_type = assets_service.get_asset_type(asset["entity_type_id"])
-    playlisted_entity = {
-        "id": asset["id"],
-        "name": asset["name"],
-        "preview_file_task_id": task_id,
-        "asset_type_id": asset_type["id"],
-        "asset_type_name": asset_type["name"],
-        "parent_name": asset_type["name"],
-    }
+    return _build_playlisted_entity(
+        asset,
+        task_id,
+        parent_name=asset_type["name"],
+        asset_type_id=asset_type["id"],
+        asset_type_name=asset_type["name"],
+    )
 
 
 def get_preview_files_for_task(task_id):
