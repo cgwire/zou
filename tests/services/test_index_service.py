@@ -5,21 +5,25 @@ import pytest
 from tests.base import ApiDBTestCase, indexer_is_up
 
 from zou.app.services import assets_service, index_service
+from zou.app.services.exception import (
+    EpisodeNotFoundException,
+    SequenceNotFoundException,
+)
 
-pytestmark = [
+# The gate is on the class that talks to the indexer, not on the module: the
+# document builders below need no Meilisearch and must run everywhere.
+needs_indexer = [
     pytest.mark.integration,
     pytest.mark.skipif(
         not indexer_is_up(),
         reason="Needs a running Meilisearch (integration test)",
     ),
 ]
-from zou.app.services.exception import (
-    EpisodeNotFoundException,
-    SequenceNotFoundException,
-)
 
 
 class IndexServiceTestCase(ApiDBTestCase):
+    pytestmark = needs_indexer
+
     def setUp(self):
         super(IndexServiceTestCase, self).setUp()
 
@@ -106,3 +110,34 @@ class IndexServiceTestCase(ApiDBTestCase):
             data = index_service.prepare_shot(self.shot)
         self.assertEqual(data["sequence_id"], str(self.shot.parent_id))
         self.assertEqual(data["episode_id"], "")
+
+
+class PrepareDocumentTestCase(ApiDBTestCase):
+    """
+    The documents pushed to the index. No indexer involved: they are plain
+    dicts built from a model.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project_status()
+        self.generate_fixture_project()
+        self.generate_fixture_asset_type()
+        self.generate_fixture_person()
+
+    def test_prepare_asset(self):
+        asset = self.generate_fixture_asset(name="main_character")
+        asset.update({"data": {"size": 3}})
+        document = index_service.prepare_asset(asset)
+        self.assertEqual(document["id"], str(asset.id))
+        # The name is repeated with its separators spelled out, so that a
+        # search on "main character" reaches an asset named "main_character".
+        self.assertEqual(
+            document["name"], "Props main_character main character"
+        )
+        self.assertEqual(document["metadatas"], {"size": "3"})
+
+    def test_prepare_person(self):
+        document = index_service.prepare_person(self.person)
+        self.assertEqual(document["id"], str(self.person.id))
+        self.assertEqual(document["name"], self.person.full_name)
