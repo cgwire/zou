@@ -5,6 +5,9 @@ from zou.app.models.preview_file import PreviewFile
 from zou.app.models.task import Task
 
 from zou.app.services import playlist_sharing_service
+from zou.app.services.exception import (
+    PlaylistShareLinkNotFoundException,
+)
 
 
 class PlaylistSharingServiceTestCase(ApiDBTestCase):
@@ -148,6 +151,44 @@ class PlaylistSharingServiceTestCase(ApiDBTestCase):
             playlist_sharing_service.is_preview_file_in_shared_playlist(
                 token, str(cross_task_collision.id)
             )
+        )
+
+    def test_get_shared_playlist(self):
+        """
+        What the viewer behind a share link reads. Shots come back enriched
+        with the task the positioned preview belongs to, which the raw
+        playlist.shots JSON does not carry.
+        """
+        preview = PreviewFile.create(
+            name="first.png",
+            revision=1,
+            extension="png",
+            task_id=self.task.id,
+            person_id=self.person.id,
+        )
+        PlaylistModel.get(self.playlist["id"]).update(
+            {
+                "shots": [
+                    {
+                        "entity_id": str(self.asset.id),
+                        "preview_file_id": str(preview.id),
+                    }
+                ]
+            }
+        )
+        token = self.share()
+
+        playlist = playlist_sharing_service.get_shared_playlist(token)
+        self.assertEqual(playlist["id"], self.playlist["id"])
+        self.assertEqual(
+            playlist["shots"][0]["preview_file_task_id"], str(self.task.id)
+        )
+
+        playlist_sharing_service.revoke_share_link(token)
+        self.assertRaises(
+            PlaylistShareLinkNotFoundException,
+            playlist_sharing_service.get_shared_playlist,
+            token,
         )
 
     def test_membership_skips_dangling_positioned_preview(self):

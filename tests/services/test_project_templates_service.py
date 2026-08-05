@@ -67,6 +67,18 @@ class ProjectTemplateServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(templates), 2)
         self.assertEqual([t["name"] for t in templates], ["A", "B"])
 
+    def test_get_project_template_by_name(self):
+        project_templates_service.create_project_template(name="Series Setup")
+        template = project_templates_service.get_project_template_by_name(
+            "series setup"
+        )
+        self.assertEqual(template["name"], "Series Setup")
+        self.assertRaises(
+            ProjectTemplateNotFoundException,
+            project_templates_service.get_project_template_by_name,
+            "Series",
+        )
+
     def test_get_project_template_not_found(self):
         self.assertRaises(
             ProjectTemplateNotFoundException,
