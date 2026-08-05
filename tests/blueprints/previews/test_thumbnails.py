@@ -4,7 +4,7 @@ import hashlib
 from tests.base import ApiDBTestCase
 
 from zou.app.utils import fs, thumbnail
-from zou.app.services import assets_service, projects_service
+from zou.app.services import assets_service, persons_service, projects_service
 
 from PIL import Image
 
@@ -158,3 +158,60 @@ class RouteThumbnailTestCase(ApiDBTestCase):
         self.download_file(path, result_file_path)
         result_image = Image.open(result_file_path)
         self.assertEqual(result_image.size, (300, 200))
+
+    def _upload_thumbnail(self, path):
+        self.upload_file(
+            path,
+            self.get_fixture_file_path(os.path.join("thumbnails", "th01.png")),
+        )
+
+    def test_add_project_thumbnail(self):
+        path = f"/pictures/thumbnails/projects/{self.project.id}"
+        self._upload_thumbnail(path)
+
+        self.create_test_folder()
+        result_file_path = self.get_file_path("project-th.png")
+        self.download_file(f"{path}.png", result_file_path)
+
+        self.assertEqual(
+            Image.open(result_file_path).size, thumbnail.BIG_SQUARE_SIZE
+        )
+        self.assertTrue(
+            projects_service.get_project(str(self.project.id))["has_avatar"]
+        )
+
+    def test_project_thumbnail_needs_project_access(self):
+        """
+        A project avatar is only readable by a manager or by someone on the
+        production. Uploading one is stricter still, it takes a manager of
+        that production.
+        """
+        path = f"/pictures/thumbnails/projects/{self.project.id}"
+        self._upload_thumbnail(path)
+
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        self.get(f"{path}.png", 403)
+        self.upload_file(
+            path,
+            self.get_fixture_file_path(os.path.join("thumbnails", "th01.png")),
+            code=403,
+        )
+
+    def test_add_organisation_thumbnail(self):
+        """
+        The organisation is a singleton: the resource resolves it with
+        get_organisation() and ignores the id in the url when reading, so the
+        round trip only holds for the one row the instance actually has.
+        """
+        organisation_id = persons_service.get_organisation()["id"]
+        path = f"/pictures/thumbnails/organisations/{organisation_id}"
+        self._upload_thumbnail(path)
+
+        self.create_test_folder()
+        result_file_path = self.get_file_path("organisation-th.png")
+        self.download_file(f"{path}.png", result_file_path)
+
+        self.assertEqual(
+            Image.open(result_file_path).size, thumbnail.BIG_SQUARE_SIZE
+        )
