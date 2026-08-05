@@ -186,14 +186,27 @@ def local_auth_strategy(person, password, app=None):
     to given password).
     Password hash comparison is based on BCrypt.
     """
-    try:
-        password_hash = person["password"] or ""
-        if password_hash and auth.check_password(password_hash, password):
-            return person
-        else:
-            raise WrongPasswordException()
-    except ValueError:
+    # Refusing an account whose stored value cannot be compared answered
+    # in a millisecond, where an unknown address pays the bcrypt
+    # _spend_password_check_time deliberately costs. That identified a
+    # registered address in a single request, by response time alone, and
+    # both cases are ordinary: a person imported from a CSV has no
+    # password at all, and the LDAP sync stores the literal b"default",
+    # which is not a hash.
+    password_hash = person["password"] or ""
+    if not password_hash:
+        _spend_password_check_time(password)
         raise WrongPasswordException()
+
+    try:
+        password_matches = auth.check_password(password_hash, password)
+    except ValueError:
+        _spend_password_check_time(password)
+        raise WrongPasswordException()
+
+    if not password_matches:
+        raise WrongPasswordException()
+    return person
 
 
 def ldap_auth_strategy(person, password, app):
@@ -262,13 +275,19 @@ def update_login_failed_attemps(
 ):
     """
     Update login failed attemps for a person_id.
+
+    The person cache is deliberately left alone: check_login_failed_attemps
+    reads the counter from the row, so nothing needs the cached copy to be
+    in step, and clear_person_cache drops every memoized person lookup for
+    the whole instance. Calling it here let an anonymous caller keep that
+    cache cold with a handful of wrong passwords a minute, while the JWT
+    loader reads it on every authenticated request.
     """
     person = Person.get(person_id)
     person.login_failed_attemps = login_failed_attemps
     if last_login_failed is not None:
         person.last_login_failed = last_login_failed
     person.commit()
-    persons_service.clear_person_cache()
     return person.serialize()
 
 
@@ -810,17 +829,20 @@ def check_login_failed_attemps(person):
     another minute, so anyone knowing an address could hold it shut
     indefinitely at one request a minute — the owner included, correct
     password and all. Rearming now costs a fresh burst.
+
+    The counter is read from the row, not from the person dict: that dict
+    comes from a lookup memoized for two minutes, and keeping it in step
+    meant dropping the whole instance person cache on every wrong
+    password. See update_login_failed_attemps.
     """
-    login_failed_attemps = person["login_failed_attemps"] or 0
+    row = Person.get(person["id"])
+    login_failed_attemps = row.login_failed_attemps or 0
     if login_failed_attemps < MAX_LOGIN_FAILED_ATTEMPS:
         return login_failed_attemps
 
-    last_login_failed = person["last_login_failed"]
+    last_login_failed = row.last_login_failed
     if last_login_failed is not None:
-        locked_until = (
-            date_helpers.get_datetime_from_string(last_login_failed)
-            + LOGIN_LOCKOUT_DELAY
-        )
+        locked_until = last_login_failed + LOGIN_LOCKOUT_DELAY
         if locked_until > date_helpers.get_utc_now_datetime():
             raise TooMuchLoginFailedAttemps()
 

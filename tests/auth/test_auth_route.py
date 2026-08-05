@@ -8,7 +8,7 @@ from tests.base import ApiDBTestCase
 from zou.app.utils import auth, date_helpers, fields
 from zou.app.models.person import Person
 from zou.app.stores import auth_tokens_store
-from zou.app.services import persons_service
+from zou.app.services import auth_service, persons_service
 
 
 class AuthTestCase(ApiDBTestCase):
@@ -207,6 +207,48 @@ class AuthTestCase(ApiDBTestCase):
             auth.check_password = original
 
         self.assertEqual(len(calls), 1)
+
+    def test_password_less_account_costs_a_password_check(self):
+        # A person imported from a CSV has no password at all, and the
+        # LDAP sync stores the literal b"default", which is not a hash.
+        # Both were refused without hashing, in a millisecond, where an
+        # unknown address pays a full bcrypt — one request told them
+        # apart. Counted rather than timed, as above.
+        for stored_password in [None, b"default"]:
+            self.person.update({"password": stored_password})
+            persons_service.clear_person_cache()
+
+            calls = []
+            original = auth.check_password
+
+            def counting_check_password(password_hash, password):
+                calls.append(password_hash)
+                return original(password_hash, password)
+
+            auth.check_password = counting_check_password
+            try:
+                self.post("auth/login", self.credentials, 400)
+            finally:
+                auth.check_password = original
+
+            # The dummy hash is the one comparison that really runs the
+            # KDF: b"default" fails on the salt before doing any work.
+            self.assertIn(auth_service._dummy_password_hash, calls)
+
+    def test_wrong_password_does_not_flush_the_person_cache(self):
+        # clear_person_cache drops every memoized person lookup for the
+        # whole instance, and the JWT loader reads that cache on every
+        # authenticated request. Calling it from the failure path let an
+        # anonymous caller keep it cold for a few requests a minute.
+        calls = []
+        original = persons_service.clear_person_cache
+        persons_service.clear_person_cache = lambda: calls.append(1)
+        try:
+            self._fail_login(1)
+        finally:
+            persons_service.clear_person_cache = original
+
+        self.assertEqual(calls, [])
 
     def test_logout(self):
         tokens = self.post("auth/login", self.credentials, 200)
