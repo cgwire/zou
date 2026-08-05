@@ -43,8 +43,6 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           branch: apidocs
       - name: Push on bump.sh
-        uses: bump-sh/github-action@v1
-        with:
-          doc: kitsu-api
-          token: ${{secrets.BUMP_TOKEN}}
-          file: docs/openapi.json
+        run: npx --yes bump-cli@2 deploy docs/openapi.json --doc kitsu-api
+        env:
+          BUMP_TOKEN: ${{ secrets.BUMP_TOKEN }}
