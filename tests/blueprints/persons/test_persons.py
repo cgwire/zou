@@ -1,5 +1,7 @@
 import urllib.parse
 
+from unittest import mock
+
 from tests.base import ApiDBTestCase
 
 from zou.app.models.day_off import DayOff
@@ -308,3 +310,26 @@ class PersonRoutesTestCase(ApiDBTestCase):
         )
         person = self.get(f"/data/persons/{self.person_id}")
         self.assertFalse(person.get("totp_enabled", False))
+
+    def test_invite_person(self):
+        """
+        The invitation mail. Only an admin sends one, and never to a bot:
+        a bot has no mailbox and no password to set.
+        """
+        path = f"/actions/persons/{self.person.id}/invite"
+        with mock.patch("zou.app.utils.emails.send_email") as send_email:
+            result = self.get(path)
+        self.assertEqual(result, {"success": True, "message": "Email sent"})
+        self.assertEqual(send_email.call_count, 1)
+
+        bot = Person.create(
+            first_name="Bot",
+            last_name="Helper",
+            email="bot@example.com",
+            is_bot=True,
+        )
+        self.get(f"/actions/persons/{bot.id}/invite", 403)
+
+        self.generate_fixture_user_manager()
+        self.log_in_manager()
+        self.get(path, 403)

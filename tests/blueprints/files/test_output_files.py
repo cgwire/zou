@@ -693,3 +693,28 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
             f"data/asset-instances/{self.asset_instance.id}/entities/{self.scene.id}/output-types/{geometry.id}/output-files?representation=max"
         )
         self.assertEqual(len(output_files), 3)
+
+    def test_get_entity_output_files(self):
+        """
+        The listing of an entity's output files, next to the creation route
+        the rest of this file exercises. The optional filters narrow it, and
+        reading it takes access to the production.
+        """
+        self.generate_output_files()
+        path = f"data/entities/{self.asset_id}/output-files"
+
+        output_files = self.get(path)
+        self.assertGreater(len(output_files), 0)
+        self.assertTrue(
+            all(f["entity_id"] == self.asset_id for f in output_files)
+        )
+
+        by_type = self.get(f"{path}?output_type_id={self.geometry_id}")
+        self.assertTrue(
+            all(f["output_type_id"] == self.geometry_id for f in by_type)
+        )
+        self.assertLess(len(by_type), len(output_files))
+
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        self.get(path, 403)
