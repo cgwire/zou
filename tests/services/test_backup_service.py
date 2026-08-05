@@ -5,6 +5,8 @@ import unittest
 
 from unittest import mock
 
+from tests.base import ApiDBTestCase
+
 from zou.app.services import backup_service
 from zou.app.services.exception import BackupFailedException
 
@@ -75,3 +77,70 @@ class GenerateDbBackupTestCase(unittest.TestCase):
         # dump_database would upload it to the store and drop the local copy.
         with self.assertRaises(BackupFailedException):
             self.run_backup(["CREATE TABLE a;\n"], 1)
+
+
+class UploadToStorageTestCase(ApiDBTestCase):
+    """
+    The commands that push a local preview store to object storage. Only the
+    decision of what to upload is checked here: the store itself is mocked,
+    since in a test run both ends are the same local backend.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project_status()
+        self.generate_fixture_project()
+        self.generate_fixture_asset_type()
+        self.generate_fixture_asset()
+        self.generate_fixture_department()
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status()
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
+        self.generate_fixture_task()
+
+    def write_local_picture(self, key):
+        path = backup_service.local_picture.path(key)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "wb") as picture:
+            picture.write(b"png")
+        return path
+
+    def test_store_db_backup(self):
+        with mock.patch.object(backup_service.file_store, "add_file") as add:
+            backup_service.store_db_backup("dump.sql.gz", "/tmp/dump.sql.gz")
+        add.assert_called_once_with(
+            "dbbackup", "dump.sql.gz", "/tmp/dump.sql.gz"
+        )
+
+    def test_upload_entity_thumbnails_to_storage(self):
+        self.project.update({"has_avatar": True})
+        self.write_local_picture(f"thumbnails-{self.project.id}")
+        self.person.update({"has_avatar": False})
+
+        with mock.patch.object(
+            backup_service.file_store, "add_picture"
+        ) as add:
+            backup_service.upload_entity_thumbnails_to_storage()
+
+        uploaded = {call.args[1] for call in add.call_args_list}
+        self.assertIn(str(self.project.id), uploaded)
+        self.assertNotIn(str(self.person.id), uploaded)
+
+    def test_upload_preview_files_to_storage(self):
+        preview_file = self.generate_fixture_preview_file()
+        preview_file_id = str(preview_file.id)
+        self.write_local_picture(f"thumbnails-{preview_file_id}")
+
+        with mock.patch.object(
+            backup_service.file_store, "add_picture"
+        ) as add, mock.patch.object(
+            backup_service.file_store, "exists_picture", return_value=False
+        ):
+            backup_service.upload_preview_files_to_storage()
+
+        add.assert_called_once_with(
+            "thumbnails",
+            preview_file_id,
+            backup_service.local_picture.path(f"thumbnails-{preview_file_id}"),
+        )
