@@ -487,9 +487,7 @@ class ScheduleServiceTestCase(ApiDBTestCase):
         )
         # The copy records its origin version.
         copied = ProductionScheduleVersion.get(target.id)
-        self.assertEqual(
-            str(copied.production_schedule_from), str(source.id)
-        )
+        self.assertEqual(str(copied.production_schedule_from), str(source.id))
 
     def test_set_production_schedule_version_task_links_from_version_preserves_unrelated(
         self,
@@ -609,8 +607,10 @@ class ScheduleServiceTestCase(ApiDBTestCase):
             }
         )
 
-        result = schedule_service.apply_production_schedule_version_to_production(
-            str(psv.id)
+        result = (
+            schedule_service.apply_production_schedule_version_to_production(
+                str(psv.id)
+            )
         )
         self.assertEqual(result, {"success": True, "task_count": 1})
 

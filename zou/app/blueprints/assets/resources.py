@@ -22,10 +22,14 @@ from zou.app.blueprints.assets.schemas import (
 
 
 def check_criterion_access(criterions):
-    # Answers 403 when the caller names a project or episode it may not see.
-    # The team scoping of the whole list lives in assets_service.get_assets
-    # (only_user_projects), so a request without a project is not open here:
-    # it is filtered there.
+    """
+    Raise 403 if the caller filters by a project or episode they cannot access.
+
+    Resolves ``project_id`` from the criterions (directly, or via the episode)
+    and calls ``user_service.check_project_access``. When no project/episode is
+    given, access is not checked here: ``assets_service.get_assets`` already
+    scopes the list with ``only_user_projects``.
+    """
     project_id = None
     if "project_id" in criterions:
         project_id = criterions.get("project_id", None)

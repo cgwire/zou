@@ -485,8 +485,7 @@ def set_production_schedule_version_task_links_from_production(
         select(tl.id, TaskPersonLink.person_id)
         .join(TaskPersonLink, TaskPersonLink.task_id == tl.task_id)
         .where(
-            tl.production_schedule_version_id
-            == production_schedule_version_id
+            tl.production_schedule_version_id == production_schedule_version_id
         ),
     )
 
@@ -550,8 +549,7 @@ def set_production_schedule_version_task_links_from_production_schedule_version(
         )
         .join(pl, pl.production_schedule_version_task_link_id == other_tl.id)
         .where(
-            tl.production_schedule_version_id
-            == production_schedule_version_id
+            tl.production_schedule_version_id == production_schedule_version_id
         ),
     )
 

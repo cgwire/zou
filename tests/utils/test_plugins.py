@@ -450,10 +450,6 @@ class PluginAlembicConfigTestCase(ApiDBTestCase):
 
         uri = "postgresql://user:i4xVGz%2189Dsoi@localhost:5432/zoudb"
         with app.app_context():
-            with patch.dict(
-                app.config, {"SQLALCHEMY_DATABASE_URI": uri}
-            ):
+            with patch.dict(app.config, {"SQLALCHEMY_DATABASE_URI": uri}):
                 alembic_cfg = _build_plugin_alembic_config(self.temp_dir)
-        self.assertEqual(
-            alembic_cfg.get_main_option("sqlalchemy.url"), uri
-        )
+        self.assertEqual(alembic_cfg.get_main_option("sqlalchemy.url"), uri)
