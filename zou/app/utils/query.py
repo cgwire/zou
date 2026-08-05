@@ -7,7 +7,7 @@ import sqlalchemy.orm as orm
 from zou.app import config
 from zou.app.utils import fields, string
 from zou.app.services.exception import WrongParameterException
-from sqlalchemy import func
+from sqlalchemy import func, types as sa_types
 from sqlalchemy.inspection import inspect
 
 
@@ -185,6 +185,14 @@ def apply_sort_by(model, query, sort_by):
 
 
 def cast_value(value, field_key):
+    # A hybrid expression built from functions SQLAlchemy does not know
+    # carries NullType: Person.full_name is a concat_ws inside a trim.
+    # CAST(... AS NULL) cannot even be compiled, and the CompileError is
+    # not a StatementError, so it escaped as a 500 instead of a filter.
+    # Comparing the bare value is what the cast stood in for anyway.
+    if isinstance(field_key.type, sa_types.NullType):
+        return value
+
     # Some column types (ChoiceType, LocaleType, TimezoneType, ...) do not
     # implement python_type and raise NotImplementedError; they just fall
     # through to the generic cast below instead of crashing the request.

@@ -13,6 +13,7 @@ from zou.app.models.person import (
 from zou.app.utils import fields
 
 from operator import itemgetter
+from urllib.parse import quote
 
 
 class NormalizeCountryTestCase(unittest.TestCase):
@@ -434,6 +435,24 @@ class PersonTestCase(ApiDBTestCase):
         self.assertEqual(persons[0]["id"], str(person.id))
 
         self.assertEqual(self.get("data/persons?email=nobody@gmail.com"), [])
+
+    def test_full_name_is_filterable(self):
+        # full_name is a hybrid whose SQL expression is a concat_ws inside
+        # a trim, two functions SQLAlchemy types as NullType: casting the
+        # value to it raised a CompileError, and the route answered
+        # gazu.person.get_person_by_full_name() with a 500.
+        person = Person.get_by(email="ema.doe@gmail.com")
+        path = f"data/persons?full_name={quote('Ema Doe')}"
+
+        persons = self.get(path)
+        self.assertEqual(len(persons), 1)
+        self.assertEqual(persons[0]["id"], str(person.id))
+
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        persons = self.get(path)
+        self.assertEqual(len(persons), 1)
+        self.assertEqual(persons[0]["id"], str(person.id))
 
     def test_visible_columns_stay_filterable(self):
         person = Person.get_by(email="ema.doe@gmail.com")
