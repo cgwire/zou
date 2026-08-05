@@ -7,6 +7,7 @@ from zou.app.services import file_tree_service, files_service
 from zou.app.services.exception import (
     MalformedFileTreeException,
     WrongFileTreeFileException,
+    WrongPathFormatException,
 )
 
 from zou.app.models.entity import Entity
@@ -447,6 +448,59 @@ class FileTreeTestCase(ApiDBTestCase):
             "cosmos_landromat_props_tree_shaders_materials_main_"
             "rabbit_0001_v003",
         )
+
+    def test_get_output_file_path(self):
+        path = file_tree_service.get_output_file_path(
+            self.shot.serialize(),
+            output_type=self.output_type_cache,
+            task_type=self.task_type_animation.serialize(),
+            name="main",
+            revision=3,
+            sep="/",
+        )
+        self.assertEqual(
+            path,
+            "/simple/productions/export/cosmos_landromat/shots/s01/p01/"
+            "animation/cache/"
+            "cosmos_landromat_s01_p01_animation_cache_main_v003",
+        )
+
+    def test_get_shot_task_from_path(self):
+        # The tokens are matched against entity names as they are stored, not
+        # against the lowercase style the templates render paths with. The
+        # shot template carries no <Episode> token, so the sequence is looked
+        # up with no parent: only a flat production resolves.
+        shot = Entity.create(
+            name="P002",
+            project_id=self.project.id,
+            entity_type_id=self.shot_type.id,
+            parent_id=self.sequence_standard.id,
+        )
+        shot_task = self.generate_fixture_shot_task(
+            name="main", shot_id=shot.id
+        )
+
+        task = file_tree_service.get_shot_task_from_path(
+            "/simple/productions/cosmos_landromat/shots/Seq1/P002/Animation/"
+            "max",
+            self.project.serialize(),
+        )
+        self.assertEqual(task["id"], str(shot_task.id))
+
+    def test_get_asset_task_from_path(self):
+        task = file_tree_service.get_asset_task_from_path(
+            "/simple/productions/cosmos_landromat/assets/Props/Tree/Shaders/"
+            "blender",
+            self.project.serialize(),
+        )
+        self.assertEqual(task["id"], str(self.task.id))
+
+    def test_get_task_from_path_rejects_a_path_of_another_shape(self):
+        with self.assertRaises(WrongPathFormatException):
+            file_tree_service.get_shot_task_from_path(
+                "/simple/productions/cosmos_landromat/shots/S01/P01",
+                self.project.serialize(),
+            )
 
     def test_change_folder_path_separators(self):
         result = file_tree_service.change_folder_path_separators(
