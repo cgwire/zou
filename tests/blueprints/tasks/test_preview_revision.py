@@ -2,8 +2,6 @@
 from tests.base import ApiDBTestCase
 
 from zou.app.models.preview_file import PreviewFile
-from zou.app.services import tasks_service
-from zou.app.services.exception import RevisionAlreadyExistsException
 
 
 class PreviewRevisionTestCase(ApiDBTestCase):
@@ -145,49 +143,6 @@ class PreviewRevisionTestCase(ApiDBTestCase):
         # Check that extra preview also has revision 5
         extra_preview = PreviewFile.get(preview2["id"])
         self.assertEqual(extra_preview.revision, 5)
-
-    def test_check_revision_is_unique_service(self):
-        """
-        Direct test of check_revision_is_unique_for_task service function.
-        """
-        # Create a preview with revision 1
-        self.generate_fixture_preview_file(revision=1, position=1)
-
-        # Check should raise for existing revision
-        with self.assertRaises(RevisionAlreadyExistsException):
-            tasks_service.check_revision_is_unique_for_task(
-                str(self.task.id), revision=1
-            )
-
-        # Check should pass for non-existing revision
-        tasks_service.check_revision_is_unique_for_task(
-            str(self.task.id), revision=2
-        )
-
-    def test_check_revision_exclude_self(self):
-        """
-        Check should exclude the preview being updated.
-        """
-        preview = self.generate_fixture_preview_file(revision=1, position=1)
-
-        # Should not raise when excluding the preview itself
-        tasks_service.check_revision_is_unique_for_task(
-            str(self.task.id),
-            revision=1,
-            exclude_preview_id=str(preview.id),
-        )
-
-    def test_check_ignores_extra_previews(self):
-        """
-        Check should only consider main previews (position 1).
-        """
-        # Create extra preview (position 2) with revision 1
-        self.generate_fixture_preview_file(revision=1, position=2)
-
-        # Should not raise because there's no main preview with revision 1
-        tasks_service.check_revision_is_unique_for_task(
-            str(self.task.id), revision=1
-        )
 
     def enable_single_preview(self):
         """

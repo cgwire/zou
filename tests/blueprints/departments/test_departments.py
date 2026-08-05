@@ -40,16 +40,6 @@ class DepartmentRoutesTestCase(ApiDBTestCase):
         self.assertEqual(len(software_list), 1)
         self.assertEqual(software_list[0]["name"], "Blender")
 
-    def test_get_department_software(self):
-        departments_service.add_software_to_department(
-            str(self.department.id), str(self.software.id)
-        )
-        result = departments_service.get_software_for_department(
-            str(self.department.id)
-        )
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0]["name"], "Blender")
-
     def test_delete_software_from_department(self):
         departments_service.add_software_to_department(
             str(self.department.id), str(self.software.id)
@@ -85,16 +75,6 @@ class DepartmentRoutesTestCase(ApiDBTestCase):
         self.assertEqual(result["department_id"], str(self.department.id))
         self.assertEqual(
             result["hardware_item_id"], str(self.hardware_item.id)
-        )
-        items = departments_service.get_hardware_items_for_department(
-            str(self.department.id)
-        )
-        self.assertEqual(len(items), 1)
-        self.assertEqual(items[0]["name"], "Wacom Tablet")
-
-    def test_get_department_hardware_items(self):
-        departments_service.add_hardware_item_to_department(
-            str(self.department.id), str(self.hardware_item.id)
         )
         items = departments_service.get_hardware_items_for_department(
             str(self.department.id)

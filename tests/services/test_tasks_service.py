@@ -16,7 +16,10 @@ from zou.app.services import (
 )
 from zou.app.utils import events, fields
 
-from zou.app.services.exception import TaskNotFoundException
+from zou.app.services.exception import (
+    RevisionAlreadyExistsException,
+    TaskNotFoundException,
+)
 
 
 class ToReviewHandler(object):
@@ -625,6 +628,49 @@ class TaskServiceTestCase(ApiDBTestCase):
         for i, preview_file in enumerate(preview_files):
             self.assertEqual(preview_file.position, i + 1)
         self.assertEqual(str(preview_files[2].id), preview_file_id)
+
+    def test_check_revision_is_unique_service(self):
+        """
+        Direct test of check_revision_is_unique_for_task service function.
+        """
+        # Create a preview with revision 1
+        self.generate_fixture_preview_file(revision=1, position=1)
+
+        # Check should raise for existing revision
+        with self.assertRaises(RevisionAlreadyExistsException):
+            tasks_service.check_revision_is_unique_for_task(
+                str(self.task.id), revision=1
+            )
+
+        # Check should pass for non-existing revision
+        tasks_service.check_revision_is_unique_for_task(
+            str(self.task.id), revision=2
+        )
+
+    def test_check_revision_exclude_self(self):
+        """
+        Check should exclude the preview being updated.
+        """
+        preview = self.generate_fixture_preview_file(revision=1, position=1)
+
+        # Should not raise when excluding the preview itself
+        tasks_service.check_revision_is_unique_for_task(
+            str(self.task.id),
+            revision=1,
+            exclude_preview_id=str(preview.id),
+        )
+
+    def test_check_ignores_extra_previews(self):
+        """
+        Check should only consider main previews (position 1).
+        """
+        # Create extra preview (position 2) with revision 1
+        self.generate_fixture_preview_file(revision=1, position=2)
+
+        # Should not raise because there's no main preview with revision 1
+        tasks_service.check_revision_is_unique_for_task(
+            str(self.task.id), revision=1
+        )
 
 
 class GetOrCreateTaskTypeTestCase(ApiDBTestCase):
