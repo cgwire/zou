@@ -6,7 +6,10 @@ from unittest.mock import patch
 from tests.base import ApiDBTestCase
 
 
+from zou.app.models.preview_file import PreviewFile
 from zou.app.services import files_service, preview_files_service
+from zou.app.stores import file_store
+from zou.app.utils import thumbnail as thumbnail_utils
 from zou.app.services.exception import (
     AnnotationNotFoundException,
     WrongParameterException,
@@ -1217,3 +1220,51 @@ class ExtractAllAnnotationFramesPdfTestCase(ApiDBTestCase):
             extract_all_annotation_frames_pdf_from_preview_file(
                 self.preview_file
             )
+
+
+class ResetPictureFilesMetadataTestCase(ApiDBTestCase):
+    """
+    The command that backfills width, height and file size on picture
+    previews, for rows created before those columns were filled in.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_asset()
+        self.generate_fixture_assigner()
+        self.generate_fixture_person()
+        self.generate_fixture_task()
+        self.preview_file = self.generate_fixture_preview_file()
+        self.preview_file.update({"extension": "png"})
+
+    def store_original_picture(self):
+        path = file_store.get_local_picture_path(
+            "original", str(self.preview_file.id)
+        )
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open("tests/fixtures/thumbnails/th01.png", "rb") as source:
+            with open(path, "wb") as target:
+                target.write(source.read())
+        return path
+
+    def test_reset_picture_files_metadata(self):
+        path = self.store_original_picture()
+        expected = thumbnail_utils.get_dimensions(path)
+
+        preview_files_service.reset_picture_files_metadata()
+
+        preview_file = PreviewFile.get(self.preview_file.id)
+        self.assertEqual((preview_file.width, preview_file.height), expected)
+        self.assertEqual(preview_file.file_size, os.path.getsize(path))
+
+    def test_a_missing_binary_does_not_stop_the_run(self):
+        # The command walks the whole instance: one preview whose file never
+        # made it to storage must not take the rest of the run down.
+        before = PreviewFile.get(self.preview_file.id).updated_at
+
+        preview_files_service.reset_picture_files_metadata()
+
+        self.assertEqual(
+            PreviewFile.get(self.preview_file.id).updated_at, before
+        )
