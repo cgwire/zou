@@ -24,6 +24,25 @@ class EventsRoutesTestCase(ApiDBTestCase):
         self.generate_fixture_project()
         self.generate_fixture_asset_type()
 
+    def test_generic_event_crud_routes(self):
+        """
+        The generic routes sit next to /data/events/last, which every test
+        goes through instead. They read the same table, and an event names
+        the production it happened in, so they stay admin only.
+        """
+        assets_service.create_asset(
+            self.project.id, self.asset_type.id, "Tree", "", {}
+        )
+        events = self.get("/data/events")
+        self.assertGreater(len(events), 0)
+        event_id = events[0]["id"]
+        self.assertEqual(self.get(f"/data/events/{event_id}")["id"], event_id)
+
+        self.generate_fixture_user_manager()
+        self.log_in_manager()
+        self.get("/data/events", 403)
+        self.get(f"/data/events/{event_id}", 403)
+
     def test_get_last_events(self):
         now = datetime.now().replace(microsecond=0)
         for name in ["test 1", "test 2", "test 3", "test 4"]:

@@ -1,6 +1,6 @@
 import subprocess
 
-from tests.base import ApiTestCase
+from tests.base import ApiDBTestCase, ApiTestCase
 
 from zou import __version__
 from zou.app import app
@@ -39,3 +39,25 @@ class VersionTestCase(ApiTestCase):
             subprocess.Popen = original_popen
 
         self.assertEqual(spawned, [])
+
+
+class StatsRouteTestCase(ApiDBTestCase):
+    """
+    The instance wide counters. They span every production, so only an admin
+    reads them.
+    """
+
+    def test_stats_route(self):
+        stats = self.get("/stats")
+        for key in [
+            "number_of_comments",
+            "number_of_picture_previews",
+            "number_of_video_previews",
+            "number_of_model_previews",
+        ]:
+            self.assertIn(key, stats)
+
+    def test_stats_route_is_admin_only(self):
+        self.generate_fixture_user_manager()
+        self.log_in_manager()
+        self.get("/stats", 403)
