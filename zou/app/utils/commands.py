@@ -917,7 +917,7 @@ def search_asset(query):
 def generate_preview_extra(
     project=None,
     entity_id=None,
-    episodes=[],
+    episodes=None,
     only_shots=False,
     only_assets=False,
     force_regenerate_tiles=False,
@@ -925,6 +925,8 @@ def generate_preview_extra(
     with_metadata=False,
     with_thumbnails=False,
 ):
+    if episodes is None:
+        episodes = []
     with app.app_context():
         preview_files_service.generate_preview_extra(
             project=project,

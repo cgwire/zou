@@ -327,11 +327,18 @@ def remove_edit(edit_id, force=False):
 
 
 def create_edit(
-    project_id, name, data={}, description="", parent_id=None, created_by=None
+    project_id,
+    name,
+    data=None,
+    description="",
+    parent_id=None,
+    created_by=None,
 ):
     """
     Create edit for given project and episode.
     """
+    if data is None:
+        data = {}
     edit_type = get_edit_type()
 
     # Anything shorter than a UUID is not an episode id, it is the client

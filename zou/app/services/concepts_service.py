@@ -320,14 +320,18 @@ def get_concepts_for_project(project_id, only_assigned=False):
 def create_concept(
     project_id,
     name,
-    data={},
+    data=None,
     description=None,
-    entity_concept_links=[],
+    entity_concept_links=None,
     created_by=None,
 ):
     """
     Create concept for given project.
     """
+    if data is None:
+        data = {}
+    if entity_concept_links is None:
+        entity_concept_links = []
     concept_type = get_concept_type()
 
     concept = Entity.get_by(

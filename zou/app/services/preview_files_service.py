@@ -1492,7 +1492,7 @@ def reset_picture_files_metadata():
 def generate_preview_extra(
     project=None,
     entity_id=None,
-    episodes=[],
+    episodes=None,
     only_shots=False,
     only_assets=False,
     force_regenerate_tiles=False,
@@ -1504,6 +1504,8 @@ def generate_preview_extra(
     Generate tiles for all movie previews and reset previews file size
     informations of open projects.
     """
+    if episodes is None:
+        episodes = []
     print("Generating preview extras...")
     query = (
         PreviewFile.query.join(Task)

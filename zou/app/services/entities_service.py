@@ -530,13 +530,17 @@ def remove_entity_link(link_id):
 
 
 def get_not_allowed_descriptors_fields_for_vendor(
-    entity_type="Asset", departments=[], projects_ids=[]
+    entity_type="Asset", departments=None, projects_ids=None
 ):
     """
     Return, per project, the metadata field names a vendor of given
     departments must not see: the descriptors restricted to departments they
     do not belong to.
     """
+    if departments is None:
+        departments = []
+    if projects_ids is None:
+        projects_ids = []
     not_allowed_descriptors_field_names = {}
     for project_id in projects_ids:
         not_allowed_descriptors_field_names[project_id] = [
@@ -552,11 +556,15 @@ def get_not_allowed_descriptors_fields_for_vendor(
 
 
 def remove_not_allowed_fields_from_metadata(
-    not_allowed_descriptors_field_names=[], data={}
+    not_allowed_descriptors_field_names=None, data=None
 ):
     """
     Return given metadata without the fields the caller must not see.
     """
+    if not_allowed_descriptors_field_names is None:
+        not_allowed_descriptors_field_names = []
+    if data is None:
+        data = {}
     return {
         key: value
         for key, value in data.items()

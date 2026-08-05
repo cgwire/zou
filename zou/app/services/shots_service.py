@@ -1095,12 +1095,14 @@ def create_episode(
     name,
     status="running",
     description="",
-    data={},
+    data=None,
     created_by=None,
 ):
     """
     Create episode for given project.
     """
+    if data is None:
+        data = {}
     episode_type = get_episode_type()
     episode = Entity.get_by(
         entity_type_id=episode_type["id"], project_id=project_id, name=name
@@ -1124,11 +1126,13 @@ def create_episode(
 
 
 def create_sequence(
-    project_id, episode_id, name, description="", data={}, created_by=None
+    project_id, episode_id, name, description="", data=None, created_by=None
 ):
     """
     Create sequence for given project and episode.
     """
+    if data is None:
+        data = {}
     sequence_type = get_sequence_type()
 
     if episode_id is not None:
@@ -1160,7 +1164,7 @@ def create_shot(
     project_id,
     sequence_id,
     name,
-    data={},
+    data=None,
     nb_frames=0,
     description=None,
     created_by=None,
@@ -1168,6 +1172,8 @@ def create_shot(
     """
     Create shot for given project and sequence.
     """
+    if data is None:
+        data = {}
     shot_type = get_shot_type()
 
     if sequence_id is not None:

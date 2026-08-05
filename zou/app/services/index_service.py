@@ -98,13 +98,17 @@ def reset_entry_index(
     index_name,
     get_entries,
     prepare_entry,
-    searchable_fields=[],
-    filterable_fields=[],
+    searchable_fields=None,
+    filterable_fields=None,
 ):
     """
     Clear and rebuild index for given parameters: folder name of the index,
     func to get entries to index, func to index a given entry.
     """
+    if searchable_fields is None:
+        searchable_fields = []
+    if filterable_fields is None:
+        filterable_fields = []
     index = indexing.create_index(
         index_name, searchable_fields, filterable_fields
     )

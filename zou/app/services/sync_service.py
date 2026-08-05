@@ -1272,11 +1272,13 @@ def download_thumbnails_from_another_instance(
     pool=None,
     number_attemps=3,
     force=False,
-    dict_errors={},
+    dict_errors=None,
 ):
     """
     Download all thumbnails from source instance for given model.
     """
+    if dict_errors is None:
+        dict_errors = {}
     model = event_name_model_map[model_name]
 
     if project is None:
@@ -1316,11 +1318,13 @@ def download_thumbnail_from_another_instance(
     index=0,
     total=0,
     force=False,
-    dict_errors={},
+    dict_errors=None,
 ):
     """
     Download into the local storage the thumbnail for a given model instance.
     """
+    if dict_errors is None:
+        dict_errors = {}
     file_path = f"/tmp/thumbnails-{model_id}.png"
     path = f"/pictures/thumbnails/{model_name}s/{model_id}.png"
     download_file_from_another_instance(
@@ -1344,13 +1348,15 @@ def download_preview_files_from_another_instance(
     pool=None,
     number_attemps=3,
     force=False,
-    dict_errors={},
+    dict_errors=None,
     include_broken=True,
     include_missing=True,
 ):
     """
     Download all preview files and related (thumbnails and low def included).
     """
+    if dict_errors is None:
+        dict_errors = {}
     if project:
         project_dict = gazu.project.get_project_by_name(project)
         preview_files = PreviewFile.query.join(Task).filter(
@@ -1390,11 +1396,13 @@ def download_preview_files_from_another_instance(
 
 
 def download_preview_background_files_from_another_instance(
-    project=None, pool=None, number_attemps=3, force=False, dict_errors={}
+    project=None, pool=None, number_attemps=3, force=False, dict_errors=None
 ):
     """
     Download all preview background files and related.
     """
+    if dict_errors is None:
+        dict_errors = {}
     if project:
         project_dict = gazu.project.get_project_by_name(project)
         project = projects_service.get_project_raw(project_dict["id"])
@@ -1429,11 +1437,13 @@ def download_preview_from_another_instance(
     force=False,
     index=0,
     total=0,
-    dict_errors={},
+    dict_errors=None,
 ):
     """
     Download all files link to preview file entry: orginal file and variants.
     """
+    if dict_errors is None:
+        dict_errors = {}
     is_movie = preview_file.extension == "mp4"
     is_picture = preview_file.extension == "png"
     is_file = not is_movie and not is_picture
@@ -1519,11 +1529,13 @@ def download_preview_background_from_another_instance(
     force=False,
     index=0,
     total=0,
-    dict_errors={},
+    dict_errors=None,
 ):
     """
     Download all files link to preview background file entry.
     """
+    if dict_errors is None:
+        dict_errors = {}
     preview_background_file_id = str(preview_background.id)
     for prefix in [
         "thumbnails",
@@ -1555,12 +1567,14 @@ def download_preview_background_from_another_instance(
 
 
 def download_attachment_files_from_another_instance(
-    project=None, pool=None, number_attemps=3, force=False, dict_errors={}
+    project=None, pool=None, number_attemps=3, force=False, dict_errors=None
 ):
     """
     Download every attachment file of a project from the other instance,
     in parallel over the given pool.
     """
+    if dict_errors is None:
+        dict_errors = {}
     if project:
         project_dict = gazu.project.get_project_by_name(project)
         attachment_files = (
@@ -1599,12 +1613,14 @@ def download_attachment_file_from_another_instance(
     index=0,
     total=0,
     force=False,
-    dict_errors={},
+    dict_errors=None,
 ):
     """
     Download one attachment file from the other instance, retrying up to
     number_attemps times.
     """
+    if dict_errors is None:
+        dict_errors = {}
     attachment_file_id = attachment_file["id"]
     extension = attachment_file["extension"]
     path = f"/data/attachment-files/{attachment_file_id}/file/{attachment_file['name']}"
@@ -1634,13 +1650,15 @@ def download_file_from_another_instance(
     id,
     number_attemps=3,
     force=False,
-    dict_errors={},
+    dict_errors=None,
 ):
     """
     Download one stored file from the other instance and save it locally.
     Skips a file already present unless force is set, and records the
     failures in dict_errors rather than raising.
     """
+    if dict_errors is None:
+        dict_errors = {}
     from zou.app import app
 
     with app.app_context():

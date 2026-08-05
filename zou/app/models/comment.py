@@ -138,7 +138,7 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
         obj_type=None,
         relations=False,
         milliseconds=False,
-        ignored_attrs=[],
+        ignored_attrs=(),
     ):
         obj_dict = super().serialize(
             obj_type=obj_type,

@@ -320,7 +320,7 @@ def get_last_news_for_project(
 
 
 def get_news_stats_for_project(
-    project_ids=[],
+    project_ids=None,
     project_id=None,
     only_preview=False,
     task_type_id=None,
@@ -335,6 +335,8 @@ def get_news_stats_for_project(
     Return the number of news by task status for given project and filters.
     { "task-status-1": 24, "task-status-2": 58 }
     """
+    if project_ids is None:
+        project_ids = []
     query = (
         News.query.join(Task, News.task_id == Task.id)
         .join(Project)
