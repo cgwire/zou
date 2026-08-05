@@ -3,7 +3,7 @@ import pathlib
 import unittest
 
 CRUD_PATH = (
-    pathlib.Path(__file__).parents[2] / "zou" / "app" / "blueprints" / "crud"
+    pathlib.Path(__file__).parents[3] / "zou" / "app" / "blueprints" / "crud"
 )
 
 # Names whose presence in a resource means it narrows what the caller reads,

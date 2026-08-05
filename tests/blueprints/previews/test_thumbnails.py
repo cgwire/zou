@@ -8,7 +8,14 @@ from zou.app.services import assets_service, projects_service
 
 from PIL import Image
 
-TEST_FOLDER = os.path.join("tests", "tmp")
+# Absolute, so that the folder created and the folder written to are the
+# same one wherever pytest is launched from and however deep this file sits.
+TEST_FOLDER = os.path.join(
+    os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    ),
+    "tmp",
+)
 
 
 def get_file_md5hash(file_path):
@@ -83,12 +90,8 @@ class RouteThumbnailTestCase(ApiDBTestCase):
         )
         self.upload_file(path, file_path_fixture)
 
-        current_path = os.path.dirname(__file__)
         result_file_path = os.path.join(TEST_FOLDER, "th01.png")
-        result_file_path = os.path.join(
-            current_path, "..", "..", result_file_path
-        )
-        os.mkdir(TEST_FOLDER)
+        os.makedirs(TEST_FOLDER, exist_ok=True)
 
         path = f"/pictures/previews/preview-files/{self.preview_file_id}.png"
         self.download_file(path, result_file_path)
@@ -143,12 +146,8 @@ class RouteThumbnailTestCase(ApiDBTestCase):
         self.upload_file(path, file_path_fixture)
         original_md5hash = get_file_md5hash(file_path_fixture)
 
-        current_path = os.path.dirname(__file__)
         result_file_path = os.path.join(TEST_FOLDER, "sample.hdr")
-        result_file_path = os.path.join(
-            current_path, "..", "..", result_file_path
-        )
-        os.mkdir(TEST_FOLDER)
+        os.makedirs(TEST_FOLDER, exist_ok=True)
 
         path = f"/pictures/preview-background-files/{self.preview_background_file.id}.hdr"
         self.download_file(path, result_file_path)
