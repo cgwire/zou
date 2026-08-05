@@ -4,6 +4,7 @@ from tests.base import ApiDBTestCase
 from zou.app import db
 
 from zou.app.models.entity import Entity
+from zou.app.models.entity_type import EntityType
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.models.task import Task
@@ -291,3 +292,16 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         self.assertEqual(error["line_number"], 2)
         entities = Entity.query.all()
         self.assertEqual(len(entities), 0)
+
+    def test_import_assets_empty_type(self):
+        # An empty Type cell used to create an asset type named "", which
+        # every later row with an empty cell then reused.
+        path = f"/import/csv/projects/{self.project.id}/assets"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets_empty_type.csv")
+        )
+        error = self.upload_file(path, file_path_fixture, 400)
+        self.assertIn("asset type is required", error["message"])
+        self.assertEqual(error["line_number"], 3)
+        self.assertEqual(error["imported_rows"], 1)
+        self.assertIsNone(EntityType.get_by(name=""))

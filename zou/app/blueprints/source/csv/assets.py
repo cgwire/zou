@@ -222,6 +222,11 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
     def import_row(self, row, project_id):
         asset_name = row["Name"]
         entity_type_name = row["Type"]
+        if entity_type_name is None or not entity_type_name.strip():
+            # get_or_create_asset_type matches names exactly, so an empty
+            # cell used to create an asset type named "" that every later
+            # empty row then reused.
+            raise RowException("An asset type is required in the Type column")
         episode_name = row.get("Episode", None)
         episode_id = None
 
