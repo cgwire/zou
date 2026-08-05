@@ -21,6 +21,7 @@ from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 
 from zou.app.services import (
+    base_service,
     deletion_service,
     entities_service,
     notifications_service,
@@ -72,18 +73,9 @@ def get_concept_raw(concept_id):
     """
     Return given concept as an active record.
     """
-    concept_type = get_concept_type()
-    try:
-        concept = Entity.get_by(
-            entity_type_id=concept_type["id"], id=concept_id
-        )
-    except StatementError:
-        raise ConceptNotFoundException
-
-    if concept is None:
-        raise ConceptNotFoundException
-
-    return concept
+    return base_service.get_typed_instance(
+        Entity, concept_id, get_concept_type()["id"], ConceptNotFoundException
+    )
 
 
 @cache.memoize_function(120)

@@ -23,6 +23,23 @@ def get_instance(model, instance_id, exception):
     return instance
 
 
+def get_typed_instance(model, instance_id, entity_type_id, exception):
+    """
+    Same as get_instance for a polymorphic model, where the id alone does not
+    say what the row is. Matching the type too is what turns an id of the
+    wrong kind into the given exception instead of the wrong object.
+    """
+    try:
+        instance = model.get_by(id=instance_id, entity_type_id=entity_type_id)
+    except StatementError:
+        raise exception()
+
+    if instance is None:
+        raise exception()
+
+    return instance
+
+
 def get_or_create_instance_by_name(model, **kwargs):
     """
     Get instance of any model by name. If it doesn't exist it creates a new

@@ -22,6 +22,7 @@ from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 
 from zou.app.services import (
+    base_service,
     deletion_service,
     entities_service,
     notifications_service,
@@ -73,16 +74,9 @@ def get_edit_raw(edit_id):
     """
     Return given edit as an active record.
     """
-    edit_type = get_edit_type()
-    try:
-        edit = Entity.get_by(entity_type_id=edit_type["id"], id=edit_id)
-    except StatementError:
-        raise EditNotFoundException
-
-    if edit is None:
-        raise EditNotFoundException
-
-    return edit
+    return base_service.get_typed_instance(
+        Entity, edit_id, get_edit_type()["id"], EditNotFoundException
+    )
 
 
 @cache.memoize_function(120)

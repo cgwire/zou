@@ -27,6 +27,7 @@ from zou.app.models.task import Task, TaskPersonLink
 from zou.app.models.time_spent import TimeSpent
 
 from zou.app.services import (
+    base_service,
     deletion_service,
     entities_service,
     persons_service,
@@ -576,23 +577,6 @@ def get_shots_and_tasks(criterions=None):
     return list(prepare_shots_and_tasks(criterions))
 
 
-def _get_typed_entity_raw(entity_type, entity_id, exception):
-    """
-    Return the entity of given type matching given id as an active record.
-    An id that is not a valid UUID raises the same exception as a missing
-    row: callers must not have to tell the two apart.
-    """
-    try:
-        entity = Entity.get_by(entity_type_id=entity_type["id"], id=entity_id)
-    except StatementError:
-        raise exception
-
-    if entity is None:
-        raise exception
-
-    return entity
-
-
 def _get_typed_entity_by_shotgun_id(entity_type, shotgun_id, exception):
     """
     Return the entity of given type matching given shotgun id as an active
@@ -610,8 +594,8 @@ def get_shot_raw(shot_id):
     """
     Return given shot as an active record.
     """
-    return _get_typed_entity_raw(
-        get_shot_type(), shot_id, ShotNotFoundException
+    return base_service.get_typed_instance(
+        Entity, shot_id, get_shot_type()["id"], ShotNotFoundException
     )
 
 
@@ -645,8 +629,8 @@ def get_scene_raw(scene_id):
     """
     Return given scene as an active record.
     """
-    return _get_typed_entity_raw(
-        get_scene_type(), scene_id, SceneNotFoundException
+    return base_service.get_typed_instance(
+        Entity, scene_id, get_scene_type()["id"], SceneNotFoundException
     )
 
 
@@ -680,8 +664,11 @@ def get_sequence_raw(sequence_id):
     """
     Return given sequence as an active record.
     """
-    return _get_typed_entity_raw(
-        get_sequence_type(), sequence_id, SequenceNotFoundException
+    return base_service.get_typed_instance(
+        Entity,
+        sequence_id,
+        get_sequence_type()["id"],
+        SequenceNotFoundException,
     )
 
 
@@ -725,8 +712,8 @@ def get_episode_raw(episode_id):
     """
     Return given episode as an active record.
     """
-    return _get_typed_entity_raw(
-        get_episode_type(), episode_id, EpisodeNotFoundException
+    return base_service.get_typed_instance(
+        Entity, episode_id, get_episode_type()["id"], EpisodeNotFoundException
     )
 
 
