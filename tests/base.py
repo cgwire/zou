@@ -276,6 +276,29 @@ class ApiTestCase(unittest.TestCase):
 class ApiDBTestCase(ApiTestCase):
     """
     Set of helpers for Api tests.
+
+    Four things about the fixtures below are worth knowing before writing a
+    test that steps outside the usual one project, one asset, one task shape.
+
+    - generate_fixture_project assigns self.project_id itself, so asking for
+      a second production silently repoints it at the new one. Keep the id
+      you need in a local before calling it.
+    - Several fixtures call one another and read self.project on the way, so
+      one that runs after a second production lands in that production, or
+      tries to recreate the default one and hits the unique name constraint.
+      Build the row by hand when it has to belong somewhere precise.
+    - The app treats the organisation as a singleton it creates on demand,
+      while generate_fixture_organisation adds a second row. Go through
+      persons_service.get_organisation() to reach the one the routes use.
+    - Caching is on during tests (conftest sets CACHE_TYPE), so changing a
+      model the service also writes leaves the route reading a stale value.
+      project.team.append() is the common one: use
+      projects_service.add_team_member().
+
+    One more, about failures rather than fixtures: an exception raised in
+    setUp leaves the transaction open, and the next class blocks on the
+    truncation instead of failing. A hanging suite usually means a broken
+    setUp, not a slow test.
     """
 
     # Schema is created once per session in conftest.py.
