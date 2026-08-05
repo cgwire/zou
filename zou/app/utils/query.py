@@ -10,7 +10,6 @@ from zou.app.services.exception import WrongParameterException
 from sqlalchemy import func, types as sa_types
 from sqlalchemy.inspection import inspect
 
-
 # Some criterions accept sentinel values that are not UUIDs (e.g. "all" or
 # "main" for episode_id) and must therefore bypass UUID validation.
 EPISODE_ID_SENTINELS = ["all", "main"]
