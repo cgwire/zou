@@ -40,12 +40,18 @@ from zou.app.services.exception import (
 
 
 def clear_asset_cache(asset_id):
+    """
+    Drop every memoized serialization of given asset.
+    """
     cache.cache.delete_memoized(get_asset, asset_id)
     cache.cache.delete_memoized(get_asset, asset_id, True)
     cache.cache.delete_memoized(get_full_asset, asset_id)
 
 
 def clear_asset_type_cache():
+    """
+    Drop the memoized asset type list.
+    """
     cache.cache.delete_memoized(get_all_asset_types)
     # get_asset_type carries the task types of the workflow, so editing it
     # must not keep serving the previous one for the whole TTL.
@@ -53,6 +59,10 @@ def clear_asset_type_cache():
 
 
 def get_temporal_type_ids():
+    """
+    Return the ids of the entity types that are not asset types: everything
+    positioned in time (shot, sequence, episode, edit, scene, concept).
+    """
     shot_type = shots_service.get_shot_type()
     scene_type = shots_service.get_scene_type()
     sequence_type = shots_service.get_sequence_type()
@@ -583,21 +593,26 @@ def get_all_asset_types():
     )
 
 
-def get_asset_types_for_project(project_id):
+def _serialize_asset_types(asset_type_ids):
     """
-    Retrieve all asset types related to asset of a given project.
+    Return the serialized asset types matching given ids, without querying
+    when there is none.
     """
-    asset_type_ids = {
-        x["entity_type_id"] for x in get_assets({"project_id": project_id})
-    }
-
+    result = []
     if len(asset_type_ids) > 0:
         result = EntityType.query.filter(
             EntityType.id.in_(list(asset_type_ids))
         ).all()
-    else:
-        result = []
     return EntityType.serialize_list(result, obj_type="AssetType")
+
+
+def get_asset_types_for_project(project_id):
+    """
+    Retrieve all asset types related to asset of a given project.
+    """
+    return _serialize_asset_types(
+        {x["entity_type_id"] for x in get_assets({"project_id": project_id})}
+    )
 
 
 def get_asset_types_for_episode(project_id, episode_id):
@@ -605,21 +620,15 @@ def get_asset_types_for_episode(project_id, episode_id):
     Retrieve all asset types related to assets natively belonging to a given
     episode (shared/casted assets excluded, to match the schedule scope).
     """
-    asset_type_ids = {
-        asset.entity_type_id
-        for asset in Entity.query.filter(build_asset_type_filter())
-        .filter(Entity.project_id == project_id)
-        .filter(Entity.source_id == episode_id)
-        .all()
-    }
-
-    if len(asset_type_ids) > 0:
-        result = EntityType.query.filter(
-            EntityType.id.in_(list(asset_type_ids))
-        ).all()
-    else:
-        result = []
-    return EntityType.serialize_list(result, obj_type="AssetType")
+    return _serialize_asset_types(
+        {
+            asset.entity_type_id
+            for asset in Entity.query.filter(build_asset_type_filter())
+            .filter(Entity.project_id == project_id)
+            .filter(Entity.source_id == episode_id)
+            .all()
+        }
+    )
 
 
 def get_asset_types_for_shot(shot_id):
@@ -627,15 +636,9 @@ def get_asset_types_for_shot(shot_id):
     Retrieve all asset types related to asset casted in a given shot.
     """
     shot = Entity.get(shot_id)
-    asset_type_ids = {x.entity_type_id for x in shot.entities_out}
-
-    if len(asset_type_ids) > 0:
-        query = EntityType.query
-        query = query.filter(EntityType.id.in_(list(asset_type_ids)))
-        result = query.all()
-    else:
-        result = []
-    return EntityType.serialize_list(result, obj_type="AssetType")
+    return _serialize_asset_types(
+        {x.entity_type_id for x in shot.entities_out}
+    )
 
 
 def get_asset_raw(entity_id):
@@ -668,10 +671,9 @@ def get_asset_by_shotgun_id(shotgun_id):
     Return asset matching given shotgun ID as a dict.
     """
     assets = get_assets({"shotgun_id": shotgun_id})
-    if len(assets) > 0:
-        return assets[0]
-    else:
+    if len(assets) == 0:
         raise AssetNotFoundException
+    return assets[0]
 
 
 def get_raw_asset_by_shotgun_id(shotgun_id):
@@ -689,21 +691,20 @@ def get_full_asset(asset_id):
     asset type name and tasks).
     """
     assets = get_assets_and_tasks({"id": asset_id}, with_episode_ids=True)
-    if len(assets) > 0:
-        asset = dict(get_asset(asset_id, relations=True))
-        asset_type_id = asset["entity_type_id"]
-        asset_type = get_asset_type(asset_type_id)
-        project = Project.get(asset["project_id"])
-
-        asset["project_name"] = project.name
-        asset["asset_type_id"] = asset_type["id"]
-        asset["asset_type_name"] = asset_type["name"]
-        del asset["source_id"]
-        del asset["nb_frames"]
-        asset.update(assets[0])
-        return asset
-    else:
+    if len(assets) == 0:
         raise AssetNotFoundException
+
+    asset = dict(get_asset(asset_id, relations=True))
+    asset_type = get_asset_type(asset["entity_type_id"])
+    project = Project.get(asset["project_id"])
+
+    asset["project_name"] = project.name
+    asset["asset_type_id"] = asset_type["id"]
+    asset["asset_type_name"] = asset_type["name"]
+    del asset["source_id"]
+    del asset["nb_frames"]
+    asset.update(assets[0])
+    return asset
 
 
 def get_asset_instance_raw(asset_instance_id):
@@ -848,6 +849,9 @@ def create_asset(
 
 
 def update_asset(asset_id, data):
+    """
+    Update given asset, drop its cache and notify the clients.
+    """
     asset = get_asset_raw(asset_id)
     asset.update(data)
 
@@ -864,6 +868,10 @@ def update_asset(asset_id, data):
 
 
 def remove_asset(asset_id, force=False):
+    """
+    Remove given asset. With tasks attached and without force, the asset
+    is only marked canceled; force deletes it and everything tied to it.
+    """
     asset = get_asset_raw(asset_id)
     is_tasks_related = Task.query.filter_by(entity_id=asset_id).count() > 0
 

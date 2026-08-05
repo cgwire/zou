@@ -19,7 +19,27 @@ from zou.app.services import names_service, persons_service
 
 
 def clear_chat_message_cache(chat_message_id):
+    """
+    Drop the memoized serialization of given chat message.
+    """
     cache.cache.delete_memoized(get_chat_message, chat_message_id)
+
+
+def _serialize_message(message):
+    """
+    Serialize a chat message with a light version of its attachments: the
+    fields the clients need to display and download them.
+    """
+    serialized_message = message.serialize()
+    serialized_message["attachment_files"] = [
+        {
+            "id": attachment_file.id,
+            "name": attachment_file.name,
+            "extension": attachment_file.extension,
+        }
+        for attachment_file in message.attachment_files
+    ]
+    return serialized_message
 
 
 def get_chat_raw(entity_id):
@@ -60,18 +80,7 @@ def get_chat_message(chat_message_id):
     """
     Return chat message corresponding to given chat message ID.
     """
-    message = get_chat_message_raw(chat_message_id)
-    serialized_message = message.serialize()
-    serialized_message["attachment_files"] = []
-    for attachment_file in message.attachment_files:
-        serialized_message["attachment_files"].append(
-            {
-                "id": attachment_file.id,
-                "name": attachment_file.name,
-                "extension": attachment_file.extension,
-            }
-        )
-    return serialized_message
+    return _serialize_message(get_chat_message_raw(chat_message_id))
 
 
 def join_chat(entity_id, person_id):
@@ -111,25 +120,12 @@ def get_chat_messages(chat_id):
     """
     Return chat messages for given chat ID.
     """
-    result = []
     messages = (
         ChatMessage.query.filter(ChatMessage.chat_id == chat_id)
         .order_by(ChatMessage.created_at)
         .all()
     )
-    for message in messages:
-        serialized_message = message.serialize()
-        serialized_message["attachment_files"] = []
-        for attachment_file in message.attachment_files:
-            serialized_message["attachment_files"].append(
-                {
-                    "id": attachment_file.id,
-                    "name": attachment_file.name,
-                    "extension": attachment_file.extension,
-                }
-            )
-        result.append(serialized_message)
-    return result
+    return [_serialize_message(message) for message in messages]
 
 
 def get_chat_messages_for_entity(entity_id):
@@ -145,11 +141,11 @@ def create_chat_message(chat_id, person_id, message, files=None):
     Create a new chat message.
     """
     chat = Chat.get(chat_id)
-    message = ChatMessage.create(
+    chat_message = ChatMessage.create(
         chat_id=chat_id, person_id=person_id, text=message
     )
-    chat.update({"last_message": message.created_at})
-    serialized_message = message.serialize()
+    chat.update({"last_message": chat_message.created_at})
+    serialized_message = chat_message.serialize()
     if files:
         _add_attachments_to_message(serialized_message, files)
     events.emit(
@@ -232,16 +228,21 @@ def _add_attachments_to_message(message, files):
     for uploaded_file in files.values():
         try:
             attachment_file = _create_attachment(message, uploaded_file)
-            message["attachment_files"].append(attachment_file)
         except IntegrityError:
+            # The name is already taken on this message, retry with a
+            # randomized suffix.
             attachment_file = _create_attachment(
                 message, uploaded_file, randomize=True
             )
-            message["attachment_files"].append(attachment_file)
+        message["attachment_files"].append(attachment_file)
     return message
 
 
 def _create_attachment(message, uploaded_file, randomize=False):
+    """
+    Store an uploaded file, its thumbnail when it is a picture, and tie the
+    matching attachment entry to given message.
+    """
     tmp_folder = current_app.config["TMP_DIR"]
 
     # Prepare file name and create db entry
@@ -249,10 +250,9 @@ def _create_attachment(message, uploaded_file, randomize=False):
     mimetype = uploaded_file.mimetype
     extension = fs.get_file_extension(filename)
     if randomize:
-        letters = string.ascii_lowercase
-        random_str = "".join(random.choice(letters) for i in range(8))
-        filename = f"{filename[:len(filename) - len(extension) - 1]}"
-        filename += f"-{random_str}.{extension}"
+        random_str = "".join(random.choices(string.ascii_lowercase, k=8))
+        stem = filename[: len(filename) - len(extension) - 1]
+        filename = f"{stem}-{random_str}.{extension}"
     attachment_file = AttachmentFile.create(
         name=filename,
         size=0,

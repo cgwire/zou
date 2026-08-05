@@ -1,4 +1,3 @@
-from flask import g
 from sqlalchemy.orm import aliased
 from sqlalchemy import func, or_, and_
 
@@ -18,8 +17,6 @@ from zou.app.models.task_type import TaskType
 from zou.app.services import (
     assets_service,
     custom_actions_service,
-    edits_service,
-    entities_service,
     notifications_service,
     names_service,
     permissions_service,
@@ -41,22 +38,69 @@ from zou.app.services.exception import (
 from zou.app.utils import cache, fields, permissions, events
 
 
-def clear_filter_cache(user_id=None):
+def _clear_user_scoped_cache(getter, user_id):
+    """
+    Drop the memoized result of given per-user getter, for one user or for
+    all of them when no user is given.
+    """
     if user_id is None:
-        cache.cache.delete_memoized(get_user_filters)
+        cache.cache.delete_memoized(getter)
     else:
-        cache.cache.delete_memoized(get_user_filters, user_id)
+        cache.cache.delete_memoized(getter, user_id)
+
+
+def clear_filter_cache(user_id=None):
+    """
+    Drop the memoized filter list of given user, or of every user.
+    """
+    _clear_user_scoped_cache(get_user_filters, user_id)
 
 
 def clear_filter_group_cache(user_id=None):
-    if user_id is None:
-        cache.cache.delete_memoized(get_user_filter_groups)
-    else:
-        cache.cache.delete_memoized(get_user_filter_groups, user_id)
+    """
+    Drop the memoized filter group list of given user, or of every user.
+    """
+    _clear_user_scoped_cache(get_user_filter_groups, user_id)
 
 
 def clear_project_cache():
+    """
+    Drop the memoized open project list.
+    """
     cache.cache.delete_memoized(get_open_projects)
+
+
+def _clear_cache_after_sharing_change(clear_cache, is_shared, user_id):
+    """
+    A shared filter is visible to the whole team, so its cache must be
+    dropped for everyone; a private one only for its owner.
+    """
+    if is_shared:
+        clear_cache()
+    else:
+        clear_cache(user_id)
+
+
+def _deny_sharing_without_manager_access(data, instance):
+    """
+    Silently turn off a sharing request the caller is not allowed to make:
+    sharing is a per project manager privilege, and a filter without a
+    project cannot be shared at all. Mutates data in place.
+    """
+    if (
+        data.get("is_shared", None) is not None
+        and instance.is_shared != data["is_shared"]
+        and (
+            data.get("project_id", None) is None
+            or (
+                data["project_id"] is not None
+                and not permissions_service.has_manager_project_access(
+                    data["project_id"]
+                )
+            )
+        )
+    ):
+        data["is_shared"] = False
 
 
 def build_assignee_filter():
@@ -415,8 +459,18 @@ def get_user_filters(current_user_id):
     Retrieve search filters used for given user. It groups them by
     list type and project_id. If the filter is not related to a project,
     the project_id is all.
-    """
 
+    Memoized on current_user_id alone, so it must only ever be called with
+    the id of the current user: the body reads get_current_user() and
+    has_manager_permissions(), which answer for the caller, not for the id.
+
+    has_manager_permissions() also reads the per project role when a project
+    access check has resolved one earlier in the request. The only route
+    reaching this resolves none, so it answers with the global role and the
+    result stays stable per user. Adding a project scoped variant would
+    break that: the first caller's answer would be served to the others for
+    the whole TTL. Pass the scoping in as an argument if that day comes.
+    """
     result = {}
 
     filters = (
@@ -512,10 +566,9 @@ def create_filter(
         search_filter_group_id=search_filter_group_id,
         department_id=department_id,
     )
-    if search_filter.is_shared:
-        clear_filter_cache()
-    else:
-        clear_filter_cache(current_user["id"])
+    _clear_cache_after_sharing_change(
+        clear_filter_cache, search_filter.is_shared, current_user["id"]
+    )
     return search_filter.serialize()
 
 
@@ -541,20 +594,7 @@ def update_filter(search_filter_id, data):
                 f"No department found with id: {department_id}"
             )
 
-    if (
-        data.get("is_shared", None) is not None
-        and search_filter.is_shared != data["is_shared"]
-        and (
-            data.get("project_id", None) is None
-            or (
-                data["project_id"] is not None
-                and not permissions_service.has_manager_project_access(
-                    data["project_id"]
-                )
-            )
-        )
-    ):
-        data["is_shared"] = False
+    _deny_sharing_without_manager_access(data, search_filter)
 
     if (
         search_filter_group_id := data.get(
@@ -575,10 +615,9 @@ def update_filter(search_filter_id, data):
             )
 
     search_filter.update(data)
-    if search_filter.is_shared:
-        clear_filter_cache()
-    else:
-        clear_filter_cache(current_user["id"])
+    _clear_cache_after_sharing_change(
+        clear_filter_cache, search_filter.is_shared, current_user["id"]
+    )
     return search_filter.serialize()
 
 
@@ -593,10 +632,9 @@ def remove_filter(search_filter_id):
     if search_filter is None:
         raise SearchFilterNotFoundException
     search_filter.delete()
-    if search_filter.is_shared:
-        clear_filter_cache()
-    else:
-        clear_filter_cache(current_user["id"])
+    _clear_cache_after_sharing_change(
+        clear_filter_cache, search_filter.is_shared, current_user["id"]
+    )
     return search_filter.serialize()
 
 
@@ -616,8 +654,11 @@ def get_user_filter_groups(current_user_id):
     Retrieve search filter groups used for given user. It groups them by
     list type and project_id. If the filter group is not related to a project,
     the project_id is all.
-    """
 
+    Same caveat as get_user_filters: memoized on current_user_id alone while
+    the body answers for the caller, so it must only be called with the
+    current user's id and from a route that resolves no project role.
+    """
     result = {}
 
     filter_groups = (
@@ -701,10 +742,11 @@ def create_filter_group(
         is_shared=is_shared,
         department_id=department_id,
     )
-    if search_filter_group.is_shared:
-        clear_filter_group_cache()
-    else:
-        clear_filter_group_cache(current_user["id"])
+    _clear_cache_after_sharing_change(
+        clear_filter_group_cache,
+        search_filter_group.is_shared,
+        current_user["id"],
+    )
 
     return search_filter_group.serialize()
 
@@ -734,20 +776,7 @@ def update_filter_group(search_filter_group_id, data):
     if search_filter_group is None:
         raise SearchFilterGroupNotFoundException
 
-    if (
-        data.get("is_shared", None) is not None
-        and search_filter_group.is_shared != data["is_shared"]
-        and (
-            data.get("project_id", None) is None
-            or (
-                data["project_id"] is not None
-                and not permissions_service.has_manager_project_access(
-                    data["project_id"]
-                )
-            )
-        )
-    ):
-        data["is_shared"] = False
+    _deny_sharing_without_manager_access(data, search_filter_group)
 
     search_filter_group.update(data)
 
@@ -765,10 +794,11 @@ def update_filter_group(search_filter_group_id, data):
             SearchFilter.query.session.commit()
             clear_filter_cache()
 
-    if search_filter_group.is_shared:
-        clear_filter_group_cache()
-    else:
-        clear_filter_group_cache(current_user["id"])
+    _clear_cache_after_sharing_change(
+        clear_filter_group_cache,
+        search_filter_group.is_shared,
+        current_user["id"],
+    )
     return search_filter_group.serialize()
 
 
@@ -791,10 +821,11 @@ def remove_filter_group(search_filter_group_id):
         SearchFilter.query.session.commit()
         clear_filter_cache()
     search_filter_group.delete()
-    if search_filter_group.is_shared:
-        clear_filter_group_cache()
-    else:
-        clear_filter_group_cache(current_user["id"])
+    _clear_cache_after_sharing_change(
+        clear_filter_group_cache,
+        search_filter_group.is_shared,
+        current_user["id"],
+    )
     return search_filter_group.serialize()
 
 
@@ -1130,6 +1161,10 @@ def get_sequence_subscriptions(project_id, task_type_id):
 
 
 def get_timezone():
+    """
+    Return the timezone of the current user, the instance default when
+    they set none.
+    """
     try:
         timezone = persons_service.get_current_user()["timezone"]
     except Exception:
@@ -1154,6 +1189,11 @@ def get_project_roles():
 
 
 def get_context():
+    """
+    Build everything the client needs on login in one payload: projects,
+    task types, statuses, departments, persons, custom actions and the
+    user's own filters. Scoped to the current user throughout.
+    """
     context = {
         "asset_types": assets_service.get_asset_types(),
         "custom_actions": custom_actions_service.get_custom_actions(),

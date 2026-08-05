@@ -156,6 +156,10 @@ def upload_entity_thumbnails_to_storage(days=None):
 
 
 def upload_entity_thumbnails(model, days=None):
+    """
+    Upload the thumbnails of every row of given model to object storage,
+    restricted to the ones updated in the last *days* when set.
+    """
     query = model.query
     if days is not None:
         limit_date = date_helpers.get_date_from_now(int(days))

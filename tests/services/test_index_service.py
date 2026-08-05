@@ -88,7 +88,7 @@ class IndexServiceTestCase(ApiDBTestCase):
             "get_sequence",
             side_effect=SequenceNotFoundException,
         ):
-            data = index_service.prepare_shot(self.shot, index="dummy")
+            data = index_service.prepare_shot(self.shot)
         self.assertEqual(data["sequence_id"], "")
         self.assertEqual(data["episode_id"], "")
 
@@ -103,6 +103,6 @@ class IndexServiceTestCase(ApiDBTestCase):
             "get_episode",
             side_effect=EpisodeNotFoundException,
         ):
-            data = index_service.prepare_shot(self.shot, index="dummy")
+            data = index_service.prepare_shot(self.shot)
         self.assertEqual(data["sequence_id"], str(self.shot.parent_id))
         self.assertEqual(data["episode_id"], "")

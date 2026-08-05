@@ -119,7 +119,7 @@ def get_working_file_name(
         revision=revision,
     )
 
-    return f"{file_name}"
+    return file_name
 
 
 def get_output_file_name(
@@ -149,7 +149,7 @@ def get_output_file_name(
     if nb_elements > 1:
         file_name += f"_[1-{nb_elements}]"
 
-    return f"{file_name}"
+    return file_name
 
 
 def get_instance_file_name(
@@ -181,7 +181,7 @@ def get_instance_file_name(
     if nb_elements > 1:
         file_name += f"_[1-{nb_elements}]"
 
-    return f"{file_name}"
+    return file_name
 
 
 def get_working_folder_path(
@@ -285,10 +285,16 @@ def get_instance_folder_path(
 
 
 def get_project(entity):
+    """
+    Return the project given entity belongs to.
+    """
     return projects_service.get_project(entity["project_id"])
 
 
 def get_tree_from_project(project):
+    """
+    Return the file tree configured on given project.
+    """
     return project["file_tree"]
 
 
@@ -325,46 +331,46 @@ def get_tree_from_file(tree_name):
     return tree
 
 
-def get_folder_path_template(tree, mode, entity):
+def _get_template(tree, mode, entity, section):
+    """
+    Return the template of given section ("folder_path" or "file_name") for
+    the kind of given entity. A tree missing the mode or the kind is
+    malformed: the KeyError is turned into the domain exception.
+    """
+    # The tree is read inside each branch, not hoisted: the entity kind is
+    # resolved first, as it always was, so a malformed tree keeps surfacing
+    # after the dispatch rather than before it.
     try:
         if entity["type"] == "AssetInstance":
             if entity.get("target_asset_id", None) is not None:
-                return tree[mode]["folder_path"]["instance_asset"]
-            else:
-                return tree[mode]["folder_path"]["instance"]
+                return tree[mode][section]["instance_asset"]
+            return tree[mode][section]["instance"]
         elif shots_service.is_shot(entity):
-            return tree[mode]["folder_path"]["shot"]
+            return tree[mode][section]["shot"]
         elif shots_service.is_sequence(entity):
-            return tree[mode]["folder_path"]["sequence"]
+            return tree[mode][section]["sequence"]
         elif shots_service.is_scene(entity):
-            return tree[mode]["folder_path"]["scene"]
+            return tree[mode][section]["scene"]
         elif shots_service.is_episode(entity):
-            return tree[mode]["folder_path"]["episode"]
+            return tree[mode][section]["episode"]
         else:
-            return tree[mode]["folder_path"]["asset"]
+            return tree[mode][section]["asset"]
     except KeyError:
         raise MalformedFileTreeException
+
+
+def get_folder_path_template(tree, mode, entity):
+    """
+    Return the folder path template matching the kind of given entity.
+    """
+    return _get_template(tree, mode, entity, "folder_path")
 
 
 def get_file_name_template(tree, mode, entity):
-    try:
-        if entity["type"] == "AssetInstance":
-            if entity.get("target_asset_id", None) is not None:
-                return tree[mode]["file_name"]["instance_asset"]
-            else:
-                return tree[mode]["file_name"]["instance"]
-        elif shots_service.is_shot(entity):
-            return tree[mode]["file_name"]["shot"]
-        elif shots_service.is_sequence(entity):
-            return tree[mode]["file_name"]["sequence"]
-        elif shots_service.is_scene(entity):
-            return tree[mode]["file_name"]["scene"]
-        elif shots_service.is_episode(entity):
-            return tree[mode]["file_name"]["episode"]
-        else:
-            return tree[mode]["file_name"]["asset"]
-    except KeyError:
-        raise MalformedFileTreeException
+    """
+    Return the file name template matching the kind of given entity.
+    """
+    return _get_template(tree, mode, entity, "file_name")
 
 
 def get_file_name_root(
@@ -407,10 +413,17 @@ def get_file_name_root(
 
 
 def change_folder_path_separators(folder_path, sep):
+    """
+    Rewrite a template's slashes with the separator of the target platform.
+    """
     return folder_path.replace("/", sep)
 
 
 def get_root_path(tree, mode, sep):
+    """
+    Build the absolute prefix every path of given mode starts with:
+    mountpoint, then root when one is set.
+    """
     if tree is None:
         raise MalformedFileTreeException(
             "No tree can be found for given project."
@@ -591,10 +604,10 @@ def get_folder_from_task_type(task, task_type, field="name"):
 
 
 def get_folder_from_asset(asset, field="name"):
-    folder = ""
-    if asset is not None:
-        folder = asset[field]
-    return folder
+    """
+    Return the asset folder name, empty when there is no asset.
+    """
+    return asset[field] if asset is not None else ""
 
 
 def get_folder_from_sequence(entity, field="name"):
@@ -633,32 +646,31 @@ def get_folder_from_episode(entity, field="name"):
 
 
 def get_folder_from_temporal_entity(entity, field="name"):
-    if entity is not None:
-        entity = entities_service.get_entity(entity["id"])
-        folder = entity[field]
-    else:
+    """
+    Return the folder name of given temporal entity (shot, sequence...).
+    """
+    if entity is None:
         raise MalformedFileTreeException("Given temporal entity is null.")
-    return folder
+    return entities_service.get_entity(entity["id"])[field]
 
 
 def get_folder_from_temporal_entity_type(entity, field="name"):
-    if entity is not None:
-        entity_type = entities_service.get_entity_type(
-            entity["entity_type_id"]
-        )
-        folder = entity_type[field].lower()
-    else:
+    """
+    Return the folder name of the type of given temporal entity.
+    """
+    if entity is None:
         raise MalformedFileTreeException("Given temporal entity type is null.")
-    return folder
+    entity_type = entities_service.get_entity_type(entity["entity_type_id"])
+    return entity_type[field].lower()
 
 
 def get_folder_from_asset_type(asset, field="name"):
-    if asset is not None:
-        asset_type = assets_service.get_asset_type(asset["entity_type_id"])
-        folder = asset_type[field]
-    else:
+    """
+    Return the folder name of the type of given asset.
+    """
+    if asset is None:
         raise MalformedFileTreeException("Given asset is null.")
-    return folder
+    return assets_service.get_asset_type(asset["entity_type_id"])[field]
 
 
 def get_folder_from_software(software, field="name"):
@@ -670,10 +682,10 @@ def get_folder_from_software(software, field="name"):
 
 
 def get_folder_from_scene(scene, field="name"):
-    folder = ""
-    if scene is not None:
-        folder = scene[field]
-    return folder
+    """
+    Return the scene folder name, empty when there is no scene.
+    """
+    return scene[field] if scene is not None else ""
 
 
 def get_folder_from_asset_instance(asset_instance, field):
@@ -699,12 +711,14 @@ def get_folder_from_revision(revision):
 
 
 def join_path(left, right, sep=os.sep):
+    """
+    Join two path fragments, skipping the separator when one is empty.
+    """
     if left == "":
         return right
-    elif right == "":
+    if right == "":
         return left
-    else:
-        return f"{left}{sep}{right}"
+    return f"{left}{sep}{right}"
 
 
 def apply_style(file_name, style):
@@ -739,6 +753,10 @@ class PathTokens(object):
 
 
 def get_shot_task_from_path(file_path, project, mode="working", sep="/"):
+    """
+    Resolve the shot task a working file path points at, by matching the
+    path against the project's shot template.
+    """
     template_elements = get_shot_template_folders(project, mode, sep)
     elements = get_path_folders(project, file_path, mode, sep)
 
@@ -765,6 +783,10 @@ def get_shot_task_from_path(file_path, project, mode="working", sep="/"):
 
 
 def get_asset_task_from_path(file_path, project, mode="working", sep="/"):
+    """
+    Resolve the asset task a working file path points at, by matching the
+    path against the project's asset template.
+    """
     template_elements = get_asset_template_folders(project, mode, sep)
     elements = get_path_folders(project, file_path, mode, sep)
 
@@ -790,6 +812,11 @@ def get_asset_task_from_path(file_path, project, mode="working", sep="/"):
 
 
 def extract_variable_values_from_path(elements, template_elements):
+    """
+    Map each template token to the value found at the same position in the
+    path. A token may carry a prefix and a suffix (`v<Version>` matching
+    `v003` yields `003`); the first occurrence of a token wins.
+    """
     data_names = OrderedDict()
     max_count = min(len(elements), len(template_elements))
     for i, template_element in enumerate(template_elements):
@@ -825,26 +852,42 @@ def extract_variable_values_from_path(elements, template_elements):
 
 
 def get_shot_path_template(tree, mode="working"):
+    """
+    Return the shot folder template of given tree, empty when absent.
+    """
     return tree[mode]["folder_path"].get("shot", "")
 
 
 def get_asset_path_template(tree, mode="working"):
+    """
+    Return the asset folder template of given tree, empty when absent.
+    """
     return tree[mode]["folder_path"].get("asset", "")
 
 
 def get_shot_template_folders(project, mode="working", sep="/"):
+    """
+    Split the project's shot template into its folder elements.
+    """
     tree = get_tree_from_project(project)
     template = get_shot_path_template(tree, mode)
     return template.split(sep)
 
 
 def get_asset_template_folders(project, mode="working", sep="/"):
+    """
+    Split the project's asset template into its folder elements.
+    """
     tree = get_tree_from_project(project)
     template = get_asset_path_template(tree, mode)
     return template.split(sep)
 
 
 def get_path_folders(project, file_path, mode="working", sep="/"):
+    """
+    Split a file path into folder elements, root stripped, so it lines up
+    with the template elements.
+    """
     tree = get_tree_from_project(project)
     root = get_root_path(tree, mode, sep)
     file_path = file_path[len(root) :]

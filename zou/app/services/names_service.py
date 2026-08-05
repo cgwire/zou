@@ -1,6 +1,7 @@
 import slugify
 
 from zou.app.models.entity import Entity
+from zou.app.models.entity_type import EntityType
 from zou.app.utils import cache
 
 from zou.app.services import (
@@ -11,6 +12,36 @@ from zou.app.services import (
     shots_service,
     persons_service,
 )
+
+
+def _load_entities(entity_ids, *already_loaded):
+    """
+    Return the serialized entities for given ids, keyed by id. Entities
+    present in the already loaded maps are reused, only the rest is queried.
+    The maps are searched in order, so the first one wins.
+    """
+    entities = {}
+    missing = {str(entity_id) for entity_id in entity_ids}
+    for loaded in already_loaded:
+        for entity_id in missing & loaded.keys():
+            entities[entity_id] = loaded[entity_id]
+        missing -= entities.keys()
+
+    if missing:
+        for entity in Entity.query.filter(Entity.id.in_(list(missing))).all():
+            entities[str(entity.id)] = entity.serialize()
+    return entities
+
+
+def _collect_parent_ids(entities_map):
+    """
+    Return the ids of the parents of given entities, skipping the roots.
+    """
+    return {
+        entity["parent_id"]
+        for entity in entities_map.values()
+        if entity["parent_id"] is not None
+    }
 
 
 @cache.memoize_function(1200)
@@ -34,9 +65,7 @@ def get_full_entity_name(entity_id):
         name = entity["name"]
     elif shots_service.is_sequence(entity):
         name = entity["name"]
-        if entity["parent_id"] is None:
-            name = entity["name"]
-        else:
+        if entity["parent_id"] is not None:
             episode = entities_service.get_entity(entity["parent_id"])
             episode_id = episode["id"]
             name = f"{episode['name']} / {entity['name']}"
@@ -44,7 +73,7 @@ def get_full_entity_name(entity_id):
         asset_type = entities_service.get_entity_type(entity["entity_type_id"])
         episode_id = entity["source_id"]
         name = f"{asset_type['name']} / {entity['name']}"
-    return (name, episode_id, entity["preview_file_id"])
+    return name, episode_id, entity["preview_file_id"]
 
 
 def get_full_entity_names(entity_ids):
@@ -58,58 +87,15 @@ def get_full_entity_names(entity_ids):
 
     unique_ids = list(set(entity_ids))
 
-    # Fetch all entities in one query
-    entities_raw = Entity.query.filter(Entity.id.in_(unique_ids)).all()
-    entities_map = {str(e.id): e.serialize() for e in entities_raw}
+    entities_map = _load_entities(unique_ids)
+    parent_ids = _collect_parent_ids(entities_map)
+    parents_map = _load_entities(parent_ids, entities_map)
+    # Grandparents are the episodes of the sequences.
+    grandparent_ids = _collect_parent_ids(parents_map)
+    grandparents_map = _load_entities(
+        grandparent_ids, entities_map, parents_map
+    )
 
-    # Collect parent IDs we need to fetch
-    parent_ids = set()
-    for entity in entities_map.values():
-        if entity["parent_id"] is not None:
-            parent_ids.add(entity["parent_id"])
-
-    # Fetch parents in one query
-    parents_map = {}
-    if parent_ids:
-        # Remove IDs we already have
-        missing_parent_ids = parent_ids - set(entities_map.keys())
-        if missing_parent_ids:
-            parents_raw = Entity.query.filter(
-                Entity.id.in_(list(missing_parent_ids))
-            ).all()
-            for e in parents_raw:
-                parents_map[str(e.id)] = e.serialize()
-        # Also include entities that are parents of other entities
-        for pid in parent_ids:
-            if str(pid) in entities_map:
-                parents_map[str(pid)] = entities_map[str(pid)]
-
-    # Collect grandparent IDs (episode of a sequence)
-    grandparent_ids = set()
-    for parent in parents_map.values():
-        if parent["parent_id"] is not None:
-            grandparent_ids.add(parent["parent_id"])
-
-    # Fetch grandparents in one query
-    grandparents_map = {}
-    if grandparent_ids:
-        missing = (
-            grandparent_ids
-            - set(entities_map.keys())
-            - set(parents_map.keys())
-        )
-        if missing:
-            gp_raw = Entity.query.filter(Entity.id.in_(list(missing))).all()
-            for e in gp_raw:
-                grandparents_map[str(e.id)] = e.serialize()
-        for gid in grandparent_ids:
-            sid = str(gid)
-            if sid in entities_map:
-                grandparents_map[sid] = entities_map[sid]
-            elif sid in parents_map:
-                grandparents_map[sid] = parents_map[sid]
-
-    # All entities lookup
     all_entities = {}
     all_entities.update(grandparents_map)
     all_entities.update(parents_map)
@@ -120,27 +106,22 @@ def get_full_entity_names(entity_ids):
     episode_type = shots_service.get_episode_type()
     sequence_type = shots_service.get_sequence_type()
 
-    # Collect entity_type_ids for asset types
-    asset_type_ids = set()
-    for entity in entities_map.values():
-        etype = str(entity["entity_type_id"])
-        if etype not in (
-            shot_type["id"],
-            episode_type["id"],
-            sequence_type["id"],
-        ):
-            asset_type_ids.add(entity["entity_type_id"])
-
-    # Batch fetch asset types
+    # Anything that is not a shot, an episode or a sequence is an asset, so
+    # its entity type has to be resolved to build the name.
+    asset_type_ids = {
+        entity["entity_type_id"]
+        for entity in entities_map.values()
+        if str(entity["entity_type_id"])
+        not in (shot_type["id"], episode_type["id"], sequence_type["id"])
+    }
     asset_types_map = {}
     if asset_type_ids:
-        from zou.app.models.entity_type import EntityType
-
-        types_raw = EntityType.query.filter(
-            EntityType.id.in_(list(asset_type_ids))
-        ).all()
-        for t in types_raw:
-            asset_types_map[str(t.id)] = t.serialize()
+        asset_types_map = {
+            str(entity_type.id): entity_type.serialize()
+            for entity_type in EntityType.query.filter(
+                EntityType.id.in_(list(asset_type_ids))
+            ).all()
+        }
 
     # Build names
     result = {}
@@ -189,11 +170,7 @@ def get_full_entity_names(entity_ids):
             else:
                 name = entity["name"]
 
-        result[str_eid] = (
-            name,
-            episode_id,
-            entity["preview_file_id"],
-        )
+        result[str_eid] = name, episode_id, entity["preview_file_id"]
 
     return result
 

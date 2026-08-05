@@ -396,6 +396,10 @@ def create_casting_link(entity_in_id, asset_id, nb_occurences=1, label=""):
 
 
 def _extract_removal(entity, casting):
+    """
+    Return the assets dropped from the casting of an entity: the ones it
+    was linked to and the new casting no longer names.
+    """
     assets = []
     asset_map = {}
     for cast in casting:
@@ -407,6 +411,9 @@ def _extract_removal(entity, casting):
 
 
 def _remove_asset_from_episode_shots(asset_id, episode_id):
+    """
+    Drop an asset from the casting of every shot of given episode.
+    """
     shots = shots_service.get_shots_for_episode(episode_id)
     shot_ids = [shot["id"] for shot in shots]
     links = EntityLink.query.filter(
@@ -576,6 +583,27 @@ def get_cast_in(asset_id):
     return cast_in
 
 
+def _group_serialized_instances(keyed_instances):
+    """
+    Group serialized asset instances by key, given (key, instance) pairs.
+    """
+    result = {}
+    for key, asset_instance in keyed_instances:
+        result.setdefault(key, []).append(asset_instance.serialize())
+    return result
+
+
+def _get_instances_of_asset(asset_id):
+    """
+    Return every asset instance of given asset, ordered by number.
+    """
+    return (
+        AssetInstance.query.filter(AssetInstance.asset_id == asset_id)
+        .order_by(AssetInstance.asset_id, AssetInstance.number)
+        .all()
+    )
+
+
 def get_asset_instances_for_scene(scene_id, asset_type_id=None):
     """
     Return all asset instances for given scene.
@@ -592,15 +620,10 @@ def get_asset_instances_for_scene(scene_id, asset_type_id=None):
             Entity.entity_type_id == asset_type_id
         )
 
-    asset_instances = query.all()
-
-    result = {}
-    for asset_instance in asset_instances:
-        asset_id = str(asset_instance.asset_id)
-        if asset_id not in result:
-            result[asset_id] = []
-        result[asset_id].append(asset_instance.serialize())
-    return result
+    return _group_serialized_instances(
+        (str(asset_instance.asset_id), asset_instance)
+        for asset_instance in query.all()
+    )
 
 
 def get_asset_instances_for_shot(shot_id):
@@ -608,55 +631,31 @@ def get_asset_instances_for_shot(shot_id):
     Return asset instances casted in given shot.
     """
     shot = shots_service.get_shot_raw(shot_id)
-
-    result = {}
-    for asset_instance in shot.instance_casting:
-        asset_id = str(asset_instance.asset_id)
-        if asset_id not in result:
-            result[asset_id] = []
-        result[asset_id].append(asset_instance.serialize())
-    return result
+    return _group_serialized_instances(
+        (str(asset_instance.asset_id), asset_instance)
+        for asset_instance in shot.instance_casting
+    )
 
 
 def get_shot_asset_instances_for_asset(asset_id):
     """
     Return asset instances casted in a shot for given asset.
     """
-    asset_instances = (
-        AssetInstance.query.filter(AssetInstance.asset_id == asset_id)
-        .order_by(AssetInstance.asset_id, AssetInstance.number)
-        .all()
+    return _group_serialized_instances(
+        (str(shot.id), asset_instance)
+        for asset_instance in _get_instances_of_asset(asset_id)
+        for shot in asset_instance.shots
     )
-
-    result = {}
-    for asset_instance in asset_instances:
-        for shot in asset_instance.shots:
-            shot_id = str(shot.id)
-            if shot_id not in result:
-                result[shot_id] = []
-            result[shot_id].append(asset_instance.serialize())
-
-    return result
 
 
 def get_scene_asset_instances_for_asset(asset_id):
     """
     Return all asset instances of an asset casted in layout scenes.
     """
-    asset_instances = (
-        AssetInstance.query.filter(AssetInstance.asset_id == asset_id)
-        .order_by(AssetInstance.asset_id, AssetInstance.number)
-        .all()
+    return _group_serialized_instances(
+        (str(asset_instance.scene_id), asset_instance)
+        for asset_instance in _get_instances_of_asset(asset_id)
     )
-
-    result = {}
-    for asset_instance in asset_instances:
-        scene_id = str(asset_instance.scene_id)
-        if scene_id not in result:
-            result[scene_id] = []
-        result[scene_id].append(asset_instance.serialize())
-
-    return result
 
 
 def get_camera_instances_for_scene(scene_id):
@@ -678,9 +677,7 @@ def add_asset_instance_to_scene(scene_id, asset_id, description=""):
         .first()
     )
 
-    number = 1
-    if instance is not None:
-        number = instance.number + 1
+    number = 1 if instance is None else instance.number + 1
     name = build_asset_instance_name(asset_id, number)
 
     asset_instance = AssetInstance.create(
@@ -760,15 +757,10 @@ def get_asset_instances_for_asset(asset_id, asset_type_id=None):
             Entity.entity_type_id == asset_type_id
         )
 
-    asset_instances = query.all()
-
-    result = {}
-    for asset_instance in asset_instances:
-        asset_id = str(asset_instance.asset_id)
-        if asset_id not in result:
-            result[asset_id] = []
-        result[asset_id].append(asset_instance.serialize())
-    return result
+    return _group_serialized_instances(
+        (str(asset_instance.asset_id), asset_instance)
+        for asset_instance in query.all()
+    )
 
 
 def add_asset_instance_to_asset(
@@ -784,9 +776,7 @@ def add_asset_instance_to_asset(
         .first()
     )
 
-    number = 1
-    if instance is not None:
-        number = instance.number + 1
+    number = 1 if instance is None else instance.number + 1
     name = build_asset_instance_name(asset_to_instantiate_id, number)
 
     asset_instance = AssetInstance.create(
@@ -891,6 +881,10 @@ def refresh_all_shot_casting_stats():
 
 
 def _get_task_type_priority_map(project_id):
+    """
+    Map each shot task type of a project to its priority, which is what
+    orders the pipeline steps.
+    """
     task_types = (
         ProjectTaskTypeLink.query.join(TaskType)
         .filter(ProjectTaskTypeLink.project_id == project_id)
@@ -905,6 +899,11 @@ def _get_task_type_priority_map(project_id):
 
 
 def _is_asset_ready(asset, task, priority_map):
+    """
+    Tell whether an asset is ready for given task: a shared asset coming
+    from another project always is, otherwise its ready_for step must
+    come at or after the task's own step in the pipeline order.
+    """
     is_ready = False
     if not asset.get("canceled", False):
         if asset["is_shared"] and asset["project_id"] != str(task.project_id):

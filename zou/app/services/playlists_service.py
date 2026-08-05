@@ -278,6 +278,10 @@ def get_playlist_with_preview_file_revisions(
 
 
 def _add_build_job_infos_to_playlist_dict(playlist, playlist_dict):
+    """
+    Add the state of the last build job to a playlist dict, so the client
+    knows whether a movie is available or still building.
+    """
     playlist_dict["build_jobs"] = []
     for build_job in reversed(playlist.build_jobs):
         playlist_dict["build_jobs"].append(build_job.present())
@@ -756,6 +760,10 @@ def retrieve_playlist_tmp_files(preview_files, full=False):
 
 
 def retrieve_playlist_tmp_file(preview_file):
+    """
+    Download one preview of a playlist to the temp folder, so ffmpeg can
+    concatenate it locally.
+    """
     if preview_file["extension"] == "mp4":
         get_path_func = file_store.get_local_movie_path
         open_func = file_store.open_movie
@@ -872,6 +880,10 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
 def _run_concatenation(
     playlist, job, tmp_file_paths, movie_file_path, params, mode
 ):
+    """
+    Concatenate the downloaded previews into the playlist movie, then
+    store it and clean the temporary files up.
+    """
     success = False
     try:
         result = movie.build_playlist_movie(
@@ -900,6 +912,10 @@ def _run_concatenation(
 def _run_remote_job_build_playlist(
     app, job, previews, params, movie_file_path, full
 ):
+    """
+    Hand the concatenation over to a remote worker instead of running it
+    in process, when a job queue is configured.
+    """
     preview_ids = [
         preview["id"] for preview in previews if preview["extension"] == "mp4"
     ]
@@ -1241,8 +1257,11 @@ def generate_playlisted_entity_from_task(task_id, task_type_links):
 
 
 def get_base_episode_for_playlist(entity, task_id):
+    """
+    Build the playlist entry of an episode: it has no parent to show.
+    """
     episode = shots_service.get_episode(entity["id"])
-    playlisted_entity = {
+    return {
         "id": episode["id"],
         "name": episode["name"],
         "preview_file_task_id": task_id,
@@ -1250,10 +1269,12 @@ def get_base_episode_for_playlist(entity, task_id):
         "sequence_name": "",
         "parent_name": "",
     }
-    return playlisted_entity
 
 
 def get_base_sequence_for_playlist(entity, task_id):
+    """
+    Build the playlist entry of a sequence, showing its episode as parent.
+    """
     sequence = shots_service.get_sequence(entity["id"])
     episode = None
     try:
@@ -1264,17 +1285,8 @@ def get_base_sequence_for_playlist(entity, task_id):
             sequence.get("parent_id"),
             e,
         )
-    if episode is not None:
-        playlisted_entity = {
-            "id": sequence["id"],
-            "name": sequence["name"],
-            "preview_file_task_id": task_id,
-            "episode_id": episode["id"],
-            "episode_name": episode["name"],
-            "parent_name": episode["name"],
-        }
-    else:
-        playlisted_entity = {
+    if episode is None:
+        return {
             "id": sequence["id"],
             "name": sequence["name"],
             "preview_file_task_id": task_id,
@@ -1282,10 +1294,20 @@ def get_base_sequence_for_playlist(entity, task_id):
             "sequence_name": "",
             "parent_name": "",
         }
-    return playlisted_entity
+    return {
+        "id": sequence["id"],
+        "name": sequence["name"],
+        "preview_file_task_id": task_id,
+        "episode_id": episode["id"],
+        "episode_name": episode["name"],
+        "parent_name": episode["name"],
+    }
 
 
 def get_base_shot_for_playlist(entity, task_id):
+    """
+    Build the playlist entry of a shot, showing its sequence as parent.
+    """
     shot = shots_service.get_shot(entity["id"])
     sequence = shots_service.get_sequence(shot["parent_id"])
     playlisted_entity = {
@@ -1296,10 +1318,12 @@ def get_base_shot_for_playlist(entity, task_id):
         "sequence_name": sequence["name"],
         "parent_name": sequence["name"],
     }
-    return playlisted_entity
 
 
 def get_base_edit_for_playlist(entity, task_id):
+    """
+    Build the playlist entry of an edit, showing its episode as parent.
+    """
     edit = edits_service.get_edit(entity["id"])
     episode = None
     try:
@@ -1308,17 +1332,8 @@ def get_base_edit_for_playlist(entity, task_id):
         logger.debug(
             f"No episode for edit parent_id={edit.get('parent_id')}: {e}"
         )
-    if episode is not None:
-        playlisted_entity = {
-            "id": edit["id"],
-            "name": edit["name"],
-            "preview_file_task_id": task_id,
-            "episode_id": episode["id"],
-            "episode_name": episode["name"],
-            "parent_name": episode["name"],
-        }
-    else:
-        playlisted_entity = {
+    if episode is None:
+        return {
             "id": edit["id"],
             "name": edit["name"],
             "preview_file_task_id": task_id,
@@ -1326,10 +1341,20 @@ def get_base_edit_for_playlist(entity, task_id):
             "episode_name": "",
             "parent_name": "",
         }
-    return playlisted_entity
+    return {
+        "id": edit["id"],
+        "name": edit["name"],
+        "preview_file_task_id": task_id,
+        "episode_id": episode["id"],
+        "episode_name": episode["name"],
+        "parent_name": episode["name"],
+    }
 
 
 def get_base_asset_for_playlist(entity, task_id):
+    """
+    Build the playlist entry of an asset, showing its type as parent.
+    """
     asset = assets_service.get_asset(entity["id"])
     asset_type = assets_service.get_asset_type(asset["entity_type_id"])
     playlisted_entity = {
@@ -1340,7 +1365,6 @@ def get_base_asset_for_playlist(entity, task_id):
         "asset_type_name": asset_type["name"],
         "parent_name": asset_type["name"],
     }
-    return playlisted_entity
 
 
 def get_preview_files_for_task(task_id):

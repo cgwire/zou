@@ -1,5 +1,4 @@
 from datetime import date, timedelta
-from sqlalchemy.exc import StatementError
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import aliased
 from sqlalchemy import Text, and_, cast, delete, func, literal, select, update
@@ -34,6 +33,9 @@ from zou.app.services.exception import (
 
 
 def clear_production_schedule_version_cache(production_schedule_version_id):
+    """
+    Drop every memoized serialization of given production schedule version.
+    """
     cache.cache.delete_memoized(
         get_production_schedule_version, production_schedule_version_id
     )
@@ -74,11 +76,12 @@ def get_task_types_schedule_items(project_id):
     }
 
     new_schedule_items = set()
-    schedule_item_to_remove = set()
-    for schedule_item in schedule_items:
-        if schedule_item.task_type_id is not None:
-            if str(schedule_item.task_type_id) not in task_type_map:
-                schedule_item_to_remove.add(schedule_item)
+    schedule_item_to_remove = {
+        schedule_item
+        for schedule_item in schedule_items
+        if schedule_item.task_type_id is not None
+        and str(schedule_item.task_type_id) not in task_type_map
+    }
 
     for task_type in task_types:
         if task_type["id"] not in schedule_item_map:
@@ -101,6 +104,19 @@ def get_task_types_schedule_items(project_id):
     return sorted(
         [schedule_item.present() for schedule_item in schedule_items],
         key=lambda x: x["start_date"],
+    )
+
+
+def _entity_schedule_items_query(project_id, task_type_id, entity_type_id):
+    """
+    Base query for the schedule items attached to the entities of given type,
+    in given project and for given task type.
+    """
+    return (
+        ScheduleItem.query.join(Entity, ScheduleItem.object_id == Entity.id)
+        .filter(ScheduleItem.project_id == project_id)
+        .filter(Entity.entity_type_id == entity_type_id)
+        .filter(ScheduleItem.task_type_id == task_type_id)
     )
 
 
@@ -154,11 +170,8 @@ def get_episodes_schedule_items(project_id, task_type_id, episode_id=None):
         ]
     episodes_map = base_service.get_model_map_from_array(episodes)
 
-    query = (
-        ScheduleItem.query.join(Entity, ScheduleItem.object_id == Entity.id)
-        .filter(ScheduleItem.project_id == project_id)
-        .filter(Entity.entity_type_id == episode_type["id"])
-        .filter(ScheduleItem.task_type_id == task_type_id)
+    query = _entity_schedule_items_query(
+        project_id, task_type_id, episode_type["id"]
     )
     if episode_id is not None:
         query = query.filter(ScheduleItem.object_id == episode_id)
@@ -189,11 +202,8 @@ def get_sequences_schedule_items(project_id, task_type_id, episode_id=None):
     sequence_map = base_service.get_model_map_from_array(sequences)
     sequence_type = shots_service.get_sequence_type()
 
-    query = (
-        ScheduleItem.query.join(Entity, ScheduleItem.object_id == Entity.id)
-        .filter(ScheduleItem.project_id == project_id)
-        .filter(Entity.entity_type_id == sequence_type["id"])
-        .filter(ScheduleItem.task_type_id == task_type_id)
+    query = _entity_schedule_items_query(
+        project_id, task_type_id, sequence_type["id"]
     )
     if episode_id is not None:
         query = query.filter(Entity.parent_id == episode_id)
@@ -224,11 +234,8 @@ def get_edits_schedule_items(project_id, task_type_id, episode_id=None):
     edit_map = base_service.get_model_map_from_array(edits)
     edit_type = edits_service.get_edit_type()
 
-    query = (
-        ScheduleItem.query.join(Entity, ScheduleItem.object_id == Entity.id)
-        .filter(ScheduleItem.project_id == project_id)
-        .filter(Entity.entity_type_id == edit_type["id"])
-        .filter(ScheduleItem.task_type_id == task_type_id)
+    query = _entity_schedule_items_query(
+        project_id, task_type_id, edit_type["id"]
     )
     if episode_id is not None:
         query = query.filter(Entity.parent_id == episode_id)
@@ -246,17 +253,23 @@ def get_edits_schedule_items(project_id, task_type_id, episode_id=None):
 def get_entity_schedule_items(
     project_id, task_type_id, to_create, to_create_map, existing_schedule_items
 ):
+    """
+    Complete the existing schedule items with one item per entity that has
+    none yet, drop the ones whose entity is gone, and return the whole set
+    sorted by entity name.
+    """
     schedule_item_map = {
         str(schedule_item.object_id): schedule_item
         for schedule_item in existing_schedule_items
     }
 
     new_schedule_items = set()
-    schedule_item_to_remove = set()
-    for schedule_item in existing_schedule_items:
-        if schedule_item.object_id is not None:
-            if str(schedule_item.object_id) not in to_create_map:
-                schedule_item_to_remove.add(schedule_item)
+    schedule_item_to_remove = {
+        schedule_item
+        for schedule_item in existing_schedule_items
+        if schedule_item.object_id is not None
+        and str(schedule_item.object_id) not in to_create_map
+    }
 
     for entity in to_create:
         if entity["id"] not in schedule_item_map:
@@ -300,17 +313,11 @@ def get_production_schedule_version_raw(production_schedule_version_id):
     """
     Get production schedule version matching given id.
     """
-    try:
-        production_schedule_version = ProductionScheduleVersion.get(
-            production_schedule_version_id
-        )
-    except StatementError:
-        raise ProductionScheduleVersionNotFoundException
-
-    if production_schedule_version is None:
-        raise ProductionScheduleVersionNotFoundException
-
-    return production_schedule_version
+    return base_service.get_instance(
+        ProductionScheduleVersion,
+        production_schedule_version_id,
+        ProductionScheduleVersionNotFoundException,
+    )
 
 
 @cache.memoize_function(120)
@@ -569,7 +576,6 @@ def apply_production_schedule_version_to_production(
     """
     Apply production schedule version to production.
     """
-
     stmt = (
         update(Task)
         .values(

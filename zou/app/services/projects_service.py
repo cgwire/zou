@@ -43,6 +43,9 @@ from sqlalchemy import or_
 
 
 def clear_project_cache(project_id):
+    """
+    Drop every memoized serialization of given project, and the project lists.
+    """
     cache.cache.delete_memoized(get_project, project_id)
     cache.cache.delete_memoized(get_project, project_id, True)
     cache.cache.delete_memoized(get_project_by_name)
@@ -117,6 +120,11 @@ def get_projects_with_extra_data(
 def _fetch_metadata_descriptors_by_project(
     project_ids, for_client=False, vendor_departments=None
 ):
+    """
+    Return the metadata descriptors of given projects grouped by project,
+    in one query. Clients only get the descriptors published to them, and
+    a vendor only the ones of their departments.
+    """
     if for_client:
         descriptors_query = MetadataDescriptor.query.filter(
             MetadataDescriptor.project_id.in_(project_ids),
@@ -150,6 +158,9 @@ def _fetch_metadata_descriptors_by_project(
 
 
 def _fetch_task_type_links_by_project(project_ids):
+    """
+    Return the task type links of given projects grouped by project.
+    """
     task_type_links = ProjectTaskTypeLink.query.filter(
         ProjectTaskTypeLink.project_id.in_(project_ids)
     ).all()
@@ -162,6 +173,9 @@ def _fetch_task_type_links_by_project(project_ids):
 
 
 def _fetch_task_status_links_by_project(project_ids):
+    """
+    Return the task status links of given projects grouped by project.
+    """
     task_status_links = ProjectTaskStatusLink.query.filter(
         ProjectTaskStatusLink.project_id.in_(project_ids)
     ).all()
@@ -175,6 +189,10 @@ def _fetch_task_status_links_by_project(project_ids):
 
 
 def _fetch_first_episodes_by_project(project_ids):
+    """
+    Return the first episode of each given project, the one the clients
+    land on when they open a TV show.
+    """
     if not project_ids:
         return {}
 
@@ -216,6 +234,9 @@ def _fetch_first_episodes_by_project(project_ids):
 
 
 def _serialize_descriptor(descriptor):
+    """
+    Serialize a metadata descriptor with the departments it is limited to.
+    """
     return {
         "id": fields.serialize_value(descriptor.id),
         "name": descriptor.name,
@@ -239,6 +260,10 @@ def _build_project_dict_with_extra_data(
     task_statuses_by_project,
     first_episodes_by_project,
 ):
+    """
+    Assemble one project dict from the project row and the maps prefetched
+    for the whole page, so no query is issued per project.
+    """
     project_dict = project.serialize(relations=True)
 
     project_dict["descriptors"] = [
@@ -293,6 +318,9 @@ def get_projects():
 
 
 def _fetch_all_project_descriptors_by_project():
+    """
+    Return the metadata descriptors of every project grouped by project.
+    """
     descriptors = (
         MetadataDescriptor.query.filter(
             MetadataDescriptor.entity_type == "Project"
@@ -308,6 +336,9 @@ def _fetch_all_project_descriptors_by_project():
 
 @cache.memoize_function(480)
 def get_project_statuses():
+    """
+    Return every project status.
+    """
     return fields.serialize_models(ProjectStatus.get_all())
 
 
@@ -674,6 +705,9 @@ def remove_preview_background_file_setting(
 
 
 def _add_to_list_attr(project_id, model_class, model_id, list_attr):
+    """
+    Append a row to one of the project settings lists, no-op when already there.
+    """
     project = get_project_raw(project_id)
     model = model_class.get(model_id)
     if model is None:
@@ -696,6 +730,9 @@ def _add_to_list_attr(project_id, model_class, model_id, list_attr):
 
 
 def _remove_from_list_attr(project_id, model_class, model_id, list_attr):
+    """
+    Remove a row from one of the project settings lists, no-op when absent.
+    """
     project = get_project_raw(project_id)
     model = model_class.get(model_id)
     try:
@@ -706,6 +743,9 @@ def _remove_from_list_attr(project_id, model_class, model_id, list_attr):
 
 
 def _save_project(project):
+    """
+    Persist the project, drop its cache and notify the clients.
+    """
     project.save()
     clear_project_cache(str(project.id))
     events.emit("project:update", {}, project_id=str(project.id))
@@ -1084,6 +1124,18 @@ def copy_project_metadata_descriptors(project_id):
     return created
 
 
+def _find_descriptors_by_field(project_ids, entity_type, field_name):
+    """
+    Return the metadata descriptors sharing given field name and entity type
+    across given projects.
+    """
+    return MetadataDescriptor.query.filter(
+        MetadataDescriptor.project_id.in_(project_ids),
+        MetadataDescriptor.entity_type == entity_type,
+        MetadataDescriptor.field_name == field_name,
+    ).all()
+
+
 def update_metadata_descriptor_on_projects(
     project_ids, entity_type, field_name, changes
 ):
@@ -1091,11 +1143,9 @@ def update_metadata_descriptor_on_projects(
     Update every metadata descriptor sharing the given field name and entity
     type across the given projects. Returns the list of updated descriptors.
     """
-    descriptors = MetadataDescriptor.query.filter(
-        MetadataDescriptor.project_id.in_(project_ids),
-        MetadataDescriptor.entity_type == entity_type,
-        MetadataDescriptor.field_name == field_name,
-    ).all()
+    descriptors = _find_descriptors_by_field(
+        project_ids, entity_type, field_name
+    )
     return [
         update_metadata_descriptor(str(descriptor.id), dict(changes))
         for descriptor in descriptors
@@ -1109,11 +1159,9 @@ def remove_metadata_descriptor_from_projects(
     Remove every metadata descriptor sharing the given field name and entity
     type across the given projects. Returns the list of removed ids.
     """
-    descriptors = MetadataDescriptor.query.filter(
-        MetadataDescriptor.project_id.in_(project_ids),
-        MetadataDescriptor.entity_type == entity_type,
-        MetadataDescriptor.field_name == field_name,
-    ).all()
+    descriptors = _find_descriptors_by_field(
+        project_ids, entity_type, field_name
+    )
     removed_ids = []
     for descriptor in descriptors:
         descriptor_id = str(descriptor.id)
@@ -1153,15 +1201,25 @@ def reorder_metadata_descriptors_on_projects(
 
 
 def is_tv_show(project):
+    """
+    Return True when given project is a TV show, so episodes apply.
+    """
     return project["production_type"] == "tvshow"
 
 
 def is_open(project):
+    """
+    Return True when given project is still open.
+    """
     open_status = get_open_status()
     return project["project_status_id"] == open_status["id"]
 
 
 def create_project_task_type_link(project_id, task_type_id, priority):
+    """
+    Link a task type to given project with a priority, or update the
+    priority when the link already exists.
+    """
     if not task_type_id or not fields.is_valid_id(task_type_id):
         raise WrongParameterException(
             "task_type_id is required and must be a valid UUID"
@@ -1187,6 +1245,10 @@ def create_project_task_type_link(project_id, task_type_id, priority):
 def create_project_task_status_link(
     project_id, task_status_id, priority, roles_for_board=None
 ):
+    """
+    Link a task status to given project, or update the priority and the
+    board roles when the link already exists.
+    """
     if not task_status_id or not fields.is_valid_id(task_status_id):
         raise WrongParameterException(
             "task_status_id is required and must be a valid UUID"
@@ -1251,21 +1313,33 @@ def set_project_task_status_link_priorities(project_id, task_status_ids):
 
 
 def get_project_task_types(project_id):
+    """
+    Return the task types configured on given project.
+    """
     project = get_project_raw(project_id)
     return Project.serialize_list(project.task_types)
 
 
 def get_project_task_statuses(project_id):
+    """
+    Return the task statuses configured on given project.
+    """
     project = get_project_raw(project_id)
     return Project.serialize_list(project.task_statuses)
 
 
 def get_project_status_automations(project_id):
+    """
+    Return the status automations configured on given project.
+    """
     project = get_project_raw(project_id)
     return Project.serialize_list(project.status_automations)
 
 
 def get_project_preview_background_files(project_id):
+    """
+    Return the preview background files configured on given project.
+    """
     project = get_project_raw(project_id)
     return Project.serialize_list(project.preview_background_files)
 

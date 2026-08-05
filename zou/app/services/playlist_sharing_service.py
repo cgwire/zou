@@ -1,14 +1,13 @@
 import datetime
 import uuid
 
-from zou.app.utils import auth, events
+from zou.app.utils import auth, events, fields
 
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.person import Person
 from zou.app.models.playlist import Playlist
 from zou.app.models.playlist_share_link import PlaylistShareLink
-from zou.app.models.preview_file import PreviewFile
 from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
@@ -21,10 +20,8 @@ from zou.app.services import (
 )
 from zou.app.services.exception import (
     PlaylistShareLinkNotFoundException,
-    PlaylistNotFoundException,
     PreviewFileNotFoundException,
 )
-from zou.app.utils import auth as auth_utils, fields
 
 
 def create_share_link(
@@ -47,9 +44,7 @@ def create_share_link(
     # decode to str so it lands in the String column as a real hash
     # rather than the literal bytes repr.
     password_hash = (
-        auth_utils.encrypt_password(password).decode("utf-8")
-        if password
-        else None
+        auth.encrypt_password(password).decode("utf-8") if password else None
     )
     share_link = PlaylistShareLink.create(
         token=token,
@@ -270,7 +265,6 @@ def update_guest_comment(comment_id, guest_id, data, token):
     """
     from zou.app.models.comment import Comment
     from zou.app.services import comments_service, notifications_service
-    from zou.app.utils import events
 
     instance = _load_guest_comment(comment_id, guest_id, token)
 
@@ -342,7 +336,6 @@ def delete_guest_comment(comment_id, guest_id, token):
     comment they authored on a task that is not part of this playlist.
     """
     from zou.app.services import deletion_service
-    from zou.app.utils import events
 
     instance = _load_guest_comment(comment_id, guest_id, token)
 
@@ -513,6 +506,10 @@ _SHOT_LIKE_ENTITY_TYPE_NAMES = frozenset(
 
 
 def _enrich_shared_playlist_project_line(playlist_dict):
+    """
+    Inline the project name and fps on the playlist: a shared viewer has no
+    authenticated access to the project store.
+    """
     project_id = playlist_dict.get("project_id")
     if not project_id:
         return
@@ -565,6 +562,10 @@ def _load_task_styling_by_task_id(task_ids):
 
 
 def _parent_name_for_shot_entry(entity, entity_type_name, parent_map):
+    """
+    Return what is shown as the parent of a playlist entry: the parent
+    record name for shot-like entities, the entity type name otherwise.
+    """
     if entity_type_name in _SHOT_LIKE_ENTITY_TYPE_NAMES:
         if entity.parent_id is None:
             return ""
@@ -575,6 +576,9 @@ def _parent_name_for_shot_entry(entity, entity_type_name, parent_map):
 def _apply_task_styling_to_shot(
     shot, task_id, task_type_by_task_id, task_status_color_by_task_id
 ):
+    """
+    Inline the task type and status colors a shared viewer cannot look up.
+    """
     tid = str(task_id)
     task_type = task_type_by_task_id.get(tid)
     if task_type:
@@ -803,7 +807,6 @@ def send_share_invitations(
     """
     from zou.app import config
     from zou.app.services import emails_service
-    from zou.app.utils import auth as auth_utils
 
     share_link = get_share_link_by_token_raw(token)
     if str(share_link.playlist_id) != str(playlist_id):
@@ -820,9 +823,7 @@ def send_share_invitations(
     # doing live DNS in a request handler is brittle).
     recipients = {}
     for raw_email in emails or []:
-        normalized = auth_utils.validate_email(
-            raw_email, check_deliverability=False
-        )
+        normalized = auth.validate_email(raw_email, check_deliverability=False)
         recipients.setdefault(
             normalized.lower(),
             {"email": normalized, "locale": None},
@@ -835,7 +836,7 @@ def send_share_invitations(
         person_email = person.get("email")
         if not person_email:
             continue
-        normalized = auth_utils.validate_email(
+        normalized = auth.validate_email(
             person_email, check_deliverability=False
         )
         recipients[normalized.lower()] = {

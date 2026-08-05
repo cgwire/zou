@@ -32,8 +32,30 @@ from zou.app.services.exception import (
     WrongIdFormatException,
 )
 
+EDITS_AND_TASKS_TASK_FIELDS = [
+    "id",
+    "duration",
+    "due_date",
+    "entity_id",
+    "end_date",
+    "estimation",
+    "last_comment_date",
+    "last_preview_file_id",
+    "nb_assets_ready",
+    "priority",
+    "real_start_date",
+    "retake_count",
+    "start_date",
+    "task_status_id",
+    "task_type_id",
+    "data",
+]
+
 
 def clear_edit_cache(edit_id):
+    """
+    Drop every memoized serialization of given edit.
+    """
     cache.cache.delete_memoized(get_edit, edit_id)
     cache.cache.delete_memoized(get_edit, edit_id, True)
     cache.cache.delete_memoized(get_full_edit, edit_id)
@@ -41,7 +63,47 @@ def clear_edit_cache(edit_id):
 
 @cache.memoize_function(1200)
 def get_edit_type():
+    """
+    Return the Edit entity type.
+    """
     return entities_service.get_temporal_entity_type_by_name("Edit")
+
+
+def get_edit_raw(edit_id):
+    """
+    Return given edit as an active record.
+    """
+    edit_type = get_edit_type()
+    try:
+        edit = Entity.get_by(entity_type_id=edit_type["id"], id=edit_id)
+    except StatementError:
+        raise EditNotFoundException
+
+    if edit is None:
+        raise EditNotFoundException
+
+    return edit
+
+
+@cache.memoize_function(120)
+def get_edit(edit_id, relations=False):
+    """
+    Return given edit as a dictionary.
+    """
+    return get_edit_raw(edit_id).serialize(
+        obj_type="Edit", relations=relations
+    )
+
+
+@cache.memoize_function_single_flight(120)
+def get_full_edit(edit_id):
+    """
+    Return given edit as a dictionary with extra data like project.
+    """
+    edits = get_edits_and_tasks({"id": edit_id})
+    if len(edits) == 0:
+        raise EditNotFoundException
+    return edits[0]
 
 
 def get_edits(criterions=None):
@@ -76,26 +138,6 @@ def get_edits(criterions=None):
         edits.append(edit)
 
     return edits
-
-
-EDITS_AND_TASKS_TASK_FIELDS = [
-    "id",
-    "duration",
-    "due_date",
-    "entity_id",
-    "end_date",
-    "estimation",
-    "last_comment_date",
-    "last_preview_file_id",
-    "nb_assets_ready",
-    "priority",
-    "real_start_date",
-    "retake_count",
-    "start_date",
-    "task_status_id",
-    "task_type_id",
-    "data",
-]
 
 
 def get_edits_and_tasks(criterions=None):
@@ -211,44 +253,6 @@ def get_edits_and_tasks(criterions=None):
     return edits
 
 
-def get_edit_raw(edit_id):
-    """
-    Return given edit as an active record.
-    """
-    edit_type = get_edit_type()
-    try:
-        edit = Entity.get_by(entity_type_id=edit_type["id"], id=edit_id)
-    except StatementError:
-        raise EditNotFoundException
-
-    if edit is None:
-        raise EditNotFoundException
-
-    return edit
-
-
-@cache.memoize_function(120)
-def get_edit(edit_id, relations=False):
-    """
-    Return given edit as a dictionary.
-    """
-    return get_edit_raw(edit_id).serialize(
-        obj_type="Edit", relations=relations
-    )
-
-
-@cache.memoize_function_single_flight(120)
-def get_full_edit(edit_id):
-    """
-    Return given edit as a dictionary with extra data like project.
-    """
-    edits = get_edits_and_tasks({"id": edit_id})
-    if len(edits) > 0:
-        return edits[0]
-    else:
-        raise EditNotFoundException
-
-
 def is_edit(entity):
     """
     Returns True if given entity has 'Edit' as entity type
@@ -295,6 +299,7 @@ def remove_edit(edit_id, force=False):
             project_id=str(edit.project_id),
         )
     else:
+        # Imported here because tasks_service imports this module back.
         from zou.app.services import tasks_service
 
         tasks = Task.query.filter_by(entity_id=edit_id).all()
@@ -318,8 +323,7 @@ def remove_edit(edit_id, force=False):
             project_id=str(edit.project_id),
         )
 
-    deleted_edit = edit.serialize(obj_type="Edit")
-    return deleted_edit
+    return edit.serialize(obj_type="Edit")
 
 
 def create_edit(
@@ -330,6 +334,8 @@ def create_edit(
     """
     edit_type = get_edit_type()
 
+    # Anything shorter than a UUID is not an episode id, it is the client
+    # sending an empty value: the edit then belongs to no episode.
     if parent_id is not None and len(parent_id) < 36:
         parent_id = None
 

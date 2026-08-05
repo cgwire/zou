@@ -1019,6 +1019,11 @@ def add_file_listeners(event_client):
 
 
 def retrieve_preview_file(data):
+    """
+    Event handler: download the preview file another instance just added,
+    then forward the event locally. Events flagged sync are skipped, they
+    are the ones this instance emitted itself.
+    """
     if data.get("sync", False):
         return
     try:
@@ -1029,10 +1034,14 @@ def retrieve_preview_file(data):
         logger.info(f"Preview file and related downloaded: {preview_file_id}")
     except gazu.exception.RouteNotFoundException as e:
         logger.error(f"Route not found: {e}")
-        logger.error(f"Fail to dowonload preview file: {preview_file_id}")
+        logger.error(f"Fail to download preview file: {preview_file_id}")
 
 
 def retrieve_preview_background_file(data):
+    """
+    Event handler: download the preview background file another instance
+    just added, then forward the event locally.
+    """
     if data.get("sync", False):
         return
     try:
@@ -1052,11 +1061,16 @@ def retrieve_preview_background_file(data):
     except gazu.exception.RouteNotFoundException as e:
         logger.error(f"Route not found: {e}")
         logger.error(
-            f"Fail to dowonload preview background file: {preview_background_file_id}"
+            f"Fail to download preview background file: {preview_background_file_id}"
         )
 
 
 def get_retrieve_thumbnail(model_name):
+    """
+    Build the event handler downloading the thumbnail of given model from
+    the other instance. One handler per model, hence the closure.
+    """
+
     def retrieve_thumbnail(data):
         if data.get("sync", False):
             return
@@ -1070,7 +1084,7 @@ def get_retrieve_thumbnail(model_name):
         except gazu.exception.RouteNotFoundException as e:
             logger.error(f"Route not found: {e}")
             logger.error(
-                f"Fail to dowonload thunbnail: {model_name} {instance_id}"
+                f"Fail to download thumbnail: {model_name} {instance_id}"
             )
 
     return retrieve_thumbnail
@@ -1543,6 +1557,10 @@ def download_preview_background_from_another_instance(
 def download_attachment_files_from_another_instance(
     project=None, pool=None, number_attemps=3, force=False, dict_errors={}
 ):
+    """
+    Download every attachment file of a project from the other instance,
+    in parallel over the given pool.
+    """
     if project:
         project_dict = gazu.project.get_project_by_name(project)
         attachment_files = (
@@ -1583,6 +1601,10 @@ def download_attachment_file_from_another_instance(
     force=False,
     dict_errors={},
 ):
+    """
+    Download one attachment file from the other instance, retrying up to
+    number_attemps times.
+    """
     attachment_file_id = attachment_file["id"]
     extension = attachment_file["extension"]
     path = f"/data/attachment-files/{attachment_file_id}/file/{attachment_file['name']}"
@@ -1614,6 +1636,11 @@ def download_file_from_another_instance(
     force=False,
     dict_errors={},
 ):
+    """
+    Download one stored file from the other instance and save it locally.
+    Skips a file already present unless force is set, and records the
+    failures in dict_errors rather than raising.
+    """
     from zou.app import app
 
     with app.app_context():
@@ -1923,6 +1950,10 @@ def verify_project_sync(project_name, direction="pull"):
 
 
 def _safe(fn):
+    """
+    Run a counting callable, turning any failure into None so one
+    unreachable route does not abort the whole verification table.
+    """
     if fn is None:
         return None
     try:
@@ -1962,6 +1993,11 @@ def _src_count(path):
 
 
 def _src_count_params(path, params):
+    """
+    Same as _src_count for a route taking query parameters. Only reads the
+    first page: the routes it serves return a total.
+    """
+
     def fetch():
         response = gazu.client.fetch_all(path, params=params)
         if isinstance(response, list):
@@ -1974,10 +2010,30 @@ def _src_count_params(path, params):
 
 
 def _tgt(model, **filters):
+    """
+    Build a counter of the local rows of given model matching filters.
+    """
     return lambda: model.query.filter_by(**filters).count()
 
 
+def _tgt_via(model, parent, foreign_key, project_id):
+    """
+    Build a counter of the rows of given model whose parent belongs to the
+    project. Mirrors the join the matching source route does.
+    """
+    return lambda: (
+        model.query.join(parent, parent.id == foreign_key)
+        .filter(parent.project_id == project_id)
+        .count()
+    )
+
+
 def _tgt_entity_type(project_id, type_name):
+    """
+    Build a counter of the project entities of given type name. A type
+    absent from this instance counts as zero rather than failing.
+    """
+
     def count():
         et = EntityType.get_by(name=type_name)
         if et is None:
@@ -2015,14 +2071,7 @@ def _tgt_entity_link(project_id):
     Entity links whose source entity lives in the project.
     """
 
-    def count():
-        return (
-            EntityLink.query.join(Entity, Entity.id == EntityLink.entity_in_id)
-            .filter(Entity.project_id == project_id)
-            .count()
-        )
-
-    return count
+    return _tgt_via(EntityLink, Entity, EntityLink.entity_in_id, project_id)
 
 
 def _tgt_comment(project_id):
@@ -2030,50 +2079,35 @@ def _tgt_comment(project_id):
     Comments attached to tasks of the project (matches the source route).
     """
 
-    def count():
-        return (
-            Comment.query.join(Task, Task.id == Comment.object_id)
-            .filter(Task.project_id == project_id)
-            .count()
-        )
-
-    return count
+    return _tgt_via(Comment, Task, Comment.object_id, project_id)
 
 
 def _tgt_time_spent(project_id):
-    def count():
-        return (
-            TimeSpent.query.join(Task, Task.id == TimeSpent.task_id)
-            .filter(Task.project_id == project_id)
-            .count()
-        )
-
-    return count
+    """
+    Time spents on tasks of the project.
+    """
+    return _tgt_via(TimeSpent, Task, TimeSpent.task_id, project_id)
 
 
 def _tgt_preview_file(project_id):
-    def count():
-        return (
-            PreviewFile.query.join(Task, Task.id == PreviewFile.task_id)
-            .filter(Task.project_id == project_id)
-            .count()
-        )
-
-    return count
+    """
+    Preview files attached to tasks of the project.
+    """
+    return _tgt_via(PreviewFile, Task, PreviewFile.task_id, project_id)
 
 
 def _tgt_build_job(project_id):
-    def count():
-        return (
-            BuildJob.query.join(Playlist, Playlist.id == BuildJob.playlist_id)
-            .filter(Playlist.project_id == project_id)
-            .count()
-        )
-
-    return count
+    """
+    Build jobs of the project playlists.
+    """
+    return _tgt_via(BuildJob, Playlist, BuildJob.playlist_id, project_id)
 
 
 def _tgt_attachment_file(project_id):
+    """
+    Attachment files of the comments of the project tasks.
+    """
+
     def count():
         return (
             AttachmentFile.query.join(
@@ -2088,14 +2122,10 @@ def _tgt_attachment_file(project_id):
 
 
 def _tgt_subscription(project_id):
-    def count():
-        return (
-            Subscription.query.join(Task, Task.id == Subscription.task_id)
-            .filter(Task.project_id == project_id)
-            .count()
-        )
-
-    return count
+    """
+    Subscriptions on tasks of the project.
+    """
+    return _tgt_via(Subscription, Task, Subscription.task_id, project_id)
 
 
 def _tgt_notification(project_id):
@@ -2103,14 +2133,7 @@ def _tgt_notification(project_id):
     Notifications attached to tasks of the project.
     """
 
-    def count():
-        return (
-            Notification.query.join(Task, Task.id == Notification.task_id)
-            .filter(Task.project_id == project_id)
-            .count()
-        )
-
-    return count
+    return _tgt_via(Notification, Task, Notification.task_id, project_id)
 
 
 def _tgt_news(project_id):
@@ -2118,49 +2141,28 @@ def _tgt_news(project_id):
     News tied to tasks of the project.
     """
 
-    def count():
-        return (
-            News.query.join(Task, Task.id == News.task_id)
-            .filter(Task.project_id == project_id)
-            .count()
-        )
-
-    return count
+    return _tgt_via(News, Task, News.task_id, project_id)
 
 
 def _tgt_output_file(project_id):
-    def count():
-        return (
-            OutputFile.query.join(Entity, Entity.id == OutputFile.entity_id)
-            .filter(Entity.project_id == project_id)
-            .count()
-        )
-
-    return count
+    """
+    Output files of the project entities.
+    """
+    return _tgt_via(OutputFile, Entity, OutputFile.entity_id, project_id)
 
 
 def _tgt_working_file(project_id):
-    def count():
-        return (
-            WorkingFile.query.join(Task, Task.id == WorkingFile.task_id)
-            .filter(Task.project_id == project_id)
-            .count()
-        )
-
-    return count
+    """
+    Working files of the project tasks.
+    """
+    return _tgt_via(WorkingFile, Task, WorkingFile.task_id, project_id)
 
 
 def _tgt_asset_instance(project_id):
-    def count():
-        return (
-            AssetInstance.query.join(
-                Entity, Entity.id == AssetInstance.asset_id
-            )
-            .filter(Entity.project_id == project_id)
-            .count()
-        )
-
-    return count
+    """
+    Asset instances of the project assets.
+    """
+    return _tgt_via(AssetInstance, Entity, AssetInstance.asset_id, project_id)
 
 
 def _tgt_chat(project_id):
@@ -2168,35 +2170,20 @@ def _tgt_chat(project_id):
     Chats attached to entities of the project.
     """
 
-    def count():
-        return (
-            Chat.query.join(Entity, Entity.id == Chat.object_id)
-            .filter(Entity.project_id == project_id)
-            .count()
-        )
-
-    return count
+    return _tgt_via(Chat, Entity, Chat.object_id, project_id)
 
 
 def _tgt_budget_entry(project_id):
-    def count():
-        return (
-            BudgetEntry.query.join(Budget, Budget.id == BudgetEntry.budget_id)
-            .filter(Budget.project_id == project_id)
-            .count()
-        )
-
-    return count
+    """
+    Budget entries of the project budgets.
+    """
+    return _tgt_via(BudgetEntry, Budget, BudgetEntry.budget_id, project_id)
 
 
 def _tgt_share_link(project_id):
-    def count():
-        return (
-            PlaylistShareLink.query.join(
-                Playlist, Playlist.id == PlaylistShareLink.playlist_id
-            )
-            .filter(Playlist.project_id == project_id)
-            .count()
-        )
-
-    return count
+    """
+    Share links of the project playlists.
+    """
+    return _tgt_via(
+        PlaylistShareLink, Playlist, PlaylistShareLink.playlist_id, project_id
+    )

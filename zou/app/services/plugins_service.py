@@ -1,5 +1,8 @@
+import importlib
 import semver
 import shutil
+import sys
+
 from pathlib import Path
 
 from zou.app import config
@@ -21,15 +24,11 @@ def install_plugin(path, force=False):
     and call pre/post install hooks.
     Supports local paths, zip files, and git repository URLs.
     """
-    is_zip_url = (
-        path.startswith("http://") or path.startswith("https://")
-    ) and path.endswith(".zip")
-    is_git_url = not is_zip_url and (
-        path.startswith("http://")
-        or path.startswith("https://")
-        or path.startswith("git://")
-        or path.startswith("ssh://")
-        or path.startswith("git@")
+    is_zip_url = path.startswith(("http://", "https://")) and path.endswith(
+        ".zip"
+    )
+    is_git_url = not is_zip_url and path.startswith(
+        ("http://", "https://", "git://", "ssh://", "git@")
     )
 
     temp_dir = None
@@ -73,9 +72,7 @@ def install_plugin(path, force=False):
             plugin = Plugin.create(**manifest.to_model_dict())
             print(f"[Plugins] Plugin {manifest.id} installed.")
 
-        print(
-            f"[Plugins] Running database migrations" f" for {manifest.id}..."
-        )
+        print(f"[Plugins] Running database migrations for {manifest.id}...")
         plugin_path = install_plugin_files(
             path, Path(config.PLUGIN_FOLDER) / manifest.id
         )
@@ -92,8 +89,7 @@ def install_plugin(path, force=False):
         return plugin.serialize()
     except Exception:
         print(
-            f"❌ [Plugins] An error occurred while"
-            f" installing/updating plugin..."
+            "❌ [Plugins] An error occurred while installing/updating plugin"
         )
         raise
     finally:
@@ -109,6 +105,8 @@ def uninstall_plugin(plugin_id):
     print(f"[Plugins] Uninstalling plugin {plugin_id}...")
     plugin_path = Path(config.PLUGIN_FOLDER) / plugin_id
 
+    # A plugin left in a broken state (missing or invalid manifest) must stay
+    # uninstallable, so the hooks are simply called without a manifest.
     manifest = None
     try:
         manifest = PluginManifest.from_plugin_path(plugin_path)
@@ -140,9 +138,6 @@ def _import_plugin_module(plugin_id, plugin_path):
     Import a plugin module dynamically from its install path.
     Returns the module or None if import fails.
     """
-    import importlib
-    import sys
-
     plugin_path = Path(plugin_path)
     plugin_folder = plugin_path.parent
     abs_plugin_path = str(plugin_folder.absolute())

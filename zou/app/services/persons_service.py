@@ -32,6 +32,9 @@ logger = logging.getLogger(__name__)
 
 
 def clear_person_cache():
+    """
+    Drop the memoized person lists and serializations.
+    """
     cache.cache.delete_memoized(_get_person_raw_for_cache)
     cache.cache.delete_memoized(get_person)
     cache.cache.delete_memoized(get_person_by_email)
@@ -42,6 +45,9 @@ def clear_person_cache():
 
 
 def clear_organisation_cache():
+    """
+    Drop the memoized organisation.
+    """
     cache.cache.delete_memoized(get_organisation)
     cache.cache.delete_memoized(get_organisation, True)
 
@@ -591,6 +597,9 @@ def get_presence_logs(year, month):
 
 
 def is_admin(person):
+    """
+    Return True when given person dict has the admin role.
+    """
     return person["role"] == "admin"
 
 
@@ -650,6 +659,18 @@ def get_or_create_password_reset_link(person_id):
     return build_password_reset_url(person["email"], token)
 
 
+def _get_email_locale(person):
+    """
+    Return the locale given person must be written to in. A Babel Locale
+    object, which the dict carries when it comes straight from the ORM, is
+    turned back into its string form.
+    """
+    locale = person.get("locale") or config.DEFAULT_LOCALE
+    if hasattr(locale, "language"):
+        locale = str(locale)
+    return locale
+
+
 def invite_person(person_id):
     """
     Send an invitation email to given person (a mail telling him/her how to
@@ -665,9 +686,7 @@ def invite_person(person_id):
         person["email"], token, token_type="new"
     )
 
-    locale = person.get("locale") or getattr(config, "DEFAULT_LOCALE", "en_US")
-    if hasattr(locale, "language"):
-        locale = str(locale)
+    locale = _get_email_locale(person)
     subject = get_email_translation(
         locale,
         "auth_invitation_subject",
@@ -688,72 +707,53 @@ def invite_person(person_id):
     emails.send_email(subject, email_html_body, person["email"], locale=locale)
 
 
-def send_password_changed_by_admin_email(person, admin_user, person_IP=None):
+def _send_admin_action_email(person, translation_prefix, person_IP=None):
     """
-    Send an email to the person notifying that an admin changed their password.
+    Tell a person that an admin acted on their account. The three
+    translation keys are built from the prefix (_subject, _title, _body).
     """
     organisation = get_organisation()
-    locale = person.get("locale") or getattr(config, "DEFAULT_LOCALE", "en_US")
-    if hasattr(locale, "language"):
-        locale = str(locale)
+    locale = _get_email_locale(person)
     time_string = format_datetime(
         date_helpers.get_utc_now_datetime(),
         tzinfo=person.get("timezone"),
         locale=person.get("locale"),
     )
-    person_IP = person_IP or ""
     subject = get_email_translation(
         locale,
-        "auth_password_changed_by_admin_subject",
+        f"{translation_prefix}_subject",
         organisation_name=organisation["name"],
     )
-    title = get_email_translation(
-        locale, "auth_password_changed_by_admin_title"
-    )
+    title = get_email_translation(locale, f"{translation_prefix}_title")
     html = get_email_translation(
         locale,
-        "auth_password_changed_by_admin_body",
+        f"{translation_prefix}_body",
         first_name=person["first_name"],
         time_string=time_string,
-        person_IP=person_IP,
+        person_IP=person_IP or "",
     )
     email_html_body = templates_service.generate_html_body(
         title, html, locale=locale
     )
     emails.send_email(subject, email_html_body, person["email"], locale=locale)
+
+
+def send_password_changed_by_admin_email(person, admin_user, person_IP=None):
+    """
+    Send an email to the person notifying that an admin changed their password.
+    """
+    _send_admin_action_email(
+        person, "auth_password_changed_by_admin", person_IP=person_IP
+    )
 
 
 def send_2fa_disabled_by_admin_email(person, admin_user, person_IP=None):
     """
     Send an email to the person notifying that an admin disabled their 2FA.
     """
-    organisation = get_organisation()
-    locale = person.get("locale") or getattr(config, "DEFAULT_LOCALE", "en_US")
-    if hasattr(locale, "language"):
-        locale = str(locale)
-    time_string = format_datetime(
-        date_helpers.get_utc_now_datetime(),
-        tzinfo=person.get("timezone"),
-        locale=person.get("locale"),
+    _send_admin_action_email(
+        person, "auth_2fa_disabled_by_admin", person_IP=person_IP
     )
-    person_IP = person_IP or ""
-    subject = get_email_translation(
-        locale,
-        "auth_2fa_disabled_by_admin_subject",
-        organisation_name=organisation["name"],
-    )
-    title = get_email_translation(locale, "auth_2fa_disabled_by_admin_title")
-    html = get_email_translation(
-        locale,
-        "auth_2fa_disabled_by_admin_body",
-        first_name=person["first_name"],
-        time_string=time_string,
-        person_IP=person_IP,
-    )
-    email_html_body = templates_service.generate_html_body(
-        title, html, locale=locale
-    )
-    emails.send_email(subject, email_html_body, person["email"], locale=locale)
 
 
 @cache.memoize_function(120)

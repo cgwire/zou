@@ -43,6 +43,9 @@ from zou.app import config
 
 
 def get_attachment_file_raw(attachment_file_id):
+    """
+    Return attachment file matching given id as an active record.
+    """
     return base_service.get_instance(
         AttachmentFile, attachment_file_id, AttachmentFileNotFoundException
     )
@@ -58,6 +61,9 @@ def get_attachment_file(attachment_file_id):
 
 
 def clear_attachment_file_cache(attachment_file_id):
+    """
+    Drop the memoized serialization of given attachment file.
+    """
     cache.cache.delete_memoized(get_attachment_file, attachment_file_id)
 
 
@@ -159,6 +165,10 @@ def create_comment(
 
 
 def _handle_hashtags(person, task_type, task, text):
+    """
+    Post the same comment on the sibling tasks the hashtags of the text
+    name, so a supervisor can address several task types at once.
+    """
     hashtags = get_comment_hashtags(text)
     if len(hashtags) > 0:
         entity = entities_service.get_entity(entity_id=task["entity_id"])
@@ -187,6 +197,10 @@ def _handle_hashtags(person, task_type, task, text):
 
 
 def _check_retake_capping(task_status, task):
+    """
+    Raise when a retake would exceed the cap. The cap is read on the
+    entity when it sets one, on the project otherwise; zero means no cap.
+    """
     if task_status["is_retake"]:
         project = projects_service.get_project(task["project_id"])
         project_max_retakes = project["max_retakes"] or 0
@@ -203,6 +217,10 @@ def _check_retake_capping(task_status, task):
 
 
 def _get_comment_author(person_id):
+    """
+    Return the person the comment is attributed to: the one given, or the
+    current user when no id is passed.
+    """
     if person_id is not None and person_id != "":
         person = persons_service.get_person(person_id)
     else:
@@ -211,6 +229,14 @@ def _get_comment_author(person_id):
 
 
 def _manage_status_change(task_status, task, comment):
+    """
+    Apply the status the comment carries to its task, and return the task
+    with whether the status actually changed.
+
+    A comment posted with an older date than the last one does not move
+    the task: the whole history is replayed instead, so importing old
+    comments cannot rewind a task.
+    """
     is_last_comment = (
         task["last_comment_date"] is None
         or task["last_comment_date"] <= comment["created_at"]
@@ -275,6 +301,10 @@ def _manage_status_change(task_status, task, comment):
 
 
 def _manage_subscriptions(task, comment, status_changed):
+    """
+    Notify the people following the task, and feed the news stream.
+    Concepts are left out of the news stream on purpose.
+    """
     notifications_service.create_notifications_for_task_and_comment(
         task, comment, change=status_changed
     )
@@ -291,6 +321,10 @@ def _manage_subscriptions(task, comment, status_changed):
 
 
 def _run_status_automation(automation, task, person_id):
+    """
+    Apply one status automation: when the task matches the trigger, post
+    the comment that moves the target task type to the target status.
+    """
     if (
         automation["archived"]
         or task["task_type_id"] != automation["in_task_type_id"]
@@ -521,6 +555,9 @@ def move_comment_to_task(comment_id, target_task_id):
 
 
 def reset_mentions(comment):
+    """
+    Recompute the people and departments a comment mentions from its text.
+    """
     task = tasks_service.get_task(comment["object_id"])
     mentions = get_comment_mentions(task["project_id"], comment["text"])
     department_mentions = get_comment_department_mentions(
@@ -539,6 +576,11 @@ def reset_mentions(comment):
 
 
 def create_attachment(comment, uploaded_file, randomize=False, reply_id=None):
+    """
+    Store an uploaded file and tie the matching attachment entry to given
+    comment. With randomize, the file name gets a random suffix, which is
+    how a name collision on the same comment is resolved.
+    """
     tmp_folder = current_app.config["TMP_DIR"]
     filename = uploaded_file.filename
     mimetype = uploaded_file.mimetype
@@ -589,15 +631,22 @@ def create_attachment(comment, uploaded_file, randomize=False, reply_id=None):
         fs.rm_file(tmp_file_path)
 
 
+def _attachment_files_query():
+    """
+    Base query joining the attachment files to the task they comment on.
+    """
+    return AttachmentFile.query.join(Comment).join(
+        Task, Task.id == Comment.object_id
+    )
+
+
 def get_all_attachment_files_for_project(project_id):
     """
     Return all attachment files listed into given project. It is mainly needed
     for synchronisation purposes.
     """
-    attachment_files = (
-        AttachmentFile.query.join(Comment)
-        .join(Task, Task.id == Comment.object_id)
-        .filter(Task.project_id == project_id)
+    attachment_files = _attachment_files_query().filter(
+        Task.project_id == project_id
     )
     return fields.serialize_models(attachment_files)
 
@@ -606,11 +655,7 @@ def get_all_attachment_files_for_task(task_id):
     """
     Return all attachment files listed into given task.
     """
-    attachment_files = (
-        AttachmentFile.query.join(Comment)
-        .join(Task, Task.id == Comment.object_id)
-        .filter(Task.id == task_id)
-    )
+    attachment_files = _attachment_files_query().filter(Task.id == task_id)
     return fields.serialize_models(attachment_files)
 
 
@@ -640,12 +685,18 @@ def acknowledge_comment(comment_id):
 
 
 def _ack_comment(project_id, comment, user):
+    """
+    Add the user to the people who acknowledged the comment.
+    """
     user_id = str(user.id)
     comment.acknowledgements.append(user)
     _send_ack_event(project_id, comment, user_id, "acknowledge")
 
 
 def _unack_comment(project_id, comment, user):
+    """
+    Remove the user from the people who acknowledged the comment.
+    """
     user_id = str(user.id)
     comment.acknowledgements = [
         person
@@ -656,6 +707,10 @@ def _unack_comment(project_id, comment, user):
 
 
 def _send_ack_event(project_id, comment, user_id, name="acknowledge"):
+    """
+    Tell the clients an acknowledgement was added or removed. Not
+    persisted: it is a live signal, the link table is the record.
+    """
     events.emit(
         f"comment:{name}",
         {"comment_id": str(comment.id), "person_id": user_id},
@@ -671,7 +726,6 @@ def reply_comment(comment_id, text, person_id=None, files=None):
     """
     if files is None:
         files = {}
-    person = None
     if person_id is None:
         person = persons_service.get_current_user()
     else:
@@ -722,16 +776,21 @@ def reply_comment(comment_id, text, person_id=None, files=None):
 
 
 def get_reply(comment_id, reply_id):
+    """
+    Return the reply matching given id inside given comment.
+    """
     comment = tasks_service.get_comment_raw(comment_id)
-    if comment.replies is None:
-        comment.replies = []
-    for reply in comment.replies:
+    for reply in comment.replies or []:
         if reply.get("id") == reply_id:
             return reply
     raise ReplyNotFoundException
 
 
 def delete_reply(comment_id, reply_id):
+    """
+    Remove given reply from its comment, together with its attachments and
+    the notifications it raised.
+    """
     comment = tasks_service.get_comment_raw(comment_id)
     task = tasks_service.get_task(comment.object_id)
 
@@ -768,14 +827,17 @@ def get_comment_mentions(project_id, text):
     active records.
     """
     project = Project.get(project_id)
-    mentions = []
-    for person in project.team:
-        if re.search(f"@{person.full_name}( |$)", text) is not None:
-            mentions.append(person)
-    return mentions
+    return [
+        person
+        for person in project.team
+        if re.search(f"@{person.full_name}( |$)", text) is not None
+    ]
 
 
 def get_comment_mention_ids(project_id, text):
+    """
+    Return the ids of the people mentioned in given text.
+    """
     return [
         str(mention.id) for mention in get_comment_mentions(project_id, text)
     ]
@@ -786,15 +848,17 @@ def get_comment_department_mentions(project_id, text):
     Check for department mention (@name) in text and returns matching person
     active records.
     """
-    departments = Department.query.all()
-    mentions = []
-    for department in departments:
-        if re.search(f"@{department.name}( |$)", text) is not None:
-            mentions.append(department)
-    return mentions
+    return [
+        department
+        for department in Department.query.all()
+        if re.search(f"@{department.name}( |$)", text) is not None
+    ]
 
 
 def get_comment_department_mention_ids(project_id, text):
+    """
+    Return the ids of the departments mentioned in given text.
+    """
     return [
         str(mention.id)
         for mention in get_comment_department_mentions(project_id, text)

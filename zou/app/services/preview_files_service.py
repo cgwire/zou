@@ -169,6 +169,9 @@ def get_entity_from_preview_file(preview_file_id):
 
 
 def update_preview_file(preview_file_id, data, silent=False):
+    """
+    Update given preview file and notify the clients, unless silent.
+    """
     try:
         preview_file = files_service.get_preview_file_raw(preview_file_id)
     except Exception:
@@ -182,6 +185,9 @@ def update_preview_file(preview_file_id, data, silent=False):
 
 
 def update_preview_file_raw(preview_file, data, silent=False):
+    """
+    Same as update_preview_file, on an active record already loaded.
+    """
     # Read the id while the instance is still live: on StaleDataError,
     # base.update() rolls the session back, which expires every attribute.
     # Reading preview_file.id afterwards reloads the (now deleted) row and
@@ -546,6 +552,9 @@ def prepare_and_store_movie(
 
 
 def _run_remote_normalize_movie(app, preview_file_id, fps, width, height):
+    """
+    Hand the movie normalization over to a remote worker and wait for it.
+    """
     params = {
         "version": str(REMOTE_NORMALIZE_VERSION),
         "preview_file_id": preview_file_id,
@@ -673,6 +682,10 @@ def update_preview_file_annotations(
 
 
 def _clean_annotations(annotations):
+    """
+    Give every drawing object an id, so later updates and deletions can
+    address it.
+    """
     for annotation in annotations:
         objects = annotation.get("drawing", {}).get("objects", [])
         for current_object in objects:
@@ -686,6 +699,10 @@ def _clean_annotations(annotations):
 
 
 def _apply_annotation_additions(previous_annotations, new_annotations):
+    """
+    Add the annotations of times not annotated yet, and merge the new
+    drawing objects into the times already annotated.
+    """
     annotations = list(previous_annotations)
     annotation_map = _get_annotation_time_map(annotations)
 
@@ -716,6 +733,10 @@ def _apply_annotation_additions(previous_annotations, new_annotations):
 
 
 def _get_new_annotations(previous_objects, new_objects):
+    """
+    Return the previous drawing objects plus the ones whose id is not
+    among them: an addition never overwrites an existing object.
+    """
     result = list(previous_objects)
     previous_map = {}
     for previous_object in result:
@@ -731,6 +752,10 @@ def _get_new_annotations(previous_objects, new_objects):
 
 
 def _apply_annotation_updates(annotations, updates):
+    """
+    Replace the drawing objects an update carries, matched by id, at the
+    times the update names.
+    """
     annotation_map = _get_annotation_time_map(annotations)
     for update in updates:
         time = update["time"]
@@ -768,6 +793,9 @@ def _apply_annotation_updates(annotations, updates):
 
 
 def _apply_annotation_deletions(annotations, deletions):
+    """
+    Drop the drawing objects a deletion names, matched by id.
+    """
     annotation_map = _get_annotation_time_map(annotations)
 
     for deletion in deletions:
@@ -789,6 +817,9 @@ def _apply_annotation_deletions(annotations, deletions):
 
 
 def _get_annotation_time_map(annotations):
+    """
+    Index annotations by their time, the key a revision is annotated on.
+    """
     annotation_map = {}
     for annotation in annotations:
         annotation_map[annotation["time"]] = annotation
@@ -796,6 +827,9 @@ def _get_annotation_time_map(annotations):
 
 
 def _clear_empty_annotations(annotations):
+    """
+    Drop the times left without a single drawing object.
+    """
     return [
         annotation
         for annotation in annotations
@@ -914,7 +948,7 @@ def get_running_preview_files(cursor_preview_file_id=None, limit=None):
     )
 
     if cursor_preview_file_id is not None:
-        cursor_preview_file = PreviewFile.query.get(cursor_preview_file_id)
+        cursor_preview_file = PreviewFile.get(cursor_preview_file_id)
         if cursor_preview_file is None:
             raise WrongParameterException(
                 f"No preview file found with id: {cursor_preview_file_id}"
@@ -974,6 +1008,9 @@ def get_last_preview_file_for_task(task_id):
 
 
 def extract_frame_from_preview_file(preview_file, frame_number):
+    """
+    Extract one frame of a movie preview as a picture.
+    """
     if (preview_file.get("data") or {}).get("imported_only"):
         # Imported via sync-push: only metadata is here, the binary lives
         # elsewhere and will arrive via the file sync. Skip silently.
@@ -1006,6 +1043,10 @@ def extract_frame_from_preview_file(preview_file, frame_number):
 
 
 def replace_extracted_frame_for_preview_file(preview_file, frame_number):
+    """
+    Replace the preview thumbnail with given frame, so a movie can show
+    the frame the reviewer picked.
+    """
     extracted_frame_path = extract_frame_from_preview_file(
         preview_file, frame_number
     )
@@ -1054,6 +1095,10 @@ def extract_annotation_frame_from_preview_file(
 
 
 def _extract_movie_annotation_frame(preview_file, frame_number, annotations):
+    """
+    Extract the frame of a movie at given number with its annotations
+    burnt in.
+    """
     project = get_project_from_preview_file(preview_file["id"])
     entity = get_entity_from_preview_file(preview_file["id"])
     fps = float(get_preview_file_fps(project, entity))
@@ -1073,6 +1118,9 @@ def _extract_movie_annotation_frame(preview_file, frame_number, annotations):
 
 
 def _extract_picture_annotation_frame(preview_file, annotations):
+    """
+    Render a picture preview with its annotations burnt in.
+    """
     if not annotations:
         raise AnnotationNotFoundException(
             "No annotation found on picture preview"
@@ -1086,6 +1134,10 @@ def _extract_picture_annotation_frame(preview_file, annotations):
 
 
 def _copy_picture_preview_to_temp_png(preview_file):
+    """
+    Copy a picture preview to a temporary png, the format the annotation
+    burner works on.
+    """
     if (preview_file.get("data") or {}).get("imported_only"):
         return None
     try:
@@ -1107,6 +1159,10 @@ def _copy_picture_preview_to_temp_png(preview_file):
 
 
 def _find_annotation_at_time(annotations, target_time, tolerance):
+    """
+    Return the annotation closest to given time within tolerance, None
+    when the frame carries none.
+    """
     for annotation in annotations:
         raw_time = annotation.get("time")
         if raw_time is None:
@@ -1178,6 +1234,9 @@ def _build_annotated_frame_entries(preview_file):
 
 
 def _annotated_frame_base_name(preview_file):
+    """
+    Build the file name stem the extracted annotated frames are named on.
+    """
     full_name = names_service.get_preview_file_name(preview_file["id"])
     return os.path.splitext(full_name)[0]
 
@@ -1230,6 +1289,10 @@ def _build_movie_annotation_entries(preview_file, annotations, base_name):
 
 
 def _build_picture_annotation_entries(preview_file, annotations, base_name):
+    """
+    Build the annotated frame entries of a picture preview: at most one,
+    since a picture carries a single annotation time.
+    """
     entries = []
     try:
         for index, annotation in enumerate(annotations, start=1):
@@ -1262,12 +1325,18 @@ def _claim_extracted_frame(extracted_path):
 
 
 def _cleanup_entries(entries):
+    """
+    Remove the temporary files of the extracted frames.
+    """
     for _, path in entries:
         if path and os.path.exists(path):
             os.remove(path)
 
 
 def _bundle_annotated_frames_into_zip(entries):
+    """
+    Pack the extracted annotated frames into a zip and return its path.
+    """
     if not entries:
         raise AnnotationNotFoundException(_NO_FRAME_EXTRACTED_MSG)
     fd, zip_path = tempfile.mkstemp(suffix=".zip")
@@ -1317,6 +1386,10 @@ def _bundle_annotated_frames_into_pdf(entries):
 
 
 def extract_tile_from_preview_file(preview_file):
+    """
+    Build the tile sheet of a movie preview, the strip of thumbnails the
+    player scrubs on.
+    """
     if (preview_file.get("data") or {}).get("imported_only"):
         # Imported via sync-push: metadata only. Skip silently.
         return None
@@ -1335,19 +1408,26 @@ def extract_tile_from_preview_file(preview_file):
         raise WrongParameterException("Preview file is not a movie")
 
 
-def reset_movie_files_metadata():
+def _get_preview_files_to_reset(extension):
     """
-    Reset preview files size informations of open projects.
+    Return the usable preview files of open projects with given extension:
+    the ones whose metadata can be read back from storage.
     """
-    preview_files = (
+    return (
         PreviewFile.query.join(Task)
         .join(Project)
         .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
         .filter(ProjectStatus.name.in_(("Active", "open", "Open")))
         .filter(PreviewFile.status.not_in(("broken", "missing", "processing")))
-        .filter(PreviewFile.extension == "mp4")
+        .filter(PreviewFile.extension == extension)
     )
-    for preview_file in preview_files:
+
+
+def reset_movie_files_metadata():
+    """
+    Reset preview files size informations of open projects.
+    """
+    for preview_file in _get_preview_files_to_reset("mp4"):
         try:
             preview_file_path = fs.get_file_path_and_file(
                 config,
@@ -1370,7 +1450,7 @@ def reset_movie_files_metadata():
                 },
             )
             print(
-                f"Size information stored preview file {preview_file.id}",
+                f"Size information stored for preview file {preview_file.id}",
             )
         except Exception as e:
             print(
@@ -1382,15 +1462,7 @@ def reset_picture_files_metadata():
     """
     Reset preview files size informations of open projects.
     """
-    preview_files = (
-        PreviewFile.query.join(Task)
-        .join(Project)
-        .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
-        .filter(ProjectStatus.name.in_(("Active", "open", "Open")))
-        .filter(PreviewFile.status.not_in(("broken", "missing", "processing")))
-        .filter(PreviewFile.extension == "png")
-    )
-    for preview_file in preview_files:
+    for preview_file in _get_preview_files_to_reset("png"):
         try:
             preview_file_path = fs.get_file_path_and_file(
                 config,
@@ -1537,6 +1609,10 @@ def generate_preview_extra(
 
 
 def _retrieve_preview_file(config, file_store, prefix, preview_file):
+    """
+    Fetch a preview binary from the store to a local path, whichever
+    backend holds it.
+    """
     try:
         preview_file_path = fs.get_file_path_and_file(
             config,
@@ -1561,6 +1637,9 @@ def _retrieve_preview_file(config, file_store, prefix, preview_file):
 
 
 def _generate_thumbnails(preview_file, preview_file_path, total, index):
+    """
+    Regenerate the thumbnail variants of one preview and store them.
+    """
     try:
         original_picture_path = preview_file_path
         if preview_file.extension == "mp4":
@@ -1578,6 +1657,9 @@ def _generate_thumbnails(preview_file, preview_file_path, total, index):
 def _generate_tiles(
     file_store, preview_file, preview_file_path, total, index, force=False
 ):
+    """
+    Regenerate the tile sheet of one movie preview and store it.
+    """
     try:
         if preview_file.extension == "mp4" and (
             force
@@ -1599,6 +1681,10 @@ def _generate_tiles(
 def _reset_preview_file_metadata(
     preview_file, preview_file_path, total, index
 ):
+    """
+    Recompute the width, height, duration and file size of one preview
+    from the file on disk.
+    """
     try:
         if preview_file.extension == "mp4":
             width, height = movie.get_movie_size(preview_file_path)
@@ -1636,6 +1722,10 @@ def copy_preview_file_on_storage(
     original_preview_file_id,
     preview_file_to_update_id,
 ):
+    """
+    Copy one stored preview to another prefix, skipping the copy when the
+    target already holds it.
+    """
     if config.FS_BACKEND == "local":
         file_path = get_path_func(prefix, original_preview_file_id)
         other_file_path = get_path_func(prefix, preview_file_to_update_id)

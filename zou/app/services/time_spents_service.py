@@ -23,6 +23,55 @@ from zou.app.services import user_service, projects_service
 from zou.app.services.exception import WrongDateFormatException
 
 
+def _apply_time_spent_filters(
+    query, person_id=None, project_id=None, department_ids=None, studio_id=None
+):
+    """
+    Apply the scoping filters shared by the yearly and monthly time spent
+    queries. project_id accepts a single id or a list of ids.
+    """
+    if person_id is not None:
+        query = query.filter(TimeSpent.person_id == person_id)
+
+    if project_id is not None or department_ids is not None:
+        query = query.join(Task)
+
+    if project_id is not None:
+        if isinstance(project_id, list):
+            query = query.filter(Task.project_id.in_(project_id))
+        else:
+            query = query.filter(Task.project_id == project_id)
+
+    if department_ids:
+        query = query.join(TaskType).filter(
+            TaskType.department_id.in_(department_ids)
+        )
+
+    if studio_id is not None:
+        query = query.join(Person, Person.id == TimeSpent.person_id).filter(
+            Person.studio_id == studio_id
+        )
+
+    return query
+
+
+def _get_interval_time_spents(
+    person_id, start, end, project_id=None, department_ids=None
+):
+    """
+    Return aggregated time spents at task level for given person, over the
+    [start, end[ interval.
+    """
+    entries = get_person_time_spent_entries(
+        person_id,
+        TimeSpent.date >= func.cast(start, TimeSpent.date.type),
+        TimeSpent.date < func.cast(end, TimeSpent.date.type),
+        project_id=project_id,
+        department_ids=department_ids,
+    )
+    return build_results(entries)
+
+
 def get_time_spents_for_entity(entity_id):
     """
     Return all time spents related to given entity.
@@ -151,25 +200,12 @@ def get_time_spents_for_year(
             )
         )
 
-    if project_id is not None or department_ids is not None:
-        query = query.join(Task)
-
-    if project_id is not None:
-        if isinstance(project_id, list):
-            query = query.filter(Task.project_id.in_(project_id))
-        else:
-            query = query.filter(Task.project_id == project_id)
-
-    if department_ids:
-        query = query.join(TaskType).filter(
-            TaskType.department_id.in_(department_ids)
-        )
-
-    if studio_id is not None:
-        query = query.join(Person, Person.id == TimeSpent.person_id).filter(
-            Person.studio_id == studio_id
-        )
-
+    query = _apply_time_spent_filters(
+        query,
+        project_id=project_id,
+        department_ids=department_ids,
+        studio_id=studio_id,
+    )
     return query.all()
 
 
@@ -193,28 +229,13 @@ def get_time_spents_for_month(
         TimeSpent.date < next_month
     )
 
-    if person_id is not None:
-        query = query.filter(TimeSpent.person_id == person_id)
-
-    if project_id is not None or department_ids is not None:
-        query = query.join(Task)
-
-    if project_id is not None:
-        if isinstance(project_id, list):
-            query = query.filter(Task.project_id.in_(project_id))
-        else:
-            query = query.filter(Task.project_id == project_id)
-
-    if department_ids:
-        query = query.join(TaskType).filter(
-            TaskType.department_id.in_(department_ids)
-        )
-
-    if studio_id is not None:
-        query = query.join(Person, Person.id == TimeSpent.person_id).filter(
-            Person.studio_id == studio_id
-        )
-
+    query = _apply_time_spent_filters(
+        query,
+        person_id=person_id,
+        project_id=project_id,
+        department_ids=department_ids,
+        studio_id=studio_id,
+    )
     return query.all()
 
 
@@ -295,10 +316,7 @@ def get_time_spent(person_id, task_id, date):
         ).first()
     except DataError:
         raise WrongDateFormatException
-    if time_spent is not None:
-        return time_spent.serialize()
-    else:
-        return None
+    return time_spent.serialize() if time_spent is not None else None
 
 
 def get_day_off(person_id, date):
@@ -314,10 +332,7 @@ def get_day_off(person_id, date):
         )
     except DataError:
         raise WrongDateFormatException
-    if day_off is not None:
-        return day_off.serialize()
-    else:
-        return {}
+    return day_off.serialize() if day_off is not None else {}
 
 
 def get_year_time_spents(
@@ -327,14 +342,13 @@ def get_year_time_spents(
     Return aggregated time spents at task level for given person and month.
     """
     start, end = date_helpers.get_year_interval(year)
-    entries = get_person_time_spent_entries(
+    return _get_interval_time_spents(
         person_id,
-        TimeSpent.date >= func.cast(start, TimeSpent.date.type),
-        TimeSpent.date < func.cast(end, TimeSpent.date.type),
+        start,
+        end,
         project_id=project_id,
         department_ids=department_ids,
     )
-    return build_results(entries)
 
 
 def get_month_time_spents(
@@ -344,14 +358,13 @@ def get_month_time_spents(
     Return aggregated time spents at task level for given person and month.
     """
     start, end = date_helpers.get_month_interval(year, month)
-    entries = get_person_time_spent_entries(
+    return _get_interval_time_spents(
         person_id,
-        TimeSpent.date >= func.cast(start, TimeSpent.date.type),
-        TimeSpent.date < func.cast(end, TimeSpent.date.type),
+        start,
+        end,
         project_id=project_id,
         department_ids=department_ids,
     )
-    return build_results(entries)
 
 
 def get_week_time_spents(
@@ -361,14 +374,13 @@ def get_week_time_spents(
     Return aggregated time spents at task level for given person and week.
     """
     start, end = date_helpers.get_week_interval(year, week)
-    entries = get_person_time_spent_entries(
+    return _get_interval_time_spents(
         person_id,
-        TimeSpent.date >= func.cast(start, TimeSpent.date.type),
-        TimeSpent.date < func.cast(end, TimeSpent.date.type),
+        start,
+        end,
         project_id=project_id,
         department_ids=department_ids,
     )
-    return build_results(entries)
 
 
 def get_day_time_spents(
@@ -378,14 +390,13 @@ def get_day_time_spents(
     Return aggregated time spents at task level for given person and day.
     """
     start, end = date_helpers.get_day_interval(year, month, day)
-    entries = get_person_time_spent_entries(
+    return _get_interval_time_spents(
         person_id,
-        TimeSpent.date >= func.cast(start, TimeSpent.date.type),
-        TimeSpent.date < func.cast(end, TimeSpent.date.type),
+        start,
+        end,
         project_id=project_id,
         department_ids=department_ids,
     )
-    return build_results(entries)
 
 
 def get_person_time_spent_entries(
@@ -559,20 +570,11 @@ def get_project_month_time_spents(project_id, timezone=None):
         date_key = date_helpers.get_simple_string_with_timezone_from_date(
             time_spent.date, timezone
         )[0:7]
-        if department_id not in data:
-            data[department_id] = {"total": 0}
-        if time_spent.person_id not in data[department_id]:
-            data[department_id][time_spent.person_id] = {"total": 0}
-        if date_key not in data[department_id][time_spent.person_id]:
-            data[department_id][time_spent.person_id][date_key] = 0
-
-        data[department_id][time_spent.person_id][
-            date_key
-        ] += time_spent.duration
-        data[department_id]["total"] += time_spent.duration
-        data[department_id][time_spent.person_id][
-            "total"
-        ] += time_spent.duration
+        department = data.setdefault(department_id, {"total": 0})
+        person = department.setdefault(time_spent.person_id, {"total": 0})
+        person[date_key] = person.get(date_key, 0) + time_spent.duration
+        person["total"] += time_spent.duration
+        department["total"] += time_spent.duration
     return data
 
 

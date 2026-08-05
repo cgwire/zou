@@ -40,7 +40,33 @@ DEFAULT_EVOLUTION_STATS = {
 }
 
 
+def _new_status_entry(task_status_short_name, task_status_color):
+    """
+    Return an empty count bucket carrying the task status display fields.
+    """
+    return {
+        "name": task_status_short_name,
+        "color": task_status_color,
+        "count": 0,
+        "frames": 0,
+        "drawings": 0,
+    }
+
+
+def _add_to_bucket(bucket, count, nb_frames, nb_drawings):
+    """
+    Add given counts to a bucket. A null column counts as zero: the sums come
+    from the database, where nb_frames and nb_drawings are nullable.
+    """
+    bucket["count"] += count or 0
+    bucket["frames"] += nb_frames or 0
+    bucket["drawings"] += nb_drawings or 0
+
+
 def get_main_stats():
+    """
+    Return the counts sent to the CGWire website by the telemetry.
+    """
     return {
         "number_of_video_previews": PreviewFile.query.filter(
             PreviewFile.extension == "mp4"
@@ -60,7 +86,6 @@ def get_episode_stats_for_project(project_id, only_assigned=False):
     Retrieve number of tasks by status, task_types and episodes
     for given project.
     """
-
     results = {}
     episode_counts = _get_episode_counts(project_id, only_assigned)
     for data in episode_counts:
@@ -70,6 +95,10 @@ def get_episode_stats_for_project(project_id, only_assigned=False):
 
 
 def _get_episode_counts(project_id, only_assigned=False):
+    """
+    Count the tasks of a project grouped by episode, task type and task
+    status, with their frame and drawing sums.
+    """
     Sequence = aliased(Entity, name="sequence")
     Episode = aliased(Entity, name="episode")
     query = (
@@ -127,7 +156,6 @@ def add_entry_to_stats(
     task_status_id = str(task_status_id)
     results.setdefault(episode_id, {})
     results[episode_id].setdefault(task_type_id, {})
-    results[episode_id][task_type_id].setdefault(task_status_id, {})
     results[episode_id][task_type_id][task_status_id] = {
         "name": task_status_short_name,
         "color": task_status_color,
@@ -140,20 +168,13 @@ def add_entry_to_stats(
     results[episode_id].setdefault("all", {})
     results[episode_id]["all"].setdefault(
         task_status_id,
-        {
-            "name": task_status_short_name,
-            "color": task_status_color,
-            "count": 0,
-            "frames": 0,
-            "drawings": 0,
-        },
+        _new_status_entry(task_status_short_name, task_status_color),
     )
-    results[episode_id]["all"][task_status_id]["count"] += task_count or 0
-    results[episode_id]["all"][task_status_id]["frames"] += (
-        entity_nb_frames or 0
-    )
-    results[episode_id]["all"][task_status_id]["drawings"] += (
-        task_nb_drawings or 0
+    _add_to_bucket(
+        results[episode_id]["all"][task_status_id],
+        task_count,
+        entity_nb_frames,
+        task_nb_drawings,
     )
 
 
@@ -177,38 +198,18 @@ def add_entry_to_all_stats(
     task_status_id = str(task_status_id)
     results.setdefault("all", {"all": {}})
 
-    results["all"].setdefault(task_type_id, {})
-    results["all"][task_type_id].setdefault(
-        task_status_id,
-        {
-            "name": task_status_short_name,
-            "color": task_status_color,
-            "count": 0,
-            "frames": 0,
-            "drawings": 0,
-        },
-    )
-    results["all"][task_type_id][task_status_id]["count"] += task_count or 0
-    results["all"][task_type_id][task_status_id]["drawings"] += (
-        task_nb_drawings or 0
-    )
-    results["all"][task_type_id][task_status_id]["frames"] += (
-        entity_nb_frames or 0
-    )
-
-    results["all"]["all"].setdefault(
-        task_status_id,
-        {
-            "name": task_status_short_name,
-            "color": task_status_color,
-            "count": 0,
-            "frames": 0,
-            "drawings": 0,
-        },
-    )
-    results["all"]["all"][task_status_id]["count"] += task_count or 0
-    results["all"]["all"][task_status_id]["frames"] += entity_nb_frames or 0
-    results["all"]["all"][task_status_id]["drawings"] += task_nb_drawings or 0
+    for task_type_key in [task_type_id, "all"]:
+        results["all"].setdefault(task_type_key, {})
+        results["all"][task_type_key].setdefault(
+            task_status_id,
+            _new_status_entry(task_status_short_name, task_status_color),
+        )
+        _add_to_bucket(
+            results["all"][task_type_key][task_status_id],
+            task_count,
+            entity_nb_frames,
+            task_nb_drawings,
+        )
 
 
 def get_episode_retake_stats_for_project(project_id, only_assigned=False):
@@ -278,8 +279,8 @@ def get_episode_retake_stats_for_project(project_id, only_assigned=False):
         _init_entries(results, episode_id, task_type_id)
         results = _add_stats(
             results,
-            str(episode_id),
-            str(task_type_id),
+            episode_id,
+            task_type_id,
             is_retake,
             is_done,
             retake_count,
@@ -312,6 +313,10 @@ def get_episode_retake_stats_for_project(project_id, only_assigned=False):
 
 
 def _get_retake_stats_query(project_id, only_assigned):
+    """
+    Build the query feeding the retake stats: one row per task, with its
+    episode, its retake count and whether its status is done or retake.
+    """
     Sequence = aliased(Entity, name="sequence")
     Episode = aliased(Entity, name="episode")
     query = (
@@ -337,6 +342,10 @@ def _get_retake_stats_query(project_id, only_assigned):
 
 
 def _init_entries(results, episode_id, task_type_id):
+    """
+    Make sure the episode, the task type and their aggregates hold a default
+    entry before counts are added to them.
+    """
     if episode_id not in results:
         results[episode_id] = {"all": copy.deepcopy(DEFAULT_RETAKE_STATS)}
     if task_type_id not in results["all"]:
@@ -356,6 +365,10 @@ def _add_stats(
     nb_frames,
     nb_drawings,
 ):
+    """
+    Add one task to the current stats, at the four aggregation levels
+    (all/all, all/task type, episode/all, episode/task type).
+    """
     for key1, key2 in [
         ("all", "all"),
         ("all", task_type_id),
@@ -365,22 +378,18 @@ def _add_stats(
         # In this loop we compute the aggregated "current" statistics.
         # They represent the present state of the production
 
-        if results[key1][key2]["max_retake_count"] < retake_count:
-            results[key1][key2]["max_retake_count"] = retake_count
+        entry = results[key1][key2]
+        if entry["max_retake_count"] < retake_count:
+            entry["max_retake_count"] = retake_count
 
+        # For the "current" stats we prioritize `is_done` over `is_retake`
         if is_done:
-            # For the "current" stats we prioritize `is_done` over `is_retake`
-            results[key1][key2]["done"]["count"] += 1
-            results[key1][key2]["done"]["frames"] += nb_frames or 0
-            results[key1][key2]["done"]["drawings"] += nb_drawings or 0
+            key = "done"
         elif is_retake:
-            results[key1][key2]["retake"]["count"] += 1
-            results[key1][key2]["retake"]["frames"] += nb_frames or 0
-            results[key1][key2]["retake"]["drawings"] += nb_drawings or 0
+            key = "retake"
         else:
-            results[key1][key2]["other"]["count"] += 1
-            results[key1][key2]["other"]["frames"] += nb_frames or 0
-            results[key1][key2]["other"]["drawings"] += nb_drawings or 0
+            key = "other"
+        _add_to_bucket(entry[key], 1, nb_frames, nb_drawings)
     return results
 
 
@@ -394,6 +403,10 @@ def _add_evolution_stats(
     nb_frames,
     nb_drawings,
 ):
+    """
+    Add one task to the evolution stats, which count, for each take
+    number up to the maximum, how the production stood at that take.
+    """
     for key1, key2 in [(episode_id, "all"), (episode_id, task_type_id)]:
         # In this loop we compute the "evolution" statistics
         # They represent the dynamics of the production
@@ -409,25 +422,12 @@ def _add_evolution_stats(
                     DEFAULT_EVOLUTION_STATS
                 )
             if retake_count > 0 and i <= retake_count:
-                evolution_data[take_number]["retake"]["count"] += 1
-                evolution_data[take_number]["retake"]["frames"] += (
-                    nb_frames or 0
-                )
-                evolution_data[take_number]["retake"]["drawings"] += (
-                    nb_drawings or 0
-                )
+                key = "retake"
             elif is_done:
-                evolution_data[take_number]["done"]["count"] += 1
-                evolution_data[take_number]["done"]["frames"] += nb_frames or 0
-                evolution_data[take_number]["done"]["drawings"] += (
-                    nb_drawings or 0
-                )
+                key = "done"
             else:
-                evolution_data[take_number]["other"]["count"] += 1
-                evolution_data[take_number]["other"]["frames"] += (
-                    nb_frames or 0
-                )
-                evolution_data[take_number]["other"]["drawings"] += (
-                    nb_drawings or 0
-                )
+                key = "other"
+            _add_to_bucket(
+                evolution_data[take_number][key], 1, nb_frames, nb_drawings
+            )
     return results

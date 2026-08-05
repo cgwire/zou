@@ -597,6 +597,14 @@ def check_all_departments_access(project_id, departments=None):
 
 
 def check_playlist_access(playlist, supervisor_access=False):
+    """
+    Managers see every playlist of a project they belong to. Clients see
+    only the ones flagged for them. Supervisors see them when the caller
+    opts in with supervisor_access.
+
+    The project access check comes first on purpose: it is what resolves
+    the per project role the has_*_permissions calls below read.
+    """
     check_project_access(playlist["project_id"])
     is_manager = permissions.has_manager_permissions()
     is_client = permissions.has_client_permissions()

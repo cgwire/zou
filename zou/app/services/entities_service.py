@@ -35,6 +35,9 @@ from zou.app.services.exception import (
 
 
 def clear_entity_cache(entity_id):
+    """
+    Drop the memoized serialization and full name of given entity.
+    """
     # Deferred import: names_service imports entities_service. Renaming a
     # parent (sequence, episode) still leaves children names cached up to
     # their TTL; only the entity's own name is invalidated here.
@@ -45,11 +48,20 @@ def clear_entity_cache(entity_id):
 
 
 def clear_entity_type_cache(entity_type_id):
+    """
+    Drop the memoized serializations of given entity type. The by-name
+    lookups are flushed whole, since the name is not known here.
+    """
     cache.cache.delete_memoized(get_entity_type, entity_type_id)
     cache.cache.delete_memoized(get_entity_type_by_name)
 
 
 def get_temporal_entity_type_by_name(name):
+    """
+    Return the entity type matching given name, creating it if needed. A
+    cached None (the type did not exist yet when it was first looked up) is
+    dropped and looked up again.
+    """
     entity_type = get_entity_type_by_name(name)
     if entity_type is None:
         cache.cache.delete_memoized(get_entity_type_by_name, name)
@@ -90,7 +102,7 @@ def get_entity_type_by_name(name):
 @cache.memoize_function(240)
 def get_entity_type_by_name_or_not_found(name):
     """
-    Return entity type maching *name*. If it doesn't exist, it creates it.
+    Return entity type maching *name*. If it doesn't exist, it raises.
     """
     entity_type = EntityType.get_by(name=name)
     if entity_type is None:
@@ -493,6 +505,9 @@ def get_entity_link(link_id):
 
 
 def remove_entity_link(link_id):
+    """
+    Delete the entity link matching given id and return it.
+    """
     try:
         link = EntityLink.get_by(id=link_id)
         link.delete()
@@ -504,6 +519,11 @@ def remove_entity_link(link_id):
 def get_not_allowed_descriptors_fields_for_vendor(
     entity_type="Asset", departments=[], projects_ids=[]
 ):
+    """
+    Return, per project, the metadata field names a vendor of given
+    departments must not see: the descriptors restricted to departments they
+    do not belong to.
+    """
     not_allowed_descriptors_field_names = {}
     for project_id in projects_ids:
         not_allowed_descriptors_field_names[project_id] = [
@@ -521,9 +541,12 @@ def get_not_allowed_descriptors_fields_for_vendor(
 def remove_not_allowed_fields_from_metadata(
     not_allowed_descriptors_field_names=[], data={}
 ):
+    """
+    Return given metadata without the fields the caller must not see.
+    """
     return {
-        key: data[key]
-        for key in data.keys()
+        key: value
+        for key, value in data.items()
         if key not in not_allowed_descriptors_field_names
     }
 

@@ -5,11 +5,17 @@ from zou.app.services.exception import StatusAutomationNotFoundException
 
 
 def clear_status_automation_cache():
+    """
+    Drop the memoized status automation list.
+    """
     cache.cache.delete_memoized(get_status_automations)
 
 
 @cache.memoize_function(120)
 def get_status_automations():
+    """
+    Return all status automations.
+    """
     return fields.serialize_models(StatusAutomation.get_all())
 
 

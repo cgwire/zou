@@ -13,6 +13,52 @@ from zou.app.services import (
 )
 from zou.app.stores import queue_store
 
+# Chat channels a person can be notified on: the suffix used by the person
+# columns, the message keys and the chats sender, then the organisation field
+# holding the credential. The sender is resolved at call time, not stored
+# here, so that patching zou.app.utils.chats still intercepts it.
+CHAT_CHANNELS = [
+    ("slack", "chat_token_slack"),
+    ("mattermost", "chat_webhook_mattermost"),
+    ("discord", "chat_token_discord"),
+]
+
+
+def _is_notified(person):
+    """
+    Return True when the person expects a notification on at least one
+    channel.
+    """
+    return (
+        person["notifications_enabled"]
+        or person["notifications_slack_enabled"]
+        or person["notifications_mattermost_enabled"]
+        or person["notifications_discord_enabled"]
+    )
+
+
+def _get_locale(person):
+    """
+    Return the locale the person must be written to in.
+    """
+    return person.get("locale") or persons_service.get_default_locale()
+
+
+def _build_messages(email_message, slack_message, discord_message, project):
+    """
+    Build the per channel message map expected by send_notification. The
+    mattermost payload carries the project name on top of the slack text.
+    """
+    return {
+        "email_message": email_message,
+        "slack_message": slack_message,
+        "mattermost_message": {
+            "message": slack_message,
+            "project_name": project["name"],
+        },
+        "discord_message": discord_message,
+    }
+
 
 def send_notification(
     person_id, subject, messages, title="", force_email=False, locale=None
@@ -24,9 +70,9 @@ def send_notification(
     """
     person = persons_service.get_person(person_id)
     email_message = messages["email_message"]
-    slack_message = messages["slack_message"]
-    mattermost_message = messages["mattermost_message"]
-    discord_message = messages["discord_message"]
+    chat_messages = {
+        channel: messages[f"{channel}_message"] for channel, _ in CHAT_CHANNELS
+    }
     email_locale = (
         locale or person.get("locale") or persons_service.get_default_locale()
     )
@@ -50,41 +96,20 @@ def send_notification(
                 subject, email_html_body, person["email"], locale=email_locale
             )
 
-    if person["notifications_slack_enabled"]:
+    for channel, credential_field in CHAT_CHANNELS:
+        if not person[f"notifications_{channel}_enabled"]:
+            continue
         organisation = persons_service.get_organisation(sensitive=True)
-        userid = person["notifications_slack_userid"]
-        token = organisation.get("chat_token_slack", "")
+        send_to_chat = getattr(chats, f"send_to_{channel}")
+        args = (
+            organisation.get(credential_field, ""),
+            person[f"notifications_{channel}_userid"],
+            chat_messages[channel],
+        )
         if config.ENABLE_JOB_QUEUE:
-            queue_store.job_queue.enqueue(
-                chats.send_to_slack,
-                args=(token, userid, slack_message),
-            )
+            queue_store.job_queue.enqueue(send_to_chat, args=args)
         else:
-            chats.send_to_slack(token, userid, slack_message)
-
-    if person["notifications_mattermost_enabled"]:
-        organisation = persons_service.get_organisation(sensitive=True)
-        userid = person["notifications_mattermost_userid"]
-        webhook = organisation.get("chat_webhook_mattermost", "")
-        if config.ENABLE_JOB_QUEUE:
-            queue_store.job_queue.enqueue(
-                chats.send_to_mattermost,
-                args=(webhook, userid, mattermost_message),
-            )
-        else:
-            chats.send_to_mattermost(webhook, userid, mattermost_message)
-
-    if person["notifications_discord_enabled"]:
-        organisation = persons_service.get_organisation(sensitive=True)
-        userid = person["notifications_discord_userid"]
-        token = organisation.get("chat_token_discord", "")
-        if config.ENABLE_JOB_QUEUE:
-            queue_store.job_queue.enqueue(
-                chats.send_to_discord,
-                args=(token, userid, discord_message),
-            )
-        else:
-            chats.send_to_discord(token, userid, discord_message)
+            send_to_chat(*args)
 
     return True
 
@@ -97,13 +122,8 @@ def send_comment_notification(person_id, author_id, comment, task):
     """
     person = persons_service.get_person(person_id)
     project = projects_service.get_project(task["project_id"])
-    locale = person.get("locale") or persons_service.get_default_locale()
-    if (
-        person["notifications_enabled"]
-        or person["notifications_slack_enabled"]
-        or person["notifications_mattermost_enabled"]
-        or person["notifications_discord_enabled"]
-    ):
+    locale = _get_locale(person)
+    if _is_notified(person):
         task_status = tasks_service.get_task_status(task["task_status_id"])
         task_status_name = task_status["short_name"].upper()
         author, task_name, task_url = get_task_descriptors(author_id, task)
@@ -148,15 +168,9 @@ _{comment["text"]}_
 """
 
         title = get_email_translation(locale, "comment_title")
-        messages = {
-            "email_message": email_message,
-            "slack_message": slack_message,
-            "mattermost_message": {
-                "message": slack_message,
-                "project_name": project["name"],
-            },
-            "discord_message": discord_message,
-        }
+        messages = _build_messages(
+            email_message, slack_message, discord_message, project
+        )
         send_notification(person_id, subject, messages, title)
 
     return True
@@ -170,13 +184,8 @@ def send_mention_notification(person_id, author_id, comment, task):
     """
     person = persons_service.get_person(person_id)
     project = projects_service.get_project(task["project_id"])
-    locale = person.get("locale") or persons_service.get_default_locale()
-    if (
-        person["notifications_enabled"]
-        or person["notifications_slack_enabled"]
-        or person["notifications_mattermost_enabled"]
-        or person["notifications_discord_enabled"]
-    ):
+    locale = _get_locale(person)
+    if _is_notified(person):
         author, task_name, task_url = get_task_descriptors(author_id, task)
         subject = get_email_translation(
             locale,
@@ -202,15 +211,9 @@ _{comment["text"]}_
 _{comment["text"]}_
 """
         title = get_email_translation(locale, "mention_title")
-        messages = {
-            "email_message": email_message,
-            "slack_message": slack_message,
-            "mattermost_message": {
-                "message": slack_message,
-                "project_name": project["name"],
-            },
-            "discord_message": discord_message,
-        }
+        messages = _build_messages(
+            email_message, slack_message, discord_message, project
+        )
         return send_notification(person_id, subject, messages, title)
     else:
         return True
@@ -224,13 +227,8 @@ def send_assignation_notification(person_id, author_id, task):
     """
     person = persons_service.get_person(person_id)
     project = projects_service.get_project(task["project_id"])
-    locale = person.get("locale") or persons_service.get_default_locale()
-    if (
-        person["notifications_enabled"]
-        or person["notifications_slack_enabled"]
-        or person["notifications_mattermost_enabled"]
-        or person["notifications_discord_enabled"]
-    ):
+    locale = _get_locale(person)
+    if _is_notified(person):
         author, task_name, task_url = get_task_descriptors(author_id, task)
         subject = get_email_translation(
             locale, "assignation_subject", task_name=task_name
@@ -248,15 +246,9 @@ def send_assignation_notification(person_id, author_id, task):
 """
 
         title = get_email_translation(locale, "assignation_title")
-        messages = {
-            "email_message": email_message,
-            "slack_message": slack_message,
-            "mattermost_message": {
-                "message": slack_message,
-                "project_name": project["name"],
-            },
-            "discord_message": discord_message,
-        }
+        messages = _build_messages(
+            email_message, slack_message, discord_message, project
+        )
         return send_notification(person_id, subject, messages, title)
     return True
 
@@ -278,7 +270,7 @@ def get_task_descriptors(person_id, task):
     entity_type = "assets"
     if task_type["for_entity"] == "Shot":
         entity_type = "shots"
-    if task_type["for_entity"] == "Edit":
+    elif task_type["for_entity"] == "Edit":
         entity_type = "edits"
     if project["production_type"] == "tvshow":
         episode_segment = f"/episodes/{episode_id}"
@@ -288,7 +280,7 @@ def get_task_descriptors(person_id, task):
         f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}/productions/"
         f"{task['project_id']}{episode_segment}/{entity_type}/tasks/{task['id']}"
     )
-    return (author, task_name, task_url)
+    return author, task_name, task_url
 
 
 def send_reply_notification(person_id, author_id, comment, task, reply):
@@ -298,13 +290,8 @@ def send_reply_notification(person_id, author_id, comment, task, reply):
     recipient's locale.
     """
     person = persons_service.get_person(person_id)
-    locale = person.get("locale") or persons_service.get_default_locale()
-    if (
-        person["notifications_enabled"]
-        or person["notifications_slack_enabled"]
-        or person["notifications_mattermost_enabled"]
-        or person["notifications_discord_enabled"]
-    ):
+    locale = _get_locale(person)
+    if _is_notified(person):
         tasks_service.get_task_status(task["task_status_id"])
         project = projects_service.get_project(task["project_id"])
         author, task_name, task_url = get_task_descriptors(author_id, task)
@@ -333,15 +320,9 @@ _{reply["text"]}_
 """
 
         title = get_email_translation(locale, "reply_title")
-        messages = {
-            "email_message": email_message,
-            "slack_message": slack_message,
-            "mattermost_message": {
-                "message": slack_message,
-                "project_name": project["name"],
-            },
-            "discord_message": discord_message,
-        }
+        messages = _build_messages(
+            email_message, slack_message, discord_message, project
+        )
         send_notification(person_id, subject, messages, title)
     return True
 
@@ -355,20 +336,15 @@ def send_playlist_ready_notification(person_id, author_id, playlist):
     person = persons_service.get_person(person_id)
     author = persons_service.get_person(author_id)
     project = projects_service.get_project(playlist["project_id"])
-    locale = person.get("locale") or persons_service.get_default_locale()
+    locale = _get_locale(person)
+    # A playlist may carry no episode, or one that no longer exists.
     episode = None
     try:
         episode = shots_service.get_episode(playlist["episode_id"])
     except Exception:
         pass
 
-    if (
-        person["notifications_enabled"]
-        or person["notifications_slack_enabled"]
-        or person["notifications_mattermost_enabled"]
-        or person["notifications_discord_enabled"]
-    ):
-
+    if _is_notified(person):
         playlist_url = f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}/productions/{playlist['project_id']}/"
 
         if episode is not None:
@@ -379,7 +355,7 @@ def send_playlist_ready_notification(person_id, author_id, playlist):
             project["production_type"] == "tvshow"
             and playlist["for_entity"] == "asset"
         ):
-            if playlist["is_for_all"] == True:
+            if playlist["is_for_all"]:
                 playlist_url += f"episodes/all/playlists/{playlist['id']}"
             else:
                 playlist_url += f"episodes/main/playlists/{playlist['id']}"
@@ -423,15 +399,9 @@ def send_playlist_ready_notification(person_id, author_id, playlist):
         slack_message = f"*{author['full_name']}* notifies you that a playlist <{playlist_url}|{playlist['name']}> is ready for a review under {episode_segment}the project {project['name']}."
 
         discord_message = f"*{author['full_name']}* notifies you that a playlist [{playlist['name']}]({playlist_url}) is ready for a review under {episode_segment}the project {project['name']}."
-        messages = {
-            "email_message": email_message,
-            "slack_message": slack_message,
-            "mattermost_message": {
-                "message": slack_message,
-                "project_name": project["name"],
-            },
-            "discord_message": discord_message,
-        }
+        messages = _build_messages(
+            email_message, slack_message, discord_message, project
+        )
         send_notification(
             person_id, subject, messages, title, force_email=True
         )

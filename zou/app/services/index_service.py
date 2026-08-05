@@ -28,20 +28,60 @@ def get_index(index_name):
 
 
 def get_asset_index():
+    """
+    Return the meilisearch index holding the assets.
+    """
     return get_index("assets")
 
 
 def get_person_index():
+    """
+    Return the meilisearch index holding the persons.
+    """
     return get_index("persons")
 
 
 def get_shot_index():
+    """
+    Return the meilisearch index holding the shots.
+    """
     return get_index("shots")
 
 
-def chunks(lst, n):
-    for i in range(0, len(lst), n):
-        yield lst[i : i + n]
+def _index_entry(get_entry_index, prepare_entry, entry):
+    """
+    Build the document for given entry and push it to its index. An indexer
+    that is absent or unreachable is swallowed: indexation must never break
+    the request that triggered it.
+    """
+    try:
+        index = get_entry_index()
+        document = prepare_entry(entry)
+        indexing.index_document(index, document)
+        return document
+    except indexing.IndexerNotInitializedError:
+        pass
+    except Exception:
+        current_app.logger.error(
+            "Indexer is not reachable, indexation failed."
+        )
+    return {}
+
+
+def _remove_entry_index(get_entry_index, document_id):
+    """
+    Remove the document matching given id from its index, swallowing an
+    absent or unreachable indexer.
+    """
+    try:
+        return indexing.remove_document(get_entry_index(), document_id)
+    except indexing.IndexerNotInitializedError:
+        pass
+    except Exception:
+        current_app.logger.error(
+            "Indexer is not reachable, indexation failed."
+        )
+    return {}
 
 
 def reset_index():
@@ -86,6 +126,9 @@ def reset_entry_index(
 
 
 def reset_asset_index():
+    """
+    Rebuild the asset index from the database.
+    """
     reset_entry_index(
         "assets",
         assets_service.get_all_raw_assets,
@@ -96,6 +139,9 @@ def reset_asset_index():
 
 
 def reset_person_index():
+    """
+    Rebuild the person index from the database.
+    """
     reset_entry_index(
         "persons",
         persons_service.get_all_raw_active_persons,
@@ -107,6 +153,9 @@ def reset_person_index():
 
 
 def reset_shot_index():
+    """
+    Rebuild the shot index from the database.
+    """
     reset_entry_index(
         "shots",
         shots_service.get_all_raw_shots,
@@ -329,54 +378,21 @@ def index_asset(asset):
     """
     Register asset into the index.
     """
-    try:
-        index = get_asset_index()
-        document = prepare_asset(asset)
-        indexing.index_document(index, document)
-        return document
-    except indexing.IndexerNotInitializedError:
-        pass
-    except Exception:
-        current_app.logger.error(
-            "Indexer is not reachable, indexation failed."
-        )
-    return {}
+    return _index_entry(get_asset_index, prepare_asset, asset)
 
 
 def index_person(person):
     """
     Register person into the index.
     """
-    try:
-        index = get_person_index()
-        document = prepare_person(person)
-        indexing.index_document(index, document)
-        return document
-    except indexing.IndexerNotInitializedError:
-        pass
-    except Exception:
-        current_app.logger.error(
-            "Indexer is not reachable, indexation failed."
-        )
-    return {}
+    return _index_entry(get_person_index, prepare_person, person)
 
 
 def index_shot(shot):
     """
     Register shot into the index.
     """
-    try:
-        index = get_shot_index()
-        document = prepare_shot(shot)
-        indexing.index_document(index, document)
-        return document
-    except indexing.IndexerNotInitializedError:
-        pass
-    except Exception:
-        current_app.logger.error(
-            "Indexer is not reachable, indexation failed."
-        )
-    return {}
+    return _index_entry(get_shot_index, prepare_shot, shot)
 
 
 def prepare_asset(asset):
@@ -405,12 +421,10 @@ def prepare_asset(asset):
     return data
 
 
-def prepare_person(person, index=None):
+def prepare_person(person):
     """
     Prepare a indexation document from given person.
     """
-    if index is None:
-        index = get_person_index()
     person_serialized = person.serialize()
     data = {
         "id": person_serialized["id"],
@@ -419,12 +433,10 @@ def prepare_person(person, index=None):
     return data
 
 
-def prepare_shot(shot, index=None):
+def prepare_shot(shot):
     """
     Prepare a indexation document from given shot.
     """
-    if index is None:
-        index = get_shot_index()
     shot_serialized = shot.serialize()
 
     episode_id = ""
@@ -479,42 +491,18 @@ def remove_asset_index(asset_id):
     """
     Remove document matching given asset id from asset index.
     """
-    try:
-        return indexing.remove_document(get_asset_index(), asset_id)
-    except indexing.IndexerNotInitializedError:
-        pass
-    except Exception:
-        current_app.logger.error(
-            "Indexer is not reachable, indexation failed."
-        )
-    return {}
+    return _remove_entry_index(get_asset_index, asset_id)
 
 
 def remove_person_index(person_id):
     """
     Remove document matching given person id from person index.
     """
-    try:
-        return indexing.remove_document(get_person_index(), person_id)
-    except indexing.IndexerNotInitializedError:
-        pass
-    except Exception:
-        current_app.logger.error(
-            "Indexer is not reachable, indexation failed."
-        )
-    return {}
+    return _remove_entry_index(get_person_index, person_id)
 
 
 def remove_shot_index(shot_id):
     """
     Remove document matching given shot id from shot index.
     """
-    try:
-        return indexing.remove_document(get_shot_index(), shot_id)
-    except indexing.IndexerNotInitializedError:
-        pass
-    except Exception:
-        current_app.logger.error(
-            "Indexer is not reachable, indexation failed."
-        )
-    return {}
+    return _remove_entry_index(get_shot_index, shot_id)
