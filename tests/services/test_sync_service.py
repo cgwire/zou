@@ -150,3 +150,74 @@ class SyncServiceTestCase(ApiDBTestCase):
             sync_service.verify_project_sync(project_name, direction="pull")
         finally:
             gazu.project.get_project_by_name = real_get
+
+    def test_every_synced_event_has_a_path_and_a_model(self):
+        """
+        add_main_sync_listeners and add_project_sync_listeners read both maps
+        for every event of their list. A name added to a list without an
+        entry in the maps raises KeyError when the sync starts, which is a
+        place nobody watches.
+        """
+        listened = list(sync_service.main_events) + list(
+            sync_service.project_events
+        )
+        self.assertEqual(
+            [
+                event
+                for event in listened
+                if event not in sync_service.event_name_model_path_map
+            ],
+            [],
+        )
+        self.assertEqual(
+            [
+                event
+                for event in listened
+                if event not in sync_service.event_name_model_map
+            ],
+            [],
+        )
+
+    def test_write_multithread_dict_errors_nests_by_prefix(self):
+        errors = {}
+        sync_service.write_multithread_dict_errors(
+            errors, "previews", "id-1", "boom"
+        )
+        sync_service.write_multithread_dict_errors(
+            errors, "previews", "id-2", "bang"
+        )
+        sync_service.write_multithread_dict_errors(
+            errors, "thumbnails", "id-1", "thud"
+        )
+        self.assertEqual(
+            errors,
+            {
+                "previews": {"id-1": "boom", "id-2": "bang"},
+                "thumbnails": {"id-1": "thud"},
+            },
+        )
+
+    def test_write_multithread_dict_errors_loses_nothing_under_threads(self):
+        """
+        The function exists to be called from a worker pool, so the point is
+        that concurrent writers do not drop each other's entries.
+        """
+        import threading
+
+        errors = {}
+
+        def write(index):
+            sync_service.write_multithread_dict_errors(
+                errors, "previews", f"id-{index}", index
+            )
+
+        threads = [
+            threading.Thread(target=write, args=(index,))
+            for index in range(50)
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        self.assertEqual(len(errors["previews"]), 50)
