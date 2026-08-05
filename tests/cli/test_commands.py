@@ -365,3 +365,41 @@ class CreateAdminCommandTestCase(ApiDBTestCase):
         )
         self.assertEqual(result.exit_code, 1)
         self.assertIn("Email is not valid", result.output)
+
+
+class CreateBotCommandTestCase(ApiDBTestCase):
+    """
+    A bot has no password: the token printed at creation is the only way to
+    reach the api as it, and it is printed once.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.runner = CliRunner()
+
+    def test_create_bot(self):
+        result = self.runner.invoke(
+            cli,
+            [
+                "create-bot",
+                "--email",
+                "admin@example.com",
+                "--name",
+                "Render Bot",
+                "--expiration-date",
+                "2030-01-01",
+                "--role",
+                "user",
+            ],
+        )
+        self.assertEqual(result.exit_code, 0, result.output)
+
+        bot = Person.get_by(email="admin@example.com")
+        self.assertTrue(bot.is_bot)
+        self.assertEqual(bot.first_name, "Render Bot")
+        self.assertEqual(bot.role.code, "user")
+        self.assertIsNone(bot.password)
+
+        # The token is the deliverable of the command, not a log line.
+        token = result.output.strip().splitlines()[-1]
+        self.assertGreater(len(token), 20)
