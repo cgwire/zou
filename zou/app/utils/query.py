@@ -11,6 +11,11 @@ from sqlalchemy import func, types as sa_types
 from sqlalchemy.inspection import inspect
 
 
+# Some criterions accept sentinel values that are not UUIDs (e.g. "all" or
+# "main" for episode_id) and must therefore bypass UUID validation.
+EPISODE_ID_SENTINELS = ["all", "main"]
+
+
 def get_query_criterions_from_request(request):
     """
     Turn request parameters into a dict where keys are attributes to filter and
@@ -21,11 +26,6 @@ def get_query_criterions_from_request(request):
         if key not in ["page"]:
             criterions[key] = value
     return criterions
-
-
-# Some criterions accept sentinel values that are not UUIDs (e.g. "all" or
-# "main" for episode_id) and must therefore bypass UUID validation.
-EPISODE_ID_SENTINELS = ["all", "main"]
 
 
 def check_criterion_id_format(
