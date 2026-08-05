@@ -80,7 +80,6 @@ Contributors
 * @flablog (Les Fées Spéciales)
 * @frankrousseau (CGWire) - *maintainer*
 * @Fuitad
-* @g-Lul (TNZPV)
 * @kaamaurice (Tchak)
 * @LedruRollin (Cube-Xilam)
 * @level-antoine
