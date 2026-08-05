@@ -103,6 +103,18 @@ def _deny_sharing_without_manager_access(data, instance):
         data["is_shared"] = False
 
 
+def _get_own_or_as_admin(model, instance_id, current_user):
+    """
+    Return the row of given model belonging to the current user, falling
+    back to the row whoever owns it when they are an admin. Returns None
+    when nothing matches, the caller raises.
+    """
+    instance = model.get_by(id=instance_id, person_id=current_user["id"])
+    if instance is None and current_user["role"] == "admin":
+        instance = model.get_by(id=instance_id)
+    return instance
+
+
 def build_assignee_filter():
     """
     Query filter for task to retrieve only tasks assigned to current user.
@@ -577,12 +589,9 @@ def update_filter(search_filter_id, data):
     Update given filter from database.
     """
     current_user = persons_service.get_current_user()
-    search_filter = SearchFilter.get_by(
-        id=search_filter_id, person_id=current_user["id"]
+    search_filter = _get_own_or_as_admin(
+        SearchFilter, search_filter_id, current_user
     )
-    if current_user["role"] == "admin" and search_filter is None:
-        search_filter = SearchFilter.get_by(id=search_filter_id)
-
     if search_filter is None:
         raise SearchFilterNotFoundException
 
@@ -626,8 +635,8 @@ def remove_filter(search_filter_id):
     Remove given filter from database.
     """
     current_user = persons_service.get_current_user()
-    search_filter = SearchFilter.get_by(
-        id=search_filter_id, person_id=current_user["id"]
+    search_filter = _get_own_or_as_admin(
+        SearchFilter, search_filter_id, current_user
     )
     if search_filter is None:
         raise SearchFilterNotFoundException
@@ -756,8 +765,8 @@ def get_filter_group(search_filter_group_id):
     Get given filter group from the database.
     """
     current_user = persons_service.get_current_user()
-    search_filter_group = SearchFilterGroup.get_by(
-        id=search_filter_group_id, person_id=current_user["id"]
+    search_filter_group = _get_own_or_as_admin(
+        SearchFilterGroup, search_filter_group_id, current_user
     )
     if search_filter_group is None:
         raise SearchFilterGroupNotFoundException
@@ -769,8 +778,8 @@ def update_filter_group(search_filter_group_id, data):
     Update given filter group from database.
     """
     current_user = persons_service.get_current_user()
-    search_filter_group = SearchFilterGroup.get_by(
-        id=search_filter_group_id, person_id=current_user["id"]
+    search_filter_group = _get_own_or_as_admin(
+        SearchFilterGroup, search_filter_group_id, current_user
     )
 
     if search_filter_group is None:
@@ -807,8 +816,8 @@ def remove_filter_group(search_filter_group_id):
     Remove given filter group from database.
     """
     current_user = persons_service.get_current_user()
-    search_filter_group = SearchFilterGroup.get_by(
-        id=search_filter_group_id, person_id=current_user["id"]
+    search_filter_group = _get_own_or_as_admin(
+        SearchFilterGroup, search_filter_group_id, current_user
     )
     if search_filter_group is None:
         raise SearchFilterGroupNotFoundException
