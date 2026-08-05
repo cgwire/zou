@@ -11,6 +11,8 @@ from zou.app.services import (
     status_automations_service,
     tasks_service,
 )
+from zou.app.services.exception import StatusAutomationNotFoundException
+from zou.app.utils import fields
 
 
 class StatusAutomationsServiceTestCase(ApiDBTestCase):
@@ -47,6 +49,20 @@ class StatusAutomationsServiceTestCase(ApiDBTestCase):
     def test_created_status_automation(self):
         self.assertEqual(
             len(status_automations_service.get_status_automations()), 2
+        )
+
+    def test_get_status_automation_raw(self):
+        automation = status_automations_service.get_status_automations()[0]
+        self.assertEqual(
+            status_automations_service.get_status_automation_raw(
+                automation["id"]
+            ).id,
+            StatusAutomation.get(automation["id"]).id,
+        )
+        self.assertRaises(
+            StatusAutomationNotFoundException,
+            status_automations_service.get_status_automation_raw,
+            fields.gen_uuid(),
         )
 
     def test_status_automation_to_status(self):

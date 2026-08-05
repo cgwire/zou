@@ -102,6 +102,25 @@ class NewsServiceTestCase(ApiDBTestCase):
         )
         self.assertEqual(len(news_list["data"]), 1)
 
+    def test_get_news_stats_for_project(self):
+        """
+        The stats only count the news that carry a status change: they feed
+        the "what moved" counters, not the comment count.
+        """
+        self.generate_fixture_comment()
+        for change in [True, True, False]:
+            comment = comments_service.new_comment(
+                self.task.id, self.task_status.id, self.user["id"], "comment"
+            )
+            news_service.create_news_for_task_and_comment(
+                self.task_dict, comment, change=change
+            )
+
+        stats = news_service.get_news_stats_for_project(
+            project_id=self.task_dict["project_id"]
+        )
+        self.assertEqual(stats, {str(self.task_status.id): 2})
+
     def test_get_last_news_for_project_with_dates(self):
         self.generate_fixture_comment()
         for i in range(1, 7):

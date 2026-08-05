@@ -327,6 +327,50 @@ class FileServiceTestCase(ApiDBTestCase):
         )
         self.assertEqual(len(output_files), 3)
 
+    def test_get_output_files_for_instance(self):
+        """
+        Every revision an instance carries, newest first, narrowed by the
+        optional filters.
+        """
+        self.generate_fixture_asset()
+        self.generate_fixture_scene()
+        scene_id = str(self.scene.id)
+        asset_instance = self.generate_fixture_scene_asset_instance()
+        geometry = self.output_type
+        cache = self.generate_fixture_output_type(
+            name="Cache", short_name="cch"
+        )
+        for revision in [1, 2]:
+            self.generate_fixture_output_file(
+                geometry,
+                revision,
+                asset_instance=asset_instance,
+                temporal_entity_id=scene_id,
+            )
+        self.generate_fixture_output_file(
+            cache,
+            1,
+            asset_instance=asset_instance,
+            temporal_entity_id=scene_id,
+        )
+
+        output_files = files_service.get_output_files_for_instance(
+            asset_instance.id, scene_id
+        )
+        self.assertEqual(
+            [output_file["revision"] for output_file in output_files],
+            [2, 1, 1],
+        )
+        self.assertEqual(
+            {output_file["output_type_id"] for output_file in output_files},
+            {str(geometry.id), str(cache.id)},
+        )
+
+        output_files = files_service.get_output_files_for_instance(
+            asset_instance.id, scene_id, output_type_id=cache.id
+        )
+        self.assertEqual(len(output_files), 1)
+
     def test_get_output_files_for_output_type_and_shot_asset_instance(self):
         self.generate_fixture_asset()
         self.generate_fixture_scene()

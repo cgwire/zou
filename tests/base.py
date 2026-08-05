@@ -277,12 +277,15 @@ class ApiDBTestCase(ApiTestCase):
     """
     Set of helpers for Api tests.
 
-    Four things about the fixtures below are worth knowing before writing a
+    Five things about the fixtures below are worth knowing before writing a
     test that steps outside the usual one project, one asset, one task shape.
 
     - generate_fixture_project assigns self.project_id itself, so asking for
       a second production silently repoints it at the new one. Keep the id
-      you need in a local before calling it.
+      you need in a local before calling it. generate_fixture_output_type
+      does the same to self.output_type, and it does not even guard on the
+      name: asking for a second output type makes every later fixture that
+      defaults to self.output_type use it.
     - Several fixtures call one another and read self.project on the way, so
       one that runs after a second production lands in that production, or
       tries to recreate the default one and hits the unique name constraint.
