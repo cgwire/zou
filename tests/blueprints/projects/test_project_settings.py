@@ -1,8 +1,8 @@
 from tests.base import ApiDBTestCase
 
 from zou.app.models.project import ProjectTaskTypeLink
-from zou.app.services import budget_service
-from zou.app.utils import fields
+from zou.app.services import budget_service, projects_service
+from zou.app.utils import events, fields
 
 
 class ProjectSettingsRoutesTestCase(ApiDBTestCase):
@@ -492,3 +492,72 @@ class ProjectBudgetRoutesTestCase(ApiDBTestCase):
             f"/data/projects/{self.project_id}/budgets/time-spents"
         )
         self.assertIsInstance(result, dict)
+
+
+class ProjectSettingsEventsTestCase(ApiDBTestCase):
+    """
+    Linking a task type or a task status to a project, and reordering either
+    list, change what the clients read through the project. They each emit
+    project:update so the clients refetch it.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project_status()
+        self.generate_fixture_project()
+        self.generate_fixture_department()
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status()
+        self.generate_fixture_task_status_wip()
+        self.project_id = str(self.project.id)
+        self.events = []
+        events.register("project:update", "handle_event", self)
+
+    def handle_event(self, data={}):
+        self.events.append(data)
+
+    def test_task_type_link_notifies(self):
+        self.post(
+            "/data/task-type-links",
+            {
+                "project_id": self.project_id,
+                "task_type_id": str(self.task_type.id),
+                "priority": 1,
+            },
+        )
+        self.assertEqual(len(self.events), 1)
+        self.assertEqual(self.events[0]["project_id"], self.project_id)
+
+    def test_task_status_link_notifies(self):
+        self.post(
+            "/data/task-status-links",
+            {
+                "project_id": self.project_id,
+                "task_status_id": str(self.task_status.id),
+                "priority": 1,
+            },
+        )
+        self.assertEqual(len(self.events), 1)
+        self.assertEqual(self.events[0]["project_id"], self.project_id)
+
+    def test_reorder_notifies_once(self):
+        """
+        A reorder touches every link of the list but the clients only need to
+        refetch the project once.
+        """
+        first = str(self.task_type.id)
+        second = str(self.task_type_concept.id)
+        projects_service.create_project_task_type_link(
+            self.project_id, first, 1
+        )
+        projects_service.create_project_task_type_link(
+            self.project_id, second, 2
+        )
+        self.events.clear()
+
+        self.post(
+            f"/actions/projects/{self.project_id}/task-type-links/reorder",
+            {"task_type_ids": [second, first]},
+            200,
+        )
+        self.assertEqual(len(self.events), 1)
