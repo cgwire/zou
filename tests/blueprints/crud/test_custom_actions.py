@@ -66,3 +66,24 @@ class CustomActionTestCase(ApiDBTestCase):
         self.delete_404(f"data/custom-actions/{fields.gen_uuid()}")
         custom_actions = self.get("data/custom-actions")
         self.assertEqual(len(custom_actions), 2)
+
+    def test_context_sees_a_new_custom_action_at_once(self):
+        """
+        The custom action list is memoized for two minutes and reaches the
+        clients through the user context. Every write route drops that cache,
+        otherwise a studio adding an action would not see it for two minutes.
+        """
+        before = self.get("/data/user/context")["custom_actions"]
+        self.assertEqual(len(before), 3)
+
+        created = self.post(
+            "data/custom-actions",
+            {"name": "run_render", "url": "http://198.168.1.123"},
+        )
+        after = self.get("/data/user/context")["custom_actions"]
+        self.assertEqual(len(after), 4)
+        self.assertIn(created["id"], [action["id"] for action in after])
+
+        self.delete(f"data/custom-actions/{created['id']}")
+        names = self.get("/data/user/context")["custom_actions"]
+        self.assertEqual(len(names), 3)

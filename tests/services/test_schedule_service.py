@@ -679,3 +679,53 @@ class ScheduleServiceTestCase(ApiDBTestCase):
         self.get(
             f"/data/production-schedule-versions/{psv.id}/task-links", 403
         )
+
+    def test_apply_to_production_route(self):
+        """
+        The service behind this is tested on its own; the route adds the
+        guard, and only a manager of the production may push a schedule back
+        onto its tasks.
+        """
+        psv = ProductionScheduleVersion.create(
+            name="v1", project_id=self.project.id
+        )
+        schedule_service.set_production_schedule_version_task_links_from_production(
+            str(psv.id)
+        )
+        path = (
+            f"/actions/production-schedule-versions/{psv.id}"
+            f"/apply-to-production"
+        )
+
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        self.post(path, {}, 403)
+
+        self.log_in_admin()
+        result = self.post(path, {}, 200)
+        self.assertEqual(result, {"success": True, "task_count": 1})
+        self.assertTrue(ProductionScheduleVersion.get(psv.id).locked)
+
+    def test_set_task_links_from_production_route(self):
+        psv = ProductionScheduleVersion.create(
+            name="v1", project_id=self.project.id
+        )
+        path = (
+            f"/actions/production-schedule-versions/{psv.id}"
+            f"/set-task-links-from-production"
+        )
+
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        self.post(path, {}, 403)
+
+        self.log_in_admin()
+        self.post(path, {}, 200)
+        self.assertEqual(
+            len(
+                ProductionScheduleVersionTaskLink.get_all_by(
+                    production_schedule_version_id=psv.id
+                )
+            ),
+            1,
+        )
