@@ -3,6 +3,7 @@ from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.entities.schemas import CreateEntityTasksSchema
+from zou.app.mixin import ArgsMixin
 from zou.app.services.exception import EntityNotFoundException
 from zou.app.services import (
     deletion_service,
@@ -371,7 +372,7 @@ class EntityTaskCreationResource(MethodView):
         return tasks, 201
 
 
-class ProjectDeleteEntitiesResource(MethodView):
+class ProjectDeleteEntitiesResource(MethodView, ArgsMixin):
     @jwt_required()
     def post(self, project_id):
         """
@@ -379,10 +380,10 @@ class ProjectDeleteEntitiesResource(MethodView):
         ---
         description: Delete assets, shots, edits and concepts given by id
           list in a single request. Each entity follows the same rules as
-          its single deletion route. Entities with tasks are marked as
-          canceled on first deletion, then removed for real when already
-          canceled; concepts are always removed. Only entity creators or
-          project managers can delete entities.
+          its single deletion route. Without force, entities with tasks are
+          marked as canceled on first deletion, then removed for real when
+          already canceled; concepts are always removed. Only entity
+          creators or project managers can delete entities.
         tags:
           - Entities
         parameters:
@@ -394,6 +395,14 @@ class ProjectDeleteEntitiesResource(MethodView):
               format: uuid
             description: Unique identifier of the project
             example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: force
+            required: false
+            schema:
+              type: boolean
+            description: Remove the entities and their tasks for real,
+              instead of only canceling the ones that have tasks
+            example: false
         requestBody:
           required: true
           content:
@@ -417,6 +426,7 @@ class ProjectDeleteEntitiesResource(MethodView):
                     type: string
                     format: uuid
         """
+        force = self.get_force()
         projects_service.get_project(project_id)
         entity_ids = validation.validate_id_list()
         current_user_id = persons_service.get_current_user()["id"]
@@ -434,4 +444,9 @@ class ProjectDeleteEntitiesResource(MethodView):
             else:
                 user_service.check_manager_project_access(project_id)
 
-        return deletion_service.remove_entities(project_id, entity_ids), 200
+        return (
+            deletion_service.remove_entities(
+                project_id, entity_ids, force=force
+            ),
+            200,
+        )

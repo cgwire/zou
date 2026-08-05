@@ -384,13 +384,14 @@ def remove_tasks(project_id, task_ids):
     return task_ids
 
 
-def remove_entities(project_id, entity_ids):
+def remove_entities(project_id, entity_ids, force=False):
     """
     Delete a list of a project's entities, dispatching each to the right
-    removal by its type (asset, shot, edit, concept). Entities with tasks are
-    canceled on first deletion, then removed for real when already canceled;
-    concepts are always removed. Absent entities and entities that do not
-    belong to the project or are not one of those types are skipped.
+    removal by its type (asset, shot, edit, concept). Without force, entities
+    with tasks are canceled on first deletion, then removed for real when
+    already canceled; concepts are always removed. With force, every entity is
+    removed for real along with its tasks. Absent entities and entities that
+    do not belong to the project or are not one of those types are skipped.
     Returns the ids of the entities that were removed.
     """
     from zou.app.services import (
@@ -416,24 +417,22 @@ def remove_entities(project_id, entity_ids):
         if entity["project_id"] != project_id:
             continue
         entity_type_id = entity["entity_type_id"]
+        entity_force = force or entity["canceled"]
         if entity_type_id == shot_type_id:
             remove = shots_service.remove_shot
-            force = entity["canceled"]
         elif entity_type_id == edit_type_id:
             remove = edits_service.remove_edit
-            force = entity["canceled"]
         elif entity_type_id == concept_type_id:
             remove = concepts_service.remove_concept
-            force = True
+            entity_force = True
         elif assets_service.is_asset_dict(entity):
             remove = assets_service.remove_asset
-            force = entity["canceled"]
         else:
             continue
-        to_remove.append((entity_id, remove, force))
+        to_remove.append((entity_id, remove, entity_force))
 
-    for entity_id, remove, force in to_remove:
-        remove(entity_id, force=force)
+    for entity_id, remove, entity_force in to_remove:
+        remove(entity_id, force=entity_force)
     return [entity_id for entity_id, _, _ in to_remove]
 
 
