@@ -3,9 +3,9 @@ from mixer.backend.flask import mixer
 from zou.app.utils import date_helpers
 
 
-class DateTestCase(ApiDBTestCase):
+class TimestampsTestCase(ApiDBTestCase):
     def setUp(self):
-        super(DateTestCase, self).setUp()
+        super(TimestampsTestCase, self).setUp()
         mixer.init_app(self.flask_app)
         self.now = date_helpers.get_utc_now_datetime()
         self.generate_fixture_person()

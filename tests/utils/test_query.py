@@ -1,7 +1,18 @@
 import unittest
 
+from zou.app.utils import query
 from zou.app.utils.query import check_criterion_id_format
 from zou.app.services.exception import WrongParameterException
+
+
+class GetQueryCriterionsTestCase(unittest.TestCase):
+    def test_get_query_criterions(self):
+        request = type("test", (object,), {})()
+        request.args = {"page": "1", "name": "Test", "project_id": "1234"}
+        criterions = query.get_query_criterions_from_request(request)
+        self.assertDictEqual(
+            criterions, {"name": "Test", "project_id": "1234"}
+        )
 
 
 class CheckCriterionIdFormatTestCase(unittest.TestCase):
