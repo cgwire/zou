@@ -531,6 +531,12 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         )
         self.assertTrue(self.get(deprecated_path))
 
+        listing_path = (
+            f"/data/user/projects/{self.project_id}"
+            f'/task-types/{self.task_type_dict["id"]}/sequence-subscriptions'
+        )
+        self.assertEqual(self.get(listing_path), [self.sequence_dict["id"]])
+
     def test_unsubscribe_sequence(self):
         path = f'/actions/user/sequences/{self.sequence_dict["id"]}/task-types/{self.task_type_dict["id"]}/'
         self.post(path + "subscribe", {})
@@ -539,6 +545,58 @@ class UserContextRoutesTestCase(ApiDBTestCase):
             self.shot_task_dict
         )
         self.assertFalse(self.user_id in recipients)
+
+    def test_get_tasks_to_check(self):
+        tasks = self.get("data/user/tasks-to-check")
+        self.assertEqual(len(tasks), 0)
+
+        feedback_status = tasks_service.get_or_create_status(
+            "Waiting For Approval", "wfa", is_feedback_request=True
+        )
+        tasks_service.update_task(
+            self.task_id, {"task_status_id": feedback_status["id"]}
+        )
+
+        tasks = self.get("data/user/tasks-to-check")
+        self.assertEqual(len(tasks), 1)
+        self.assertEqual(tasks[0]["id"], str(self.task_id))
+
+    def test_get_day_off(self):
+        path = "data/user/day-offs/2026-08-05"
+        self.assertEqual(self.get(path), {})
+
+        self.generate_fixture_day_off("2026-08-05", person_id=self.user_id)
+
+        day_off = self.get(path)
+        self.assertEqual(day_off["person_id"], self.user_id)
+        # A date the driver cannot cast is a 400, not a 500.
+        self.get("data/user/day-offs/not-a-date", 400)
+
+    def test_get_time_spents_for_date(self):
+        path = "data/user/time-spents/2026-08-05"
+        self.assertEqual(len(self.get(path)), 0)
+
+        tasks_service.create_or_update_time_spent(
+            self.task_id, self.user_id, "2026-08-05", 3600
+        )
+
+        time_spents = self.get(path)
+        self.assertEqual(len(time_spents), 1)
+        self.assertEqual(time_spents[0]["duration"], 3600)
+        # Another day sees nothing.
+        self.assertEqual(len(self.get("data/user/time-spents/2026-08-06")), 0)
+        self.get("data/user/time-spents/not-a-date", 400)
+
+    def test_get_time_spents_range(self):
+        tasks_service.create_or_update_time_spent(
+            self.task_id, self.user_id, "2026-08-05", 3600
+        )
+        time_spents = self.get(
+            "data/user/time-spents?start_date=2026-08-01&end_date=2026-08-31"
+        )
+        self.assertEqual(len(time_spents), 1)
+        # Both bounds are required, one alone is a 400.
+        self.get("data/user/time-spents?start_date=2026-08-01", 400)
 
     def test_get_context(self):
         context = self.get("/data/user/context")
