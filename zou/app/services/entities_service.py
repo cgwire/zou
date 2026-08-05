@@ -33,6 +33,18 @@ from zou.app.services.exception import (
     EntityTypeNotFoundException,
 )
 
+# Entity types positioned in time, as opposed to the asset types. Their
+# name doubles as the event prefix (shot:update, edit:update...), so every
+# type missing from this list is reported to the clients as an asset.
+TEMPORAL_ENTITY_TYPE_NAMES = [
+    "Shot",
+    "Sequence",
+    "Scene",
+    "Edit",
+    "Concept",
+    "Episode",
+]
+
 
 def clear_entity_cache(entity_id):
     """
@@ -157,7 +169,7 @@ def update_entity_preview(entity_id, preview_file_id):
     )
     entity_type = EntityType.get(entity.entity_type_id)
     entity_type_name = "asset"
-    if entity_type.name in ["Shot", "Scene", "Sequence", "Episode", "Concept"]:
+    if entity_type.name in TEMPORAL_ENTITY_TYPE_NAMES:
         entity_type_name = entity_type.name.lower()
     events.emit(
         f"{entity_type_name}:update",
@@ -642,15 +654,7 @@ def get_linked_entities_with_tasks(entity_id):
                     "entity_concept_links": entity.entity_concept_links,
                     "type": (
                         entity_type_name
-                        if entity_type_name
-                        in [
-                            "Shot",
-                            "Sequence",
-                            "Scene",
-                            "Edit",
-                            "Concept",
-                            "Episode",
-                        ]
+                        if entity_type_name in TEMPORAL_ENTITY_TYPE_NAMES
                         else "Asset"
                     ),
                     "updated_at": entity.updated_at,
