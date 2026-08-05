@@ -626,7 +626,13 @@ def get_folder_from_sequence(entity, field="name"):
 
 
 def get_folder_from_episode(entity, field="name"):
+    """
+    Return the episode folder name of given entity, walking up through its
+    sequence when it is a shot or a scene. Entities that lead to no episode
+    fall back to e001, the name a flat production uses.
+    """
     episode = None
+    sequence = None
 
     if shots_service.is_episode(entity):
         episode = entity
@@ -635,7 +641,10 @@ def get_folder_from_episode(entity, field="name"):
             sequence = shots_service.get_sequence_from_shot(entity)
         elif shots_service.is_sequence(entity):
             sequence = entity
-        episode = shots_service.get_episode_from_sequence(sequence)
+        # An entity that is none of those (an asset) has no sequence to
+        # walk up from, and falls back below like a missing episode does.
+        if sequence is not None:
+            episode = shots_service.get_episode_from_sequence(sequence)
 
     try:
         episode_name = episode[field]
