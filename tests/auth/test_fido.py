@@ -11,6 +11,7 @@ from unittest import mock
 from tests.base import ApiDBTestCase
 
 from zou.app.models.person import Person
+from zou.app.services import persons_service
 
 
 class FidoRoutesTestCase(ApiDBTestCase):
@@ -45,9 +46,21 @@ class FidoRoutesTestCase(ApiDBTestCase):
             )
 
     def test_get_challenge_unknown_user(self):
-        self.get("auth/fido?email=ghost@nowhere.com", 404)
+        # Answering 404 here and 400 below told a registered address from
+        # an unknown one, unauthenticated, in a single request.
+        unknown = self.get("auth/fido?email=ghost@nowhere.com", 400)
+        known = self.get(f"auth/fido?email={self.user['email']}", 400)
+        self.assertEqual(unknown, known)
 
     def test_get_challenge_fido_not_enabled(self):
+        self.get(f"auth/fido?email={self.user['email']}", 400)
+
+    def test_get_challenge_unactive_user(self):
+        self._register_device()
+        person = Person.get(self.user["id"])
+        person.update({"active": False})
+        persons_service.clear_person_cache()
+
         self.get(f"auth/fido?email={self.user['email']}", 400)
 
     def test_pre_register_returns_webauthn_options(self):

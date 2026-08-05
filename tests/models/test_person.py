@@ -13,6 +13,7 @@ from zou.app.models.person import (
 from zou.app.utils import fields
 
 from operator import itemgetter
+from urllib.parse import quote
 
 
 class NormalizeCountryTestCase(unittest.TestCase):
@@ -412,22 +413,46 @@ class PersonTestCase(ApiDBTestCase):
         # Filters run before serialization, so a column absent from
         # present_minimal stays answerable by equality unless the filter
         # keys are narrowed too: ?daily_salary=320 would walk the payroll.
+        # A refused filter must be an error, never a wider result set.
         person = Person.get_by(email="ema.doe@gmail.com")
         person.update({"daily_salary": 320, "phone": "0600000000"})
         self.generate_fixture_user_cg_artist()
         self.log_in_cg_artist()
 
-        for query in [
-            "daily_salary=320",
-            "phone=0600000000",
-            "email=ema.doe@gmail.com",
-        ]:
-            persons = self.get(f"data/persons?{query}")
-            self.assertGreater(
-                len(persons),
-                1,
-                f"{query} was answered as a filter",
-            )
+        for query in ["daily_salary=320", "phone=0600000000"]:
+            self.get(f"data/persons?{query}", 400)
+
+    def test_email_stays_filterable_for_non_admins(self):
+        # gazu.person.get_person_by_email() reads the first row of this
+        # route, so dropping the filter handed out an arbitrary person
+        # instead of no match.
+        person = Person.get_by(email="ema.doe@gmail.com")
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+
+        persons = self.get("data/persons?email=ema.doe@gmail.com")
+        self.assertEqual(len(persons), 1)
+        self.assertEqual(persons[0]["id"], str(person.id))
+
+        self.assertEqual(self.get("data/persons?email=nobody@gmail.com"), [])
+
+    def test_full_name_is_filterable(self):
+        # full_name is a hybrid whose SQL expression is a concat_ws inside
+        # a trim, two functions SQLAlchemy types as NullType: casting the
+        # value to it raised a CompileError, and the route answered
+        # gazu.person.get_person_by_full_name() with a 500.
+        person = Person.get_by(email="ema.doe@gmail.com")
+        path = f"data/persons?full_name={quote('Ema Doe')}"
+
+        persons = self.get(path)
+        self.assertEqual(len(persons), 1)
+        self.assertEqual(persons[0]["id"], str(person.id))
+
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        persons = self.get(path)
+        self.assertEqual(len(persons), 1)
+        self.assertEqual(persons[0]["id"], str(person.id))
 
     def test_visible_columns_stay_filterable(self):
         person = Person.get_by(email="ema.doe@gmail.com")
@@ -447,8 +472,7 @@ class PersonTestCase(ApiDBTestCase):
     def test_secrets_are_never_filterable(self):
         person = Person.get_by(email="ema.doe@gmail.com")
         person.update({"totp_secret": "SECRETSEED"})
-        persons = self.get("data/persons?totp_secret=SECRETSEED")
-        self.assertGreater(len(persons), 1)
+        self.get("data/persons?totp_secret=SECRETSEED", 400)
 
     def test_country_not_exposed_in_present_minimal(self):
         # The minimal representation is served to non-managers (including

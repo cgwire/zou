@@ -1,3 +1,5 @@
+from sqlalchemy import or_
+
 from zou.app.blueprints.source.csv.base import (
     BaseCsvProjectImportResource,
     RowException,
@@ -16,7 +18,7 @@ from zou.app.services import (
 )
 from zou.app.models.entity import Entity
 from zou.app.services.exception import WrongParameterException
-from zou.app.utils import events, cache
+from zou.app.utils import events
 
 
 class AssetsCsvImportResource(BaseCsvProjectImportResource):
@@ -98,12 +100,26 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             self.episodes = {
                 episode["name"]: episode["id"] for episode in episodes
             }
-        self.created_assets = []
         self.task_types_in_project_for_assets = (
             TaskType.query.join(ProjectTaskTypeLink)
             .filter(ProjectTaskTypeLink.project_id == project_id)
-            .filter(TaskType.for_entity == "Asset")
+            # for_entity was added nullable in 2018 and only ever backfilled
+            # for shots, so a task type predating it reads NULL and means
+            # "Asset", the model default. Databases we cannot inspect still
+            # carry those rows.
+            .filter(
+                or_(
+                    TaskType.for_entity == "Asset",
+                    TaskType.for_entity.is_(None),
+                )
+            )
+            .all()
         )
+        self.task_type_ids_in_project_for_assets = [
+            str(task_type.id)
+            for task_type in self.task_types_in_project_for_assets
+        ]
+        self.task_types_for_asset_type = {}
         self.task_statuses = {
             status["id"]: [status[n].lower() for n in ("name", "short_name")]
             for status in tasks_service.get_task_statuses()
@@ -148,57 +164,80 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
 
         return tasks_update
 
+    def create_missing_tasks(self, entity, tasks_map=None):
+        """
+        Create the workflow tasks the entity does not have yet, each at the
+        default status, and return the map of task type id to task. This
+        runs for every row, including the ones whose task columns are all
+        empty: those are exactly the tasks the import must initialize.
+        """
+        if tasks_map is None:
+            tasks_map = {
+                task["task_type_id"]: task
+                for task in tasks_service.get_tasks_for_asset(str(entity.id))
+            }
+        entity_dict = entity.serialize()
+        for task_type_id in self.get_task_types_for_asset_type(
+            entity.entity_type_id
+        ):
+            if task_type_id not in tasks_map:
+                task = tasks_service.create_task(
+                    {"id": task_type_id}, entity_dict
+                )
+                if task is not None:
+                    tasks_map[task_type_id] = task
+        return tasks_map
+
     def create_and_update_tasks(
         self, tasks_update, entity, asset_creation=False
     ):
-        if tasks_update:
-            tasks_map = {}
-            if asset_creation:
-                task_type_ids = self.get_task_types_for_asset_type(
-                    entity.entity_type_id
-                )
-                for task_type_id in task_type_ids:
-                    task = tasks_service.create_task(
-                        {"id": task_type_id}, entity.serialize()
-                    )
-                    tasks_map[task_type_id] = task
-            else:
-                for task in tasks_service.get_tasks_for_asset(str(entity.id)):
-                    tasks_map[task["task_type_id"]] = task
+        """
+        Create the workflow tasks of the entity, then apply the statuses and
+        comments read from the row.
+        """
+        tasks_map = self.create_missing_tasks(
+            entity, {} if asset_creation else None
+        )
 
-            for task_update in tasks_update:
-                if task_update["task_type_id"] not in tasks_map:
-                    task = tasks_service.create_task(
-                        tasks_service.get_task_type(
-                            task_update["task_type_id"]
-                        ),
-                        entity.serialize(),
+        for task_update in tasks_update:
+            task_type_id = task_update["task_type_id"]
+            if task_type_id not in tasks_map:
+                # The column names a task type outside the asset type
+                # workflow: the explicit status still creates its task.
+                task = tasks_service.create_task(
+                    tasks_service.get_task_type(task_type_id),
+                    entity.serialize(),
+                )
+                if task is None:
+                    continue
+                tasks_map[task_type_id] = task
+            task = tasks_map[task_type_id]
+            if (
+                task_update["comment"] is not None
+                or task_update["task_status_id"] != task["task_status_id"]
+            ):
+                try:
+                    comments_service.create_comment(
+                        self.current_user_id,
+                        task["id"],
+                        task_update["task_status_id"]
+                        or task["task_status_id"],
+                        task_update["comment"] or "",
+                        [],
+                        {},
+                        "",
                     )
-                    tasks_map[task_update["task_type_id"]] = task
-                task = tasks_map[task_update["task_type_id"]]
-                if (
-                    task_update["comment"] is not None
-                    or task_update["task_status_id"] != task["task_status_id"]
-                ):
-                    try:
-                        comments_service.create_comment(
-                            self.current_user_id,
-                            task["id"],
-                            task_update["task_status_id"]
-                            or task["task_status_id"],
-                            task_update["comment"] or "",
-                            [],
-                            {},
-                            "",
-                        )
-                    except WrongParameterException:
-                        pass
-        elif asset_creation:
-            self.created_assets.append(entity.serialize())
+                except WrongParameterException:
+                    pass
 
     def import_row(self, row, project_id):
         asset_name = row["Name"]
         entity_type_name = row["Type"]
+        if entity_type_name is None or not entity_type_name.strip():
+            # get_or_create_asset_type matches names exactly, so an empty
+            # cell used to create an asset type named "" that every later
+            # empty row then reused.
+            raise RowException("An asset type is required in the Type column")
         episode_name = row.get("Episode", None)
         episode_id = None
 
@@ -295,36 +334,35 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             self.create_and_update_tasks(
                 tasks_update, entity, asset_creation=False
             )
+
+        else:
+            # The asset is left untouched, but a re-import is the documented
+            # way to repair a production whose assets miss their tasks.
+            self.create_missing_tasks(entity)
+
         return entity.serialize()
 
-    @cache.memoize_function(10)
     def get_task_types_for_asset_type(self, asset_type_id):
-        task_type_ids = [
-            str(task_type.id)
-            for task_type in self.task_types_in_project_for_assets
-        ]
-        asset_type = assets_service.get_asset_type(asset_type_id)
-        type_task_type_ids = asset_type["task_types"]
-        type_task_types_map = {
-            task_type_id: True for task_type_id in type_task_type_ids
-        }
-        if len(type_task_type_ids) > 0:
-            task_type_ids = [
-                task_type_id
-                for task_type_id in task_type_ids
-                if task_type_id in type_task_types_map
-            ]
-        return task_type_ids
-
-    def run_import(self, file_path, project_id):
-        entities = super().run_import(
-            file_path,
-            project_id,
-        )
-        for asset in entities:
-            task_type_ids = self.get_task_types_for_asset_type(
-                asset["entity_type_id"]
-            )
-            for task_type_id in task_type_ids:
-                tasks_service.create_tasks({"id": task_type_id}, [asset])
-        return entities
+        """
+        Return the ids of the task types to create for a given asset type:
+        the ones enabled on the project, narrowed by the asset type workflow
+        when it defines one. Memoized on the resource instance only: the
+        result depends on the project being imported, which a cache key
+        built from the arguments alone cannot express.
+        """
+        asset_type_id = str(asset_type_id)
+        if asset_type_id not in self.task_types_for_asset_type:
+            task_type_ids = self.task_type_ids_in_project_for_assets
+            asset_type = assets_service.get_asset_type(asset_type_id)
+            type_task_type_ids = asset_type["task_types"]
+            if len(type_task_type_ids) > 0:
+                type_task_types_map = {
+                    task_type_id: True for task_type_id in type_task_type_ids
+                }
+                task_type_ids = [
+                    task_type_id
+                    for task_type_id in task_type_ids
+                    if task_type_id in type_task_types_map
+                ]
+            self.task_types_for_asset_type[asset_type_id] = task_type_ids
+        return self.task_types_for_asset_type[asset_type_id]

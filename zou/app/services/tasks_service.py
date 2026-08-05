@@ -1335,7 +1335,8 @@ def create_tasks_for_entity(entity, task_types=None):
     for the entity: enabled in the project, in the asset-type workflow
     (for assets), and whose for_entity matches the entity kind. When a
     list is provided, each task type is validated against those same
-    constraints. Existing tasks for the same (entity, task_type,
+    constraints. An asset type with no configured workflow accepts every
+    task type. Existing tasks for the same (entity, task_type,
     name="main") are skipped.
     """
     project_id = entity["project_id"]
@@ -1354,6 +1355,8 @@ def create_tasks_for_entity(entity, task_types=None):
             ProjectTaskTypeLink.project_id == project_id
         ).all()
     }
+    # None means unrestricted: not an asset, or no workflow configured
+    # on the asset type ("Includes all asset task types" in Kitsu).
     enabled_in_workflow = None
     if is_asset:
         enabled_in_workflow = {
@@ -1361,11 +1364,11 @@ def create_tasks_for_entity(entity, task_types=None):
             for link in TaskTypeAssetTypeLink.query.filter(
                 TaskTypeAssetTypeLink.asset_type_id == entity["entity_type_id"]
             ).all()
-        }
+        } or None
 
     if not task_types:
         candidate_ids = enabled_in_project
-        if is_asset:
+        if enabled_in_workflow is not None:
             candidate_ids = candidate_ids & enabled_in_workflow
         if not candidate_ids:
             return []
@@ -1392,7 +1395,10 @@ def create_tasks_for_entity(entity, task_types=None):
                     f"Task type {type_id} is not enabled in project "
                     f"{project_id}."
                 )
-            if is_asset and str(type_id) not in enabled_in_workflow:
+            if (
+                enabled_in_workflow is not None
+                and str(type_id) not in enabled_in_workflow
+            ):
                 raise WrongParameterException(
                     f"Task type {type_id} is not in the workflow of "
                     f"asset type {entity['entity_type_id']}."

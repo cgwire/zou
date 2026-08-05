@@ -3,6 +3,8 @@ from tests.base import ApiDBTestCase
 from zou.app.models.entity_type import EntityType
 from zou.app.models.task_type import TaskType
 
+from zou.app.services import assets_service
+
 from zou.app.utils import fields
 
 
@@ -85,6 +87,27 @@ class EntityTypeTestCase(ApiDBTestCase):
         self.assertEqual(
             set(task_type for task_type in asset_type_again["task_types"]),
             set(task_types),
+        )
+
+    def test_update_asset_type_task_types_clears_cache(self):
+        self.generate_fixture_department()
+        self.generate_fixture_task_type()
+
+        asset_type = self.get_first("data/entity-types")
+        # Warm the memoized serialization: it carries the workflow, so it
+        # has to be dropped when the workflow changes.
+        self.assertEqual(
+            assets_service.get_asset_type(asset_type["id"])["task_types"], []
+        )
+
+        task_types = [str(self.task_type_modeling.id)]
+        self.put(
+            f"data/entity-types/{asset_type['id']}",
+            {"name": asset_type["name"], "task_types": task_types},
+        )
+        self.assertEqual(
+            assets_service.get_asset_type(asset_type["id"])["task_types"],
+            task_types,
         )
 
     def test_delete_entity_types(self):

@@ -12,6 +12,7 @@ from zou.app.stores import auth_tokens_store
 from zou.app.services import persons_service, auth_service
 from zou.app.services.exception import (
     PersonNotFoundException,
+    UnactiveUserException,
     WrongPasswordException,
     WrongUserException,
 )
@@ -112,6 +113,42 @@ class AuthTestCase(ApiDBTestCase):
             app, "john.doe@gmail.com", "mypassword"
         )
         self.assertEqual(person["first_name"], "John")
+
+    def test_unactive_user_is_disclosed_to_the_right_password_only(self):
+        app.config["AUTH_STRATEGY"] = "auth_local_classic"
+        self.person.update({"active": False})
+        persons_service.clear_person_cache()
+
+        self.assertRaises(
+            WrongPasswordException,
+            auth_service.check_auth,
+            app,
+            self.person_dict["email"],
+            "wrongpassword",
+        )
+        self.assertRaises(
+            UnactiveUserException,
+            auth_service.check_auth,
+            app,
+            self.person_dict["email"],
+            "secretpassword",
+        )
+
+    def test_unactive_user_is_checked_before_the_second_factor(self):
+        # Below the 2FA block, the check would let MissingOTPException go
+        # first and hand the enabled 2FA methods of a deactivated account
+        # to whoever holds its password.
+        app.config["AUTH_STRATEGY"] = "auth_local_classic"
+        self.person.update({"active": False, "totp_enabled": True})
+        persons_service.clear_person_cache()
+
+        self.assertRaises(
+            UnactiveUserException,
+            auth_service.check_auth,
+            app,
+            self.person_dict["email"],
+            "secretpassword",
+        )
 
     def test_check_auth_works_on_a_copy(self):
         app.config["AUTH_STRATEGY"] = "auth_local_classic"

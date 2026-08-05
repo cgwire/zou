@@ -59,16 +59,16 @@ class OrganisationTestCase(ApiDBTestCase):
 
     def test_chat_tokens_are_not_filterable(self):
         # Hiding the tokens from the payload is not enough: filters run
-        # before serialization, so they stay answerable by equality.
+        # before serialization, so they stay answerable by equality. The
+        # filter is refused, not dropped, so the answer is never a wider
+        # result set the caller could read as a match.
         organisation = Organisation.query.first()
         organisation.update({field: "a-secret" for field in SENSITIVE_FIELDS})
-        total = len(self.get("data/organisations"))
 
         self.generate_fixture_user_cg_artist()
         self.log_in_cg_artist()
         for field in SENSITIVE_FIELDS:
-            organisations = self.get(f"data/organisations?{field}=a-secret")
-            self.assertEqual(len(organisations), total)
+            self.get(f"data/organisations?{field}=a-secret", 400)
 
     def get_listed_organisation(self, organisation_id):
         return next(

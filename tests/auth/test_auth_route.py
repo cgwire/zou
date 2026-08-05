@@ -8,7 +8,7 @@ from tests.base import ApiDBTestCase
 from zou.app.utils import auth, date_helpers, fields
 from zou.app.models.person import Person
 from zou.app.stores import auth_tokens_store
-from zou.app.services import persons_service
+from zou.app.services import auth_service, persons_service
 
 
 class AuthTestCase(ApiDBTestCase):
@@ -92,8 +92,31 @@ class AuthTestCase(ApiDBTestCase):
         self.person.update({"active": False})
         self.person.save()
         tokens = self.post("auth/login", self.credentials, 401)
+        # Flagged rather than spelled out only in the message, so a client
+        # does not have to parse English to tell this case apart.
+        self.assertTrue(tokens["unactive"])
         self.assertIsNotAuthenticated(tokens, 422)
         self.logout(tokens)
+
+    def test_unactive_login_is_hidden_from_a_wrong_password(self):
+        # Reading the account state before the password answered "user is
+        # unactive" to anybody holding an address and no credential at all,
+        # which tells a registered address from an unknown one.
+        self.person.update({"active": False})
+        persons_service.clear_person_cache()
+
+        credentials = {
+            "email": self.person_dict["email"],
+            "password": "wrongpassword",
+        }
+        result = self.post("auth/login", credentials, 400)
+        unknown = self.post(
+            "auth/login",
+            {"email": "nobody@example.com", "password": "wrongpassword"},
+            400,
+        )
+        self.assertFalse(result["login"])
+        self.assertEqual(result, unknown)
 
     def test_login_with_desktop_login(self):
         self.credentials = {
@@ -184,6 +207,48 @@ class AuthTestCase(ApiDBTestCase):
             auth.check_password = original
 
         self.assertEqual(len(calls), 1)
+
+    def test_password_less_account_costs_a_password_check(self):
+        # A person imported from a CSV has no password at all, and the
+        # LDAP sync stores the literal b"default", which is not a hash.
+        # Both were refused without hashing, in a millisecond, where an
+        # unknown address pays a full bcrypt — one request told them
+        # apart. Counted rather than timed, as above.
+        for stored_password in [None, b"default"]:
+            self.person.update({"password": stored_password})
+            persons_service.clear_person_cache()
+
+            calls = []
+            original = auth.check_password
+
+            def counting_check_password(password_hash, password):
+                calls.append(password_hash)
+                return original(password_hash, password)
+
+            auth.check_password = counting_check_password
+            try:
+                self.post("auth/login", self.credentials, 400)
+            finally:
+                auth.check_password = original
+
+            # The dummy hash is the one comparison that really runs the
+            # KDF: b"default" fails on the salt before doing any work.
+            self.assertIn(auth_service._dummy_password_hash, calls)
+
+    def test_wrong_password_does_not_flush_the_person_cache(self):
+        # clear_person_cache drops every memoized person lookup for the
+        # whole instance, and the JWT loader reads that cache on every
+        # authenticated request. Calling it from the failure path let an
+        # anonymous caller keep it cold for a few requests a minute.
+        calls = []
+        original = persons_service.clear_person_cache
+        persons_service.clear_person_cache = lambda: calls.append(1)
+        try:
+            self._fail_login(1)
+        finally:
+            persons_service.clear_person_cache = original
+
+        self.assertEqual(calls, [])
 
     def test_logout(self):
         tokens = self.post("auth/login", self.credentials, 200)
@@ -814,19 +879,64 @@ class EmailOTPTestCase(ApiDBTestCase):
 
     def test_send_email_otp_not_enabled(self):
         """
-        GET /auth/email-otp returns 400 if email OTP not enabled.
+        GET /auth/email-otp answers like a sent OTP when the account has
+        none enabled, and sends nothing.
         """
-        response = self.app.get(
-            f"auth/email-otp?email={self.credentials['email']}"
-        )
-        self.assertEqual(response.status_code, 400)
+        email = self.credentials["email"]
+        response = self.app.get(f"auth/email-otp?email={email}")
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(auth_tokens_store.get(f"email-otp-count-{email}"))
 
     def test_send_email_otp_unknown_user(self):
         """
-        GET /auth/email-otp returns 404 for unknown email.
+        GET /auth/email-otp answers an unknown address exactly like a known
+        one. Answering 404 "User not found." told the two apart in a single
+        unauthenticated request.
         """
-        response = self.app.get("auth/email-otp?email=unknown@test.com")
-        self.assertEqual(response.status_code, 404)
+        known = self.app.get(
+            f"auth/email-otp?email={self.credentials['email']}"
+        )
+        unknown = self.app.get("auth/email-otp?email=unknown@test.com")
+        self.assertEqual(unknown.status_code, 200)
+        self.assertEqual(unknown.data, known.data)
+
+    def test_send_email_otp_empty_email(self):
+        """
+        An empty ?email= used to fall through to the desktop login lookup
+        and match the first account created without one.
+        """
+        email = self.credentials["email"]
+        self.person.update(
+            {
+                "desktop_login": "",
+                "email_otp_enabled": True,
+                "email_otp_secret": pyotp.random_base32(),
+            }
+        )
+        persons_service.clear_person_cache()
+
+        response = self.app.get("auth/email-otp?email=")
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(auth_tokens_store.get(f"email-otp-count-{email}"))
+
+    def test_send_email_otp_unactive_user(self):
+        """
+        A deactivated account gets no OTP email, and is not told apart
+        from any other address.
+        """
+        email = self.credentials["email"]
+        self.person.update(
+            {
+                "active": False,
+                "email_otp_enabled": True,
+                "email_otp_secret": pyotp.random_base32(),
+            }
+        )
+        persons_service.clear_person_cache()
+
+        response = self.app.get(f"auth/email-otp?email={email}")
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(auth_tokens_store.get(f"email-otp-count-{email}"))
 
 
 class TOTPTestCase(ApiDBTestCase):
@@ -1113,6 +1223,33 @@ class ChangePasswordErrorsTestCase(ApiDBTestCase):
             headers=headers,
         )
         self.assertEqual(response.status_code, 400)
+
+    def test_change_password_while_locked_out(self):
+        """
+        check_auth applies the login lockout here too, and the handler
+        used to let TooMuchLoginFailedAttemps out as a 500.
+        """
+        _, headers = self.login()
+        Person.get(self.person_dict["id"]).update(
+            {
+                "login_failed_attemps": 5,
+                "last_login_failed": date_helpers.get_utc_now_datetime(),
+            }
+        )
+        response = self.app.post(
+            "auth/change-password",
+            data=json.dumps(
+                {
+                    "old_password": "secretpassword",
+                    "password": "newpassword1",
+                    "password_2": "newpassword1",
+                }
+            ),
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 400)
+        data = json.loads(response.data.decode("utf-8"))
+        self.assertTrue(data["too_many_failed_login_attemps"])
 
     def test_change_password_mismatch(self):
         """

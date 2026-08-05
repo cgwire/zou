@@ -16,7 +16,11 @@ from zou.app.models.person import (
 )
 
 # Columns behind Person.present_minimal, the payload every non admin gets
-# from the list route.
+# from the list route, plus email. Email is not in that payload but the
+# lookup is part of the API every studio pipeline builds on
+# (gazu.person.get_person_by_email); matching an address the caller already
+# holds is not the sweep the other hidden columns allow, since equality
+# answers nothing about a value that has not been guessed first.
 MINIMAL_PERSON_FILTER_FIELDS = [
     "id",
     "first_name",
@@ -28,6 +32,7 @@ MINIMAL_PERSON_FILTER_FIELDS = [
     "studio_id",
     "role",
     "desktop_login",
+    "email",
     "is_bot",
 ]
 from zou.app.services import (
@@ -324,10 +329,10 @@ class PersonsResource(BaseModelsResource):
 
     def get_filterable_column_names(self):
         """
-        Mirror what all_entries actually returns. Without this, filtering
-        answers questions the response refuses to: ?daily_salary=320 walks
-        the payroll one value at a time, and email, phone, contract_type or
-        seniority go the same way.
+        Mirror what all_entries actually returns, plus the email lookup.
+        Without this, filtering answers questions the response refuses to:
+        ?daily_salary=320 walks the payroll one value at a time, and phone,
+        contract_type or seniority go the same way.
         """
         if permissions.has_admin_permissions():
             return [

@@ -141,11 +141,23 @@ class BaseModelsResource(MethodView, ArgsMixin):
         filters = {}
 
         column_names = self.get_filterable_column_names()
+        model_column_names = inspect(self.model).all_orm_descriptors.keys()
         for key, value in options.items():
-            if (
-                key not in ["page", "relations", "fields"]
-                and key in column_names
-            ):
+            if key in ["page", "relations", "fields"]:
+                continue
+
+            if key not in column_names:
+                # A column kept out of the filter set must be refused, not
+                # dropped: dropping it answers a broader question than the
+                # one asked, and a client reading the first row as the
+                # match (gazu's fetch_first) then gets an arbitrary record
+                # instead of an error. Names that are not columns at all
+                # stay ignored, resources take their own parameters.
+                if key in model_column_names:
+                    raise WrongParameterException(
+                        f"Filtering on {key} is not allowed."
+                    )
+            else:
                 field_key = getattr(self.model, key)
 
                 is_many_to_many_field = hasattr(

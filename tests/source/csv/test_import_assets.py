@@ -4,12 +4,13 @@ from tests.base import ApiDBTestCase
 from zou.app import db
 
 from zou.app.models.entity import Entity
+from zou.app.models.entity_type import EntityType
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 
-from zou.app.services import assets_service
+from zou.app.services import assets_service, tasks_service
 
 
 class ImportCsvAssetsTestCase(ApiDBTestCase):
@@ -93,6 +94,144 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
 
         asset = entities[0]
         self.assertEqual(asset.data.get("contractor", None), "contractor 1")
+
+    def link_asset_task_types_to_project(self):
+        """
+        Enable the three Asset task types of the fixtures on the project and
+        return them, so that a CSV column can be named after each of them.
+        """
+        task_types = [
+            self.task_type,
+            self.task_type_concept,
+            self.task_type_modeling,
+        ]
+        for task_type in task_types:
+            db.session.add(
+                ProjectTaskTypeLink(
+                    project_id=self.project_id, task_type_id=task_type.id
+                )
+            )
+        db.session.commit()
+        return task_types
+
+    def test_import_assets_initializes_empty_task_columns_to_default(self):
+        task_types = self.link_asset_task_types_to_project()
+        self.generate_fixture_task_status_wip()
+        # The status list the importer matches columns against is memoized.
+        tasks_service.clear_task_status_cache(str(self.task_status_wip.id))
+        default_status_id = tasks_service.get_default_status()["id"]
+
+        path = f"/import/csv/projects/{self.project.id}/assets"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets_task_statuses.csv")
+        )
+        self.upload_file(path, file_path_fixture)
+
+        # Every asset gets one task per task type of the project, whether
+        # its column was filled or left empty.
+        for asset_name in ("Cassette Player", "Wood Stick"):
+            asset = Entity.get_by(name=asset_name, project_id=self.project_id)
+            tasks = {
+                str(task.task_type_id): task
+                for task in Task.query.filter_by(entity_id=asset.id).all()
+            }
+            self.assertEqual(len(tasks), len(task_types))
+            for task_type in task_types:
+                self.assertIn(str(task_type.id), tasks)
+
+        # An empty column means "not started": the task must exist and hold
+        # the default status, not be skipped.
+        cassette = Entity.get_by(
+            name="Cassette Player", project_id=self.project_id
+        )
+        for task in Task.query.filter_by(entity_id=cassette.id).all():
+            self.assertEqual(str(task.task_status_id), default_status_id)
+
+        # A filled column only overrides the status of its own task.
+        stick = Entity.get_by(name="Wood Stick", project_id=self.project_id)
+        statuses = {
+            str(task.task_type_id): str(task.task_status_id)
+            for task in Task.query.filter_by(entity_id=stick.id).all()
+        }
+        self.assertEqual(
+            statuses[str(self.task_type.id)], str(self.task_status_wip.id)
+        )
+        self.assertEqual(
+            statuses[str(self.task_type_concept.id)], default_status_id
+        )
+        self.assertEqual(
+            statuses[str(self.task_type_modeling.id)], default_status_id
+        )
+
+    def test_import_assets_creates_tasks_of_rows_before_a_failing_one(self):
+        task_types = self.link_asset_task_types_to_project()
+        default_status_id = tasks_service.get_default_status()["id"]
+
+        path = f"/import/csv/projects/{self.project.id}/assets"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets_broken_task_status.csv")
+        )
+        error = self.upload_file(path, file_path_fixture, 400)
+        self.assertEqual(error["imported_rows"], 2)
+
+        # Rows are committed one by one, so the two valid assets remain.
+        # Their tasks must remain too: they used to be created only after
+        # the whole file had been read, and were lost with the failing row.
+        entities = Entity.query.all()
+        self.assertEqual(len(entities), 2)
+        for asset in entities:
+            tasks = Task.query.filter_by(entity_id=asset.id).all()
+            self.assertEqual(len(tasks), len(task_types))
+            for task in tasks:
+                self.assertEqual(str(task.task_status_id), default_status_id)
+
+    def test_import_assets_repairs_missing_tasks_without_update(self):
+        path = f"/import/csv/projects/{self.project.id}/assets"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets_no_metadata.csv")
+        )
+        self.upload_file(path, file_path_fixture)
+        self.assertEqual(len(Task.query.all()), 0)
+
+        # Task types enabled after a first import: re-importing the same
+        # file backfills the missing tasks, even without update=true.
+        task_types = self.link_asset_task_types_to_project()
+        self.upload_file(path, file_path_fixture)
+
+        entities = Entity.query.all()
+        self.assertEqual(len(entities), 3)
+        self.assertEqual(
+            len(Task.query.all()), len(task_types) * len(entities)
+        )
+
+    def test_import_assets_task_type_without_for_entity(self):
+        # for_entity was added nullable in 2018 and only ever backfilled for
+        # shots, so long lived databases still hold asset task types reading
+        # NULL. They must not be dropped from the import.
+        legacy_task_type = TaskType.create(
+            name="Legacy",
+            short_name="lgc",
+            department_id=self.department.id,
+        )
+        # The column default only applies on insert, so this really stores
+        # NULL, as a database migrated from before 2018 would hold.
+        legacy_task_type.for_entity = None
+        db.session.add(
+            ProjectTaskTypeLink(
+                project_id=self.project_id, task_type_id=legacy_task_type.id
+            )
+        )
+        db.session.commit()
+
+        path = f"/import/csv/projects/{self.project.id}/assets"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets_no_metadata.csv")
+        )
+        self.upload_file(path, file_path_fixture)
+
+        self.assertEqual(len(Entity.query.all()), 3)
+        tasks = Task.query.filter_by(task_type_id=legacy_task_type.id).all()
+        self.assertEqual(len(tasks), 3)
 
     def test_import_assets_duplicates(self):
         path = f"/import/csv/projects/{self.project.id}/assets"
@@ -182,3 +321,16 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         self.assertEqual(error["line_number"], 2)
         entities = Entity.query.all()
         self.assertEqual(len(entities), 0)
+
+    def test_import_assets_empty_type(self):
+        # An empty Type cell used to create an asset type named "", which
+        # every later row with an empty cell then reused.
+        path = f"/import/csv/projects/{self.project.id}/assets"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets_empty_type.csv")
+        )
+        error = self.upload_file(path, file_path_fixture, 400)
+        self.assertIn("asset type is required", error["message"])
+        self.assertEqual(error["line_number"], 3)
+        self.assertEqual(error["imported_rows"], 1)
+        self.assertIsNone(EntityType.get_by(name=""))
