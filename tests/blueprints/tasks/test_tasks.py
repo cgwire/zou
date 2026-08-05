@@ -933,3 +933,22 @@ class TaskRoutesTestCase(ApiDBTestCase):
             f"/task-types/{self.task_type_id}/create-tasks/unicorn"
         )
         self.post(path, {}, 404)
+
+    def test_get_task_time_spents_route(self):
+        """
+        The aggregate behind this route is tested on its own since it was
+        revived; the route adds the task access guard.
+        """
+        task = self.generate_fixture_task()
+        tasks_service.create_or_update_time_spent(
+            str(task.id), str(self.person_id), "2026-08-05", 3600
+        )
+        path = f"/actions/tasks/{task.id}/time-spents"
+
+        result = self.get(path)
+        self.assertEqual(result["total"], 3600)
+        self.assertEqual(len(result[str(self.person_id)]), 1)
+
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        self.get(path, 403)

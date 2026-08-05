@@ -94,3 +94,93 @@ class RouteServiceCallsTestCase(unittest.TestCase):
                     f"{relative}: {module_name}.{attribute} resolves now"
                 )
         self.assertEqual(stale, [], "\n".join(stale))
+
+
+# Resources reaching for an ArgsMixin helper without inheriting the mixin.
+# Same failure as above one layer in: the name resolves at request time, so
+# the route answers 500 and nothing says so until someone calls it.
+KNOWN_BROKEN_MIXIN_CALLS = {
+    ("files/resources.py", "InstanceOutputFilesResource", "get_args"),
+}
+
+
+def collect_mixin_calls():
+    """
+    Every self.<helper>() written in a blueprint class, restricted to the
+    helpers ArgsMixin provides. Narrowing to that list keeps the check
+    decidable: anything else may legitimately come from a subclass or from a
+    base class __init__.
+    """
+    from zou.app.mixin import ArgsMixin
+
+    helpers = {name for name in dir(ArgsMixin) if not name.startswith("_")}
+    calls = set()
+    for path in sorted(BLUEPRINTS.rglob("*.py")):
+        tree = ast.parse(path.read_text())
+        for node in tree.body:
+            if not isinstance(node, ast.ClassDef):
+                continue
+            for sub in ast.walk(node):
+                if (
+                    isinstance(sub, ast.Call)
+                    and isinstance(sub.func, ast.Attribute)
+                    and isinstance(sub.func.value, ast.Name)
+                    and sub.func.value.id == "self"
+                    and sub.func.attr in helpers
+                ):
+                    calls.add(
+                        (
+                            str(path.relative_to(BLUEPRINTS)),
+                            node.name,
+                            sub.func.attr,
+                        )
+                    )
+    return calls
+
+
+def mounted_view_classes():
+    """
+    The resource classes a route points at. A class no route mounts cannot
+    answer a request, so it cannot fail one either.
+    """
+    from zou.app import app
+
+    return {
+        getattr(view, "view_class", None)
+        for view in app.view_functions.values()
+    }
+
+
+class RouteMixinCallsTestCase(unittest.TestCase):
+    """
+    A resource that calls self.get_args() without inheriting ArgsMixin looks
+    right until the route runs. The live class is asked, so inheriting the
+    mixin anywhere up the bases counts.
+    """
+
+    def test_every_mixin_call_resolves(self):
+        import zou.app.blueprints as blueprints_package
+
+        broken = []
+        for relative, class_name, attribute in sorted(collect_mixin_calls()):
+            module_name = (
+                f"{blueprints_package.__name__}."
+                f"{relative[:-3].replace('/', '.')}"
+            )
+            try:
+                module = importlib.import_module(module_name)
+            except ImportError:
+                continue
+            resource = getattr(module, class_name, None)
+            if resource is None or hasattr(resource, attribute):
+                continue
+            # An abstract base may call what its subclasses bring in. Only a
+            # class a route actually points at can answer a request, so only
+            # that one can 500.
+            if resource not in mounted_view_classes():
+                continue
+            if (relative, class_name, attribute) in KNOWN_BROKEN_MIXIN_CALLS:
+                continue
+            broken.append(f"{relative}: {class_name}.{attribute}")
+
+        self.assertEqual(broken, [], "\n".join(broken))
