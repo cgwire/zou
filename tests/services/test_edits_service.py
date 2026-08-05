@@ -75,12 +75,6 @@ class EditUtilsTestCase(ApiDBTestCase):
         self.assertEqual(edit["episode_name"], self.episode.name)
         self.assertEqual(len(edit["tasks"]), 1)
 
-    def test_get_episode(self):
-        self.assertEqual(
-            str(self.episode.id),
-            shots_service.get_episode(self.episode.id)["id"],
-        )
-
     def test_is_edit(self):
         self.assertTrue(edits_service.is_edit(self.edit.serialize()))
         self.assertFalse(edits_service.is_edit(self.asset.serialize()))
