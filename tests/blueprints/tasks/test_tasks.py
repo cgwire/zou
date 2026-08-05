@@ -854,6 +854,40 @@ class TaskRoutesTestCase(ApiDBTestCase):
         tasks = self.get(f"/data/tasks/open-tasks?person_id={jane.id}")
         self.assertEqual(len(tasks["data"]), 2)
 
+    def test_get_project_tasks(self):
+        """
+        The paginated listing of a production's tasks. It is the route a
+        client walks to mirror a production, so the page envelope matters as
+        much as the rows.
+        """
+        path = f"/data/projects/{self.project_id}/tasks"
+        self.assertEqual(self.get(path), [])
+
+        tasks_service.create_task(
+            self.task_type.serialize(), self.asset.serialize()
+        )
+        tasks = self.get(path)
+        self.assertEqual(len(tasks), 1)
+        self.assertEqual(tasks[0]["project_id"], self.project_id)
+
+        # Asking for a page swaps the bare list for the envelope, which is
+        # what a client walking a large production reads.
+        page = self.get(f"{path}?page=1")
+        self.assertEqual(page["nb_pages"], 1)
+        self.assertEqual(len(page["data"]), 1)
+
+    def test_get_project_tasks_needs_project_access(self):
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        self.get(f"/data/projects/{self.project_id}/tasks", 403)
+
+    def test_get_task_previews(self):
+        task = self.generate_fixture_task()
+        self.generate_fixture_preview_file(task_id=task.id)
+        previews = self.get(f"/data/tasks/{task.id}/previews")
+        self.assertEqual(len(previews), 1)
+        self.assertEqual(previews[0]["task_id"], str(task.id))
+
     def test_create_entity_tasks(self):
         """
         The generic route takes the entity type by name, so it reaches the

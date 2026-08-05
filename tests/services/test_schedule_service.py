@@ -5,6 +5,7 @@ from tests.base import ApiDBTestCase
 from zou.app import db
 from zou.app.models.entity import Entity
 from zou.app.models.milestone import Milestone
+from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.production_schedule_version import (
     ProductionScheduleVersion,
     ProductionScheduleVersionTaskLink,
@@ -729,3 +730,28 @@ class ScheduleServiceTestCase(ApiDBTestCase):
             ),
             1,
         )
+
+    def test_schedule_items_route_blocks_vendors(self):
+        """
+        A schedule lays out the whole production's dates, which a vendor
+        has no business reading even when they work on it.
+        """
+        # get_schedule_items returns the stored rows, it does not create the
+        # missing ones the way the task type listing does.
+        schedule_item = ScheduleItem.create(
+            project_id=self.project.id,
+            task_type_id=self.task_type.id,
+            object_id=self.sequence.id,
+        )
+        path = f"/data/projects/{self.project_id}/schedule-items"
+
+        items = self.get(path)
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["id"], str(schedule_item.id))
+
+        self.generate_fixture_user_vendor()
+        projects_service.add_team_member(
+            self.project_id, self.user_vendor["id"]
+        )
+        self.log_in_vendor()
+        self.get(path, 403)
