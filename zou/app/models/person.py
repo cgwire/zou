@@ -75,6 +75,11 @@ SENSITIVE_FIELDS = [
     "fido_credentials",
     "fido_devices",
     "jti",
+    # Lockout state: serialize_safe published how far each account was
+    # into its login burst, and, being filterable, answered who is locked
+    # right now. An admin can still clear it, writes are unaffected.
+    "login_failed_attemps",
+    "last_login_failed",
 ]
 
 

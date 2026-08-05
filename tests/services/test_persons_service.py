@@ -93,6 +93,17 @@ class PersonServiceTestCase(ApiDBTestCase):
                 empty,
             )
 
+    def test_lockout_state_is_not_published(self):
+        # serialize_safe published how far each account was into its login
+        # burst, and the field being filterable answered who is locked
+        # right now. The unsafe serialization still carries it.
+        person = persons_service.get_person(self.person_id)
+        self.assertNotIn("login_failed_attemps", person)
+        self.assertNotIn("last_login_failed", person)
+
+        person = persons_service.get_person(self.person_id, unsafe=True)
+        self.assertIn("login_failed_attemps", person)
+
     def test_create_person(self):
         person = persons_service.create_person(
             "john.doe2@gmail.com",
