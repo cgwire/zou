@@ -1,3 +1,5 @@
+import os
+
 from tests.base import ApiDBTestCase
 
 from zou.app.models.attachment_file import AttachmentFile
@@ -628,3 +630,41 @@ class CommentRoutesTestCase(ApiDBTestCase):
             headers=self.post_headers,
         )
         self.assertEqual(response.status_code, 403)
+
+    def test_add_attachment_to_own_comment(self):
+        path = (
+            f"/actions/tasks/{self.task.id}"
+            f"/comments/{self.comment['id']}/add-attachment"
+        )
+        attachments = self.upload_file(
+            path,
+            self.get_fixture_file_path(os.path.join("thumbnails", "th01.png")),
+        )
+        self.assertEqual(len(attachments), 1)
+        self.assertEqual(attachments[0]["name"], "th01.png")
+        self.assertEqual(
+            len(AttachmentFile.get_all_by(comment_id=self.comment["id"])), 1
+        )
+
+    def test_add_attachment_rejects_a_comment_of_another_task(self):
+        # Symmetric to the delete route: adding to one's own comment skips
+        # the project check, so the comment has to belong to the named task.
+        sibling = self._make_sibling_task()
+        other_comment = comments_service.new_comment(
+            sibling.id,
+            self.task_status.id,
+            self.user["id"],
+            "another comment",
+        )
+        path = (
+            f"/actions/tasks/{self.task.id}"
+            f"/comments/{other_comment['id']}/add-attachment"
+        )
+        self.upload_file(
+            path,
+            self.get_fixture_file_path(os.path.join("thumbnails", "th01.png")),
+            code=403,
+        )
+        self.assertEqual(
+            len(AttachmentFile.get_all_by(comment_id=other_comment["id"])), 0
+        )
