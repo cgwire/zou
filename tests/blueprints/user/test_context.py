@@ -13,7 +13,12 @@ from zou.app.models.project import Project
 from zou.app.models.person import Person
 
 
-class UserContextRoutesTestCase(ApiDBTestCase):
+class UserContextTestCase(ApiDBTestCase):
+    """
+    A production the caller is assigned tasks in, at every entity
+    level. Holds no test of its own.
+    """
+
     def setUp(self):
         super().setUp()
         self.generate_fixture_project()
@@ -53,6 +58,18 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         person = Person.get(self.user_id)
         project.team.append(person)
         project.save()
+
+    def create_test_folder(self):
+        return super().create_test_folder()
+
+
+class UserEntityListingTestCase(UserContextTestCase):
+    """
+    What the caller may reach under a production: its sequences,
+    episodes, shots, scenes and asset types, then the tasks and task
+    types of each. All of them answer only for the entities the
+    caller is assigned to.
+    """
 
     def test_get_project_sequences(self):
         self.assign_user(self.shot_task.id)
@@ -167,19 +184,6 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         self.assertEqual(len(tasks), 1)
         self.assertEqual(tasks[0]["id"], str(sequence_task.id))
 
-    def test_get_sequence_task_types(self):
-        sequence_task = self.generate_fixture_task(
-            "sequence task", self.sequence.id
-        )
-        path = f"data/user/sequences/{self.sequence.id}/task-types"
-
-        self.assertEqual(len(self.get(path)), 0)
-
-        self.assign_user(sequence_task.id)
-        task_types = self.get(path)
-        self.assertEqual(len(task_types), 1)
-        self.assertEqual(task_types[0]["id"], str(sequence_task.task_type_id))
-
     def test_get_asset_task_types(self):
         path = f"data/user/assets/{self.asset.id}/task-types"
         task_id = self.task.id
@@ -216,6 +220,26 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         self.assign_user(scene_task_id)
         task_types = self.get(path)
         self.assertEqual(len(task_types), 1)
+
+    def test_get_sequence_task_types(self):
+        sequence_task = self.generate_fixture_task(
+            "sequence task", self.sequence.id
+        )
+        path = f"data/user/sequences/{self.sequence.id}/task-types"
+
+        self.assertEqual(len(self.get(path)), 0)
+
+        self.assign_user(sequence_task.id)
+        task_types = self.get(path)
+        self.assertEqual(len(task_types), 1)
+        self.assertEqual(task_types[0]["id"], str(sequence_task.task_type_id))
+
+
+class UserWorkloadTestCase(UserContextTestCase):
+    """
+    The caller's own work: the productions they are on, what is left
+    to do, what is done, and the time they logged.
+    """
 
     def test_get_open_projects(self):
         projects = self.get("data/user/projects/open")
@@ -315,6 +339,75 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         path = "data/user/done-tasks/"
         tasks = self.get(path)
         self.assertEqual(len(tasks), 1)
+
+    def test_get_tasks_to_check(self):
+        tasks = self.get("data/user/tasks-to-check")
+        self.assertEqual(len(tasks), 0)
+
+        feedback_status = tasks_service.get_or_create_status(
+            "Waiting For Approval", "wfa", is_feedback_request=True
+        )
+        tasks_service.update_task(
+            self.task_id, {"task_status_id": feedback_status["id"]}
+        )
+
+        tasks = self.get("data/user/tasks-to-check")
+        self.assertEqual(len(tasks), 1)
+        self.assertEqual(tasks[0]["id"], str(self.task_id))
+
+    def test_get_day_off(self):
+        path = "data/user/day-offs/2026-08-05"
+        self.assertEqual(self.get(path), {})
+
+        self.generate_fixture_day_off("2026-08-05", person_id=self.user_id)
+
+        day_off = self.get(path)
+        self.assertEqual(day_off["person_id"], self.user_id)
+        # A date the driver cannot cast is a 400, not a 500.
+        self.get("data/user/day-offs/not-a-date", 400)
+
+    def test_get_time_spents_for_date(self):
+        path = "data/user/time-spents/2026-08-05"
+        self.assertEqual(len(self.get(path)), 0)
+
+        tasks_service.create_or_update_time_spent(
+            self.task_id, self.user_id, "2026-08-05", 3600
+        )
+
+        time_spents = self.get(path)
+        self.assertEqual(len(time_spents), 1)
+        self.assertEqual(time_spents[0]["duration"], 3600)
+        # Another day sees nothing.
+        self.assertEqual(len(self.get("data/user/time-spents/2026-08-06")), 0)
+        self.get("data/user/time-spents/not-a-date", 400)
+
+    def test_get_task_time_spent_for_date(self):
+        path = f"data/user/tasks/{self.task_id}/time-spents/2026-08-05"
+        tasks_service.create_or_update_time_spent(
+            self.task_id, self.user_id, "2026-08-05", 3600
+        )
+
+        time_spent = self.get(path)
+        self.assertEqual(time_spent["duration"], 3600)
+        self.assertEqual(time_spent["task_id"], str(self.task_id))
+        self.get(f"data/user/tasks/{self.task_id}/time-spents/nope", 400)
+
+    def test_get_time_spents_range(self):
+        tasks_service.create_or_update_time_spent(
+            self.task_id, self.user_id, "2026-08-05", 3600
+        )
+        time_spents = self.get(
+            "data/user/time-spents?start_date=2026-08-01&end_date=2026-08-31"
+        )
+        self.assertEqual(len(time_spents), 1)
+        # Both bounds are required, one alone is a 400.
+        self.get("data/user/time-spents?start_date=2026-08-01", 400)
+
+
+class UserFilterTestCase(UserContextTestCase):
+    """
+    The saved filters and filter groups a caller owns.
+    """
 
     def test_get_filter_groups(self):
         project_id = str(self.project.id)
@@ -459,6 +552,12 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         result = self.get(path)
         self.assertFalse("asset" in result)
 
+
+class UserNotificationTestCase(UserContextTestCase):
+    """
+    What reaches the caller and what they chose to follow.
+    """
+
     def test_add_logs(self):
         path = "/data/user/desktop-login-logs"
 
@@ -518,16 +617,6 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         self.post("/actions/user/notifications/mark-all-as-read", {}, 200)
 
         self.assertTrue(self.get("/data/user/notifications")[0]["read"])
-
-    def test_clear_avatar(self):
-        persons_service.update_person(self.user_id, {"has_avatar": True})
-        self.assertTrue(persons_service.get_person(self.user_id)["has_avatar"])
-
-        self.delete("/actions/user/clear-avatar")
-
-        self.assertFalse(
-            persons_service.get_person(self.user_id)["has_avatar"]
-        )
 
     def test_subscribe_task(self):
         recipients = notifications_service.get_notification_recipients(
@@ -589,68 +678,12 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         )
         self.assertFalse(self.user_id in recipients)
 
-    def test_get_tasks_to_check(self):
-        tasks = self.get("data/user/tasks-to-check")
-        self.assertEqual(len(tasks), 0)
 
-        feedback_status = tasks_service.get_or_create_status(
-            "Waiting For Approval", "wfa", is_feedback_request=True
-        )
-        tasks_service.update_task(
-            self.task_id, {"task_status_id": feedback_status["id"]}
-        )
-
-        tasks = self.get("data/user/tasks-to-check")
-        self.assertEqual(len(tasks), 1)
-        self.assertEqual(tasks[0]["id"], str(self.task_id))
-
-    def test_get_day_off(self):
-        path = "data/user/day-offs/2026-08-05"
-        self.assertEqual(self.get(path), {})
-
-        self.generate_fixture_day_off("2026-08-05", person_id=self.user_id)
-
-        day_off = self.get(path)
-        self.assertEqual(day_off["person_id"], self.user_id)
-        # A date the driver cannot cast is a 400, not a 500.
-        self.get("data/user/day-offs/not-a-date", 400)
-
-    def test_get_time_spents_for_date(self):
-        path = "data/user/time-spents/2026-08-05"
-        self.assertEqual(len(self.get(path)), 0)
-
-        tasks_service.create_or_update_time_spent(
-            self.task_id, self.user_id, "2026-08-05", 3600
-        )
-
-        time_spents = self.get(path)
-        self.assertEqual(len(time_spents), 1)
-        self.assertEqual(time_spents[0]["duration"], 3600)
-        # Another day sees nothing.
-        self.assertEqual(len(self.get("data/user/time-spents/2026-08-06")), 0)
-        self.get("data/user/time-spents/not-a-date", 400)
-
-    def test_get_task_time_spent_for_date(self):
-        path = f"data/user/tasks/{self.task_id}/time-spents/2026-08-05"
-        tasks_service.create_or_update_time_spent(
-            self.task_id, self.user_id, "2026-08-05", 3600
-        )
-
-        time_spent = self.get(path)
-        self.assertEqual(time_spent["duration"], 3600)
-        self.assertEqual(time_spent["task_id"], str(self.task_id))
-        self.get(f"data/user/tasks/{self.task_id}/time-spents/nope", 400)
-
-    def test_get_time_spents_range(self):
-        tasks_service.create_or_update_time_spent(
-            self.task_id, self.user_id, "2026-08-05", 3600
-        )
-        time_spents = self.get(
-            "data/user/time-spents?start_date=2026-08-01&end_date=2026-08-31"
-        )
-        self.assertEqual(len(time_spents), 1)
-        # Both bounds are required, one alone is a 400.
-        self.get("data/user/time-spents?start_date=2026-08-01", 400)
+class UserContextRoutesTestCase(UserContextTestCase):
+    """
+    The context payload itself, the single read the web client opens
+    on.
+    """
 
     def test_get_context(self):
         context = self.get("/data/user/context")
@@ -710,8 +743,15 @@ class UserContextRoutesTestCase(ApiDBTestCase):
             "context.persons leaked an is_guest=True person",
         )
 
-    def create_test_folder(self):
-        return super().create_test_folder()
+    def test_clear_avatar(self):
+        persons_service.update_person(self.user_id, {"has_avatar": True})
+        self.assertTrue(persons_service.get_person(self.user_id)["has_avatar"])
+
+        self.delete("/actions/user/clear-avatar")
+
+        self.assertFalse(
+            persons_service.get_person(self.user_id)["has_avatar"]
+        )
 
 
 class UserContextProjectRolesTestCase(ApiDBTestCase):
