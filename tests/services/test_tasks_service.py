@@ -497,58 +497,6 @@ class TaskServiceTestCase(ApiDBTestCase):
         self.assertIsNotNone(self.task.end_date)
         self.assertLess(self.task.end_date, datetime.datetime.now())
 
-    def test_remove_task(self):
-        self.working_file.delete()
-        self.output_file.delete()
-        deletion_service.remove_task(self.task_id)
-        self.assertRaises(
-            TaskNotFoundException, tasks_service.get_task, self.task_id
-        )
-
-    def test_remove_tasks(self):
-        self.working_file.delete()
-        self.output_file.delete()
-        task_id = str(self.task_id)
-        task2_id = str(self.generate_fixture_task("main 2").id)
-        task_ids = [task_id, task2_id]
-        deletion_service.remove_tasks(self.project_id, task_ids)
-        self.assertRaises(
-            TaskNotFoundException, tasks_service.get_task, task_id
-        )
-        self.assertRaises(
-            TaskNotFoundException, tasks_service.get_task, task2_id
-        )
-
-    def test_remove_task_force(self):
-        comments_service.new_comment(
-            self.task.id, self.task_status.id, self.person.id, "first comment"
-        )
-        TimeSpent.create(
-            person_id=self.person.id,
-            task_id=self.task.id,
-            date=datetime.date(2017, 9, 23),
-            duration=3600,
-        )
-        deletion_service.remove_task(self.task_id, force=True)
-        self.assertRaises(
-            TaskNotFoundException, tasks_service.get_task, self.task_id
-        )
-
-    def test_delete_all_task_types(self):
-        self.generate_fixture_project_standard()
-        self.generate_fixture_asset_standard()
-        task_1_id = str(self.task.id)
-        task_2_id = str(self.generate_fixture_task(name="second task").id)
-        task_3_id = str(self.shot_task.id)
-        task_4_id = str(self.generate_fixture_task_standard().id)
-        deletion_service.remove_tasks_for_project_and_task_type(
-            self.project.id, self.task_type.id
-        )
-        self.assertIsNone(Task.get(task_1_id))
-        self.assertIsNone(Task.get(task_2_id))
-        self.assertIsNotNone(Task.get(task_3_id))
-        self.assertIsNotNone(Task.get(task_4_id))
-
     def test_get_comment_mentions(self):
         mentions = comments_service.get_comment_mentions(
             self.project_id, "Test @Emma Doe"

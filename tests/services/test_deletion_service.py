@@ -1,3 +1,5 @@
+import datetime
+
 from unittest import mock
 
 from tests.base import ApiDBTestCase
@@ -13,6 +15,7 @@ from zou.app.models.production_schedule_version import (
     ProductionScheduleVersionTaskLink,
 )
 from zou.app.models.project import Project
+from zou.app.models.time_spent import TimeSpent
 
 from zou.app.services import (
     deletion_service,
@@ -84,11 +87,42 @@ class DeletionServiceTestCase(ApiDBTestCase):
         self.assertIsNone(Task.get(task_id))
 
     def test_remove_task_force(self):
+        # A comment and a time spent are what a plain removal refuses on.
         self.generate_fixture_comment()
+        TimeSpent.create(
+            person_id=self.person.id,
+            task_id=self.task.id,
+            date=datetime.date(2017, 9, 23),
+            duration=3600,
+        )
         task_id = str(self.task.id)
         result = deletion_service.remove_task(task_id, force=True)
         self.assertEqual(result["id"], task_id)
         self.assertIsNone(Task.get(task_id))
+
+    def test_remove_tasks_for_project_and_task_type(self):
+        """
+        Scoped twice over: the other task type of the same production and
+        the same task type of another production both survive.
+        """
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+        self.generate_fixture_shot_task()
+        kept_task_type_id = str(self.generate_fixture_task_standard().id)
+        kept_project_id = str(self.shot_task.id)
+        removed = [
+            str(self.task.id),
+            str(self.generate_fixture_task(name="second task").id),
+        ]
+
+        deletion_service.remove_tasks_for_project_and_task_type(
+            self.project.id, self.task_type.id
+        )
+
+        for task_id in removed:
+            self.assertIsNone(Task.get(task_id))
+        self.assertIsNotNone(Task.get(kept_task_type_id))
+        self.assertIsNotNone(Task.get(kept_project_id))
 
     def test_remove_tasks(self):
         task_id = str(self.task.id)

@@ -20,9 +20,11 @@ class TemplatesServiceTestCase(unittest.TestCase):
         self.assertIn("Ghost Studio", signature)
 
     def test_signature_follows_the_locale(self):
-        english = templates_service.get_signature("en_US")
-        french = templates_service.get_signature("fr_FR")
-        self.assertNotEqual(english, french)
+        self.assertIn("Best regards", templates_service.get_signature("en_US"))
+        self.assertIn("Cordialement", templates_service.get_signature("fr_FR"))
+        self.assertIn(
+            "Saludos cordiales", templates_service.get_signature("es_ES")
+        )
 
     def test_body_wraps_title_and_message_in_the_template(self):
         body = templates_service.generate_html_body(

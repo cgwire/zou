@@ -3,7 +3,7 @@ from babel import Locale
 
 from tests.base import ApiDBTestCase
 
-from zou.app.services import emails_service, templates_service
+from zou.app.services import emails_service
 
 
 class EmailsServiceTestCase(ApiDBTestCase):
@@ -11,24 +11,6 @@ class EmailsServiceTestCase(ApiDBTestCase):
         super().setUp()
         self.generate_shot_suite()
         self.generate_assigned_task()
-
-    def test_get_signature(self):
-        signature = templates_service.get_signature()
-        self.assertEqual(
-            signature,
-            """
-<p>Best regards,</p>
-
-<p>Kitsu Team</p>""",
-        )
-
-    def test_get_signature_with_locale(self):
-        signature_fr = templates_service.get_signature(locale="fr_FR")
-        self.assertIn("Cordialement", signature_fr)
-        self.assertIn("Kitsu", signature_fr)
-
-        signature_es = templates_service.get_signature(locale="es_ES")
-        self.assertIn("Saludos cordiales", signature_es)
 
     def test_get_task_descriptors(self):
         author, task_name, task_url = emails_service.get_task_descriptors(

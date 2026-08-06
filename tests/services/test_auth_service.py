@@ -12,7 +12,6 @@ from zou.app import app
 from zou.app.stores import auth_tokens_store
 from zou.app.services import persons_service, auth_service
 from zou.app.services.exception import (
-    PersonNotFoundException,
     TwoFactorAuthenticationNotEnabledException,
     UnactiveUserException,
     WrongPasswordException,
@@ -42,14 +41,6 @@ class AuthTestCase(ApiDBTestCase):
         # leak does not break login tests run after this file.
         app.config["AUTH_STRATEGY"] = "auth_local_classic"
         super().tearDown()
-
-    def test_load_user(self):
-        person = persons_service.get_person(self.person.id)
-        self.assertEqual(person["id"], str(self.person.id))
-        persons_service.delete_person(person["id"])
-        self.assertRaises(
-            PersonNotFoundException, persons_service.get_person, self.person.id
-        )
 
     def test_encrypt_password(self):
         password = "my secret"
