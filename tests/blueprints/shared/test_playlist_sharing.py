@@ -10,6 +10,11 @@ pytestmark = pytest.mark.real_bcrypt
 
 
 class PlaylistSharingTestCase(ApiDBTestCase):
+    """
+    One production, one asset with a task on it, and a playlist that
+    positions that task. Holds no test of its own.
+    """
+
     def setUp(self):
         super().setUp()
         self.generate_fixture_project()
@@ -39,7 +44,12 @@ class PlaylistSharingTestCase(ApiDBTestCase):
             }
         )
 
-    # --- Authenticated share link management (manager+) ---
+
+class ShareLinkTestCase(PlaylistSharingTestCase):
+    """
+    Creating, listing, revoking and inviting to a share link, all of
+    which a manager of the production does.
+    """
 
     def test_create_share_link(self):
         result = self.post(
@@ -169,7 +179,102 @@ class PlaylistSharingTestCase(ApiDBTestCase):
         result = self.get(f"/data/playlists/{self.playlist['id']}/share")
         self.assertEqual(len(result), 0)
 
-    # --- Public shared playlist routes ---
+    def test_invite_share_link(self):
+        """
+        Manager can invite recipients by raw email and by person id;
+        the response lists the dispatched, deduplicated emails.
+        """
+        from unittest.mock import patch
+        from zou.app.models.person import Person
+
+        invitee = Person.create(
+            first_name="Client",
+            last_name="One",
+            email="client.one@example.com",
+            role="client",
+        )
+        link = self.post(
+            f"/data/playlists/{self.playlist['id']}/share",
+            {"can_comment": True},
+            201,
+        )
+
+        with patch(
+            "zou.app.services.emails_service.send_share_invitation"
+        ) as send_mock:
+            result = self.post(
+                f"/data/playlists/{self.playlist['id']}/share/{link['token']}/invite",
+                {
+                    "emails": [
+                        "alice@example.com",
+                        "ALICE@example.com",  # dedupe / case-fold
+                    ],
+                    "person_ids": [str(invitee.id)],
+                    "message": "Please review by Friday",
+                },
+                200,
+            )
+
+        self.assertEqual(send_mock.call_count, 2)
+        self.assertEqual(
+            sorted(result["sent"]),
+            ["alice@example.com", "client.one@example.com"],
+        )
+
+    def test_invite_share_link_rejects_mismatched_playlist(self):
+        """
+        A token belonging to playlist A cannot be invited via playlist B.
+        """
+        from unittest.mock import patch
+
+        # generate_fixture_playlist mutates self.playlist as a side effect,
+        # so capture the original first.
+        first_playlist = self.playlist
+        self.other_playlist = self.generate_fixture_playlist("Other Playlist")
+        link = self.post(
+            f"/data/playlists/{first_playlist['id']}/share",
+            {"can_comment": True},
+            201,
+        )
+
+        with patch(
+            "zou.app.services.emails_service.send_share_invitation"
+        ) as send_mock:
+            self.post(
+                f"/data/playlists/{self.other_playlist['id']}/share/{link['token']}/invite",
+                {"emails": ["alice@example.com"]},
+                404,
+            )
+        self.assertEqual(send_mock.call_count, 0)
+
+    def test_invite_share_link_rejects_invalid_email(self):
+        """
+        A malformed email aborts the whole batch with a 400.
+        """
+        from unittest.mock import patch
+
+        link = self.post(
+            f"/data/playlists/{self.playlist['id']}/share",
+            {"can_comment": True},
+            201,
+        )
+
+        with patch(
+            "zou.app.services.emails_service.send_share_invitation"
+        ) as send_mock:
+            self.post(
+                f"/data/playlists/{self.playlist['id']}/share/{link['token']}/invite",
+                {"emails": ["not-an-email"]},
+                400,
+            )
+        self.assertEqual(send_mock.call_count, 0)
+
+
+class SharedPlaylistReadTestCase(PlaylistSharingTestCase):
+    """
+    What the viewer behind the link reads, and the tokens that give
+    them nothing.
+    """
 
     def test_get_shared_playlist(self):
         link = self.post(
@@ -210,7 +315,12 @@ class PlaylistSharingTestCase(ApiDBTestCase):
         self.assertIn("task_types", result)
         self.assertIn("task_statuses", result)
 
-    # --- Guest management ---
+
+class GuestTestCase(PlaylistSharingTestCase):
+    """
+    The person record a viewer gets on first arrival, reused on the
+    next visit and scoped to the link that created it.
+    """
 
     def test_create_guest(self):
         link = self.post(
@@ -337,7 +447,13 @@ class PlaylistSharingTestCase(ApiDBTestCase):
         )
         self.assertNotEqual(guest_a["id"], guest_b["id"])
 
-    # --- Guest comments ---
+
+class GuestCommentTestCase(PlaylistSharingTestCase):
+    """
+    Commenting as a guest, and everything that must be refused: a
+    foreign guest, a task outside the playlist, a status the client
+    may not set, another guest's comment or attachment.
+    """
 
     def test_guest_comment(self):
         link = self.post(
@@ -538,99 +654,147 @@ class PlaylistSharingTestCase(ApiDBTestCase):
             403,
         )
 
-    # --- Share invitations ---
-
-    def test_invite_share_link(self):
+    def _guest_comment(self, first_name="Reviewer"):
         """
-        Manager can invite recipients by raw email and by person id;
-        the response lists the dispatched, deduplicated emails.
+        A share link that allows comments, a guest on it, and one comment
+        posted by that guest.
         """
-        from unittest.mock import patch
-        from zou.app.models.person import Person
-
-        invitee = Person.create(
-            first_name="Client",
-            last_name="One",
-            email="client.one@example.com",
-            role="client",
-        )
         link = self.post(
             f"/data/playlists/{self.playlist['id']}/share",
             {"can_comment": True},
             201,
         )
-
-        with patch(
-            "zou.app.services.emails_service.send_share_invitation"
-        ) as send_mock:
-            result = self.post(
-                f"/data/playlists/{self.playlist['id']}/share/{link['token']}/invite",
-                {
-                    "emails": [
-                        "alice@example.com",
-                        "ALICE@example.com",  # dedupe / case-fold
-                    ],
-                    "person_ids": [str(invitee.id)],
-                    "message": "Please review by Friday",
-                },
-                200,
-            )
-
-        self.assertEqual(send_mock.call_count, 2)
-        self.assertEqual(
-            sorted(result["sent"]),
-            ["alice@example.com", "client.one@example.com"],
-        )
-
-    def test_invite_share_link_rejects_mismatched_playlist(self):
-        """
-        A token belonging to playlist A cannot be invited via playlist B.
-        """
-        from unittest.mock import patch
-
-        # generate_fixture_playlist mutates self.playlist as a side effect,
-        # so capture the original first.
-        first_playlist = self.playlist
-        self.other_playlist = self.generate_fixture_playlist("Other Playlist")
-        link = self.post(
-            f"/data/playlists/{first_playlist['id']}/share",
-            {"can_comment": True},
+        self.log_out()
+        guest = self.post(
+            f"/shared/playlists/{link['token']}/guest",
+            {"first_name": first_name},
             201,
         )
-
-        with patch(
-            "zou.app.services.emails_service.send_share_invitation"
-        ) as send_mock:
-            self.post(
-                f"/data/playlists/{self.other_playlist['id']}/share/{link['token']}/invite",
-                {"emails": ["alice@example.com"]},
-                404,
-            )
-        self.assertEqual(send_mock.call_count, 0)
-
-    def test_invite_share_link_rejects_invalid_email(self):
-        """
-        A malformed email aborts the whole batch with a 400.
-        """
-        from unittest.mock import patch
-
-        link = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
-            {"can_comment": True},
+        comment = self.post(
+            f"/shared/playlists/{link['token']}/comments",
+            {
+                "guest_id": guest["id"],
+                "task_id": str(self.task.id),
+                "task_status_id": str(self.task_status.id),
+                "text": "Great work!",
+            },
             201,
         )
+        return link, guest, comment
 
-        with patch(
-            "zou.app.services.emails_service.send_share_invitation"
-        ) as send_mock:
-            self.post(
-                f"/data/playlists/{self.playlist['id']}/share/{link['token']}/invite",
-                {"emails": ["not-an-email"]},
-                400,
-            )
-        self.assertEqual(send_mock.call_count, 0)
+    def test_guest_edits_own_comment(self):
+        link, guest, comment = self._guest_comment()
 
-    # --- Shared preview file downloads ---
+        result = self.put(
+            f"/shared/playlists/{link['token']}/comments/{comment['id']}",
+            {"guest_id": guest["id"], "text": "Second thought"},
+            200,
+        )
+        self.assertEqual(result["text"], "Second thought")
+
+    def test_guest_deletes_own_comment(self):
+        link, guest, comment = self._guest_comment()
+        path = f"/shared/playlists/{link['token']}/comments/{comment['id']}"
+
+        response = self.app.delete(path, json={"guest_id": guest["id"]})
+        self.assertEqual(response.status_code, 204)
+
+        # Gone is 404, someone else's is 403: the loader tells the two apart
+        # so a guest cannot probe for comments they do not own.
+        response = self.app.delete(path, json={"guest_id": guest["id"]})
+        self.assertEqual(response.status_code, 404)
+
+    def test_guest_cannot_touch_another_guest_comment(self):
+        """
+        The guest id travels in the body, so nothing stops a reviewer from
+        naming someone else's. The comment has to belong to the guest that
+        claims it, on that very share link.
+        """
+        link, _, comment = self._guest_comment("Alice")
+        other = self.post(
+            f"/shared/playlists/{link['token']}/guest",
+            {"first_name": "Bob"},
+            201,
+        )
+        path = f"/shared/playlists/{link['token']}/comments/{comment['id']}"
+
+        self.put(path, {"guest_id": other["id"], "text": "hijacked"}, 403)
+
+        response = self.app.delete(path, json={"guest_id": other["id"]})
+        self.assertEqual(response.status_code, 403)
+
+    def _attach_to_guest_comment(self, link, guest, comment):
+        import os
+
+        fixture = self.get_fixture_file_path(
+            os.path.join("thumbnails", "th01.png")
+        )
+        response = self.app.post(
+            f"/shared/playlists/{link['token']}"
+            f"/comments/{comment['id']}/attachments",
+            data={
+                "file": (open(fixture, "rb"), "th01.png"),
+                "guest_id": guest["id"],
+            },
+        )
+        self.assertEqual(response.status_code, 201, response.data[:200])
+        return response.json
+
+    def test_guest_attaches_a_file_to_own_comment(self):
+        link, guest, comment = self._guest_comment()
+
+        result = self._attach_to_guest_comment(link, guest, comment)
+        self.assertEqual(len(result["attachment_files"]), 1)
+        self.assertEqual(result["attachment_files"][0]["name"], "th01.png")
+
+    def test_guest_removes_own_attachment(self):
+        link, guest, comment = self._guest_comment()
+        attachment = self._attach_to_guest_comment(link, guest, comment)[
+            "attachment_files"
+        ][0]
+
+        response = self.app.delete(
+            f"/shared/playlists/{link['token']}/comments/{comment['id']}"
+            f"/attachments/{attachment['id']}",
+            json={"guest_id": guest["id"]},
+        )
+        self.assertEqual(response.status_code, 204)
+
+    def test_guest_cannot_remove_an_attachment_of_another_comment(self):
+        """
+        Three ids travel together here, and owning the comment is not enough:
+        the attachment has to hang from that very comment, otherwise naming
+        one's own comment would remove any attachment at all.
+        """
+        link, guest, comment = self._guest_comment()
+        other_comment = self.post(
+            f"/shared/playlists/{link['token']}/comments",
+            {
+                "guest_id": guest["id"],
+                "task_id": str(self.task.id),
+                "task_status_id": str(self.task_status.id),
+                "text": "second comment",
+            },
+            201,
+        )
+        attachment = self._attach_to_guest_comment(link, guest, other_comment)[
+            "attachment_files"
+        ][0]
+
+        response = self.app.delete(
+            f"/shared/playlists/{link['token']}/comments/{comment['id']}"
+            f"/attachments/{attachment['id']}",
+            json={"guest_id": guest["id"]},
+        )
+        self.assertEqual(response.status_code, 404)
+
+
+class SharedFileServingTestCase(PlaylistSharingTestCase):
+    """
+    Serving the preview binaries through the link. Only the previews
+    the playlist positions are served, and only the extensions that
+    are safe to render.
+    """
 
     def _attach_zip_preview_to_playlist(self):
         """
@@ -798,8 +962,6 @@ class PlaylistSharingTestCase(ApiDBTestCase):
             f"/preview-files/{other_revision.id}/download"
         )
         self.assertEqual(response.status_code, 403)
-
-    # --- Shared original picture by extension (gif, svg, jpg, ...) ---
 
     def _attach_gif_preview_to_playlist(self):
         """
@@ -993,139 +1155,5 @@ class PlaylistSharingTestCase(ApiDBTestCase):
         response = self.app.get(
             f"/shared/playlists/{link['token']}"
             f"/pictures/originals/preview-files/{preview_file.id}.gif"
-        )
-        self.assertEqual(response.status_code, 404)
-
-    def _guest_comment(self, first_name="Reviewer"):
-        """
-        A share link that allows comments, a guest on it, and one comment
-        posted by that guest.
-        """
-        link = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
-            {"can_comment": True},
-            201,
-        )
-        self.log_out()
-        guest = self.post(
-            f"/shared/playlists/{link['token']}/guest",
-            {"first_name": first_name},
-            201,
-        )
-        comment = self.post(
-            f"/shared/playlists/{link['token']}/comments",
-            {
-                "guest_id": guest["id"],
-                "task_id": str(self.task.id),
-                "task_status_id": str(self.task_status.id),
-                "text": "Great work!",
-            },
-            201,
-        )
-        return link, guest, comment
-
-    def test_guest_edits_own_comment(self):
-        link, guest, comment = self._guest_comment()
-
-        result = self.put(
-            f"/shared/playlists/{link['token']}/comments/{comment['id']}",
-            {"guest_id": guest["id"], "text": "Second thought"},
-            200,
-        )
-        self.assertEqual(result["text"], "Second thought")
-
-    def test_guest_deletes_own_comment(self):
-        link, guest, comment = self._guest_comment()
-        path = f"/shared/playlists/{link['token']}/comments/{comment['id']}"
-
-        response = self.app.delete(path, json={"guest_id": guest["id"]})
-        self.assertEqual(response.status_code, 204)
-
-        # Gone is 404, someone else's is 403: the loader tells the two apart
-        # so a guest cannot probe for comments they do not own.
-        response = self.app.delete(path, json={"guest_id": guest["id"]})
-        self.assertEqual(response.status_code, 404)
-
-    def test_guest_cannot_touch_another_guest_comment(self):
-        """
-        The guest id travels in the body, so nothing stops a reviewer from
-        naming someone else's. The comment has to belong to the guest that
-        claims it, on that very share link.
-        """
-        link, _, comment = self._guest_comment("Alice")
-        other = self.post(
-            f"/shared/playlists/{link['token']}/guest",
-            {"first_name": "Bob"},
-            201,
-        )
-        path = f"/shared/playlists/{link['token']}/comments/{comment['id']}"
-
-        self.put(path, {"guest_id": other["id"], "text": "hijacked"}, 403)
-
-        response = self.app.delete(path, json={"guest_id": other["id"]})
-        self.assertEqual(response.status_code, 403)
-
-    def _attach_to_guest_comment(self, link, guest, comment):
-        import os
-
-        fixture = self.get_fixture_file_path(
-            os.path.join("thumbnails", "th01.png")
-        )
-        response = self.app.post(
-            f"/shared/playlists/{link['token']}"
-            f"/comments/{comment['id']}/attachments",
-            data={
-                "file": (open(fixture, "rb"), "th01.png"),
-                "guest_id": guest["id"],
-            },
-        )
-        self.assertEqual(response.status_code, 201, response.data[:200])
-        return response.json
-
-    def test_guest_attaches_a_file_to_own_comment(self):
-        link, guest, comment = self._guest_comment()
-
-        result = self._attach_to_guest_comment(link, guest, comment)
-        self.assertEqual(len(result["attachment_files"]), 1)
-        self.assertEqual(result["attachment_files"][0]["name"], "th01.png")
-
-    def test_guest_removes_own_attachment(self):
-        link, guest, comment = self._guest_comment()
-        attachment = self._attach_to_guest_comment(link, guest, comment)[
-            "attachment_files"
-        ][0]
-
-        response = self.app.delete(
-            f"/shared/playlists/{link['token']}/comments/{comment['id']}"
-            f"/attachments/{attachment['id']}",
-            json={"guest_id": guest["id"]},
-        )
-        self.assertEqual(response.status_code, 204)
-
-    def test_guest_cannot_remove_an_attachment_of_another_comment(self):
-        """
-        Three ids travel together here, and owning the comment is not enough:
-        the attachment has to hang from that very comment, otherwise naming
-        one's own comment would remove any attachment at all.
-        """
-        link, guest, comment = self._guest_comment()
-        other_comment = self.post(
-            f"/shared/playlists/{link['token']}/comments",
-            {
-                "guest_id": guest["id"],
-                "task_id": str(self.task.id),
-                "task_status_id": str(self.task_status.id),
-                "text": "second comment",
-            },
-            201,
-        )
-        attachment = self._attach_to_guest_comment(link, guest, other_comment)[
-            "attachment_files"
-        ][0]
-
-        response = self.app.delete(
-            f"/shared/playlists/{link['token']}/comments/{comment['id']}"
-            f"/attachments/{attachment['id']}",
-            json={"guest_id": guest["id"]},
         )
         self.assertEqual(response.status_code, 404)
