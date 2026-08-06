@@ -26,14 +26,24 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
         self.assertGreater(len(result), 0)
 
     def test_get_episode_playlists(self):
-        self.generate_fixture_playlist(
-            "Episode Playlist", episode_id=self.episode.id
-        )
+        """
+        The playlists of one episode. A playlist of the next episode, and one
+        attached to no episode at all, are not this episode's business.
+        """
+        here = self.episode
+        self.generate_fixture_playlist("Episode Playlist", episode_id=here.id)
+        elsewhere = self.generate_fixture_episode("E02")
+        self.generate_fixture_playlist("Next", episode_id=elsewhere.id)
+        self.generate_fixture_playlist("Loose")
+
         result = self.get(
             f"/data/projects/{self.project_id}"
             f"/episodes/{self.episode_id}/playlists"
         )
-        self.assertIsInstance(result, list)
+
+        self.assertEqual(
+            [playlist["name"] for playlist in result], ["Episode Playlist"]
+        )
 
     def test_get_project_playlist(self):
         self.generate_fixture_playlist("Single Playlist")
@@ -45,10 +55,23 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
         self.assertEqual(result["id"], playlist_id)
 
     def test_get_entity_preview_files(self):
-        result = self.get(
-            f"/data/playlists/entities/{self.shot.id}/preview-files"
+        """
+        The previews of an entity, keyed by the task type they were made
+        for.
+        """
+        path = f"/data/playlists/entities/{self.shot.id}/preview-files"
+        self.assertEqual(self.get(path), {})
+        preview_file = self.generate_fixture_preview_file(
+            task_id=self.shot_task.id
         )
-        self.assertIsInstance(result, dict)
+
+        result = self.get(path)
+
+        task_type_id = str(self.shot_task.task_type_id)
+        self.assertEqual(
+            [preview["id"] for preview in result[task_type_id]],
+            [str(preview_file.id)],
+        )
 
     def test_get_entity_preview_files_vendor_assigned(self):
         self.generate_fixture_user_vendor()
@@ -72,16 +95,34 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
         self.get(path, 403)
 
     def test_get_project_build_jobs(self):
+        self.assertEqual(
+            self.get(f"/data/projects/{self.project_id}/build-jobs"), []
+        )
+        self.generate_fixture_playlist("Playlist 1")
+        job = BuildJob.create(
+            status="running",
+            job_type="movie",
+            playlist_id=self.playlist.id,
+        )
+
         result = self.get(f"/data/projects/{self.project_id}/build-jobs")
-        self.assertIsInstance(result, list)
+
+        self.assertEqual([entry["id"] for entry in result], [str(job.id)])
 
     def test_create_temp_playlist(self):
+        """
+        A playlist built on the fly from a list of tasks: one entry per task,
+        carrying the entity that task is on.
+        """
         result = self.post(
             f"/data/projects/{self.project_id}/playlists/temp",
             {"task_ids": [str(self.shot_task.id)]},
             200,
         )
-        self.assertIsInstance(result, list)
+
+        self.assertEqual(
+            [entity["id"] for entity in result], [str(self.shot.id)]
+        )
 
     def test_create_temp_playlist_vendor_assigned(self):
         self.generate_fixture_user_vendor()
