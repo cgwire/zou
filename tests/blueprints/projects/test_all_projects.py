@@ -5,8 +5,6 @@ class OpenProjectRouteTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
 
-        self.generate_fixture_project_status()
-        self.generate_fixture_project_closed_status()
         self.generate_fixture_project()
         self.generate_fixture_project_closed()
 

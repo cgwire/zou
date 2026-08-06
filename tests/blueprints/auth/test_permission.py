@@ -17,7 +17,6 @@ class PermissionTestCase(ApiDBTestCase):
         self.generate_fixture_user_cg_artist()
         self.user_cg_artist_id = self.user_cg_artist["id"]
         self.generate_fixture_user_manager()
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.project_id = self.project.id
 

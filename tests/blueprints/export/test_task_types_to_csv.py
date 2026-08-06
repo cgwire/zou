@@ -5,10 +5,6 @@ class TasksCsvExportTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
 
-        self.generate_fixture_project_status()
-        self.generate_fixture_project()
-        self.generate_fixture_asset_type()
-        self.generate_fixture_department()
         self.generate_fixture_task_type()
 
     def test_export(self):

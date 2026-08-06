@@ -18,17 +18,9 @@ class PreviewFileTestCase(ApiDBTestCase):
         self.user_vendor_id = self.user_vendor["id"]
 
         self.generate_fixture_person()
-        self.generate_fixture_assigner()
 
         # Create first project
-        self.generate_fixture_project_status()
         self.project1 = self.generate_fixture_project()
-        self.generate_fixture_asset_type()
-        self.generate_fixture_department()
-        self.generate_fixture_task_type()
-        self.generate_fixture_task_status()
-        self.generate_fixture_asset()
-        self.generate_fixture_sequence()
         self.generate_fixture_shot()
 
         # Create a task with one preview file
@@ -45,11 +37,7 @@ class PreviewFileTestCase(ApiDBTestCase):
         self.generate_fixture_preview_file(name="PROJ1_TASK2_PF1")
 
         # Create second project
-        self.generate_fixture_project_closed_status()
         self.project2 = self.generate_fixture_project("test")
-        self.generate_fixture_asset()
-        self.generate_fixture_sequence()
-        self.generate_fixture_shot()
 
         # Create a task with one preview file
         self.task2_1 = self.generate_fixture_task(name="PROJ2_TASK1")

@@ -24,7 +24,6 @@ from zou.app.utils import permissions
 class ProjectPersonLinkRoleTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_person()
 
@@ -47,7 +46,6 @@ class ProjectPersonLinkRoleTestCase(ApiDBTestCase):
 class GetProjectRoleTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_person()
 
@@ -141,7 +139,6 @@ class ProjectRoleRouteTestCase(ApiDBTestCase):
 
     def setUp(self):
         super().setUp()
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
         # generate_fixture_project reassigns self.project on every call, so
         # the first project must be captured before creating the second one.
@@ -223,7 +220,6 @@ class ProjectRoleSemanticsTestCase(ApiDBTestCase):
 class TeamRoleServiceTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_person()
 
@@ -298,7 +294,6 @@ class TeamRoleServiceTestCase(ApiDBTestCase):
 class TeamRoleApiTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_person()
 

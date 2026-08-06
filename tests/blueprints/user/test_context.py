@@ -17,8 +17,6 @@ from zou.app.models.person import Person
 class UserContextRoutesTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
-        self.generate_fixture_project_status()
-        self.generate_fixture_project_closed_status()
         self.generate_fixture_project()
         self.generate_fixture_person()
         self.generate_fixture_project_closed()
@@ -29,10 +27,8 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         self.generate_fixture_shot()
         self.generate_fixture_department()
         self.generate_fixture_task_type()
-        self.generate_fixture_task_status()
         self.generate_fixture_task_status_wip()
         self.generate_fixture_task_status_to_review()
-        self.generate_fixture_assigner()
 
         self.project_id = self.project.id
 
@@ -988,7 +984,6 @@ class UserContextRoutesTestCase(ApiDBTestCase):
 class UserContextProjectRolesTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.user_id = self.user["id"]
         projects_service.add_team_member(str(self.project.id), self.user_id)

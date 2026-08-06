@@ -7,9 +7,7 @@ from zou.app.models.metadata_descriptor import MetadataDescriptor
 class MetadataTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
-        self.generate_fixture_asset_type()
         self.generate_fixture_asset()
         self.generate_fixture_metadata_descriptor()
 

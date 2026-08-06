@@ -34,12 +34,9 @@ class ProjectSyncRouteTestCase(ApiDBTestCase):
         self.task = self.task_standard
         self.project = self.project_standard
         self.generate_fixture_comment()
-        self.generate_fixture_notification()
-        self.generate_fixture_subscription()
         self.generate_fixture_preview_file()
         self.generate_fixture_playlist("test 2")
         self.generate_fixture_build_job("2019-08-01T13:00:00")
-        self.generate_fixture_milestone()
         breakdown_service.create_casting_link(
             self.shot_standard.id, self.asset_standard.id
         )
