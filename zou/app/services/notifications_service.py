@@ -244,8 +244,11 @@ def reset_notifications_for_mentions(comment):
     to the comment and recreate notifications for the mentions listed in the
     comment.
     """
+    # Only the mentions: they are the ones rebuilt below. The notifications
+    # raised by the replies of that comment belong to the replies, which
+    # clean up after themselves in delete_reply, and nothing here would
+    # bring them back.
     Notification.delete_all_by(type="mention", comment_id=comment["id"])
-    Notification.delete_all_by(type="reply", comment_id=comment["id"])
     notifications = []
     task = tasks_service.get_task(comment["object_id"])
     author_id = comment["person_id"]
