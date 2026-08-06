@@ -1653,7 +1653,7 @@ class AddToDepartmentResource(MethodView, ArgsMixin):
             department = tasks_service.get_department(department_id)
         except DepartmentNotFoundException:
             raise WrongParameterException(
-                "Department ID matches no department"
+                "Department ID matches no department"
             )
         person = persons_service.add_to_department(department["id"], person_id)
         return person, 201
@@ -1695,7 +1695,7 @@ class RemoveFromDepartmentResource(MethodView, ArgsMixin):
             tasks_service.get_department(department_id)
         except DepartmentNotFoundException:
             raise WrongParameterException(
-                "Department ID matches no department"
+                "Department ID matches no department"
             )
         persons_service.remove_from_department(department_id, person_id)
         return "", 204

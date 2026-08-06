@@ -892,7 +892,7 @@ def add_project_sync_listeners(event_client):
 
 def add_special_sync_listeners(event_client):
     """
-    Add listeners to forward all non CRUD events to local event broadcaster.
+    Add listeners to forward all non CRUD events to local event broadcaster.
     """
     for event in special_events:
         gazu.events.add_listener(event_client, event, forward_event(event))
@@ -924,7 +924,7 @@ def create_entry(model_name, event_name, model, event_type):
     """
     Generate a function that creates a model each time a related creation event
     is retrieved. If it's an update event, it updates the model related to the
-    event. Data are retrived through the HTTP client.
+    event. Data are retrived through the HTTP client.
     It's useful to generate callbacks for event listener.
     """
 

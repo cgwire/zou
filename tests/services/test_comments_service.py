@@ -61,7 +61,42 @@ class CommentsServiceTestCase(ApiDBTestCase):
             created_at="2024-01-23 10:00:00",
         )
         self.assertEqual(self.comment["created_at"], "2024-01-23T10:00:00")
-        # TODO test attachment files
+
+    def test_new_comment_with_attachments(self):
+        """
+        The files a comment is posted with land on it, under the comment
+        that carries them.
+
+        Two of the same name are kept as they are: attachment_file has no
+        unique constraint, so the IntegrityError branch that would add a
+        random suffix never fires. chats_service randomizes up front rather
+        than relying on it.
+        """
+        comment = comments_service.new_comment(
+            self.task.id,
+            self.task_status.id,
+            self.user["id"],
+            "with a file",
+            files={
+                "file-0": self.uploaded_file("notes.txt"),
+                "file-1": self.uploaded_file("brief.pdf"),
+            },
+        )
+
+        attachments = sorted(
+            comment["attachment_files"], key=lambda a: a["name"]
+        )
+        self.assertEqual(
+            [(a["name"], a["extension"]) for a in attachments],
+            [("brief.pdf", "pdf"), ("notes.txt", "txt")],
+        )
+        self.assertEqual(
+            {
+                str(row.comment_id)
+                for row in AttachmentFile.get_all_by(comment_id=comment["id"])
+            },
+            {comment["id"]},
+        )
 
     def test_check_retake_capping(self):
         self.project.update({"max_retakes": 2})
@@ -159,11 +194,15 @@ class CommentsServiceTestCase(ApiDBTestCase):
         self.assertEqual(payload["new_task_status_id"], self.wfa_status["id"])
         self.assertEqual(payload["comment_id"], comment["id"])
 
-    def _create_attachment(self, comment, filename):
-        uploaded_file = FileStorage(
+    def uploaded_file(self, filename):
+        return FileStorage(
             stream=io.BytesIO(b"attachment content"), filename=filename
         )
-        return comments_service.create_attachment(comment, uploaded_file)
+
+    def _create_attachment(self, comment, filename):
+        return comments_service.create_attachment(
+            comment, self.uploaded_file(filename)
+        )
 
     def test_create_attachment(self):
         comment = comments_service.new_comment(
