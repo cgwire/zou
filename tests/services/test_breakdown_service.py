@@ -416,18 +416,27 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         )
         self.assertEqual(instances, {})
 
-        self.new_scene_instance(self.asset_id)
-        self.new_scene_instance(self.asset_id)
+        # Three of the same asset, not two: the number of a new instance is
+        # read off the highest existing one, and with a single instance
+        # around any of them is the highest.
+        for _ in range(3):
+            self.new_scene_instance(self.asset_id)
         self.new_scene_instance(self.asset_character_id)
 
         instances = breakdown_service.get_asset_instances_for_scene(
             self.scene.id
         )
-        self.assertEqual(len(instances[self.asset_id]), 2)
-        self.assertEqual(len(instances[self.asset_character_id]), 1)
-        self.assertEqual(instances[self.asset_id][0]["number"], 1)
-        self.assertEqual(instances[self.asset_id][1]["number"], 2)
-        self.assertEqual(instances[self.asset_character_id][0]["number"], 1)
+        self.assertEqual(
+            [held["number"] for held in instances[self.asset_id]], [1, 2, 3]
+        )
+        self.assertEqual(
+            [held["name"] for held in instances[self.asset_id]],
+            ["Tree_0001", "Tree_0002", "Tree_0003"],
+        )
+        self.assertEqual(
+            [held["number"] for held in instances[self.asset_character_id]],
+            [1],
+        )
 
     def test_get_scene_asset_instances_for_asset(self):
         instances = breakdown_service.get_scene_asset_instances_for_asset(
@@ -435,13 +444,18 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         )
         self.assertEqual(instances, {})
 
-        self.new_scene_instance(self.asset.id)
-        self.new_scene_instance(self.asset.id)
+        for _ in range(3):
+            self.new_scene_instance(self.asset.id)
         self.new_scene_instance(self.asset_character.id)
+
         instances = breakdown_service.get_scene_asset_instances_for_asset(
             self.asset.id
         )
-        self.assertEqual(len(instances[self.scene_id]), 2)
+
+        # Grouped by scene, and numbered in order inside each scene.
+        self.assertEqual(
+            [held["number"] for held in instances[self.scene_id]], [1, 2, 3]
+        )
 
     def test_get_entity_link(self):
         breakdown_service.update_casting(

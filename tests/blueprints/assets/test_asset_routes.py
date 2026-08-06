@@ -100,18 +100,29 @@ class AssetRoutesTestCase(ApiDBTestCase):
         self.assertEqual(instances[0]["asset_id"], character_id)
 
     def test_create_asset_asset_instance(self):
-        result = self.post(
-            f"/data/assets/{self.asset_id}/asset-asset-instances",
-            {
-                "asset_to_instantiate_id": str(self.asset_character.id),
-                "description": "Instance in asset",
-            },
+        """
+        Each new instance takes the number after the highest one already
+        there. Three of them, because with a single instance around any of
+        them is the highest and the ordering that finds it never shows.
+        """
+        path = f"/data/assets/{self.asset_id}/asset-asset-instances"
+        character_id = str(self.asset_character.id)
+        created = [
+            self.post(
+                path,
+                {
+                    "asset_to_instantiate_id": character_id,
+                    "description": "Instance in asset",
+                },
+            )
+            for _ in range(3)
+        ]
+
+        self.assertEqual([held["number"] for held in created], [1, 2, 3])
+        instances = self.get(path)
+        self.assertEqual(
+            [held["number"] for held in instances[character_id]], [1, 2, 3]
         )
-        self.assertIsNotNone(result.get("id"))
-        instances = self.get(
-            f"/data/assets/{self.asset_id}/asset-asset-instances"
-        )
-        self.assertEqual(len(instances), 1)
 
     def test_get_asset_assets(self):
         self.cast_the_character_in_the_asset()
