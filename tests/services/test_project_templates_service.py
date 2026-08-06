@@ -230,6 +230,147 @@ class ProjectTemplateServiceTestCase(ApiDBTestCase):
 
     # ----- Snapshot from project ------------------------------------------
 
+    # ----- Priorities and background files ---------------------------------
+
+    def test_set_template_task_type_priorities(self):
+        """
+        The ordered id list becomes the priorities, one based, in one pass.
+        A task type not yet linked is linked on the way.
+        """
+        template = project_templates_service.create_project_template(
+            name="Priorities"
+        )
+        project_templates_service.add_task_type_to_template(
+            template["id"], str(self.task_type.id), priority=9
+        )
+
+        project_templates_service.set_template_task_type_priorities(
+            template["id"],
+            [str(self.task_type_animation.id), str(self.task_type.id)],
+        )
+
+        task_types = project_templates_service.get_template_task_types(
+            template["id"]
+        )
+        # Sorted by priority, so the list order carries the answer too.
+        self.assertEqual(
+            [(held["id"], held["priority"]) for held in task_types],
+            [
+                (str(self.task_type_animation.id), 1),
+                (str(self.task_type.id), 2),
+            ],
+        )
+
+    def test_set_template_task_status_priorities_keeps_the_board_roles(self):
+        template = project_templates_service.create_project_template(
+            name="Status Priorities"
+        )
+        project_templates_service.add_task_status_to_template(
+            template["id"],
+            str(self.task_status.id),
+            priority=9,
+            roles_for_board=["admin"],
+        )
+
+        project_templates_service.set_template_task_status_priorities(
+            template["id"], [str(self.task_status.id)]
+        )
+
+        link = project_templates_service.get_template_task_statuses(
+            template["id"]
+        )[0]
+        self.assertEqual(link["priority"], 1)
+        self.assertEqual(link["roles_for_board"], ["admin"])
+
+    def test_add_and_remove_preview_background_file(self):
+        template = project_templates_service.create_project_template(
+            name="Backgrounds"
+        )
+        self.generate_fixture_preview_background_file()
+        background_id = str(self.preview_background_file.id)
+
+        added = (
+            project_templates_service.add_preview_background_file_to_template(
+                template["id"], background_id
+            )
+        )
+
+        self.assertEqual(added["id"], background_id)
+        self.assertEqual(
+            [
+                held["id"]
+                for held in project_templates_service.get_template_preview_background_files(
+                    template["id"]
+                )
+            ],
+            [background_id],
+        )
+
+        project_templates_service.remove_preview_background_file_from_template(
+            template["id"], background_id
+        )
+
+        self.assertEqual(
+            project_templates_service.get_template_preview_background_files(
+                template["id"]
+            ),
+            [],
+        )
+
+    def test_set_template_default_preview_background_file(self):
+        template = project_templates_service.create_project_template(
+            name="Default Background"
+        )
+        self.generate_fixture_preview_background_file()
+        background_id = str(self.preview_background_file.id)
+        project_templates_service.add_preview_background_file_to_template(
+            template["id"], background_id
+        )
+
+        result = project_templates_service.set_template_default_preview_background_file(
+            template["id"], background_id
+        )
+
+        self.assertEqual(
+            result["default_preview_background_file_id"], background_id
+        )
+
+    def test_the_default_background_has_to_be_linked_first(self):
+        template = project_templates_service.create_project_template(
+            name="Unlinked Background"
+        )
+        self.generate_fixture_preview_background_file()
+
+        self.assertRaises(
+            WrongParameterException,
+            project_templates_service.set_template_default_preview_background_file,
+            template["id"],
+            str(self.preview_background_file.id),
+        )
+
+    def test_removing_the_default_background_clears_it(self):
+        template = project_templates_service.create_project_template(
+            name="Cleared Background"
+        )
+        self.generate_fixture_preview_background_file()
+        background_id = str(self.preview_background_file.id)
+        project_templates_service.add_preview_background_file_to_template(
+            template["id"], background_id
+        )
+        project_templates_service.set_template_default_preview_background_file(
+            template["id"], background_id
+        )
+
+        project_templates_service.remove_preview_background_file_from_template(
+            template["id"], background_id
+        )
+
+        self.assertIsNone(
+            project_templates_service.get_project_template(template["id"])[
+                "default_preview_background_file_id"
+            ]
+        )
+
     def _seed_project_with_full_config(self):
         projects_service.add_task_type_setting(
             self.project_id, str(self.task_type_modeling.id), priority=3
