@@ -46,8 +46,11 @@ def clear_project_cache(project_id):
     """
     Drop every memoized serialization of given project, and the project lists.
     """
-    cache.cache.delete_memoized(get_project, project_id)
-    cache.cache.delete_memoized(get_project, project_id, True)
+    # Both arguments are given: an omitted default is a cache key of its
+    # own, so deleting on the id alone would leave the common entry behind.
+    project_id = str(project_id)
+    cache.cache.delete_memoized(_get_project_cached, project_id, False)
+    cache.cache.delete_memoized(_get_project_cached, project_id, True)
     cache.cache.delete_memoized(get_project_by_name)
     cache.cache.delete_memoized(open_projects)
 
@@ -418,12 +421,20 @@ def get_project_raw(project_id):
 
 
 @cache.memoize_function(240)
+def _get_project_cached(project_id, relations=False):
+    return get_project_raw(project_id).serialize(relations=relations)
+
+
 def get_project(project_id, relations=False):
     """
     Get project matching given id, as a dict. Raises an exception if project is
     not found.
+
+    The id is normalised before it reaches the memoization, which keys on the
+    argument: a UUID and its string form would otherwise be two entries, and
+    clear_project_cache would only ever drop one of them.
     """
-    return get_project_raw(project_id).serialize(relations=relations)
+    return _get_project_cached(str(project_id), relations)
 
 
 @cache.memoize_function(120)

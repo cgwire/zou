@@ -316,6 +316,31 @@ class ProjectServiceTestCase(ApiDBTestCase):
         )
         self.assertEqual(files, [])
 
+    def test_an_update_drops_every_form_of_the_cached_project(self):
+        """
+        The memoization keys on the argument, and an omitted default is a
+        key of its own: the id as a UUID, the id as a string and the
+        related serialization would be three entries. An update has to drop
+        what every caller reads, whichever form they hold.
+        """
+        project_id = self.project.id
+        projects_service.get_project(project_id)
+        projects_service.get_project(str(project_id))
+        projects_service.get_project(project_id, relations=True)
+
+        projects_service.update_project(str(project_id), {"fps": "30"})
+
+        self.assertEqual(
+            [
+                projects_service.get_project(project_id)["fps"],
+                projects_service.get_project(str(project_id))["fps"],
+                projects_service.get_project(project_id, relations=True)[
+                    "fps"
+                ],
+            ],
+            ["30", "30", "30"],
+        )
+
     def test_get_project_fps(self):
         fps = projects_service.get_project_fps(self.project.id)
         self.assertEqual(fps, 25.00)
