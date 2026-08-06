@@ -197,7 +197,11 @@ class PersonRoutesTestCase(ApiDBTestCase):
         )
         self.assertTrue(result.get("success"))
 
-    def test_change_password_for_existing_admin_is_blocked(self):
+    def assert_the_route_refuses_another_admin(self, action, data):
+        """
+        Neither password route lets an admin reach into another admin's
+        account, and both say so rather than failing silently.
+        """
         other_admin = Person.create(
             first_name="Other",
             last_name="Admin",
@@ -205,14 +209,20 @@ class PersonRoutesTestCase(ApiDBTestCase):
             email="other.admin@gmail.com",
             password=auth.encrypt_password("existingpassword"),
         )
+
         result = self.post(
-            f"/actions/persons/{other_admin.id}/change-password",
-            {"password": "newpassword123", "password_2": "newpassword123"},
-            400,
+            f"/actions/persons/{other_admin.id}/{action}", data, 400
         )
+
         self.assertEqual(
             result.get("message"),
             "An admin can't change another admin's password.",
+        )
+
+    def test_change_password_for_existing_admin_is_blocked(self):
+        self.assert_the_route_refuses_another_admin(
+            "change-password",
+            {"password": "newpassword123", "password_2": "newpassword123"},
         )
 
     def test_get_reset_password_link(self):
@@ -270,22 +280,7 @@ class PersonRoutesTestCase(ApiDBTestCase):
         self.assertIn("reset_password_link", result)
 
     def test_get_reset_password_link_for_existing_admin_is_blocked(self):
-        other_admin = Person.create(
-            first_name="Other",
-            last_name="Admin",
-            role="admin",
-            email="other.admin@gmail.com",
-            password=auth.encrypt_password("existingpassword"),
-        )
-        result = self.post(
-            f"/actions/persons/{other_admin.id}/reset-password-link",
-            {},
-            400,
-        )
-        self.assertEqual(
-            result.get("message"),
-            "An admin can't change another admin's password.",
-        )
+        self.assert_the_route_refuses_another_admin("reset-password-link", {})
 
     def test_clear_avatar(self):
         self.delete(f"/actions/persons/{self.person_id}/clear-avatar")

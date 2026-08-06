@@ -61,8 +61,11 @@ class ShotCastingTestCase(ApiDBTestCase):
         self.assertEqual(cast_in[0]["sequence_name"], self.sequence.name)
         self.assertEqual(cast_in[0]["episode_name"], self.episode.name)
 
-    def test_get_assets_for_shots(self):
-        self.entities = self.generate_data(
+    def cast_three_assets_in(self, entity):
+        """
+        Three assets cast in given entity, returned as their ids.
+        """
+        entities = self.generate_data(
             Entity,
             3,
             entities_out=[],
@@ -71,14 +74,16 @@ class ShotCastingTestCase(ApiDBTestCase):
             project_id=self.project.id,
             entity_type_id=self.asset_type.id,
         )
-        self.shot.entities_out = self.entities
-        self.shot.save()
+        entity.entities_out = entities
+        entity.save()
+        return sorted(str(cast.id) for cast in entities)
+
+    def test_get_assets_for_shots(self):
+        cast_ids = self.cast_three_assets_in(self.shot)
 
         assets = self.get(f"data/shots/{self.shot.id}/assets")
-        self.assertEqual(len(assets), 3)
-        self.assertIn(
-            assets[0]["id"], [str(entity.id) for entity in self.entities]
-        )
+
+        self.assertEqual(sorted(asset["id"] for asset in assets), cast_ids)
 
     def test_update_asset_casting(self):
         self.asset_id = str(self.asset.id)
@@ -106,20 +111,8 @@ class ShotCastingTestCase(ApiDBTestCase):
         self.assertEqual(cast_in[0]["asset_name"], self.asset.name)
 
     def test_get_casting_for_assets(self):
-        self.entities = self.generate_data(
-            Entity,
-            3,
-            entities_out=[],
-            entities_in=[],
-            instance_casting=[],
-            project_id=self.project.id,
-            entity_type_id=self.asset_type.id,
-        )
-        self.asset.entities_out = self.entities
-        self.asset.save()
+        cast_ids = self.cast_three_assets_in(self.asset)
 
         assets = self.get(f"data/assets/{self.asset.id}/assets")
-        self.assertEqual(len(assets), 3)
-        self.assertIn(
-            assets[0]["id"], [str(entity.id) for entity in self.entities]
-        )
+
+        self.assertEqual(sorted(asset["id"] for asset in assets), cast_ids)

@@ -306,6 +306,17 @@ class TimeSpentsServiceTestCase(ApiDBTestCase):
         self.assertEqual(person["2019-01"], 850)
         self.assertEqual(person["total"], 2550)
 
+        # The department total sums its people: this person plus the admin,
+        # who logged 600 on a task of the same department.
+        department = result[self.task_type.department_id]
+        per_person = [
+            entry["total"]
+            for key, entry in department.items()
+            if key != "total"
+        ]
+        self.assertEqual(sorted(per_person), [600, 2550])
+        self.assertEqual(department["total"], 3150)
+
     def test_get_project_task_type_time_spents(self):
         result = time_spents_service.get_project_task_type_time_spents(
             str(self.project.id),
