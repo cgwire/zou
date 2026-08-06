@@ -1,10 +1,12 @@
 import datetime
+import io
 import os
 import tempfile
 import threading
 import unittest
 import uuid
 
+from contextlib import redirect_stdout
 from unittest import mock
 
 from tests.base import ApiDBTestCase
@@ -12,12 +14,13 @@ from tests.base import ApiDBTestCase
 from zou.app.models.comment import Comment
 from zou.app.models.entity import Entity
 from zou.app.models.event import ApiEvent
+from zou.app.models.news import News
 from zou.app.models.entity_type import EntityType
 from zou.app.models.playlist import Playlist
 from zou.app.models.project import Project
 from zou.app.models.studio import Studio
 from zou.app.models.task_status import TaskStatus
-from zou.app.services import sync_service
+from zou.app.services import news_service, sync_service
 
 
 class EventMapTestCase(unittest.TestCase):
@@ -222,9 +225,9 @@ class EntryCallbackTestCase(ApiDBTestCase):
 
     def test_a_deleted_comment_goes_through_the_deletion_service(self):
         """
-        A comment carries notifications, news and attachments, and the task
-        it belongs to caches its last status: dropping the row alone would
-        leave all of it behind.
+        A comment carries the news of the status it set, its notifications
+        and its attachments. Dropping the row alone leaves all of it behind,
+        pointing at a comment that no longer exists.
         """
         self.generate_fixture_person()
         self.generate_fixture_assigner()
@@ -235,16 +238,23 @@ class EntryCallbackTestCase(ApiDBTestCase):
         self.generate_fixture_shot()
         self.generate_fixture_task()
         comment = self.generate_fixture_comment()
-        task_id = str(self.task.id)
+        # The news is written by the comment route, not by the service the
+        # fixture calls: post it here as the route would.
+        news_service.create_news_for_task_and_comment(
+            self.task.serialize(), comment
+        )
+        self.assertEqual(
+            News.query.filter_by(comment_id=comment["id"]).count(), 1
+        )
 
         sync_service.delete_entry("comments", "comment", Comment)(
             {"comment_id": comment["id"]}
         )
 
         self.assertIsNone(Comment.get(comment["id"]))
-        from zou.app.services import tasks_service
-
-        self.assertIsNone(tasks_service.get_task(task_id)["last_comment_date"])
+        self.assertEqual(
+            News.query.filter_by(comment_id=comment["id"]).count(), 0
+        )
 
     def test_an_event_this_instance_emitted_is_not_replayed(self):
         """
@@ -870,19 +880,52 @@ class MultithreadErrorsTestCase(unittest.TestCase):
 
 class VerifyProjectSyncTestCase(ApiDBTestCase):
     """
-    The read-only row count comparison run after a sync.
+    The read-only row count comparison run after a sync. It prints a table,
+    so the report itself is what the tests read.
     """
 
     def setUp(self):
         super().setUp()
         self.generate_fixture_project_status()
         self.generate_fixture_project()
+        self.generate_fixture_asset_type()
+        self.generate_fixture_asset()
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+
+    def verify(self, project_name=None, remote_id=None, direction="pull"):
+        """
+        Run the report against a remote holding nothing, and return the
+        lines it printed keyed by model.
+        """
+        if project_name is None:
+            project_name = self.project.name
+        if remote_id is None:
+            remote_id = str(self.project.id)
+        output = io.StringIO()
+        with mock.patch.object(
+            sync_service.gazu.project,
+            "get_project_by_name",
+            return_value={"id": remote_id, "name": project_name},
+        ), mock.patch.object(
+            sync_service.gazu.client, "fetch_all", return_value=[]
+        ), redirect_stdout(
+            output
+        ):
+            sync_service.verify_project_sync(project_name, direction=direction)
+        return output.getvalue()
+
+    def row(self, report, label):
+        for line in report.splitlines():
+            if line.startswith(label):
+                return line.split()
+        return None
 
     def test_every_target_counter_compiles(self):
         """
         Every target side count helper must produce valid SQL on the current
-        schema. Run them all against a production that has no scoped data;
-        each must return 0 instead of raising.
+        schema: a helper joining on a column that moved raises here rather
+        than in front of the operator running the verification.
         """
         pid = str(self.project.id)
         counters = [
@@ -910,12 +953,81 @@ class VerifyProjectSyncTestCase(ApiDBTestCase):
         for counter in counters:
             self.assertIsInstance(counter(), int)
 
-    def test_both_directions_run(self):
+    def test_an_asset_is_an_entity_of_no_structural_type(self):
         """
-        sync-push-verify reuses verify_project_sync with direction="push".
-        Smoke test: the call should not raise on a production that exists
-        both on the (mocked) remote and locally.
+        Assets have no type of their own: they are counted by exclusion, so
+        a shot and a sequence must not land in their row.
         """
+        pid = str(self.project.id)
+        self.assertEqual(sync_service._tgt_asset(pid)(), 1)
+        self.assertEqual(sync_service._tgt_entity_type(pid, "Shot")(), 1)
+        self.assertEqual(sync_service._tgt_entity_type(pid, "Sequence")(), 1)
+
+    def test_a_type_absent_from_this_instance_counts_as_zero(self):
+        self.assertEqual(
+            sync_service._tgt_entity_type(str(self.project.id), "Concept")(),
+            0,
+        )
+
+    def test_a_pull_reads_the_remote_as_the_source(self):
+        """
+        After a sync-full the remote is where the rows come from, so the
+        local extras show up as a positive delta.
+        """
+        self.assertEqual(
+            self.row(self.verify(), "Asset"), ["Asset", "0", "1", "+1", "DIFF"]
+        )
+
+    def test_a_push_reads_the_local_instance_as_the_source(self):
+        """
+        Same two counts, read the other way round: sync-push sends the local
+        rows out, so what the remote is missing is a negative delta.
+        """
+        self.assertEqual(
+            self.row(self.verify(direction="push"), "Asset"),
+            ["Asset", "1", "0", "-1", "DIFF"],
+        )
+
+    def test_a_table_out_of_scope_is_named_rather_than_compared(self):
+        self.assertIn("NOT SYNCED", self.verify())
+
+    def test_a_production_missing_locally_is_reported(self):
+        report = self.verify(
+            project_name="Elsewhere", remote_id=str(uuid.uuid4())
+        )
+        self.assertIn("not present locally", report)
+        self.assertNotIn("Delta", report)
+
+    def test_a_production_missing_on_the_remote_is_reported(self):
+        output = io.StringIO()
+        with mock.patch.object(
+            sync_service.gazu.project,
+            "get_project_by_name",
+            return_value=None,
+        ), redirect_stdout(output):
+            sync_service.verify_project_sync("Elsewhere")
+        self.assertIn("not found on source", output.getvalue())
+
+    def test_an_unreachable_remote_is_reported_as_such(self):
+        """
+        Not as an absent production, and not as the AttributeError raised
+        by an except clause naming an exception gazu does not define.
+        """
+        output = io.StringIO()
+        with mock.patch.object(
+            sync_service.gazu.project,
+            "get_project_by_name",
+            side_effect=Exception("connection refused"),
+        ), redirect_stdout(output):
+            sync_service.verify_project_sync("Elsewhere")
+        self.assertIn("Could not reach", output.getvalue())
+
+    def test_an_unreachable_count_does_not_abort_the_report(self):
+        """
+        One route the remote does not serve must leave the other rows
+        readable: the point of the report is to find what is missing.
+        """
+        output = io.StringIO()
         with mock.patch.object(
             sync_service.gazu.project,
             "get_project_by_name",
@@ -923,18 +1035,15 @@ class VerifyProjectSyncTestCase(ApiDBTestCase):
                 "id": str(self.project.id),
                 "name": self.project.name,
             },
+        ), mock.patch.object(
+            sync_service.gazu.client,
+            "fetch_all",
+            side_effect=Exception("connection refused"),
+        ), redirect_stdout(
+            output
         ):
-            sync_service.verify_project_sync(
-                self.project.name, direction="push"
-            )
-            sync_service.verify_project_sync(
-                self.project.name, direction="pull"
-            )
-
-    def test_a_production_missing_locally_is_reported(self):
-        with mock.patch.object(
-            sync_service.gazu.project,
-            "get_project_by_name",
-            return_value={"id": str(uuid.uuid4()), "name": "Elsewhere"},
-        ):
-            sync_service.verify_project_sync("Elsewhere")
+            sync_service.verify_project_sync(self.project.name)
+        self.assertEqual(
+            self.row(output.getvalue(), "Asset"),
+            ["Asset", "N/A", "1", "-", "ok"],
+        )

@@ -1742,8 +1742,14 @@ def verify_project_sync(project_name, direction="pull"):
 
     try:
         remote_project = gazu.project.get_project_by_name(project_name)
-    except gazu.exception.ProjectNotFoundException:
-        remote_project = None
+    except Exception as exception:
+        # gazu answers None for a production it does not know, so anything
+        # raised here is the connection itself. The clause used to name
+        # gazu.exception.ProjectNotFoundException, which does not exist:
+        # evaluating it turned every failure into an AttributeError raised
+        # while handling the first one.
+        print(f"Could not reach the {remote_role} instance: {exception}")
+        return
 
     if remote_project is None:
         print(f"Project '{project_name}' not found on {remote_role}.")
