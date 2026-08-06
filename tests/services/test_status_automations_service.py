@@ -44,6 +44,74 @@ class StatusAutomationsServiceTestCase(ApiDBTestCase):
         self.generate_fixture_status_automation_to_status()
         self.generate_fixture_status_automation_to_ready_for()
 
+    def a_task_type_for(self, entity_kind, name):
+        return TaskType.create(
+            name=name,
+            short_name=name.lower().replace(" ", ""),
+            color="#FFFFFF",
+            for_entity=entity_kind,
+            department_id=self.department.id,
+        )
+
+    def a_task_on(self, entity, task_type):
+        return Task.create(
+            name=task_type.name,
+            project_id=self.project.id,
+            task_type_id=task_type.id,
+            task_status_id=self.task_status.id,
+            entity_id=entity.id,
+            assignees=[self.person],
+            assigner_id=self.assigner.id,
+        )
+
+    def an_automation(self, entity_type, in_task_type, out_task_type):
+        """
+        When a task of in_task_type is marked done on an entity of that
+        kind, a task of out_task_type on the same entity goes to wip.
+        """
+        automation = StatusAutomation.create(
+            entity_type=entity_type,
+            in_task_type_id=in_task_type.id,
+            in_task_status_id=self.task_status_done.id,
+            out_field_type="status",
+            out_task_type_id=out_task_type.id,
+            out_task_status_id=self.task_status_wip.id,
+        )
+        projects_service.add_status_automation_setting(
+            self.project_id, automation.id
+        )
+        return automation
+
+    def mark_done(self, task, text="Test"):
+        comments_service.create_comment(
+            self.person.id,
+            task.id,
+            str(self.task_status_done.id),
+            text,
+            [],
+            {},
+            None,
+        )
+
+    def wip_status_id(self):
+        return tasks_service.get_or_create_status(
+            "Work In Progress", "wip", "#3273dc", is_wip=True
+        )["id"]
+
+    def assert_the_automation_fires_on(self, entity, entity_type, prefix):
+        kind = entity_type.capitalize()
+        in_type = self.a_task_type_for(kind, f"{prefix} In")
+        out_type = self.a_task_type_for(kind, f"{prefix} Out")
+        in_task = self.a_task_on(entity, in_type)
+        out_task = self.a_task_on(entity, out_type)
+        self.an_automation(entity_type, in_type, out_type)
+
+        self.mark_done(in_task)
+
+        self.assertEqual(
+            str(Task.get(out_task.id).task_status_id), self.wip_status_id()
+        )
+
     def test_created_status_automation(self):
         self.assertEqual(
             len(status_automations_service.get_status_automations()), 2
@@ -95,205 +163,50 @@ class StatusAutomationsServiceTestCase(ApiDBTestCase):
         self.assertEqual(self.asset.ready_for, self.task_type_layout.id)
 
     def test_status_automation_sequence(self):
-        """
-        Test that a status automation fires for sequence tasks.
-        """
-        # Create sequence-specific task types
-        task_type_seq_prep = TaskType.create(
-            name="Seq Prep",
-            short_name="sprep",
-            color="#FFFFFF",
-            for_entity="Sequence",
-            department_id=self.department.id,
-        )
-        task_type_seq_review = TaskType.create(
-            name="Seq Review",
-            short_name="srev",
-            color="#FFFFFF",
-            for_entity="Sequence",
-            department_id=self.department.id,
-        )
-
-        # Create tasks on the sequence entity
-        task_seq_prep = Task.create(
-            name="Seq Prep",
-            project_id=self.project.id,
-            task_type_id=task_type_seq_prep.id,
-            task_status_id=self.task_status.id,
-            entity_id=self.sequence.id,
-            assignees=[self.person],
-            assigner_id=self.assigner.id,
-        )
-        task_seq_review = Task.create(
-            name="Seq Review",
-            project_id=self.project.id,
-            task_type_id=task_type_seq_review.id,
-            task_status_id=self.task_status.id,
-            entity_id=self.sequence.id,
-            assignees=[self.person],
-            assigner_id=self.assigner.id,
-        )
-
-        # Create automation: when Seq Prep is done, set Seq Review to WIP
-        automation = StatusAutomation.create(
-            entity_type="sequence",
-            in_task_type_id=task_type_seq_prep.id,
-            in_task_status_id=self.task_status_done.id,
-            out_field_type="status",
-            out_task_type_id=task_type_seq_review.id,
-            out_task_status_id=self.task_status_wip.id,
-        )
-        projects_service.add_status_automation_setting(
-            self.project_id, automation.id
-        )
-
-        wip_status = tasks_service.get_or_create_status(
-            "Work In Progress", "wip", "#3273dc", is_wip=True
-        )
-
-        # Trigger the automation
-        comments_service.create_comment(
-            self.person.id,
-            task_seq_prep.id,
-            str(self.task_status_done.id),
-            "Sequence automation test",
-            [],
-            {},
-            None,
-        )
-
-        # Verify the target task status was changed
-        task_seq_review = Task.get(task_seq_review.id)
-        self.assertEqual(str(task_seq_review.task_status_id), wip_status["id"])
+        self.assert_the_automation_fires_on(self.sequence, "sequence", "Seq")
 
     def test_status_automation_episode(self):
+        episode = self.generate_fixture_episode()
+        self.assert_the_automation_fires_on(episode, "episode", "Ep")
+
+    def test_get_status_automations_is_memoized(self):
         """
-        Test that a status automation fires for episode tasks.
+        The listing is cached for two minutes, so an automation added after
+        it has been read stays out of it until the cache is dropped. That is
+        what clear_status_automation_cache is for.
         """
-        self.generate_fixture_episode()
-
-        # Create episode-specific task types
-        task_type_ep_setup = TaskType.create(
-            name="Ep Setup",
-            short_name="eps",
-            color="#FFFFFF",
-            for_entity="Episode",
-            department_id=self.department.id,
-        )
-        task_type_ep_final = TaskType.create(
-            name="Ep Final",
-            short_name="epf",
-            color="#FFFFFF",
-            for_entity="Episode",
-            department_id=self.department.id,
+        before = status_automations_service.get_status_automations()
+        automation = self.an_automation(
+            "asset", self.task_type_concept, self.task_type_modeling
         )
 
-        # Create tasks on the episode entity
-        task_ep_setup = Task.create(
-            name="Ep Setup",
-            project_id=self.project.id,
-            task_type_id=task_type_ep_setup.id,
-            task_status_id=self.task_status.id,
-            entity_id=self.episode.id,
-            assignees=[self.person],
-            assigner_id=self.assigner.id,
-        )
-        task_ep_final = Task.create(
-            name="Ep Final",
-            project_id=self.project.id,
-            task_type_id=task_type_ep_final.id,
-            task_status_id=self.task_status.id,
-            entity_id=self.episode.id,
-            assignees=[self.person],
-            assigner_id=self.assigner.id,
+        self.assertEqual(
+            status_automations_service.get_status_automations(), before
         )
 
-        # Create automation: when Ep Setup is done, set Ep Final to WIP
-        automation = StatusAutomation.create(
-            entity_type="episode",
-            in_task_type_id=task_type_ep_setup.id,
-            in_task_status_id=self.task_status_done.id,
-            out_field_type="status",
-            out_task_type_id=task_type_ep_final.id,
-            out_task_status_id=self.task_status_wip.id,
+        status_automations_service.clear_status_automation_cache()
+        self.assertIn(
+            str(automation.id),
+            [
+                held["id"]
+                for held in status_automations_service.get_status_automations()
+            ],
         )
-        projects_service.add_status_automation_setting(
-            self.project_id, automation.id
-        )
-
-        wip_status = tasks_service.get_or_create_status(
-            "Work In Progress", "wip", "#3273dc", is_wip=True
-        )
-
-        # Trigger the automation
-        comments_service.create_comment(
-            self.person.id,
-            task_ep_setup.id,
-            str(self.task_status_done.id),
-            "Episode automation test",
-            [],
-            {},
-            None,
-        )
-
-        # Verify the target task status was changed
-        task_ep_final = Task.get(task_ep_final.id)
-        self.assertEqual(str(task_ep_final.task_status_id), wip_status["id"])
 
     def test_status_automation_entity_type_mismatch(self):
         """
         Test that an asset automation does NOT fire on a sequence task.
         """
-        # Create sequence-specific task types with the SAME names as asset
-        # task types to ensure entity_type filtering is doing its job
-        task_type_seq_concept = TaskType.create(
-            name="Seq Concept",
-            short_name="scpt",
-            color="#FFFFFF",
-            for_entity="Sequence",
-            department_id=self.department.id,
-        )
-
-        # Create a sequence task using the sequence-specific task type
-        task_seq = Task.create(
-            name="Seq Concept",
-            project_id=self.project.id,
-            task_type_id=task_type_seq_concept.id,
-            task_status_id=self.task_status.id,
-            entity_id=self.sequence.id,
-            assignees=[self.person],
-            assigner_id=self.assigner.id,
-        )
-
-        # Create an asset automation that uses this same task type as input
-        # (simulating a misconfiguration)
-        automation = StatusAutomation.create(
-            entity_type="asset",
-            in_task_type_id=task_type_seq_concept.id,
-            in_task_status_id=self.task_status_done.id,
-            out_field_type="status",
-            out_task_type_id=self.task_type_modeling.id,
-            out_task_status_id=self.task_status_wip.id,
-        )
-        projects_service.add_status_automation_setting(
-            self.project_id, automation.id
-        )
-
-        # The modeling task should NOT change because the automation is for
-        # assets but the task's entity is a sequence
+        # An asset automation whose input task type belongs to sequences: a
+        # misconfiguration the entity type filter has to catch.
+        sequence_type = self.a_task_type_for("Sequence", "Seq Concept")
+        task_seq = self.a_task_on(self.sequence, sequence_type)
+        self.an_automation("asset", sequence_type, self.task_type_modeling)
         initial_status = str(self.task_modeling.task_status_id)
 
-        comments_service.create_comment(
-            self.person.id,
-            task_seq.id,
-            str(self.task_status_done.id),
-            "Should not trigger asset automation",
-            [],
-            {},
-            None,
-        )
+        self.mark_done(task_seq, "Should not trigger asset automation")
 
-        self.task_modeling = Task.get(self.task_modeling.id)
         self.assertEqual(
-            str(self.task_modeling.task_status_id), initial_status
+            str(Task.get(self.task_modeling.id).task_status_id),
+            initial_status,
         )
