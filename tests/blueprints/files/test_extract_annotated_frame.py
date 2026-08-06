@@ -1,11 +1,39 @@
+import io
 import os
 import tempfile
+import zipfile
 from unittest.mock import patch
 
 from PIL import Image
 
 from tests.base import ApiDBTestCase
-from zou.app.services import preview_files_service
+from zou.app.models.preview_file import PreviewFile
+from zou.app.services import files_service, preview_files_service
+
+
+def _rect_annotation(time, left, stroke):
+    """
+    One annotated rectangle at a given time, the smallest drawing the
+    extraction routes accept.
+    """
+    return {
+        "time": time,
+        "drawing": {
+            "objects": [
+                {
+                    "type": "rect",
+                    "left": left,
+                    "top": left,
+                    "width": 20,
+                    "height": 20,
+                    "stroke": stroke,
+                    "strokeWidth": 2,
+                    "canvasWidth": 200,
+                    "canvasHeight": 200,
+                }
+            ]
+        },
+    }
 
 
 def _make_white_png(size=(200, 200)):
@@ -230,7 +258,16 @@ class ExtractAnnotatedFramePictureRouteTestCase(ApiDBTestCase):
         self.assertEqual(response.status_code, 200)
 
 
-class ExtractAllAnnotatedFramesRouteTestCase(ApiDBTestCase):
+class AnnotatedFramesRouteMixin:
+    """
+    The zip and pdf routes take the same preview file and answer the same
+    way on the failure paths. Only the route and the success body differ,
+    so they share everything but their success test. Not a TestCase, so
+    neither loader collects it on its own.
+    """
+
+    route = None
+
     def setUp(self):
         super().setUp()
         self.generate_base_context()
@@ -240,42 +277,8 @@ class ExtractAllAnnotatedFramesRouteTestCase(ApiDBTestCase):
         self.generate_fixture_task()
         self.preview_file = self.generate_fixture_preview_file().serialize()
         annotations = [
-            {
-                "time": 0,
-                "drawing": {
-                    "objects": [
-                        {
-                            "type": "rect",
-                            "left": 10,
-                            "top": 10,
-                            "width": 20,
-                            "height": 20,
-                            "stroke": "#ff0000",
-                            "strokeWidth": 2,
-                            "canvasWidth": 200,
-                            "canvasHeight": 200,
-                        }
-                    ]
-                },
-            },
-            {
-                "time": 1,
-                "drawing": {
-                    "objects": [
-                        {
-                            "type": "rect",
-                            "left": 30,
-                            "top": 30,
-                            "width": 20,
-                            "height": 20,
-                            "stroke": "#00ff00",
-                            "strokeWidth": 2,
-                            "canvasWidth": 200,
-                            "canvasHeight": 200,
-                        }
-                    ]
-                },
-            },
+            _rect_annotation(time=0, left=10, stroke="#ff0000"),
+            _rect_annotation(time=1, left=30, stroke="#00ff00"),
         ]
         preview_files_service.update_preview_file_annotations(
             self.user["id"],
@@ -284,29 +287,10 @@ class ExtractAllAnnotatedFramesRouteTestCase(ApiDBTestCase):
             additions=annotations,
         )
         self.url = (
-            "/actions/preview-files/"
-            f"{self.preview_file['id']}/extract-annotated-frames"
+            f"/actions/preview-files/{self.preview_file['id']}/{self.route}"
         )
 
-    def test_returns_zip_for_movie(self):
-        import io
-        import zipfile
-
-        _patch_movie_extraction(self, _make_white_png)
-        response = self.app.get(self.url, headers=self.base_headers)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.mimetype, "application/zip")
-        with zipfile.ZipFile(io.BytesIO(response.data)) as zf:
-            self.assertEqual(len(zf.namelist()), 2)
-            self.assertTrue(
-                all(n.endswith(".png") for n in zf.namelist()),
-                zf.namelist(),
-            )
-
     def test_400_when_no_annotations(self):
-        from zou.app.models.preview_file import PreviewFile
-        from zou.app.services import files_service
-
         record = PreviewFile.get(self.preview_file["id"])
         record.update({"annotations": []})
         files_service.clear_preview_file_cache(self.preview_file["id"])
@@ -319,63 +303,28 @@ class ExtractAllAnnotatedFramesRouteTestCase(ApiDBTestCase):
         self.assertEqual(response.status_code, 404)
 
 
-class ExtractAllAnnotatedFramesPdfRouteTestCase(ApiDBTestCase):
-    def setUp(self):
-        super().setUp()
-        self.generate_base_context()
-        self.generate_fixture_asset()
-        self.generate_fixture_assigner()
-        self.generate_fixture_person()
-        self.generate_fixture_task()
-        self.preview_file = self.generate_fixture_preview_file().serialize()
-        annotations = [
-            {
-                "time": 0,
-                "drawing": {
-                    "objects": [
-                        {
-                            "type": "rect",
-                            "left": 10,
-                            "top": 10,
-                            "width": 20,
-                            "height": 20,
-                            "stroke": "#ff0000",
-                            "strokeWidth": 2,
-                            "canvasWidth": 200,
-                            "canvasHeight": 200,
-                        }
-                    ]
-                },
-            },
-            {
-                "time": 1,
-                "drawing": {
-                    "objects": [
-                        {
-                            "type": "rect",
-                            "left": 30,
-                            "top": 30,
-                            "width": 20,
-                            "height": 20,
-                            "stroke": "#00ff00",
-                            "strokeWidth": 2,
-                            "canvasWidth": 200,
-                            "canvasHeight": 200,
-                        }
-                    ]
-                },
-            },
-        ]
-        preview_files_service.update_preview_file_annotations(
-            self.user["id"],
-            str(self.project.id),
-            self.preview_file["id"],
-            additions=annotations,
-        )
-        self.url = (
-            "/actions/preview-files/"
-            f"{self.preview_file['id']}/extract-annotated-frames-pdf"
-        )
+class ExtractAllAnnotatedFramesRouteTestCase(
+    AnnotatedFramesRouteMixin, ApiDBTestCase
+):
+    route = "extract-annotated-frames"
+
+    def test_returns_zip_for_movie(self):
+        _patch_movie_extraction(self, _make_white_png)
+        response = self.app.get(self.url, headers=self.base_headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "application/zip")
+        with zipfile.ZipFile(io.BytesIO(response.data)) as archive:
+            self.assertEqual(len(archive.namelist()), 2)
+            self.assertTrue(
+                all(n.endswith(".png") for n in archive.namelist()),
+                archive.namelist(),
+            )
+
+
+class ExtractAllAnnotatedFramesPdfRouteTestCase(
+    AnnotatedFramesRouteMixin, ApiDBTestCase
+):
+    route = "extract-annotated-frames-pdf"
 
     def test_returns_pdf_for_movie(self):
         _patch_movie_extraction(self, _make_white_png)
@@ -383,18 +332,3 @@ class ExtractAllAnnotatedFramesPdfRouteTestCase(ApiDBTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.mimetype, "application/pdf")
         self.assertTrue(response.data.startswith(b"%PDF-"))
-
-    def test_400_when_no_annotations(self):
-        from zou.app.models.preview_file import PreviewFile
-        from zou.app.services import files_service
-
-        record = PreviewFile.get(self.preview_file["id"])
-        record.update({"annotations": []})
-        files_service.clear_preview_file_cache(self.preview_file["id"])
-        response = self.app.get(self.url, headers=self.base_headers)
-        self.assertEqual(response.status_code, 400)
-
-    def test_404_when_movie_binary_missing(self):
-        _patch_movie_extraction(self, lambda: None)
-        response = self.app.get(self.url, headers=self.base_headers)
-        self.assertEqual(response.status_code, 404)
