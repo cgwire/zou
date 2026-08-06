@@ -1005,6 +1005,24 @@ def get_path_folders(project, file_path, mode="working", sep="/"):
     return file_path.split(sep)
 
 
+def _get_child_by_name(name, entity_type_id, constraints, parent_token):
+    """
+    Return the entity of given type named by a path token, narrowed by its
+    parent when the path already resolved one.
+    """
+    if not constraints.get(PathTokens.PROJECT):
+        return None
+
+    criterions = {
+        "entity_type_id": entity_type_id,
+        "project_id": constraints[PathTokens.PROJECT],
+    }
+    if constraints.get(parent_token):
+        criterions["parent_id"] = constraints[parent_token]
+
+    return Entity.get_by(Entity.name.ilike(name), **criterions)
+
+
 def get_data_from_token(type_token, value_token, constraints=None):
     """
     Get the first corresponding data using the given type and value tokens.
@@ -1044,31 +1062,26 @@ def get_data_from_token(type_token, value_token, constraints=None):
         )
 
     elif type_token == PathTokens.SEQUENCE:
-        # A sequence depends on a project and an episode
-        if not constraints.get(PathTokens.PROJECT) or not constraints.get(
-            PathTokens.EPISODE
-        ):
-            return None
-
-        data = Entity.get_by(
-            Entity.name.ilike(value_token),
-            entity_type_id=shots_service.get_sequence_type()["id"],
-            parent_id=constraints[PathTokens.EPISODE],
-            project_id=constraints[PathTokens.PROJECT],
+        # A sequence depends on a project, and on an episode only in a
+        # production that has any: the episode narrows the search when the
+        # path carried one. Requiring it made every path of a flat
+        # production stop here, since neither shipped tree puts an
+        # <Episode> token in front of the sequence.
+        data = _get_child_by_name(
+            value_token,
+            shots_service.get_sequence_type()["id"],
+            constraints,
+            parent_token=PathTokens.EPISODE,
         )
 
     elif type_token == PathTokens.SCENE:
-        # A scene depends on a project and a sequence
-        if not constraints.get(PathTokens.PROJECT) or not constraints.get(
-            PathTokens.EPISODE
-        ):
-            return None
-
-        data = Entity.get_by(
-            Entity.name.ilike(value_token),
-            entity_type_id=shots_service.get_scene_type()["id"],
-            project_id=constraints[PathTokens.PROJECT],
-            parent_id=constraints[PathTokens.SEQUENCE],
+        # A scene depends on a project, and on the sequence it sits in when
+        # the path carried one.
+        data = _get_child_by_name(
+            value_token,
+            shots_service.get_scene_type()["id"],
+            constraints,
+            parent_token=PathTokens.SEQUENCE,
         )
 
     elif type_token == PathTokens.OUTPUT_TYPE:
@@ -1227,15 +1240,22 @@ def guess_asset(project, asset_type_name, asset_name):
 def guess_task_type(department_name, task_type_name):
     """
     Find the task type named by the tokens read from a path. The department
-    disambiguates two task types sharing a name across departments.
+    disambiguates two task types sharing a name across departments, and only
+    narrows the search: an unknown one is left out rather than failing, as
+    the asset type and the episode are in the two guesses above.
     """
     criterions = {"name": task_type_name}
     if len(department_name) > 0:
-        criterions["department_id"] = Department.get_by(
-            name=department_name
-        ).id
+        department = Department.get_by(name=department_name)
+        if department is not None:
+            criterions["department_id"] = department.id
 
-    return TaskType.get_by(**criterions)
+    task_type = TaskType.get_by(**criterions)
+    if task_type is None:
+        raise WrongPathFormatException(
+            f"Task type {task_type_name} was not found in given path."
+        )
+    return task_type
 
 
 def guess_task(entity, task_type, task_name):
@@ -1335,6 +1355,15 @@ def guess_from_path(project_id, file_path, sep="/"):
                 # Stop trying to get data from given template on latest valid
                 # data found.
                 if not data:
+                    break
+
+                # The production is the one the caller named, and the one
+                # the route checked their permission against. A path naming
+                # another production is a path for someone else: it must
+                # not come back filled with that production's ids.
+                if token == PathTokens.PROJECT and str(data.id) != str(
+                    project["id"]
+                ):
                     break
 
                 if isinstance(data, str):
