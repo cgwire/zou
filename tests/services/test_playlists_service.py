@@ -193,6 +193,37 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(result["shots"]), 5)
         self.assertEqual(result["shots"][-1]["id"], str(self.shot.id))
 
+    def test_set_preview_files_for_entities(self):
+        """
+        Previews grouped by entity then by task type. The task types come
+        by descending priority and then by name, the previews newest
+        revision first.
+        """
+        self.generate_fixture_preview_files()
+        # Layout is created second and named after Animation, so only the
+        # priority can put it first.
+        self.task_type_animation.update({"priority": 1})
+        self.task_type_layout.update({"priority": 2})
+        layout_task = self.generate_fixture_shot_task(
+            name="layout", task_type_id=self.task_type_layout.id
+        )
+        self.generate_fixture_preview_file(revision=1, task_id=layout_task.id)
+        self.generate_fixture_preview_file(revision=2, task_id=layout_task.id)
+
+        result, _ = playlists_service.set_preview_files_for_entities(
+            {"shots": [{"id": str(self.shot.id)}]}
+        )
+
+        previews = result["shots"][0]["preview_files"]
+        self.assertEqual(
+            list(previews.keys()),
+            [str(self.task_type_layout.id), str(self.task_type_animation.id)],
+        )
+        for task_type_id, entries in previews.items():
+            self.assertEqual(
+                [entry["revision"] for entry in entries], [2, 1], task_type_id
+            )
+
     def test_get_playlist_file_name(self):
         playlist = self.generate_fixture_playlists()
         self.assertEqual(
