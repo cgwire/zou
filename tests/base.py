@@ -174,6 +174,17 @@ class ApiTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, code)
         return response.data.decode("utf-8")
 
+    def get_ndjson(self, path, code=200):
+        """
+        Read a streamed listing. The first line is a header describing the
+        rows, the ones after it are the rows themselves.
+        """
+        response = self.app.get(path, headers=self.base_headers)
+        self.assertEqual(response.status_code, code)
+        self.assertEqual(response.mimetype, "application/x-ndjson")
+        lines = response.data.decode("utf-8").strip().split("\n")
+        return json.loads(lines[0]), [json.loads(line) for line in lines[1:]]
+
     def get_first(self, path, code=200):
         """
         Get first element of data at given path. It makes the assumption that

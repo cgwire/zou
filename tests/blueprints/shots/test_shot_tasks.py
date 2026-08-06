@@ -1,5 +1,3 @@
-import orjson
-
 from tests.base import ApiDBTestCase
 
 from zou.app.services import (
@@ -75,32 +73,23 @@ class ShotTasksTestCase(ApiDBTestCase):
     def test_get_shots_and_tasks_stream(self):
         self.generate_fixture_shot_task(name="Secondary")
         reference = self.get("data/shots/with-tasks")
-        response = self.app.get(
-            "data/shots/with-tasks?stream=true", headers=self.base_headers
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.mimetype, "application/x-ndjson")
-        lines = response.data.decode("utf-8").strip().split("\n")
-        header = orjson.loads(lines[0])
+
+        header, rows = self.get_ndjson("data/shots/with-tasks?stream=true")
+
         self.assertFalse(header["compact"])
-        shots = [orjson.loads(line) for line in lines[1:]]
-        self.assertEqual(shots, reference)
+        self.assertEqual(rows, reference)
 
     def test_get_shots_and_tasks_stream_compact(self):
         self.generate_fixture_shot_task(name="Secondary")
         reference = self.get("data/shots/with-tasks")
-        response = self.app.get(
-            "data/shots/with-tasks?stream=true&compact=true",
-            headers=self.base_headers,
+
+        header, rows = self.get_ndjson(
+            "data/shots/with-tasks?stream=true&compact=true"
         )
-        self.assertEqual(response.status_code, 200)
-        lines = response.data.decode("utf-8").strip().split("\n")
-        header = orjson.loads(lines[0])
+
         self.assertTrue(header["compact"])
         rebuilt = rebuild_from_compact(
-            header["shot_fields"],
-            header["task_fields"],
-            [orjson.loads(line) for line in lines[1:]],
+            header["shot_fields"], header["task_fields"], rows
         )
         self.assertEqual(rebuilt, reference)
 
