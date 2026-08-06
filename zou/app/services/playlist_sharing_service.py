@@ -1,7 +1,7 @@
 import datetime
 import uuid
 
-from zou.app.utils import auth, events, fields
+from zou.app.utils import auth, events
 
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
@@ -21,7 +21,32 @@ from zou.app.services import (
 from zou.app.services.exception import (
     PlaylistShareLinkNotFoundException,
     PreviewFileNotFoundException,
+    WrongParameterException,
 )
+
+
+def _get_expiration_datetime(expiration_date):
+    """
+    Turn the expiration date of a share link into the instant it stops
+    working. A day names the whole day: a manager who sets the link to
+    expire on the 10th expects it to work on the 10th, so a date-only
+    value lands on its last second rather than its first. A full
+    timestamp is honoured as given.
+    """
+    if not expiration_date:
+        return None
+    try:
+        return datetime.datetime.combine(
+            datetime.date.fromisoformat(expiration_date), datetime.time.max
+        )
+    except ValueError:
+        pass
+    try:
+        return datetime.datetime.fromisoformat(expiration_date)
+    except ValueError:
+        raise WrongParameterException(
+            f"{expiration_date} is not a valid ISO 8601 date"
+        )
 
 
 def create_share_link(
@@ -50,11 +75,7 @@ def create_share_link(
         token=token,
         playlist_id=playlist_id,
         created_by=person_id,
-        expiration_date=(
-            fields.get_date_object(expiration_date)
-            if expiration_date
-            else None
-        ),
+        expiration_date=_get_expiration_datetime(expiration_date),
         can_comment=can_comment,
         password=password_hash,
     )
