@@ -1209,23 +1209,40 @@ class ChangePasswordErrorsTestCase(ApiDBTestCase):
         headers["Content-type"] = "application/json"
         return tokens, headers
 
-    def test_change_password_wrong_old(self):
+    def test_a_refused_change_leaves_the_password_alone(self):
         """
-        Change password with wrong old password returns 400.
+        Every way the form can be wrong ends in a 400: the old password has
+        to match, the two new ones have to agree, and the new one has to be
+        long enough. The status code is half the contract, the other half is
+        that the old password still works afterwards.
         """
         _, headers = self.login()
-        response = self.app.post(
-            "auth/change-password",
-            data=json.dumps(
-                {
-                    "old_password": "wrongpassword",
-                    "password": "newpassword1",
-                    "password_2": "newpassword1",
-                }
-            ),
-            headers=headers,
-        )
-        self.assertEqual(response.status_code, 400)
+        cases = {
+            "the old password is wrong": {
+                "old_password": "wrongpassword",
+                "password": "newpassword1",
+                "password_2": "newpassword1",
+            },
+            "the two new ones disagree": {
+                "old_password": "secretpassword",
+                "password": "newpassword1",
+                "password_2": "differentpass",
+            },
+            "the new one is too short": {
+                "old_password": "secretpassword",
+                "password": "123",
+                "password_2": "123",
+            },
+        }
+        for reason, payload in cases.items():
+            with self.subTest(reason=reason):
+                response = self.app.post(
+                    "auth/change-password",
+                    data=json.dumps(payload),
+                    headers=headers,
+                )
+                self.assertEqual(response.status_code, 400)
+                self.post("auth/login", self.credentials, 200)
 
     def test_change_password_while_locked_out(self):
         """
@@ -1253,39 +1270,3 @@ class ChangePasswordErrorsTestCase(ApiDBTestCase):
         self.assertEqual(response.status_code, 400)
         data = json.loads(response.data.decode("utf-8"))
         self.assertTrue(data["too_many_failed_login_attemps"])
-
-    def test_change_password_mismatch(self):
-        """
-        Change password with mismatched passwords returns 400.
-        """
-        _, headers = self.login()
-        response = self.app.post(
-            "auth/change-password",
-            data=json.dumps(
-                {
-                    "old_password": "secretpassword",
-                    "password": "newpassword1",
-                    "password_2": "differentpass",
-                }
-            ),
-            headers=headers,
-        )
-        self.assertEqual(response.status_code, 400)
-
-    def test_change_password_too_short(self):
-        """
-        Change password with short password returns 400.
-        """
-        _, headers = self.login()
-        response = self.app.post(
-            "auth/change-password",
-            data=json.dumps(
-                {
-                    "old_password": "secretpassword",
-                    "password": "123",
-                    "password_2": "123",
-                }
-            ),
-            headers=headers,
-        )
-        self.assertEqual(response.status_code, 400)

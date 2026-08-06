@@ -83,15 +83,34 @@ class NewOutputFileTestCase(OutputFileTestCase):
     is refused.
     """
 
-    def test_new_output(self):
+    folder = (
+        "/simple/productions/export/cosmos_landromat/assets/props/tree/"
+        "shaders/texture"
+    )
+    stem = "cosmos_landromat_props_tree_shaders_texture"
+
+    def publish(self, code=201, **overrides):
+        """
+        Publish an output from the working file, overriding any part of the
+        payload the case cares about.
+        """
         data = {
             "person_id": self.person_id,
             "comment": "test working file publish",
             "output_type_id": self.tx_type_id,
             "task_type_id": self.task_type_id,
             "working_file_id": self.working_file_id,
+            **overrides,
         }
-        result = self.new_output(data)
+        # None means "leave this out", which is how a case publishes with no
+        # source file at all.
+        return self.new_output(
+            {key: value for key, value in data.items() if value is not None},
+            code,
+        )
+
+    def test_new_output(self):
+        result = self.publish()
 
         self.assertEqual(
             result["folder_path"],
@@ -106,108 +125,56 @@ class NewOutputFileTestCase(OutputFileTestCase):
         output_file_id = result["id"]
         output_file = self.get(f"/data/output-files/{output_file_id}")
 
-        self.assertEqual(output_file["comment"], data["comment"])
+        self.assertEqual(output_file["comment"], "test working file publish")
         self.assertEqual(output_file["revision"], 1)
         self.assertEqual(output_file["source_file_id"], self.working_file_id)
 
-    def test_new_output_with_extension(self):
-        data = {
-            "person_id": self.person_id,
-            "comment": "test working file publish with extension",
-            "output_type_id": self.tx_type_id,
-            "task_type_id": self.task_type_id,
-            "working_file_id": self.working_file_id,
-            "extension": ".tx",
+    def test_the_payload_extras_shape_the_published_path(self):
+        """
+        Extension, forced name and element count all reach the path the
+        publish returns. Publishing without a source file changes nothing
+        about it.
+        """
+        # Each case publishes under its own name: two publishes of the
+        # same name would be revision 1 then revision 2, and the paths below
+        # all say v001.
+        cases = {
+            "an extension": (
+                {"extension": ".tx"},
+                {"extension": ".tx"},
+                f"{self.folder}/{self.stem}_main_v001.tx",
+            ),
+            "no source file": (
+                {
+                    "extension": ".tx",
+                    "name": "nosource",
+                    "working_file_id": None,
+                },
+                {"extension": ".tx", "source_file_id": None},
+                f"{self.folder}/{self.stem}_nosource_v001.tx",
+            ),
+            "a forced name": (
+                {"extension": ".tx", "name": "special"},
+                {"extension": ".tx"},
+                f"{self.folder}/{self.stem}_special_v001.tx",
+            ),
+            "an element count": (
+                {"extension": ".jpg", "nb_elements": 50, "name": "sequence"},
+                {"extension": ".jpg", "nb_elements": 50},
+                f"{self.folder}/{self.stem}_sequence_v001_[1-50].jpg",
+            ),
         }
-        result = self.new_output(data)
-        output_file_id = result["id"]
-        output_file = self.get(f"/data/output-files/{output_file_id}")
-
-        self.assertEqual(output_file["extension"], ".tx")
-        self.assertEqual(
-            output_file["path"],
-            "/simple/productions/export/cosmos_landromat/assets/props/tree/"
-            "shaders/texture/"
-            "cosmos_landromat_props_tree_shaders_texture_main_v001.tx",
-        )
-
-    def test_new_output_without_source_file(self):
-        data = {
-            "person_id": self.person_id,
-            "comment": "test working file publish with extension",
-            "output_type_id": self.tx_type_id,
-            "task_type_id": self.task_type_id,
-            "extension": ".tx",
-        }
-        result = self.new_output(data)
-        output_file_id = result["id"]
-        output_file = self.get(f"/data/output-files/{output_file_id}")
-
-        self.assertEqual(output_file["extension"], ".tx")
-        self.assertEqual(
-            output_file["path"],
-            "/simple/productions/export/cosmos_landromat/assets/props/tree/"
-            "shaders/texture/"
-            "cosmos_landromat_props_tree_shaders_texture_main_v001.tx",
-        )
-
-    def test_new_output_with_name(self):
-        data = {
-            "person_id": self.person_id,
-            "comment": "test working file publish with extension",
-            "output_type_id": self.tx_type_id,
-            "task_type_id": self.task_type_id,
-            "working_file_id": self.working_file_id,
-            "extension": ".tx",
-            "name": "special",
-        }
-        result = self.new_output(data)
-        output_file_id = result["id"]
-        output_file = self.get(f"/data/output-files/{output_file_id}")
-
-        self.assertEqual(output_file["extension"], ".tx")
-        self.assertEqual(
-            output_file["path"],
-            "/simple/productions/export/cosmos_landromat/assets/props/tree/"
-            "shaders/texture/"
-            "cosmos_landromat_props_tree_shaders_texture_special_v001.tx",
-        )
-
-    def test_new_output_with_extension_and_elements(self):
-        data = {
-            "person_id": self.person_id,
-            "comment": "test working file publish with extension",
-            "output_type_id": self.tx_type_id,
-            "task_type_id": self.task_type_id,
-            "working_file_id": self.working_file_id,
-            "extension": ".jpg",
-            "nb_elements": 50,
-            "name": "special",
-        }
-        result = self.new_output(data)
-        output_file_id = result["id"]
-        output_file = self.get(f"/data/output-files/{output_file_id}")
-
-        self.assertEqual(output_file["extension"], ".jpg")
-        self.assertEqual(output_file["nb_elements"], 50)
-        self.assertEqual(
-            output_file["path"],
-            "/simple/productions/export/cosmos_landromat/assets/props/tree/"
-            "shaders/texture/"
-            "cosmos_landromat_props_tree_shaders_"
-            "texture_special_v001_[1-50].jpg",
-        )
+        for reason, (overrides, expected, path) in cases.items():
+            with self.subTest(reason=reason):
+                result = self.publish(**overrides)
+                output_file = self.get(f"/data/output-files/{result['id']}")
+                for key, value in expected.items():
+                    self.assertEqual(output_file[key], value)
+                self.assertEqual(output_file["path"], path)
 
     def test_new_output_again(self):
-        data = {
-            "comment": "test working file publish",
-            "person_id": self.person_id,
-            "output_type_id": self.tx_type_id,
-            "task_type_id": self.task_type_id,
-            "working_file_id": self.working_file_id,
-        }
-        result = self.new_output(data)
-        result = self.new_output(data)
+        self.publish()
+        result = self.publish()
 
         self.assertEqual(
             result["folder_path"],
@@ -222,20 +189,12 @@ class NewOutputFileTestCase(OutputFileTestCase):
         output_file_id = result["id"]
         output_file = self.get(f"/data/output-files/{output_file_id}")
 
-        self.assertEqual(output_file["comment"], data["comment"])
+        self.assertEqual(output_file["comment"], "test working file publish")
         self.assertEqual(output_file["revision"], 2)
         self.assertEqual(output_file["source_file_id"], self.working_file_id)
 
     def test_new_output_revision_forced(self):
-        data = {
-            "person_id": self.person_id,
-            "comment": "test working file publish",
-            "output_type_id": self.tx_type_id,
-            "task_type_id": self.task_type_id,
-            "working_file_id": self.working_file_id,
-            "revision": 66,
-        }
-        result = self.new_output(data)
+        result = self.publish(revision=66)
 
         self.assertEqual(
             result["file_name"],
@@ -251,16 +210,8 @@ class NewOutputFileTestCase(OutputFileTestCase):
         self.new_output(data, 400)
 
     def test_create_same_output_file(self):
-        data = {
-            "person_id": self.person_id,
-            "comment": "test working file publish",
-            "output_type_id": self.tx_type_id,
-            "task_type_id": self.task_type_id,
-            "working_file_id": self.working_file_id,
-            "revision": 66,
-        }
-        self.new_output(data)
-        self.new_output(data, 400)
+        self.publish(revision=66)
+        self.publish(revision=66, code=400)
 
     def test_to_review(self):
         data = {"person_id": str(self.person_id)}
