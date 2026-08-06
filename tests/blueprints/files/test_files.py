@@ -30,12 +30,29 @@ class FileRoutesTestCase(ApiDBTestCase):
         self.assertEqual(result["id"], str(self.output_file.id))
 
     def test_get_instance_output_types(self):
+        """
+        The output types an instance has published under, which is empty
+        until it publishes something.
+        """
         self.generate_fixture_scene_asset_instance()
-        result = self.get(
+        path = (
             f"/data/asset-instances/{self.asset_instance.id}"
             f"/entities/{self.scene.id}/output-types"
         )
-        self.assertIsInstance(result, list)
+        self.assertEqual(self.get(path), [])
+
+        self.generate_fixture_output_type()
+        self.generate_fixture_output_file(
+            asset_instance=self.asset_instance,
+            temporal_entity_id=self.scene.id,
+        )
+
+        result = self.get(path)
+
+        self.assertEqual(
+            [output_type["id"] for output_type in result],
+            [str(self.output_type.id)],
+        )
 
     def test_guess_from_path(self):
         result = self.post(
@@ -46,18 +63,24 @@ class FileRoutesTestCase(ApiDBTestCase):
             },
             200,
         )
-        self.assertIsInstance(result, list)
+        # Nothing in that path names anything of this production.
+        self.assertEqual(result, [])
 
     def test_guess_from_path_deprecated_alias(self):
-        result = self.post(
-            "/data/entities/guess_from_path",
-            {
-                "project_id": str(self.project.id),
-                "file_path": "/some/test/path",
-            },
-            200,
+        """
+        The underscore spelling is kept for older clients and has to answer
+        exactly what the canonical route answers.
+        """
+        body = {
+            "project_id": str(self.project.id),
+            "file_path": "/some/test/path",
+        }
+
+        alias = self.post("/data/entities/guess_from_path", body, 200)
+
+        self.assertEqual(
+            alias, self.post("/data/entities/guess-from-path", body, 200)
         )
-        self.assertIsInstance(result, list)
 
     def test_set_file_tree(self):
         result = self.post(

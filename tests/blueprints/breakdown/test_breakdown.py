@@ -136,8 +136,25 @@ class BreakdownRoutesTestCase(ApiDBTestCase):
         self.assertEqual(len(links_after), initial_count - 1)
 
     def test_get_scene_asset_instances(self):
+        """
+        The instances of a scene, grouped by the asset they instantiate.
+        Cameras are assets too, and they come back here as well: the camera
+        listing is the narrowed one, not this.
+        """
+        self.generate_fixture_asset_camera()
+        for asset in [self.asset, self.asset_camera]:
+            self.post(
+                f"/data/scenes/{self.scene_id}/asset-instances",
+                {"asset_id": str(asset.id)},
+            )
+
         result = self.get(f"/data/scenes/{self.scene_id}/asset-instances")
-        self.assertIsInstance(result, dict)
+
+        self.assertEqual(
+            sorted(result.keys()),
+            sorted([self.asset_id, str(self.asset_camera.id)]),
+        )
+        self.assertEqual(len(result[self.asset_id]), 1)
 
     def test_create_scene_asset_instance(self):
         result = self.post(
@@ -152,12 +169,38 @@ class BreakdownRoutesTestCase(ApiDBTestCase):
         self.assertIn(self.asset_id, instances)
 
     def test_get_scene_camera_instances(self):
+        """
+        The same listing narrowed to cameras: an instance of an ordinary
+        asset has no business here.
+        """
+        self.generate_fixture_asset_camera()
+        for asset in [self.asset, self.asset_camera]:
+            self.post(
+                f"/data/scenes/{self.scene_id}/asset-instances",
+                {"asset_id": str(asset.id)},
+            )
+
         result = self.get(f"/data/scenes/{self.scene_id}/camera-instances")
-        self.assertIsInstance(result, dict)
+
+        self.assertEqual(list(result.keys()), [str(self.asset_camera.id)])
 
     def test_get_shot_asset_instances(self):
+        """
+        A shot lists the instances cast into it, which are scene instances
+        added to the shot rather than instances of its own.
+        """
+        instance = self.generate_fixture_scene_asset_instance()
+        self.post(
+            f"/data/shots/{self.shot_id}/asset-instances",
+            {"asset_instance_id": str(instance.id)},
+        )
+
         result = self.get(f"/data/shots/{self.shot_id}/asset-instances")
-        self.assertIsInstance(result, dict)
+
+        self.assertEqual(list(result.keys()), [self.asset_id])
+        self.assertEqual(
+            [held["id"] for held in result[self.asset_id]], [str(instance.id)]
+        )
 
     def test_add_asset_instance_to_shot(self):
         self.generate_fixture_scene_asset_instance()
