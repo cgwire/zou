@@ -7,13 +7,7 @@ class SceneUtilsTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
 
-        self.generate_fixture_project_status()
-        self.generate_fixture_project()
-        self.generate_fixture_asset_type()
-        self.generate_fixture_episode()
-        self.generate_fixture_sequence()
         self.generate_fixture_scene()
-        self.generate_fixture_asset()
         self.shot_01 = self.generate_fixture_shot().serialize()
         self.shot_02 = self.generate_fixture_shot("S02").serialize()
         self.scene = self.scene.serialize()

@@ -32,7 +32,6 @@ class ProjectTemplateServiceTestCase(ApiDBTestCase):
         self.generate_fixture_department()
         self.generate_fixture_task_type()
         self.generate_fixture_task_status()
-        self.generate_fixture_task_status_done()
         self.generate_fixture_asset_type()
         self.generate_fixture_status_automation_to_status()
 

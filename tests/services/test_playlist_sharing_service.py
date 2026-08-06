@@ -16,11 +16,8 @@ from zou.app.services.playlist_sharing_service import GuestCommentNotFound
 class PlaylistSharingServiceTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
-        self.generate_fixture_asset_type()
         self.generate_fixture_asset()
-        self.generate_fixture_department()
         self.generate_fixture_task_type()
         self.generate_fixture_task_status()
         self.generate_fixture_person()

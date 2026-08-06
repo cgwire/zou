@@ -13,8 +13,6 @@ class TelemetryServiceTestCase(ApiDBTestCase):
 
     def setUp(self):
         super().setUp()
-        self.generate_fixture_project_status()
-        self.generate_fixture_project()
 
     def test_send_main_infos_sends_counts_and_no_personal_data(self):
         with mock.patch("requests.post") as post:

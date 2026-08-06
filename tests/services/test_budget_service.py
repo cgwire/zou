@@ -17,7 +17,6 @@ class BudgetServiceTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
 
-        self.generate_fixture_project_status()
         self.project_alt = self.generate_fixture_project("Project 2")
         self.project = self.generate_fixture_project()
         self.generate_fixture_department()

@@ -12,14 +12,9 @@ class TimeSpentsServiceTestCase(ApiDBTestCase):
         self.person_id = str(self.person.id)
         self.user_id = self.user["id"]
 
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
-        self.generate_fixture_asset_type()
         self.generate_fixture_asset()
-        self.generate_fixture_department()
         self.generate_fixture_task_type()
-        self.generate_fixture_task_status()
-        self.generate_fixture_assigner()
 
         self.generate_fixture_task()
         task_id = str(self.task.id)

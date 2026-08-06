@@ -39,8 +39,6 @@ class PreviewFileTestCase(ApiDBTestCase):
         self.project_id = str(self.project.id)
         self.user_id = self.user["id"]
         self.generate_fixture_asset()
-        self.generate_fixture_assigner()
-        self.generate_fixture_person()
         self.generate_fixture_task()
 
     def tearDown(self):
@@ -715,8 +713,6 @@ class MissingStatusTestCase(ApiDBTestCase):
         super().setUp()
         self.generate_base_context()
         self.generate_fixture_asset()
-        self.generate_fixture_assigner()
-        self.generate_fixture_person()
         self.generate_fixture_task()
         self.preview_file = self.generate_fixture_preview_file(
             status="processing"
@@ -747,8 +743,6 @@ class ExtractAnnotationFrameTestCase(ApiDBTestCase):
         super().setUp()
         self.generate_base_context()
         self.generate_fixture_asset()
-        self.generate_fixture_assigner()
-        self.generate_fixture_person()
         self.generate_fixture_task()
         self.preview_file = self.generate_fixture_preview_file().serialize()
         self.preview_file["annotations"] = [
@@ -905,8 +899,6 @@ class ExtractAnnotationFramePictureTestCase(ApiDBTestCase):
         super().setUp()
         self.generate_base_context()
         self.generate_fixture_asset()
-        self.generate_fixture_assigner()
-        self.generate_fixture_person()
         self.generate_fixture_task()
         self.preview_file = self.generate_fixture_preview_file().serialize()
         self.preview_file["extension"] = "png"
@@ -973,8 +965,6 @@ class ExtractAllAnnotationFramesTestCase(ApiDBTestCase):
         super().setUp()
         self.generate_base_context()
         self.generate_fixture_asset()
-        self.generate_fixture_assigner()
-        self.generate_fixture_person()
         self.generate_fixture_task()
         self.preview_file = self.generate_fixture_preview_file().serialize()
         self.preview_file["annotations"] = [
@@ -1190,8 +1180,6 @@ class ExtractAllAnnotationFramesPdfTestCase(ApiDBTestCase):
         super().setUp()
         self.generate_base_context()
         self.generate_fixture_asset()
-        self.generate_fixture_assigner()
-        self.generate_fixture_person()
         self.generate_fixture_task()
         self.preview_file = self.generate_fixture_preview_file().serialize()
         self.preview_file["annotations"] = [
@@ -1261,8 +1249,6 @@ class ResetPictureFilesMetadataTestCase(ApiDBTestCase):
         super().setUp()
         self.generate_base_context()
         self.generate_fixture_asset()
-        self.generate_fixture_assigner()
-        self.generate_fixture_person()
         self.generate_fixture_task()
         self.preview_file = self.generate_fixture_preview_file()
         self.preview_file.update({"extension": "png"})
@@ -1309,8 +1295,6 @@ class ResetMovieFilesMetadataTestCase(ApiDBTestCase):
         super().setUp()
         self.generate_base_context()
         self.generate_fixture_asset()
-        self.generate_fixture_assigner()
-        self.generate_fixture_person()
         self.generate_fixture_task()
         self.preview_file = self.generate_fixture_preview_file()
 

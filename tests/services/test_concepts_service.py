@@ -9,9 +9,7 @@ class ConceptsServiceTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
 
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
-        self.generate_fixture_asset_type()
 
     def test_create_concept(self):
         concept = concepts_service.create_concept(
