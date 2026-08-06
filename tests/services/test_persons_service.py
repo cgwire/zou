@@ -1,6 +1,6 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.services import persons_service
+from zou.app.services import persons_service, tasks_service
 from zou.app.services.exception import (
     PersonNotFoundException,
     WrongParameterException,
@@ -19,9 +19,41 @@ class PersonServiceTestCase(ApiDBTestCase):
         self.person_desktop_login = self.person.desktop_login
 
     def test_get_active_persons(self):
-        self.assertEqual(len(persons_service.get_persons()), 2)
-        persons_service.update_person(self.person.id, {"active": False})
-        self.assertEqual(len(persons_service.get_active_persons()), 1)
+        # Created last and sorting first, so the order is the query's and
+        # not the insertion one.
+        self.generate_fixture_person(
+            first_name="Alice",
+            last_name="Zulu",
+            desktop_login="alice.zulu",
+            email="alice.zulu@gmail.com",
+        )
+        # A third John, so the last name is what breaks the tie.
+        self.generate_fixture_person(
+            first_name="John",
+            last_name="Aaa",
+            desktop_login="john.aaa",
+            email="john.aaa@gmail.com",
+        )
+        # get_persons does not order, get_active_persons does.
+        self.assertEqual(len(persons_service.get_persons()), 4)
+        self.assertEqual(
+            [
+                person["full_name"]
+                for person in persons_service.get_active_persons()
+            ],
+            ["Alice Zulu", "John Aaa", "John Did", "John Doe"],
+        )
+
+        # self.person_id, not self.person: the two fixtures above repointed
+        # self.person at the last one they built.
+        persons_service.update_person(self.person_id, {"active": False})
+        self.assertEqual(
+            [
+                person["full_name"]
+                for person in persons_service.get_active_persons()
+            ],
+            ["Alice Zulu", "John Aaa", "John Did"],
+        )
 
     def test_get_person(self):
         self.assertRaises(
@@ -133,17 +165,26 @@ class PersonServiceTestCase(ApiDBTestCase):
         self.assertEqual(person["first_name"], "John")
 
     def test_add_desktop_login_logs(self):
-        person = self.person.serialize()
-        date_1 = self.now()
-        logs = persons_service.get_desktop_login_logs(person["id"])
-        self.assertEqual(len(logs), 0)
-        persons_service.create_desktop_login_logs(person["id"], date_1)
-        date_2 = self.now()
-        persons_service.create_desktop_login_logs(person["id"], date_2)
-        logs = persons_service.get_desktop_login_logs(person["id"])
-        self.assertEqual(len(logs), 2)
-        self.assertEqual(logs[0]["person_id"], person["id"])
-        self.assertEqual(logs[0]["date"], date_2)
+        """
+        Newest first. now() truncates to the second, so two calls in a row
+        would carry the same date and prove nothing about the order.
+        """
+        self.assertEqual(
+            persons_service.get_desktop_login_logs(self.person_id), []
+        )
+        persons_service.create_desktop_login_logs(
+            self.person_id, "2021-06-14T09:00:00"
+        )
+        persons_service.create_desktop_login_logs(
+            self.person_id, "2021-06-15T09:00:00"
+        )
+
+        logs = persons_service.get_desktop_login_logs(self.person_id)
+        self.assertEqual(
+            [log["date"] for log in logs],
+            ["2021-06-15T09:00:00", "2021-06-14T09:00:00"],
+        )
+        self.assertEqual(logs[0]["person_id"], self.person_id)
 
     def test_is_user_limit_reached(self):
         from zou.app import config
@@ -315,9 +356,35 @@ class PersonServiceTestCase(ApiDBTestCase):
         self.assertFalse(result["has_avatar"])
 
     def test_update_person_last_presence(self):
-        persons_service.create_desktop_login_logs(self.person_id, "2021-06-15")
+        """
+        The latest time spent, read newest first.
+
+        Only the time spents are covered: with a desktop login log in the
+        picture the function either returns None (no time spent) or raises
+        TypeError comparing its datetime to the time spent date. Reported,
+        not pinned here.
+        """
+        self.generate_fixture_project_status()
+        self.generate_fixture_project()
+        self.generate_fixture_asset_type()
+        self.generate_fixture_asset()
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status()
+        self.generate_fixture_assigner()
+        task_id = str(self.generate_fixture_task().id)
+        tasks_service.create_or_update_time_spent(
+            task_id, self.person_id, "2021-06-01", 600
+        )
+
         result = persons_service.update_person_last_presence(self.person_id)
-        self.assertIsNotNone(result)
+        self.assertEqual(result["last_presence"], "2021-06-01")
+
+        # Written last, read first.
+        tasks_service.create_or_update_time_spent(
+            task_id, self.person_id, "2021-06-20", 600
+        )
+        result = persons_service.update_person_last_presence(self.person_id)
+        self.assertEqual(result["last_presence"], "2021-06-20")
 
     def test_get_person_raw_cached(self):
         """
