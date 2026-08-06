@@ -13,6 +13,7 @@ from zou.app.services import (
     comments_service,
     deletion_service,
     preview_files_service,
+    projects_service,
     tasks_service,
     persons_service,
 )
@@ -869,3 +870,21 @@ class TaskPreviewRevisionTestCase(ApiDBTestCase):
         tasks_service.check_revision_is_unique_for_task(
             str(self.task.id), revision=1
         )
+
+    def test_the_setting_read_here_is_the_one_the_production_was_given(self):
+        """
+        Whether the preview lands on the entity is a production setting, and
+        get_project is memoized on the id it is handed: reading it under a
+        key nobody invalidates keeps the setting from before the change for
+        the length of the TTL.
+        """
+        preview_file = self.generate_fixture_preview_file().serialize()
+        project_id = str(self.project.id)
+        tasks_service.update_preview_file_info(preview_file)
+
+        projects_service.update_project(
+            project_id, {"is_set_preview_automated": True}
+        )
+        entity = tasks_service.update_preview_file_info(preview_file)
+
+        self.assertEqual(entity["preview_file_id"], preview_file["id"])

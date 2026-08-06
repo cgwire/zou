@@ -1943,7 +1943,7 @@ def update_preview_file_info(preview_file):
     if preview_file["position"] == 1:
         task.update({"last_preview_file_id": preview_file["id"]})
         clear_task_cache(str(task.id))
-        project = projects_service.get_project(task.project_id)
+        project = projects_service.get_project(str(task.project_id))
 
         if project["is_set_preview_automated"]:
             entity = entities_service.update_entity_preview(
