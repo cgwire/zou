@@ -387,6 +387,30 @@ class TaskAssignationTestCase(TaskTestCase):
         task = tasks_service.get_task(shot_task_id, relations=True)
         self.assertEqual(task["assignees"], [])
 
+    def test_an_artist_clears_their_own_assignation(self):
+        """
+        Every other case of this route short circuits before the assignee
+        branch of the permission check: an artist taking themselves off a
+        task is the only one that reaches it.
+        """
+        self.generate_fixture_task()
+        self.generate_fixture_user_cg_artist()
+        task_id = str(self.task.id)
+        artist_id = str(self.user_cg_artist["id"])
+        projects_service.add_team_member(str(self.project.id), artist_id)
+        tasks_service.assign_task(task_id, artist_id)
+        self.log_in_cg_artist()
+
+        cleared = self.put(
+            "/actions/tasks/clear-assignation",
+            {"task_ids": [task_id], "person_id": artist_id},
+        )
+
+        self.assertEqual(cleared, [task_id])
+        task = tasks_service.get_task(task_id, relations=True)
+        # The fixture task also carries self.person, who is left alone.
+        self.assertNotIn(artist_id, task["assignees"])
+
     def test_update_task_assignees(self):
         # The fixture task starts assigned to self.person.
         self.generate_fixture_task()

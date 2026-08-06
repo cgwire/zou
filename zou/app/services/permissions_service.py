@@ -543,7 +543,9 @@ def check_task_department_access_for_unassign(task_id, person_id=None):
     himself in the department of the task.
     """
     user = persons_service.get_current_user(relations=True)
-    task = tasks_service.get_task(task_id)
+    # The last branch reads the assignees, which only the related
+    # serialization carries.
+    task = tasks_service.get_task(task_id, relations=True)
     if not task or not user:
         raise permissions.PermissionDenied
     task_type = tasks_service.get_task_type(task["task_type_id"])
