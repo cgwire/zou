@@ -146,7 +146,11 @@ def get_assets(criterions=None, only_user_projects=False):
         if team_filter is not None:
             query = query.filter(team_filter)
         # Add non duplicated assets to the list.
-        result += [a for a in query.all() if a.source_id != episode_id]
+        result += [
+            asset
+            for asset in query.all()
+            if str(asset.source_id) != str(episode_id)
+        ]
     else:
         result = query.all()
     return Entity.serialize_list(result, obj_type="Asset")

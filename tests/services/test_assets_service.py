@@ -44,6 +44,24 @@ class AssetServiceTestCase(ApiDBTestCase):
             sorted(asset["name"] for asset in assets), ["Rock", "Tree"]
         )
 
+    def test_get_assets_counts_an_asset_of_both_halves_once(self):
+        """
+        An asset created in an episode and also cast into it is in both
+        halves of the union, and must come back once.
+        """
+        episode = self.generate_fixture_episode()
+        created_in = self.asset
+        created_in.update({"source_id": episode.id})
+        breakdown_service.create_casting_link(episode.id, created_in.id)
+
+        assets = assets_service.get_assets(
+            criterions={"episode_id": str(episode.id)}
+        )
+
+        self.assertEqual(
+            [asset["id"] for asset in assets], [str(created_in.id)]
+        )
+
     def test_get_full_assets(self):
         """
         Ordered by production, then asset type, then asset name. Character
