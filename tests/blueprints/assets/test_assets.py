@@ -70,7 +70,6 @@ class AssetsTestCase(ApiDBTestCase):
             entity_type_id=asset_type["id"],
             project_id=self.project.id,
         )
-        path_ids = (self.project.id, self.asset_type.id)
         path = (
             f"data/projects/{self.project.id}/asset-types/"
             f"{self.asset_type.id}/assets"

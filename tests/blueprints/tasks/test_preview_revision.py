@@ -109,7 +109,7 @@ class PreviewRevisionTestCase(ApiDBTestCase):
         """
         # Create two comments with different revisions
         comment1 = self.create_comment()
-        preview1 = self.add_preview(comment1["id"], revision=1)
+        self.add_preview(comment1["id"], revision=1)
 
         comment2 = self.create_comment()
         preview2 = self.add_preview(comment2["id"], revision=2)

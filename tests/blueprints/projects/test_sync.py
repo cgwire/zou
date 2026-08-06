@@ -56,7 +56,6 @@ class ProjectSyncRouteTestCase(ApiDBTestCase):
 
     def test_get_comments(self):
         comments = self.get(f"/data/projects/{self.project_id}/comments")
-        print(comments)
         self.assertEqual(len(comments), 1)
 
     def test_get_notifications(self):

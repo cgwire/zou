@@ -342,7 +342,6 @@ class ShotUtilsTestCase(ApiDBTestCase):
         project_id = str(self.project.id)
         task_type = self.task_type_animation
         task_type_id = str(task_type.id)
-        print(task_type_id)
         (
             episode_01,
             episode_02,

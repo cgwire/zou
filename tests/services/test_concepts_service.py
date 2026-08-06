@@ -71,9 +71,7 @@ class ConceptsServiceTestCase(ApiDBTestCase):
         self.assertEqual(concepts[0]["name"], "Concept P")
 
     def test_get_concepts_and_tasks(self):
-        concept = concepts_service.create_concept(
-            str(self.project.id), "Concept Tasks"
-        )
+        concepts_service.create_concept(str(self.project.id), "Concept Tasks")
         result = concepts_service.get_concepts_and_tasks()
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["name"], "Concept Tasks")

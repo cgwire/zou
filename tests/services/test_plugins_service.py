@@ -78,7 +78,7 @@ class PluginsServiceTestCase(ApiDBTestCase):
         self.assertFalse(app.logger.disabled)
 
     def test_install_plugin_upgrade(self):
-        existing_plugin = Plugin.create(
+        Plugin.create(
             plugin_id="test_plugin",
             name="Test Plugin",
             version="0.1.0",
@@ -94,7 +94,7 @@ class PluginsServiceTestCase(ApiDBTestCase):
         self.assertEqual(plugin.version, "0.2.0")
 
     def test_install_plugin_same_version(self):
-        existing_plugin = Plugin.create(
+        Plugin.create(
             plugin_id="test_plugin",
             name="Test Plugin",
             version="0.1.0",
@@ -165,7 +165,7 @@ class PluginsServiceTestCase(ApiDBTestCase):
         self.assertIn("Invalid plugin path", str(context.exception))
 
     def test_get_plugins(self):
-        plugin1 = Plugin.create(
+        Plugin.create(
             plugin_id="plugin1",
             name="Plugin 1",
             version="0.1.0",
@@ -173,7 +173,7 @@ class PluginsServiceTestCase(ApiDBTestCase):
             maintainer_email="author1@example.com",
             license="MIT",
         )
-        plugin2 = Plugin.create(
+        Plugin.create(
             plugin_id="plugin2",
             name="Plugin 2",
             version="0.2.0",

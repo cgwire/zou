@@ -394,13 +394,13 @@ class ProjectServiceTestCase(ApiDBTestCase):
         self.assertEqual(reordered[1]["position"], 2)
 
     def test_reorder_metadata_descriptors_empty_list(self):
-        descriptor1 = projects_service.add_metadata_descriptor(
+        projects_service.add_metadata_descriptor(
             self.project.id, "Asset", "Contractor", "string", [], False
         )
-        descriptor2 = projects_service.add_metadata_descriptor(
+        projects_service.add_metadata_descriptor(
             self.project.id, "Asset", "Environment", "string", [], False
         )
-        descriptor3 = projects_service.add_metadata_descriptor(
+        projects_service.add_metadata_descriptor(
             self.project.id, "Asset", "Location", "string", [], False
         )
 
@@ -418,7 +418,7 @@ class ProjectServiceTestCase(ApiDBTestCase):
         self.assertEqual(reordered[2]["position"], 3)
 
     def test_reorder_metadata_descriptors_descriptor_not_found(self):
-        descriptor1 = projects_service.add_metadata_descriptor(
+        projects_service.add_metadata_descriptor(
             self.project.id, "Asset", "Contractor", "string", [], False
         )
 
@@ -431,7 +431,7 @@ class ProjectServiceTestCase(ApiDBTestCase):
             )
 
     def test_reorder_metadata_descriptors_different_entity_type(self):
-        asset_descriptor = projects_service.add_metadata_descriptor(
+        projects_service.add_metadata_descriptor(
             self.project.id, "Asset", "Contractor", "string", [], False
         )
         shot_descriptor = projects_service.add_metadata_descriptor(

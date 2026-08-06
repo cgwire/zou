@@ -303,7 +303,7 @@ class PersonRoutesTestCase(ApiDBTestCase):
         self.assertFalse(person.get("has_avatar", False))
 
     def test_disable_two_factor_authentication(self):
-        result = self.delete(
+        self.delete(
             f"/actions/persons/{self.person_id}"
             f"/disable-two-factor-authentication",
             400,

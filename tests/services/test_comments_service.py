@@ -517,10 +517,10 @@ class CommentsServiceTestCase(ApiDBTestCase):
         self.assertEqual(comment["text"], comment_text)
 
     def test_create_comment_with_all_hashtag(self):
-        modeling_task = self.generate_fixture_shot_task(
+        self.generate_fixture_shot_task(
             name="main", task_type_id=self.task_type_modeling.id
         )
-        concept_task = self.generate_fixture_shot_task(
+        self.generate_fixture_shot_task(
             name="main", task_type_id=self.task_type_concept.id
         )
 

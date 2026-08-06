@@ -44,7 +44,6 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         new_casting = [{"asset_id": self.asset_id, "nb_occurences": 1}]
         breakdown_service.update_casting(self.shot.id, new_casting)
         casting = breakdown_service.get_sequence_casting(self.sequence.id)
-        self.maxDiff = 10000
         self.assertTrue(self.shot_id in casting)
         self.assertTrue(str(self.shot.id) in casting)
         self.assertEqual(len(casting[self.shot_id]), 2)
@@ -64,7 +63,6 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         new_casting = [{"asset_id": self.asset_id, "nb_occurences": 1}]
         breakdown_service.update_casting(self.shot.id, new_casting)
         casting = breakdown_service.get_all_sequences_casting(self.project_id)
-        self.maxDiff = 10000
         self.assertTrue(self.shot_id in casting)
         self.assertTrue(str(self.shot.id) in casting)
         self.assertEqual(len(casting[self.shot_id]), 2)
@@ -102,7 +100,6 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         casting = breakdown_service.get_asset_type_casting(
             self.project_id, self.asset_type_environment_id
         )
-        self.maxDiff = 10000
         self.assertTrue(self.forest_id in casting)
         self.assertTrue(str(self.asset.id) in casting)
         self.assertEqual(len(casting[self.forest_id]), 2)
@@ -580,8 +577,6 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         # Verify asset_character still has its ready_for set (it was set earlier)
         char = assets_service.get_asset_raw(self.asset_character_id)
         char.update({"ready_for": self.task_type_compositing_id})
-        # Refresh casting stats for the temp asset to update the shot
-        casting = breakdown_service.get_casting(self.shot_id)
         breakdown_service.refresh_casting_stats(
             temp_asset.serialize(obj_type="Asset")
         )

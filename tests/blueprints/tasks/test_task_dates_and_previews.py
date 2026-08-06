@@ -266,9 +266,7 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
         self.assertTrue(len(result) > 0)
 
     def test_create_concept_tasks(self):
-        concept = concepts_service.create_concept(
-            self.project_id, "Test Concept"
-        )
+        concepts_service.create_concept(self.project_id, "Test Concept")
         result = self.post(
             f"/actions/projects/{self.project_id}"
             f"/task-types/{self.task_type.id}"

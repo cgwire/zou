@@ -42,8 +42,6 @@ class CastingCsvExportTestCase(ApiDBTestCase):
         path = f"/import/csv/projects/{project_id}/casting"
         self.upload_csv(path, "casting")
 
-        self.maxDiff = None
-
         path = f"/export/csv/projects/{project_id}/casting.csv"
         csv = self.get_raw(path)
         self.assertTrue("MP;Environment;Lake;Props;Boat;1;setdress" in csv)
@@ -66,7 +64,6 @@ class CastingCsvExportTestCase(ApiDBTestCase):
 
         path = f"/export/csv/projects/{project_id}/casting.csv?episode_id=all"
         csv = self.get_raw(path)
-        print(csv)
         self.assertFalse("E01;SEQ01;SH01;Character;John;1;animate" in csv)
         self.assertFalse("MP;Environment;Lake;Props;Boat;1;setdress" in csv)
         self.assertTrue("Episode;E01;Character;John;1;animate" in csv)
