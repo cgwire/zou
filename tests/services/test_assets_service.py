@@ -20,14 +20,29 @@ class AssetServiceTestCase(ApiDBTestCase):
         self.assertEqual(assets[0]["name"], "Tree")
 
     def test_get_assets_with_episode_and_project_filters(self):
-        self.generate_fixture_episode()
+        """
+        The episode criterion is a union of two sets: assets created in the
+        episode, and assets cast into it. An asset of the production that is
+        in neither does not appear.
+        """
+        episode = self.generate_fixture_episode()
+        # generate_fixture_asset repoints self.asset on every named call.
+        created_in = self.asset
+        created_in.update({"source_id": episode.id})
+        cast_in = self.generate_fixture_asset("Rock")
+        self.generate_fixture_asset("Loose")
+        breakdown_service.create_casting_link(episode.id, cast_in.id)
+
         assets = assets_service.get_assets(
             criterions={
-                "episode_id": str(self.episode.id),
+                "episode_id": str(episode.id),
                 "project_id": str(self.project.id),
             }
         )
-        self.assertIsInstance(assets, list)
+
+        self.assertEqual(
+            sorted(asset["name"] for asset in assets), ["Rock", "Tree"]
+        )
 
     def test_get_full_assets(self):
         """
