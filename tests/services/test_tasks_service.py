@@ -260,6 +260,75 @@ class TaskServiceTestCase(ApiDBTestCase):
         for statement in person_link_statements:
             self.assertNotIn("person.password", statement)
 
+    def test_get_task_types_for_project(self):
+        """
+        The task types a production actually has tasks for, not the ones its
+        settings allow.
+        """
+        self.generate_fixture_project_standard()
+        # A task of another production, on a task type this one does not use.
+        other_task = self.generate_fixture_task_standard()
+        other_task.update({"task_type_id": self.task_type_layout.id})
+
+        task_types = tasks_service.get_task_types_for_project(
+            str(self.project.id)
+        )
+
+        self.assertEqual(
+            sorted(task_type["name"] for task_type in task_types),
+            ["Animation", "Shaders"],
+        )
+
+    def test_the_project_readers_answer_for_one_production(self):
+        """
+        The three paginated readers behind the production pages. Each is
+        scoped by the task, so a row hanging from another production's task
+        must stay out.
+        """
+        self.generate_fixture_comment()
+        tasks_service.create_or_update_time_spent(
+            str(self.task.id), str(self.person.id), "2018-06-04", 600
+        )
+
+        self.generate_fixture_project_standard()
+        other_task = self.generate_fixture_task_standard()
+        comments_service.new_comment(
+            other_task.id,
+            self.task_status.id,
+            self.user["id"],
+            "elsewhere",
+        )
+        tasks_service.create_or_update_time_spent(
+            str(other_task.id), str(self.person.id), "2018-06-04", 600
+        )
+
+        project_id = str(self.project.id)
+        self.assertEqual(
+            {
+                comment["object_id"]
+                for comment in tasks_service.get_comments_for_project(
+                    project_id
+                )
+            },
+            {str(self.task.id)},
+        )
+        self.assertEqual(
+            {
+                time_spent["task_id"]
+                for time_spent in tasks_service.get_time_spents_for_project(
+                    project_id
+                )
+            },
+            {str(self.task.id)},
+        )
+        self.assertNotIn(
+            str(other_task.id),
+            [
+                task["id"]
+                for task in tasks_service.get_tasks_for_project(project_id)
+            ],
+        )
+
     def test_get_task_dicts_for_entity_relations_avoids_n_plus_one(self):
         from sqlalchemy import event
         from zou.app import db
