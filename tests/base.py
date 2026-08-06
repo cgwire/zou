@@ -1178,6 +1178,27 @@ class ApiDBTestCase(ApiTestCase):
         )
         return self.comment
 
+    def generate_commented_shot_task(self):
+        """
+        A shot task with one comment on it, and a second person around to be
+        notified. Named apart from generate_fixture_comment, which comments
+        on whatever task the caller already has.
+        """
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
+        self.generate_fixture_department()
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status()
+        self.task = self.generate_fixture_shot_task()
+        self.task_dict = self.task.serialize()
+        self.generate_fixture_person(
+            first_name="Jane", email="jane.doe@gmail.com"
+        )
+        self.comment = comments_service.new_comment(
+            self.task.id, self.task_status.id, self.user["id"], "first comment"
+        )
+        return self.comment
+
     def generate_fixture_file_status(self):
         if hasattr(self, "file_status"):
             return

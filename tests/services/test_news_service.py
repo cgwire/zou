@@ -17,28 +17,9 @@ class NewsServiceTestCase(ApiDBTestCase):
         self.generate_fixture_episode()
         self.generate_fixture_sequence()
         self.generate_fixture_shot()
-        self.sequence_dict = self.sequence.serialize()
-        self.project_dict = self.sequence.serialize()
-
-    def generate_fixture_comment(self):
-        self.generate_fixture_person()
-        self.generate_fixture_assigner()
-        self.generate_fixture_department()
-        self.generate_fixture_task_type()
-        self.task_type_dict = self.task_type_animation.serialize()
-        self.generate_fixture_task_status()
-        self.task = self.generate_fixture_shot_task()
-        self.task_dict = self.task.serialize()
-        self.person_dict = self.generate_fixture_person(
-            first_name="Jane", email="jane.doe@gmail.com"
-        ).serialize()
-
-        self.comment = comments_service.new_comment(
-            self.task.id, self.task_status.id, self.user["id"], "first comment"
-        )
 
     def test_create_news(self):
-        self.generate_fixture_comment()
+        self.generate_commented_shot_task()
         news = news_service.create_news(
             comment_id=self.comment["id"],
             author_id=self.comment["person_id"],
@@ -48,7 +29,7 @@ class NewsServiceTestCase(ApiDBTestCase):
         self.assertIsNotNone(news_again)
 
     def test_create_news_for_task_and_comment(self):
-        self.generate_fixture_comment()
+        self.generate_commented_shot_task()
         news_service.create_news_for_task_and_comment(
             self.task_dict, self.comment
         )
@@ -59,7 +40,7 @@ class NewsServiceTestCase(ApiDBTestCase):
         self.assertEqual(str(news_list[0].comment_id), self.comment["id"])
 
     def test_delete_news_for_comment(self):
-        self.generate_fixture_comment()
+        self.generate_commented_shot_task()
         news_service.create_news_for_task_and_comment(
             self.task_dict, self.comment
         )
@@ -68,7 +49,7 @@ class NewsServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(news_list), 0)
 
     def test_get_last_news_for_project(self):
-        self.generate_fixture_comment()
+        self.generate_commented_shot_task()
         for i in range(1, 81):
             comment = comments_service.new_comment(
                 self.task.id,
@@ -103,7 +84,7 @@ class NewsServiceTestCase(ApiDBTestCase):
         The stats only count the news that carry a status change: they feed
         the "what moved" counters, not the comment count.
         """
-        self.generate_fixture_comment()
+        self.generate_commented_shot_task()
         for change in [True, True, False]:
             comment = comments_service.new_comment(
                 self.task.id, self.task_status.id, self.user["id"], "comment"
@@ -118,7 +99,7 @@ class NewsServiceTestCase(ApiDBTestCase):
         self.assertEqual(stats, {str(self.task_status.id): 2})
 
     def test_get_last_news_for_project_with_dates(self):
-        self.generate_fixture_comment()
+        self.generate_commented_shot_task()
         for i in range(1, 7):
             comment = comments_service.new_comment(
                 self.task.id,
