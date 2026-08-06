@@ -432,7 +432,7 @@ class ApiDBTestCase(ApiTestCase):
 
     def generate_fixture_project_standard(self):
         if hasattr(self, "project_standard"):
-            return
+            return self.project_standard
         self.generate_fixture_project_status()
         self.project_standard = Project.create(
             name="Big Buck Bunny", project_status_id=self.open_status.id
@@ -440,6 +440,7 @@ class ApiDBTestCase(ApiTestCase):
         self.project_standard.update(
             {"file_tree": file_tree_service.get_tree_from_file("default")}
         )
+        return self.project_standard
 
     def generate_fixture_asset(
         self,
