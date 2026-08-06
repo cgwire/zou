@@ -116,7 +116,16 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         self.assertEqual(
             sorted(casting.keys()), sorted([self.forest_id, self.park_id])
         )
-        self.assertEqual(len(casting[self.forest_id]), 2)
+        # Each list is ordered by asset type name, then by asset name, so
+        # the character comes before the props whatever order they were cast
+        # in.
+        self.assertEqual(
+            [
+                (entry["asset_type_name"], entry["asset_name"])
+                for entry in casting[self.forest_id]
+            ],
+            [("Character", "Rabbit"), ("Props", "Tree")],
+        )
         self.assertEqual(len(casting[self.park_id]), 1)
 
     def test_get_production_episodes_casting(self):
@@ -215,6 +224,9 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         first = captured[0]
         self.assertEqual(first["shot_id"], shot_id)
         self.assertEqual(first["nb_entities_out"], 2)
+        # Sorted on both sides: the service sorts these ids, but they are
+        # random UUIDs, so an unsorted pair matches the sorted one half the
+        # time and the order cannot be pinned without flakiness.
         self.assertEqual(
             sorted(first["added_asset_ids"]),
             sorted([asset_id, asset_character_id]),
@@ -232,6 +244,24 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         self.assertEqual(second["nb_entities_out"], 1)
         self.assertEqual(second["added_asset_ids"], [])
         self.assertEqual(second["removed_asset_ids"], [asset_character_id])
+
+        # Cast the character again and drop both, so the removal diff is
+        # computed over two ids rather than one.
+        breakdown_service.update_casting(
+            self.shot.id,
+            [
+                {"asset_id": asset_id, "nb_occurences": 1},
+                {"asset_id": asset_character_id, "nb_occurences": 3},
+            ],
+        )
+        breakdown_service.update_casting(self.shot.id, [])
+        last = captured[-1]
+        self.assertEqual(last["nb_entities_out"], 0)
+        self.assertEqual(last["added_asset_ids"], [])
+        self.assertEqual(
+            sorted(last["removed_asset_ids"]),
+            sorted([asset_id, asset_character_id]),
+        )
 
     def test_update_casting_keeps_asset_in_episode_while_another_shot_uses_it(
         self,
