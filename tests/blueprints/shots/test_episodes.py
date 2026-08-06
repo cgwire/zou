@@ -38,7 +38,11 @@ class EpisodeTestCase(ApiDBTestCase):
         self.assertEqual(len(shots), 3)
         self.assertEqual(shots[0]["type"], "Shot")
 
-    def test_get_sequences_for_episode_with_vendor(self):
+    def a_vendor_on_the_team(self):
+        """
+        A vendor who belongs to the production but is assigned nothing.
+        Returns their id and the shot task they can be put on.
+        """
         self.generate_fixture_department()
         self.generate_fixture_task_status()
         self.generate_fixture_person()
@@ -46,17 +50,27 @@ class EpisodeTestCase(ApiDBTestCase):
         self.generate_fixture_task_type()
         self.generate_fixture_shot_task(name="Secondary")
         self.generate_fixture_user_vendor()
-        task_id = self.shot_task.id
-        project_id = self.project_id
         person_id = self.user_vendor["id"]
-        projects_service.add_team_member(project_id, person_id)
-        projects_service.clear_project_cache(str(project_id))
+        projects_service.add_team_member(self.project_id, person_id)
+        projects_service.clear_project_cache(str(self.project_id))
         self.log_in_vendor()
-        sequences = self.get(f"data/episodes/{self.episode_id}/sequences")
-        self.assertEqual(sequences, [])
+        return person_id, self.shot_task.id
+
+    def assert_the_listing_opens_on_assignment(self, path):
+        """
+        A vendor sees nothing of the production until a task of it is theirs.
+        """
+        person_id, task_id = self.a_vendor_on_the_team()
+
+        self.assertEqual(self.get(path), [])
+
         tasks_service.assign_task(task_id, person_id)
-        sequences = self.get(f"data/episodes/{self.episode_id}/sequences")
-        self.assertEqual(len(sequences), 1)
+        self.assertEqual(len(self.get(path)), 1)
+
+    def test_get_sequences_for_episode_with_vendor(self):
+        self.assert_the_listing_opens_on_assignment(
+            f"data/episodes/{self.episode_id}/sequences"
+        )
 
     def test_get_episodes(self):
         episodes = self.get("data/episodes")
@@ -86,23 +100,9 @@ class EpisodeTestCase(ApiDBTestCase):
         self.assertEqual(episodes[0], self.serialized_episode)
 
     def test_get_episodes_for_project_with_vendor(self):
-        self.generate_fixture_department()
-        self.generate_fixture_task_status()
-        self.generate_fixture_person()
-        self.generate_fixture_assigner()
-        self.generate_fixture_task_type()
-        self.generate_fixture_shot_task(name="Secondary")
-        self.generate_fixture_user_vendor()
-        task_id = self.shot_task.id
-        project_id = self.project_id
-        person_id = self.user_vendor["id"]
-        projects_service.add_team_member(project_id, person_id)
-        self.log_in_vendor()
-        episodes = self.get(f"data/projects/{project_id}/episodes")
-        self.assertEqual(episodes, [])
-        tasks_service.assign_task(task_id, person_id)
-        episodes = self.get(f"data/projects/{project_id}/episodes")
-        self.assertEqual(len(episodes), 1)
+        self.assert_the_listing_opens_on_assignment(
+            f"data/projects/{self.project_id}/episodes"
+        )
 
     def test_get_episodes_for_project_404(self):
         self.get("data/projects/unknown/episodes", 404)

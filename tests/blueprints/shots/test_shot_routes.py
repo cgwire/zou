@@ -41,8 +41,19 @@ class ShotRoutesTestCase(ApiDBTestCase):
         self.assertEqual(len(result), 1)
 
     def test_get_episode_asset_tasks(self):
-        result = self.get(f"/data/episodes/{self.episode.id}/asset-tasks")
-        self.assertIsInstance(result, list)
+        """
+        The tasks of the assets that belong to the episode. An asset of the
+        production that belongs to no episode is not one of them.
+        """
+        path = f"/data/episodes/{self.episode.id}/asset-tasks"
+        self.assertEqual(self.get(path), [])
+        self.asset.update({"source_id": self.episode.id})
+
+        result = self.get(path)
+
+        self.assertEqual(
+            [entry["id"] for entry in result], [str(self.task.id)]
+        )
 
     def test_get_sequence_shot_tasks(self):
         result = self.get(f"/data/sequences/{self.sequence.id}/shot-tasks")
