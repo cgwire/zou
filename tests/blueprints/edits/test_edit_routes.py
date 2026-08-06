@@ -8,19 +8,24 @@ class EditRoutesTestCase(BaseEditTestCase):
         self.assertEqual(edits[0]["name"], "Edit")
 
     def test_get_edit_preview_files(self):
-        result = self.get(f"/data/edits/{self.edit_id}/preview-files")
-        self.assertIsInstance(result, dict)
+        """
+        Keyed by task type, and a task type shows up only once it has a
+        preview.
+        """
+        path = f"/data/edits/{self.edit_id}/preview-files"
+        self.assertEqual(self.get(path), {})
+        preview_file = self.generate_fixture_preview_file(task_id=self.task.id)
 
-    def test_get_edit_preview_files_with_data(self):
-        self.generate_fixture_preview_file(
-            task_id=self.task.id,
+        result = self.get(path)
+
+        self.assertEqual(
+            [preview["id"] for preview in result[str(self.task.task_type_id)]],
+            [str(preview_file.id)],
         )
-        result = self.get(f"/data/edits/{self.edit_id}/preview-files")
-        self.assertGreater(len(result), 0)
 
     def test_get_edit_versions(self):
-        result = self.get(f"/data/edits/{self.edit_id}/versions")
-        self.assertIsInstance(result, list)
+        # Nothing has been published on this edit yet.
+        self.assertEqual(self.get(f"/data/edits/{self.edit_id}/versions"), [])
 
     def test_get_edits_with_tasks(self):
         result = self.get("/data/edits/with-tasks")
