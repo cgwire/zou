@@ -583,7 +583,10 @@ def get_presence_logs(year, month):
     _, limit = monthrange(year, month)
     headers += [str(i) for i in range(1, limit + 1)]
     start_date = datetime.datetime(year, month, 1, 0, 0, 0)
-    end_date = datetime.date.today() + relativedelta.relativedelta(months=1)
+    # The sheet holds the days of one month and each login is written at
+    # its day number, so a login of any later month would be stamped on
+    # the column carrying the same number.
+    end_date = start_date + relativedelta.relativedelta(months=1)
 
     csv_content.append(headers)
     for person in persons:
