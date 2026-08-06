@@ -482,9 +482,20 @@ class SyncEntriesTestCase(ApiDBTestCase):
         params = self.fetch_params("projects", project="Cosmos Landromat")
         self.assertEqual(params["id"], self.remote_project_id)
 
+    def test_a_single_production_keeps_its_relations(self):
+        """
+        The team, the task types, the task statuses and the asset types of
+        a production only come with the relations. Scoping the request to
+        one production replaced the parameters instead of adding to them,
+        and the production landed with an empty team and no task type.
+        """
+        params = self.fetch_params("projects", project="Cosmos Landromat")
+        self.assertEqual(params["relations"], "true")
+
     def test_the_filters_of_a_single_production_are_scoped_to_it(self):
         params = self.fetch_params("search-filters", project="Cosmos")
         self.assertEqual(params["project_id"], self.remote_project_id)
+        self.assertEqual(params["relations"], "true")
 
     def fetch_params(self, model_name, project=None):
         """

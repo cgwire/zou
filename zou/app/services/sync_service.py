@@ -770,11 +770,14 @@ def sync_entries(model_name, model, project=None):
         "search-filters",
         "search-filter-groups",
     ]:
+        # Added to the parameters, never substituted for them: the team and
+        # the task types of a production are only serialized when the
+        # relations are asked for.
         project = gazu.project.get_project_by_name(project)
         if model_name == "projects":
-            params = {"id": project["id"]}
-        elif model_name in ["search-filters", "search-filter-groups"]:
-            params = {"project_id": project["id"]}
+            params["id"] = project["id"]
+        else:
+            params["project_id"] = project["id"]
     while init or results["nb_pages"] >= page:
         params["page"] = page
         results = gazu.client.fetch_all(model_name, params=params)
