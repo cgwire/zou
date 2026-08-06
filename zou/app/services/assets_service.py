@@ -1005,6 +1005,10 @@ def cancel_asset(asset_id, force=True):
 
     asset.update({"canceled": True})
     asset_dict = asset.serialize(obj_type="Asset")
+    # Same write as the canceling branch of remove_asset, so the same
+    # invalidation: without it the asset reads back as live for the whole
+    # memoization window.
+    clear_asset_cache(str(asset_id))
     events.emit(
         "asset:delete",
         {"asset_id": asset_id},
