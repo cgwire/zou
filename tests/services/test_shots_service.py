@@ -24,6 +24,40 @@ from zou.app.services.exception import (
 )
 
 
+class FirstEpisodeTestCase(ApiDBTestCase):
+    """
+    The first episode of a production, on its own so that no asset, shot or
+    sequence of a fuller fixture set can be picked instead.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project_status()
+        self.generate_fixture_project()
+
+    def test_the_first_episode_is_the_first_by_name(self):
+        self.generate_fixture_episode("E02")
+        first = self.generate_fixture_episode("E01")
+
+        episode = shots_service.get_or_create_first_episode(
+            str(self.project.id)
+        )
+
+        self.assertEqual(episode["id"], str(first.id))
+
+    def test_a_production_with_no_episode_gets_one(self):
+        # The name it is given is not asserted here: create_episode takes
+        # (project_id, name, status) and the call site passes ("running",
+        # "E01"), so the episode is currently named after the status.
+        episode = shots_service.get_or_create_first_episode(
+            str(self.project.id)
+        )
+
+        self.assertEqual(
+            episode["entity_type_id"], shots_service.get_episode_type()["id"]
+        )
+
+
 class ShotUtilsTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
