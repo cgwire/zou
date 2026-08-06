@@ -588,8 +588,28 @@ def get_asset_types(criterions=None):
     """
     if not criterions:
         return get_all_asset_types()
+    criterions = dict(criterions)
+    project_id = criterions.pop("project_id", None)
     query = EntityType.query.filter(build_entity_type_asset_type_filter())
-    query = query_utils.apply_criterions_to_db_query(Entity, query, criterions)
+    if project_id is not None:
+        # An asset type belongs to no production: what a production holds
+        # is assets of that type. The criterion is a membership test
+        # rather than a column of the queried table, so it cannot go
+        # through the generic criterion helper.
+        query = query.filter(
+            EntityType.id.in_(
+                db.session.query(Entity.entity_type_id).filter(
+                    Entity.project_id == project_id
+                )
+            )
+        )
+    # The queried table is EntityType. Handing the helper Entity built the
+    # filters against the other table, which cross joined the two: the
+    # project criterion then restricted nothing and the name criterion,
+    # read off the assets rather than off their types, matched nothing.
+    query = query_utils.apply_criterions_to_db_query(
+        EntityType, query, criterions
+    )
     return EntityType.serialize_list(
         query.all(), obj_type="AssetType", relations=True
     )
