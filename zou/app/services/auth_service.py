@@ -14,7 +14,7 @@ from babel.dates import format_datetime
 
 
 from zou.app.services import persons_service, templates_service
-from zou.app.models.person import Person
+from zou.app.models.person import Person, SENSITIVE_FIELDS
 from zou.app.services.exception import (
     EmailOTPAlreadyEnabledException,
     EmailOTPNotEnabledException,
@@ -158,26 +158,16 @@ def check_auth(
     if login_failed_attemps > 0:
         update_login_failed_attemps(person["id"], 0)
 
-    # The person dict may come straight from the memoize cache: strip the
-    # secrets from a copy so the cached entry is left untouched.
-    person = dict(person)
-
-    if "password" in person:
-        del person["password"]
-
-    if "totp_secret" in person:
-        del person["totp_secret"]
-
-    if "email_otp_secret" in person:
-        del person["email_otp_secret"]
-
-    if "otp_recovery_codes" in person:
-        del person["otp_recovery_codes"]
-
-    if "fido_credentials" in person:
-        del person["fido_credentials"]
-
-    return person
+    # This dict is what the login route hands back to the client, and it
+    # was read with the unsafe serialization to reach the secrets above.
+    # Strip on the model's own list rather than naming the fields here:
+    # named one by one, jti was missed and rode along to the client.
+    # A copy, since the dict may come straight from the memoize cache.
+    return {
+        key: value
+        for key, value in person.items()
+        if key not in SENSITIVE_FIELDS
+    }
 
 
 def no_password_auth_strategy(person, password, app):
