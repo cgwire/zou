@@ -74,6 +74,9 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(playlists), 1)
 
     def test_get_playlist_for_episode(self):
+        # Not scoped to the production: all_playlists_for_episode filters on
+        # the episode alone when given a real episode id. Reported, not
+        # pinned here.
         self.generate_fixture_playlists()
         playlists = playlists_service.all_playlists_for_episode(
             self.project.id, self.episode_2.id
@@ -219,6 +222,24 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
             self.assertEqual(
                 [entry["revision"] for entry in entries], [2, 1], task_type_id
             )
+
+    def test_get_playlists_for_project(self):
+        """
+        Every playlist of one production, whatever episode it belongs to.
+        The other production keeps its own.
+        """
+        self.generate_fixture_playlists()
+        elsewhere = Playlist.create(
+            name="Elsewhere", shots={}, project_id=self.project_standard.id
+        )
+
+        playlists = playlists_service.get_playlists_for_project(
+            str(self.project.id)
+        )
+
+        names = sorted(playlist["name"] for playlist in playlists)
+        self.assertEqual(names, ["Playlist 1", "Playlist 3", "Playlist 4"])
+        self.assertNotIn(elsewhere.name, names)
 
     def test_get_playlist_file_name(self):
         playlist = self.generate_fixture_playlists()
