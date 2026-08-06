@@ -492,11 +492,23 @@ def build_results(entries):
     return result
 
 
+def _last_day_of(interval):
+    """
+    The interval helpers end on the first day of the next period, while
+    get_day_offs_between takes its end inclusively: it has to, since the
+    overlap check hands it a day off's own last day. Period listings pass
+    the last day of their period instead, so that a period does not carry
+    the first day of the next one.
+    """
+    start, end = interval
+    return start, end - datetime.timedelta(days=1)
+
+
 def get_day_offs_for_month(year, month):
     """
     Get all day off entries for given year and month.
     """
-    start, end = date_helpers.get_month_interval(year, month)
+    start, end = _last_day_of(date_helpers.get_month_interval(year, month))
     return get_day_offs_between(start, end)
 
 
@@ -504,7 +516,7 @@ def get_person_day_offs_for_week(person_id, year, week):
     """
     Get all day off entries for given person, year and week.
     """
-    start, end = date_helpers.get_week_interval(year, week)
+    start, end = _last_day_of(date_helpers.get_week_interval(year, week))
     return get_day_offs_between(start, end, person_id=person_id)
 
 
@@ -512,7 +524,7 @@ def get_person_day_offs_for_month(person_id, year, month):
     """
     Get all day off entries for given person, year and week.
     """
-    start, end = date_helpers.get_month_interval(year, month)
+    start, end = _last_day_of(date_helpers.get_month_interval(year, month))
     return get_day_offs_between(start, end, person_id=person_id)
 
 
@@ -520,7 +532,7 @@ def get_person_day_offs_for_year(person_id, year):
     """
     Get all day off entries for given person, year.
     """
-    start, end = date_helpers.get_year_interval(year)
+    start, end = _last_day_of(date_helpers.get_year_interval(year))
     return get_day_offs_between(start, end, person_id=person_id)
 
 

@@ -139,15 +139,14 @@ class PersonRoutesTestCase(ApiDBTestCase):
         listing that ignores its date range passes just as well.
         """
         DayOff.create(
-            date="2024-06-12",
-            end_date="2024-06-12",
+            date="2024-06-10",
+            end_date="2024-06-10",
             person_id=self.person.id,
         )
         base = f"/data/persons/{self.person_id}/day-offs"
-        # 2024-06-12 is a Wednesday, in ISO week 24. Away from the edges of
-        # its week, month and year on purpose: the listings take their end
-        # date inclusively while the intervals end on the first day of the
-        # next period, so a day off on a boundary shows up in both.
+        # 2024-06-10 is a Monday, the first day of ISO week 24, and the
+        # boundary is the point: a period must not carry the first day of
+        # the next one.
         holds = {
             "every one of theirs": base,
             "its week": f"{base}/week/2024/24",
@@ -165,7 +164,7 @@ class PersonRoutesTestCase(ApiDBTestCase):
             with self.subTest(holds=period):
                 result = self.get(path)
                 self.assertEqual(len(result), 1)
-                self.assertTrue(result[0]["date"].startswith("2024-06-12"))
+                self.assertTrue(result[0]["date"].startswith("2024-06-10"))
         for period, path in misses.items():
             with self.subTest(misses=period):
                 self.assertEqual(self.get(path), [])
