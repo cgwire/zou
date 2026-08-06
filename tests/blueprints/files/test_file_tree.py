@@ -99,25 +99,36 @@ class FolderPathTestCase(ApiDBTestCase):
             "shaders/3ds_max",
         )
 
+    def instance_output_file_path(self, entity, output_type, task_type):
+        """
+        Ask for the path of an output published on an asset instance seen
+        through given entity.
+        """
+        return self.post(
+            f"/data/asset-instances/{self.asset_instance.id}"
+            f"/entities/{entity.id}/output-file-path",
+            {
+                "name": "main",
+                "temporal_entity_id": entity.id,
+                "output_type_id": output_type["id"],
+                "task_type_id": task_type.id,
+                "representation": "abc",
+                "revision": 3,
+            },
+            200,
+        )
+
     def test_get_path_shot_asset_instance(self):
-        self.output_type = files_service.get_or_create_output_type("Cache")
+        output_type = files_service.get_or_create_output_type("Cache")
         self.generate_fixture_scene_asset_instance()
         self.generate_fixture_shot_asset_instance(
             self.shot, self.asset_instance
         )
-        data = {
-            "name": "main",
-            "temporal_entity_id": self.shot.id,
-            "output_type_id": self.output_type["id"],
-            "task_type_id": self.task_type_animation.id,
-            "representation": "abc",
-            "revision": 3,
-        }
-        result = self.post(
-            f"/data/asset-instances/{self.asset_instance.id}/entities/{self.shot.id}/output-file-path",
-            data,
-            200,
+
+        result = self.instance_output_file_path(
+            self.shot, output_type, self.task_type_animation
         )
+
         self.assertEqual(
             result["folder_path"],
             "/simple/productions/export/cosmos_landromat/shot/s01/p01/"
@@ -129,21 +140,13 @@ class FolderPathTestCase(ApiDBTestCase):
         )
 
     def test_get_path_scene_asset_instance(self):
-        self.output_type = files_service.get_or_create_output_type("Cache")
+        output_type = files_service.get_or_create_output_type("Cache")
         self.generate_fixture_scene_asset_instance()
-        data = {
-            "name": "main",
-            "temporal_entity_id": self.scene.id,
-            "output_type_id": self.output_type["id"],
-            "task_type_id": self.task_type_animation.id,
-            "representation": "abc",
-            "revision": 3,
-        }
-        result = self.post(
-            f"/data/asset-instances/{self.asset_instance.id}/entities/{self.scene.id}/output-file-path",
-            data,
-            200,
+
+        result = self.instance_output_file_path(
+            self.scene, output_type, self.task_type_animation
         )
+
         self.assertEqual(
             result["folder_path"],
             "/simple/productions/export/cosmos_landromat/scene/s01/sc01/"
@@ -155,23 +158,15 @@ class FolderPathTestCase(ApiDBTestCase):
         )
 
     def test_get_path_asset_asset_instance(self):
-        self.output_type = files_service.get_or_create_output_type("Materials")
+        output_type = files_service.get_or_create_output_type("Materials")
         self.generate_fixture_asset_types()
         self.generate_fixture_asset_character()
         self.generate_fixture_asset_asset_instance()
-        data = {
-            "name": "main",
-            "temporal_entity_id": self.asset.id,
-            "output_type_id": self.output_type["id"],
-            "task_type_id": self.task_type.id,
-            "representation": "abc",
-            "revision": 3,
-        }
-        result = self.post(
-            f"/data/asset-instances/{self.asset_instance.id}/entities/{self.asset.id}/output-file-path",
-            data,
-            200,
+
+        result = self.instance_output_file_path(
+            self.asset, output_type, self.task_type
         )
+
         self.assertEqual(
             result["folder_path"],
             "/simple/productions/export/cosmos_landromat/assets/props/"

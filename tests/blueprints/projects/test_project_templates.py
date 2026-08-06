@@ -64,29 +64,34 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
     def _create_template(self, name="Setup"):
         return self.post("/data/project-templates", {"name": name})
 
-    def test_task_type_link_routes(self):
+    def assert_a_link_can_be_added_and_removed(
+        self, sub_path, payload, link_id, expected=None
+    ):
+        """
+        Every list a template carries goes the same way: post a link, see it
+        in the listing, delete it, see the listing empty again.
+        """
         template = self._create_template()
-        link = self.post(
-            f"/data/project-templates/{template['id']}/task-types",
+        base = f"/data/project-templates/{template['id']}/{sub_path}"
+
+        created = self.post(base, payload)
+        for key, value in (expected or {}).items():
+            self.assertEqual(created[key], value)
+        self.assertEqual(len(self.get(base)), 1)
+
+        self.delete(f"{base}/{link_id}")
+        self.assertEqual(self.get(base), [])
+
+    def test_task_type_link_routes(self):
+        self.assert_a_link_can_be_added_and_removed(
+            "task-types",
             {
                 "task_type_id": str(self.task_type_modeling.id),
                 "priority": 3,
             },
+            self.task_type_modeling.id,
+            expected={"priority": 3},
         )
-        self.assertEqual(link["priority"], 3)
-
-        types = self.get(
-            f"/data/project-templates/{template['id']}/task-types"
-        )
-        self.assertEqual(len(types), 1)
-
-        self.delete(
-            f'/data/project-templates/{template["id"]}/task-types/{self.task_type_modeling.id}'
-        )
-        types = self.get(
-            f"/data/project-templates/{template['id']}/task-types"
-        )
-        self.assertEqual(types, [])
 
     def test_task_type_reorder_route(self):
         template = self._create_template()
@@ -141,67 +146,30 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
         self.assertIn("manager", by_id[ts1]["roles_for_board"])
 
     def test_task_status_link_routes(self):
-        template = self._create_template()
-        link = self.post(
-            f"/data/project-templates/{template['id']}/task-statuses",
+        self.assert_a_link_can_be_added_and_removed(
+            "task-statuses",
             {
                 "task_status_id": str(self.task_status.id),
                 "priority": 1,
                 "roles_for_board": ["admin", "manager"],
             },
+            self.task_status.id,
+            expected={"priority": 1},
         )
-        self.assertEqual(link["priority"], 1)
-
-        statuses = self.get(
-            f"/data/project-templates/{template['id']}/task-statuses"
-        )
-        self.assertEqual(len(statuses), 1)
-
-        self.delete(
-            f'/data/project-templates/{template["id"]}/task-statuses/{self.task_status.id}'
-        )
-        statuses = self.get(
-            f"/data/project-templates/{template['id']}/task-statuses"
-        )
-        self.assertEqual(statuses, [])
 
     def test_asset_type_link_routes(self):
-        template = self._create_template()
-        self.post(
-            f"/data/project-templates/{template['id']}/asset-types",
+        self.assert_a_link_can_be_added_and_removed(
+            "asset-types",
             {"asset_type_id": str(self.asset_type.id)},
+            self.asset_type.id,
         )
-        items = self.get(
-            f"/data/project-templates/{template['id']}/asset-types"
-        )
-        self.assertEqual(len(items), 1)
-
-        self.delete(
-            f"/data/project-templates/{template['id']}/asset-types/{self.asset_type.id}"
-        )
-        items = self.get(
-            f"/data/project-templates/{template['id']}/asset-types"
-        )
-        self.assertEqual(items, [])
 
     def test_status_automation_link_routes(self):
-        template = self._create_template()
-        self.post(
-            f"/data/project-templates/{template['id']}/status-automations",
+        self.assert_a_link_can_be_added_and_removed(
+            "status-automations",
             {"status_automation_id": str(self.status_automation_to_status.id)},
+            self.status_automation_to_status.id,
         )
-        items = self.get(
-            f"/data/project-templates/{template['id']}/status-automations"
-        )
-        self.assertEqual(len(items), 1)
-
-        self.delete(
-            f'/data/project-templates/{template["id"]}/status-automations/{self.status_automation_to_status.id}'
-        )
-        items = self.get(
-            f"/data/project-templates/{template['id']}/status-automations"
-        )
-        self.assertEqual(items, [])
 
     def test_set_metadata_descriptors_route(self):
         template = self._create_template()
