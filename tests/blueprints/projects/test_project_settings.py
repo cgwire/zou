@@ -491,12 +491,16 @@ class ProjectBudgetRoutesTestCase(ApiDBTestCase):
         self.assertEqual(budgets, [])
 
     def test_budget_entries(self):
+        # A fresh budget has no lines yet: creating and removing them is the
+        # business of the tests below.
         budget = self._create_budget("Entries Budget")
-        entries = self.get(
-            f"/data/projects/{self.project_id}"
-            f"/budgets/{budget['id']}/entries"
+        self.assertEqual(
+            self.get(
+                f"/data/projects/{self.project_id}"
+                f"/budgets/{budget['id']}/entries"
+            ),
+            [],
         )
-        self.assertIsInstance(entries, list)
 
     def test_create_budget_entry(self):
         self.generate_fixture_department()

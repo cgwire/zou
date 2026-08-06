@@ -107,6 +107,27 @@ class ShotRoutesTestCase(ApiDBTestCase):
         self.assertEqual(result[task_type_id]["year"]["count"], {"2024": 1})
 
     def test_set_shot_nb_frames(self):
+        """
+        Backfill the frame count of each shot from the duration of its last
+        preview, at the production's frame rate.
+        """
+        # A longer preview on the same shot under another task type: the
+        # backfill asked about animation must not read its duration.
+        # generate_fixture_shot_task repoints self.shot_task.
+        animation_task = self.shot_task
+        self.generate_fixture_preview_file(task_id=animation_task.id).update(
+            {"duration": 4.0}
+        )
+        # A newer, longer preview on the same shot under another task type.
+        # The newest preview is picked per task type, so this one is not the
+        # animation answer even though it is the latest of the shot.
+        other_task = self.generate_fixture_shot_task(
+            name="Layout", task_type_id=self.task_type.id
+        )
+        self.generate_fixture_preview_file(
+            task_id=other_task.id, revision=2
+        ).update({"duration": 8.0})
+
         result = self.post(
             f"/actions/projects/{self.project.id}"
             f"/task-types/{self.task_type_animation.id}"
@@ -114,4 +135,11 @@ class ShotRoutesTestCase(ApiDBTestCase):
             {},
             200,
         )
-        self.assertIsInstance(result, list)
+
+        # The fixture production runs at 25 fps.
+        self.assertEqual(
+            [(str(update["id"]), update["nb_frames"]) for update in result],
+            [(str(self.shot.id), 100)],
+        )
+        shot = self.get(f"/data/shots/{self.shot.id}")
+        self.assertEqual(shot["nb_frames"], 100)
