@@ -257,9 +257,9 @@ def _manage_status_change(task_status, task, comment):
                     retake_count = 0
                 new_data["retake_count"] = retake_count + 1
 
-            if task_status["is_feedback_request"]:
-                if task.get("end_date") is None:
-                    new_data["end_date"] = date_helpers.get_utc_now_datetime()
+            # The end date and the done date are stamped by update_task,
+            # which owns that policy: it rolls them back too when a task
+            # leaves a feedback or a done status.
 
             if task_status["is_wip"] and task["real_start_date"] is None:
                 new_data["real_start_date"] = datetime.datetime.now(

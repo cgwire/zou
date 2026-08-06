@@ -170,12 +170,48 @@ class StatusChangeTestCase(CommentsTestCase):
         self.assertTrue(status_changed)
         self.assertEqual(task["retake_count"], 1)
 
-    def test_a_status_asking_for_feedback_closes_the_task(self):
+    def test_a_task_that_never_counted_a_retake_starts_at_one(self):
+        """
+        The column is nullable, and the rows imported before it existed
+        carry nothing.
+        """
+        self.task.update({"retake_count": None})
+        retake_status = self.generate_fixture_task_status_retake().serialize()
         comment = self.comment()
+
+        task, _ = comments_service._manage_status_change(
+            retake_status, self.task.serialize(), comment
+        )
+
+        self.assertEqual(task["retake_count"], 1)
+
+    def test_a_status_asking_for_feedback_closes_the_task(self):
+        self.task.update({"end_date": None})
+        comment = self.comment()
+
         task, _ = comments_service._manage_status_change(
             self.wfa_status, self.task.serialize(), comment
         )
+
         self.assertIsNotNone(task["end_date"])
+
+    def test_a_task_leaving_a_feedback_status_is_reopened(self):
+        """
+        The end date belongs to update_task, which rolls it back when the
+        task moves out of a feedback status: a retake reopens the task.
+        """
+        retake_status = self.generate_fixture_task_status_retake().serialize()
+        comment = self.comment()
+        comments_service._manage_status_change(
+            self.wfa_status, self.task.serialize(), comment
+        )
+        self.assertIsNotNone(tasks_service.get_task_raw(self.task.id).end_date)
+
+        comments_service._manage_status_change(
+            retake_status, self.task.serialize(), self.comment("retake")
+        )
+
+        self.assertIsNone(tasks_service.get_task_raw(self.task.id).end_date)
 
     def test_a_status_starting_the_work_stamps_it(self):
         wip_status = self.generate_fixture_task_status_wip().serialize()
@@ -187,26 +223,53 @@ class StatusChangeTestCase(CommentsTestCase):
 
     def test_a_comment_older_than_the_last_one_does_not_move_the_task(self):
         """
-        Importing an old comment must not rewind a task: the whole history
-        is replayed instead.
+        Importing an old comment must not rewind a task: the history is
+        replayed instead, so the task keeps the status of its newest
+        comment rather than the one just posted.
         """
         retake_status = self.generate_fixture_task_status_retake().serialize()
-        comment = self.comment()
+        comment = self.comment(
+            "the latest word", task_status_id=retake_status["id"]
+        )
         task, _ = comments_service._manage_status_change(
             retake_status, self.task.serialize(), comment
         )
         old_comment = self.comment(
             "old comment",
-            task_status_id=retake_status["id"],
+            task_status_id=str(self.wfa_status["id"]),
             created_at="1999-12-23 10:00:00",
         )
 
         task, status_changed = comments_service._manage_status_change(
-            retake_status, task, old_comment
+            self.wfa_status, task, old_comment
         )
 
         self.assertFalse(status_changed)
-        self.assertEqual(task["retake_count"], 1)
+        self.assertEqual(
+            str(tasks_service.get_task_raw(self.task.id).task_status_id),
+            retake_status["id"],
+        )
+
+    def test_a_comment_of_the_very_date_of_the_last_one_still_counts(self):
+        """
+        Two comments posted in the same second are ordinary, and the second
+        one must not be read as a replay of the history.
+        """
+        comment = self.comment()
+        task, _ = comments_service._manage_status_change(
+            self.task_status.serialize(), self.task.serialize(), comment
+        )
+        same_date_comment = self.comment(
+            "right after",
+            task_status_id=str(self.wfa_status["id"]),
+            created_at=comment["created_at"].replace("T", " "),
+        )
+
+        task, status_changed = comments_service._manage_status_change(
+            self.wfa_status, task, same_date_comment
+        )
+
+        self.assertTrue(status_changed)
 
     def test_a_status_change_is_announced(self):
         captured = self.capture_events("task:status-changed")
@@ -249,7 +312,8 @@ class StatusChangeTestCase(CommentsTestCase):
         task = self.task.serialize()
 
         comments_service._check_retake_capping(retake_status, task)
-        self.task.update({"retake_count": 3})
+        # The cap is a ceiling the count reaches, not one it passes.
+        self.task.update({"retake_count": 2})
         with self.assertRaises(exception.WrongParameterException):
             comments_service._check_retake_capping(
                 retake_status, self.task.serialize()
@@ -304,6 +368,36 @@ class CreateCommentTestCase(CommentsTestCase):
         )
         self.assertEqual(
             News.query.filter_by(comment_id=comment["id"]).count(), 1
+        )
+
+    def test_the_people_following_the_task_are_notified(self):
+        # Subscribed as the admin, posted as someone else: an author is
+        # never notified of their own comment.
+        self.generate_fixture_subscription()
+
+        comment = comments_service.create_comment(
+            person_id=self.person_id,
+            task_id=str(self.task.id),
+            task_status_id=str(self.task_status.id),
+            text="a word",
+        )
+
+        self.assertEqual(
+            Notification.query.filter_by(comment_id=comment["id"]).count(), 1
+        )
+
+    def test_a_retake_beyond_the_cap_is_refused(self):
+        self.project.update({"max_retakes": 1})
+        retake_status = self.generate_fixture_task_status_retake()
+        self.task.update({"retake_count": 1})
+
+        self.assertRaises(
+            exception.WrongParameterException,
+            comments_service.create_comment,
+            self.person_id,
+            str(self.task.id),
+            str(retake_status.id),
+            "one retake too many",
         )
 
     def test_a_comment_on_a_concept_stays_out_of_the_news_stream(self):
