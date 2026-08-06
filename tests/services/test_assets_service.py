@@ -1,6 +1,6 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.services import assets_service
+from zou.app.services import assets_service, breakdown_service
 from zou.app.services.exception import AssetNotFoundException
 
 
@@ -251,3 +251,66 @@ class AssetServiceTestCase(ApiDBTestCase):
             relations=True,
         )
         self.assertEqual(len(asset["entities_out"]), 0)
+
+    def test_get_shared_assets_used_in_project(self):
+        """
+        Assets living in another production and cast into this one. An
+        asset of the production itself is not shared into it, however many
+        shots use it.
+        """
+        self.generate_fixture_project_standard()
+        borrowed = self.generate_fixture_asset(
+            "Borrowed", project_id=self.project_standard.id
+        )
+        borrowed.update({"is_shared": True})
+        own = self.generate_fixture_asset("Own")
+        own.update({"is_shared": True})
+        breakdown_service.update_casting(
+            self.shot.id,
+            [
+                {"asset_id": str(borrowed.id), "nb_occurences": 1},
+                {"asset_id": str(own.id), "nb_occurences": 1},
+            ],
+        )
+
+        assets = assets_service.get_shared_assets_used_in_project(
+            str(self.project.id)
+        )
+
+        self.assertEqual([asset["name"] for asset in assets], ["Borrowed"])
+
+        # Read from the lending production, the shot belongs elsewhere.
+        self.assertEqual(
+            assets_service.get_shared_assets_used_in_project(
+                str(self.project_standard.id)
+            ),
+            [],
+        )
+
+    def test_get_asset_types_for_episode(self):
+        """
+        The types of the assets an episode owns, which is source_id and not
+        casting: an asset of another production cast into the episode does
+        not count, and neither does one of this production filed under
+        another episode.
+        """
+        self.generate_fixture_project_standard()
+        self.generate_fixture_asset_types()
+        self.generate_fixture_episode()
+        episode_id = str(self.episode.id)
+        own = self.generate_fixture_asset("Own")
+        own.update({"source_id": episode_id})
+        elsewhere = self.generate_fixture_asset(
+            "Elsewhere",
+            asset_type_id=self.asset_type_character.id,
+            project_id=self.project_standard.id,
+        )
+        elsewhere.update({"source_id": episode_id})
+
+        asset_types = assets_service.get_asset_types_for_episode(
+            str(self.project.id), episode_id
+        )
+
+        self.assertEqual(
+            [asset_type["name"] for asset_type in asset_types], ["Props"]
+        )
