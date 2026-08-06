@@ -14,7 +14,12 @@ from zou.app.services import (
 )
 
 
-class TaskRoutesTestCase(ApiDBTestCase):
+class TaskTestCase(ApiDBTestCase):
+    """
+    One production with an asset and a shot, each carrying a task.
+    Holds no test of its own.
+    """
+
     def setUp(self):
         super().setUp()
 
@@ -42,6 +47,14 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.done_status_id = self.task_status_done.id
         self.wfa_status_id = self.task_status_wfa.id
         self.person_id = self.person.id
+
+
+class CreateTasksTestCase(TaskTestCase):
+    """
+    Creating tasks in bulk for a task type. Which task types are
+    allowed depends on the entity: a shot follows the production
+    task type list, an asset follows its asset type workflow.
+    """
 
     def test_create_asset_tasks(self):
         self.generate_fixture_asset_types()
@@ -81,6 +94,19 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.assertEqual(task["task_type_id"], self.task_type_id)
         self.assertEqual(task["entity_id"], self.shot_id)
 
+    def test_create_entity_tasks(self):
+        """
+        The generic route takes the entity type by name, so it reaches the
+        kinds the four hardcoded routes do not, sequences among them.
+        """
+        path = (
+            f"/actions/projects/{self.project.id}"
+            f"/task-types/{self.task_type_id}/create-tasks/sequence"
+        )
+        tasks = self.post(path, {})
+        self.assertEqual(len(tasks), 1)
+        self.assertEqual(tasks[0]["entity_id"], str(self.sequence.id))
+
     def test_create_entity_tasks_for_shot(self):
         ProjectTaskTypeLink.create(
             project_id=self.project.id,
@@ -97,64 +123,6 @@ class TaskRoutesTestCase(ApiDBTestCase):
             tasks[0]["task_type_id"], str(self.task_type_animation.id)
         )
         self.assertEqual(tasks[0]["entity_id"], self.shot_id)
-
-    def test_create_entity_tasks_rejects_task_type_not_in_project(self):
-        # task_type_animation is for_entity=Shot, never linked to project
-        path = f"/data/entities/{self.shot_id}/tasks"
-        self.post(
-            path,
-            {"task_type_ids": [str(self.task_type_animation.id)]},
-            code=400,
-        )
-
-    def test_create_entity_tasks_rejects_wrong_for_entity(self):
-        # task_type has for_entity="Asset", shot has wrong kind
-        ProjectTaskTypeLink.create(
-            project_id=self.project.id,
-            task_type_id=self.task_type.id,
-        )
-        path = f"/data/entities/{self.shot_id}/tasks"
-        self.post(
-            path,
-            {"task_type_ids": [self.task_type_id]},
-            code=400,
-        )
-
-    def test_create_entity_tasks_rejects_task_type_not_in_asset_workflow(
-        self,
-    ):
-        # task_type is in project, but the asset_type workflow is set to
-        # another task type
-        ProjectTaskTypeLink.create(
-            project_id=self.project.id,
-            task_type_id=self.task_type.id,
-        )
-        self.asset_type.task_types = [self.task_type_modeling]
-        self.asset_type.save()
-
-        path = f"/data/entities/{self.asset_id}/tasks"
-        self.post(
-            path,
-            {"task_type_ids": [self.task_type_id]},
-            code=400,
-        )
-
-    def test_create_entity_tasks_accepts_asset_type_without_workflow(self):
-        # an asset type with no configured workflow accepts every task
-        # type enabled in the project
-        ProjectTaskTypeLink.create(
-            project_id=self.project.id,
-            task_type_id=self.task_type.id,
-        )
-        path = f"/data/entities/{self.asset_id}/tasks"
-        tasks = self.post(
-            path,
-            {"task_type_ids": [self.task_type_id]},
-            code=201,
-        )
-        self.assertEqual(len(tasks), 1)
-        self.assertEqual(tasks[0]["task_type_id"], self.task_type_id)
-        self.assertEqual(tasks[0]["entity_id"], self.asset_id)
 
     def test_create_entity_tasks_for_asset(self):
         ProjectTaskTypeLink.create(
@@ -221,6 +189,64 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.assertEqual(len(tasks), 1)
         self.assertEqual(tasks[0]["task_type_id"], self.task_type_id)
 
+    def test_create_entity_tasks_rejects_task_type_not_in_project(self):
+        # task_type_animation is for_entity=Shot, never linked to project
+        path = f"/data/entities/{self.shot_id}/tasks"
+        self.post(
+            path,
+            {"task_type_ids": [str(self.task_type_animation.id)]},
+            code=400,
+        )
+
+    def test_create_entity_tasks_rejects_wrong_for_entity(self):
+        # task_type has for_entity="Asset", shot has wrong kind
+        ProjectTaskTypeLink.create(
+            project_id=self.project.id,
+            task_type_id=self.task_type.id,
+        )
+        path = f"/data/entities/{self.shot_id}/tasks"
+        self.post(
+            path,
+            {"task_type_ids": [self.task_type_id]},
+            code=400,
+        )
+
+    def test_create_entity_tasks_rejects_task_type_not_in_asset_workflow(
+        self,
+    ):
+        # task_type is in project, but the asset_type workflow is set to
+        # another task type
+        ProjectTaskTypeLink.create(
+            project_id=self.project.id,
+            task_type_id=self.task_type.id,
+        )
+        self.asset_type.task_types = [self.task_type_modeling]
+        self.asset_type.save()
+
+        path = f"/data/entities/{self.asset_id}/tasks"
+        self.post(
+            path,
+            {"task_type_ids": [self.task_type_id]},
+            code=400,
+        )
+
+    def test_create_entity_tasks_accepts_asset_type_without_workflow(self):
+        # an asset type with no configured workflow accepts every task
+        # type enabled in the project
+        ProjectTaskTypeLink.create(
+            project_id=self.project.id,
+            task_type_id=self.task_type.id,
+        )
+        path = f"/data/entities/{self.asset_id}/tasks"
+        tasks = self.post(
+            path,
+            {"task_type_ids": [self.task_type_id]},
+            code=201,
+        )
+        self.assertEqual(len(tasks), 1)
+        self.assertEqual(tasks[0]["task_type_id"], self.task_type_id)
+        self.assertEqual(tasks[0]["entity_id"], self.asset_id)
+
     def test_create_entity_tasks_defaults_without_workflow_on_asset(self):
         # No workflow on the asset type: an empty body should create one
         # task per asset task type enabled in the project.
@@ -241,6 +267,46 @@ class TaskRoutesTestCase(ApiDBTestCase):
             created_type_ids,
             {self.task_type_id, str(self.task_type_modeling.id)},
         )
+
+    def test_create_entity_tasks_skips_another_project(self):
+        """
+        The entity ids come from the body next to a project id the caller
+        manages. An entity of another production is dropped rather than given
+        a task.
+        """
+        # generate_fixture_project repoints self.project_id at what it
+        # creates, and the sequence fixture would then try to recreate the
+        # default production, so the foreign row is built by hand.
+        project_id = self.project_id
+        sequence_id = str(self.sequence.id)
+        other_project = self.generate_fixture_project("Other Production")
+        foreign_sequence = Entity.create(
+            name="Foreign",
+            project_id=other_project.id,
+            entity_type_id=shots_service.get_sequence_type()["id"],
+        )
+
+        path = (
+            f"/actions/projects/{project_id}"
+            f"/task-types/{self.task_type_id}/create-tasks/sequence"
+        )
+        tasks = self.post(path, [sequence_id, str(foreign_sequence.id)])
+        self.assertEqual(len(tasks), 1)
+        self.assertEqual(tasks[0]["entity_id"], sequence_id)
+
+    def test_create_entity_tasks_unknown_type(self):
+        path = (
+            f"/actions/projects/{self.project.id}"
+            f"/task-types/{self.task_type_id}/create-tasks/unicorn"
+        )
+        self.post(path, {}, 404)
+
+
+class TaskAssignationTestCase(TaskTestCase):
+    """
+    Who a task is assigned to and at what priority. An artist may
+    only touch the tasks of a production they belong to.
+    """
 
     def test_task_assign(self):
         self.generate_fixture_task()
@@ -367,6 +433,35 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.log_in_admin()
         task = tasks_service.get_task(task_id)
         self.assertEqual(task["priority"], 0)
+
+    def test_update_task_priority(self):
+        self.assertEqual(ProjectTaskTypeLink.query.count(), 0)
+        self.post(
+            "/data/task-type-links",
+            {
+                "task_type_id": TaskType.query.first().id,
+                "project_id": Project.query.first().id,
+                "priority": 2,
+            },
+        )
+        self.assertEqual(ProjectTaskTypeLink.query.first().priority, 2)
+        self.post(
+            "/data/task-type-links",
+            {
+                "task_type_id": TaskType.query.first().id,
+                "project_id": Project.query.first().id,
+                "priority": 3,
+            },
+        )
+        self.assertEqual(ProjectTaskTypeLink.query.count(), 1)
+        self.assertEqual(ProjectTaskTypeLink.query.first().priority, 3)
+
+
+class TaskCommentTestCase(TaskTestCase):
+    """
+    Commenting through the task routes, and what a comment does to the
+    task it lands on: its status, its retake count and its dates.
+    """
 
     def test_comment_task(self):
         self.project_id = self.project.id
@@ -556,6 +651,13 @@ class TaskRoutesTestCase(ApiDBTestCase):
         comments = self.get(path)
         self.assertEqual(len(comments), 1)
 
+
+class TaskListingTestCase(TaskTestCase):
+    """
+    Reading tasks back, by entity, by person, by sequence or episode,
+    and the production access every listing checks.
+    """
+
     def test_get_tasks_for_task_type_and_entity(self):
         self.generate_fixture_task()
         task_type_id = self.task_type.id
@@ -620,38 +722,6 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.assertEqual(len(tasks), 1)
         self.assertEqual(tasks[0]["task_type_id"], task_type_id)
 
-    def test_delete_all_tasks_for_task_type(self):
-        self.generate_fixture_project_standard()
-        self.generate_fixture_asset_standard()
-        task_1_id = str(self.generate_fixture_task().id)
-        task_2_id = str(self.generate_fixture_task(name="second task").id)
-        task_3_id = str(self.generate_fixture_shot_task().id)
-        task_4_id = str(self.generate_fixture_task_standard().id)
-        self.delete(
-            f"/actions/projects/{self.project.id}/task-types/{self.task_type.id}/delete-tasks"
-        )
-        self.get(f"/data/tasks/{task_1_id}", 404)
-        self.get(f"/data/tasks/{task_2_id}", 404)
-        self.get(f"/data/tasks/{task_3_id}")
-        self.get(f"/data/tasks/{task_4_id}")
-
-    def test_delete_tasks(self):
-        self.generate_fixture_project_standard()
-        self.generate_fixture_asset_standard()
-        task_1_id = str(self.generate_fixture_task().id)
-        task_2_id = str(self.generate_fixture_task(name="second task").id)
-        task_3_id = str(self.generate_fixture_shot_task().id)
-        task_4_id = str(self.generate_fixture_task_standard().id)
-        self.post(
-            f"/actions/projects/{self.project.id}/delete-tasks",
-            [task_1_id, task_2_id],
-            code=200,
-        )
-        self.get(f"/data/tasks/{task_1_id}", 404)
-        self.get(f"/data/tasks/{task_2_id}", 404)
-        self.get(f"/data/tasks/{task_3_id}")
-        self.get(f"/data/tasks/{task_4_id}")
-
     def test_get_tasks_permissions(self):
         self.generate_fixture_user_vendor()
         self.generate_fixture_user_cg_artist()
@@ -699,92 +769,6 @@ class TaskRoutesTestCase(ApiDBTestCase):
         tasks = self.get(f"/data/episodes/{self.episode.id}/shot-tasks")
         self.assertEqual(len(tasks), 2)
         self.assertTrue(shot_id in [task["entity_id"] for task in tasks])
-
-    def test_update_task_priority(self):
-        self.assertEqual(ProjectTaskTypeLink.query.count(), 0)
-        self.post(
-            "/data/task-type-links",
-            {
-                "task_type_id": TaskType.query.first().id,
-                "project_id": Project.query.first().id,
-                "priority": 2,
-            },
-        )
-        self.assertEqual(ProjectTaskTypeLink.query.first().priority, 2)
-        self.post(
-            "/data/task-type-links",
-            {
-                "task_type_id": TaskType.query.first().id,
-                "project_id": Project.query.first().id,
-                "priority": 3,
-            },
-        )
-        self.assertEqual(ProjectTaskTypeLink.query.count(), 1)
-        self.assertEqual(ProjectTaskTypeLink.query.first().priority, 3)
-
-    def test_reorder_task_type_links(self):
-        project_id = str(self.project.id)
-        tt1 = str(self.task_type.id)
-        tt2 = str(self.task_type_concept.id)
-        projects_service.create_project_task_type_link(project_id, tt1, 1)
-        projects_service.create_project_task_type_link(project_id, tt2, 2)
-        result = self.post(
-            f"/actions/projects/{project_id}/task-type-links/reorder",
-            {"task_type_ids": [tt2, tt1]},
-            200,
-        )
-        by_type = {link["task_type_id"]: link["priority"] for link in result}
-        self.assertEqual(by_type[tt2], 1)
-        self.assertEqual(by_type[tt1], 2)
-
-    def test_reorder_task_types(self):
-        tt1 = str(self.task_type.id)
-        tt2 = str(self.task_type_concept.id)
-        result = self.post(
-            "/actions/task-types/reorder",
-            {"task_type_ids": [tt2, tt1]},
-            200,
-        )
-        by_type = {
-            task_type["id"]: task_type["priority"] for task_type in result
-        }
-        self.assertEqual(by_type[tt2], 1)
-        self.assertEqual(by_type[tt1], 2)
-
-    def test_reorder_task_status_links_preserves_roles(self):
-        from zou.app.models.project import ProjectTaskStatusLink
-
-        project_id = str(self.project.id)
-        ts1 = str(self.task_status_wip.id)
-        ts2 = str(self.task_status_done.id)
-        ProjectTaskStatusLink.create(
-            project_id=project_id,
-            task_status_id=ts1,
-            priority=1,
-            roles_for_board=["manager"],
-        )
-        ProjectTaskStatusLink.create(
-            project_id=project_id, task_status_id=ts2, priority=2
-        )
-        result = self.post(
-            f"/actions/projects/{project_id}/task-status-links/reorder",
-            {"task_status_ids": [ts2, ts1]},
-            200,
-        )
-        by_status = {link["task_status_id"]: link for link in result}
-        self.assertEqual(by_status[ts2]["priority"], 1)
-        self.assertEqual(by_status[ts1]["priority"], 2)
-        # The reorder only updates priority, board roles are preserved.
-        self.assertEqual(by_status[ts1]["roles_for_board"], ["manager"])
-
-    def test_update_entity_main_preview_from_task(self):
-        task = self.generate_fixture_task().serialize()
-        preview_file = self.generate_fixture_preview_file().serialize()
-        self.put(
-            f"/actions/tasks/{preview_file['task_id']}/set-main-preview", {}
-        )
-        entity = self.get(f"/data/entities/{task['entity_id']}")
-        self.assertEqual(entity["preview_file_id"], preview_file["id"])
 
     def test_open_tasks(self):
         self.generate_fixture_task()
@@ -885,52 +869,6 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.assertEqual(len(previews), 1)
         self.assertEqual(previews[0]["task_id"], str(task.id))
 
-    def test_create_entity_tasks(self):
-        """
-        The generic route takes the entity type by name, so it reaches the
-        kinds the four hardcoded routes do not, sequences among them.
-        """
-        path = (
-            f"/actions/projects/{self.project.id}"
-            f"/task-types/{self.task_type_id}/create-tasks/sequence"
-        )
-        tasks = self.post(path, {})
-        self.assertEqual(len(tasks), 1)
-        self.assertEqual(tasks[0]["entity_id"], str(self.sequence.id))
-
-    def test_create_entity_tasks_skips_another_project(self):
-        """
-        The entity ids come from the body next to a project id the caller
-        manages. An entity of another production is dropped rather than given
-        a task.
-        """
-        # generate_fixture_project repoints self.project_id at what it
-        # creates, and the sequence fixture would then try to recreate the
-        # default production, so the foreign row is built by hand.
-        project_id = self.project_id
-        sequence_id = str(self.sequence.id)
-        other_project = self.generate_fixture_project("Other Production")
-        foreign_sequence = Entity.create(
-            name="Foreign",
-            project_id=other_project.id,
-            entity_type_id=shots_service.get_sequence_type()["id"],
-        )
-
-        path = (
-            f"/actions/projects/{project_id}"
-            f"/task-types/{self.task_type_id}/create-tasks/sequence"
-        )
-        tasks = self.post(path, [sequence_id, str(foreign_sequence.id)])
-        self.assertEqual(len(tasks), 1)
-        self.assertEqual(tasks[0]["entity_id"], sequence_id)
-
-    def test_create_entity_tasks_unknown_type(self):
-        path = (
-            f"/actions/projects/{self.project.id}"
-            f"/task-types/{self.task_type_id}/create-tasks/unicorn"
-        )
-        self.post(path, {}, 404)
-
     def test_get_task_time_spents_route(self):
         """
         The aggregate behind this route is tested on its own since it was
@@ -949,3 +887,106 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.generate_fixture_user_cg_artist()
         self.log_in_cg_artist()
         self.get(path, 403)
+
+
+class TaskRoutesTestCase(TaskTestCase):
+    """
+    What is left: deleting tasks, reordering the production settings
+    the task routes expose, and the entity preview a task sets.
+    """
+
+    def test_delete_all_tasks_for_task_type(self):
+        self.generate_fixture_project_standard()
+        self.generate_fixture_asset_standard()
+        task_1_id = str(self.generate_fixture_task().id)
+        task_2_id = str(self.generate_fixture_task(name="second task").id)
+        task_3_id = str(self.generate_fixture_shot_task().id)
+        task_4_id = str(self.generate_fixture_task_standard().id)
+        self.delete(
+            f"/actions/projects/{self.project.id}/task-types/{self.task_type.id}/delete-tasks"
+        )
+        self.get(f"/data/tasks/{task_1_id}", 404)
+        self.get(f"/data/tasks/{task_2_id}", 404)
+        self.get(f"/data/tasks/{task_3_id}")
+        self.get(f"/data/tasks/{task_4_id}")
+
+    def test_delete_tasks(self):
+        self.generate_fixture_project_standard()
+        self.generate_fixture_asset_standard()
+        task_1_id = str(self.generate_fixture_task().id)
+        task_2_id = str(self.generate_fixture_task(name="second task").id)
+        task_3_id = str(self.generate_fixture_shot_task().id)
+        task_4_id = str(self.generate_fixture_task_standard().id)
+        self.post(
+            f"/actions/projects/{self.project.id}/delete-tasks",
+            [task_1_id, task_2_id],
+            code=200,
+        )
+        self.get(f"/data/tasks/{task_1_id}", 404)
+        self.get(f"/data/tasks/{task_2_id}", 404)
+        self.get(f"/data/tasks/{task_3_id}")
+        self.get(f"/data/tasks/{task_4_id}")
+
+    def test_reorder_task_type_links(self):
+        project_id = str(self.project.id)
+        tt1 = str(self.task_type.id)
+        tt2 = str(self.task_type_concept.id)
+        projects_service.create_project_task_type_link(project_id, tt1, 1)
+        projects_service.create_project_task_type_link(project_id, tt2, 2)
+        result = self.post(
+            f"/actions/projects/{project_id}/task-type-links/reorder",
+            {"task_type_ids": [tt2, tt1]},
+            200,
+        )
+        by_type = {link["task_type_id"]: link["priority"] for link in result}
+        self.assertEqual(by_type[tt2], 1)
+        self.assertEqual(by_type[tt1], 2)
+
+    def test_reorder_task_types(self):
+        tt1 = str(self.task_type.id)
+        tt2 = str(self.task_type_concept.id)
+        result = self.post(
+            "/actions/task-types/reorder",
+            {"task_type_ids": [tt2, tt1]},
+            200,
+        )
+        by_type = {
+            task_type["id"]: task_type["priority"] for task_type in result
+        }
+        self.assertEqual(by_type[tt2], 1)
+        self.assertEqual(by_type[tt1], 2)
+
+    def test_reorder_task_status_links_preserves_roles(self):
+        from zou.app.models.project import ProjectTaskStatusLink
+
+        project_id = str(self.project.id)
+        ts1 = str(self.task_status_wip.id)
+        ts2 = str(self.task_status_done.id)
+        ProjectTaskStatusLink.create(
+            project_id=project_id,
+            task_status_id=ts1,
+            priority=1,
+            roles_for_board=["manager"],
+        )
+        ProjectTaskStatusLink.create(
+            project_id=project_id, task_status_id=ts2, priority=2
+        )
+        result = self.post(
+            f"/actions/projects/{project_id}/task-status-links/reorder",
+            {"task_status_ids": [ts2, ts1]},
+            200,
+        )
+        by_status = {link["task_status_id"]: link for link in result}
+        self.assertEqual(by_status[ts2]["priority"], 1)
+        self.assertEqual(by_status[ts1]["priority"], 2)
+        # The reorder only updates priority, board roles are preserved.
+        self.assertEqual(by_status[ts1]["roles_for_board"], ["manager"])
+
+    def test_update_entity_main_preview_from_task(self):
+        task = self.generate_fixture_task().serialize()
+        preview_file = self.generate_fixture_preview_file().serialize()
+        self.put(
+            f"/actions/tasks/{preview_file['task_id']}/set-main-preview", {}
+        )
+        entity = self.get(f"/data/entities/{task['entity_id']}")
+        self.assertEqual(entity["preview_file_id"], preview_file["id"])
