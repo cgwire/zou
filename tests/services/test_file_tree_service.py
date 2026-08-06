@@ -110,35 +110,32 @@ class FileTreeTestCase(ApiDBTestCase):
         project = file_tree_service.get_project(self.asset.serialize())
         self.assertEqual(project["name"], self.project.name)
 
-    def test_get_file_name_template(self):
-        tree = file_tree_service.get_tree_from_file("default")
-        template = file_tree_service.get_file_name_template(
-            tree, "working", self.shot.serialize()
-        )
-        self.assertEqual(template, tree["working"]["file_name"]["shot"])
-        template = file_tree_service.get_file_name_template(
-            tree, "working", self.asset.serialize()
-        )
-        self.assertEqual(template, tree["working"]["file_name"]["asset"])
-        template = file_tree_service.get_file_name_template(
-            tree, "working", self.sequence.serialize()
-        )
-        self.assertEqual(template, tree["working"]["file_name"]["sequence"])
-
-    def test_get_folder_path_template(self):
-        tree = file_tree_service.get_tree_from_file("simple")
-        template = file_tree_service.get_folder_path_template(
-            tree, "working", self.shot.serialize()
-        )
-        self.assertEqual(template, tree["working"]["folder_path"]["shot"])
-        template = file_tree_service.get_folder_path_template(
-            tree, "working", self.asset.serialize()
-        )
-        self.assertEqual(template, tree["working"]["folder_path"]["asset"])
-        template = file_tree_service.get_folder_path_template(
-            tree, "working", self.sequence.serialize()
-        )
-        self.assertEqual(template, tree["working"]["folder_path"]["sequence"])
+    def test_the_template_lookup_follows_the_entity_type(self):
+        """
+        Both lookups read their section of the tree keyed by the kind of
+        entity: a shot reads "shot", an asset "asset", a sequence
+        "sequence".
+        """
+        lookups = {
+            "file_name": ("default", file_tree_service.get_file_name_template),
+            "folder_path": (
+                "simple",
+                file_tree_service.get_folder_path_template,
+            ),
+        }
+        entities = {
+            "shot": self.shot,
+            "asset": self.asset,
+            "sequence": self.sequence,
+        }
+        for section, (tree_name, get_template) in lookups.items():
+            tree = file_tree_service.get_tree_from_file(tree_name)
+            for kind, entity in entities.items():
+                with self.subTest(section=section, kind=kind):
+                    self.assertEqual(
+                        get_template(tree, "working", entity.serialize()),
+                        tree["working"][section][kind],
+                    )
 
     def test_get_folder_from_datatype(self):
         """

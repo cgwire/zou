@@ -1,3 +1,5 @@
+import datetime
+
 from unittest.mock import patch
 
 import pytest
@@ -456,6 +458,79 @@ class ShotUtilsTestCase(ApiDBTestCase):
         scenes = shots_service.get_scenes_for_sequence(self.sequence.id)
 
         self.assertEqual([scene["name"] for scene in scenes], ["SC01", "SC02"])
+
+    def test_quota_entries_add_up_by_day_week_month_and_year(self):
+        """
+        Every shot counted lands in four buckets at once, and shots sharing
+        a period add up. The entries counters are distinct period counts:
+        how many days a month holds, how many weeks and months a year does,
+        which is why two days in January are needed to tell a sum from an
+        assignment.
+        """
+        quotas = {}
+        counted = [
+            (datetime.datetime(2024, 1, 8), 100, 3),
+            (datetime.datetime(2024, 1, 8), 50, 2),
+            (datetime.datetime(2024, 1, 9), 25, 1),
+            (datetime.datetime(2024, 2, 5), 75, 4),
+        ]
+        for date, nb_frames, nb_drawings in counted:
+            shots_service._add_quota_entry(
+                quotas, "person", date, "UTC", nb_frames, nb_drawings, 25
+            )
+
+        entry = quotas["person"]
+        self.assertEqual(
+            entry["day"],
+            {
+                "frames": {
+                    "2024-01-08": 150,
+                    "2024-01-09": 25,
+                    "2024-02-05": 75,
+                },
+                "seconds": {
+                    "2024-01-08": 6,
+                    "2024-01-09": 1,
+                    "2024-02-05": 3,
+                },
+                "count": {"2024-01-08": 2, "2024-01-09": 1, "2024-02-05": 1},
+                "drawings": {
+                    "2024-01-08": 5,
+                    "2024-01-09": 1,
+                    "2024-02-05": 4,
+                },
+                "entries": {"2024-01": 2, "2024-02": 1},
+            },
+        )
+        self.assertEqual(
+            entry["week"],
+            {
+                "frames": {"2024-2": 175, "2024-6": 75},
+                "seconds": {"2024-2": 7, "2024-6": 3},
+                "count": {"2024-2": 3, "2024-6": 1},
+                "drawings": {"2024-2": 6, "2024-6": 4},
+                "entries": {"2024": 2},
+            },
+        )
+        self.assertEqual(
+            entry["month"],
+            {
+                "frames": {"2024-01": 175, "2024-02": 75},
+                "seconds": {"2024-01": 7, "2024-02": 3},
+                "count": {"2024-01": 3, "2024-02": 1},
+                "drawings": {"2024-01": 6, "2024-02": 4},
+                "entries": {"2024": 2},
+            },
+        )
+        self.assertEqual(
+            entry["year"],
+            {
+                "frames": {"2024": 250},
+                "seconds": {"2024": 10},
+                "count": {"2024": 4},
+                "drawings": {"2024": 10},
+            },
+        )
 
     def test_get_weighted_quota_shots_between(self):
         """

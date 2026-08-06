@@ -253,35 +253,34 @@ class CommentsServiceTestCase(ApiDBTestCase):
         with open(path, "rb") as attachment_file:
             self.assertEqual(attachment_file.read(), b"attachment content")
 
-    def test_get_all_attachment_files_for_project(self):
+    def assert_the_attachment_listing_is_scoped(self, list_files, scope_id):
+        """
+        The listing carries the attachments of the thing it is asked about,
+        and answers empty for an id that owns none.
+        """
         comment = comments_service.new_comment(
             self.task.id, self.task_status.id, self.user["id"], "comment"
         )
         attachment = self._create_attachment(comment, "notes.txt")
-        attachments = comments_service.get_all_attachment_files_for_project(
-            self.project_id
+
+        attachments = list_files(scope_id)
+
+        self.assertEqual(
+            [attached["id"] for attached in attachments], [attachment["id"]]
         )
-        self.assertEqual(len(attachments), 1)
-        self.assertEqual(attachments[0]["id"], attachment["id"])
-        attachments = comments_service.get_all_attachment_files_for_project(
-            fields.gen_uuid()
+        self.assertEqual(list_files(fields.gen_uuid()), [])
+
+    def test_get_all_attachment_files_for_project(self):
+        self.assert_the_attachment_listing_is_scoped(
+            comments_service.get_all_attachment_files_for_project,
+            self.project_id,
         )
-        self.assertEqual(attachments, [])
 
     def test_get_all_attachment_files_for_task(self):
-        comment = comments_service.new_comment(
-            self.task.id, self.task_status.id, self.user["id"], "comment"
+        self.assert_the_attachment_listing_is_scoped(
+            comments_service.get_all_attachment_files_for_task,
+            str(self.task.id),
         )
-        attachment = self._create_attachment(comment, "notes.txt")
-        attachments = comments_service.get_all_attachment_files_for_task(
-            str(self.task.id)
-        )
-        self.assertEqual(len(attachments), 1)
-        self.assertEqual(attachments[0]["id"], attachment["id"])
-        attachments = comments_service.get_all_attachment_files_for_task(
-            fields.gen_uuid()
-        )
-        self.assertEqual(attachments, [])
 
     def test_reply_comment(self):
         reply_text = "first reply"
