@@ -1,3 +1,5 @@
+import os
+import tempfile
 import unittest
 import uuid
 
@@ -19,7 +21,7 @@ from zou.app.utils import events
 
 class SyncServiceTestCase(ApiDBTestCase):
     def setUp(self):
-        super(SyncServiceTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()
@@ -46,7 +48,7 @@ class SyncServiceTestCase(ApiDBTestCase):
         gazu.client.fetch_one = fetch_one_mock
 
     def tearDown(self):
-        super(SyncServiceTestCase, self).tearDown()
+        super().tearDown()
         gazu.client.fetch_one = self.real_fetch_one
 
     def handle_event(self, data={}):
@@ -391,3 +393,65 @@ class SyncProjectEntriesTestCase(ApiDBTestCase):
             ],
         )
         self.assertEqual(Playlist.query.count(), 2)
+
+
+class DownloadFileTestCase(unittest.TestCase):
+    def test_partial_file_removed_on_error(self):
+        folder = tempfile.mkdtemp()
+        file_path = os.path.join(folder, "preview.mp4")
+
+        def failing_dl_func(prefix, preview_file_id):
+            yield b"partial content"
+            raise RuntimeError("stream interrupted")
+
+        sync_service.download_file(
+            file_path, "previews", failing_dl_func, "preview-id"
+        )
+        self.assertFalse(os.path.exists(file_path))
+
+    def test_successful_download_keeps_file(self):
+        folder = tempfile.mkdtemp()
+        file_path = os.path.join(folder, "preview.mp4")
+
+        def dl_func(prefix, preview_file_id):
+            yield b"full content"
+
+        sync_service.download_file(
+            file_path, "previews", dl_func, "preview-id"
+        )
+        with open(file_path, "rb") as downloaded:
+            self.assertEqual(downloaded.read(), b"full content")
+
+
+class FetchEventsTestCase(unittest.TestCase):
+    def test_paginates_until_short_page(self):
+        pages = [
+            [{"id": "ev-0"}, {"id": "ev-1"}, {"id": "ev-2"}],
+            [{"id": "ev-3"}, {"id": "ev-4"}],
+        ]
+        calls = []
+
+        def fake_fetch_all(path):
+            calls.append(path)
+            return pages[len(calls) - 1]
+
+        with mock.patch.object(
+            sync_service.gazu.client, "fetch_all", side_effect=fake_fetch_all
+        ):
+            events = sync_service._fetch_events(
+                "events/last?limit=3", 3, paginate=True
+            )
+        self.assertEqual(len(events), 5)
+        self.assertEqual(len(calls), 2)
+        self.assertIn("cursor_event_id=ev-2", calls[1])
+
+    def test_single_fetch_when_not_paginated(self):
+        full_page = [{"id": "ev-0"}, {"id": "ev-1"}, {"id": "ev-2"}]
+        with mock.patch.object(
+            sync_service.gazu.client, "fetch_all", return_value=full_page
+        ) as fetch_all:
+            events = sync_service._fetch_events(
+                "events/last?limit=3", 3, paginate=False
+            )
+        self.assertEqual(len(events), 3)
+        fetch_all.assert_called_once()
