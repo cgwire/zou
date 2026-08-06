@@ -970,22 +970,27 @@ class TOTPTestCase(ApiDBTestCase):
     def get_person(self):
         return Person.get(self.person_dict["id"])
 
+    def call_2fa(self, method, path, headers, totp=None, status=200):
+        """
+        Drive one of the 2FA routes and return its payload. A route that
+        takes no code is called with an empty body.
+        """
+        response = getattr(self.app, method)(
+            path,
+            data=json.dumps({} if totp is None else {"totp": totp}),
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, status)
+        return json.loads(response.data.decode("utf-8"))
+
     def enable_totp(self, headers):
         """
         Pre-enable then enable TOTP, return the secret.
         """
-        response = self.app.put("auth/totp", headers=headers)
-        self.assertEqual(response.status_code, 200)
-        data = json.loads(response.data.decode("utf-8"))
-        otp_secret = data["otp_secret"]
-
-        totp = pyotp.TOTP(otp_secret)
-        response = self.app.post(
-            "auth/totp",
-            data=json.dumps({"totp": totp.now()}),
-            headers=headers,
+        otp_secret = self.call_2fa("put", "auth/totp", headers)["otp_secret"]
+        self.call_2fa(
+            "post", "auth/totp", headers, pyotp.TOTP(otp_secret).now()
         )
-        self.assertEqual(response.status_code, 200)
         return otp_secret
 
     def test_pre_enable_totp_already_enabled(self):
@@ -995,9 +1000,7 @@ class TOTPTestCase(ApiDBTestCase):
         _, headers = self.login()
         self.enable_totp(headers)
 
-        response = self.app.put("auth/totp", headers=headers)
-        self.assertEqual(response.status_code, 400)
-        data = json.loads(response.data.decode("utf-8"))
+        data = self.call_2fa("put", "auth/totp", headers, status=400)
         self.assertTrue(data["error"])
 
     def test_enable_totp_wrong_code(self):
@@ -1006,14 +1009,10 @@ class TOTPTestCase(ApiDBTestCase):
         """
         _, headers = self.login()
 
-        self.app.put("auth/totp", headers=headers)
-        response = self.app.post(
-            "auth/totp",
-            data=json.dumps({"totp": "000000"}),
-            headers=headers,
+        self.call_2fa("put", "auth/totp", headers)
+        data = self.call_2fa(
+            "post", "auth/totp", headers, "000000", status=400
         )
-        self.assertEqual(response.status_code, 400)
-        data = json.loads(response.data.decode("utf-8"))
         self.assertTrue(data["wrong_OTP"])
 
     def test_enable_totp_already_enabled(self):
@@ -1023,14 +1022,13 @@ class TOTPTestCase(ApiDBTestCase):
         _, headers = self.login()
         otp_secret = self.enable_totp(headers)
 
-        totp = pyotp.TOTP(otp_secret)
-        response = self.app.post(
+        data = self.call_2fa(
+            "post",
             "auth/totp",
-            data=json.dumps({"totp": totp.now()}),
-            headers=headers,
+            headers,
+            pyotp.TOTP(otp_secret).now(),
+            status=400,
         )
-        self.assertEqual(response.status_code, 400)
-        data = json.loads(response.data.decode("utf-8"))
         self.assertTrue(data["error"])
 
     def test_disable_totp(self):
@@ -1040,14 +1038,9 @@ class TOTPTestCase(ApiDBTestCase):
         _, headers = self.login()
         otp_secret = self.enable_totp(headers)
 
-        totp = pyotp.TOTP(otp_secret)
-        response = self.app.delete(
-            "auth/totp",
-            data=json.dumps({"totp": totp.now()}),
-            headers=headers,
+        data = self.call_2fa(
+            "delete", "auth/totp", headers, pyotp.TOTP(otp_secret).now()
         )
-        self.assertEqual(response.status_code, 200)
-        data = json.loads(response.data.decode("utf-8"))
         self.assertTrue(data["success"])
 
         person = self.get_person()
@@ -1059,12 +1052,7 @@ class TOTPTestCase(ApiDBTestCase):
         DELETE /auth/totp returns 400 if TOTP not enabled.
         """
         _, headers = self.login()
-        response = self.app.delete(
-            "auth/totp",
-            data=json.dumps({"totp": "123456"}),
-            headers=headers,
-        )
-        self.assertEqual(response.status_code, 400)
+        self.call_2fa("delete", "auth/totp", headers, "123456", status=400)
 
     def test_disable_totp_wrong_code(self):
         """
@@ -1073,13 +1061,9 @@ class TOTPTestCase(ApiDBTestCase):
         _, headers = self.login()
         self.enable_totp(headers)
 
-        response = self.app.delete(
-            "auth/totp",
-            data=json.dumps({"totp": "000000"}),
-            headers=headers,
+        data = self.call_2fa(
+            "delete", "auth/totp", headers, "000000", status=400
         )
-        self.assertEqual(response.status_code, 400)
-        data = json.loads(response.data.decode("utf-8"))
         self.assertTrue(data["wrong_OTP"])
 
     def test_login_with_totp(self):
@@ -1144,15 +1128,12 @@ class TOTPTestCase(ApiDBTestCase):
         _, headers = self.login()
         otp_secret = self.enable_totp(headers)
 
-        totp = pyotp.TOTP(otp_secret)
-        response = self.app.put(
+        data = self.call_2fa(
+            "put",
             "auth/recovery-codes",
-            data=json.dumps({"totp": totp.now()}),
-            headers=headers,
+            headers,
+            pyotp.TOTP(otp_secret).now(),
         )
-        self.assertEqual(response.status_code, 200)
-        data = json.loads(response.data.decode("utf-8"))
-        self.assertIn("otp_recovery_codes", data)
         self.assertIsNotNone(data["otp_recovery_codes"])
 
     def test_recovery_codes_no_2fa(self):
@@ -1160,12 +1141,9 @@ class TOTPTestCase(ApiDBTestCase):
         PUT /auth/recovery-codes returns 400 without 2FA.
         """
         _, headers = self.login()
-        response = self.app.put(
-            "auth/recovery-codes",
-            data=json.dumps({"totp": "123456"}),
-            headers=headers,
+        self.call_2fa(
+            "put", "auth/recovery-codes", headers, "123456", status=400
         )
-        self.assertEqual(response.status_code, 400)
 
     def test_recovery_codes_wrong_otp(self):
         """
@@ -1174,13 +1152,9 @@ class TOTPTestCase(ApiDBTestCase):
         _, headers = self.login()
         self.enable_totp(headers)
 
-        response = self.app.put(
-            "auth/recovery-codes",
-            data=json.dumps({"totp": "000000"}),
-            headers=headers,
+        data = self.call_2fa(
+            "put", "auth/recovery-codes", headers, "000000", status=400
         )
-        self.assertEqual(response.status_code, 400)
-        data = json.loads(response.data.decode("utf-8"))
         self.assertTrue(data["wrong_OTP"])
 
 
