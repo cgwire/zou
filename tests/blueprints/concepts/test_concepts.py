@@ -89,9 +89,12 @@ class ConceptRoutesTestCase(ApiDBTestCase):
         self.assertEqual([t["id"] for t in result], [str(task.id)])
 
     def test_get_concept_preview_files(self):
-        concept = self.create_concept("Preview Concept")
-        result = self.get(f"/data/concepts/{concept['id']}/preview-files")
-        self.assertIsInstance(result, dict)
+        # Keyed by task type, and a task type is there only once it has a
+        # preview: a concept with no preview answers nothing at all.
+        concept, _ = self.create_concept_with_task("Preview Concept")
+        self.assertEqual(
+            self.get(f"/data/concepts/{concept['id']}/preview-files"), {}
+        )
 
     def test_get_project_concepts(self):
         self.create_concept("Project Concept")

@@ -47,8 +47,16 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
         self.assertEqual(len(project["task_types"]), 2)
 
     def test_get_project_subscriptions(self):
-        result = self.get(f"/data/projects/{self.project_id}/subscriptions")
-        self.assertIsInstance(result, list)
+        path = f"/data/projects/{self.project_id}/subscriptions"
+        self.assertEqual(self.get(path), [])
+        self.post(f"/actions/user/tasks/{self.task.id}/subscribe", {})
+
+        result = self.get(path)
+
+        self.assertEqual(
+            [(entry["task_id"], entry["person_id"]) for entry in result],
+            [(str(self.task.id), str(self.user["id"]))],
+        )
 
     def test_get_persons_task_dates(self):
         # Admin gets the studio-wide view.
@@ -390,7 +398,7 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
             [shot_task_id],
             200,
         )
-        self.assertIsInstance(result, list)
+        self.assertEqual(result, [shot_task_id])
         self.get_404(f"/data/tasks/{shot_task_id}")
 
     def test_delete_preview_from_comment(self):

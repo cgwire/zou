@@ -570,13 +570,36 @@ class CommentAttachmentTestCase(CommentTestCase):
     comment from reaching another's attachments.
     """
 
+    def attach_a_file(self):
+        """
+        One file hung off the comment of setUp, returned as the route
+        serialises it.
+        """
+        return self.upload_file(
+            f"/actions/tasks/{self.task.id}"
+            f"/comments/{self.comment['id']}/add-attachment",
+            self.get_fixture_file_path(os.path.join("thumbnails", "th01.png")),
+        )[0]
+
     def test_get_project_attachment_files(self):
-        result = self.get(f"/data/projects/{self.project.id}/attachment-files")
-        self.assertIsInstance(result, list)
+        path = f"/data/projects/{self.project.id}/attachment-files"
+        self.assertEqual(self.get(path), [])
+        attachment = self.attach_a_file()
+
+        self.assertEqual(
+            [attached["id"] for attached in self.get(path)],
+            [attachment["id"]],
+        )
 
     def test_get_task_attachment_files(self):
-        result = self.get(f"/data/tasks/{self.task.id}/attachment-files")
-        self.assertIsInstance(result, list)
+        path = f"/data/tasks/{self.task.id}/attachment-files"
+        self.assertEqual(self.get(path), [])
+        attachment = self.attach_a_file()
+
+        self.assertEqual(
+            [attached["id"] for attached in self.get(path)],
+            [attachment["id"]],
+        )
 
     def test_add_attachment_to_own_comment(self):
         path = (
