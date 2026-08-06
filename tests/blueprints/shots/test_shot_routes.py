@@ -1,5 +1,8 @@
 from tests.base import ApiDBTestCase
 
+from zou.app.services import tasks_service
+from zou.app.utils import fields
+
 
 class ShotRoutesTestCase(ApiDBTestCase):
     def setUp(self):
@@ -15,8 +18,11 @@ class ShotRoutesTestCase(ApiDBTestCase):
         self.generate_fixture_shot_task()
 
     def test_get_shot_preview_files(self):
-        result = self.get(f"/data/shots/{self.shot.id}/preview-files")
-        self.assertIsInstance(result, dict)
+        # Keyed by task type, and a task type appears only once it has a
+        # preview: an empty shot answers nothing at all.
+        self.assertEqual(
+            self.get(f"/data/shots/{self.shot.id}/preview-files"), {}
+        )
 
     def test_get_shot_preview_files_with_data(self):
         self.generate_fixture_preview_file(
@@ -26,8 +32,8 @@ class ShotRoutesTestCase(ApiDBTestCase):
         self.assertGreater(len(result), 0)
 
     def test_get_shot_versions(self):
-        result = self.get(f"/data/shots/{self.shot.id}/versions")
-        self.assertIsInstance(result, list)
+        # Nothing has been published on this shot yet.
+        self.assertEqual(self.get(f"/data/shots/{self.shot.id}/versions"), [])
 
     def test_get_episode_shot_tasks(self):
         result = self.get(f"/data/episodes/{self.episode.id}/shot-tasks")
@@ -43,19 +49,62 @@ class ShotRoutesTestCase(ApiDBTestCase):
         self.assertIsInstance(result, list)
         self.assertEqual(len(result), 1)
 
+    def a_shot_closed_on(self, date, nb_frames=100):
+        """
+        A shot task assigned and given its feedback date, which is what a
+        quota counts: the shot's frames land on that day.
+        """
+        self.shot.update({"nb_frames": nb_frames})
+        tasks_service.assign_task(str(self.shot_task.id), str(self.person.id))
+        self.shot_task.update({"end_date": fields.get_date_object(date)})
+
+        # A second shot of the same size, same task type, assigned to the
+        # same person but never given a feedback date: nothing of it may
+        # reach the counts.
+        closed_task = self.shot_task
+        open_shot = self.generate_fixture_shot("SH02")
+        open_shot.update({"nb_frames": nb_frames})
+        open_task = self.generate_fixture_shot_task(shot_id=open_shot.id)
+        tasks_service.assign_task(str(open_task.id), str(self.person.id))
+        self.shot_task = closed_task
+
     def test_get_project_quotas(self):
+        """
+        Frames per person, per period, in raw mode: the whole shot counts on
+        the day its task got its feedback.
+        """
+        self.a_shot_closed_on("2024-06-12")
+
         result = self.get(
             f"/data/projects/{self.project.id}"
-            f"/quotas/{self.task_type_animation.id}"
+            f"/quotas/{self.task_type_animation.id}?count_mode=feedback"
         )
-        self.assertIsInstance(result, dict)
+
+        for entry in [str(self.person.id), "total"]:
+            # Whole buckets, so the unfinished shot cannot slip in under a
+            # day of its own.
+            self.assertEqual(
+                result[entry]["day"]["frames"], {"2024-06-12": 100}
+            )
+            self.assertEqual(result[entry]["month"]["count"], {"2024-06": 1})
 
     def test_get_project_person_quotas(self):
+        """
+        The same figures for one person, keyed by task type rather than by
+        person.
+        """
+        self.a_shot_closed_on("2024-06-12")
+
         result = self.get(
             f"/data/projects/{self.project.id}"
-            f"/quotas/persons/{self.person.id}"
+            f"/quotas/persons/{self.person.id}?count_mode=feedback"
         )
-        self.assertIsInstance(result, dict)
+
+        task_type_id = str(self.task_type_animation.id)
+        self.assertEqual(
+            result[task_type_id]["day"]["frames"], {"2024-06-12": 100}
+        )
+        self.assertEqual(result[task_type_id]["year"]["count"], {"2024": 1})
 
     def test_set_shot_nb_frames(self):
         result = self.post(
