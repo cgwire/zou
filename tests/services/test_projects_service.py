@@ -396,6 +396,9 @@ class ProjectMetadataDescriptorTestCase(ApiDBTestCase):
         self.generate_fixture_project()
         self.generate_fixture_project_closed()
 
+    def names_and_positions(self, descriptors):
+        return [(d["name"], d["position"]) for d in descriptors]
+
     def add(self, name, entity_type="Asset", choices=None):
         """
         A string descriptor of given name, the shape all these tests want.
@@ -517,71 +520,62 @@ class ProjectMetadataDescriptorTestCase(ApiDBTestCase):
         descriptor4 = self.add("Angle")
         descriptor5 = self.add("Status")
 
-        descriptors = projects_service.get_metadata_descriptors(
-            self.project.id
+        self.assertEqual(
+            len(projects_service.get_metadata_descriptors(self.project.id)), 5
         )
-        self.assertEqual(len(descriptors), 5)
 
-        descriptor_ids = [
-            str(descriptor3["id"]),
-            str(descriptor1["id"]),
-            str(descriptor5["id"]),
-        ]
         reordered = projects_service.reorder_metadata_descriptors(
-            self.project.id, "Asset", descriptor_ids
+            self.project.id,
+            "Asset",
+            [
+                str(descriptor3["id"]),
+                str(descriptor1["id"]),
+                str(descriptor5["id"]),
+            ],
         )
 
-        self.assertEqual(len(reordered), 5)
-        self.assertEqual(reordered[0]["id"], descriptor3["id"])
-        self.assertEqual(reordered[0]["position"], 1)
-        self.assertEqual(reordered[1]["id"], descriptor1["id"])
-        self.assertEqual(reordered[1]["position"], 2)
-        self.assertEqual(reordered[2]["id"], descriptor5["id"])
-        self.assertEqual(reordered[2]["position"], 3)
-        # The two the caller left out land behind the three it named, in
-        # alphabetical order rather than the order they were created in.
-        self.assertEqual(reordered[3]["id"], descriptor4["id"])
-        self.assertEqual(reordered[3]["name"], "Angle")
-        self.assertEqual(reordered[3]["position"], 4)
-        self.assertEqual(reordered[4]["id"], descriptor2["id"])
-        self.assertEqual(reordered[4]["name"], "Zone")
-        self.assertEqual(reordered[4]["position"], 5)
+        # The three named first, then the two left out, alphabetically
+        # rather than in the order they were created.
+        self.assertEqual(
+            self.names_and_positions(reordered),
+            [
+                ("Location", 1),
+                ("Contractor", 2),
+                ("Status", 3),
+                ("Angle", 4),
+                ("Zone", 5),
+            ],
+        )
 
     def test_reorder_metadata_descriptors_all_included(self):
         descriptor1 = self.add("Contractor")
         descriptor2 = self.add("Environment")
 
-        descriptor_ids = [
-            str(descriptor2["id"]),
-            str(descriptor1["id"]),
-        ]
         reordered = projects_service.reorder_metadata_descriptors(
-            self.project.id, "Asset", descriptor_ids
+            self.project.id,
+            "Asset",
+            [str(descriptor2["id"]), str(descriptor1["id"])],
         )
 
-        self.assertEqual(len(reordered), 2)
-        self.assertEqual(reordered[0]["id"], descriptor2["id"])
-        self.assertEqual(reordered[0]["position"], 1)
-        self.assertEqual(reordered[1]["id"], descriptor1["id"])
-        self.assertEqual(reordered[1]["position"], 2)
+        self.assertEqual(
+            self.names_and_positions(reordered),
+            [("Environment", 1), ("Contractor", 2)],
+        )
 
     def test_reorder_metadata_descriptors_empty_list(self):
         self.add("Contractor")
         self.add("Environment")
         self.add("Location")
 
-        descriptor_ids = []
         reordered = projects_service.reorder_metadata_descriptors(
-            self.project.id, "Asset", descriptor_ids
+            self.project.id, "Asset", []
         )
 
-        self.assertEqual(len(reordered), 3)
-        self.assertEqual(reordered[0]["name"], "Contractor")
-        self.assertEqual(reordered[0]["position"], 1)
-        self.assertEqual(reordered[1]["name"], "Environment")
-        self.assertEqual(reordered[1]["position"], 2)
-        self.assertEqual(reordered[2]["name"], "Location")
-        self.assertEqual(reordered[2]["position"], 3)
+        # Naming none of them still renumbers, alphabetically.
+        self.assertEqual(
+            self.names_and_positions(reordered),
+            [("Contractor", 1), ("Environment", 2), ("Location", 3)],
+        )
 
     def test_reorder_metadata_descriptors_descriptor_not_found(self):
         self.add("Contractor")

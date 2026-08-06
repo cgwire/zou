@@ -39,17 +39,17 @@ class SceneTestCase(ApiDBTestCase):
 
     def test_get_scene(self):
         scene = self.get(f"data/scenes/{self.scene.id}")
-        self.assertEqual(scene["id"], str(self.scene.id))
-        self.assertEqual(scene["name"], self.scene.name)
-        self.assertEqual(
-            scene["sequence_name"], self.serialized_sequence["name"]
-        )
-        self.assertEqual(
-            scene["sequence_id"], str(self.serialized_sequence["id"])
-        )
-        self.assertEqual(scene["episode_name"], self.episode.name)
-        self.assertEqual(scene["episode_id"], str(self.episode.id))
-        self.assertEqual(scene["project_name"], self.project.name)
+
+        expected = {
+            "id": str(self.scene.id),
+            "name": self.scene.name,
+            "sequence_name": self.serialized_sequence["name"],
+            "sequence_id": str(self.serialized_sequence["id"]),
+            "episode_name": self.episode.name,
+            "episode_id": str(self.episode.id),
+            "project_name": self.project.name,
+        }
+        self.assertEqual({key: scene[key] for key in expected}, expected)
 
     def test_get_scene_by_name(self):
         scenes = self.get(f"data/scenes/all?name={self.scene.name}")

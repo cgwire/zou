@@ -50,15 +50,17 @@ class ShotTestCase(ApiDBTestCase):
         self.generate_fixture_shot_task()
 
         shot = self.get(f"data/shots/{self.shot.id}")
-        self.assertEqual(shot["id"], str(self.shot.id))
-        self.assertEqual(shot["name"], self.shot.name)
-        self.assertEqual(
-            shot["sequence_name"], self.serialized_sequence["name"]
-        )
-        self.assertEqual(shot["sequence_id"], self.serialized_sequence["id"])
-        self.assertEqual(shot["episode_name"], self.serialized_episode["name"])
-        self.assertEqual(shot["episode_id"], self.serialized_episode["id"])
-        self.assertEqual(shot["project_name"], self.serialized_project["name"])
+
+        expected = {
+            "id": str(self.shot.id),
+            "name": self.shot.name,
+            "sequence_name": self.serialized_sequence["name"],
+            "sequence_id": self.serialized_sequence["id"],
+            "episode_name": self.serialized_episode["name"],
+            "episode_id": self.serialized_episode["id"],
+            "project_name": self.serialized_project["name"],
+        }
+        self.assertEqual({key: shot[key] for key in expected}, expected)
         self.assertEqual(len(shot["tasks"]), 1)
 
     def test_get_shot_with_invalid_id(self):

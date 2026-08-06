@@ -16,13 +16,16 @@ class EditsTestCase(BaseEditTestCase):
     def test_get_edit(self):
         edit = self.get(f"data/edits/{self.edit.id}")
 
-        self.assertEqual(edit["id"], str(self.edit.id))
-        self.assertEqual(edit["type"], "Edit")
-        self.assertEqual(edit["name"], "Edit")
-        self.assertEqual(edit["project_name"], self.project_name)
-        self.assertEqual(edit["parent_id"], self.episode_id)
-        self.assertEqual(edit["episode_id"], self.episode_id)
-        self.assertEqual(edit["episode_name"], self.episode_name)
+        expected = {
+            "id": str(self.edit.id),
+            "type": "Edit",
+            "name": "Edit",
+            "project_name": self.project_name,
+            "parent_id": self.episode_id,
+            "episode_id": self.episode_id,
+            "episode_name": self.episode_name,
+        }
+        self.assertEqual({key: edit[key] for key in expected}, expected)
         self.assertEqual(len(edit["tasks"]), 2)
 
     def test_get_edit_by_name(self):
