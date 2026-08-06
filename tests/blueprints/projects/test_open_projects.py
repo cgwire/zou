@@ -15,6 +15,47 @@ class OpenProjectRouteTestCase(ApiDBTestCase):
         self.assertEqual(len(projects), 1)
         self.assertEqual(projects[0]["name"], self.project.name)
 
+    def a_tv_show_with(self, episodes):
+        """
+        A tv show carrying given (name, status) episodes. Returns them by
+        name, since generate_fixture_episode repoints self.episode.
+        """
+        self.project.update({"production_type": "tvshow"})
+        built = {}
+        for name, status in episodes:
+            episode = self.generate_fixture_episode(name)
+            episode.update({"status": status})
+            built[name] = episode
+        return built
+
+    def first_episode_id(self):
+        return self.get("data/projects/open/")[0]["first_episode_id"]
+
+    def test_the_first_episode_is_the_running_one_sorting_first(self):
+        episodes = self.a_tv_show_with(
+            [("E02", "running"), ("E01", "running")]
+        )
+
+        self.assertEqual(self.first_episode_id(), str(episodes["E01"].id))
+
+    def test_a_running_episode_wins_over_a_finished_one_sorting_first(self):
+        episodes = self.a_tv_show_with(
+            [("E01", "complete"), ("E02", "running")]
+        )
+
+        self.assertEqual(self.first_episode_id(), str(episodes["E02"].id))
+
+    def test_a_show_with_nothing_running_falls_back_to_its_episodes(self):
+        episodes = self.a_tv_show_with(
+            [("E02", "complete"), ("E01", "complete")]
+        )
+        # An asset sorting before every episode: the fallback is still about
+        # episodes.
+        self.generate_fixture_asset_type()
+        self.generate_fixture_asset("Aardvark")
+
+        self.assertEqual(self.first_episode_id(), str(episodes["E01"].id))
+
     def test_add_team_member(self):
         self.person_id = str(self.generate_fixture_person().id)
         self.post(
