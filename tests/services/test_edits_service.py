@@ -2,6 +2,7 @@ import pytest
 
 from tests.base import ApiDBTestCase
 
+from zou.app.models.entity import EntityVersion
 from zou.app.models.schedule_item import ScheduleItem
 from zou.app.services import edits_service
 from zou.app.services.exception import EditNotFoundException
@@ -16,6 +17,13 @@ class EditUtilsTestCase(ApiDBTestCase):
         self.generate_fixture_edit(parent_id=self.episode.id)
         self.generate_fixture_asset()
 
+    def the_chain_a_task_needs(self):
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
+        self.generate_fixture_department()
+        self.generate_fixture_task_status()
+        self.generate_fixture_task_type()
+
     def test_get_edit_type(self):
         edit_type = edits_service.get_edit_type()
         self.assertEqual(edit_type["name"], "Edit")
@@ -27,11 +35,7 @@ class EditUtilsTestCase(ApiDBTestCase):
         self.assertDictEqual(edits[0], self.edit_dict)
 
     def test_get_edits_and_tasks(self):
-        self.generate_fixture_person()
-        self.generate_fixture_assigner()
-        self.generate_fixture_department()
-        self.generate_fixture_task_status()
-        self.generate_fixture_task_type()
+        self.the_chain_a_task_needs()
         self.generate_fixture_edit_task()
         self.generate_fixture_edit_task(name="Secondary")
         self.generate_fixture_edit("P02")
@@ -60,11 +64,7 @@ class EditUtilsTestCase(ApiDBTestCase):
         )
 
     def test_get_full_edit(self):
-        self.generate_fixture_person()
-        self.generate_fixture_assigner()
-        self.generate_fixture_department()
-        self.generate_fixture_task_status()
-        self.generate_fixture_task_type()
+        self.the_chain_a_task_needs()
         self.generate_fixture_edit_task()
 
         edit = edits_service.get_full_edit(self.edit.id)
@@ -85,6 +85,71 @@ class EditUtilsTestCase(ApiDBTestCase):
         )
         self.assertEqual(edit["name"], edit_name)
         self.assertEqual(edit["parent_id"], parent_id)
+
+    def test_get_edits_for_episode(self):
+        """
+        The edits hanging under one episode. An edit of the next episode is
+        not one of them.
+        """
+        here, first_episode = self.edit, self.episode
+        elsewhere = self.generate_fixture_episode("E02")
+        self.generate_fixture_edit("Next", parent_id=elsewhere.id)
+
+        edits = edits_service.get_edits_for_episode(str(first_episode.id))
+
+        self.assertEqual([edit["id"] for edit in edits], [str(here.id)])
+
+    def test_get_edits_for_project(self):
+        here = self.edit
+        elsewhere = self.generate_fixture_project_standard()
+        other_edit = self.generate_fixture_edit("Elsewhere")
+        other_edit.update({"project_id": elsewhere.id})
+
+        edits = edits_service.get_edits_for_project(str(self.project.id))
+
+        self.assertEqual([edit["id"] for edit in edits], [str(here.id)])
+
+    def test_update_edit(self):
+        result = edits_service.update_edit(
+            str(self.edit.id), {"description": "Recut"}
+        )
+
+        self.assertEqual(result["description"], "Recut")
+        self.assertEqual(
+            edits_service.get_edit(self.edit.id)["description"], "Recut"
+        )
+
+    def test_get_edit_versions(self):
+        """
+        Metadata changes are versioned, newest first.
+        """
+        self.assertEqual(edits_service.get_edit_versions(self.edit.id), [])
+        for name in ["First", "Second"]:
+            EntityVersion.create(entity_id=self.edit.id, name=name, data={})
+
+        versions = edits_service.get_edit_versions(self.edit.id)
+
+        self.assertEqual(
+            [version["name"] for version in versions], ["Second", "First"]
+        )
+
+    def test_remove_edit_with_a_task_cancels_it(self):
+        # An edit someone has worked on is canceled rather than deleted.
+        self.the_chain_a_task_needs()
+        self.generate_fixture_edit_task()
+
+        edits_service.remove_edit(str(self.edit.id))
+
+        self.assertTrue(edits_service.get_edit(self.edit.id)["canceled"])
+
+    def test_remove_edit_with_a_task_can_be_forced(self):
+        self.the_chain_a_task_needs()
+        self.generate_fixture_edit_task()
+
+        edits_service.remove_edit(str(self.edit.id), force=True)
+
+        with pytest.raises(EditNotFoundException):
+            edits_service.get_edit(self.edit.id)
 
     def test_remove_edit(self):
         edit_id = str(self.edit.id)
