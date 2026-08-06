@@ -30,9 +30,20 @@ class AssetServiceTestCase(ApiDBTestCase):
         self.assertIsInstance(assets, list)
 
     def test_get_full_assets(self):
+        """
+        Ordered by production, then asset type, then asset name. Character
+        sorts before Props, so the rabbit comes first whatever the order
+        the rows were created in.
+        """
+        self.generate_fixture_asset_types()
+        self.generate_fixture_asset_character()
+
         assets = assets_service.get_full_assets()
-        self.assertEqual(len(assets), 1)
-        self.assertEqual(assets[0]["name"], "Tree")
+
+        self.assertEqual(
+            [(asset["asset_type_name"], asset["name"]) for asset in assets],
+            [("Character", "Rabbit"), ("Props", "Tree")],
+        )
         self.assertEqual(assets[0]["project_name"], self.project.name)
 
     def test_get_assets_and_tasks(self):
@@ -46,18 +57,19 @@ class AssetServiceTestCase(ApiDBTestCase):
         self.generate_fixture_task()
         self.generate_fixture_task(name="Secondary")
         assets = assets_service.get_assets_and_tasks()
-        self.assertEqual(len(assets), 2)
-        assets = sorted(assets, key=lambda asset: asset["name"])
-        self.assertEqual(len(assets[1]["tasks"]), 2)
+
+        # Ordered by asset type then name, so the rabbit leads. Sorting the
+        # result here instead would hide the service losing that order.
         self.assertEqual(
-            assets[1]["tasks"][0]["assignees"][0], str(self.person.id)
+            [asset["name"] for asset in assets], ["Rabbit", "Tree"]
         )
+        tree_tasks = assets[1]["tasks"]
+        self.assertEqual(len(tree_tasks), 2)
+        self.assertEqual(tree_tasks[0]["assignees"][0], str(self.person.id))
         self.assertEqual(
-            assets[1]["tasks"][0]["task_status_id"], str(self.task_status.id)
+            tree_tasks[0]["task_status_id"], str(self.task_status.id)
         )
-        self.assertEqual(
-            assets[1]["tasks"][0]["task_type_id"], str(self.task_type.id)
-        )
+        self.assertEqual(tree_tasks[0]["task_type_id"], str(self.task_type.id))
 
     def test_get_asset_types(self):
         asset_types = assets_service.get_asset_types()

@@ -1,7 +1,11 @@
 from tests.base import ApiDBTestCase
 
 
-from zou.app.services import tasks_service, time_spents_service
+from zou.app.services import (
+    projects_service,
+    tasks_service,
+    time_spents_service,
+)
 
 
 class TimeSpentsServiceTestCase(ApiDBTestCase):
@@ -183,10 +187,22 @@ class TimeSpentsServiceTestCase(ApiDBTestCase):
         self.assertEqual(year_table["2018"][self.person_id], 2000)
 
     def test_get_time_spents_for_entity(self):
+        """
+        Newest first: the route builds a history panel from this.
+        """
         time_spents = time_spents_service.get_time_spents_for_entity(
             self.asset.id
         )
-        self.assertGreater(len(time_spents), 0)
+        self.assertEqual(
+            [entry["date"] for entry in time_spents],
+            [
+                "2019-01-02",
+                "2018-06-04",
+                "2018-06-03",
+                "2018-06-03",
+                "2018-05-03",
+            ],
+        )
 
     def test_get_time_spents_range(self):
         time_spents = time_spents_service.get_time_spents_range(
@@ -224,18 +240,63 @@ class TimeSpentsServiceTestCase(ApiDBTestCase):
         self.assertIn("Tree", entity_names)
 
     def test_get_day_offs_between(self):
-        self.generate_fixture_day_off("2021-03-01")
+        # Created out of order, to pin that the reading is by date.
         self.generate_fixture_day_off("2021-03-15")
+        self.generate_fixture_day_off("2021-03-01")
         result = time_spents_service.get_day_offs_between(
             "2021-03-01", "2021-03-31", person_id=self.person_id
         )
-        self.assertEqual(len(result), 2)
+        self.assertEqual(
+            [day_off["date"] for day_off in result],
+            ["2021-03-01", "2021-03-15"],
+        )
+
+    def test_get_day_offs_between_for_project(self):
+        """
+        The day offs of the whole team, grouped by person and ordered by
+        date. The reason for a day off is someone else's business: only the
+        caller's own entries carry their description.
+        """
+        projects_service.add_team_member(self.project.id, self.person_id)
+        self.generate_fixture_day_off("2021-03-15")
+        self.generate_fixture_day_off("2021-03-01")
+        self.day_off.update({"description": "moving out"})
+
+        result = time_spents_service.get_day_offs_between_for_project(
+            str(self.project.id), "2021-03-01", "2021-03-31"
+        )
+
+        day_offs = result[self.person_id]
+        self.assertEqual(
+            [day_off["date"] for day_off in day_offs],
+            ["2021-03-01", "2021-03-15"],
+        )
+        self.assertNotIn("description", day_offs[0])
+
+        result = time_spents_service.get_day_offs_between_for_project(
+            str(self.project.id),
+            "2021-03-01",
+            "2021-03-31",
+            current_user_id=self.person_id,
+        )
+        self.assertEqual(
+            result[self.person_id][0]["description"], "moving out"
+        )
 
     def test_get_project_month_time_spents(self):
+        """
+        Durations by department, by person, by month, with a running total
+        at each level.
+        """
         result = time_spents_service.get_project_month_time_spents(
             str(self.project.id)
         )
-        self.assertIsInstance(result, dict)
+        # The keys are the raw ids the query returns, not strings.
+        person = result[self.task_type.department_id][self.person.id]
+        self.assertEqual(person["2018-05"], 600)
+        self.assertEqual(person["2018-06"], 1100)
+        self.assertEqual(person["2019-01"], 850)
+        self.assertEqual(person["total"], 2550)
 
     def test_get_project_task_type_time_spents(self):
         result = time_spents_service.get_project_task_type_time_spents(
