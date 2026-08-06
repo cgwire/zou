@@ -463,9 +463,9 @@ def prepare_shot(shot):
     shot_name = shot_serialized["name"]
     name = shot_name + " " + shot_name.replace("_", " ").replace("-", " ")
     if episode is not None:
-        shot_name = f'{episode["name"]} {sequence["name"]} {name}'
+        name = f'{episode["name"]} {sequence["name"]} {name}'
     elif sequence is not None:
-        shot_name = f'{sequence["name"]} {name}'
+        name = f'{sequence["name"]} {name}'
 
     metadatas = {}
     if shot_serialized["data"]:
