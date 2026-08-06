@@ -640,6 +640,66 @@ class TaskServiceTestCase(ApiDBTestCase):
         self.assertEqual(Task.get(self.shot_task.id).retake_count, 0)
 
 
+class ResetTaskDataTestCase(ApiDBTestCase):
+    """
+    reset_task_data rebuilds a task's derived fields from its comment
+    history and its time spents, which is what repairs a task whose counters
+    drifted.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project()
+        self.generate_fixture_asset()
+        self.generate_fixture_department()
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status()
+        self.generate_fixture_task_status_wip()
+        self.generate_fixture_task_status_retake()
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
+        self.generate_fixture_task()
+        self.task_id = str(self.task.id)
+
+    def comment_with(self, task_status):
+        return comments_service.new_comment(
+            self.task_id, str(task_status.id), self.person.id, "comment"
+        )
+
+    def test_a_run_of_retakes_counts_once(self):
+        """
+        The retake count follows the number of times the task went back to
+        retake, not the number of retake comments: two in a row are one
+        return trip.
+        """
+        for task_status in [
+            self.task_status_wip,
+            self.task_status_retake,
+            self.task_status_retake,
+            self.task_status_wip,
+            self.task_status_retake,
+        ]:
+            self.comment_with(task_status)
+
+        tasks_service.reset_task_data(self.task_id)
+
+        task = tasks_service.get_task(self.task_id)
+        self.assertEqual(task["retake_count"], 2)
+        self.assertIsNotNone(task["real_start_date"])
+
+    def test_the_duration_is_the_sum_of_the_time_spents(self):
+        for date, duration in [("2024-01-08", 120), ("2024-01-09", 300)]:
+            tasks_service.create_or_update_time_spent(
+                self.task_id, str(self.person.id), date, duration
+            )
+        self.task.update({"duration": 0})
+
+        tasks_service.reset_task_data(self.task_id)
+
+        task = tasks_service.get_task(self.task_id)
+        self.assertEqual(task["duration"], 420)
+
+
 class GetOrCreateTaskTypeTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()

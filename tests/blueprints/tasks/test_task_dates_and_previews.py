@@ -29,8 +29,22 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
         self.project_id = str(self.project.id)
 
     def test_get_open_tasks_stats(self):
+        """
+        Counts per project, per task type and per status, with the project
+        figures summed across its task types. Two task types, because a
+        single one cannot tell a sum from an assignment.
+        """
+        self.task.update({"estimation": 10, "duration": 4})
+        self.shot_task.update({"estimation": 5, "duration": 2})
+
         result = self.get("/data/tasks/open-tasks/stats")
-        self.assertIsInstance(result, dict)
+
+        project = result[self.project_id]
+        self.assertEqual(project["amount"], 2)
+        self.assertEqual(project["amount_done"], 0)
+        self.assertEqual(project["total_estimation"], 15)
+        self.assertEqual(project["total_duration"], 6)
+        self.assertEqual(len(project["task_types"]), 2)
 
     def test_get_project_subscriptions(self):
         result = self.get(f"/data/projects/{self.project_id}/subscriptions")
