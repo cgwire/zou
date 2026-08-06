@@ -346,40 +346,72 @@ class ProjectServiceTestCase(ApiDBTestCase):
         fps = projects_service.get_project_fps(self.project.id)
         self.assertEqual(fps, 30.00)
 
-    def test_get_task_type_priority_map(self):
+    def link_the_same_task_type_to_both_productions(self, here, elsewhere):
+        """
+        The same task type ordered differently in two productions, which is
+        what the scoping has to tell apart.
+        """
         self.generate_fixture_department()
         self.generate_fixture_task_type()
+        self.generate_fixture_project_standard()
         projects_service.create_project_task_type_link(
-            str(self.project.id), str(self.task_type.id), 3
+            str(self.project.id), str(self.task_type.id), here
         )
+        projects_service.create_project_task_type_link(
+            str(self.project_standard.id), str(self.task_type.id), elsewhere
+        )
+
+    def test_get_task_type_priority_map(self):
+        self.link_the_same_task_type_to_both_productions(3, 9)
+
         priority_map = projects_service.get_task_type_priority_map(
             self.project.id
         )
-        self.assertIn(str(self.task_type.id), priority_map)
-        self.assertEqual(priority_map[str(self.task_type.id)], 3)
+
+        self.assertEqual(priority_map, {str(self.task_type.id): 3})
 
     def test_get_task_type_links(self):
-        self.generate_fixture_department()
-        self.generate_fixture_task_type()
-        projects_service.create_project_task_type_link(
-            str(self.project.id), str(self.task_type.id), 2
-        )
+        self.link_the_same_task_type_to_both_productions(2, 9)
+
         links = projects_service.get_task_type_links(self.project.id)
-        self.assertEqual(len(links), 1)
+
+        self.assertEqual(
+            [(link["task_type_id"], link["priority"]) for link in links],
+            [(str(self.task_type.id), 2)],
+        )
 
     def test_get_department_team(self):
-        self.generate_fixture_department()
-        self.generate_fixture_person()
-        projects_service.add_team_member(self.project.id, self.person.id)
+        """
+        Scoped twice: the production and the department. A member of the
+        same department on another production stays out.
+        """
         from zou.app.services import persons_service
 
-        persons_service.add_to_department(
-            str(self.department.id), str(self.person.id)
+        self.generate_fixture_department()
+        self.generate_fixture_person()
+        # generate_fixture_person repoints self.person, hence the local.
+        here = self.person
+        self.generate_fixture_project_standard()
+        elsewhere = self.generate_fixture_person(
+            first_name="Alice",
+            last_name="Zulu",
+            desktop_login="alice.zulu",
+            email="alice.zulu@gmail.com",
         )
+        projects_service.add_team_member(self.project.id, here.id)
+        projects_service.add_team_member(
+            self.project_standard.id, elsewhere.id
+        )
+        for person in [here, elsewhere]:
+            persons_service.add_to_department(
+                str(self.department.id), str(person.id)
+            )
+
         team = projects_service.get_department_team(
             self.project.id, self.department.id
         )
-        self.assertEqual(len(team), 1)
+
+        self.assertEqual([person.id for person in team], [here.id])
 
 
 class ProjectMetadataDescriptorTestCase(ApiDBTestCase):
