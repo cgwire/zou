@@ -6,7 +6,13 @@ from sqlalchemy.exc import IntegrityError
 from tests.base import ApiDBTestCase
 
 from zou.app.models.entity import Entity
-from zou.app.services import breakdown_service, shots_service, tasks_service
+from zou.app.models.task import Task
+from zou.app.services import (
+    breakdown_service,
+    persons_service,
+    shots_service,
+    tasks_service,
+)
 from zou.app.utils import fields
 from zou.app.services.exception import (
     EpisodeNotFoundException,
@@ -196,14 +202,113 @@ class ShotUtilsTestCase(ApiDBTestCase):
         self.assertEqual(sequence_type["name"], "Sequence")
 
     def test_get_episode_by_name(self):
+        """
+        Case insensitive, and scoped to the production: two productions may
+        both own an E01.
+        """
+        episode_id = str(self.episode.id)
+        self.generate_fixture_project_standard()
+        # Same name, other production, created second: asking the lending
+        # production must not hand back the first one.
+        namesake = self.generate_fixture_episode(
+            name="E01", project_id=self.project_standard.id
+        )
+
         episode = shots_service.get_episode_by_name(self.project.id, "e01")
-        self.assertEqual(episode["id"], str(self.episode.id))
+        self.assertEqual(episode["id"], episode_id)
+
+        episode = shots_service.get_episode_by_name(
+            self.project_standard.id, "e01"
+        )
+        self.assertEqual(episode["id"], str(namesake.id))
+
         self.assertRaises(
             EpisodeNotFoundException,
             shots_service.get_episode_by_name,
             self.project.id,
             "E02",
         )
+
+    def test_get_episodes_and_sequences_for_project(self):
+        """
+        Both listings are scoped to the production, and both answer the
+        assigned only variant from the tasks hanging under them.
+        """
+        episode_id = str(self.episode.id)
+        sequence_id = str(self.sequence.id)
+        self.generate_fixture_department()
+        self.generate_fixture_task_status()
+        self.generate_fixture_task_type()
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
+        self.generate_fixture_shot_task()
+
+        # The other production needs an assigned task of its own, or the
+        # assignee filter alone would keep it out and the project filter
+        # would have nothing to do.
+        self.generate_fixture_project_standard()
+        other_episode = self.generate_fixture_episode(
+            name="E99", project_id=self.project_standard.id
+        )
+        other_sequence = self.generate_fixture_sequence(
+            name="SQ99",
+            project_id=self.project_standard.id,
+            episode_id=other_episode.id,
+        )
+        other_shot = self.generate_fixture_shot(
+            "SH99", sequence_id=other_sequence.id
+        )
+        self.generate_fixture_shot_task(name="other", shot_id=other_shot.id)
+
+        project_id = str(self.project.id)
+        self.assertEqual(
+            [
+                episode["id"]
+                for episode in shots_service.get_episodes_for_project(
+                    project_id
+                )
+            ],
+            [episode_id],
+        )
+        self.assertEqual(
+            [
+                sequence["id"]
+                for sequence in shots_service.get_sequences_for_project(
+                    project_id
+                )
+            ],
+            [sequence_id],
+        )
+
+        # The assigned only variant runs its own queries rather than going
+        # through get_entities_for_project, so it needs its own check. The
+        # caller comes from the request context, which a service test has
+        # none of.
+        with patch.object(
+            shots_service.user_service,
+            "build_assignee_filter",
+            return_value=Task.assignees.contains(
+                persons_service.get_person_raw(self.person.id)
+            ),
+        ):
+            self.assertEqual(
+                [
+                    episode["id"]
+                    for episode in shots_service.get_episodes_for_project(
+                        project_id, only_assigned=True
+                    )
+                ],
+                [episode_id],
+            )
+            self.assertEqual(
+                [
+                    sequence["id"]
+                    for sequence in shots_service.get_sequences_for_project(
+                        project_id, only_assigned=True
+                    )
+                ],
+                [sequence_id],
+            )
 
     def test_get_entities_by_shotgun_id(self):
         """
