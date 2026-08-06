@@ -52,6 +52,19 @@ class PluginsServiceTestCase(ApiDBTestCase):
 
         return plugin_path
 
+    def a_plugin_row(self, plugin_id, version="0.1.0", **overrides):
+        """
+        A plugin already recorded in the database, without any files.
+        """
+        return Plugin.create(
+            plugin_id=plugin_id,
+            name=f"Plugin {plugin_id}",
+            version=version,
+            maintainer_name="Test Author",
+            maintainer_email="test@example.com",
+            **{"license": "MIT", **overrides},
+        )
+
     def test_install_plugin_new(self):
         plugin_path = self._create_test_plugin("test_plugin", "0.1.0")
 
@@ -78,34 +91,29 @@ class PluginsServiceTestCase(ApiDBTestCase):
         self.assertFalse(app.logger.disabled)
 
     def test_install_plugin_upgrade(self):
-        Plugin.create(
-            plugin_id="test_plugin",
-            name="Test Plugin",
-            version="0.1.0",
-            maintainer_name="Test Author",
-            maintainer_email="test@example.com",
-            license="MIT",
-        )
+        self.a_plugin_row("test_plugin", "0.1.0")
         plugin_path = self._create_test_plugin("test_plugin", "0.2.0")
+
         result = plugins_service.install_plugin(str(plugin_path), force=True)
-        self.assertIsNotNone(result)
+
         self.assertEqual(result["version"], "0.2.0")
         plugin = Plugin.query.filter_by(plugin_id="test_plugin").first()
         self.assertEqual(plugin.version, "0.2.0")
 
-    def test_install_plugin_same_version(self):
-        Plugin.create(
-            plugin_id="test_plugin",
-            name="Test Plugin",
-            version="0.1.0",
-            maintainer_name="Test Author",
-            maintainer_email="test@example.com",
-            license="MIT",
-        )
+    def test_installing_an_older_version_warns_and_still_installs(self):
+        """
+        Without force, a version that is not newer only draws a warning: the
+        install goes through and the row takes the older version. Worth
+        stating plainly, the message reads like a refusal.
+        """
+        self.a_plugin_row("test_plugin", "0.2.0")
         plugin_path = self._create_test_plugin("test_plugin", "0.1.0")
-        result = plugins_service.install_plugin(str(plugin_path), force=True)
-        self.assertIsNotNone(result)
+
+        result = plugins_service.install_plugin(str(plugin_path))
+
         self.assertEqual(result["version"], "0.1.0")
+        plugin = Plugin.query.filter_by(plugin_id="test_plugin").first()
+        self.assertEqual(plugin.version, "0.1.0")
 
     @patch("zou.app.services.plugins_service.download_zip_url")
     def test_install_plugin_from_zip_url(self, mock_download):
@@ -134,6 +142,24 @@ class PluginsServiceTestCase(ApiDBTestCase):
         installed_path = self.plugin_folder / "test_plugin"
         self.assertTrue(installed_path.exists())
         self.assertTrue((installed_path / "manifest.toml").exists())
+
+    @patch("zou.app.services.plugins_service.clone_git_repo")
+    def test_install_plugin_from_git_url(self, mock_clone):
+        plugin_path = self._create_test_plugin("test_plugin", "0.1.0")
+        clone_root = Path(self.temp_dir) / "clone"
+        clone_root.mkdir(parents=True, exist_ok=True)
+        cloned = clone_root / "test_plugin"
+        shutil.copytree(plugin_path, cloned)
+        mock_clone.return_value = cloned
+
+        url = "git@github.com:org/repo.git"
+        result = plugins_service.install_plugin(url)
+
+        self.assertEqual(result["plugin_id"], "test_plugin")
+        mock_clone.assert_called_once_with(url)
+        self.assertTrue((self.plugin_folder / "test_plugin").exists())
+        # What was cloned is a working copy: it goes when the install ends.
+        self.assertFalse(clone_root.exists())
 
     def test_install_plugin_nonexistent_path(self):
         with self.assertRaises(FileNotFoundError):
@@ -165,26 +191,13 @@ class PluginsServiceTestCase(ApiDBTestCase):
         self.assertIn("Invalid plugin path", str(context.exception))
 
     def test_get_plugins(self):
-        Plugin.create(
-            plugin_id="plugin1",
-            name="Plugin 1",
-            version="0.1.0",
-            maintainer_name="Author 1",
-            maintainer_email="author1@example.com",
-            license="MIT",
-        )
-        Plugin.create(
-            plugin_id="plugin2",
-            name="Plugin 2",
-            version="0.2.0",
-            maintainer_name="Author 2",
-            maintainer_email="author2@example.com",
-            license="GPL-3.0-only",
-        )
+        self.assertEqual(plugins_service.get_plugins(), [])
+        self.a_plugin_row("plugin1")
+        self.a_plugin_row("plugin2", "0.2.0", license="GPL-3.0-only")
 
         plugins = plugins_service.get_plugins()
 
-        self.assertEqual(len(plugins), 2)
-        plugin_ids = [p["plugin_id"] for p in plugins]
-        self.assertIn("plugin1", plugin_ids)
-        self.assertIn("plugin2", plugin_ids)
+        self.assertEqual(
+            sorted(plugin["plugin_id"] for plugin in plugins),
+            ["plugin1", "plugin2"],
+        )
