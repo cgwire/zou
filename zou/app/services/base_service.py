@@ -49,10 +49,12 @@ def get_or_create_instance_by_name(model, **kwargs):
     if instance is None:
         instance = model.create(**kwargs)
         project_id = getattr(instance, "project_id", None)
+        if project_id is not None:
+            project_id = str(project_id)
         events.emit(
             f"{model.__tablename__}:new",
             {f"{model.__tablename__}_id": instance.id},
-            project_id=str(project_id),
+            project_id=project_id,
         )
     return instance.serialize()
 

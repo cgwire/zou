@@ -102,9 +102,9 @@ class BaseServiceTestCase(ApiDBTestCase):
     def test_creating_by_name_announces_the_row(self):
         """
         Announced on creation only, under the table name. Driven through an
-        output type, which is what the two real callers create; the payload
-        also carries a project_id of "None" for a model that has none, which
-        is not asserted here.
+        output type, which is what the two real callers create, and which
+        belongs to no production: the payload must then say nothing about a
+        production rather than name one.
         """
         captured = self.capture_events("output_type:new")
 
@@ -119,6 +119,23 @@ class BaseServiceTestCase(ApiDBTestCase):
             [event["output_type_id"] for event in captured],
             [output_type["id"]],
         )
+        self.assertNotIn("project_id", captured[0])
+
+    def test_creating_by_name_names_the_production_when_there_is_one(self):
+        # Neither real caller creates a row that belongs to a production,
+        # but the payload has to carry one that does.
+        self.generate_fixture_project()
+        self.generate_fixture_asset_type()
+        captured = self.capture_events("entity:new")
+
+        base_service.get_or_create_instance_by_name(
+            Entity,
+            name="Tree",
+            project_id=self.project.id,
+            entity_type_id=self.asset_type.id,
+        )
+
+        self.assertEqual(captured[0]["project_id"], str(self.project.id))
 
     def test_get_model_map_from_array(self):
         models = [
