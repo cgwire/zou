@@ -9,7 +9,7 @@ from mixer.backend.flask import mixer
 
 from zou.app import app, db
 from zou.app.models.status_automation import StatusAutomation
-from zou.app.utils import fields, auth, fs
+from zou.app.utils import events, fields, auth, fs
 from zou.app.services import (
     breakdown_service,
     comments_service,
@@ -192,6 +192,24 @@ class ApiTestCase(unittest.TestCase):
         """
         rows = self.get(path, code)
         return rows[0]
+
+    def capture_events(self, event):
+        """
+        Collect the payloads of given event in a list and return it. Every
+        handler registered so far is dropped first, so the list holds that
+        one event and nothing else.
+        """
+        captured = []
+
+        class Handler:
+            __name__ = f"{event}_test_handler"
+
+            def handle_event(self, data=None):
+                captured.append(data or {})
+
+        events.unregister_all()
+        events.register(event, Handler.__name__, Handler())
+        return captured
 
     def get_404(self, path):
         """

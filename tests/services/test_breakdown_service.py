@@ -8,7 +8,6 @@ from zou.app.services import (
     projects_service,
     tasks_service,
 )
-from zou.app.utils import events
 
 
 class BreakdownServiceTestCase(ApiDBTestCase):
@@ -198,22 +197,7 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         removed_asset_ids so listeners know what changed without having
         to keep a client-side snapshot (cgwire/gazu#393).
         """
-        captured = []
-
-        class _Handler:
-            __name__ = "casting_update_handler"
-
-            def __init__(self, sink):
-                self.sink = sink
-
-            def handle_event(self, data=None):
-                self.sink.append(data or {})
-
-        events.unregister_all()
-        handler = _Handler(captured)
-        events.register(
-            "shot:casting-update", "casting_update_handler", handler
-        )
+        captured = self.capture_events("shot:casting-update")
 
         shot_id = str(self.shot.id)
         asset_id = str(self.asset.id)
@@ -298,22 +282,7 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         event, the same way casting it in a shot emits an asset:update
         event, so listeners can refresh the episode's asset list.
         """
-        captured = []
-
-        class _Handler:
-            __name__ = "episode_casting_update_handler"
-
-            def __init__(self, sink):
-                self.sink = sink
-
-            def handle_event(self, data=None):
-                self.sink.append(data or {})
-
-        events.unregister_all()
-        handler = _Handler(captured)
-        events.register(
-            "episode:casting-update", "episode_casting_update_handler", handler
-        )
+        captured = self.capture_events("episode:casting-update")
 
         asset_id = str(self.asset.id)
         breakdown_service.update_casting(

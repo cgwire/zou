@@ -2,7 +2,6 @@ import pytest
 
 from tests.base import ApiDBTestCase
 
-from zou.app.utils import events
 
 # Share-link passwords are hashed with bcrypt; the verification path must
 # not be patched to always-True here.
@@ -366,26 +365,14 @@ class GuestTestCase(PlaylistSharingTestCase):
             201,
         )
         self.log_out()
-        events.unregister_all()
-        received = []
-
-        class _Sink:
-            __name__ = "guest_person_new_sink"
-
-            def handle_event(self_sink, data):
-                received.append(data)
-
-        events.register("person:new", "guest_person_new_sink", _Sink())
-        try:
-            guest = self.post(
-                self.shared_path(link["token"], "/guest"),
-                {"first_name": "Lena"},
-                201,
-            )
-            self.assertEqual(len(received), 1)
-            self.assertEqual(received[0]["person_id"], guest["id"])
-        finally:
-            events.unregister("person:new", "guest_person_new_sink")
+        received = self.capture_events("person:new")
+        guest = self.post(
+            self.shared_path(link["token"], "/guest"),
+            {"first_name": "Lena"},
+            201,
+        )
+        self.assertEqual(len(received), 1)
+        self.assertEqual(received[0]["person_id"], guest["id"])
 
     def test_reuse_guest(self):
         link = self.post(
