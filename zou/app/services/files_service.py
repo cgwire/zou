@@ -981,6 +981,7 @@ def remove_preview_file(preview_file_id):
     """
     preview_file = get_preview_file_raw(preview_file_id)
     preview_file.delete()
+    clear_preview_file_cache(str(preview_file_id))
     task = Task.get(preview_file.task_id)
     events.emit(
         "preview-file:delete",
@@ -1041,11 +1042,21 @@ def reset_default_preview_background_files(preview_background_file_id):
     """
     Set all preview background files as is_default=False except the one matching given id.
     """
-    PreviewBackgroundFile.query.filter(
+    query = PreviewBackgroundFile.query.filter(
         PreviewBackgroundFile.id != preview_background_file_id,
         PreviewBackgroundFile.is_default == True,
-    ).update({"is_default": False})
+    )
+    unseated = [
+        str(preview_background.id) for preview_background in query.all()
+    ]
+    query.update({"is_default": False})
     PreviewBackgroundFile.commit()
+    # The rows written here are the ones that just lost the title, and each
+    # is read on its own by the download routes: without this they keep
+    # announcing themselves as the default for the whole memoization
+    # window, which is twenty minutes.
+    for preview_background_id in unseated:
+        clear_preview_background_file_cache(preview_background_id)
 
 
 def update_preview_background_file(preview_background_file_id, data):

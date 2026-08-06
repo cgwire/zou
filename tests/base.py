@@ -332,10 +332,24 @@ class ApiDBTestCase(ApiTestCase):
       project.team.append() is the common one: use
       projects_service.add_team_member().
 
-    One more, about failures rather than fixtures: an exception raised in
-    setUp leaves the transaction open, and the next class blocks on the
-    truncation instead of failing. A hanging suite usually means a broken
-    setUp, not a slow test.
+    Two more, about the request rather than the fixtures:
+
+    - Driving a service directly as a given role means opening a request
+      context with that person's token, since the permission helpers read
+      the token rather than get_current_user. flask.g lives on the
+      application context, which setUp pushes once and test_request_context
+      reuses, so g.project_role survives from one such block to the next:
+      pop it on the way in, the way a real request would start clean.
+      Pushing a fresh application context instead looks tidier and is
+      wrong, since the session is scoped to it and every row the fixtures
+      hold comes back detached.
+    - An exception raised in setUp leaves the transaction open, and the
+      next class blocks on the truncation instead of failing. A hanging
+      suite usually means a broken setUp, not a slow test. The quiet way
+      to break setUp is to give a helper of your own a name this class
+      already uses: setUp calls log_in itself, so redefining it with
+      another signature raises before a single fixture exists, and the
+      failure shows up as the next class hanging.
     """
 
     # Schema is created once per session in conftest.py.
@@ -1255,6 +1269,7 @@ class ApiDBTestCase(ApiTestCase):
             person_id=self.person.id,
             software_id=self.software.id,
         )
+        return self.working_file
 
     def generate_fixture_output_file(
         self,
@@ -1345,8 +1360,11 @@ class ApiDBTestCase(ApiTestCase):
     def generate_fixture_preview_background_file(
         self,
         name="test",
+        is_default=False,
     ):
-        self.preview_background_file = PreviewBackgroundFile.create(name=name)
+        self.preview_background_file = PreviewBackgroundFile.create(
+            name=name, is_default=is_default
+        )
         return self.preview_background_file
 
     def get_fixture_file_path(self, relative_path):

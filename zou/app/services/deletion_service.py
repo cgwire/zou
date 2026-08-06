@@ -251,6 +251,12 @@ def remove_preview_file(preview_file, force=False):
     preview_file.comments = []
     preview_file.save()
     preview_file.delete()
+    # The download routes read their whole authorization off the memoized
+    # serialization: left in place, it keeps handing out the task the
+    # permission is checked against, and the file goes on being served.
+    from zou.app.services import files_service
+
+    files_service.clear_preview_file_cache(preview_file_id)
 
     # Remove the physical files only once the DB row is gone: if the
     # delete fails, the row must not end up pointing at missing files.
