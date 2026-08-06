@@ -126,64 +126,41 @@ class ProjectServiceTestCase(ApiDBTestCase):
         project = projects_service.get_project(self.project.id, relations=True)
         self.assertEqual(project["team"], [])
 
-    def test_add_asset_type_setting(self):
+    def test_add_and_remove_project_settings(self):
+        """
+        The three settings that are plain links on the project: adding one
+        puts its id in the project relations, removing it takes the id back
+        out. The round trip is the contract, so both halves live in one case.
+        """
         self.generate_fixture_asset_type()
-        projects_service.add_asset_type_setting(
-            self.project.id, self.asset_type.id
-        )
-        project = projects_service.get_project(self.project.id, relations=True)
-        self.assertEqual(project["asset_types"], [str(self.asset_type.id)])
-
-    def test_remove_asset_type(self):
-        self.generate_fixture_asset_type()
-        projects_service.add_asset_type_setting(
-            self.project.id, self.asset_type.id
-        )
-        projects_service.remove_asset_type_setting(
-            self.project.id, self.asset_type.id
-        )
-        project = projects_service.get_project(self.project.id, relations=True)
-        self.assertEqual(project["asset_types"], [])
-
-    def test_add_task_type_setting(self):
         self.generate_fixture_department()
         self.generate_fixture_task_type()
-        projects_service.add_task_type_setting(
-            self.project.id, self.task_type.id
-        )
-        project = projects_service.get_project(self.project.id, relations=True)
-        self.assertEqual(project["task_types"], [str(self.task_type.id)])
-
-    def test_remove_task_type(self):
-        self.generate_fixture_department()
-        self.generate_fixture_task_type()
-        projects_service.add_task_type_setting(
-            self.project.id, self.task_type.id
-        )
-        projects_service.remove_task_type_setting(
-            self.project.id, self.task_type.id
-        )
-        project = projects_service.get_project(self.project.id, relations=True)
-        self.assertEqual(project["task_types"], [])
-
-    def test_add_task_status_setting(self):
         self.generate_fixture_task_status()
-        projects_service.add_task_status_setting(
-            self.project.id, self.task_status.id
-        )
-        project = projects_service.get_project(self.project.id, relations=True)
-        self.assertEqual(project["task_statuses"], [str(self.task_status.id)])
+        cases = [
+            ("asset_types", "asset_type_setting", self.asset_type.id),
+            ("task_types", "task_type_setting", self.task_type.id),
+            ("task_statuses", "task_status_setting", self.task_status.id),
+        ]
+        # str(), not the UUID: clear_project_cache stringifies the id, so a
+        # read made with a UUID object caches under a key no clear reaches
+        # and the second half of the round trip sees the first half's value.
+        project_id = str(self.project.id)
+        for relation, setting, setting_id in cases:
+            with self.subTest(relation=relation):
+                add = getattr(projects_service, f"add_{setting}")
+                remove = getattr(projects_service, f"remove_{setting}")
 
-    def test_remove_task_status(self):
-        self.generate_fixture_task_status()
-        projects_service.add_task_status_setting(
-            self.project.id, self.task_status.id
-        )
-        projects_service.remove_task_status_setting(
-            self.project.id, self.task_status.id
-        )
-        project = projects_service.get_project(self.project.id, relations=True)
-        self.assertEqual(project["task_statuses"], [])
+                add(project_id, setting_id)
+                project = projects_service.get_project(
+                    project_id, relations=True
+                )
+                self.assertEqual(project[relation], [str(setting_id)])
+
+                remove(project_id, setting_id)
+                project = projects_service.get_project(
+                    project_id, relations=True
+                )
+                self.assertEqual(project[relation], [])
 
     def test_delete_project(self):
         self.generate_fixture_asset_type()
