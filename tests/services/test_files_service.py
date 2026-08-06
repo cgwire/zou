@@ -9,6 +9,8 @@ from zou.app.utils import fields
 from zou.app.services.exception import (
     EntryAlreadyExistsException,
     OutputFileNotFoundException,
+    OutputTypeNotFoundException,
+    PreviewBackgroundFileNotFoundException,
     PreviewFileNotFoundException,
     SoftwareNotFoundException,
     WorkingFileNotFoundException,
@@ -73,37 +75,24 @@ class FileServiceTestCase(ApiDBTestCase):
         self.assertEqual(software["id"], software_again["id"])
 
     def test_get_working_files_for_task(self):
-        self.generate_fixture_working_file(name="main", revision=2)
-        self.generate_fixture_working_file(name="main", revision=3)
-        self.generate_fixture_working_file(name="main", revision=4)
-        self.generate_fixture_working_file(name="main", revision=5)
+        for revision in [2, 3, 4, 5]:
+            self.generate_fixture_working_file(name="main", revision=revision)
         working_files = files_service.get_working_files_for_task(self.task.id)
         self.assertEqual(len(working_files), 5)
         self.assertEqual(working_files[0]["revision"], 5)
 
     def test_get_last_working_files_for_task(self):
-        self.generate_fixture_working_file(name="main", revision=2)
-        self.generate_fixture_working_file(name="main", revision=3)
-        self.generate_fixture_working_file(name="main", revision=4)
-        self.generate_fixture_working_file(name="main", revision=5)
-        self.generate_fixture_working_file(name="hotfix", revision=1)
-        self.generate_fixture_working_file(name="hotfix", revision=2)
-        self.generate_fixture_working_file(name="hotfix", revision=3)
+        for revision in [2, 3, 4, 5]:
+            self.generate_fixture_working_file(name="main", revision=revision)
+        for revision in [1, 2, 3]:
+            self.generate_fixture_working_file(
+                name="hotfix", revision=revision
+            )
         working_files = files_service.get_last_working_files_for_task(
             self.task.id
         )
         self.assertEqual(working_files["main"]["revision"], 5)
         self.assertEqual(working_files["hotfix"]["revision"], 3)
-
-    def get_next_working_revision(self):
-        self.generate_fixture_working_file(name="main", revision=2)
-        self.generate_fixture_working_file(name="main", revision=3)
-        self.generate_fixture_working_file(name="main", revision=4)
-        self.generate_fixture_working_file(name="main", revision=5)
-        revision = files_service.get_next_working_revision(
-            self.task.id, "main"
-        )
-        self.assertEqual(revision)
 
     def test_create_new_working_revision(self):
         self.working_file.delete()
@@ -175,19 +164,17 @@ class FileServiceTestCase(ApiDBTestCase):
             name="Cache", short_name="cch"
         )
 
-        self.generate_fixture_output_file(geometry, 2)
-        self.generate_fixture_output_file(geometry, 3)
-        self.generate_fixture_output_file(geometry, 4)
+        for revision in [2, 3, 4]:
+            self.generate_fixture_output_file(geometry, revision)
         geometry_file = self.generate_fixture_output_file(geometry, 5)
-        self.generate_fixture_output_file(cache, 1)
-        self.generate_fixture_output_file(cache, 2)
+        for revision in [1, 2]:
+            self.generate_fixture_output_file(cache, revision)
         cache_file = self.generate_fixture_output_file(cache, 3)
 
         last_output_files = files_service.get_last_output_files_for_entity(
             self.asset.id
         )
 
-        # test last geometry file revision
         last_file = [
             f
             for f in last_output_files
@@ -198,7 +185,6 @@ class FileServiceTestCase(ApiDBTestCase):
         ][0]
         self.assertEqual(last_file["revision"], 5)
 
-        # test last cache file revision
         last_file = [
             f
             for f in last_output_files
@@ -211,14 +197,14 @@ class FileServiceTestCase(ApiDBTestCase):
 
     def test_get_output_files_for_output_type_and_entity(self):
         geometry = self.output_type
-        self.generate_fixture_output_file(geometry, 1, representation="obj")
-        self.generate_fixture_output_file(geometry, 2, representation="obj")
-        self.generate_fixture_output_file(geometry, 3, representation="obj")
-        self.generate_fixture_output_file(geometry, 4, representation="obj")
-
-        self.generate_fixture_output_file(geometry, 1, representation="max")
-        self.generate_fixture_output_file(geometry, 2, representation="max")
-        self.generate_fixture_output_file(geometry, 3, representation="max")
+        for revision in [1, 2, 3, 4]:
+            self.generate_fixture_output_file(
+                geometry, revision, representation="obj"
+            )
+        for revision in [1, 2, 3]:
+            self.generate_fixture_output_file(
+                geometry, revision, representation="max"
+            )
 
         output_files = (
             files_service.get_output_files_for_output_type_and_entity(
@@ -241,83 +227,58 @@ class FileServiceTestCase(ApiDBTestCase):
         )
         self.assertEqual(len(output_files), 3)
 
-    def test_get_output_files_for_output_type_and_scene_asset_instance(self):
-        self.generate_fixture_asset()
+    def test_get_output_files_for_output_type_and_asset_instance(self):
+        """
+        The three arguments are ANDed: the same instance seen under another
+        temporal entity, and its files of another output type, stay out.
+        Newest revision first.
+        """
         self.generate_fixture_scene()
-        scene_id = str(self.scene.id)
         asset_instance = self.generate_fixture_scene_asset_instance()
         geometry = self.output_type
+        cache = self.generate_fixture_output_type(
+            name="Cache", short_name="cch"
+        )
+        scene_id = str(self.scene.id)
+        shot_id = str(self.shot.id)
+
+        for revision, representation in [(1, "obj"), (2, "obj"), (1, "max")]:
+            self.generate_fixture_output_file(
+                geometry,
+                revision,
+                representation=representation,
+                asset_instance=asset_instance,
+                temporal_entity_id=scene_id,
+            )
+        self.generate_fixture_output_file(
+            cache,
+            1,
+            asset_instance=asset_instance,
+            temporal_entity_id=scene_id,
+        )
         self.generate_fixture_output_file(
             geometry,
             1,
-            representation="obj",
             asset_instance=asset_instance,
-            temporal_entity_id=scene_id,
-        )
-        self.generate_fixture_output_file(
-            geometry,
-            2,
-            representation="obj",
-            asset_instance=asset_instance,
-            temporal_entity_id=scene_id,
-        )
-        self.generate_fixture_output_file(
-            geometry,
-            3,
-            representation="obj",
-            asset_instance=asset_instance,
-            temporal_entity_id=scene_id,
-        )
-        self.generate_fixture_output_file(
-            geometry,
-            4,
-            representation="obj",
-            asset_instance=asset_instance,
-            temporal_entity_id=scene_id,
+            temporal_entity_id=shot_id,
         )
 
-        self.generate_fixture_output_file(
-            geometry,
-            1,
-            representation="max",
-            asset_instance=asset_instance,
-            temporal_entity_id=scene_id,
+        get_files = (
+            files_service.get_output_files_for_output_type_and_asset_instance
         )
-        self.generate_fixture_output_file(
-            geometry,
-            2,
-            representation="max",
-            asset_instance=asset_instance,
-            temporal_entity_id=scene_id,
-        )
-        self.generate_fixture_output_file(
-            geometry,
-            3,
-            representation="max",
-            asset_instance=asset_instance,
-            temporal_entity_id=scene_id,
+        output_files = get_files(asset_instance.id, scene_id, geometry.id)
+        self.assertEqual(
+            [output_file["revision"] for output_file in output_files],
+            [2, 1, 1],
         )
 
-        output_files = (
-            files_service.get_output_files_for_output_type_and_asset_instance(
-                asset_instance.id, scene_id, geometry.id
-            )
+        output_files = get_files(
+            asset_instance.id, scene_id, geometry.id, representation="obj"
         )
-        self.assertEqual(len(output_files), 7)
+        self.assertEqual(len(output_files), 2)
 
-        output_files = (
-            files_service.get_output_files_for_output_type_and_asset_instance(
-                asset_instance.id, scene_id, geometry.id, representation="obj"
-            )
-        )
-        self.assertEqual(len(output_files), 4)
-
-        output_files = (
-            files_service.get_output_files_for_output_type_and_asset_instance(
-                asset_instance.id, scene_id, geometry.id, representation="max"
-            )
-        )
-        self.assertEqual(len(output_files), 3)
+        output_files = get_files(asset_instance.id, shot_id, geometry.id)
+        self.assertEqual(len(output_files), 1)
 
     def test_get_output_files_for_instance(self):
         """
@@ -362,174 +323,6 @@ class FileServiceTestCase(ApiDBTestCase):
             asset_instance.id, scene_id, output_type_id=cache.id
         )
         self.assertEqual(len(output_files), 1)
-
-    def test_get_output_files_for_output_type_and_shot_asset_instance(self):
-        self.generate_fixture_asset()
-        self.generate_fixture_scene()
-
-        str(self.scene.id)
-        shot_id = str(self.shot.id)
-        asset_instance = self.generate_fixture_scene_asset_instance()
-        self.generate_fixture_shot_asset_instance(
-            self.shot, self.asset_instance
-        )
-        geometry = self.output_type
-        self.generate_fixture_output_file(
-            geometry,
-            1,
-            representation="obj",
-            asset_instance=asset_instance,
-            temporal_entity_id=shot_id,
-        )
-        self.generate_fixture_output_file(
-            geometry,
-            2,
-            representation="obj",
-            asset_instance=asset_instance,
-            temporal_entity_id=shot_id,
-        )
-        self.generate_fixture_output_file(
-            geometry,
-            3,
-            representation="obj",
-            asset_instance=asset_instance,
-            temporal_entity_id=shot_id,
-        )
-        self.generate_fixture_output_file(
-            geometry,
-            4,
-            representation="obj",
-            asset_instance=asset_instance,
-            temporal_entity_id=shot_id,
-        )
-
-        self.generate_fixture_output_file(
-            geometry,
-            1,
-            representation="max",
-            asset_instance=asset_instance,
-            temporal_entity_id=shot_id,
-        )
-        self.generate_fixture_output_file(
-            geometry,
-            2,
-            representation="max",
-            asset_instance=asset_instance,
-            temporal_entity_id=shot_id,
-        )
-        self.generate_fixture_output_file(
-            geometry,
-            3,
-            representation="max",
-            asset_instance=asset_instance,
-            temporal_entity_id=shot_id,
-        )
-
-        output_files = (
-            files_service.get_output_files_for_output_type_and_asset_instance(
-                asset_instance.id, shot_id, geometry.id
-            )
-        )
-        self.assertEqual(len(output_files), 7)
-
-        output_files = (
-            files_service.get_output_files_for_output_type_and_asset_instance(
-                asset_instance.id, shot_id, geometry.id, representation="obj"
-            )
-        )
-        self.assertEqual(len(output_files), 4)
-
-        output_files = (
-            files_service.get_output_files_for_output_type_and_asset_instance(
-                asset_instance.id, shot_id, geometry.id, representation="max"
-            )
-        )
-        self.assertEqual(len(output_files), 3)
-
-    def test_get_output_files_for_output_type_and_asset_asset_instance(self):
-        self.generate_fixture_asset_types()
-        self.generate_fixture_asset()
-        self.generate_fixture_asset_character()
-        asset_character_id = str(self.asset_character.id)
-        asset_instance = self.generate_fixture_asset_asset_instance()
-        geometry = self.output_type
-        self.generate_fixture_output_file(
-            geometry,
-            1,
-            representation="obj",
-            asset_instance=asset_instance,
-            temporal_entity_id=asset_character_id,
-        )
-        self.generate_fixture_output_file(
-            geometry,
-            2,
-            representation="obj",
-            asset_instance=asset_instance,
-            temporal_entity_id=asset_character_id,
-        )
-        self.generate_fixture_output_file(
-            geometry,
-            3,
-            representation="obj",
-            asset_instance=asset_instance,
-            temporal_entity_id=asset_character_id,
-        )
-        self.generate_fixture_output_file(
-            geometry,
-            4,
-            representation="obj",
-            asset_instance=asset_instance,
-            temporal_entity_id=asset_character_id,
-        )
-
-        self.generate_fixture_output_file(
-            geometry,
-            1,
-            representation="max",
-            asset_instance=asset_instance,
-            temporal_entity_id=asset_character_id,
-        )
-        self.generate_fixture_output_file(
-            geometry,
-            2,
-            representation="max",
-            asset_instance=asset_instance,
-            temporal_entity_id=asset_character_id,
-        )
-        self.generate_fixture_output_file(
-            geometry,
-            3,
-            representation="max",
-            asset_instance=asset_instance,
-            temporal_entity_id=asset_character_id,
-        )
-
-        output_files = (
-            files_service.get_output_files_for_output_type_and_asset_instance(
-                asset_instance.id, asset_character_id, geometry.id
-            )
-        )
-        self.assertEqual(len(output_files), 7)
-
-        output_files = (
-            files_service.get_output_files_for_output_type_and_asset_instance(
-                asset_instance.id,
-                asset_character_id,
-                geometry.id,
-                representation="obj",
-            )
-        )
-        self.assertEqual(len(output_files), 4)
-
-        output_files = (
-            files_service.get_output_files_for_output_type_and_asset_instance(
-                asset_instance.id,
-                asset_character_id,
-                geometry.id,
-                representation="max",
-            )
-        )
-        self.assertEqual(len(output_files), 3)
 
     def test_remove_preview_file(self):
         self.generate_fixture_preview_file()
@@ -598,8 +391,6 @@ class FileServiceTestCase(ApiDBTestCase):
         )
 
     def test_get_output_type_raw(self):
-        from zou.app.services.exception import OutputTypeNotFoundException
-
         raw = files_service.get_output_type_raw(self.output_type.id)
         self.assertEqual(raw.id, self.output_type.id)
         self.assertRaises(
@@ -680,10 +471,6 @@ class FileServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(result), 1)
 
     def test_get_preview_background_file_raw(self):
-        from zou.app.services.exception import (
-            PreviewBackgroundFileNotFoundException,
-        )
-
         self.generate_fixture_preview_background_file()
         raw = files_service.get_preview_background_file_raw(
             self.preview_background_file.id
