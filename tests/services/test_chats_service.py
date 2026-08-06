@@ -1,3 +1,4 @@
+import datetime
 import io
 import os
 
@@ -10,6 +11,7 @@ from tests.base import ApiDBTestCase
 from zou.app import config
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.chat import Chat
+from zou.app.models.chat_message import ChatMessage
 
 from zou.app.services import chats_service
 
@@ -21,6 +23,12 @@ class ChatsServiceTestCase(ApiDBTestCase):
 
         self.generate_fixture_asset()
         self.generate_fixture_person()
+
+    def a_message(self, text="with attachment"):
+        chat = chats_service.get_chat_raw(self.asset.id)
+        return chats_service.create_chat_message(
+            chat.id, str(self.person.id), text
+        )
 
     def test_get_chat_raw(self):
         chat = chats_service.get_chat_raw(self.asset.id)
@@ -47,6 +55,18 @@ class ChatsServiceTestCase(ApiDBTestCase):
         chat_raw = Chat.get(chat["id"])
         self.assertIn(self.person, chat_raw.participants)
 
+    def test_joining_twice_leaves_one_participant(self):
+        # join_chat appends without looking first, so what keeps the list
+        # clean is the collection underneath rather than the service.
+        chats_service.join_chat(self.asset.id, str(self.person.id))
+
+        chat = chats_service.join_chat(self.asset.id, str(self.person.id))
+
+        self.assertEqual(
+            [person.id for person in Chat.get(chat["id"]).participants],
+            [self.person.id],
+        )
+
     def test_leave_chat(self):
         chats_service.join_chat(self.asset.id, str(self.person.id))
         chat = chats_service.leave_chat(self.asset.id, str(self.person.id))
@@ -59,10 +79,34 @@ class ChatsServiceTestCase(ApiDBTestCase):
         self.assertIsNotNone(chat)
 
     def test_get_chats_for_person(self):
+        """
+        The chats someone has joined, in productions that are open. A chat
+        they never joined and one of a closed production stay out.
+        """
         chat = chats_service.join_chat(self.asset.id, str(self.person.id))
+        # A chat of the same production nobody joined.
+        here = self.asset
+        other_asset = self.generate_fixture_asset("Rock")
+        chats_service.get_chat_raw(other_asset.id)
+        # And one this person joined, in a production that is closed.
+        self.generate_fixture_project_closed()
+        closed_asset = self.generate_fixture_asset(
+            "Cloud", project_id=self.project_closed.id
+        )
+        chats_service.join_chat(closed_asset.id, str(self.person.id))
+        self.asset = here
+
         chats = chats_service.get_chats_for_person(self.person.id)
-        self.assertEqual(len(chats), 1)
-        self.assertEqual(chats[0]["id"], chat["id"])
+
+        self.assertEqual([held["id"] for held in chats], [chat["id"]])
+
+    def test_get_chats_for_person_carries_the_entity_name(self):
+        chats_service.join_chat(self.asset.id, str(self.person.id))
+
+        chats = chats_service.get_chats_for_person(self.person.id)
+
+        self.assertEqual(chats[0]["entity_name"], "Props / Tree")
+        self.assertEqual(chats[0]["project_id"], self.asset.project_id)
 
     def test_create_chat_message(self):
         chat = chats_service.get_chat_raw(self.asset.id)
@@ -82,9 +126,33 @@ class ChatsServiceTestCase(ApiDBTestCase):
             chat.id, str(self.person.id), "Second"
         )
         messages = chats_service.get_chat_messages(chat.id)
-        self.assertEqual(len(messages), 2)
-        self.assertEqual(messages[0]["text"], "First")
-        self.assertEqual(messages[1]["text"], "Second")
+
+        # Oldest first, whatever order the rows come back in.
+        self.assertEqual(
+            [message["text"] for message in messages], ["First", "Second"]
+        )
+
+    def test_get_chat_messages_follow_their_timestamp(self):
+        """
+        Ordered on created_at rather than on the order the rows went in, so
+        a message backdated after the fact moves ahead of the other.
+        """
+        chat = chats_service.get_chat_raw(self.asset.id)
+        first = chats_service.create_chat_message(
+            chat.id, str(self.person.id), "First"
+        )
+        chats_service.create_chat_message(
+            chat.id, str(self.person.id), "Second"
+        )
+        ChatMessage.get(first["id"]).update(
+            {"created_at": datetime.datetime(2030, 1, 1)}
+        )
+
+        messages = chats_service.get_chat_messages(chat.id)
+
+        self.assertEqual(
+            [message["text"] for message in messages], ["Second", "First"]
+        )
 
     def test_get_chat_messages_for_entity(self):
         chat = chats_service.get_chat_raw(self.asset.id)
@@ -105,14 +173,8 @@ class ChatsServiceTestCase(ApiDBTestCase):
         messages = chats_service.get_chat_messages(chat.id)
         self.assertEqual(messages, [])
 
-    def _create_message(self):
-        chat = chats_service.get_chat_raw(self.asset.id)
-        return chats_service.create_chat_message(
-            chat.id, str(self.person.id), "with attachment"
-        )
-
     def test_create_attachment_non_image_removes_temp_file(self):
-        message = self._create_message()
+        message = self.a_message()
         uploaded_file = FileStorage(
             stream=io.BytesIO(b"%PDF-1.4 fake content"),
             filename="notes.pdf",
@@ -125,7 +187,7 @@ class ChatsServiceTestCase(ApiDBTestCase):
         self.assertFalse(os.path.exists(tmp_file_path))
 
     def test_create_attachment_failure_cleans_up(self):
-        message = self._create_message()
+        message = self.a_message()
         uploaded_file = FileStorage(
             stream=io.BytesIO(b"%PDF-1.4 fake content"),
             filename="notes.pdf",
