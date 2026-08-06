@@ -3,6 +3,7 @@ from unittest.mock import patch
 from tests.base import ApiDBTestCase
 
 from zou.app.models.notification import Notification
+from zou.app.models.person import Person
 from zou.app.services import (
     comments_service,
     notifications_service,
@@ -386,3 +387,47 @@ class NotificationsServiceTestCase(ApiDBTestCase):
             self.assertEqual(
                 notifications_service.get_subscriptions_for_user(None), {}
             )
+
+    def test_notify_clients_playlist_ready(self):
+        """
+        Every client of the production the playlist belongs to, and only
+        those: a client of another production is not told.
+        """
+        self.generate_fixture_user_client()
+        client_id = self.user_client["id"]
+        projects_service.add_team_member(str(self.project.id), client_id)
+
+        self.generate_fixture_project_standard()
+        elsewhere = Person.create(
+            first_name="Other",
+            last_name="Client",
+            email="other.client@gmail.com",
+            role="client",
+        )
+        projects_service.add_team_member(
+            str(self.project_standard.id), str(elsewhere.id)
+        )
+
+        playlist = self.generate_fixture_playlist("Ready")
+        with patch.object(
+            notifications_service.persons_service,
+            "get_current_user",
+            return_value=self.user,
+        ), patch.object(
+            notifications_service.emails_service,
+            "send_playlist_ready_notification",
+        ) as send:
+            notifications_service.notify_clients_playlist_ready(playlist)
+
+        self.assertEqual(
+            [call.args[0] for call in send.call_args_list], [client_id]
+        )
+        self.assertEqual(
+            [
+                str(notification.person_id)
+                for notification in Notification.get_all_by(
+                    type="playlist-ready"
+                )
+            ],
+            [client_id],
+        )

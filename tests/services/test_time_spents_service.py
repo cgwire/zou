@@ -288,6 +288,14 @@ class TimeSpentsServiceTestCase(ApiDBTestCase):
         Durations by department, by person, by month, with a running total
         at each level.
         """
+        # The same person logging time in another production must not add
+        # to these totals.
+        self.generate_fixture_project_standard()
+        other_task = self.generate_fixture_task_standard()
+        tasks_service.create_or_update_time_spent(
+            str(other_task.id), self.person_id, "2018-06-04", 9999
+        )
+
         result = time_spents_service.get_project_month_time_spents(
             str(self.project.id)
         )
