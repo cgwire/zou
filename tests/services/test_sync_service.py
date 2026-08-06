@@ -1,10 +1,16 @@
+import unittest
 import uuid
+
+from unittest import mock
+
 import gazu
 
 from tests.base import ApiDBTestCase
 
 from zou.app.models.entity import Entity
 from zou.app.models.project import Project
+from zou.app.models.studio import Studio
+from zou.app.models.task_status import TaskStatus
 from zou.app.services import sync_service
 from zou.app.utils import events
 
@@ -221,3 +227,100 @@ class SyncServiceTestCase(ApiDBTestCase):
             thread.join()
 
         self.assertEqual(len(errors["previews"]), 50)
+
+
+class CheckSyncAccountTestCase(unittest.TestCase):
+    """
+    The warning gate on the account the sync runs with. It never raises:
+    syncing a single production with a manager account is legitimate.
+    """
+
+    def check_with_user(self, user):
+        with mock.patch.object(
+            sync_service.gazu.client, "get_current_user", return_value=user
+        ):
+            return sync_service.check_sync_account()
+
+    def test_an_admin_account_passes(self):
+        self.assertTrue(self.check_with_user({"role": "admin"}))
+
+    def test_a_manager_account_is_only_warned_about(self):
+        self.assertFalse(
+            self.check_with_user(
+                {"role": "manager", "email": "bot@studio.com"}
+            )
+        )
+
+    def test_an_unreachable_source_does_not_raise(self):
+        with mock.patch.object(
+            sync_service.gazu.client,
+            "get_current_user",
+            side_effect=Exception("connection refused"),
+        ):
+            self.assertFalse(sync_service.check_sync_account())
+
+
+class SyncEntriesTestCase(ApiDBTestCase):
+    def test_sync_entries_walks_every_page(self):
+        pages = [
+            {
+                "data": [
+                    {
+                        "id": str(uuid.uuid4()),
+                        "name": "Blue",
+                        "color": "#0000FF",
+                    }
+                ],
+                "nb_pages": 2,
+            },
+            {
+                "data": [
+                    {
+                        "id": str(uuid.uuid4()),
+                        "name": "Red",
+                        "color": "#FF0000",
+                    }
+                ],
+                "nb_pages": 2,
+            },
+        ]
+        with mock.patch.object(
+            sync_service.gazu.client, "fetch_all", side_effect=pages
+        ):
+            sync_service.sync_entries("studios", Studio)
+
+        self.assertEqual(
+            sorted(studio.name for studio in Studio.get_all()),
+            ["Blue", "Red"],
+        )
+
+    def test_sync_entries_drops_the_concept_task_statuses(self):
+        # A concept status of the source instance would collide with the one
+        # the target instance creates on its own.
+        page = {
+            "data": [
+                {
+                    "id": str(uuid.uuid4()),
+                    "name": "Concept",
+                    "short_name": "cpt",
+                    "color": "#000000",
+                    "for_concept": True,
+                },
+                {
+                    "id": str(uuid.uuid4()),
+                    "name": "Todo",
+                    "short_name": "todo",
+                    "color": "#000000",
+                    "for_concept": False,
+                },
+            ],
+            "nb_pages": 1,
+        }
+        with mock.patch.object(
+            sync_service.gazu.client, "fetch_all", return_value=page
+        ):
+            sync_service.sync_entries("task-status", TaskStatus)
+
+        self.assertEqual(
+            [status.name for status in TaskStatus.get_all()], ["Todo"]
+        )
