@@ -26,11 +26,9 @@ class DesktopLoginLogsTestCase(ApiDBTestCase):
 
     def test_get_csv(self):
         data = {"date": datetime.datetime(2018, 4, 1, 0, 0, 0).isoformat()}
-        self.path = f"/data/persons/{self.person['id']}/desktop-login-logs"
         self.post(self.path, data)
 
         data = {"date": datetime.datetime(2018, 4, 10, 0, 0, 0).isoformat()}
-        self.path = f"/data/persons/{self.person['id']}/desktop-login-logs"
         self.post(self.path, data)
 
         csv = self.get_raw("/data/persons/presence-logs/2018-04")

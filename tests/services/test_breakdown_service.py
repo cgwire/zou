@@ -31,10 +31,7 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         self.asset_character_id = str(self.asset_character.id)
 
     def test_get_sequence_casting(self):
-        self.shot_id = str(self.shot.id)
         self.sequence_id = str(self.sequence.id)
-        self.asset_id = str(self.asset.id)
-        self.asset_character_id = str(self.asset_character.id)
 
         casting = breakdown_service.get_casting(self.shot.id)
         self.assertListEqual(casting, [])
@@ -54,11 +51,7 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(casting[str(self.shot.id)]), 1)
 
     def test_get_all_sequence_casting(self):
-        self.project_id = str(self.project_id)
-        self.shot_id = str(self.shot.id)
         self.sequence_id = str(self.sequence.id)
-        self.asset_id = str(self.asset.id)
-        self.asset_character_id = str(self.asset_character.id)
         casting = breakdown_service.get_casting(self.shot.id)
         self.assertListEqual(casting, [])
         new_casting = [
@@ -87,11 +80,8 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(casting[str(self.shot.id)]), 1)
 
     def test_get_asset_type_casting(self):
-        self.shot_id = str(self.shot.id)
-        self.sequence_id = str(self.sequence.id)
         self.asset_type_environment_id = str(self.asset_type_environment.id)
         self.asset_props_id = str(self.asset.id)
-        self.asset_character_id = str(self.asset_character.id)
         self.generate_fixture_asset(
             "Forest", "", self.asset_type_environment_id
         )
@@ -129,10 +119,6 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         )
 
     def test_update_casting(self):
-        self.shot_id = str(self.shot.id)
-        self.asset_id = str(self.asset.id)
-        self.asset_character_id = str(self.asset_character.id)
-
         casting = breakdown_service.get_casting(self.shot.id)
         self.assertListEqual(casting, [])
         new_casting = [
@@ -541,10 +527,6 @@ class BreakdownServiceTestCase(ApiDBTestCase):
             )
         )
 
-        self.shot_id = str(self.shot.id)
-        self.sequence_id = str(self.sequence.id)
-        self.asset_id = str(self.asset.id)
-        self.asset_character_id = str(self.asset_character.id)
         new_casting = [
             {"asset_id": self.asset_id, "nb_occurences": 1},
             {"asset_id": self.asset_character_id, "nb_occurences": 3},
