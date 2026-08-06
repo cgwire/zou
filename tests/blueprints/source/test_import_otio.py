@@ -126,11 +126,12 @@ class ImportOTIOEdlTestCase(ApiDBTestCase):
         of from the production root.
         """
         self.project.update({"production_type": "tvshow"})
-        episode = self.generate_fixture_episode("E01", self.project.id)
-        path = (
-            f"/import/otio/projects/{self.project.id}"
-            f"/episodes/{episode.id}"
-        )
+        # generate_fixture_episode calls generate_fixture_project, which
+        # repoints self.project at Cosmos Landromat since this class named
+        # its own: hold the production under test in a local.
+        project_id = str(self.project.id)
+        episode = self.generate_fixture_episode("E01", project_id)
+        path = f"/import/otio/projects/{project_id}/episodes/{episode.id}"
         # The episode route defaults to a four part convention that carries
         # the episode name. The fixture edl names clips with three, so the
         # convention travels with the upload.

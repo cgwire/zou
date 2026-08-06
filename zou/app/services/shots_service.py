@@ -1056,8 +1056,16 @@ def remove_sequence(sequence_id, force=False):
     if force:
         from zou.app.services import tasks_service
 
-        for shot in Entity.get_all_by(parent_id=sequence_id):
+        # Scenes hang from a sequence too, and remove_shot would raise on
+        # one halfway through, after taking part of the sequence away.
+        for shot in Entity.get_all_by(
+            parent_id=sequence_id, entity_type_id=get_shot_type()["id"]
+        ):
             remove_shot(shot.id, force=True)
+        for scene in Entity.get_all_by(
+            parent_id=sequence_id, entity_type_id=get_scene_type()["id"]
+        ):
+            remove_scene(scene.id)
         Subscription.delete_all_by(entity_id=sequence_id)
         ScheduleItem.delete_all_by(object_id=sequence_id)
 
@@ -1128,7 +1136,9 @@ def create_sequence(
     sequence_type = get_sequence_type()
 
     if episode_id is not None:
-        get_episode(episode_id)  # raises EpisodeNotFound if it fails.
+        episode = get_episode(episode_id)  # raises if it fails.
+        if episode["project_id"] != str(project_id):
+            raise EpisodeNotFoundException
 
     sequence = Entity.get_by(
         entity_type_id=sequence_type["id"],
@@ -1168,9 +1178,12 @@ def create_shot(
         data = {}
     shot_type = get_shot_type()
 
+    sequence = None
     if sequence_id is not None:
         # raises SequenceNotFound if it fails.
         sequence = get_sequence(sequence_id)
+        if sequence["project_id"] != str(project_id):
+            raise SequenceNotFoundException
 
     lookup = {
         "entity_type_id": shot_type["id"],
@@ -1198,7 +1211,12 @@ def create_shot(
                 "shot:new",
                 {
                     "shot_id": shot.id,
-                    "episode_id": sequence["parent_id"],
+                    # A production that has not laid out its sequences yet
+                    # creates shots with no parent at all, and the route
+                    # allows it.
+                    "episode_id": (
+                        sequence["parent_id"] if sequence is not None else None
+                    ),
                 },
                 project_id=project_id,
             )
@@ -1215,7 +1233,7 @@ def create_scene(project_id, sequence_id, name, created_by=None):
     if sequence_id is not None:
         # raises SequenceNotFound if it fails.
         sequence = get_sequence(sequence_id)
-        if sequence["project_id"] != project_id:
+        if sequence["project_id"] != str(project_id):
             raise SequenceNotFoundException
 
     scene = Entity.get_by(
