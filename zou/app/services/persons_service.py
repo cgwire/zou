@@ -376,11 +376,14 @@ def create_person(
         email = email.strip()
 
     if expiration_date is not None:
-        if isinstance(expiration_date, str):
-            expiration_date = date_helpers.get_date_from_string(
-                expiration_date
-            )
         try:
+            # Parsed inside the guard: this is where the date arrives as
+            # the string a caller typed, and the clause below exists for
+            # exactly the ValueError an unreadable one raises.
+            if isinstance(expiration_date, str):
+                expiration_date = date_helpers.get_date_from_string(
+                    expiration_date
+                )
             if expiration_date.date() < datetime.date.today():
                 raise WrongParameterException(
                     "Expiration date can't be in the past."
