@@ -10,7 +10,7 @@ from zou.app.services import assets_service, shots_service, tasks_service
 
 class ImportShotgunTaskTestCase(ShotgunTestCase):
     def setUp(self):
-        super(ImportShotgunTaskTestCase, self).setUp()
+        super().setUp()
         self.load_fixture("persons")
         self.load_fixture("projects")
         self.load_fixture("status")

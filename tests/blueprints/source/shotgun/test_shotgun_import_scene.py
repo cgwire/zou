@@ -8,7 +8,7 @@ from zou.app.services import shots_service
 
 class ImportShotgunSceneTestCase(ShotgunTestCase):
     def setUp(self):
-        super(ImportShotgunSceneTestCase, self).setUp()
+        super().setUp()
 
         self.sg_scene = {
             "code": "SC03",

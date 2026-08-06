@@ -10,7 +10,7 @@ from zou.app.services import projects_service
 
 class OutputFileTestCase(ApiDBTestCase):
     def setUp(self):
-        super(OutputFileTestCase, self).setUp()
+        super().setUp()
         self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_asset_type()

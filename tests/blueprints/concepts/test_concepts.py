@@ -5,7 +5,7 @@ from zou.app.services import concepts_service
 
 class ConceptRoutesTestCase(ApiDBTestCase):
     def setUp(self):
-        super(ConceptRoutesTestCase, self).setUp()
+        super().setUp()
         self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_asset_type()

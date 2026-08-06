@@ -30,7 +30,7 @@ from zou.app.services.preview_files_service import (
 
 class PlaylistTestCase(ApiDBTestCase):
     def setUp(self):
-        super(PlaylistTestCase, self).setUp()
+        super().setUp()
         self.generate_base_context()
         self.project_id = str(self.project.id)
         self.user_id = self.user["id"]
@@ -70,7 +70,7 @@ class PlaylistTestCase(ApiDBTestCase):
         ]
 
     def tearDown(self):
-        super(PlaylistTestCase, self).tearDown()
+        super().tearDown()
         self.delete_test_folder()
 
     def test_add_annotations(self):

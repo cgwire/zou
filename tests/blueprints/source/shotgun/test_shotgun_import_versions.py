@@ -6,7 +6,7 @@ from zou.app.models.person import Person
 
 class ImportShotgunVersionTestCase(ShotgunTestCase):
     def setUp(self):
-        super(ImportShotgunVersionTestCase, self).setUp()
+        super().setUp()
 
         self.load_fixture("persons")
         self.load_fixture("projects")

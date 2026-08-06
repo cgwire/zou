@@ -7,7 +7,7 @@ from zou.app.services.shots_service import get_shot
 
 class ImportCsvCastingTestCase(ApiDBTestCase):
     def setUp(self):
-        super(ImportCsvCastingTestCase, self).setUp()
+        super().setUp()
         self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.project.update({"production_type": "tvshow"})

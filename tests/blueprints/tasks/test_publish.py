@@ -12,7 +12,7 @@ from zou.app.services import (
 
 class RouteTaskChangeTestCase(ApiDBTestCase):
     def setUp(self):
-        super(RouteTaskChangeTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()

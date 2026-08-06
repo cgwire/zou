@@ -29,7 +29,7 @@ def rebuild_from_compact(asset_fields, task_fields, rows):
 
 class AssetTasksTestCase(ApiDBTestCase):
     def setUp(self):
-        super(AssetTasksTestCase, self).setUp()
+        super().setUp()
         self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_asset_type()

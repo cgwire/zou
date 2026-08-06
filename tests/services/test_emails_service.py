@@ -3,13 +3,12 @@ from babel import Locale
 
 from tests.base import ApiDBTestCase
 
-from zou.app.services import emails_service, persons_service, templates_service
-from zou.app.utils.email_i18n import get_email_translation
+from zou.app.services import emails_service, templates_service
 
 
 class EmailsServiceTestCase(ApiDBTestCase):
     def setUp(self):
-        super(EmailsServiceTestCase, self).setUp()
+        super().setUp()
         self.generate_shot_suite()
         self.generate_assigned_task()
 

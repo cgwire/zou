@@ -5,7 +5,7 @@ from zou.app.services import projects_service
 
 class PlaylistTestCase(ApiDBTestCase):
     def setUp(self):
-        super(PlaylistTestCase, self).setUp()
+        super().setUp()
         self.generate_base_context()
         self.generate_fixture_asset()
         self.generate_fixture_assigner()
@@ -28,7 +28,7 @@ class PlaylistTestCase(ApiDBTestCase):
         ]
 
     def tearDown(self):
-        super(PlaylistTestCase, self).tearDown()
+        super().tearDown()
         self.delete_test_folder()
 
     def test_update_annotations(self):

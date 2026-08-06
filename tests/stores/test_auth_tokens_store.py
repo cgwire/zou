@@ -7,12 +7,12 @@ from zou.app.stores import auth_tokens_store
 
 class AuthTokensTestCase(ApiTestCase):
     def setUp(self):
-        super(AuthTokensTestCase, self).setUp()
+        super().setUp()
         self.store = auth_tokens_store
         self.store.clear()
 
     def tearDown(self):
-        super(AuthTokensTestCase, self).tearDown()
+        super().tearDown()
         self.store.clear()
 
     def test_get_and_add(self):

@@ -9,7 +9,7 @@ from zou.app.services import assets_service
 
 class ImportShotgunAssetTestCase(ShotgunTestCase):
     def setUp(self):
-        super(ImportShotgunAssetTestCase, self).setUp()
+        super().setUp()
 
     def test_import_assets(self):
         self.load_fixture("projects")

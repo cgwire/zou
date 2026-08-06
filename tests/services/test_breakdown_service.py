@@ -13,7 +13,7 @@ from zou.app.utils import events
 
 class BreakdownServiceTestCase(ApiDBTestCase):
     def setUp(self):
-        super(BreakdownServiceTestCase, self).setUp()
+        super().setUp()
         self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_asset_type()

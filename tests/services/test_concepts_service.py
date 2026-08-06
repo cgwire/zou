@@ -7,7 +7,7 @@ from zou.app.services.exception import ConceptNotFoundException
 class ConceptsServiceTestCase(ApiDBTestCase):
 
     def setUp(self):
-        super(ConceptsServiceTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()

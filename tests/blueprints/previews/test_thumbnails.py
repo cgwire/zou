@@ -27,7 +27,7 @@ def get_file_md5hash(file_path):
 
 class RouteThumbnailTestCase(ApiDBTestCase):
     def setUp(self):
-        super(RouteThumbnailTestCase, self).setUp()
+        super().setUp()
 
         self.delete_thumbnail_folders()
         self.generate_fixture_project_status()
@@ -51,7 +51,7 @@ class RouteThumbnailTestCase(ApiDBTestCase):
         self.person_id = self.person.id
 
     def tearDown(self):
-        super(RouteThumbnailTestCase, self).tearDown()
+        super().tearDown()
 
         self.delete_thumbnail_folders()
 

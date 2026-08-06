@@ -6,7 +6,7 @@ from zou.app.utils import fields
 
 class ProjectMetadataRouteTestCase(ApiDBTestCase):
     def setUp(self):
-        super(ProjectMetadataRouteTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project_closed_status()

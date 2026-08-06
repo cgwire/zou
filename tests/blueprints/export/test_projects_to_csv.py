@@ -3,7 +3,7 @@ from tests.base import ApiDBTestCase
 
 class OutputFileTestCase(ApiDBTestCase):
     def setUp(self):
-        super(OutputFileTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()

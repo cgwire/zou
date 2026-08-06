@@ -16,7 +16,7 @@ from zou.app.models.person import Person
 
 class UserContextRoutesTestCase(ApiDBTestCase):
     def setUp(self):
-        super(UserContextRoutesTestCase, self).setUp()
+        super().setUp()
         self.generate_fixture_project_status()
         self.generate_fixture_project_closed_status()
         self.generate_fixture_project()

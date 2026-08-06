@@ -24,7 +24,7 @@ pytestmark = pytest.mark.real_bcrypt
 
 class AuthTestCase(ApiDBTestCase):
     def setUp(self):
-        super(AuthTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_person()
         self.person.update(
@@ -41,7 +41,7 @@ class AuthTestCase(ApiDBTestCase):
         # Some tests switch the auth strategy; restore the default so the
         # leak does not break login tests run after this file.
         app.config["AUTH_STRATEGY"] = "auth_local_classic"
-        super(AuthTestCase, self).tearDown()
+        super().tearDown()
 
     def test_load_user(self):
         person = persons_service.get_person(self.person.id)

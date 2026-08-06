@@ -10,7 +10,7 @@ from zou.app.utils import fields
 
 class TimeSpentTestCase(ApiDBTestCase):
     def setUp(self):
-        super(TimeSpentTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()

@@ -13,7 +13,7 @@ from zou.app.services import (
 
 class UserServiceTestCase(ApiDBTestCase):
     def setUp(self):
-        super(UserServiceTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()
@@ -49,7 +49,7 @@ class UserServiceTestCase(ApiDBTestCase):
         persons_service.get_current_user_raw = self.get_current_user_raw
 
     def tearDown(self):
-        super(UserServiceTestCase, self).tearDown()
+        super().tearDown()
         persons_service.get_current_user = self.old_get_current_user
         persons_service.get_current_user_raw = self.old_get_current_user_raw
 

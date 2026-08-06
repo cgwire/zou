@@ -21,7 +21,7 @@ from zou.app.services.exception import (
 
 class ScheduleServiceTestCase(ApiDBTestCase):
     def setUp(self):
-        super(ScheduleServiceTestCase, self).setUp()
+        super().setUp()
         self.generate_shot_suite()
         self.generate_assigned_task()
         self.project_id = str(self.project.id)

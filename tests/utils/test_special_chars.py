@@ -4,7 +4,7 @@ from tests.base import ApiDBTestCase
 
 class SpecialCharTestCase(ApiDBTestCase):
     def setUp(self):
-        super(SpecialCharTestCase, self).setUp()
+        super().setUp()
         self.generate_fixture_project_status()
         self.generate_fixture_project()
 

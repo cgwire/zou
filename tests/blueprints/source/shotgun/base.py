@@ -5,7 +5,7 @@ from tests.base import ApiDBTestCase
 
 class ShotgunTestCase(ApiDBTestCase):
     def setUp(self):
-        super(ShotgunTestCase, self).setUp()
+        super().setUp()
 
     def load_fixture(self, data_type):
         file_path = f"./tests/fixtures/shotgun/{data_type}.json"

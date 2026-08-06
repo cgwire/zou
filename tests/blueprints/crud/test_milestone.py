@@ -4,7 +4,7 @@ from zou.app.utils import fields
 
 class MilestoneTestCase(ApiDBTestCase):
     def setUp(self):
-        super(MilestoneTestCase, self).setUp()
+        super().setUp()
         self.generate_base_context()
         self.project_id = str(self.project.id)
         self.task_type_id = str(self.task_type.id)

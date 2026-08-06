@@ -3,7 +3,7 @@ from tests.blueprints.source.shotgun.base import ShotgunTestCase
 
 class ImportShotgunPersonTestCase(ShotgunTestCase):
     def setUp(self):
-        super(ImportShotgunPersonTestCase, self).setUp()
+        super().setUp()
 
     def test_import_persons(self):
         self.persons = self.load_fixture("persons")

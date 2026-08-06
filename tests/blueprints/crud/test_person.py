@@ -71,7 +71,7 @@ class NormalizeLocaleTestCase(unittest.TestCase):
 
 class PersonTestCase(ApiDBTestCase):
     def setUp(self):
-        super(PersonTestCase, self).setUp()
+        super().setUp()
         self.generate_fixture_person(
             first_name="Ema",
             last_name="Doe",

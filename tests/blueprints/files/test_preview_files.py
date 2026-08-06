@@ -10,7 +10,7 @@ from zou.app.services.exception import WrongParameterException
 
 class PreviewFilesTestCase(ApiDBTestCase):
     def setUp(self):
-        super(PreviewFilesTestCase, self).setUp()
+        super().setUp()
         self.generate_base_context()
         self.generate_fixture_asset()
         self.generate_fixture_assigner()

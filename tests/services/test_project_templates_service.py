@@ -4,14 +4,12 @@ from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.project import (
     Project,
     ProjectAssetTypeLink,
-    ProjectStatusAutomationLink,
     ProjectTaskStatusLink,
     ProjectTaskTypeLink,
 )
 from zou.app.models.project_template import (
     ProjectTemplate,
     ProjectTemplateAssetTypeLink,
-    ProjectTemplateStatusAutomationLink,
     ProjectTemplateTaskStatusLink,
     ProjectTemplateTaskTypeLink,
 )
@@ -28,7 +26,7 @@ from zou.app.services.exception import (
 
 class ProjectTemplateServiceTestCase(ApiDBTestCase):
     def setUp(self):
-        super(ProjectTemplateServiceTestCase, self).setUp()
+        super().setUp()
         self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_department()

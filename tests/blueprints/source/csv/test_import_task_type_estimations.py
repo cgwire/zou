@@ -9,7 +9,7 @@ from zou.app.models.task import Task
 
 class ImportCsvTaskTypeEstimationsTestCase(ApiDBTestCase):
     def setUp(self):
-        super(ImportCsvTaskTypeEstimationsTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()

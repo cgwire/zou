@@ -7,7 +7,7 @@ from zou.app.utils import fields
 
 class CustomActionTestCase(ApiDBTestCase):
     def setUp(self):
-        super(CustomActionTestCase, self).setUp()
+        super().setUp()
         self.generate_data(CustomAction, 3)
 
     def test_get_custom_actions(self):

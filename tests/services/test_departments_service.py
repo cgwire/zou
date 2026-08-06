@@ -1,7 +1,5 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.models.department import Department
-from zou.app.models.software import Software
 from zou.app.models.hardware_item import HardwareItem
 from zou.app.services.exception import (
     DepartmentNotFoundException,
@@ -15,7 +13,7 @@ from zou.app.services import departments_service
 class DepartmentsServiceTestCase(ApiDBTestCase):
 
     def setUp(self):
-        super(DepartmentsServiceTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_department()
         self.generate_fixture_software()

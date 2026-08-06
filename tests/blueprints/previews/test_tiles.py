@@ -11,7 +11,7 @@ TEST_FOLDER = os.path.join("tests", "tmp")
 
 class RouteTileTestCase(ApiDBTestCase):
     def setUp(self):
-        super(RouteTileTestCase, self).setUp()
+        super().setUp()
 
         self.delete_tile_folders()
         self.generate_fixture_project_status()
@@ -36,7 +36,7 @@ class RouteTileTestCase(ApiDBTestCase):
         os.makedirs(TEST_FOLDER)
 
     def tearDown(self):
-        super(RouteTileTestCase, self).tearDown()
+        super().tearDown()
 
         self.delete_tile_folders()
 

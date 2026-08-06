@@ -7,7 +7,7 @@ from zou.app.utils import events, fields
 
 class ProjectSettingsRoutesTestCase(ApiDBTestCase):
     def setUp(self):
-        super(ProjectSettingsRoutesTestCase, self).setUp()
+        super().setUp()
         self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_asset_type()
@@ -315,7 +315,7 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
 
 class ProjectDataRoutesTestCase(ApiDBTestCase):
     def setUp(self):
-        super(ProjectDataRoutesTestCase, self).setUp()
+        super().setUp()
         self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_asset_type()
@@ -350,7 +350,7 @@ class ProjectDataRoutesTestCase(ApiDBTestCase):
 
 class ProjectBudgetRoutesTestCase(ApiDBTestCase):
     def setUp(self):
-        super(ProjectBudgetRoutesTestCase, self).setUp()
+        super().setUp()
         self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.project_id = str(self.project.id)

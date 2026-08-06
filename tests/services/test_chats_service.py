@@ -17,7 +17,7 @@ from zou.app.services import chats_service
 class ChatsServiceTestCase(ApiDBTestCase):
 
     def setUp(self):
-        super(ChatsServiceTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()

@@ -25,7 +25,7 @@ class IndexServiceTestCase(ApiDBTestCase):
     pytestmark = needs_indexer
 
     def setUp(self):
-        super(IndexServiceTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()

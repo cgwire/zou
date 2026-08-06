@@ -9,7 +9,7 @@ from zou.app.services.exception import PersonNotFoundException
 
 class PersonCacheInvalidationTestCase(ApiDBTestCase):
     def setUp(self):
-        super(PersonCacheInvalidationTestCase, self).setUp()
+        super().setUp()
         self.generate_fixture_person()
 
     def test_add_logs(self):

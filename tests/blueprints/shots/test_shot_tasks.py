@@ -27,7 +27,7 @@ def rebuild_from_compact(shot_fields, task_fields, rows):
 
 class ShotTasksTestCase(ApiDBTestCase):
     def setUp(self):
-        super(ShotTasksTestCase, self).setUp()
+        super().setUp()
         self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_asset_type()

@@ -12,7 +12,7 @@ from zou.app.services import projects_service, shots_service
 
 class ImportCsvShotsTestCase(ApiDBTestCase):
     def setUp(self):
-        super(ImportCsvShotsTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()

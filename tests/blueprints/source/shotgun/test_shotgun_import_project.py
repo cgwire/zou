@@ -7,7 +7,7 @@ from zou.app.models.project_status import ProjectStatus
 
 class ImportShotgunProjectTestCase(ShotgunTestCase):
     def setUp(self):
-        super(ImportShotgunProjectTestCase, self).setUp()
+        super().setUp()
 
     def test_import_projects(self):
         self.projects = self.load_fixture("projects")

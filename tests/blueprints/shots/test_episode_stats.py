@@ -5,7 +5,7 @@ from zou.app.services import comments_service
 
 class EpisodeStatsTestCase(ApiDBTestCase):
     def setUp(self):
-        super(EpisodeStatsTestCase, self).setUp()
+        super().setUp()
         self.generate_fixture_department()
         self.generate_fixture_task_type()
         self.retake_id = str(self.generate_fixture_task_status_retake().id)

@@ -5,7 +5,7 @@ from zou.app.utils import fields
 
 class SearchFilterGroupTestCase(ApiDBTestCase):
     def setUp(self):
-        super(SearchFilterGroupTestCase, self).setUp()
+        super().setUp()
         self.generate_data(SearchFilterGroup, 3)
 
     def test_get_search_filter_groups(self):

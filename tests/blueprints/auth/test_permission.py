@@ -12,7 +12,7 @@ from zou.app.utils import permissions
 
 class PermissionTestCase(ApiDBTestCase):
     def setUp(self):
-        super(PermissionTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_user_cg_artist()
         self.user_cg_artist_id = self.user_cg_artist["id"]
@@ -23,7 +23,7 @@ class PermissionTestCase(ApiDBTestCase):
 
     def tearDown(self):
         self.log_out()
-        super(PermissionTestCase, self).tearDown()
+        super().tearDown()
 
     def test_admin_can_create_project(self):
         self.log_in(self.user["email"])

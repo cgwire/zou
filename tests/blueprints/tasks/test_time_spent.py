@@ -5,7 +5,7 @@ from zou.app.services import tasks_service
 
 class RouteTimeSpentTestCase(ApiDBTestCase):
     def setUp(self):
-        super(RouteTimeSpentTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()

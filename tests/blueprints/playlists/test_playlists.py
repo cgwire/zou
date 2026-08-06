@@ -12,7 +12,7 @@ from zou.app.services import (
 
 class PlaylistTestCase(ApiDBTestCase):
     def setUp(self):
-        super(PlaylistTestCase, self).setUp()
+        super().setUp()
         self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_asset_type()
@@ -29,7 +29,7 @@ class PlaylistTestCase(ApiDBTestCase):
         self.generate_fixture_shot("SE03")
 
     def tearDown(self):
-        super(PlaylistTestCase, self).tearDown()
+        super().tearDown()
         self.delete_test_folder()
 
     def test_get_playlists(self):

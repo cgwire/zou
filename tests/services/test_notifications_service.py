@@ -10,7 +10,7 @@ from zou.app.services import (
 
 class NotificationsServiceTestCase(ApiDBTestCase):
     def setUp(self):
-        super(NotificationsServiceTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()

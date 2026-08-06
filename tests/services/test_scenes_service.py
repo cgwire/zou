@@ -5,7 +5,7 @@ from zou.app.services import scenes_service
 
 class SceneUtilsTestCase(ApiDBTestCase):
     def setUp(self):
-        super(SceneUtilsTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()

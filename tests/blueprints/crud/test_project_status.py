@@ -6,7 +6,7 @@ from zou.app.utils import fields
 
 class ProjectStatusTestCase(ApiDBTestCase):
     def setUp(self):
-        super(ProjectStatusTestCase, self).setUp()
+        super().setUp()
         self.generate_data(ProjectStatus, 3)
 
     def test_get_project_statuss(self):

@@ -4,7 +4,7 @@ from zou.app.utils import fields
 
 class SearchFilterTestCase(ApiDBTestCase):
     def setUp(self):
-        super(SearchFilterTestCase, self).setUp()
+        super().setUp()
         self.generate_base_context()
         self.person_id = str(self.user["id"])
         self.project_id = str(self.project.id)

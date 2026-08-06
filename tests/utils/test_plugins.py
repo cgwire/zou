@@ -24,11 +24,11 @@ from zou.app.utils.plugins import (
 class PluginManifestTestCase(ApiDBTestCase):
 
     def setUp(self):
-        super(PluginManifestTestCase, self).setUp()
+        super().setUp()
         self.temp_dir = tempfile.mkdtemp()
 
     def tearDown(self):
-        super(PluginManifestTestCase, self).tearDown()
+        super().tearDown()
         if os.path.exists(self.temp_dir):
             shutil.rmtree(self.temp_dir)
 
@@ -169,11 +169,11 @@ license = "MIT"
 
 class PluginFilesTestCase(ApiDBTestCase):
     def setUp(self):
-        super(PluginFilesTestCase, self).setUp()
+        super().setUp()
         self.temp_dir = tempfile.mkdtemp()
 
     def tearDown(self):
-        super(PluginFilesTestCase, self).tearDown()
+        super().tearDown()
         if os.path.exists(self.temp_dir):
             shutil.rmtree(self.temp_dir)
 
@@ -247,11 +247,11 @@ class PluginFilesTestCase(ApiDBTestCase):
 
 class PluginDownloadTestCase(ApiDBTestCase):
     def setUp(self):
-        super(PluginDownloadTestCase, self).setUp()
+        super().setUp()
         self.temp_dir = tempfile.mkdtemp()
 
     def tearDown(self):
-        super(PluginDownloadTestCase, self).tearDown()
+        super().tearDown()
         if os.path.exists(self.temp_dir):
             shutil.rmtree(self.temp_dir)
 
@@ -301,11 +301,11 @@ class PluginDownloadTestCase(ApiDBTestCase):
 
 class PluginPackageTestCase(ApiDBTestCase):
     def setUp(self):
-        super(PluginPackageTestCase, self).setUp()
+        super().setUp()
         self.temp_dir = tempfile.mkdtemp()
 
     def tearDown(self):
-        super(PluginPackageTestCase, self).tearDown()
+        super().tearDown()
         if os.path.exists(self.temp_dir):
             shutil.rmtree(self.temp_dir)
 
@@ -337,11 +337,11 @@ license = "MIT"
 
 class PluginSkeletonTestCase(ApiDBTestCase):
     def setUp(self):
-        super(PluginSkeletonTestCase, self).setUp()
+        super().setUp()
         self.temp_dir = tempfile.mkdtemp()
 
     def tearDown(self):
-        super(PluginSkeletonTestCase, self).tearDown()
+        super().tearDown()
         if os.path.exists(self.temp_dir):
             shutil.rmtree(self.temp_dir)
 
@@ -437,11 +437,11 @@ class PluginStaticRoutesTestCase(ApiDBTestCase):
 class PluginAlembicConfigTestCase(ApiDBTestCase):
 
     def setUp(self):
-        super(PluginAlembicConfigTestCase, self).setUp()
+        super().setUp()
         self.temp_dir = tempfile.mkdtemp()
 
     def tearDown(self):
-        super(PluginAlembicConfigTestCase, self).tearDown()
+        super().tearDown()
         if os.path.exists(self.temp_dir):
             shutil.rmtree(self.temp_dir)
 

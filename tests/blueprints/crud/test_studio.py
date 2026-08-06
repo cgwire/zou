@@ -5,7 +5,7 @@ from zou.app.utils import fields
 
 class StudioTestCase(ApiDBTestCase):
     def setUp(self):
-        super(StudioTestCase, self).setUp()
+        super().setUp()
         self.generate_data(Studio, 3)
 
     def test_get_studios(self):

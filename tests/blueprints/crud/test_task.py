@@ -7,7 +7,7 @@ from zou.app.utils import fields
 
 class TaskTestCase(ApiDBTestCase):
     def setUp(self):
-        super(TaskTestCase, self).setUp()
+        super().setUp()
         self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_asset_type()

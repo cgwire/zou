@@ -15,7 +15,7 @@ class PreviewProcessingFailureTestCase(ApiDBTestCase):
     """
 
     def setUp(self):
-        super(PreviewProcessingFailureTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()

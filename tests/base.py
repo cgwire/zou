@@ -324,7 +324,7 @@ class ApiDBTestCase(ApiTestCase):
         Configure application before each test.
         set up database transaction.
         """
-        super(ApiDBTestCase, self).setUp()
+        super().setUp()
 
         self._db_connection = db.engine.connect()
         self._db_transaction = self._db_connection.begin()
@@ -346,7 +346,7 @@ class ApiDBTestCase(ApiTestCase):
         Configure application after each test.
         Rollback transaction to return database to its original state.
         """
-        super(ApiDBTestCase, self).tearDown()
+        super().tearDown()
         if not self._db_transaction._deactivated_from_connection:
             self._db_transaction.rollback()
         self._db_connection.close()

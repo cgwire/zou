@@ -15,7 +15,7 @@ from zou.app.utils import events
 @freeze_time("2026-07-06T12:00:00")
 class EventsServiceTestCase(ApiDBTestCase):
     def setUp(self):
-        super(EventsServiceTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()

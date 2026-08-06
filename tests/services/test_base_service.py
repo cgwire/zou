@@ -9,7 +9,7 @@ from zou.app.services.exception import ProjectNotFoundException
 
 class BaseServiceTestCase(ApiDBTestCase):
     def setUp(self):
-        super(BaseServiceTestCase, self).setUp()
+        super().setUp()
 
     def test_get_instance(self):
         project = Project.create(name="Test")

@@ -11,7 +11,7 @@ from zou.app.services import (
 
 class PlaylistsServiceTestCase(ApiDBTestCase):
     def setUp(self):
-        super(PlaylistsServiceTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project_standard()

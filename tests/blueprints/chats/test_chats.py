@@ -9,7 +9,7 @@ from zou.app.utils import thumbnail
 
 class EventsRoutesTestCase(ApiDBTestCase):
     def setUp(self):
-        super(EventsRoutesTestCase, self).setUp(expire_on_commit=False)
+        super().setUp(expire_on_commit=False)
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()

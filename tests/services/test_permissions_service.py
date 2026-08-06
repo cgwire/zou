@@ -17,7 +17,7 @@ from zou.app.utils import permissions
 
 class PermissionsServiceTestCase(ApiDBTestCase):
     def setUp(self):
-        super(PermissionsServiceTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()
@@ -53,7 +53,7 @@ class PermissionsServiceTestCase(ApiDBTestCase):
         persons_service.get_current_user_raw = self.get_current_user_raw
 
     def tearDown(self):
-        super(PermissionsServiceTestCase, self).tearDown()
+        super().tearDown()
         persons_service.get_current_user = self.old_get_current_user
         persons_service.get_current_user_raw = self.old_get_current_user_raw
 

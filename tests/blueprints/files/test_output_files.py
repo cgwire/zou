@@ -7,7 +7,7 @@ from zou.app.services import files_service, tasks_service
 
 class RouteOutputFilesTestCase(ApiDBTestCase):
     def setUp(self):
-        super(RouteOutputFilesTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()

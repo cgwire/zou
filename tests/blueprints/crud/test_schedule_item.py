@@ -4,7 +4,7 @@ from zou.app.utils import fields
 
 class ScheduleItemTestCase(ApiDBTestCase):
     def setUp(self):
-        super(ScheduleItemTestCase, self).setUp()
+        super().setUp()
         self.generate_base_context()
         self.generate_fixture_schedule_item(self.task_type)
         self.generate_fixture_schedule_item(self.task_type_animation)

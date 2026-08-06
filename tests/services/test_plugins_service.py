@@ -18,7 +18,7 @@ from zou.app.utils.plugins import PluginManifest
 class PluginsServiceTestCase(ApiDBTestCase):
 
     def setUp(self):
-        super(PluginsServiceTestCase, self).setUp()
+        super().setUp()
         self.temp_dir = tempfile.mkdtemp()
         self.plugin_folder = Path(self.temp_dir) / "plugins"
         self.plugin_folder.mkdir(parents=True, exist_ok=True)
@@ -27,7 +27,7 @@ class PluginsServiceTestCase(ApiDBTestCase):
         config.PLUGIN_FOLDER = str(self.plugin_folder)
 
     def tearDown(self):
-        super(PluginsServiceTestCase, self).tearDown()
+        super().tearDown()
         config.PLUGIN_FOLDER = self.original_plugin_folder
         if os.path.exists(self.temp_dir):
             shutil.rmtree(self.temp_dir)

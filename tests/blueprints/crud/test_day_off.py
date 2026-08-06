@@ -4,7 +4,7 @@ from zou.app.utils import fields
 
 class DayOffTestCase(ApiDBTestCase):
     def setUp(self):
-        super(DayOffTestCase, self).setUp()
+        super().setUp()
         self.person_id = str(self.user["id"])
 
     def test_get_day_offs(self):

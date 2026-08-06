@@ -16,7 +16,7 @@ pytestmark = pytest.mark.real_bcrypt
 
 class AuthTestCase(ApiDBTestCase):
     def setUp(self):
-        super(AuthTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_person()
         self.person.update(
@@ -34,7 +34,7 @@ class AuthTestCase(ApiDBTestCase):
 
     def tearDown(self):
         self.log_out()
-        super(AuthTestCase, self).tearDown()
+        super().tearDown()
 
     def get_auth_headers(self, tokens):
         return {"Authorization": f"Bearer {tokens.get('access_token', None)}"}

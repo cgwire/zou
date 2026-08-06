@@ -12,7 +12,7 @@ from zou.app.services import comments_service, news_service
 @freeze_time("2026-07-06T12:00:00")
 class NewsServiceTestCase(ApiDBTestCase):
     def setUp(self):
-        super(NewsServiceTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()

@@ -27,7 +27,7 @@ event = {
 
 class DataImportErrorTestCase(ShotgunTestCase):
     def setUp(self):
-        super(DataImportErrorTestCase, self).setUp()
+        super().setUp()
         self.error = DataImportError(event_data=event, source="shotgun")
         self.error.save()
         self.error_id = self.error.id

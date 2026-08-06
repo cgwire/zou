@@ -6,7 +6,7 @@ from zou.app.models.project_template import ProjectTemplate
 
 class ProjectTemplateTestCase(ApiDBTestCase):
     def setUp(self):
-        super(ProjectTemplateTestCase, self).setUp()
+        super().setUp()
         ProjectTemplate.create(
             name="Short Film", description="Default short-film setup"
         )

@@ -5,7 +5,7 @@ from zou.app.services import files_service
 
 class FolderPathTestCase(ApiDBTestCase):
     def setUp(self):
-        super(FolderPathTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()

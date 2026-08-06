@@ -6,7 +6,7 @@ from zou.app.models.task import Task
 
 class ImportShotgunTaskTestCase(ShotgunTestCase):
     def setUp(self):
-        super(ImportShotgunTaskTestCase, self).setUp()
+        super().setUp()
         self.load_fixture("persons")
         self.load_fixture("projects")
         self.load_fixture("status")

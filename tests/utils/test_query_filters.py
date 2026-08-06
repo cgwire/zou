@@ -5,7 +5,7 @@ from zou.app.models.project import Project
 
 class QueryTestCase(ApiDBTestCase):
     def setUp(self):
-        super(QueryTestCase, self).setUp()
+        super().setUp()
         self.generate_fixture_project_status()
         self.generate_fixture_project()
 

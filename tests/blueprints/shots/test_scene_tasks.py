@@ -3,7 +3,7 @@ from tests.base import ApiDBTestCase
 
 class SceneTasksTestCase(ApiDBTestCase):
     def setUp(self):
-        super(SceneTasksTestCase, self).setUp()
+        super().setUp()
         self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_asset_type()

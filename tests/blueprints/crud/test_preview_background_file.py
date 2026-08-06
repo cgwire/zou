@@ -5,7 +5,7 @@ from zou.app.utils import fields
 
 class PreviewBackgroundFileTestCase(ApiDBTestCase):
     def setUp(self):
-        super(PreviewBackgroundFileTestCase, self).setUp()
+        super().setUp()
         self.generate_fixture_department()
         self.generate_fixture_task_type()
         self.generate_fixture_task_status_done()

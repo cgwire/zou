@@ -15,7 +15,7 @@ pytestmark = [
 
 class AssetSearchTestCase(ApiDBTestCase):
     def setUp(self):
-        super(AssetSearchTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_person()
         self.generate_fixture_project_status()

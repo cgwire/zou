@@ -38,7 +38,7 @@ class ToReviewHandler(object):
 
 class TaskServiceTestCase(ApiDBTestCase):
     def setUp(self):
-        super(TaskServiceTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()

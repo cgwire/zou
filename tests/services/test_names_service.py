@@ -5,7 +5,7 @@ from zou.app.services import files_service, names_service
 
 class NamesServiceTestCase(ApiDBTestCase):
     def setUp(self):
-        super(NamesServiceTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_organisation()
         self.generate_fixture_project_status()

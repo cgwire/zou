@@ -8,7 +8,7 @@ from zou.app.services import projects_service
 
 class WorkingFilesTestCase(ApiDBTestCase):
     def setUp(self):
-        super(WorkingFilesTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()

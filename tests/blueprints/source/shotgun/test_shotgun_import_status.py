@@ -3,7 +3,7 @@ from tests.blueprints.source.shotgun.base import ShotgunTestCase
 
 class ImportShotgunStatusTestCase(ShotgunTestCase):
     def setUp(self):
-        super(ImportShotgunStatusTestCase, self).setUp()
+        super().setUp()
 
     def test_import_status(self):
         self.status = self.load_fixture("status")

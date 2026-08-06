@@ -10,7 +10,7 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
     """
 
     def setUp(self):
-        super(MovieStreamingRoutesTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()

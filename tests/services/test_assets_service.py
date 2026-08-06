@@ -6,7 +6,7 @@ from zou.app.services.exception import AssetNotFoundException
 
 class AssetServiceTestCase(ApiDBTestCase):
     def setUp(self):
-        super(AssetServiceTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()

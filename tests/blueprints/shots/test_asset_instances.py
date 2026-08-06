@@ -3,7 +3,7 @@ from tests.base import ApiDBTestCase
 
 class AssetInstanceInShotTestCase(ApiDBTestCase):
     def setUp(self):
-        super(AssetInstanceInShotTestCase, self).setUp()
+        super().setUp()
 
         self.generate_shot_suite()
         self.generate_fixture_asset()

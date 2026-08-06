@@ -18,7 +18,7 @@ from zou.app.services import assets_service
 @freeze_time("2026-07-06T12:00:00")
 class EventsRoutesTestCase(ApiDBTestCase):
     def setUp(self):
-        super(EventsRoutesTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()
@@ -224,7 +224,7 @@ class EventsRoutesTestCase(ApiDBTestCase):
 
 class LoginLogsRoutesTestCase(ApiDBTestCase):
     def setUp(self):
-        super(LoginLogsRoutesTestCase, self).setUp()
+        super().setUp()
         LoginLog.query.delete()
 
     def create_login_logs(self, count):

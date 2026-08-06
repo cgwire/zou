@@ -3,7 +3,7 @@ from tests.base import ApiDBTestCase
 
 class OpenProjectRouteTestCase(ApiDBTestCase):
     def setUp(self):
-        super(OpenProjectRouteTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project_closed_status()

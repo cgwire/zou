@@ -15,7 +15,7 @@ from zou.app.services import budget_service
 class BudgetServiceTestCase(ApiDBTestCase):
 
     def setUp(self):
-        super(BudgetServiceTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.project_alt = self.generate_fixture_project("Project 2")

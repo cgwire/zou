@@ -7,7 +7,7 @@ from zou.app.utils import fields
 
 class TaskTypeTestCase(ApiDBTestCase):
     def setUp(self):
-        super(TaskTypeTestCase, self).setUp()
+        super().setUp()
         self.generate_fixture_department()
         self.department_id = self.department.id
         self.generate_data(TaskType, 3, department_id=self.department_id)

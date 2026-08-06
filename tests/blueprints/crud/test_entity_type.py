@@ -10,7 +10,7 @@ from zou.app.utils import fields
 
 class EntityTypeTestCase(ApiDBTestCase):
     def setUp(self):
-        super(EntityTypeTestCase, self).setUp()
+        super().setUp()
         self.generate_fixture_asset_types()
 
     def test_get_entity_types(self):

@@ -5,7 +5,7 @@ from tests.base import ApiDBTestCase
 
 class DesktopLoginLogsTestCase(ApiDBTestCase):
     def setUp(self):
-        super(DesktopLoginLogsTestCase, self).setUp()
+        super().setUp()
         self.person = self.generate_fixture_person().serialize()
         self.path = f"/data/persons/{self.person['id']}/desktop-login-logs"
 

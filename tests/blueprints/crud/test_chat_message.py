@@ -6,7 +6,7 @@ from zou.app.utils import fields
 
 class ChatMessageTestCase(ApiDBTestCase):
     def setUp(self):
-        super(ChatMessageTestCase, self).setUp()
+        super().setUp()
         self.person_id = str(self.user["id"])
         self.chat = Chat.create(
             object_id=fields.gen_uuid(),

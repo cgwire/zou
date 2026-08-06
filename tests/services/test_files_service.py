@@ -17,7 +17,7 @@ from zou.app.services.exception import (
 
 class FileServiceTestCase(ApiDBTestCase):
     def setUp(self):
-        super(FileServiceTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()

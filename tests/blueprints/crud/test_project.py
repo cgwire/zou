@@ -6,7 +6,7 @@ from zou.app.models.project import Project
 
 class ProjectTestCase(ApiDBTestCase):
     def setUp(self):
-        super(ProjectTestCase, self).setUp()
+        super().setUp()
         self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_project("Agent 327")

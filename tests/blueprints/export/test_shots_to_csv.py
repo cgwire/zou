@@ -3,7 +3,7 @@ from tests.base import ApiDBTestCase
 
 class ShotCsvExportTestCase(ApiDBTestCase):
     def setUp(self):
-        super(ShotCsvExportTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()

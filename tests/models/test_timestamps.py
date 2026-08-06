@@ -5,7 +5,7 @@ from zou.app.utils import date_helpers
 
 class TimestampsTestCase(ApiDBTestCase):
     def setUp(self):
-        super(TimestampsTestCase, self).setUp()
+        super().setUp()
         mixer.init_app(self.flask_app)
         self.now = date_helpers.get_utc_now_datetime()
         self.generate_fixture_person()

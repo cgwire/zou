@@ -6,7 +6,7 @@ from zou.app.services import stats_service
 class StatsServiceTestCase(ApiDBTestCase):
 
     def setUp(self):
-        super(StatsServiceTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()

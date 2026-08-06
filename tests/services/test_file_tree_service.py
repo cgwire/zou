@@ -15,7 +15,7 @@ from zou.app.models.entity import Entity
 
 class FileTreeTestCase(ApiDBTestCase):
     def setUp(self):
-        super(FileTreeTestCase, self).setUp()
+        super().setUp()
         self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_project_standard()

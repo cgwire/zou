@@ -7,7 +7,7 @@ from zou.app.utils import fields
 
 class OutputTypeTestCase(ApiDBTestCase):
     def setUp(self):
-        super(OutputTypeTestCase, self).setUp()
+        super().setUp()
         self.generate_data(OutputType, 3)
 
     def test_get_output_types(self):

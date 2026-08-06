@@ -6,7 +6,7 @@ from zou.app.services import tasks_service, time_spents_service
 
 class TimeSpentsServiceTestCase(ApiDBTestCase):
     def setUp(self):
-        super(TimeSpentsServiceTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_person()
         self.person_id = str(self.person.id)

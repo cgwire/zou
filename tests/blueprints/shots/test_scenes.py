@@ -6,7 +6,7 @@ from zou.app.services import scenes_service
 
 class SceneTestCase(ApiDBTestCase):
     def setUp(self):
-        super(SceneTestCase, self).setUp()
+        super().setUp()
         self.generate_shot_suite()
         self.project_id = str(self.project.id)
         self.serialized_shot = self.shot.serialize(obj_type="Shot")

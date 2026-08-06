@@ -6,7 +6,7 @@ from zou.app.models.studio import Studio
 
 class PersonsCsvExportTestCase(ApiDBTestCase):
     def setUp(self):
-        super(PersonsCsvExportTestCase, self).setUp()
+        super().setUp()
 
         # Creates departments "Modeling" and "Animation".
         self.generate_fixture_department()

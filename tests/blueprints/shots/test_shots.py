@@ -5,7 +5,7 @@ from zou.app.services import projects_service, shots_service, tasks_service
 
 class ShotTestCase(ApiDBTestCase):
     def setUp(self):
-        super(ShotTestCase, self).setUp()
+        super().setUp()
         self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.project_id = str(self.project.id)

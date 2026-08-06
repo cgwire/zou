@@ -4,7 +4,7 @@ from zou.app.utils import fields
 
 class EntityLinkTestCase(ApiDBTestCase):
     def setUp(self):
-        super(EntityLinkTestCase, self).setUp()
+        super().setUp()
         self.generate_base_context()
         self.generate_fixture_asset()
         self.generate_fixture_asset_standard()

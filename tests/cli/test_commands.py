@@ -23,7 +23,7 @@ def totimestamp(dt, epoch=datetime.datetime(1970, 1, 1)):
 
 class CommandsTestCase(ApiDBTestCase):
     def setUp(self):
-        super(CommandsTestCase, self).setUp()
+        super().setUp()
         self.store = auth_tokens_store
         self.store.clear()
 

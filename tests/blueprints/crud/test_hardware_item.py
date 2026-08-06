@@ -5,7 +5,7 @@ from zou.app.utils import fields
 
 class HardwareItemTestCase(ApiDBTestCase):
     def setUp(self):
-        super(HardwareItemTestCase, self).setUp()
+        super().setUp()
         self.generate_data(HardwareItem, 3)
 
     def test_get_hardware_items(self):

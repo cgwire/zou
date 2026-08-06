@@ -3,7 +3,7 @@ from tests.base import ApiDBTestCase
 
 class PersonTimeSpentsTestCase(ApiDBTestCase):
     def setUp(self):
-        super(PersonTimeSpentsTestCase, self).setUp()
+        super().setUp()
         self.generate_fixture_person()
         self.generate_fixture_project_status()
         self.generate_fixture_project()

@@ -4,7 +4,7 @@ from zou.app.services import projects_service
 
 class ImportShotgunProjectConnectionsTestCase(ShotgunTestCase):
     def setUp(self):
-        super(ImportShotgunProjectConnectionsTestCase, self).setUp()
+        super().setUp()
 
     def test_import_project_connections(self):
         self.load_fixture("persons")

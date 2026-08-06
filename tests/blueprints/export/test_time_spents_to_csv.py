@@ -5,7 +5,7 @@ from zou.app.services import tasks_service
 
 class TasksCsvExportTestCase(ApiDBTestCase):
     def setUp(self):
-        super(TasksCsvExportTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.project = self.generate_fixture_project()

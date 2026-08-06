@@ -6,7 +6,7 @@ from zou.app.utils import fields
 
 class TaskStatusTestCase(ApiDBTestCase):
     def setUp(self):
-        super(TaskStatusTestCase, self).setUp()
+        super().setUp()
         self.generate_data(TaskStatus, 3)
 
     def test_get_task_statuss(self):

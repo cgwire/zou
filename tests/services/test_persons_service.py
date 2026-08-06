@@ -1,6 +1,5 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.models.organisation import Organisation
 from zou.app.services import persons_service
 from zou.app.services.exception import (
     PersonNotFoundException,
@@ -11,7 +10,7 @@ from zou.app.utils import auth, fields
 
 class PersonServiceTestCase(ApiDBTestCase):
     def setUp(self):
-        super(PersonServiceTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_person()
         self.generate_fixture_department()

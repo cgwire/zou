@@ -10,7 +10,7 @@ from zou.app.services import (
 
 class PreviewFileTestCase(ApiDBTestCase):
     def setUp(self):
-        super(PreviewFileTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_user_cg_artist()
         self.user_cg_artist_id = self.user_cg_artist["id"]

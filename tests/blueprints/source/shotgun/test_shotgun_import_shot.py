@@ -8,7 +8,7 @@ from zou.app.services import shots_service
 
 class ImportShotgunShotTestCase(ShotgunTestCase):
     def setUp(self):
-        super(ImportShotgunShotTestCase, self).setUp()
+        super().setUp()
 
         self.sg_shot = {
             "sg_cut_in": 0,

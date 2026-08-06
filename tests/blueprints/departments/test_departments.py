@@ -6,7 +6,7 @@ from zou.app.services import departments_service
 
 class DepartmentRoutesTestCase(ApiDBTestCase):
     def setUp(self):
-        super(DepartmentRoutesTestCase, self).setUp()
+        super().setUp()
         self.generate_fixture_department()
         self.generate_fixture_software()
         self.hardware_item = HardwareItem.create(

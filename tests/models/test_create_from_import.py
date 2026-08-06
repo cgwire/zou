@@ -15,7 +15,7 @@ from zou.app.models.task import Task
 
 class CreateFromImportTestCase(ApiDBTestCase):
     def setUp(self):
-        super(CreateFromImportTestCase, self).setUp()
+        super().setUp()
         self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_asset_type()

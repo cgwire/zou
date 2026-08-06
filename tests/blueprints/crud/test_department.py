@@ -7,7 +7,7 @@ from zou.app.utils import fields
 
 class DepartmentTestCase(ApiDBTestCase):
     def setUp(self):
-        super(DepartmentTestCase, self).setUp()
+        super().setUp()
         self.generate_data(Department, 3)
 
     def test_get_departments(self):

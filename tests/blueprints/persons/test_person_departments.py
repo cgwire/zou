@@ -5,7 +5,7 @@ from zou.app.services import persons_service
 
 class PersonDepartmentTestCase(ApiDBTestCase):
     def setUp(self):
-        super(PersonDepartmentTestCase, self).setUp()
+        super().setUp()
         self.person = self.generate_fixture_person().serialize()
         self.department = self.generate_fixture_department().serialize()
         self.path = f"/actions/persons/{self.person['id']}/departments"

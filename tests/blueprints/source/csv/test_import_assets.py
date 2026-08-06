@@ -15,7 +15,7 @@ from zou.app.services import assets_service, tasks_service
 
 class ImportCsvAssetsTestCase(ApiDBTestCase):
     def setUp(self):
-        super(ImportCsvAssetsTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()

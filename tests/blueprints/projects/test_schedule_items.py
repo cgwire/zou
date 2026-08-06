@@ -5,7 +5,7 @@ from zou.app.models.entity import Entity
 
 class ProjectScheduleRouteTestCase(ApiDBTestCase):
     def setUp(self):
-        super(ProjectScheduleRouteTestCase, self).setUp()
+        super().setUp()
 
         self.generate_shot_suite()
         self.generate_assigned_task()

@@ -7,7 +7,7 @@ from zou.app.utils import fields
 
 class FileStatusTestCase(ApiDBTestCase):
     def setUp(self):
-        super(FileStatusTestCase, self).setUp()
+        super().setUp()
         self.generate_data(FileStatus, 3)
 
     def test_get_file_statuss(self):

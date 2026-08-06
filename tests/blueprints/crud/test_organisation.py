@@ -5,7 +5,7 @@ from zou.app.utils import fields
 
 class OrganisationTestCase(ApiDBTestCase):
     def setUp(self):
-        super(OrganisationTestCase, self).setUp()
+        super().setUp()
         self.initial_count = len(self.get("data/organisations"))
         self.generate_data(Organisation, 3)
 

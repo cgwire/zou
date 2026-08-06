@@ -4,7 +4,7 @@ from zou.app.utils import fields
 
 class ProductionScheduleVersionTestCase(ApiDBTestCase):
     def setUp(self):
-        super(ProductionScheduleVersionTestCase, self).setUp()
+        super().setUp()
         self.generate_base_context()
         self.project_id = str(self.project.id)
         for i in range(3):

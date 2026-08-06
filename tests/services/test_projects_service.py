@@ -18,7 +18,7 @@ from zou.app.services.exception import (
 
 class ProjectServiceTestCase(ApiDBTestCase):
     def setUp(self):
-        super(ProjectServiceTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project_closed_status()

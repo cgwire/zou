@@ -26,7 +26,7 @@ class ImportCsvPersonsTestCase(ApiDBTestCase):
     ]
 
     def setUp(self):
-        super(ImportCsvPersonsTestCase, self).setUp()
+        super().setUp()
         # Creates departments "Modeling" and "Animation".
         self.generate_fixture_department()
         Studio.create(name="Test Studio", color="#000000")

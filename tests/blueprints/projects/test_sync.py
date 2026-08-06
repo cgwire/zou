@@ -5,7 +5,7 @@ from zou.app.services import breakdown_service
 
 class ProjectSyncRouteTestCase(ApiDBTestCase):
     def setUp(self):
-        super(ProjectSyncRouteTestCase, self).setUp()
+        super().setUp()
 
         self.generate_shot_suite()
         self.generate_assigned_task()

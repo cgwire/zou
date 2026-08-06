@@ -5,7 +5,7 @@ from zou.app.services import projects_service, tasks_service
 
 class EpisodeTestCase(ApiDBTestCase):
     def setUp(self):
-        super(EpisodeTestCase, self).setUp()
+        super().setUp()
         self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_asset_type()

@@ -5,7 +5,7 @@ from zou.app.services import comments_service, news_service
 
 class NewsRoutesTestCase(ApiDBTestCase):
     def setUp(self):
-        super(NewsRoutesTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()

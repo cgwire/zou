@@ -5,7 +5,7 @@ from zou.app.models.person import Person
 
 class PaginationTestCase(ApiDBTestCase):
     def setUp(self):
-        super(PaginationTestCase, self).setUp()
+        super().setUp()
         self.generate_data(Person, 250, departments=[])
 
     def test_paginate(self):
