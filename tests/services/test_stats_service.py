@@ -62,40 +62,77 @@ class StatsServiceTestCase(ApiDBTestCase):
         self.assertIn("all", episode_stats)
         self.assertIn("max_retake_count", episode_stats["all"])
 
+    def add_entry(self, add, results, **overrides):
+        """
+        One row of the stats walk, with the parts a case does not care about
+        filled in.
+        """
+        payload = {
+            "project_id": "p1",
+            "episode_id": "e1",
+            "task_type_id": "tt1",
+            "task_status_id": "ts1",
+            "task_status_short_name": "wip",
+            "task_status_color": "#FFFFFF",
+            "task_count": 5,
+            "task_nb_drawings": 10,
+            "entity_nb_frames": 100,
+        }
+        payload.update(overrides)
+        add(results, **payload)
+
     def test_add_entry_to_stats(self):
+        """
+        A row lands under its own task type, and the episode's "all" bucket
+        sums every task type of that episode. Two rows, because one cannot
+        tell a sum from an assignment.
+        """
         results = {}
-        stats_service.add_entry_to_stats(
+        self.add_entry(stats_service.add_entry_to_stats, results)
+        self.add_entry(
+            stats_service.add_entry_to_stats,
             results,
-            project_id="p1",
-            episode_id="e1",
-            task_type_id="tt1",
-            task_status_id="ts1",
-            task_status_short_name="wip",
-            task_status_color="#FFFFFF",
-            task_count=5,
-            task_nb_drawings=10,
-            entity_nb_frames=100,
+            task_type_id="tt2",
+            task_count=2,
+            task_nb_drawings=4,
+            entity_nb_frames=20,
         )
-        self.assertEqual(results["e1"]["tt1"]["ts1"]["count"], 5)
-        self.assertEqual(results["e1"]["tt1"]["ts1"]["frames"], 100)
-        self.assertEqual(results["e1"]["tt1"]["ts1"]["drawings"], 10)
-        # Aggregated "all" for episode
-        self.assertEqual(results["e1"]["all"]["ts1"]["count"], 5)
+
+        self.assertEqual(
+            results["e1"]["tt1"]["ts1"],
+            {
+                "name": "wip",
+                "color": "#FFFFFF",
+                "count": 5,
+                "frames": 100,
+                "drawings": 10,
+            },
+        )
+        self.assertEqual(results["e1"]["tt2"]["ts1"]["count"], 2)
+        self.assertEqual(results["e1"]["all"]["ts1"]["count"], 7)
+        self.assertEqual(results["e1"]["all"]["ts1"]["frames"], 120)
+        self.assertEqual(results["e1"]["all"]["ts1"]["drawings"], 14)
 
     def test_add_entry_to_all_stats(self):
+        """
+        The production wide bucket: per task type under "all", and summed
+        across task types under "all"/"all", whatever episode the row came
+        from.
+        """
         results = {}
-        stats_service.add_entry_to_all_stats(
+        self.add_entry(stats_service.add_entry_to_all_stats, results)
+        self.add_entry(
+            stats_service.add_entry_to_all_stats,
             results,
-            project_id="p1",
-            episode_id="e1",
-            task_type_id="tt1",
-            task_status_id="ts1",
-            task_status_short_name="wip",
-            task_status_color="#FFFFFF",
-            task_count=3,
-            task_nb_drawings=6,
-            entity_nb_frames=50,
+            episode_id="e2",
+            task_type_id="tt2",
+            task_count=2,
+            task_nb_drawings=4,
+            entity_nb_frames=20,
         )
-        self.assertEqual(results["all"]["tt1"]["ts1"]["count"], 3)
-        self.assertEqual(results["all"]["all"]["ts1"]["count"], 3)
-        self.assertEqual(results["all"]["all"]["ts1"]["frames"], 50)
+
+        self.assertEqual(results["all"]["tt1"]["ts1"]["count"], 5)
+        self.assertEqual(results["all"]["tt2"]["ts1"]["count"], 2)
+        self.assertEqual(results["all"]["all"]["ts1"]["count"], 7)
+        self.assertEqual(results["all"]["all"]["ts1"]["frames"], 120)
+        self.assertEqual(results["all"]["all"]["ts1"]["drawings"], 14)
