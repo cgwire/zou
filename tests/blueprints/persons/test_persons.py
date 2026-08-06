@@ -82,21 +82,23 @@ class PersonRoutesTestCase(ApiDBTestCase):
 
     # --- Time spent tables ---
 
-    def test_get_time_spents_year_table(self):
-        result = self.get("/data/persons/time-spents/year-table/")
-        self.assertIsInstance(result, dict)
-
-    def test_get_time_spents_month_table(self):
-        result = self.get("/data/persons/time-spents/month-table/2024")
-        self.assertIsInstance(result, dict)
-
-    def test_get_time_spents_week_table(self):
-        result = self.get("/data/persons/time-spents/week-table/2024")
-        self.assertIsInstance(result, dict)
-
-    def test_get_time_spents_day_table(self):
-        result = self.get("/data/persons/time-spents/day-table/2024/06")
-        self.assertIsInstance(result, dict)
+    def test_the_time_spent_tables_total_by_period(self):
+        """
+        The eight hundred minutes of setUp read at four granularities, each
+        keyed by its period and then by the person who logged them. The two
+        tasks they were split across are summed.
+        """
+        tables = {
+            "year": ("/data/persons/time-spents/year-table/", "2024"),
+            "month": ("/data/persons/time-spents/month-table/2024", "6"),
+            "week": ("/data/persons/time-spents/week-table/2024", "23"),
+            "day": ("/data/persons/time-spents/day-table/2024/06", "4"),
+        }
+        for granularity, (path, period) in tables.items():
+            with self.subTest(granularity=granularity):
+                self.assertEqual(
+                    self.get(path), {period: {self.person_id: 800.0}}
+                )
 
     # --- Day offs ---
 
