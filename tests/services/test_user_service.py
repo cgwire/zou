@@ -19,28 +19,17 @@ class UserServiceTestCase(ApiDBTestCase):
         self.generate_fixture_project()
         self.generate_fixture_asset_type()
         self.generate_fixture_asset()
-        self.generate_fixture_sequence()
-        self.generate_fixture_shot()
         self.generate_fixture_department()
         self.generate_fixture_task_type()
         self.generate_fixture_task_status()
-        self.generate_fixture_task_status_wip()
         self.generate_fixture_task_status_to_review()
         self.generate_fixture_person()
         self.generate_fixture_assigner()
         self.generate_fixture_task()
-        self.generate_fixture_shot_task()
-        self.generate_fixture_file_status()
-        self.generate_fixture_software()
-        self.generate_fixture_working_file()
-        self.generate_fixture_output_type()
-        self.generate_fixture_output_file()
         self.generate_fixture_user_client()
 
         self.task_id = self.task.id
         self.project_id = self.project.id
-        self.open_status_id = self.task_status.id
-        self.wip_status_id = self.task_status_wip.id
         self.to_review_status_id = self.task_status_to_review.id
 
         self.old_get_current_user = persons_service.get_current_user
