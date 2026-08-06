@@ -555,15 +555,14 @@ def update_person_last_presence(person_id):
         .order_by(TimeSpent.date.desc())
         .first()
     )
-    date = None
-    if (
-        log is not None
-        and time_spent is not None
-        and log.date > time_spent.date
-    ):
-        date = log.date
-    elif time_spent is not None:
-        date = time_spent.date
+    dates = []
+    if log is not None:
+        # A login is stored to the second, a time spent and the field being
+        # written are days: the two are not comparable until it is trimmed.
+        dates.append(log.date.date())
+    if time_spent is not None:
+        dates.append(time_spent.date)
+    date = max(dates, default=None)
     return update_person(
         person_id, {"last_presence": date}, bypass_protected_accounts=True
     )

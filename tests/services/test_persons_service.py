@@ -357,12 +357,9 @@ class PersonServiceTestCase(ApiDBTestCase):
 
     def test_update_person_last_presence(self):
         """
-        The latest time spent, read newest first.
-
-        Only the time spents are covered: with a desktop login log in the
-        picture the function either returns None (no time spent) or raises
-        TypeError comparing its datetime to the time spent date. Reported,
-        not pinned here.
+        The latest of the two things that count as a presence: a time spent
+        and a desktop login. They are stored in different types, a date for
+        one and a datetime for the other, and either can be missing.
         """
         self.generate_fixture_project_status()
         self.generate_fixture_project()
@@ -372,19 +369,40 @@ class PersonServiceTestCase(ApiDBTestCase):
         self.generate_fixture_task_status()
         self.generate_fixture_assigner()
         task_id = str(self.generate_fixture_task().id)
-        tasks_service.create_or_update_time_spent(
-            task_id, self.person_id, "2021-06-01", 600
-        )
+
+        def log_in(date):
+            persons_service.create_desktop_login_logs(self.person_id, date)
+
+        def work(date):
+            tasks_service.create_or_update_time_spent(
+                task_id, self.person_id, date, 600
+            )
+
+        cases = [
+            ("a time spent alone", work, "2021-06-01", "2021-06-01"),
+            ("a later one", work, "2021-06-20", "2021-06-20"),
+            ("a login after it", log_in, "2021-06-25", "2021-06-25"),
+            # Each case keeps what the ones before it added, so an older
+            # login is read against the login of the case above.
+            ("an older login", log_in, "2021-06-10", "2021-06-25"),
+            ("a time spent after the login", work, "2021-07-01", "2021-07-01"),
+        ]
+        for reason, add, date, expected in cases:
+            with self.subTest(reason=reason):
+                add(date)
+                result = persons_service.update_person_last_presence(
+                    self.person_id
+                )
+                self.assertEqual(result["last_presence"], expected)
+
+    def test_update_person_last_presence_on_a_login_alone(self):
+        # A person who only ever opens the desktop application has no time
+        # spent to fall back on.
+        persons_service.create_desktop_login_logs(self.person_id, "2021-06-01")
 
         result = persons_service.update_person_last_presence(self.person_id)
+
         self.assertEqual(result["last_presence"], "2021-06-01")
-
-        # Written last, read first.
-        tasks_service.create_or_update_time_spent(
-            task_id, self.person_id, "2021-06-20", 600
-        )
-        result = persons_service.update_person_last_presence(self.person_id)
-        self.assertEqual(result["last_presence"], "2021-06-20")
 
     def test_get_person_raw_cached(self):
         """
