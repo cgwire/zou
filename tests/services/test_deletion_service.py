@@ -7,6 +7,7 @@ from tests.base import ApiDBTestCase
 from zou.app.models.comment import Comment
 from zou.app.models.task import Task
 from zou.app.models.notification import Notification
+from zou.app.models.output_file import OutputFile
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.event import ApiEvent
 from zou.app.models.login_log import LoginLog
@@ -213,3 +214,50 @@ class DeletionServiceTestCase(ApiDBTestCase):
         self.assertIsNone(Project.get(project_id))
         self.assertIsNone(ProductionScheduleVersion.get(version_id))
         self.assertIsNone(ProductionScheduleVersion.get(derived_id))
+
+    def test_remove_project_leaves_the_other_productions_alone(self):
+        """
+        remove_project walks a dozen tables, each scoped to the production
+        it was given. One row of every shape lives in a second production
+        here, and all of them must survive.
+        """
+        self.generate_fixture_project_standard()
+        other_asset = self.generate_fixture_asset(
+            "Car", project_id=self.project_standard.id
+        )
+        other_task = self.generate_fixture_task(
+            name="other", entity_id=other_asset.id
+        )
+        other_task.update({"project_id": self.project_standard.id})
+        other_preview = PreviewFile.create(
+            name="other.png",
+            revision=1,
+            extension="png",
+            task_id=other_task.id,
+            person_id=self.person.id,
+        )
+        other_version = ProductionScheduleVersion.create(
+            name="v1", project_id=self.project_standard.id
+        )
+        # The version rows are deleted by project id, but the task links
+        # and the self references are broken by the id list built above
+        # them, which is scoped separately.
+        other_link = ProductionScheduleVersionTaskLink.create(
+            production_schedule_version_id=other_version.id,
+            task_id=other_task.id,
+        )
+        self.generate_fixture_output_type()
+        other_output = self.generate_fixture_output_file(task=other_task)
+        survivors = [
+            (Task, str(other_task.id)),
+            (PreviewFile, str(other_preview.id)),
+            (ProductionScheduleVersion, str(other_version.id)),
+            (ProductionScheduleVersionTaskLink, str(other_link.id)),
+            (OutputFile, str(other_output.id)),
+        ]
+
+        deletion_service.remove_project(str(self.project.id))
+
+        for model, row_id in survivors:
+            self.assertIsNotNone(model.get(row_id), model.__name__)
+        self.assertIsNotNone(Project.get(str(self.project_standard.id)))
