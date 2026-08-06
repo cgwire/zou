@@ -11,6 +11,21 @@ class ConceptRoutesTestCase(ApiDBTestCase):
     def create_concept(self, name="Test Concept"):
         return concepts_service.create_concept(str(self.project.id), name)
 
+    def create_concept_with_task(self, name):
+        """
+        A concept and one task on it, with the whole chain a task needs.
+        """
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
+        self.generate_fixture_department()
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status()
+        concept = self.create_concept(name)
+        task = self.generate_fixture_task(
+            entity_id=concept["id"], task_type_id=self.task_type.id
+        )
+        return concept, task
+
     def test_get_all_concepts(self):
         self.create_concept("Concept A")
         self.create_concept("Concept B")
@@ -44,16 +59,7 @@ class ConceptRoutesTestCase(ApiDBTestCase):
         self.assertEqual(len(concepts), 0)
 
     def test_delete_concept_with_task_cancels(self):
-        self.generate_fixture_person()
-        self.generate_fixture_assigner()
-        self.generate_fixture_department()
-        self.generate_fixture_task_type()
-        self.generate_fixture_task_status()
-        concept = self.create_concept("Cancel Me")
-        self.generate_fixture_task(
-            entity_id=concept["id"],
-            task_type_id=self.task_type.id,
-        )
+        concept, _ = self.create_concept_with_task("Cancel Me")
         self.delete(f"/data/concepts/{concept['id']}")
         all_concepts = self.get("/data/concepts")
         self.assertEqual(len(all_concepts), 1)
@@ -65,18 +71,12 @@ class ConceptRoutesTestCase(ApiDBTestCase):
         self.assertEqual(len(result), 0)
 
     def test_get_concept_task_types_with_task(self):
-        self.generate_fixture_person()
-        self.generate_fixture_assigner()
-        self.generate_fixture_department()
-        self.generate_fixture_task_type()
-        self.generate_fixture_task_status()
-        concept = self.create_concept("With Task Types")
-        self.generate_fixture_task(
-            entity_id=concept["id"],
-            task_type_id=self.task_type.id,
-        )
+        concept, _ = self.create_concept_with_task("With Task Types")
         result = self.get(f"/data/concepts/{concept['id']}/task-types")
-        self.assertEqual(len(result), 1)
+        self.assertEqual(
+            [task_type["id"] for task_type in result],
+            [str(self.task_type.id)],
+        )
 
     def test_get_concept_tasks(self):
         concept = self.create_concept("Tasks Concept")
@@ -84,18 +84,9 @@ class ConceptRoutesTestCase(ApiDBTestCase):
         self.assertEqual(len(result), 0)
 
     def test_get_concept_tasks_with_task(self):
-        self.generate_fixture_person()
-        self.generate_fixture_assigner()
-        self.generate_fixture_department()
-        self.generate_fixture_task_type()
-        self.generate_fixture_task_status()
-        concept = self.create_concept("With Tasks")
-        self.generate_fixture_task(
-            entity_id=concept["id"],
-            task_type_id=self.task_type.id,
-        )
+        concept, task = self.create_concept_with_task("With Tasks")
         result = self.get(f"/data/concepts/{concept['id']}/tasks")
-        self.assertEqual(len(result), 1)
+        self.assertEqual([t["id"] for t in result], [str(task.id)])
 
     def test_get_concept_preview_files(self):
         concept = self.create_concept("Preview Concept")

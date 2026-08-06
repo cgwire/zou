@@ -7,6 +7,10 @@ from tests.base import ApiDBTestCase
 
 from zou.app.services import shots_service
 
+# (name, nb_frames, frame_in, frame_out) of the first two cuts both edl
+# fixtures describe.
+FIRST_TWO_CUTS = [("sc010", 130, 0, 129), ("sc020", 73, 130, 202)]
+
 
 class ImportOTIOEdlTestCase(ApiDBTestCase):
     def setUp(self):
@@ -21,47 +25,40 @@ class ImportOTIOEdlTestCase(ApiDBTestCase):
         )
         self.upload_file(path, file_path)
 
+    def imported_cuts(self):
+        """
+        The imported shots as (name, nb_frames, frame_in, frame_out), in
+        timeline order.
+        """
+        shots = sorted(
+            shots_service.get_shots(), key=lambda s: s["data"]["frame_in"]
+        )
+        return [
+            (
+                shot["name"],
+                shot["nb_frames"],
+                shot["data"]["frame_in"],
+                shot["data"]["frame_out"],
+            )
+            for shot in shots
+        ]
+
     def test_import_edl_no_offset(self):
         self.import_edl("no_offset.edl")
 
-        sequences = shots_service.get_sequences()
-        self.assertEqual(len(sequences), 2)
+        self.assertEqual(len(shots_service.get_sequences()), 2)
+        self.assertEqual(self.imported_cuts()[:2], FIRST_TWO_CUTS)
 
-        shots = shots_service.get_shots()
-        self.assertEqual(len(shots), 3)
-
-        shots = sorted(shots, key=lambda s: s["data"]["frame_in"])
-
-        self.assertEqual(shots[0]["name"], "sc010")
-        self.assertEqual(shots[0]["nb_frames"], 130)
-        self.assertEqual(shots[0]["data"]["frame_in"], 0)
-        self.assertEqual(shots[0]["data"]["frame_out"], 129)
-
-        self.assertEqual(shots[1]["name"], "sc020")
-        self.assertEqual(shots[1]["nb_frames"], 73)
-        self.assertEqual(shots[1]["data"]["frame_in"], 130)
-        self.assertEqual(shots[1]["data"]["frame_out"], 202)
-
-    def test_import_edl_with_tc_offset(self):
+    def test_a_timecode_offset_is_rebased_to_zero(self):
+        """
+        tc_offset.edl holds the same cuts, starting at a timecode that is
+        not zero. The importer rebases them, so the shots come out with the
+        same frame numbers as the offset free file.
+        """
         self.import_edl("tc_offset.edl")
 
-        sequences = shots_service.get_sequences()
-        self.assertEqual(len(sequences), 2)
-
-        shots = shots_service.get_shots()
-        self.assertEqual(len(shots), 3)
-
-        shots = sorted(shots, key=lambda s: s["data"]["frame_in"])
-
-        self.assertEqual(shots[0]["name"], "sc010")
-        self.assertEqual(shots[0]["nb_frames"], 130)
-        self.assertEqual(shots[0]["data"]["frame_in"], 0)
-        self.assertEqual(shots[0]["data"]["frame_out"], 129)
-
-        self.assertEqual(shots[1]["name"], "sc020")
-        self.assertEqual(shots[1]["nb_frames"], 73)
-        self.assertEqual(shots[1]["data"]["frame_in"], 130)
-        self.assertEqual(shots[1]["data"]["frame_out"], 202)
+        self.assertEqual(len(shots_service.get_sequences()), 2)
+        self.assertEqual(self.imported_cuts()[:2], FIRST_TWO_CUTS)
 
     def test_import_edl_creates_sequences(self):
         self.import_edl("tc_offset.edl")

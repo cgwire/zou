@@ -130,29 +130,22 @@ class RouteTimeSpentTestCase(ApiDBTestCase):
         self.assertEqual(week_table["23"][self.person_id], 800)
         self.assertTrue("1" not in week_table)
 
-    def test_get_month_time_spents(self):
+    def test_get_time_spents_by_granularity(self):
+        """
+        The same 600 seconds on the Tree task, reached through the three
+        granularities. May 3rd 2018 is in week 18.
+        """
         self.create_time_spents()
-        tasks = self.get(
-            f"/data/persons/{self.person_id}/time-spents/month/2018/5"
-        )
-        self.assertEqual(len(tasks), 1)
-        self.assertEqual(tasks[0]["entity_name"], "Tree")
-        self.assertEqual(tasks[0]["duration"], 600)
-
-    def test_get_week_time_spents(self):
-        self.create_time_spents()
-        tasks = self.get(
-            f"/data/persons/{self.person_id}/time-spents/week/2018/18"
-        )
-        self.assertEqual(len(tasks), 1)
-        self.assertEqual(tasks[0]["entity_name"], "Tree")
-        self.assertEqual(tasks[0]["duration"], 600)
-
-    def test_get_day_time_spents(self):
-        self.create_time_spents()
-        tasks = self.get(
-            f"/data/persons/{self.person_id}/time-spents/day/2018/5/3"
-        )
-        self.assertEqual(len(tasks), 1)
-        self.assertEqual(tasks[0]["entity_name"], "Tree")
-        self.assertEqual(tasks[0]["duration"], 600)
+        for granularity, period in [
+            ("month", "2018/5"),
+            ("week", "2018/18"),
+            ("day", "2018/5/3"),
+        ]:
+            with self.subTest(granularity=granularity):
+                tasks = self.get(
+                    f"/data/persons/{self.person_id}"
+                    f"/time-spents/{granularity}/{period}"
+                )
+                self.assertEqual(len(tasks), 1)
+                self.assertEqual(tasks[0]["entity_name"], "Tree")
+                self.assertEqual(tasks[0]["duration"], 600)
