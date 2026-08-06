@@ -30,7 +30,6 @@ from zou.app.models.milestone import Milestone
 from zou.app.models.notification import Notification
 from zou.app.models.output_file import OutputFile
 from zou.app.models.output_type import OutputType
-from zou.app.models.organisation import Organisation
 from zou.app.models.person import Person
 from zou.app.models.playlist import Playlist
 from zou.app.models.preview_background_file import PreviewBackgroundFile
@@ -296,9 +295,9 @@ class ApiDBTestCase(ApiTestCase):
       or tries to recreate the default one and hits the unique name
       constraint. Build the row by hand when it has to belong somewhere
       precise.
-    - The app treats the organisation as a singleton it creates on demand,
-      while generate_fixture_organisation adds a second row. Go through
-      persons_service.get_organisation() to reach the one the routes use.
+    - The app treats the organisation as a singleton it creates on demand.
+      There is deliberately no generator for it: one would add a second row
+      the routes never read. Go through persons_service.get_organisation().
     - Caching is on during tests (conftest sets CACHE_TYPE), so changing a
       model the service also writes leaves the route reading a stale value.
       project.team.append() is the common one: use
@@ -411,17 +410,6 @@ class ApiDBTestCase(ApiTestCase):
         )
         self.project_standard.update(
             {"file_tree": file_tree_service.get_tree_from_file("default")}
-        )
-
-    def generate_fixture_project_no_preview_tree(self):
-        if hasattr(self, "project_no_preview_tree"):
-            return
-        self.generate_fixture_project_status()
-        self.project_no_preview_tree = Project.create(
-            name="Agent 327", project_status_id=self.open_status.id
-        )
-        self.project_no_preview_tree.update(
-            {"file_tree": file_tree_service.get_tree_from_file("no_preview")}
         )
 
     def generate_fixture_asset(
@@ -1295,13 +1283,6 @@ class ApiDBTestCase(ApiTestCase):
         )
         self.software_max = Software.create(
             name="3dsMax", short_name="max", file_extension=".max"
-        )
-
-    def generate_fixture_organisation(self):
-        if hasattr(self, "organisation"):
-            return
-        self.organisation = Organisation.create(
-            name="My Studio", hours_by_day=8, use_original_file_name=False
         )
 
     def generate_fixture_preview_file(
