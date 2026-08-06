@@ -462,28 +462,47 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
     may not set, another guest's comment or attachment.
     """
 
-    def test_guest_comment(self):
-        link = self.post(
-            self.share_path(),
-            {"can_comment": True},
-            201,
-        )
+    def guest_on_a_share_link(self, can_comment=True, first_name="Reviewer"):
+        """
+        A share link and a guest signed in on it. Leaves the caller logged
+        out, which is the state a guest works in.
+        """
+        link = self.post(self.share_path(), {"can_comment": can_comment}, 201)
         self.log_out()
         guest = self.post(
             self.shared_path(link["token"], "/guest"),
-            {"first_name": "Reviewer"},
+            {"first_name": first_name},
             201,
         )
-        comment = self.post(
+        return link, guest
+
+    def post_guest_comment(
+        self,
+        link,
+        guest,
+        code=201,
+        text="Great work!",
+        task=None,
+        task_status=None,
+    ):
+        """
+        Post a comment as a guest through a share link. The link and the
+        guest are passed apart so a case can cross them over.
+        """
+        return self.post(
             self.shared_path(link["token"], "/comments"),
             {
                 "guest_id": guest["id"],
-                "task_id": str(self.task.id),
-                "task_status_id": str(self.task_status.id),
-                "text": "Great work!",
+                "task_id": str((task or self.task).id),
+                "task_status_id": str((task_status or self.task_status).id),
+                "text": text,
             },
-            201,
+            code,
         )
+
+    def test_guest_comment(self):
+        link, guest = self.guest_on_a_share_link()
+        comment = self.post_guest_comment(link, guest)
         self.assertEqual(comment["text"], "Great work!")
 
     def test_guest_comment_rejects_foreign_guest(self):
@@ -491,31 +510,17 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
         A guest_id from share link A cannot be replayed to post a
         comment via share link B.
         """
-        link_a = self.post(
-            self.share_path(),
-            {"can_comment": True},
-            201,
-        )
-        link_b = self.post(
-            self.share_path(),
-            {"can_comment": True},
-            201,
-        )
+        link_a = self.post(self.share_path(), {"can_comment": True}, 201)
+        link_b = self.post(self.share_path(), {"can_comment": True}, 201)
         self.log_out()
         guest_a = self.post(
-            f"/shared/playlists/{link_a['token']}/guest",
+            self.shared_path(link_a["token"], "/guest"),
             {"first_name": "Alice"},
             201,
         )
-        self.post(
-            f"/shared/playlists/{link_b['token']}/comments",
-            {
-                "guest_id": guest_a["id"],
-                "task_id": str(self.task.id),
-                "task_status_id": str(self.task_status.id),
-                "text": "should be rejected",
-            },
-            403,
+
+        self.post_guest_comment(
+            link_b, guest_a, code=403, text="should be rejected"
         )
 
     def test_guest_comment_ui_built_playlist(self):
@@ -525,7 +530,6 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
         The guest comment guard must still accept comments on the
         previewed task by deriving it from the preview file.
         """
-        from zou.app.models.preview_file import PreviewFile
 
         preview_file = PreviewFile.create(
             name="preview.mov",
@@ -545,27 +549,8 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
                 ]
             }
         )
-        link = self.post(
-            self.share_path(),
-            {"can_comment": True},
-            201,
-        )
-        self.log_out()
-        guest = self.post(
-            self.shared_path(link["token"], "/guest"),
-            {"first_name": "Reviewer"},
-            201,
-        )
-        self.post(
-            self.shared_path(link["token"], "/comments"),
-            {
-                "guest_id": guest["id"],
-                "task_id": str(self.task.id),
-                "task_status_id": str(self.task_status.id),
-                "text": "Looks good",
-            },
-            201,
-        )
+        link, guest = self.guest_on_a_share_link()
+        self.post_guest_comment(link, guest, text="Looks good")
 
     def test_guest_comment_rejects_foreign_task(self):
         """
@@ -580,26 +565,9 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
             task_status_id=self.task_status.id,
             entity_id=self.asset.id,
         )
-        link = self.post(
-            self.share_path(),
-            {"can_comment": True},
-            201,
-        )
-        self.log_out()
-        guest = self.post(
-            self.shared_path(link["token"], "/guest"),
-            {"first_name": "Reviewer"},
-            201,
-        )
-        self.post(
-            self.shared_path(link["token"], "/comments"),
-            {
-                "guest_id": guest["id"],
-                "task_id": str(foreign_task.id),
-                "task_status_id": str(self.task_status.id),
-                "text": "should be rejected",
-            },
-            403,
+        link, guest = self.guest_on_a_share_link()
+        self.post_guest_comment(
+            link, guest, code=403, text="should be rejected", task=foreign_task
         )
 
     def test_guest_comment_rejects_non_client_status(self):
@@ -613,78 +581,26 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
             color="#000000",
             is_client_allowed=False,
         )
-        link = self.post(
-            self.share_path(),
-            {"can_comment": True},
-            201,
-        )
-        self.log_out()
-        guest = self.post(
-            self.shared_path(link["token"], "/guest"),
-            {"first_name": "Reviewer"},
-            201,
-        )
-        self.post(
-            self.shared_path(link["token"], "/comments"),
-            {
-                "guest_id": guest["id"],
-                "task_id": str(self.task.id),
-                "task_status_id": str(manager_status.id),
-                "text": "should be rejected",
-            },
-            400,
+        link, guest = self.guest_on_a_share_link()
+        self.post_guest_comment(
+            link,
+            guest,
+            code=400,
+            text="should be rejected",
+            task_status=manager_status,
         )
 
     def test_guest_comment_disabled(self):
-        link = self.post(
-            self.share_path(),
-            {"can_comment": False},
-            201,
-        )
-        self.log_out()
-        guest = self.post(
-            self.shared_path(link["token"], "/guest"),
-            {"first_name": "Reviewer"},
-            201,
-        )
-        self.post(
-            self.shared_path(link["token"], "/comments"),
-            {
-                "guest_id": guest["id"],
-                "task_id": str(self.task.id),
-                "task_status_id": str(self.task_status.id),
-                "text": "Should fail",
-            },
-            403,
-        )
+        link, guest = self.guest_on_a_share_link(can_comment=False)
+        self.post_guest_comment(link, guest, code=403, text="Should fail")
 
     def _guest_comment(self, first_name="Reviewer"):
         """
         A share link that allows comments, a guest on it, and one comment
         posted by that guest.
         """
-        link = self.post(
-            self.share_path(),
-            {"can_comment": True},
-            201,
-        )
-        self.log_out()
-        guest = self.post(
-            self.shared_path(link["token"], "/guest"),
-            {"first_name": first_name},
-            201,
-        )
-        comment = self.post(
-            self.shared_path(link["token"], "/comments"),
-            {
-                "guest_id": guest["id"],
-                "task_id": str(self.task.id),
-                "task_status_id": str(self.task_status.id),
-                "text": "Great work!",
-            },
-            201,
-        )
-        return link, guest, comment
+        link, guest = self.guest_on_a_share_link(first_name=first_name)
+        return link, guest, self.post_guest_comment(link, guest)
 
     def test_guest_edits_own_comment(self):
         link, guest, comment = self._guest_comment()
@@ -809,8 +725,6 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
         """
         import tempfile
 
-        from zou.app.models.preview_file import PreviewFile
-
         preview_file = PreviewFile.create(
             name="assets.zip",
             revision=1,
@@ -914,8 +828,6 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
         """
         import tempfile
 
-        from zou.app.models.preview_file import PreviewFile
-
         positioned, payload = self._attach_zip_preview_to_playlist()
         sibling = PreviewFile.create(
             name="sibling.zip",
@@ -980,8 +892,6 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
         stored (under the ``previews`` prefix, extension ``gif``).
         """
         import tempfile
-
-        from zou.app.models.preview_file import PreviewFile
 
         preview_file = PreviewFile.create(
             name="loop.gif",
@@ -1063,8 +973,6 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
         """
         import tempfile
 
-        from zou.app.models.preview_file import PreviewFile
-
         preview_file = PreviewFile.create(
             name="still.png",
             revision=1,
@@ -1111,7 +1019,6 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
         A preview that is part of the shared playlist but whose original
         file is absent from storage yields a 404, not a 500.
         """
-        from zou.app.models.preview_file import PreviewFile
 
         preview_file = PreviewFile.create(
             name="gone.gif",
