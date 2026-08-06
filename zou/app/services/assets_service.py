@@ -42,10 +42,15 @@ from zou.app.services.exception import (
 def clear_asset_cache(asset_id):
     """
     Drop every memoized serialization of given asset.
+
+    An asset is a row of the entity table, so the generic entity
+    serialization goes with it: names_service and the breakdown read the
+    asset through it.
     """
     cache.cache.delete_memoized(get_asset, asset_id)
     cache.cache.delete_memoized(get_asset, asset_id, True)
     cache.cache.delete_memoized(get_full_asset, asset_id)
+    entities_service.clear_entity_cache(asset_id)
 
 
 def clear_asset_type_cache(asset_type_id=None):
@@ -55,6 +60,7 @@ def clear_asset_type_cache(asset_type_id=None):
     """
     if asset_type_id is not None:
         cache.cache.delete_memoized(get_asset_type, asset_type_id)
+        entities_service.clear_entity_type_cache(asset_type_id)
     cache.cache.delete_memoized(get_all_asset_types)
     # get_asset_type carries the task types of the workflow, so editing it
     # must not keep serving the previous one for the whole TTL.

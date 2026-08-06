@@ -59,6 +59,7 @@ def clear_concept_cache(concept_id):
     cache.cache.delete_memoized(get_concept, concept_id)
     cache.cache.delete_memoized(get_concept, concept_id, True)
     cache.cache.delete_memoized(get_full_concept, concept_id)
+    entities_service.clear_entity_cache(concept_id)
 
 
 @cache.memoize_function(1200)

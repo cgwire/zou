@@ -60,6 +60,7 @@ def clear_edit_cache(edit_id):
     cache.cache.delete_memoized(get_edit, edit_id)
     cache.cache.delete_memoized(get_edit, edit_id, True)
     cache.cache.delete_memoized(get_full_edit, edit_id)
+    entities_service.clear_entity_cache(edit_id)
 
 
 @cache.memoize_function(1200)

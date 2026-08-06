@@ -50,11 +50,13 @@ from zou.app.services.exception import (
 
 def clear_shot_cache(shot_id):
     """
-    Drop every memoized serialization of given shot.
+    Drop every memoized serialization of given shot, the generic entity one
+    included: a shot is a row of the entity table.
     """
     cache.cache.delete_memoized(get_shot, shot_id)
     cache.cache.delete_memoized(get_shot, shot_id, True)
     cache.cache.delete_memoized(get_full_shot, shot_id)
+    entities_service.clear_entity_cache(shot_id)
 
 
 def clear_sequence_cache(sequence_id):
@@ -63,6 +65,7 @@ def clear_sequence_cache(sequence_id):
     """
     cache.cache.delete_memoized(get_sequence, sequence_id)
     cache.cache.delete_memoized(get_full_sequence, sequence_id)
+    entities_service.clear_entity_cache(sequence_id)
 
 
 def clear_episode_cache(episode_id):
@@ -71,6 +74,7 @@ def clear_episode_cache(episode_id):
     """
     cache.cache.delete_memoized(get_episode, episode_id)
     cache.cache.delete_memoized(get_episode_by_name)
+    entities_service.clear_entity_cache(episode_id)
 
 
 @cache.memoize_function(1200)
