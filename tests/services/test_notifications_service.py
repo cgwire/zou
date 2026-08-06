@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from tests.base import ApiDBTestCase
 
 from zou.app.models.notification import Notification
@@ -207,18 +209,30 @@ class NotificationsServiceTestCase(ApiDBTestCase):
         )
 
     def test_get_all_sequence_subscriptions(self):
+        """
+        Scoped three ways: the person, the task type, and the production
+        the sequence belongs to.
+        """
         self.generate_fixture_comment()
+        person_id = self.person_dict["id"]
+        task_type_id = self.task_type_dict["id"]
         notifications_service.subscribe_to_sequence(
-            self.person_dict["id"],
-            self.sequence_dict["id"],
-            self.task_type_dict["id"],
+            person_id, self.sequence_dict["id"], task_type_id
         )
+
+        # A sequence of another production, subscribed the same way.
+        self.generate_fixture_project_standard()
+        other_sequence = self.generate_fixture_sequence(
+            name="SQ99", project_id=self.project_standard.id
+        )
+        notifications_service.subscribe_to_sequence(
+            person_id, str(other_sequence.id), task_type_id
+        )
+
         result = notifications_service.get_all_sequence_subscriptions(
-            self.person_dict["id"],
-            str(self.project.id),
-            self.task_type_dict["id"],
+            person_id, str(self.project.id), task_type_id
         )
-        self.assertEqual(len(result), 1)
+        self.assertEqual(result, [self.sequence_dict["id"]])
 
     def test_delete_notifications_for_comment(self):
         self.generate_fixture_comment()
@@ -290,3 +304,85 @@ class NotificationsServiceTestCase(ApiDBTestCase):
         )
         self.assertEqual(result, [str(self.person.id)])
         self.assertEqual(comment["mentions"], [])
+
+    def test_get_notifications_for_project(self):
+        """
+        Paginated and scoped to the production the notified task belongs to.
+        """
+        self.generate_fixture_comment()
+        author_id = self.comment["person_id"]
+        notifications_service.create_notification(
+            self.person_dict["id"],
+            comment_id=self.comment["id"],
+            author_id=author_id,
+            task_id=self.task_dict["id"],
+        )
+
+        # A notification on a task of another production.
+        self.generate_fixture_project_standard()
+        other_task = self.generate_fixture_shot_task_standard()
+        notifications_service.create_notification(
+            self.person_dict["id"],
+            author_id=author_id,
+            task_id=str(other_task.id),
+        )
+
+        result = notifications_service.get_notifications_for_project(
+            str(self.project.id)
+        )
+
+        # get_paginated_results answers a plain list until there is more
+        # than one page of them.
+        self.assertEqual(
+            [notification["task_id"] for notification in result],
+            [self.task_dict["id"]],
+        )
+
+    def test_get_subscriptions_for_user(self):
+        """
+        The caller's own subscriptions in one production. Scoped to the
+        caller, which is why it must never be memoized. Asked without an
+        entity type it answers about assets only, which is what the asset
+        page needs.
+        """
+        self.generate_fixture_comment()
+        asset_task = self.generate_fixture_task(name="asset task")
+        shot_task_id = self.task_dict["id"]
+        for task_id in [str(asset_task.id), shot_task_id]:
+            notifications_service.subscribe_to_task(self.user["id"], task_id)
+        # Someone else subscribing to the same task must not show up.
+        notifications_service.subscribe_to_task(
+            self.person_dict["id"], str(asset_task.id)
+        )
+
+        # The caller comes from the request context, which a service test
+        # has none of.
+        with patch.object(
+            notifications_service.persons_service,
+            "get_current_user",
+            return_value=self.user,
+        ):
+            self.assertEqual(
+                notifications_service.get_subscriptions_for_user(
+                    str(self.project.id)
+                ),
+                {str(asset_task.id): True},
+            )
+            self.assertEqual(
+                notifications_service.get_subscriptions_for_user(
+                    str(self.project.id),
+                    entity_type_id=str(self.shot_type.id),
+                ),
+                {shot_task_id: True},
+            )
+
+            self.generate_fixture_project_standard()
+            self.assertEqual(
+                notifications_service.get_subscriptions_for_user(
+                    str(self.project_standard.id)
+                ),
+                {},
+            )
+            self.assertEqual(
+                notifications_service.get_subscriptions_for_user(None), {}
+            )
