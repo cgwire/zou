@@ -101,65 +101,58 @@ class PlaylistTestCase(ApiDBTestCase):
         playlists = self.get(f"data/projects/{self.project_id}/playlists")
         self.assertEqual(playlists, [])
 
-    def test_delete_playlist_with_notifications(self):
-        self.generate_fixture_playlist("Playlist 1")
-        Notification.create(
-            type="playlist-ready",
-            person_id=self.user["id"],
-            author_id=self.user["id"],
-            playlist_id=self.playlist.id,
-        )
-        playlists = self.get(f"data/projects/{self.project_id}/playlists")
-        self.delete(f"data/playlists/{playlists[0]['id']}")
-        playlists = self.get(f"data/projects/{self.project_id}/playlists")
-        self.assertEqual(playlists, [])
-        notifications = Notification.query.filter_by(
-            playlist_id=self.playlist.id
-        ).all()
-        self.assertEqual(notifications, [])
+    def assert_dependents_go_with_the_playlist(self, remove):
+        """
+        Whatever hangs off a playlist goes when the playlist goes. Each
+        dependent gets its own playlist so one broken cascade does not leave
+        a row the next case trips over.
+        """
 
-    def test_remove_playlist_with_notifications(self):
-        self.generate_fixture_playlist("Playlist 1")
-        Notification.create(
-            type="playlist-ready",
-            person_id=self.user["id"],
-            author_id=self.user["id"],
-            playlist_id=self.playlist.id,
-        )
-        playlists_service.remove_playlist(str(self.playlist.id))
-        playlists = self.get(f"data/projects/{self.project_id}/playlists")
-        self.assertEqual(playlists, [])
-        notifications = Notification.query.filter_by(
-            playlist_id=self.playlist.id
-        ).all()
-        self.assertEqual(notifications, [])
+        def create_notification(playlist_id):
+            Notification.create(
+                type="playlist-ready",
+                person_id=self.user["id"],
+                author_id=self.user["id"],
+                playlist_id=playlist_id,
+            )
 
-    def test_delete_playlist_with_share_links(self):
-        self.generate_fixture_playlist("Playlist 1")
-        playlist_sharing_service.create_share_link(
-            str(self.playlist.id), self.user["id"]
-        )
-        playlists = self.get(f"data/projects/{self.project_id}/playlists")
-        self.delete(f"data/playlists/{playlists[0]['id']}")
-        playlists = self.get(f"data/projects/{self.project_id}/playlists")
-        self.assertEqual(playlists, [])
-        share_links = PlaylistShareLink.query.filter_by(
-            playlist_id=self.playlist.id
-        ).all()
-        self.assertEqual(share_links, [])
+        def create_share_link(playlist_id):
+            playlist_sharing_service.create_share_link(
+                playlist_id, self.user["id"]
+            )
 
-    def test_remove_playlist_with_share_links(self):
-        self.generate_fixture_playlist("Playlist 1")
-        playlist_sharing_service.create_share_link(
-            str(self.playlist.id), self.user["id"]
+        dependents = {
+            "notifications": (create_notification, Notification),
+            "share links": (create_share_link, PlaylistShareLink),
+        }
+        for dependent, (create, model) in dependents.items():
+            with self.subTest(dependent=dependent):
+                self.generate_fixture_playlist(dependent)
+                playlist_id = str(self.playlist.id)
+                create(playlist_id)
+
+                remove(playlist_id)
+
+                self.get(f"data/playlists/{playlist_id}", 404)
+                self.assertEqual(
+                    model.query.filter_by(playlist_id=playlist_id).all(), []
+                )
+
+    def test_the_delete_route_takes_the_dependents_with_it(self):
+        self.assert_dependents_go_with_the_playlist(
+            lambda playlist_id: self.delete(f"data/playlists/{playlist_id}")
         )
-        playlists_service.remove_playlist(str(self.playlist.id))
-        playlists = self.get(f"data/projects/{self.project_id}/playlists")
-        self.assertEqual(playlists, [])
-        share_links = PlaylistShareLink.query.filter_by(
-            playlist_id=self.playlist.id
-        ).all()
-        self.assertEqual(share_links, [])
+
+    def test_remove_playlist_takes_the_dependents_with_it(self):
+        """
+        PlaylistResource.pre_delete and playlists_service.remove_playlist are
+        two implementations of one cascade, not one shared by both, so the
+        service needs its own case: a dependent added to one route is not
+        added to the other.
+        """
+        self.assert_dependents_go_with_the_playlist(
+            playlists_service.remove_playlist
+        )
 
     def test_create_playlist_for_each_entity_type(self):
         """
