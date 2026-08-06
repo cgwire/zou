@@ -339,6 +339,38 @@ class CommentsServiceTestCase(ApiDBTestCase):
             fields.gen_uuid(),
         )
 
+    def test_delete_reply_takes_its_attachments_with_it(self):
+        """
+        A reply carries its own attachments, and they go with it. The
+        comment's own attachments stay.
+        """
+        comment = comments_service.new_comment(
+            self.task.id, self.task_status.id, self.user["id"], "comment"
+        )
+        reply = comments_service.reply_comment(
+            comment["id"], "the reply", person_id=self.user["id"]
+        )
+        comments_service.add_attachments_to_comment(
+            comment, {"file": self.uploaded_file("kept.txt")}
+        )
+        comments_service.add_attachments_to_comment(
+            tasks_service.get_comment(comment["id"]),
+            {"file": self.uploaded_file("gone.txt")},
+            reply_id=reply["id"],
+        )
+
+        comments_service.delete_reply(comment["id"], reply["id"])
+
+        self.assertEqual(
+            [
+                attachment.name
+                for attachment in AttachmentFile.get_all_by(
+                    comment_id=comment["id"]
+                )
+            ],
+            ["kept.txt"],
+        )
+
     def test_delete_reply(self):
         comment = comments_service.new_comment(
             self.task.id, self.task_status.id, self.user["id"], "comment"

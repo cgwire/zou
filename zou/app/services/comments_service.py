@@ -796,7 +796,7 @@ def delete_reply(comment_id, reply_id):
 
     if comment.attachment_files is not None:
         for attachment_file in comment.attachment_files:
-            if attachment_file.reply_id == reply_id:
+            if str(attachment_file.reply_id) == str(reply_id):
                 deletion_service.remove_attachment_file_by_id(
                     str(attachment_file.id)
                 )
