@@ -73,6 +73,39 @@ class FileRoutesTestCase(ApiDBTestCase):
         # Nothing in that path names anything of this production.
         self.assertEqual(result, [])
 
+    def test_guess_from_path_reads_a_real_path(self):
+        """
+        A path built from the production's own file tree resolves to the
+        entities it names. Every token is looked up with an ilike, which has
+        to reach filter rather than filter_by.
+        """
+        self.generate_fixture_task()
+
+        result = self.post(
+            "/data/entities/guess-from-path",
+            {
+                "project_id": str(self.project.id),
+                "file_path": (
+                    "/simple/productions/cosmos_landromat/assets/Props/Tree/"
+                    "Shaders/blender"
+                ),
+            },
+            200,
+        )
+
+        self.assertEqual(
+            result,
+            [
+                {
+                    "Template": "asset",
+                    "Project": str(self.project.id),
+                    "AssetType": str(self.asset_type.id),
+                    "Asset": str(self.asset.id),
+                    "TaskType": str(self.task_type.id),
+                }
+            ],
+        )
+
     def test_guess_from_path_deprecated_alias(self):
         """
         The underscore spelling is kept for older clients and has to answer
@@ -80,7 +113,10 @@ class FileRoutesTestCase(ApiDBTestCase):
         """
         body = {
             "project_id": str(self.project.id),
-            "file_path": "/some/test/path",
+            "file_path": (
+                "/simple/productions/cosmos_landromat/assets/Props/Tree/"
+                "Shaders/blender"
+            ),
         }
 
         alias = self.post("/data/entities/guess_from_path", body, 200)
