@@ -8,25 +8,49 @@ from zou.app.services import assets_service
 
 
 class ImportShotgunAssetTestCase(ShotgunTestCase):
-    def setUp(self):
-        super().setUp()
+    def sg_asset(self, **overrides):
+        """
+        One asset as Shotgun sends it. Cases override the parts they are
+        about and leave the rest alone.
+        """
+        return {
+            "code": "Cake",
+            "description": "yellow cake",
+            "project": {
+                "type": "Project",
+                "id": 1,
+                "name": "Cosmos Landromat",
+            },
+            "sg_asset_type": "Props",
+            "type": "Asset",
+            "parents": [],
+            "id": 3,
+            **overrides,
+        }
+
+    def import_assets(self, *sg_assets):
+        return self.post("/import/shotgun/assets", list(sg_assets), 200)
+
+    def remove_asset(self, sg_asset):
+        return self.post(
+            "/import/shotgun/remove/asset", {"id": sg_asset["id"]}, 200
+        )
+
+    def all_assets(self):
+        return self.get("data/assets/all")
 
     def test_import_assets(self):
         self.load_fixture("projects")
-        self.entities = self.load_fixture("assets")
-        self.assertEqual(len(self.entities), 2)
-
-        self.entities = self.get("data/assets/all")
-        self.assertEqual(len(self.entities), 2)
+        entities = self.load_fixture("assets")
+        self.assertEqual(len(entities), 2)
+        self.assertEqual(len(self.all_assets()), 2)
 
     def test_import_twice_assets(self):
         self.load_fixture("projects")
-        self.entities = self.load_fixture("assets")
-        self.entities = self.load_fixture("assets")
-        self.assertEqual(len(self.entities), 2)
-
-        self.entities = self.get("data/assets/all")
-        self.assertEqual(len(self.entities), 2)
+        self.load_fixture("assets")
+        entities = self.load_fixture("assets")
+        self.assertEqual(len(entities), 2)
+        self.assertEqual(len(self.all_assets()), 2)
 
     def test_import_asset(self):
         self.generate_fixture_asset_type()
@@ -38,29 +62,19 @@ class ImportShotgunAssetTestCase(ShotgunTestCase):
 
         self.load_fixture("projects")
         self.load_fixture("assets")
-        sg_asset = {
-            "code": "Cake",
-            "description": "yellow cake",
-            "project": {"type": "Project", "id": 1, "name": "Agent 327"},
-            "sg_asset_type": "Props",
-            "type": "Asset",
-            "parents": [{"type": "Asset", "id": 1}],
-            "id": 3,
-        }
-
-        api_path = "/import/shotgun/assets"
-        self.assets = self.post(api_path, [sg_asset], 200)
-        self.assertEqual(len(self.assets), 1)
-
-        self.assets = self.get("data/assets/all")
-        self.assertEqual(len(self.assets), 3)
-
-        assets = sorted(self.assets, key=lambda x: x["name"])
-        asset = assets[0]
-        asset = assets_service.get_asset(
-            asset["id"],
-            relations=True,
+        sg_asset = self.sg_asset(
+            project={"type": "Project", "id": 1, "name": "Agent 327"},
+            parents=[{"type": "Asset", "id": 1}],
         )
+
+        imported = self.import_assets(sg_asset)
+        self.assertEqual(len(imported), 1)
+
+        assets = self.all_assets()
+        self.assertEqual(len(assets), 3)
+
+        first = sorted(assets, key=lambda asset: asset["name"])[0]
+        asset = assets_service.get_asset(first["id"], relations=True)
         project = Project.get_by(shotgun_id=sg_asset["project"]["id"])
         self.assertEqual(asset["description"], sg_asset["description"])
         self.assertEqual(asset["shotgun_id"], sg_asset["id"])
@@ -70,59 +84,47 @@ class ImportShotgunAssetTestCase(ShotgunTestCase):
         parent = Entity.get_by(shotgun_id=1)
         self.assertEqual(str(parent.entities_out[0].id), asset["id"])
 
-    def test_remove_asset(self):
+    def assert_the_import_can_be_undone(self, parents):
+        """
+        Import one asset, remove it through the Shotgun route, and check
+        both the listing and the asset itself are back to where they were.
+        """
         self.load_fixture("projects")
         self.load_fixture("assets")
-        sg_asset = {
-            "code": "Cake",
-            "description": "yellow cake",
-            "project": {
-                "type": "Project",
-                "id": 1,
-                "name": "Cosmos Landromat",
-            },
-            "sg_asset_type": "Props",
-            "type": "Asset",
-            "parents": [],
-            "id": 3,
-        }
+        sg_asset = self.sg_asset(parents=parents)
 
-        api_path = "/import/shotgun/assets"
-        self.assets = self.post(api_path, [sg_asset], 200)
-        asset = self.assets[0]
+        asset = self.import_assets(sg_asset)[0]
+        self.assertEqual(len(self.all_assets()), 3)
 
-        self.assets = self.get("data/assets/all")
-        self.assertEqual(len(self.assets), 3)
+        self.remove_asset(sg_asset)
 
-        api_path = "/import/shotgun/remove/asset"
-        self.assets = self.post(api_path, {"id": sg_asset["id"]}, 200)
-
-        self.assets = self.get("data/assets/all")
-        self.assertEqual(len(self.assets), 2)
-
+        self.assertEqual(len(self.all_assets()), 2)
         self.get(f"data/assets/{asset['id']}", 404)
 
+    def test_remove_asset(self):
+        self.assert_the_import_can_be_undone(parents=[])
+
+    def test_remove_subasset(self):
+        """
+        A parent link does not hold the asset back: it goes the same way.
+        """
+        self.assert_the_import_can_be_undone(
+            parents=[{"type": "Asset", "id": 1}]
+        )
+
     def test_remove_asset_with_working_files(self):
+        """
+        An asset someone has already published against is not deleted, it is
+        canceled, so the files keep something to hang from.
+        """
         self.load_fixture("projects")
         self.load_fixture("assets")
-        sg_asset = {
-            "code": "Cake",
-            "description": "yellow cake",
-            "project": {
-                "type": "Project",
-                "id": 1,
-                "name": "Cosmos Landromat",
-            },
-            "sg_asset_type": "Props",
-            "type": "Asset",
-            "parents": [],
-            "id": 3,
-        }
+        sg_asset = self.sg_asset()
 
-        api_path = "/import/shotgun/assets"
-        self.assets = self.post(api_path, [sg_asset], 200)
-        asset = self.assets[0]
-        self.asset = Entity.get(asset["id"])
+        imported = self.import_assets(sg_asset)[0]
+        # generate_fixture_task() hangs the task off self.asset, so the
+        # imported asset has to become it before the fixtures run.
+        self.asset = Entity.get(imported["id"])
         self.generate_fixture_project_status()
         self.generate_fixture_file_status()
         self.generate_fixture_person()
@@ -132,50 +134,13 @@ class ImportShotgunAssetTestCase(ShotgunTestCase):
         self.generate_fixture_department()
         self.generate_fixture_task_type()
         self.generate_fixture_task_status()
-
         self.generate_fixture_task()
         self.generate_fixture_working_file()
 
-        self.assets = self.get("data/assets/all")
-        self.assertEqual(len(self.assets), 3)
+        self.assertEqual(len(self.all_assets()), 3)
 
-        api_path = "/import/shotgun/remove/asset"
-        self.assets = self.post(api_path, {"id": sg_asset["id"]}, 200)
+        self.remove_asset(sg_asset)
 
-        self.assets = self.get("data/assets/all")
-        self.assertEqual(len(self.assets), 3)
-
-        asset = self.get(f"data/assets/{asset['id']}", 200)
+        self.assertEqual(len(self.all_assets()), 3)
+        asset = self.get(f"data/assets/{imported['id']}", 200)
         self.assertTrue(asset["canceled"])
-
-    def test_remove_subasset(self):
-        self.load_fixture("projects")
-        self.load_fixture("assets")
-        sg_asset = {
-            "code": "Cake",
-            "description": "yellow cake",
-            "project": {
-                "type": "Project",
-                "id": 1,
-                "name": "Cosmos Landromat",
-            },
-            "sg_asset_type": "Props",
-            "type": "Asset",
-            "parents": [{"type": "Asset", "id": 1}],
-            "id": 3,
-        }
-
-        api_path = "/import/shotgun/assets"
-        self.assets = self.post(api_path, [sg_asset], 200)
-        asset = self.assets[0]
-
-        self.assets = self.get("data/assets/all")
-        self.assertEqual(len(self.assets), 3)
-
-        api_path = "/import/shotgun/remove/asset"
-        self.assets = self.post(api_path, {"id": sg_asset["id"]}, 200)
-
-        self.assets = self.get("data/assets/all")
-        self.assertEqual(len(self.assets), 2)
-
-        self.get(f"data/assets/{asset['id']}", 404)

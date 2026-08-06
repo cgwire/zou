@@ -2,6 +2,14 @@ import pytest
 
 from tests.base import ApiDBTestCase
 
+from zou.app.models.person import Person
+from zou.app.models.playlist import Playlist
+from zou.app.models.playlist import Playlist as PlaylistModel
+from zou.app.models.playlist_share_link import PlaylistShareLink
+from zou.app.models.preview_file import PreviewFile
+from zou.app.models.task import Task
+from zou.app.models.task_status import TaskStatus
+from zou.app.stores import file_store
 
 # Share-link passwords are hashed with bcrypt; the verification path must
 # not be patched to always-True here.
@@ -45,7 +53,6 @@ class PlaylistSharingTestCase(ApiDBTestCase):
         # Scope guest mutations to this playlist by listing the task as one
         # of its shots.
         self.playlist_record = self.playlist  # already a serialized dict
-        from zou.app.models.playlist import Playlist as PlaylistModel
 
         playlist_row = PlaylistModel.get(self.playlist["id"])
         playlist_row.update(
@@ -118,7 +125,6 @@ class ShareLinkTestCase(PlaylistSharingTestCase):
         it actually belongs to. Otherwise an admin/manager who knows any
         token could revoke it via any playlist URL they have access to.
         """
-        from zou.app.models.playlist import Playlist
 
         other_playlist = Playlist.create(
             name="Other Playlist",
@@ -143,7 +149,6 @@ class ShareLinkTestCase(PlaylistSharingTestCase):
         password, and the value stored at rest must be a bcrypt hash, not
         plaintext.
         """
-        from zou.app.models.playlist_share_link import PlaylistShareLink
 
         plaintext = "topsecret123"
         result = self.post(
@@ -200,7 +205,6 @@ class ShareLinkTestCase(PlaylistSharingTestCase):
         the response lists the dispatched, deduplicated emails.
         """
         from unittest.mock import patch
-        from zou.app.models.person import Person
 
         invitee = Person.create(
             first_name="Client",
@@ -521,7 +525,6 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
         The guest comment guard must still accept comments on the
         previewed task by deriving it from the preview file.
         """
-        from zou.app.models.playlist import Playlist as PlaylistModel
         from zou.app.models.preview_file import PreviewFile
 
         preview_file = PreviewFile.create(
@@ -569,7 +572,6 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
         A guest cannot post a comment on a task that is not part of the
         playlist they hold a share link to.
         """
-        from zou.app.models.task import Task
 
         foreign_task = Task.create(
             name="Foreign",
@@ -604,7 +606,6 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
         """
         A guest cannot set a task status that is not client-allowed.
         """
-        from zou.app.models.task_status import TaskStatus
 
         manager_status = TaskStatus.create(
             name="Approved",
@@ -808,9 +809,7 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
         """
         import tempfile
 
-        from zou.app.models.playlist import Playlist as PlaylistModel
         from zou.app.models.preview_file import PreviewFile
-        from zou.app.stores import file_store
 
         preview_file = PreviewFile.create(
             name="assets.zip",
@@ -873,33 +872,39 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
         )
         self.assertEqual(response.status_code, 404)
 
-    def test_shared_preview_file_download_not_in_playlist(self):
+    def test_a_preview_the_playlist_does_not_carry_is_refused(self):
         """
-        A preview file that is not exposed by the shared playlist
-        cannot be fetched through its share link, even when the token
-        is valid.
+        A valid share token opens the playlist, not the production behind
+        it: a preview file the playlist does not carry stays out, whichever
+        route asks for it.
         """
-        from zou.app.models.preview_file import PreviewFile
-
-        foreign = PreviewFile.create(
-            name="foreign.zip",
-            revision=1,
-            extension="zip",
-            task_id=self.task.id,
-            person_id=self.person.id,
-        )
-        link = self.post(
-            self.share_path(),
-            {},
-            201,
-        )
+        link = self.post(self.share_path(), {}, 201)
         self.log_out()
-        response = self.app.get(
-            self.shared_path(
-                link["token"], f"/preview-files/{foreign.id}/download"
-            )
-        )
-        self.assertEqual(response.status_code, 403)
+        cases = {
+            "the download route": (
+                "zip",
+                "/preview-files/{id}/download",
+            ),
+            "the originals route": (
+                "gif",
+                "/pictures/originals/preview-files/{id}.gif",
+            ),
+        }
+        for reason, (extension, suffix) in cases.items():
+            with self.subTest(reason=reason):
+                foreign = PreviewFile.create(
+                    name=f"foreign.{extension}",
+                    revision=1,
+                    extension=extension,
+                    task_id=self.task.id,
+                    person_id=self.person.id,
+                )
+                response = self.app.get(
+                    self.shared_path(
+                        link["token"], suffix.format(id=foreign.id)
+                    )
+                )
+                self.assertEqual(response.status_code, 403)
 
     def test_shared_preview_file_download_sibling_position(self):
         """
@@ -909,9 +914,7 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
         """
         import tempfile
 
-        from zou.app.models.playlist import Playlist as PlaylistModel
         from zou.app.models.preview_file import PreviewFile
-        from zou.app.stores import file_store
 
         positioned, payload = self._attach_zip_preview_to_playlist()
         sibling = PreviewFile.create(
@@ -948,7 +951,6 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
         A different revision of the same task is *not* exposed,
         only the positioned revision and its sibling positions.
         """
-        from zou.app.models.preview_file import PreviewFile
 
         positioned, _ = self._attach_zip_preview_to_playlist()
         other_revision = PreviewFile.create(
@@ -979,9 +981,7 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
         """
         import tempfile
 
-        from zou.app.models.playlist import Playlist as PlaylistModel
         from zou.app.models.preview_file import PreviewFile
-        from zou.app.stores import file_store
 
         preview_file = PreviewFile.create(
             name="loop.gif",
@@ -1035,34 +1035,6 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data, payload)
 
-    def test_shared_original_gif_not_in_playlist(self):
-        """
-        A GIF preview that the shared playlist does not expose cannot be
-        fetched through its share link, even with a valid token.
-        """
-        from zou.app.models.preview_file import PreviewFile
-
-        foreign = PreviewFile.create(
-            name="foreign.gif",
-            revision=1,
-            extension="gif",
-            task_id=self.task.id,
-            person_id=self.person.id,
-        )
-        link = self.post(
-            self.share_path(),
-            {},
-            201,
-        )
-        self.log_out()
-        response = self.app.get(
-            self.shared_path(
-                link["token"],
-                f"/pictures/originals/preview-files/{foreign.id}.gif",
-            )
-        )
-        self.assertEqual(response.status_code, 403)
-
     def test_shared_original_extension_not_allowed(self):
         """
         Disallowed extensions are rejected with a 400, mirroring the
@@ -1091,9 +1063,7 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
         """
         import tempfile
 
-        from zou.app.models.playlist import Playlist as PlaylistModel
         from zou.app.models.preview_file import PreviewFile
-        from zou.app.stores import file_store
 
         preview_file = PreviewFile.create(
             name="still.png",
@@ -1141,7 +1111,6 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
         A preview that is part of the shared playlist but whose original
         file is absent from storage yields a 404, not a 500.
         """
-        from zou.app.models.playlist import Playlist as PlaylistModel
         from zou.app.models.preview_file import PreviewFile
 
         preview_file = PreviewFile.create(
