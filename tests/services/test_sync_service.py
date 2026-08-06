@@ -8,6 +8,8 @@ import gazu
 from tests.base import ApiDBTestCase
 
 from zou.app.models.entity import Entity
+from zou.app.models.entity_type import EntityType
+from zou.app.models.playlist import Playlist
 from zou.app.models.project import Project
 from zou.app.models.studio import Studio
 from zou.app.models.task_status import TaskStatus
@@ -324,3 +326,68 @@ class SyncEntriesTestCase(ApiDBTestCase):
         self.assertEqual(
             [status.name for status in TaskStatus.get_all()], ["Todo"]
         )
+
+
+class SyncProjectEntriesTestCase(ApiDBTestCase):
+    """
+    The per project bulk import. Three shapes of request hide behind one
+    signature: a single call, the news cursor, and the paginated one.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project_status()
+        self.generate_fixture_project()
+        self.project = self.project.serialize()
+
+    def sync(self, model_name, model, pages):
+        with mock.patch.object(
+            sync_service.gazu.client, "fetch_all", side_effect=pages
+        ) as fetch_all:
+            sync_service.sync_project_entries(self.project, model_name, model)
+        return fetch_all
+
+    def test_a_small_model_is_fetched_in_one_call(self):
+        asset_type_id = str(uuid.uuid4())
+        fetch_all = self.sync(
+            "entity-types",
+            EntityType,
+            [[{"id": asset_type_id, "name": "Props"}]],
+        )
+        fetch_all.assert_called_once_with(
+            f"projects/{self.project['id']}/entity-types"
+        )
+        self.assertIsNotNone(EntityType.get(asset_type_id))
+
+    def test_a_large_model_is_paginated(self):
+        pages = [
+            {
+                "data": [
+                    {
+                        "id": str(uuid.uuid4()),
+                        "name": "Playlist 1",
+                        "project_id": self.project["id"],
+                    }
+                ],
+                "nb_pages": 2,
+            },
+            {
+                "data": [
+                    {
+                        "id": str(uuid.uuid4()),
+                        "name": "Playlist 2",
+                        "project_id": self.project["id"],
+                    }
+                ],
+                "nb_pages": 2,
+            },
+        ]
+        fetch_all = self.sync("playlists", Playlist, pages)
+        self.assertEqual(
+            [call.args[0] for call in fetch_all.call_args_list],
+            [
+                f"projects/{self.project['id']}/playlists/all?page=1",
+                f"projects/{self.project['id']}/playlists/all?page=2",
+            ],
+        )
+        self.assertEqual(Playlist.query.count(), 2)
