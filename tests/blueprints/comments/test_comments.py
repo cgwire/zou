@@ -217,22 +217,29 @@ class ClientVisibleCommentTestCase(CommentTestCase):
     not flagged for_client does not reach them at all.
     """
 
+    def put_the_client_in_the_team(self):
+        client_person = Person.get(self.user_client["id"])
+        self.project.team = [client_person, self.person]
+        self.project.save()
+        return client_person
+
+    def comment_for_client(self, text="Visible to client", for_client=True):
+        return self.post(
+            f"/actions/tasks/{self.task.id}/comment",
+            {
+                "task_status_id": str(self.task_status.id),
+                "comment": text,
+                "for_client": for_client,
+            },
+        )
+
     def test_reply_author_hidden_from_client(self):
         """
         Studio members' identities must not be exposed to clients on
         replies, matching the comment author behavior.
         """
-        client_person = Person.get(self.user_client["id"])
-        self.project.team = [client_person, self.person]
-        self.project.save()
-        comment = self.post(
-            f"/actions/tasks/{self.task.id}/comment",
-            {
-                "task_status_id": str(self.task_status.id),
-                "comment": "Visible to client",
-                "for_client": True,
-            },
-        )
+        self.put_the_client_in_the_team()
+        comment = self.comment_for_client()
         comments_service.reply_comment(
             comment["id"], "Studio reply", person_id=str(self.user["id"])
         )
@@ -250,17 +257,8 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         matching the single-comment and reply author behavior, while the
         comment content stays visible.
         """
-        client_person = Person.get(self.user_client["id"])
-        self.project.team = [client_person, self.person]
-        self.project.save()
-        comment = self.post(
-            f"/actions/tasks/{self.task.id}/comment",
-            {
-                "task_status_id": str(self.task_status.id),
-                "comment": "Visible to client",
-                "for_client": True,
-            },
-        )
+        self.put_the_client_in_the_team()
+        comment = self.comment_for_client()
 
         self.log_in_client()
         comments = tasks_service.get_comments(
@@ -276,9 +274,7 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         A client's own comment must keep its embedded author so it renders
         with a name and avatar.
         """
-        client_person = Person.get(self.user_client["id"])
-        self.project.team = [client_person, self.person]
-        self.project.save()
+        client_id = str(self.put_the_client_in_the_team().id)
 
         self.log_in_client()
         comment = self.post(
@@ -292,7 +288,7 @@ class ClientVisibleCommentTestCase(CommentTestCase):
             str(self.task.id), is_client=True
         )
         target = next(c for c in comments if c["id"] == comment["id"])
-        self.assertEqual(target["person"]["id"], str(client_person.id))
+        self.assertEqual(target["person"]["id"], client_id)
         self.assertEqual(target["person"]["role"], "client")
 
     def test_comment_author_hidden_from_client(self):
@@ -300,17 +296,8 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         The single-comment endpoint must not embed a studio author for a
         client, matching the reply author behavior.
         """
-        client_person = Person.get(self.user_client["id"])
-        self.project.team = [client_person, self.person]
-        self.project.save()
-        comment = self.post(
-            f"/actions/tasks/{self.task.id}/comment",
-            {
-                "task_status_id": str(self.task_status.id),
-                "comment": "Visible to client",
-                "for_client": True,
-            },
-        )
+        self.put_the_client_in_the_team()
+        comment = self.comment_for_client()
 
         self.log_in_client()
         result = self.get(f"/data/comments/{comment['id']}")
@@ -323,9 +310,7 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         on the single-comment endpoint. check_comment_access is the sole gate
         now that clean_get_result no longer blanks the text.
         """
-        client_person = Person.get(self.user_client["id"])
-        self.project.team = [client_person, self.person]
-        self.project.save()
+        self.put_the_client_in_the_team()
         comment = self.post(
             f"/actions/tasks/{self.task.id}/comment",
             {
@@ -342,17 +327,8 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         A studio editor identity must not leak to clients in the comment
         list, matching the comment author behavior.
         """
-        client_person = Person.get(self.user_client["id"])
-        self.project.team = [client_person, self.person]
-        self.project.save()
-        comment = self.post(
-            f"/actions/tasks/{self.task.id}/comment",
-            {
-                "task_status_id": str(self.task_status.id),
-                "comment": "Visible to client",
-                "for_client": True,
-            },
-        )
+        self.put_the_client_in_the_team()
+        comment = self.comment_for_client()
         comment_model = Comment.get(comment["id"])
         comment_model.editor_id = self.person.id
         comment_model.save()
@@ -369,19 +345,10 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         """
         A client editor stays visible, mirroring the author behavior.
         """
-        client_person = Person.get(self.user_client["id"])
-        self.project.team = [client_person, self.person]
-        self.project.save()
-        comment = self.post(
-            f"/actions/tasks/{self.task.id}/comment",
-            {
-                "task_status_id": str(self.task_status.id),
-                "comment": "Visible to client",
-                "for_client": True,
-            },
-        )
+        client_id = str(self.put_the_client_in_the_team().id)
+        comment = self.comment_for_client()
         comment_model = Comment.get(comment["id"])
-        comment_model.editor_id = client_person.id
+        comment_model.editor_id = client_id
         comment_model.save()
 
         self.log_in_client()
@@ -389,7 +356,7 @@ class ClientVisibleCommentTestCase(CommentTestCase):
             str(self.task.id), is_client=True
         )
         target = next(c for c in comments if c["id"] == comment["id"])
-        self.assertEqual(target["editor"]["id"], str(client_person.id))
+        self.assertEqual(target["editor"]["id"], client_id)
         self.assertEqual(target["editor"]["role"], "client")
 
     def test_editor_hidden_from_client(self):
@@ -397,17 +364,8 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         The single-comment endpoint must not expose a studio editor to a
         client, matching the comment author behavior.
         """
-        client_person = Person.get(self.user_client["id"])
-        self.project.team = [client_person, self.person]
-        self.project.save()
-        comment = self.post(
-            f"/actions/tasks/{self.task.id}/comment",
-            {
-                "task_status_id": str(self.task_status.id),
-                "comment": "Visible to client",
-                "for_client": True,
-            },
-        )
+        self.put_the_client_in_the_team()
+        comment = self.comment_for_client()
         comment_model = Comment.get(comment["id"])
         comment_model.editor_id = self.person.id
         comment_model.save()
@@ -421,9 +379,7 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         A manager-authored comment without for_client stays hidden from
         clients (default behavior preserved).
         """
-        client_person = Person.get(self.user_client["id"])
-        self.project.team = [client_person, self.person]
-        self.project.save()
+        self.put_the_client_in_the_team()
         self.post(
             f"/actions/tasks/{self.task.id}/comment",
             {
