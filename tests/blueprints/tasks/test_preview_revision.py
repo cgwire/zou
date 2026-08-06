@@ -121,7 +121,6 @@ class PreviewRevisionTestCase(ApiDBTestCase):
         # Create main preview with revision 1
         preview1 = self.add_preview(comment["id"], revision=1)
 
-        # Add extra preview
         preview2 = self.add_extra_preview(comment["id"], preview1["id"])
 
         # Verify both have revision 1

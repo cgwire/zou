@@ -53,7 +53,6 @@ class RouteTaskChangeTestCase(ApiDBTestCase):
         }
         comment = self.post(path, data)
 
-        # Add preview to comment
         data = {}
         comment_id = comment["id"]
         task_id = str(self.task.id)

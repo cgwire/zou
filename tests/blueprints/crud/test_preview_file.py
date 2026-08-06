@@ -9,6 +9,19 @@ from zou.app.services import (
 
 
 class PreviewFileTestCase(ApiDBTestCase):
+    """
+    Two productions, four tasks and six preview files, so that a listing
+    has something of every shape to leave out.
+
+        project1  task1_1  one preview   assigned to the artist
+                  task1_2  one preview
+        project2  task2_1  one preview
+                  task2_2  three previews, assigned to the vendor
+
+    The artist and the vendor are each on one production only, which is
+    what the permission tests below read.
+    """
+
     def setUp(self):
         super().setUp()
 
@@ -16,14 +29,10 @@ class PreviewFileTestCase(ApiDBTestCase):
         self.user_cg_artist_id = self.user_cg_artist["id"]
         self.generate_fixture_user_vendor()
         self.user_vendor_id = self.user_vendor["id"]
-
         self.generate_fixture_person()
 
-        # Create first project
         self.project1 = self.generate_fixture_project()
         self.generate_fixture_shot()
-
-        # Create a task with one preview file
         self.task1_1 = self.generate_fixture_task(name="PROJ1_TASK1")
         self.generate_fixture_file_status()
         self.generate_fixture_output_type()
@@ -31,21 +40,14 @@ class PreviewFileTestCase(ApiDBTestCase):
         self.preview_file1_1 = self.generate_fixture_preview_file(
             name="PROJ1_TASK1_PF1"
         )
-
-        # Create a task with one preview file
         self.task1_2 = self.generate_fixture_task(name="PROJ1_TASK2")
         self.generate_fixture_preview_file(name="PROJ1_TASK2_PF1")
 
-        # Create second project
         self.project2 = self.generate_fixture_project("test")
-
-        # Create a task with one preview file
         self.task2_1 = self.generate_fixture_task(name="PROJ2_TASK1")
         self.preview_file2_1 = self.generate_fixture_preview_file(
             name="PROJ2_TASK1_PF1"
         )
-
-        # Create a task with three preview files
         self.task2_2 = self.generate_fixture_task(name="PROJ2_TASK2")
         self.preview_file2_2 = self.generate_fixture_preview_file(
             name="PROJ2_TASK2_PF1"
@@ -53,13 +55,10 @@ class PreviewFileTestCase(ApiDBTestCase):
         self.generate_fixture_preview_file(name="PROJ2_TASK2_PF2")
         self.generate_fixture_preview_file(name="PROJ2_TASK2_PF3")
 
-        # Assign task 1 from project 1 to artist
         projects_service.add_team_member(
             self.project1.id, self.user_cg_artist_id
         )
         tasks_service.assign_task(self.task1_1.id, self.user_cg_artist_id)
-
-        # Assign task 2 from project 2 to vendor
         projects_service.add_team_member(self.project2.id, self.user_vendor_id)
         tasks_service.assign_task(self.task2_2.id, self.user_vendor_id)
 

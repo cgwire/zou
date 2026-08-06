@@ -703,18 +703,15 @@ class TaskPreviewRevisionTestCase(ApiDBTestCase):
 
     def test_check_revision_is_unique_service(self):
         """
-        Direct test of check_revision_is_unique_for_task service function.
+        A revision number is taken once per task, and free everywhere else.
         """
-        # Create a preview with revision 1
         self.generate_fixture_preview_file(revision=1, position=1)
 
-        # Check should raise for existing revision
         with self.assertRaises(RevisionAlreadyExistsException):
             tasks_service.check_revision_is_unique_for_task(
                 str(self.task.id), revision=1
             )
 
-        # Check should pass for non-existing revision
         tasks_service.check_revision_is_unique_for_task(
             str(self.task.id), revision=2
         )
