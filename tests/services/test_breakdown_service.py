@@ -436,164 +436,171 @@ class BreakdownServiceTestCase(ApiDBTestCase):
             tasks_service.get_task(str(task.id))["nb_assets_ready"], 1
         )
 
-    def test_is_asset_ready(self):
+
+class CastingReadyStatsTestCase(ApiDBTestCase):
+    """
+    An asset counts as ready for a task when the step it is ready for comes
+    at or after that task in the pipeline order, which the project task type
+    links define. refresh_casting_stats stores the count on each shot task.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project()
+        self.generate_fixture_asset_type()
+        self.generate_fixture_asset_types()
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+        self.generate_fixture_asset()
+        self.generate_fixture_asset_character()
         self.generate_fixture_department()
         self.generate_fixture_task_type()
         self.generate_fixture_task_status()
         self.generate_fixture_person()
         self.generate_fixture_assigner()
-        self.task_type_compositing = tasks_service.get_or_create_task_type(
+        self.project_id = str(self.project.id)
+        self.shot_id = str(self.shot.id)
+        self.asset_id = str(self.asset.id)
+        self.asset_character_id = str(self.asset_character.id)
+
+        compositing = tasks_service.get_or_create_task_type(
             self.department_animation.serialize(),
             "compositing",
             color="#FFFFFF",
             short_name="compo",
             for_entity="Shot",
         )
-        self.task_type_layout_id = str(self.task_type_layout.id)
-        self.task_type_animation_id = str(self.task_type_animation.id)
-        self.task_type_compositing_id = self.task_type_compositing["id"]
-        projects_service.create_project_task_type_link(
-            self.project_id, self.task_type_layout_id, 1
-        )
-        projects_service.create_project_task_type_link(
-            self.project_id, self.task_type_animation_id, 2
-        )
-        projects_service.create_project_task_type_link(
-            self.project_id, self.task_type_compositing_id, 3
-        )
+        self.layout_id = str(self.task_type_layout.id)
+        self.animation_id = str(self.task_type_animation.id)
+        self.compositing_id = compositing["id"]
+        for position, task_type_id in enumerate(
+            [self.layout_id, self.animation_id, self.compositing_id], start=1
+        ):
+            projects_service.create_project_task_type_link(
+                self.project_id, task_type_id, position
+            )
         self.task_layout = self.generate_fixture_shot_task(
-            task_type_id=self.task_type_layout_id
+            task_type_id=self.layout_id
         )
         self.task_animation = self.generate_fixture_shot_task(
-            task_type_id=self.task_type_animation_id
+            task_type_id=self.animation_id
         )
         self.task_compositing = self.generate_fixture_shot_task(
-            task_type_id=self.task_type_compositing_id
+            task_type_id=self.compositing_id
         )
-        priority_map = breakdown_service._get_task_type_priority_map(
+        self.priority_map = breakdown_service._get_task_type_priority_map(
             self.project_id
         )
-        self.assertEqual(priority_map[self.task_type_layout_id], 1)
-        self.assertEqual(priority_map[self.task_type_animation_id], 2)
-        self.assertEqual(priority_map[self.task_type_compositing_id], 3)
-        asset = {
-            "ready_for": str(self.task_type_animation.id),
-            "is_shared": False,
-        }
-        self.assertTrue(
-            breakdown_service._is_asset_ready(
-                asset, self.task_layout, priority_map
-            )
-        )
-        self.assertTrue(
-            breakdown_service._is_asset_ready(
-                asset, self.task_animation, priority_map
-            )
-        )
-        self.assertFalse(
-            breakdown_service._is_asset_ready(
-                asset, self.task_compositing, priority_map
-            )
+
+    def assert_ready_counts(self, layout, animation, compositing):
+        counts = [
+            tasks_service.get_task(str(task.id))["nb_assets_ready"]
+            for task in [
+                self.task_layout,
+                self.task_animation,
+                self.task_compositing,
+            ]
+        ]
+        self.assertEqual(counts, [layout, animation, compositing])
+
+    def cast_in_the_shot(self, *asset_ids):
+        breakdown_service.update_casting(
+            self.shot_id,
+            [{"asset_id": str(a), "nb_occurences": 1} for a in asset_ids],
         )
 
+    def set_ready_for(self, asset_id, task_type_id):
+        assets_service.get_asset_raw(asset_id).update(
+            {"ready_for": task_type_id}
+        )
+
+    def test_priority_map_follows_the_project_task_type_links(self):
+        self.assertEqual(
+            [
+                self.priority_map[self.layout_id],
+                self.priority_map[self.animation_id],
+                self.priority_map[self.compositing_id],
+            ],
+            [1, 2, 3],
+        )
+
+    def test_an_asset_is_ready_up_to_the_step_it_is_ready_for(self):
+        asset = {"ready_for": self.animation_id, "is_shared": False}
+        ready = [
+            breakdown_service._is_asset_ready(asset, task, self.priority_map)
+            for task in [
+                self.task_layout,
+                self.task_animation,
+                self.task_compositing,
+            ]
+        ]
+        self.assertEqual(ready, [True, True, False])
+
+    def test_a_shared_asset_is_ready_everywhere_outside_its_production(self):
+        """
+        Inside its own production a shared asset follows the same order as
+        any other. Borrowed by another production, the order does not apply.
+        """
         asset = {
-            "ready_for": str(self.task_type_animation.id),
+            "ready_for": self.animation_id,
             "is_shared": True,
             "project_id": self.project_id,
         }
-        self.assertTrue(
-            breakdown_service._is_asset_ready(
-                asset, self.task_layout, priority_map
-            )
-        )
-        self.assertTrue(
-            breakdown_service._is_asset_ready(
-                asset, self.task_animation, priority_map
-            )
-        )
         self.assertFalse(
             breakdown_service._is_asset_ready(
-                asset, self.task_compositing, priority_map
+                asset, self.task_compositing, self.priority_map
             )
         )
+
         asset["project_id"] = "000000000000000000000000"
         self.assertTrue(
             breakdown_service._is_asset_ready(
-                asset, self.task_layout, priority_map
+                asset, self.task_compositing, self.priority_map
             )
         )
 
-        new_casting = [
-            {"asset_id": self.asset_id, "nb_occurences": 1},
-            {"asset_id": self.asset_character_id, "nb_occurences": 3},
-        ]
-        breakdown_service.update_casting(self.shot_id, new_casting)
-        asset = assets_service.get_asset_raw(self.asset_id)
-        asset.update({"ready_for": self.task_type_animation_id})
-        char = assets_service.get_asset_raw(self.asset_character_id)
-        char.update({"ready_for": self.task_type_compositing_id})
+    def test_refresh_casting_stats_counts_the_ready_assets(self):
+        self.cast_in_the_shot(self.asset_id, self.asset_character_id)
+        self.set_ready_for(self.asset_id, self.animation_id)
+        self.set_ready_for(self.asset_character_id, self.compositing_id)
 
-        breakdown_service.refresh_casting_stats(asset.serialize())
-        self.task_layout = tasks_service.get_task(self.task_layout.id)
-        self.task_animation = tasks_service.get_task(self.task_animation.id)
-        self.task_compositing = tasks_service.get_task(
-            self.task_compositing.id
+        breakdown_service.refresh_casting_stats(
+            assets_service.get_asset(self.asset_id)
         )
-        self.assertEqual(self.task_layout["nb_assets_ready"], 2)
-        self.assertEqual(self.task_animation["nb_assets_ready"], 2)
-        self.assertEqual(self.task_compositing["nb_assets_ready"], 1)
 
-        # If an asset is archived (canceled) it must not be counted anymore.
+        # Both are ready for layout and animation, only the character is
+        # ready for compositing.
+        self.assert_ready_counts(2, 2, 1)
+
+    def test_an_archived_asset_stops_counting(self):
+        self.cast_in_the_shot(self.asset_id, self.asset_character_id)
+        self.set_ready_for(self.asset_id, self.animation_id)
+        self.set_ready_for(self.asset_character_id, self.compositing_id)
+        breakdown_service.refresh_casting_stats(
+            assets_service.get_asset(self.asset_id)
+        )
+
+        # A task on the asset makes the removal a cancellation.
         self.generate_fixture_task(
             name="Asset Task",
             entity_id=self.asset_id,
-            task_type_id=self.task_type_layout_id,
+            task_type_id=self.layout_id,
         )
         assets_service.remove_asset(self.asset_id, force=False)
-        self.task_layout = tasks_service.get_task(self.task_layout["id"])
-        self.task_animation = tasks_service.get_task(self.task_animation["id"])
-        self.task_compositing = tasks_service.get_task(
-            self.task_compositing["id"]
-        )
-        self.assertEqual(self.task_layout["nb_assets_ready"], 1)
-        self.assertEqual(self.task_animation["nb_assets_ready"], 1)
-        self.assertEqual(self.task_compositing["nb_assets_ready"], 1)
 
-        # If an asset is deleted from the project, the casting-ready stats
-        # must be recomputed for impacted shots.
+        self.assert_ready_counts(1, 1, 1)
+
+    def test_a_deleted_asset_stops_counting(self):
         temp_asset = self.generate_fixture_asset("TempAsset")
         temp_asset_id = str(temp_asset.id)
-        breakdown_service.update_casting(
-            self.shot_id,
-            [
-                {"asset_id": temp_asset_id, "nb_occurences": 1},
-                {"asset_id": self.asset_character_id, "nb_occurences": 3},
-            ],
-        )
-        # Ensure both assets have their ready_for set
-        temp_asset = assets_service.get_asset_raw(temp_asset_id)
-        temp_asset.update({"ready_for": self.task_type_animation_id})
-        # Verify asset_character still has its ready_for set (it was set earlier)
-        char = assets_service.get_asset_raw(self.asset_character_id)
-        char.update({"ready_for": self.task_type_compositing_id})
+        self.cast_in_the_shot(temp_asset_id, self.asset_character_id)
+        self.set_ready_for(temp_asset_id, self.animation_id)
+        self.set_ready_for(self.asset_character_id, self.compositing_id)
         breakdown_service.refresh_casting_stats(
-            temp_asset.serialize(obj_type="Asset")
+            assets_service.get_asset(temp_asset_id)
         )
-        self.task_layout = tasks_service.get_task(self.task_layout["id"])
-        self.task_animation = tasks_service.get_task(self.task_animation["id"])
-        self.task_compositing = tasks_service.get_task(
-            self.task_compositing["id"]
-        )
-        self.assertEqual(self.task_layout["nb_assets_ready"], 2)
-        self.assertEqual(self.task_animation["nb_assets_ready"], 2)
-        self.assertEqual(self.task_compositing["nb_assets_ready"], 1)
+        self.assert_ready_counts(2, 2, 1)
 
         assets_service.remove_asset(temp_asset_id)
-        self.task_layout = tasks_service.get_task(self.task_layout["id"])
-        self.task_animation = tasks_service.get_task(self.task_animation["id"])
-        self.task_compositing = tasks_service.get_task(
-            self.task_compositing["id"]
-        )
-        self.assertEqual(self.task_layout["nb_assets_ready"], 1)
-        self.assertEqual(self.task_animation["nb_assets_ready"], 1)
-        self.assertEqual(self.task_compositing["nb_assets_ready"], 1)
+
+        self.assert_ready_counts(1, 1, 1)
