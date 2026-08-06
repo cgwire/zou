@@ -1,7 +1,13 @@
 from tests.base import ApiDBTestCase
 
+from zou.app.models.day_off import DayOff
+from zou.app.models.milestone import Milestone
 from zou.app.models.project import ProjectTaskTypeLink
-from zou.app.services import budget_service, projects_service
+from zou.app.services import (
+    budget_service,
+    projects_service,
+    tasks_service,
+)
 from zou.app.utils import events, fields
 
 
@@ -66,10 +72,11 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
     # --- Task status settings ---
 
     def test_get_project_task_statuses(self):
-        result = self.get(
-            f"/data/projects/{self.project_id}/settings/task-status"
+        # Nothing linked yet: the add tests below cover the rest.
+        self.assertEqual(
+            self.get(f"/data/projects/{self.project_id}/settings/task-status"),
+            [],
         )
-        self.assertIsInstance(result, list)
 
     def test_add_project_task_status(self):
         result = self.post(
@@ -221,10 +228,14 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
     # --- Status automations settings ---
 
     def test_get_project_status_automations(self):
-        result = self.get(
-            f"/data/projects/{self.project_id}" f"/settings/status-automations"
+        # Nothing linked yet: the add tests below cover the rest.
+        self.assertEqual(
+            self.get(
+                f"/data/projects/{self.project_id}"
+                f"/settings/status-automations"
+            ),
+            [],
         )
-        self.assertIsInstance(result, list)
 
     def test_add_project_status_automation(self):
         self.generate_fixture_status_automation_to_status()
@@ -263,11 +274,14 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
     # --- Preview background file settings ---
 
     def test_get_project_preview_background_files(self):
-        result = self.get(
-            f"/data/projects/{self.project_id}"
-            f"/settings/preview-background-files"
+        # Nothing linked yet: the add tests below cover the rest.
+        self.assertEqual(
+            self.get(
+                f"/data/projects/{self.project_id}"
+                f"/settings/preview-background-files"
+            ),
+            [],
         )
-        self.assertIsInstance(result, list)
 
     def test_add_project_preview_background_file(self):
         self.generate_fixture_preview_background_file()
@@ -325,23 +339,97 @@ class ProjectDataRoutesTestCase(ApiDBTestCase):
         self.project_id = str(self.project.id)
 
     def test_get_project_time_spents(self):
+        """
+        Every time spent logged on the production, whoever logged it.
+        """
+        self.assertEqual(
+            self.get(f"/data/projects/{self.project_id}/time-spents"), []
+        )
+        tasks_service.create_or_update_time_spent(
+            str(self.task.id), str(self.person.id), "2024-06-12", 120
+        )
+
         result = self.get(f"/data/projects/{self.project_id}/time-spents")
-        self.assertIsInstance(result, list)
+
+        self.assertEqual(
+            [(spent["duration"], spent["date"]) for spent in result],
+            [(120, "2024-06-12")],
+        )
 
     def test_get_project_milestones(self):
+        self.assertEqual(
+            self.get(f"/data/projects/{self.project_id}/milestones"), []
+        )
+        milestone = Milestone.create(
+            date=fields.get_date_object("2024-06-12"),
+            name="Delivery",
+            project_id=self.project.id,
+            task_type_id=self.task_type.id,
+        )
+
         result = self.get(f"/data/projects/{self.project_id}/milestones")
-        self.assertIsInstance(result, list)
+
+        self.assertEqual(
+            [entry["id"] for entry in result], [str(milestone.id)]
+        )
 
     def test_get_project_day_offs(self):
+        """
+        The leave of the production's team, keyed by person. Someone off the
+        team is not the production's business.
+        """
+        projects_service.add_team_member(self.project_id, str(self.person.id))
+        DayOff.create(
+            date="2024-06-12",
+            end_date="2024-06-12",
+            person_id=self.person.id,
+        )
+        outsider = self.generate_fixture_user_cg_artist()
+        DayOff.create(
+            date="2024-06-12",
+            end_date="2024-06-12",
+            person_id=outsider["id"],
+        )
+
         result = self.get(f"/data/projects/{self.project_id}/day-offs")
-        self.assertIsInstance(result, dict)
+
+        self.assertEqual(list(result.keys()), [str(self.person.id)])
+        self.assertEqual(len(result[str(self.person.id)]), 1)
 
     def test_get_project_task_type_time_spents(self):
+        """
+        The same time spents narrowed to one task type and grouped per
+        person.
+        """
+        here = self.task
+        for date, duration in [("2024-06-12", 120), ("2024-06-13", 300)]:
+            tasks_service.create_or_update_time_spent(
+                str(here.id), str(self.person.id), date, duration
+            )
+
+        # The same person on the same asset, under another task type: the
+        # narrowing is what has to keep this out.
+        elsewhere = self.generate_fixture_task(
+            name="Animation", task_type_id=self.task_type_animation.id
+        )
+        tasks_service.create_or_update_time_spent(
+            str(elsewhere.id), str(self.person.id), "2024-06-12", 999
+        )
+        self.task = here
+
         result = self.get(
             f"/data/projects/{self.project_id}"
             f"/task-types/{self.task_type.id}/time-spents"
         )
-        self.assertIsInstance(result, dict)
+
+        self.assertEqual(list(result.keys()), [str(self.person.id)])
+        self.assertEqual(
+            sorted(
+                (spent["date"], spent["duration"])
+                for spent in result[str(self.person.id)]
+            ),
+            [("2024-06-12", 120), ("2024-06-13", 300)],
+        )
 
 
 class ProjectBudgetRoutesTestCase(ApiDBTestCase):
@@ -358,8 +446,14 @@ class ProjectBudgetRoutesTestCase(ApiDBTestCase):
         )
 
     def test_get_project_budgets(self):
+        self.assertEqual(
+            self.get(f"/data/projects/{self.project_id}/budgets"), []
+        )
+        budget = self._create_budget("Test Budget")
+
         result = self.get(f"/data/projects/{self.project_id}/budgets")
-        self.assertIsInstance(result, list)
+
+        self.assertEqual([entry["id"] for entry in result], [budget["id"]])
 
     def test_create_project_budget(self):
         result = self._create_budget("Test Budget")
