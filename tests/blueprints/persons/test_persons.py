@@ -99,10 +99,6 @@ class PersonRoutesTestCase(ApiDBTestCase):
 
     # --- Day offs ---
 
-    def test_get_person_day_offs(self):
-        result = self.get(f"/data/persons/{self.person_id}/day-offs")
-        self.assertIsInstance(result, list)
-
     def test_get_person_day_off_for_date(self):
         DayOff.create(
             date="2024-06-10",
@@ -133,25 +129,43 @@ class PersonRoutesTestCase(ApiDBTestCase):
         self.log_in_admin()
         self.assertIsNotNone(self.get(path))
 
-    def test_get_person_day_offs_week(self):
-        result = self.get(
-            f"/data/persons/{self.person_id}/day-offs/week/2024/23"
+    def test_the_day_off_listings_each_hold_their_own_period(self):
+        """
+        One day off, read back through every window that contains it and
+        every neighbouring window that must not. Without the second half a
+        listing that ignores its date range passes just as well.
+        """
+        DayOff.create(
+            date="2024-06-12",
+            end_date="2024-06-12",
+            person_id=self.person.id,
         )
-        self.assertIsInstance(result, list)
-
-    def test_get_person_day_offs_month(self):
-        result = self.get(
-            f"/data/persons/{self.person_id}/day-offs/month/2024/06"
-        )
-        self.assertIsInstance(result, list)
-
-    def test_get_person_day_offs_year(self):
-        result = self.get(f"/data/persons/{self.person_id}/day-offs/year/2024")
-        self.assertIsInstance(result, list)
-
-    def test_get_day_offs_for_month(self):
-        result = self.get("/data/persons/day-offs/2024/06")
-        self.assertIsInstance(result, list)
+        base = f"/data/persons/{self.person_id}/day-offs"
+        # 2024-06-12 is a Wednesday, in ISO week 24. Away from the edges of
+        # its week, month and year on purpose: the listings take their end
+        # date inclusively while the intervals end on the first day of the
+        # next period, so a day off on a boundary shows up in both.
+        holds = {
+            "every one of theirs": base,
+            "its week": f"{base}/week/2024/24",
+            "its month": f"{base}/month/2024/06",
+            "its year": f"{base}/year/2024",
+            "the studio wide month": "/data/persons/day-offs/2024/06",
+        }
+        misses = {
+            "the week before": f"{base}/week/2024/23",
+            "the month before": f"{base}/month/2024/05",
+            "the year before": f"{base}/year/2023",
+            "the studio wide month before": "/data/persons/day-offs/2024/05",
+        }
+        for period, path in holds.items():
+            with self.subTest(holds=period):
+                result = self.get(path)
+                self.assertEqual(len(result), 1)
+                self.assertTrue(result[0]["date"].startswith("2024-06-12"))
+        for period, path in misses.items():
+            with self.subTest(misses=period):
+                self.assertEqual(self.get(path), [])
 
     # --- Quota shots ---
 
