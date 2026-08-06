@@ -10,6 +10,7 @@ from zou.app.models.preview_file import PreviewFile
 from zou.app.services import files_service, preview_files_service
 from zou.app.stores import file_store
 from zou.app.utils import thumbnail as thumbnail_utils
+from zou.utils import movie
 from zou.app.services.exception import (
     AnnotationNotFoundException,
     WrongParameterException,
@@ -1268,3 +1269,38 @@ class ResetPictureFilesMetadataTestCase(ApiDBTestCase):
         self.assertEqual(
             PreviewFile.get(self.preview_file.id).updated_at, before
         )
+
+
+class ResetMovieFilesMetadataTestCase(ApiDBTestCase):
+    """
+    Same backfill as the picture one, reading the movie dimensions and
+    duration back from the encoded file.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_asset()
+        self.generate_fixture_assigner()
+        self.generate_fixture_person()
+        self.generate_fixture_task()
+        self.preview_file = self.generate_fixture_preview_file()
+
+    def test_reset_movie_files_metadata(self):
+        path = file_store.get_local_movie_path(
+            "previews", str(self.preview_file.id)
+        )
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open("tests/fixtures/videos/test_preview_tiles.mp4", "rb") as f:
+            with open(path, "wb") as target:
+                target.write(f.read())
+
+        preview_files_service.reset_movie_files_metadata()
+
+        preview_file = PreviewFile.get(self.preview_file.id)
+        self.assertEqual(
+            (preview_file.width, preview_file.height),
+            movie.get_movie_size(path),
+        )
+        self.assertEqual(preview_file.file_size, os.path.getsize(path))
+        self.assertGreater(preview_file.duration, 0)

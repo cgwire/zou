@@ -1,13 +1,16 @@
+from unittest.mock import patch
+
 from tests.base import ApiDBTestCase
 
+from zou.app.models.attachment_file import AttachmentFile
+from zou.app.models.comment import Comment
 from zou.app.models.playlist import Playlist as PlaylistModel
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.task import Task
 
-from zou.app.services import playlist_sharing_service
-from zou.app.services.exception import (
-    PlaylistShareLinkNotFoundException,
-)
+from zou.app.services import comments_service, playlist_sharing_service
+from zou.app.services.exception import PlaylistShareLinkNotFoundException
+from zou.app.services.playlist_sharing_service import GuestCommentNotFound
 
 
 class PlaylistSharingServiceTestCase(ApiDBTestCase):
@@ -236,4 +239,81 @@ class PlaylistSharingServiceTestCase(ApiDBTestCase):
             playlist_sharing_service.is_preview_file_in_shared_playlist(
                 token, str(other.id)
             )
+        )
+
+    def share_a_comment_attachment(self, **comment_fields):
+        """
+        Position the playlist on the task, comment on it, and attach a file.
+        Returns the share token and the attachment id.
+        """
+        preview = PreviewFile.create(
+            name="first.png",
+            revision=1,
+            extension="png",
+            task_id=self.task.id,
+            person_id=self.person.id,
+        )
+        PlaylistModel.get(self.playlist["id"]).update(
+            {
+                "shots": [
+                    {
+                        "entity_id": str(self.asset.id),
+                        "preview_file_id": str(preview.id),
+                    }
+                ]
+            }
+        )
+        comment = comments_service.new_comment(
+            self.task.id, self.task_status.id, self.person.id, "look at this"
+        )
+        Comment.get(comment["id"]).update(comment_fields)
+        attachment = AttachmentFile.create(
+            name="note.png",
+            size=3,
+            extension="png",
+            mimetype="image/png",
+            comment_id=comment["id"],
+        )
+        return self.share(), str(attachment.id)
+
+    def download(self, token, attachment_id):
+        # comments_service is imported inside the function, so the patch
+        # lands on the source module rather than on a local alias.
+        with patch.object(
+            comments_service,
+            "get_attachment_file_path",
+            return_value="/tmp/note.png",
+        ), patch("flask.send_file") as send_file:
+            playlist_sharing_service.download_shared_attachment(
+                token, attachment_id, "note.png"
+            )
+        return send_file
+
+    def test_download_shared_attachment(self):
+        token, attachment_id = self.share_a_comment_attachment(for_client=True)
+        send_file = self.download(token, attachment_id)
+        # A png is safe to render in the browser, so it is served inline.
+        self.assertFalse(send_file.call_args.kwargs["as_attachment"])
+
+    def test_download_refused_on_a_comment_hidden_from_the_client(self):
+        token, attachment_id = self.share_a_comment_attachment(
+            for_client=False
+        )
+        self.assertRaises(
+            GuestCommentNotFound,
+            playlist_sharing_service.download_shared_attachment,
+            token,
+            attachment_id,
+            "note.png",
+        )
+
+    def test_download_refused_on_a_task_outside_the_playlist(self):
+        token, attachment_id = self.share_a_comment_attachment(for_client=True)
+        PlaylistModel.get(self.playlist["id"]).update({"shots": []})
+        self.assertRaises(
+            GuestCommentNotFound,
+            playlist_sharing_service.download_shared_attachment,
+            token,
+            attachment_id,
+            "note.png",
         )
