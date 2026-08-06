@@ -69,7 +69,12 @@ class NormalizeLocaleTestCase(unittest.TestCase):
             self.assertEqual(normalize_locale(value), (False, None))
 
 
-class PersonTestCase(ApiDBTestCase):
+class PersonFixtureTestCase(ApiDBTestCase):
+    """
+    Three people, one of them carrying non ascii names. Holds no test of
+    its own.
+    """
+
     def setUp(self):
         super().setUp()
         self.generate_fixture_person(
@@ -86,6 +91,8 @@ class PersonTestCase(ApiDBTestCase):
         )
         self.generate_fixture_person()
 
+
+class PersonTestCase(PersonFixtureTestCase):
     def test_repr(self):
         self.assertEqual(str(self.person), "<Person John Doe>")
         self.person.first_name = "Léon"
@@ -263,80 +270,6 @@ class PersonTestCase(ApiDBTestCase):
         self.assertEqual(data["first_name"], person_again["first_name"])
         self.put_404(f"data/persons/{fields.gen_uuid()}", data)
 
-    def test_write_routes_never_return_secrets(self):
-        person = self.get_first("data/persons")
-        Person.get(person["id"]).update(
-            {
-                "password": b"$2b$12$notarealbcrypthashbutlongenough",
-                "totp_secret": "JBSWY3DPEHPK3PXP",
-                "email_otp_secret": "KRSXG5CTMVRXEZLU",
-                "otp_recovery_codes": [b"$2b$12$notarealrecoverycodehash"],
-            }
-        )
-
-        updated = self.put(
-            f"data/persons/{person['id']}", {"last_name": "Doe"}
-        )
-        for field in SENSITIVE_FIELDS:
-            self.assertNotIn(field, updated)
-
-        created = self.post(
-            "data/persons",
-            {
-                "first_name": "No",
-                "last_name": "Secret",
-                "email": "no.secret@gmail.com",
-            },
-        )
-        for field in SENSITIVE_FIELDS:
-            self.assertNotIn(field, created)
-
-        self.generate_fixture_department()
-        joined = self.post(
-            f"actions/persons/{person['id']}/departments/add",
-            {"department_id": str(self.department.id)},
-        )
-        for field in SENSITIVE_FIELDS:
-            self.assertNotIn(field, joined)
-
-    def test_person_country_round_trip(self):
-        data = {
-            "first_name": "Country",
-            "last_name": "Tester",
-            "email": "country.tester@gmail.com",
-            "country": "fr",  # lower-case input is normalized to "FR"
-        }
-        person = self.post("data/persons", data)
-        self.assertEqual(person["country"], "FR")
-
-        person_again = self.get(f"data/persons/{person['id']}")
-        self.assertEqual(person_again["country"], "FR")
-        person_with_relations = self.get(
-            f"data/persons/{person['id']}?relations=true"
-        )
-        self.assertEqual(person_with_relations["country"], "FR")
-        listed = next(
-            p for p in self.get("data/persons") if p["id"] == person["id"]
-        )
-        self.assertEqual(listed["country"], "FR")
-
-        self.put(f"data/persons/{person['id']}", {"country": "us"})
-        person_again = self.get(f"data/persons/{person['id']}")
-        self.assertEqual(person_again["country"], "US")
-
-        # Whitespace is trimmed and the value upper-cased on update.
-        self.put(f"data/persons/{person['id']}", {"country": " fr "})
-        person_again = self.get(f"data/persons/{person['id']}")
-        self.assertEqual(person_again["country"], "FR")
-
-        self.put(f"data/persons/{person['id']}", {"country": None})
-        person_again = self.get(f"data/persons/{person['id']}")
-        self.assertIsNone(person_again["country"])
-
-        self.put(f"data/persons/{person['id']}", {"country": ""})
-        person_again = self.get(f"data/persons/{person['id']}")
-        self.assertIsNone(person_again["country"])
-
     def test_person_display_preferences_round_trip(self):
         person = self.get_first("data/persons")
         self.put(
@@ -368,190 +301,6 @@ class PersonTestCase(ApiDBTestCase):
             },
             400,
         )
-
-    def test_create_person_without_country(self):
-        data = {
-            "first_name": "NoCountry",
-            "last_name": "Doe",
-            "email": "no.country@gmail.com",
-        }
-        person = self.post("data/persons", data)
-        self.assertIsNone(person["country"])
-
-    def test_create_person_with_invalid_country(self):
-        data = {
-            "first_name": "Bad",
-            "last_name": "Country",
-            "email": "bad.country@gmail.com",
-            "country": "France",
-        }
-        self.post("data/persons", data, 400)
-
-    def test_update_person_with_invalid_country(self):
-        # The PUT guard rejects every malformed category with a clean 400
-        # (never a 500), including non-ASCII and non-string bodies such as an
-        # int or a single-element list from a SAML assertion.
-        person = self.get_first("data/persons")
-        for value in ["France", "f1", "éé", 123, ["FR"]]:
-            self.put(f"data/persons/{person['id']}", {"country": value}, 400)
-
-    def test_country_validator_never_raises_on_direct_write(self):
-        # Direct writes (SSO sign-in, imports, scripts) bypass the API guard,
-        # so the model validator must silently discard bad input instead of
-        # raising.
-        person = Person.get_by(email="ema.doe@gmail.com")
-        person.update({"country": ["FR"]})
-        self.assertIsNone(person.country)
-        person.update({"country": 123})
-        self.assertIsNone(person.country)
-        person.update({"country": "FRA"})
-        self.assertIsNone(person.country)
-        person.update({"country": " us "})
-        self.assertEqual(person.country, "US")
-
-    def test_hidden_columns_are_not_filterable(self):
-        # Filters run before serialization, so a column absent from
-        # present_minimal stays answerable by equality unless the filter
-        # keys are narrowed too: ?daily_salary=320 would walk the payroll.
-        # A refused filter must be an error, never a wider result set.
-        person = Person.get_by(email="ema.doe@gmail.com")
-        person.update({"daily_salary": 320, "phone": "0600000000"})
-        self.generate_fixture_user_cg_artist()
-        self.log_in_cg_artist()
-
-        for query in ["daily_salary=320", "phone=0600000000"]:
-            self.get(f"data/persons?{query}", 400)
-
-    def test_email_stays_filterable_for_non_admins(self):
-        # gazu.person.get_person_by_email() reads the first row of this
-        # route, so dropping the filter handed out an arbitrary person
-        # instead of no match.
-        person = Person.get_by(email="ema.doe@gmail.com")
-        self.generate_fixture_user_cg_artist()
-        self.log_in_cg_artist()
-
-        persons = self.get("data/persons?email=ema.doe@gmail.com")
-        self.assertEqual(len(persons), 1)
-        self.assertEqual(persons[0]["id"], str(person.id))
-
-        self.assertEqual(self.get("data/persons?email=nobody@gmail.com"), [])
-
-    def test_full_name_is_filterable(self):
-        # full_name is a hybrid whose SQL expression is a concat_ws inside
-        # a trim, two functions SQLAlchemy types as NullType: casting the
-        # value to it raised a CompileError, and the route answered
-        # gazu.person.get_person_by_full_name() with a 500.
-        person = Person.get_by(email="ema.doe@gmail.com")
-        path = f"data/persons?full_name={quote('Ema Doe')}"
-
-        persons = self.get(path)
-        self.assertEqual(len(persons), 1)
-        self.assertEqual(persons[0]["id"], str(person.id))
-
-        self.generate_fixture_user_cg_artist()
-        self.log_in_cg_artist()
-        persons = self.get(path)
-        self.assertEqual(len(persons), 1)
-        self.assertEqual(persons[0]["id"], str(person.id))
-
-    def test_visible_columns_stay_filterable(self):
-        person = Person.get_by(email="ema.doe@gmail.com")
-        self.generate_fixture_user_cg_artist()
-        self.log_in_cg_artist()
-        persons = self.get(f"data/persons?first_name={person.first_name}")
-        self.assertEqual(len(persons), 1)
-        self.assertEqual(persons[0]["id"], str(person.id))
-
-    def test_admin_still_filters_on_the_safe_columns(self):
-        person = Person.get_by(email="ema.doe@gmail.com")
-        person.update({"daily_salary": 320})
-        persons = self.get("data/persons?daily_salary=320")
-        self.assertEqual(len(persons), 1)
-        self.assertEqual(persons[0]["id"], str(person.id))
-
-    def test_secrets_are_never_filterable(self):
-        person = Person.get_by(email="ema.doe@gmail.com")
-        person.update({"totp_secret": "SECRETSEED"})
-        self.get("data/persons?totp_secret=SECRETSEED", 400)
-
-    def test_country_not_exposed_in_present_minimal(self):
-        # The minimal representation is served to non-managers (including
-        # external client/vendor roles), so it must not leak the country.
-        person = Person.get_by(email="ema.doe@gmail.com")
-        person.update({"country": "FR"})
-        self.assertNotIn("country", person.present_minimal())
-        safe = person.serialize_safe()
-        self.assertEqual(safe["country"], "FR")
-
-    def test_person_locale_round_trip(self):
-        data = {
-            "first_name": "Locale",
-            "last_name": "Tester",
-            "email": "locale.tester@gmail.com",
-            "locale": "fr_FR",
-        }
-        person = self.post("data/persons", data)
-        self.assertEqual(person["locale"], "fr_FR")
-
-        # The stored value survives every read path (single GET, relations,
-        # list) instead of breaking serialization.
-        person_again = self.get(f"data/persons/{person['id']}")
-        self.assertEqual(person_again["locale"], "fr_FR")
-        person_with_relations = self.get(
-            f"data/persons/{person['id']}?relations=true"
-        )
-        self.assertEqual(person_with_relations["locale"], "fr_FR")
-        listed = next(
-            p for p in self.get("data/persons") if p["id"] == person["id"]
-        )
-        self.assertEqual(listed["locale"], "fr_FR")
-
-        self.put(f"data/persons/{person['id']}", {"locale": "pt_BR"})
-        person_again = self.get(f"data/persons/{person['id']}")
-        self.assertEqual(person_again["locale"], "pt_BR")
-
-        # Whitespace is trimmed on update.
-        self.put(f"data/persons/{person['id']}", {"locale": " ja_JP "})
-        person_again = self.get(f"data/persons/{person['id']}")
-        self.assertEqual(person_again["locale"], "ja_JP")
-
-    def test_create_person_with_invalid_locale(self):
-        data = {
-            "first_name": "Bad",
-            "last_name": "Locale",
-            "email": "bad.locale@gmail.com",
-            "locale": "zz_ZZ",
-        }
-        self.post("data/persons", data, 400)
-
-    def test_update_person_with_invalid_locale(self):
-        # The PUT guard rejects every unparseable category with a clean 400
-        # (never a 500 and never a poisoned entry): unknown locales, wrong
-        # separators, malformed identifiers and non-string bodies.
-        person = self.get_first("data/persons")
-        for value in [
-            "zz_ZZ",
-            "notlocale",
-            "en-US",
-            "fr_FR_x",
-            123,
-            ["fr_FR"],
-        ]:
-            self.put(f"data/persons/{person['id']}", {"locale": value}, 400)
-
-    def test_locale_validator_never_raises_on_direct_write(self):
-        # Direct writes (SSO sign-in, imports, scripts) bypass the API guard,
-        # so the model validator must silently discard bad input instead of
-        # persisting a value that would break later reads.
-        person = Person.get_by(email="ema.doe@gmail.com")
-        person.update({"locale": "zz_ZZ"})
-        self.assertIsNone(person.locale)
-        person.update({"locale": ["fr_FR"]})
-        self.assertIsNone(person.locale)
-        person.update({"locale": "en-US"})
-        self.assertIsNone(person.locale)
-        person.update({"locale": " fr_FR "})
-        self.assertEqual(str(person.locale), "fr_FR")
 
     def test_update_person_with_duplicate_email(self):
         persons = sorted(self.get("data/persons"), key=itemgetter("email"))
@@ -638,3 +387,283 @@ class PersonTestCase(ApiDBTestCase):
         self.get(f"data/persons/{self.person_id}")
         self.delete(f"data/persons/{self.person_id}?force=true")
         self.get(f"data/persons/{self.person_id}", 404)
+
+
+class PersonCountryTestCase(PersonFixtureTestCase):
+    """
+    The country a person carries. Stored as an upper case two letter
+    code, refused rather than raised on a direct write, and kept out
+    of the minimal serialization.
+    """
+
+    def test_person_country_round_trip(self):
+        data = {
+            "first_name": "Country",
+            "last_name": "Tester",
+            "email": "country.tester@gmail.com",
+            "country": "fr",  # lower-case input is normalized to "FR"
+        }
+        person = self.post("data/persons", data)
+        self.assertEqual(person["country"], "FR")
+
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertEqual(person_again["country"], "FR")
+        person_with_relations = self.get(
+            f"data/persons/{person['id']}?relations=true"
+        )
+        self.assertEqual(person_with_relations["country"], "FR")
+        listed = next(
+            p for p in self.get("data/persons") if p["id"] == person["id"]
+        )
+        self.assertEqual(listed["country"], "FR")
+
+        self.put(f"data/persons/{person['id']}", {"country": "us"})
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertEqual(person_again["country"], "US")
+
+        # Whitespace is trimmed and the value upper-cased on update.
+        self.put(f"data/persons/{person['id']}", {"country": " fr "})
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertEqual(person_again["country"], "FR")
+
+        self.put(f"data/persons/{person['id']}", {"country": None})
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertIsNone(person_again["country"])
+
+        self.put(f"data/persons/{person['id']}", {"country": ""})
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertIsNone(person_again["country"])
+
+    def test_create_person_without_country(self):
+        data = {
+            "first_name": "NoCountry",
+            "last_name": "Doe",
+            "email": "no.country@gmail.com",
+        }
+        person = self.post("data/persons", data)
+        self.assertIsNone(person["country"])
+
+    def test_create_person_with_invalid_country(self):
+        data = {
+            "first_name": "Bad",
+            "last_name": "Country",
+            "email": "bad.country@gmail.com",
+            "country": "France",
+        }
+        self.post("data/persons", data, 400)
+
+    def test_update_person_with_invalid_country(self):
+        # The PUT guard rejects every malformed category with a clean 400
+        # (never a 500), including non-ASCII and non-string bodies such as an
+        # int or a single-element list from a SAML assertion.
+        person = self.get_first("data/persons")
+        for value in ["France", "f1", "éé", 123, ["FR"]]:
+            self.put(f"data/persons/{person['id']}", {"country": value}, 400)
+
+    def test_country_validator_never_raises_on_direct_write(self):
+        # Direct writes (SSO sign-in, imports, scripts) bypass the API guard,
+        # so the model validator must silently discard bad input instead of
+        # raising.
+        person = Person.get_by(email="ema.doe@gmail.com")
+        person.update({"country": ["FR"]})
+        self.assertIsNone(person.country)
+        person.update({"country": 123})
+        self.assertIsNone(person.country)
+        person.update({"country": "FRA"})
+        self.assertIsNone(person.country)
+        person.update({"country": " us "})
+        self.assertEqual(person.country, "US")
+
+    def test_country_not_exposed_in_present_minimal(self):
+        # The minimal representation is served to non-managers (including
+        # external client/vendor roles), so it must not leak the country.
+        person = Person.get_by(email="ema.doe@gmail.com")
+        person.update({"country": "FR"})
+        self.assertNotIn("country", person.present_minimal())
+        safe = person.serialize_safe()
+        self.assertEqual(safe["country"], "FR")
+
+
+class PersonLocaleTestCase(PersonFixtureTestCase):
+    """
+    The locale a person carries, same contract as the country.
+    """
+
+    def test_person_locale_round_trip(self):
+        data = {
+            "first_name": "Locale",
+            "last_name": "Tester",
+            "email": "locale.tester@gmail.com",
+            "locale": "fr_FR",
+        }
+        person = self.post("data/persons", data)
+        self.assertEqual(person["locale"], "fr_FR")
+
+        # The stored value survives every read path (single GET, relations,
+        # list) instead of breaking serialization.
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertEqual(person_again["locale"], "fr_FR")
+        person_with_relations = self.get(
+            f"data/persons/{person['id']}?relations=true"
+        )
+        self.assertEqual(person_with_relations["locale"], "fr_FR")
+        listed = next(
+            p for p in self.get("data/persons") if p["id"] == person["id"]
+        )
+        self.assertEqual(listed["locale"], "fr_FR")
+
+        self.put(f"data/persons/{person['id']}", {"locale": "pt_BR"})
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertEqual(person_again["locale"], "pt_BR")
+
+        # Whitespace is trimmed on update.
+        self.put(f"data/persons/{person['id']}", {"locale": " ja_JP "})
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertEqual(person_again["locale"], "ja_JP")
+
+    def test_create_person_with_invalid_locale(self):
+        data = {
+            "first_name": "Bad",
+            "last_name": "Locale",
+            "email": "bad.locale@gmail.com",
+            "locale": "zz_ZZ",
+        }
+        self.post("data/persons", data, 400)
+
+    def test_update_person_with_invalid_locale(self):
+        # The PUT guard rejects every unparseable category with a clean 400
+        # (never a 500 and never a poisoned entry): unknown locales, wrong
+        # separators, malformed identifiers and non-string bodies.
+        person = self.get_first("data/persons")
+        for value in [
+            "zz_ZZ",
+            "notlocale",
+            "en-US",
+            "fr_FR_x",
+            123,
+            ["fr_FR"],
+        ]:
+            self.put(f"data/persons/{person['id']}", {"locale": value}, 400)
+
+    def test_locale_validator_never_raises_on_direct_write(self):
+        # Direct writes (SSO sign-in, imports, scripts) bypass the API guard,
+        # so the model validator must silently discard bad input instead of
+        # persisting a value that would break later reads.
+        person = Person.get_by(email="ema.doe@gmail.com")
+        person.update({"locale": "zz_ZZ"})
+        self.assertIsNone(person.locale)
+        person.update({"locale": ["fr_FR"]})
+        self.assertIsNone(person.locale)
+        person.update({"locale": "en-US"})
+        self.assertIsNone(person.locale)
+        person.update({"locale": " fr_FR "})
+        self.assertEqual(str(person.locale), "fr_FR")
+
+
+class PersonColumnExposureTestCase(PersonFixtureTestCase):
+    """
+    What the routes let a caller read and filter on. Filters run
+    before serialization, so a column hidden from the response is
+    still queryable unless the filter list refuses it too.
+    """
+
+    def test_write_routes_never_return_secrets(self):
+        person = self.get_first("data/persons")
+        Person.get(person["id"]).update(
+            {
+                "password": b"$2b$12$notarealbcrypthashbutlongenough",
+                "totp_secret": "JBSWY3DPEHPK3PXP",
+                "email_otp_secret": "KRSXG5CTMVRXEZLU",
+                "otp_recovery_codes": [b"$2b$12$notarealrecoverycodehash"],
+            }
+        )
+
+        updated = self.put(
+            f"data/persons/{person['id']}", {"last_name": "Doe"}
+        )
+        for field in SENSITIVE_FIELDS:
+            self.assertNotIn(field, updated)
+
+        created = self.post(
+            "data/persons",
+            {
+                "first_name": "No",
+                "last_name": "Secret",
+                "email": "no.secret@gmail.com",
+            },
+        )
+        for field in SENSITIVE_FIELDS:
+            self.assertNotIn(field, created)
+
+        self.generate_fixture_department()
+        joined = self.post(
+            f"actions/persons/{person['id']}/departments/add",
+            {"department_id": str(self.department.id)},
+        )
+        for field in SENSITIVE_FIELDS:
+            self.assertNotIn(field, joined)
+
+    def test_hidden_columns_are_not_filterable(self):
+        # Filters run before serialization, so a column absent from
+        # present_minimal stays answerable by equality unless the filter
+        # keys are narrowed too: ?daily_salary=320 would walk the payroll.
+        # A refused filter must be an error, never a wider result set.
+        person = Person.get_by(email="ema.doe@gmail.com")
+        person.update({"daily_salary": 320, "phone": "0600000000"})
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+
+        for query in ["daily_salary=320", "phone=0600000000"]:
+            self.get(f"data/persons?{query}", 400)
+
+    def test_email_stays_filterable_for_non_admins(self):
+        # gazu.person.get_person_by_email() reads the first row of this
+        # route, so dropping the filter handed out an arbitrary person
+        # instead of no match.
+        person = Person.get_by(email="ema.doe@gmail.com")
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+
+        persons = self.get("data/persons?email=ema.doe@gmail.com")
+        self.assertEqual(len(persons), 1)
+        self.assertEqual(persons[0]["id"], str(person.id))
+
+        self.assertEqual(self.get("data/persons?email=nobody@gmail.com"), [])
+
+    def test_full_name_is_filterable(self):
+        # full_name is a hybrid whose SQL expression is a concat_ws inside
+        # a trim, two functions SQLAlchemy types as NullType: casting the
+        # value to it raised a CompileError, and the route answered
+        # gazu.person.get_person_by_full_name() with a 500.
+        person = Person.get_by(email="ema.doe@gmail.com")
+        path = f"data/persons?full_name={quote('Ema Doe')}"
+
+        persons = self.get(path)
+        self.assertEqual(len(persons), 1)
+        self.assertEqual(persons[0]["id"], str(person.id))
+
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        persons = self.get(path)
+        self.assertEqual(len(persons), 1)
+        self.assertEqual(persons[0]["id"], str(person.id))
+
+    def test_visible_columns_stay_filterable(self):
+        person = Person.get_by(email="ema.doe@gmail.com")
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        persons = self.get(f"data/persons?first_name={person.first_name}")
+        self.assertEqual(len(persons), 1)
+        self.assertEqual(persons[0]["id"], str(person.id))
+
+    def test_admin_still_filters_on_the_safe_columns(self):
+        person = Person.get_by(email="ema.doe@gmail.com")
+        person.update({"daily_salary": 320})
+        persons = self.get("data/persons?daily_salary=320")
+        self.assertEqual(len(persons), 1)
+        self.assertEqual(persons[0]["id"], str(person.id))
+
+    def test_secrets_are_never_filterable(self):
+        person = Person.get_by(email="ema.doe@gmail.com")
+        person.update({"totp_secret": "SECRETSEED"})
+        self.get("data/persons?totp_secret=SECRETSEED", 400)
