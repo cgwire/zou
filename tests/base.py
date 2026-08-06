@@ -280,16 +280,22 @@ class ApiDBTestCase(ApiTestCase):
     Five things about the fixtures below are worth knowing before writing a
     test that steps outside the usual one project, one asset, one task shape.
 
-    - generate_fixture_project assigns self.project_id itself, so asking for
-      a second production silently repoints it at the new one. Keep the id
-      you need in a local before calling it. generate_fixture_output_type
-      does the same to self.output_type, and it does not even guard on the
-      name: asking for a second output type makes every later fixture that
-      defaults to self.output_type use it.
-    - Several fixtures call one another and read self.project on the way, so
-      one that runs after a second production lands in that production, or
-      tries to recreate the default one and hits the unique name constraint.
-      Build the row by hand when it has to belong somewhere precise.
+    - Every generator repoints the attribute it names, on every call. The
+      ones that take a name guard the default call so it returns what is
+      already there, but a call with any other argument builds a new row and
+      self.<thing> becomes that row:
+
+          shot = self.shot                       # P01
+          self.generate_fixture_shot("Z01")      # self.shot is Z01 now
+
+      Which matters twice over, because the later fixtures default to those
+      same attributes: after that line a shot task lands on Z01. Keep what
+      you need in a local first. generate_fixture_project also assigns
+      self.project_id, and several generators read self.project on the way,
+      so one that runs after a second production lands in that production,
+      or tries to recreate the default one and hits the unique name
+      constraint. Build the row by hand when it has to belong somewhere
+      precise.
     - The app treats the organisation as a singleton it creates on demand,
       while generate_fixture_organisation adds a second row. Go through
       persons_service.get_organisation() to reach the one the routes use.
