@@ -290,6 +290,58 @@ class TeamRoleServiceTestCase(ApiDBTestCase):
         project = projects_service.get_project_raw(str(self.project.id))
         self.assertEqual(project.team, [])
 
+    def test_a_role_that_is_not_one_is_refused(self):
+        """
+        The route validates the role against its own list, but the service
+        is called from plugins and from the shell too, and the column is an
+        enum: writing a typo raises deep in the driver.
+        """
+        projects_service.add_team_member(
+            str(self.project.id), str(self.person.id)
+        )
+        for role in ["supreme-leader", "Manager", ""]:
+            with self.subTest(role=role):
+                self.assertRaises(
+                    WrongParameterException,
+                    projects_service.update_team_member_role,
+                    str(self.project.id),
+                    str(self.person.id),
+                    role,
+                )
+                self.assertRaises(
+                    WrongParameterException,
+                    projects_service.add_team_member,
+                    str(self.project.id),
+                    str(self.person.id),
+                    role,
+                )
+
+    def test_a_role_leaves_the_team_with_the_person(self):
+        """
+        The role lives on the membership link: someone taken off a team and
+        put back on it comes back with their global role, not with the one
+        they were given last time.
+        """
+        projects_service.add_team_member(
+            str(self.project.id), str(self.person.id), role="manager"
+        )
+        projects_service.remove_team_member(
+            str(self.project.id), str(self.person.id)
+        )
+        self.assertIsNone(
+            ProjectPersonLink.query.filter_by(
+                project_id=self.project.id, person_id=self.person.id
+            ).first()
+        )
+
+        projects_service.add_team_member(
+            str(self.project.id), str(self.person.id)
+        )
+
+        self.assertEqual(
+            projects_service.get_team_roles(str(self.project.id)), {}
+        )
+
 
 class TeamRoleApiTestCase(ApiDBTestCase):
     def setUp(self):

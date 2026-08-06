@@ -7,7 +7,7 @@ from zou.app.models.preview_background_file import PreviewBackgroundFile
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.metadata_descriptor import MetadataDescriptor
-from zou.app.models.person import Person, DepartmentLink
+from zou.app.models.person import Person, DepartmentLink, ROLE_TYPES
 from zou.app.models.project import (
     Project,
     ProjectPersonLink,
@@ -462,16 +462,29 @@ def update_project(project_id, data):
     return project.serialize()
 
 
+def _check_project_role(role):
+    """
+    Refuse a role a project link cannot carry. admin is global by design,
+    and anything else is a typo: the column is an enum, so writing it
+    raises a KeyError deep in the driver rather than answering the caller.
+    """
+    if role is None:
+        return
+    if role == "admin":
+        raise WrongParameterException(
+            "admin is a global role and cannot be set per project"
+        )
+    if role not in [code for code, _ in ROLE_TYPES]:
+        raise WrongParameterException(f"{role} is not a role")
+
+
 def add_team_member(project_id, person_id, role=None):
     """
     Add a person listed in database to the project team, with an optional
     project-specific role. The role is validated before the membership is
     created so an invalid role leaves no partial state behind.
     """
-    if role == "admin":
-        raise WrongParameterException(
-            "admin is a global role and cannot be set per project"
-        )
+    _check_project_role(role)
     project = _add_to_list_attr(project_id, Person, person_id, "team")
     if role is not None:
         update_team_member_role(project_id, person_id, role)
@@ -491,10 +504,7 @@ def update_team_member_role(project_id, person_id, role):
     Set the role of given person on given project. A None role restores
     inheritance of the person's global role.
     """
-    if role == "admin":
-        raise WrongParameterException(
-            "admin is a global role and cannot be set per project"
-        )
+    _check_project_role(role)
     link = ProjectPersonLink.query.filter_by(
         project_id=project_id, person_id=person_id
     ).first()
