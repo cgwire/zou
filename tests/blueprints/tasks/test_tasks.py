@@ -990,3 +990,31 @@ class TaskRoutesTestCase(TaskTestCase):
         )
         entity = self.get(f"/data/entities/{task['entity_id']}")
         self.assertEqual(entity["preview_file_id"], preview_file["id"])
+
+    def test_get_tasks_for_person_is_scoped_to_the_callers_productions(self):
+        """
+        A non admin caller only sees the person's tasks in the productions
+        they are on themselves, which is what the route passes down as the
+        project list.
+        """
+        self.generate_fixture_task()
+        here = str(self.task.id)
+
+        self.generate_fixture_project_standard()
+        other_asset = self.generate_fixture_asset(
+            "Car", project_id=self.project_standard.id
+        )
+        other_task = self.generate_fixture_task(
+            name="other", entity_id=other_asset.id
+        )
+        other_task.update({"project_id": self.project_standard.id})
+
+        self.generate_fixture_user_manager()
+        projects_service.add_team_member(
+            str(self.project.id), self.user_manager["id"]
+        )
+        self.log_in_manager()
+
+        tasks = self.get(f"/data/persons/{self.person.id}/tasks")
+
+        self.assertEqual([task["id"] for task in tasks], [here])
