@@ -115,3 +115,24 @@ class EntitiesServiceTestCase(ApiDBTestCase):
         tasks = entities_service.get_entity_tasks(shot_entity)
         self.assertIsInstance(tasks, list)
         self.assertEqual(len(tasks), 0)
+
+    def test_get_entities_for_project(self):
+        """
+        The entities of one production, of one type, ordered by name.
+        """
+        self.generate_fixture_project_standard()
+        # Named to sort first while created last, and one asset of the same
+        # name in another production, which must not show up.
+        self.generate_fixture_asset("Anvil")
+        self.generate_fixture_asset(
+            "Anvil", project_id=self.project_standard.id
+        )
+
+        assets = entities_service.get_entities_for_project(
+            str(self.project.id), str(self.asset_type.id), obj_type="Asset"
+        )
+
+        self.assertEqual(
+            [asset["name"] for asset in assets], ["Anvil", "Tree"]
+        )
+        self.assertEqual(assets[0]["type"], "Asset")
