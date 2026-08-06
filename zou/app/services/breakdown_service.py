@@ -314,6 +314,7 @@ def update_casting(entity_id, casting):
     entity_id = str(entity.id)
     nb_entities_out = len(casting)
     entity.update({"nb_entities_out": nb_entities_out})
+    _clear_casting_cache(entity_id)
     entity_dict = entity.serialize()
     casting_diff = {
         "nb_entities_out": nb_entities_out,
@@ -345,6 +346,19 @@ def update_casting(entity_id, casting):
             project_id=str(entity.project_id),
         )
     return casting
+
+
+def _clear_casting_cache(entity_id):
+    """
+    Drop the memoized serializations of an entity whose casting changed.
+    They carry nb_entities_out, and create_casting_link reads the entity
+    on its way through, so the count is cached before it is written.
+    """
+    entity_id = str(entity_id)
+    if shots_service.is_shot(entities_service.get_entity(entity_id)):
+        shots_service.clear_shot_cache(entity_id)
+    else:
+        entities_service.clear_entity_cache(entity_id)
 
 
 def create_casting_link(entity_in_id, asset_id, nb_occurences=1, label=""):
@@ -424,6 +438,7 @@ def _remove_asset_from_episode_shots(asset_id, episode_id):
     for link in links:
         shot = shots_service.get_shot_raw(str(link.entity_in_id))
         shot.update({"nb_entities_out": shot.nb_entities_out - 1})
+        shots_service.clear_shot_cache(str(shot.id))
         refresh_shot_casting_stats(shot.serialize())
         link.delete()
         events.emit(
@@ -441,9 +456,11 @@ def _remove_asset_from_episode_shots(asset_id, episode_id):
 
 def _get_episode_id_for_shot(shot):
     """
-    Return the ID of the episode given shot belongs to, or None if its
-    sequence has no parent episode.
+    Return the ID of the episode given shot belongs to, or None when its
+    sequence has no parent episode, or when it has no sequence at all.
     """
+    if shot["parent_id"] is None:
+        return None
     sequence = shots_service.get_sequence(str(shot["parent_id"]))
     return sequence["parent_id"]
 
@@ -474,6 +491,7 @@ def _detach_asset_from_episode_if_unused(asset_id, episode_id):
     episode = entities_service.get_entity_raw(episode_id)
     link.delete()
     episode.update({"nb_entities_out": max(episode.nb_entities_out - 1, 0)})
+    entities_service.clear_entity_cache(str(episode_id))
     events.emit(
         "episode:casting-update",
         {
@@ -499,7 +517,10 @@ def _create_episode_casting_link(entity, asset_id, nb_occurences=1, label=""):
     When an asset is casted in a shot, the asset is automatically casted in
     the episode.
     """
-    if shots_service.is_shot(entity):
+    # A shot laid out before its sequences exist hangs from nothing, and
+    # then there is no episode to cast the asset in: reading the sequence
+    # anyway turned the whole casting into a 404.
+    if shots_service.is_shot(entity) and entity["parent_id"] is not None:
         sequence = shots_service.get_sequence(entity["parent_id"])
         if sequence["parent_id"] is not None:
             link = EntityLink.get_by(
