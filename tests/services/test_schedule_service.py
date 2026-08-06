@@ -56,13 +56,31 @@ class ScheduleItemTestCase(ScheduleTestCase):
         self.assertEqual(len(items), 1)
 
     def test_get_schedule_sequence_items(self):
+        """
+        One row per sequence of the production. A row of another production
+        on its own sequence stays out.
+        """
+        self.generate_fixture_project_standard()
+        elsewhere = self.generate_fixture_sequence(
+            name="SQ99", project_id=self.project_standard.id
+        )
+        ScheduleItem.create(
+            project_id=self.project_standard.id,
+            task_type_id=self.task_type.id,
+            object_id=elsewhere.id,
+        )
+
         items = schedule_service.get_sequences_schedule_items(
             self.project.id, self.task_type_id
         )
-        self.assertEqual(len(items), 1)
-        self.assertEqual(items[0]["object_id"], self.sequence_id)
-        self.assertEqual(items[0]["task_type_id"], self.task_type_id)
-        self.assertEqual(items[0]["project_id"], self.project_id)
+
+        self.assertEqual(
+            [
+                (item["object_id"], item["task_type_id"], item["project_id"])
+                for item in items
+            ],
+            [(self.sequence_id, self.task_type_id, self.project_id)],
+        )
 
     def test_get_schedule_sequence_items_for_episode(self):
         episode_2 = self.generate_fixture_episode(name="E02")
@@ -184,12 +202,28 @@ class ScheduleItemTestCase(ScheduleTestCase):
         self.assertEqual(items[0]["object_id"], edit_id)
 
     def test_get_schedule_asset_type_items(self):
+        """
+        One row per asset type the production uses, created on read. A row
+        of another production for the same asset type stays out.
+        """
+        self.generate_fixture_project_standard()
+        ScheduleItem.create(
+            project_id=self.project_standard.id,
+            task_type_id=self.task_type.id,
+            object_id=self.asset_type.id,
+        )
+
         items = schedule_service.get_asset_types_schedule_items(
             self.project.id, self.task_type_id
         )
-        self.assertEqual(items[0]["object_id"], self.asset_type_id)
-        self.assertEqual(items[0]["task_type_id"], self.task_type_id)
-        self.assertEqual(items[0]["project_id"], self.project_id)
+
+        self.assertEqual(
+            [
+                (item["object_id"], item["task_type_id"], item["project_id"])
+                for item in items
+            ],
+            [(self.asset_type_id, self.task_type_id, self.project_id)],
+        )
 
     def test_get_schedule_asset_type_items_for_episode(self):
         self.generate_fixture_asset_types()
