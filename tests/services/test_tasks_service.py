@@ -75,32 +75,6 @@ class TaskServiceTestCase(ApiDBTestCase):
     def assert_event_is_fired(self):
         self.assertTrue(self.is_event_fired)
 
-    def test_get_status(self):
-        task_status = tasks_service.get_or_create_status(
-            "WIP", "wip", is_wip=True
-        )
-        self.assertEqual(task_status["name"], "WIP")
-
-    def test_get_wip_status(self):
-        task_status = tasks_service.get_or_create_status(
-            "Work In Progress", "wip", "#3273dc", is_wip=True
-        )
-        self.assertEqual(task_status["name"], "WIP")
-
-    def test_get_done_status(self):
-        task_status = tasks_service.get_or_create_status(
-            "Done", "done", "#22d160", is_done=True
-        )
-        self.assertEqual(task_status["name"], "Done")
-
-    def test_get_todo_status(self):
-        task_status = tasks_service.get_default_status()
-        self.assertEqual(task_status["is_default"], True)
-
-    def test_get_to_review_status(self):
-        task_status = tasks_service.get_to_review_status()
-        self.assertEqual(task_status["name"], "To review")
-
     def test_create_task(self):
         shot = self.shot.serialize()
         task_type = self.task_type.serialize()
@@ -596,6 +570,104 @@ class TaskServiceTestCase(ApiDBTestCase):
         )
         self.assertEqual(Task.get(self.shot_task.id).retake_count, 0)
 
+
+class GetOrCreateTaskTypeTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.department = tasks_service.get_or_create_department(
+            "Concept", "#8D6E63"
+        )
+
+    def test_create_when_missing(self):
+        task_type = tasks_service.get_or_create_task_type(
+            self.department, "Concept", "#8D6E63", 1
+        )
+        self.assertIsNotNone(task_type["id"])
+        self.assertEqual(task_type["for_entity"], "Asset")
+
+    def test_return_existing_with_same_name_and_entity(self):
+        first = tasks_service.get_or_create_task_type(
+            self.department, "Concept", "#8D6E63", 1
+        )
+        second = tasks_service.get_or_create_task_type(
+            self.department, "Concept", "#8D6E63", 1
+        )
+        self.assertEqual(first["id"], second["id"])
+        self.assertEqual(len(TaskType.get_all_by(name="Concept")), 1)
+
+    def test_same_name_different_for_entity_coexist(self):
+        asset_type = tasks_service.get_or_create_task_type(
+            self.department, "Concept", "#8D6E63", 1
+        )
+        concept_type = tasks_service.get_or_create_task_type(
+            self.department, "Concept", "#8D6E63", 1, for_entity="Concept"
+        )
+        self.assertNotEqual(asset_type["id"], concept_type["id"])
+        self.assertEqual(asset_type["for_entity"], "Asset")
+        self.assertEqual(concept_type["for_entity"], "Concept")
+        self.assertEqual(len(TaskType.get_all_by(name="Concept")), 2)
+
+
+class TaskStatusTestCase(ApiDBTestCase):
+    """
+    The statuses a studio works with. get_or_create_status names them by
+    short name, so asking for a second long name of an existing short one
+    returns the first.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_task_status()
+        # Named WIP with short name wip, which is what makes the second
+        # test below get it back under a different long name.
+        self.generate_fixture_task_status_wip()
+        self.generate_fixture_task_status_to_review()
+
+    def test_get_status(self):
+        task_status = tasks_service.get_or_create_status(
+            "WIP", "wip", is_wip=True
+        )
+        self.assertEqual(task_status["name"], "WIP")
+
+    def test_get_wip_status(self):
+        task_status = tasks_service.get_or_create_status(
+            "Work In Progress", "wip", "#3273dc", is_wip=True
+        )
+        self.assertEqual(task_status["name"], "WIP")
+
+    def test_get_done_status(self):
+        task_status = tasks_service.get_or_create_status(
+            "Done", "done", "#22d160", is_done=True
+        )
+        self.assertEqual(task_status["name"], "Done")
+
+    def test_get_todo_status(self):
+        task_status = tasks_service.get_default_status()
+        self.assertEqual(task_status["is_default"], True)
+
+    def test_get_to_review_status(self):
+        task_status = tasks_service.get_to_review_status()
+        self.assertEqual(task_status["name"], "To review")
+
+
+class TaskPreviewRevisionTestCase(ApiDBTestCase):
+    """
+    The revision and position a preview takes on a task. A revision is
+    unique per task, positions are contiguous within one revision.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project()
+        self.generate_fixture_asset()
+        self.generate_fixture_department()
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status()
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
+        self.generate_fixture_task()
+        self.task_id = str(self.task.id)
+
     def test_get_next_position(self):
         self.generate_fixture_preview_file(revision=1)
         self.generate_fixture_preview_file(revision=2)
@@ -671,40 +743,3 @@ class TaskServiceTestCase(ApiDBTestCase):
         tasks_service.check_revision_is_unique_for_task(
             str(self.task.id), revision=1
         )
-
-
-class GetOrCreateTaskTypeTestCase(ApiDBTestCase):
-    def setUp(self):
-        super().setUp()
-        self.department = tasks_service.get_or_create_department(
-            "Concept", "#8D6E63"
-        )
-
-    def test_create_when_missing(self):
-        task_type = tasks_service.get_or_create_task_type(
-            self.department, "Concept", "#8D6E63", 1
-        )
-        self.assertIsNotNone(task_type["id"])
-        self.assertEqual(task_type["for_entity"], "Asset")
-
-    def test_return_existing_with_same_name_and_entity(self):
-        first = tasks_service.get_or_create_task_type(
-            self.department, "Concept", "#8D6E63", 1
-        )
-        second = tasks_service.get_or_create_task_type(
-            self.department, "Concept", "#8D6E63", 1
-        )
-        self.assertEqual(first["id"], second["id"])
-        self.assertEqual(len(TaskType.get_all_by(name="Concept")), 1)
-
-    def test_same_name_different_for_entity_coexist(self):
-        asset_type = tasks_service.get_or_create_task_type(
-            self.department, "Concept", "#8D6E63", 1
-        )
-        concept_type = tasks_service.get_or_create_task_type(
-            self.department, "Concept", "#8D6E63", 1, for_entity="Concept"
-        )
-        self.assertNotEqual(asset_type["id"], concept_type["id"])
-        self.assertEqual(asset_type["for_entity"], "Asset")
-        self.assertEqual(concept_type["for_entity"], "Concept")
-        self.assertEqual(len(TaskType.get_all_by(name="Concept")), 2)
