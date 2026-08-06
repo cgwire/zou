@@ -200,6 +200,49 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         self.assertEqual(cast_in[0]["sequence_name"], self.sequence.name)
         self.assertEqual(cast_in[0]["episode_name"], self.episode.name)
 
+    def test_get_cast_in_is_ordered(self):
+        """
+        Where an asset is cast: the shots first, ordered by episode, then
+        sequence, then shot name, and the assets after them, ordered by
+        asset type then asset name. Both halves are built in the order that
+        disagrees with the answer, so the ordering has to do the work.
+        """
+        character_id = str(self.asset_character.id)
+        cast = [{"asset_id": character_id, "nb_occurences": 1}]
+
+        # generate_fixture_shot and generate_fixture_asset both repoint the
+        # attribute they name, hence the locals.
+        late_shot = self.shot
+        early_shot = self.generate_fixture_shot("A01")
+        for shot in [late_shot, early_shot]:
+            breakdown_service.update_casting(shot.id, cast)
+
+        late_asset = self.asset
+        early_asset = self.generate_fixture_asset(
+            "Forest", "", str(self.asset_type_environment.id)
+        )
+        for asset in [late_asset, early_asset]:
+            breakdown_service.update_casting(asset.id, cast)
+
+        cast_in = breakdown_service.get_cast_in(character_id)
+
+        self.assertEqual(
+            [
+                entry.get("shot_name")
+                for entry in cast_in
+                if "shot_id" in entry
+            ],
+            [early_shot.name, late_shot.name],
+        )
+        self.assertEqual(
+            [
+                (entry["asset_type_name"], entry["asset_name"])
+                for entry in cast_in
+                if "asset_id" in entry
+            ],
+            [("Environment", early_asset.name), ("Props", late_asset.name)],
+        )
+
     def test_update_casting_event_payload_diff(self):
         """
         casting-update events must include added_asset_ids and
