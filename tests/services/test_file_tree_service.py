@@ -140,93 +140,83 @@ class FileTreeTestCase(ApiDBTestCase):
         )
         self.assertEqual(template, tree["working"]["folder_path"]["sequence"])
 
-    def test_get_folder_from_datatype_project(self):
-        path = file_tree_service.get_folder_from_datatype(
-            "Project", self.shot.serialize(), self.shot_task.serialize()
-        )
-        self.assertEqual(path, self.project.name)
-
-    def test_get_folder_from_datatype_shot(self):
-        path = file_tree_service.get_folder_from_datatype(
-            "Shot", self.shot.serialize(), self.shot_task.serialize()
-        )
-        self.assertEqual(path, self.shot.name)
-
-    def test_get_folder_from_datatype_sequence_shot(self):
-        path = file_tree_service.get_folder_from_datatype(
-            "Sequence", self.shot.serialize(), self.shot_task.serialize()
-        )
-        self.assertEqual(path, self.sequence.name)
-
-    def test_get_folder_from_datatype_sequence_sequence(self):
-        path = file_tree_service.get_folder_from_datatype(
-            "Sequence", self.sequence.serialize(), self.shot_task.serialize()
-        )
-        self.assertEqual(path, self.sequence.name)
-
-    def test_get_folder_from_datatype_episode(self):
-        path = file_tree_service.get_folder_from_datatype(
-            "Episode", self.shot.serialize(), self.task.serialize()
-        )
-        self.assertEqual(path, "E01")
-        path = file_tree_service.get_folder_from_datatype(
-            "Episode", self.sequence.serialize(), self.task.serialize()
-        )
-        self.assertEqual(path, "E01")
-
-    def test_get_folder_from_datatype_entity(self):
-        path = file_tree_service.get_folder_from_datatype(
-            "Asset", self.asset.serialize(), self.task.serialize()
-        )
-        self.assertEqual(path, self.asset.name)
-
-    def test_get_folder_from_datatype_entity_type(self):
-        path = file_tree_service.get_folder_from_datatype(
-            "AssetType", self.asset.serialize(), self.task.serialize()
-        )
-        self.assertEqual(path, self.asset_type.name)
-
-    def test_get_folder_from_datatype_department(self):
-        path = file_tree_service.get_folder_from_datatype(
-            "Department", self.asset.serialize(), self.task.serialize()
-        )
-        self.assertEqual(path, self.department.name)
-
-    def test_get_folder_from_datatype_task(self):
-        path = file_tree_service.get_folder_from_datatype(
-            "Task", self.asset.serialize(), self.task.serialize()
-        )
-        self.assertEqual(path, self.task.name)
-
-    def test_get_folder_from_datatype_task_type(self):
-        path = file_tree_service.get_folder_from_datatype(
-            "TaskType", self.asset.serialize(), task=self.task.serialize()
-        )
-        self.assertEqual(path, self.task_type.name)
-        path = file_tree_service.get_folder_from_datatype(
-            "TaskType",
-            self.asset.serialize(),
-            task_type=self.task_type.serialize(),
-        )
-        self.assertEqual(path, self.task_type.name)
-
-    def test_get_folder_from_datatype_software(self):
-        path = file_tree_service.get_folder_from_datatype(
-            "Software",
-            self.asset.serialize(),
-            self.task.serialize(),
-            software=self.software.serialize(),
-        )
-        self.assertEqual(path, "Blender")
-
-    def test_get_folder_from_datatype_output_type(self):
-        path = file_tree_service.get_folder_from_datatype(
-            "OutputType",
-            self.asset.serialize(),
-            self.task.serialize(),
-            output_type=self.output_type_cache,
-        )
-        self.assertEqual(path, "cache")
+    def test_get_folder_from_datatype(self):
+        """
+        The dispatch every file tree template rests on: one row per token the
+        templates accept, so a token absent from this table is a token
+        nothing exercises.
+        """
+        shot = self.shot.serialize()
+        sequence = self.sequence.serialize()
+        asset = self.asset.serialize()
+        task = self.task.serialize()
+        shot_task = self.shot_task.serialize()
+        cases = [
+            (
+                "Project",
+                {"entity": shot, "task": shot_task},
+                self.project.name,
+            ),
+            ("Shot", {"entity": shot, "task": shot_task}, self.shot.name),
+            (
+                "Sequence",
+                {"entity": shot, "task": shot_task},
+                self.sequence.name,
+            ),
+            (
+                "Sequence",
+                {"entity": sequence, "task": shot_task},
+                self.sequence.name,
+            ),
+            ("Episode", {"entity": shot, "task": task}, "E01"),
+            ("Episode", {"entity": sequence, "task": task}, "E01"),
+            ("Asset", {"entity": asset, "task": task}, self.asset.name),
+            (
+                "AssetType",
+                {"entity": asset, "task": task},
+                self.asset_type.name,
+            ),
+            (
+                "Department",
+                {"entity": asset, "task": task},
+                self.department.name,
+            ),
+            ("Task", {"entity": asset, "task": task}, self.task.name),
+            ("TaskType", {"entity": asset, "task": task}, self.task_type.name),
+            (
+                "TaskType",
+                {"entity": asset, "task_type": self.task_type.serialize()},
+                self.task_type.name,
+            ),
+            (
+                "Software",
+                {"entity": asset, "software": self.software.serialize()},
+                "Blender",
+            ),
+            (
+                "OutputType",
+                {"entity": asset, "output_type": self.output_type_cache},
+                "cache",
+            ),
+            ("TemporalEntity", {"entity": shot}, self.shot.name),
+            ("TemporalEntityType", {"entity": shot}, "shot"),
+            ("Scene", {"entity": None}, ""),
+            ("Instance", {"asset_instance": None}, ""),
+            ("Representation", {"representation": "obj"}, "obj"),
+            ("Name", {"name": "main"}, "main"),
+            ("OutputFile", {"name": "main"}, "main"),
+            ("WorkingFile", {"name": "main"}, "main"),
+            ("Version", {"revision": 7}, "007"),
+            ("Revision", {"revision": 7}, "007"),
+        ]
+        for datatype, kwargs, expected in cases:
+            with self.subTest(datatype=datatype, kwargs=sorted(kwargs)):
+                self.assertEqual(
+                    file_tree_service.get_folder_from_datatype(
+                        datatype, **kwargs
+                    ),
+                    expected,
+                )
 
     def test_get_folder_raise_exception(self):
         self.assertRaises(
@@ -374,8 +364,7 @@ class FileTreeTestCase(ApiDBTestCase):
         )
         self.assertEqual(
             file_name,
-            "cosmos_landromat_s01_p01_animation_cache_main"
-            + "_tree_0001_v003",
+            "cosmos_landromat_s01_p01_animation_cache_main" "_tree_0001_v003",
         )
 
     def test_get_folder_path_scene_asset_instance(self):
@@ -406,7 +395,7 @@ class FileTreeTestCase(ApiDBTestCase):
 
         self.assertEqual(
             file_name,
-            "cosmos_landromat_s01_sc01_animation_cache_main_" "tree_0001_v003",
+            "cosmos_landromat_s01_sc01_animation_cache_main_tree_0001_v003",
         )
 
     def test_get_folder_path_asset_asset_instance(self):
