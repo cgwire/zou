@@ -7,7 +7,8 @@ from tests.base import ApiDBTestCase
 from zou.app.models.day_off import DayOff
 from zou.app.models.person import Person
 from zou.app.stores import auth_tokens_store
-from zou.app.utils import auth
+from zou.app.services import tasks_service
+from zou.app.utils import auth, fields
 
 
 class PersonRoutesTestCase(ApiDBTestCase):
@@ -169,23 +170,45 @@ class PersonRoutesTestCase(ApiDBTestCase):
 
     # --- Quota shots ---
 
-    def test_get_person_quota_shots_month(self):
-        result = self.get(
-            f"/data/persons/{self.person_id}" f"/quota-shots/month/2024/06"
+    def test_the_quota_shot_listings_each_hold_their_own_period(self):
+        """
+        The shots that counted towards a quota in a period, read through the
+        month, week and day the shot belongs to, then through neighbouring
+        periods that must not carry it.
+        """
+        self.shot.update({"nb_frames": 100})
+        tasks_service.assign_task(str(self.shot_task.id), self.person_id)
+        self.shot_task.update(
+            {"end_date": fields.get_date_object("2024-06-04")}
         )
-        self.assertIsInstance(result, list)
 
-    def test_get_person_quota_shots_week(self):
-        result = self.get(
-            f"/data/persons/{self.person_id}" f"/quota-shots/week/2024/23"
+        # The listing is scoped to a production and a task type: without
+        # both the query filters on a null project and finds nothing.
+        scope = (
+            f"?project_id={self.shot_task.project_id}"
+            f"&task_type_id={self.shot_task.task_type_id}"
         )
-        self.assertIsInstance(result, list)
-
-    def test_get_person_quota_shots_day(self):
-        result = self.get(
-            f"/data/persons/{self.person_id}" f"/quota-shots/day/2024/06/04"
-        )
-        self.assertIsInstance(result, list)
+        base = f"/data/persons/{self.person_id}/quota-shots"
+        # 2024-06-04 is a Tuesday, in ISO week 23.
+        holds = {
+            "its month": f"{base}/month/2024/06{scope}",
+            "its week": f"{base}/week/2024/23{scope}",
+            "its day": f"{base}/day/2024/06/04{scope}",
+        }
+        misses = {
+            "the month before": f"{base}/month/2024/05{scope}",
+            "the week before": f"{base}/week/2024/22{scope}",
+            "the day before": f"{base}/day/2024/06/03{scope}",
+        }
+        for period, path in holds.items():
+            with self.subTest(holds=period):
+                self.assertEqual(
+                    [shot["id"] for shot in self.get(path)],
+                    [str(self.shot.id)],
+                )
+        for period, path in misses.items():
+            with self.subTest(misses=period):
+                self.assertEqual(self.get(path), [])
 
     # --- Actions ---
 
