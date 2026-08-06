@@ -5,6 +5,16 @@ from zou.app.utils import fields
 
 
 class ProjectMetadataRouteTestCase(ApiDBTestCase):
+
+    def descriptors_path(self, descriptor=None):
+        """
+        The metadata descriptor list of the production, or one of them.
+        """
+        path = f"data/projects/{self.project_id}/metadata-descriptors"
+        if descriptor is not None:
+            path += f"/{descriptor['id']}"
+        return path
+
     def setUp(self):
         super().setUp()
 
@@ -16,7 +26,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
 
     def test_add_project_metadata_descriptor(self):
         descriptor = self.post(
-            f"data/projects/{self.project_id}/metadata-descriptors",
+            self.descriptors_path(),
             {
                 "entity_type": "Project",
                 "name": "Delivery code",
@@ -30,21 +40,19 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
             {"data": {"delivery_code": "X-12"}},
         )
         self.put(
-            f"data/projects/{self.project_id}/metadata-descriptors/{descriptor['id']}",
+            self.descriptors_path(descriptor),
             {"name": "Ship code", "data_type": "string"},
         )
         project = self.get(f"data/projects/{self.project_id}")
         self.assertEqual(project["data"].get("ship_code"), "X-12")
         self.assertIsNone((project.get("data") or {}).get("delivery_code"))
-        self.delete(
-            f"data/projects/{self.project_id}/metadata-descriptors/{descriptor['id']}"
-        )
+        self.delete(self.descriptors_path(descriptor))
         project = self.get(f"data/projects/{self.project_id}")
         self.assertIsNone((project.get("data") or {}).get("ship_code"))
 
     def test_add_date_metadata_descriptor(self):
         descriptor = self.post(
-            f"data/projects/{self.project_id}/metadata-descriptors",
+            self.descriptors_path(),
             {
                 "entity_type": "Asset",
                 "name": "Due date",
@@ -55,7 +63,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
 
     def test_add_url_metadata_descriptor(self):
         descriptor = self.post(
-            f"data/projects/{self.project_id}/metadata-descriptors",
+            self.descriptors_path(),
             {
                 "entity_type": "Asset",
                 "name": "Brief link",
@@ -66,7 +74,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
 
     def test_add_textarea_metadata_descriptor(self):
         descriptor = self.post(
-            f"data/projects/{self.project_id}/metadata-descriptors",
+            self.descriptors_path(),
             {
                 "entity_type": "Asset",
                 "name": "Notes",
@@ -77,7 +85,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
 
     def test_add_person_metadata_descriptor(self):
         descriptor = self.post(
-            f"data/projects/{self.project_id}/metadata-descriptors",
+            self.descriptors_path(),
             {
                 "entity_type": "Asset",
                 "name": "Reviewer",
@@ -177,7 +185,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         # A Project descriptor on an open project and one on a closed
         # project: only the open one is copied onto a new project.
         self.post(
-            f"data/projects/{self.project_id}/metadata-descriptors",
+            self.descriptors_path(),
             {
                 "entity_type": "Project",
                 "name": "Delivery code",
@@ -202,7 +210,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
 
     def test_add_asset_metadata_descriptor(self):
         descriptor = self.post(
-            f"data/projects/{self.project_id}/metadata-descriptors",
+            self.descriptors_path(),
             {
                 "entity_type": "Asset",
                 "name": "environment type",
@@ -210,11 +218,9 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
                 "choices": ["indoor", "outdoor"],
             },
         )
-        descriptor = self.get(
-            f"data/projects/{self.project_id}/metadata-descriptors/{descriptor['id']}"
-        )
+        descriptor = self.get(self.descriptors_path(descriptor))
         descriptor = self.post(
-            f"data/projects/{self.project_id}/metadata-descriptors",
+            self.descriptors_path(),
             {
                 "entity_type": "Shot",
                 "name": "Contractor",
@@ -223,7 +229,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
             },
         )
         descriptors = self.get(
-            f"data/projects/{self.project_id}/metadata-descriptors",
+            self.descriptors_path(),
         )
         self.assertEqual(len(descriptors), 2)
         self.assertEqual(descriptors[0]["id"], descriptor["id"])
@@ -241,7 +247,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         self.generate_fixture_user_manager()
         self.log_in_manager()
         self.post(
-            f"data/projects/{self.project_id}/metadata-descriptors",
+            self.descriptors_path(),
             {
                 "entity_type": "Asset",
                 "name": "environment type",
@@ -253,7 +259,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
 
     def test_update_metadata_descriptor(self):
         descriptor = self.post(
-            f"data/projects/{self.project_id}/metadata-descriptors",
+            self.descriptors_path(),
             {
                 "entity_type": "Asset",
                 "name": "Contractor",
@@ -264,12 +270,10 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         self.asset.update({"data": {"contractor": "contractor 1"}})
         asset = self.get(f"data/assets/{self.asset_id}")
         self.put(
-            f"data/projects/{self.project_id}/metadata-descriptors/{descriptor['id']}",
+            self.descriptors_path(descriptor),
             {"name": "Team", "data_type": "list"},
         )
-        descriptors = self.get(
-            f"data/projects/{self.project_id}/metadata-descriptors"
-        )
+        descriptors = self.get(self.descriptors_path())
         self.assertEqual(len(descriptors), 1)
         asset = self.get(f"data/entities/{self.asset_id}")
         self.assertEqual(asset["data"].get("team"), "contractor 1")
@@ -281,7 +285,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         self.generate_fixture_user_manager()
         self.log_in_manager()
         self.put(
-            f"data/projects/{self.project_id}/metadata-descriptors/{descriptor['id']}",
+            self.descriptors_path(descriptor),
             {"name": "Team", "data_type": "list"},
             403,
         )
@@ -291,12 +295,8 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
             self.project_id, "Asset", "Contractor", "string", [], False
         )
         self.asset.update({"data": {"contractor": "contractor 1"}})
-        self.delete(
-            f"data/projects/{self.project_id}/metadata-descriptors/{descriptor['id']}"
-        )
-        descriptors = self.get(
-            f"data/projects/{self.project_id}/metadata-descriptors"
-        )
+        self.delete(self.descriptors_path(descriptor))
+        descriptors = self.get(self.descriptors_path())
         self.assertEqual(len(descriptors), 0)
         asset = self.get(f"data/assets/{self.asset_id}")
         self.assertFalse("contractor" in asset["data"])
@@ -308,13 +308,13 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         self.generate_fixture_user_manager()
         self.log_in_manager()
         self.delete(
-            f"data/projects/{self.project_id}/metadata-descriptors/{descriptor['id']}",
+            self.descriptors_path(descriptor),
             403,
         )
 
     def post_task_descriptor(self, task_type_id, name="Render layer"):
         return self.post(
-            f"data/projects/{self.project_id}/metadata-descriptors",
+            self.descriptors_path(),
             {
                 "entity_type": "Task",
                 "task_type_id": task_type_id,
@@ -335,7 +335,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         other = self.post_task_descriptor(str(self.task_type_modeling.id))
         self.assertEqual(other["field_name"], "render_layer")
         self.post(
-            f"data/projects/{self.project_id}/metadata-descriptors",
+            self.descriptors_path(),
             {
                 "entity_type": "Task",
                 "task_type_id": task_type_id,
@@ -356,7 +356,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
     def test_task_metadata_descriptor_requires_valid_task_type(self):
         self.generate_fixture_task()
         self.post(
-            f"data/projects/{self.project_id}/metadata-descriptors",
+            self.descriptors_path(),
             {
                 "entity_type": "Task",
                 "name": "Render layer",
@@ -365,7 +365,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
             400,
         )
         self.post(
-            f"data/projects/{self.project_id}/metadata-descriptors",
+            self.descriptors_path(),
             {
                 "entity_type": "Task",
                 "task_type_id": str(fields.gen_uuid()),
@@ -375,7 +375,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
             400,
         )
         self.post(
-            f"data/projects/{self.project_id}/metadata-descriptors",
+            self.descriptors_path(),
             {
                 "entity_type": "Asset",
                 "task_type_id": str(self.task_type.id),
@@ -408,7 +408,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
             f"data/tasks/{other_task_id}", {"data": {"render_layer": "fg"}}
         )
         self.put(
-            f"data/projects/{self.project_id}/metadata-descriptors/{descriptor['id']}",
+            self.descriptors_path(descriptor),
             {"name": "Layer", "data_type": "string"},
         )
         task = self.get(f"data/tasks/{task_id}")
@@ -417,9 +417,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         # The same field on another task type is left untouched.
         other_task_data = self.get(f"data/tasks/{other_task_id}")["data"]
         self.assertEqual(other_task_data.get("render_layer"), "fg")
-        self.delete(
-            f"data/projects/{self.project_id}/metadata-descriptors/{descriptor['id']}"
-        )
+        self.delete(self.descriptors_path(descriptor))
         task = self.get(f"data/tasks/{task_id}")
         self.assertNotIn("layer", task["data"] or {})
         other_task_data = self.get(f"data/tasks/{other_task_id}")["data"]
@@ -427,7 +425,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
 
     def _new_descriptor(self, name):
         return self.post(
-            f"data/projects/{self.project_id}/metadata-descriptors",
+            self.descriptors_path(),
             {"entity_type": "Asset", "name": name, "data_type": "string"},
         )
 

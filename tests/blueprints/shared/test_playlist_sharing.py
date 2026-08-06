@@ -15,6 +15,22 @@ class PlaylistSharingTestCase(ApiDBTestCase):
     positions that task. Holds no test of its own.
     """
 
+    def share_path(self, token=None, suffix=""):
+        """
+        The manager side of a share link: the list, or one link, or an
+        action on it.
+        """
+        path = f"/data/playlists/{self.playlist['id']}/share"
+        if token is not None:
+            path += f"/{token}"
+        return path + suffix
+
+    def shared_path(self, token, suffix=""):
+        """
+        The public side, the one the viewer reaches with the token.
+        """
+        return f"/shared/playlists/{token}{suffix}"
+
     def setUp(self):
         super().setUp()
         self.generate_fixture_project()
@@ -53,7 +69,7 @@ class ShareLinkTestCase(PlaylistSharingTestCase):
 
     def test_create_share_link(self):
         result = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {"can_comment": True},
             201,
         )
@@ -63,11 +79,11 @@ class ShareLinkTestCase(PlaylistSharingTestCase):
 
     def test_list_share_links(self):
         self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {},
             201,
         )
-        result = self.get(f"/data/playlists/{self.playlist['id']}/share")
+        result = self.get(self.share_path())
         self.assertEqual(len(result), 1)
 
     def test_share_link_routes_check_project_access(self):
@@ -77,7 +93,7 @@ class ShareLinkTestCase(PlaylistSharingTestCase):
         (cross-project IDOR).
         """
         link = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {"can_comment": True},
             201,
         )
@@ -86,14 +102,14 @@ class ShareLinkTestCase(PlaylistSharingTestCase):
         self.log_out()
         self.log_in_manager()
 
-        self.get(f"/data/playlists/{self.playlist['id']}/share", 403)
+        self.get(self.share_path(), 403)
         self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {"can_comment": True},
             403,
         )
         self.delete(
-            f"/data/playlists/{self.playlist['id']}/share/{link['token']}",
+            self.share_path(link["token"]),
             403,
         )
 
@@ -113,7 +129,7 @@ class ShareLinkTestCase(PlaylistSharingTestCase):
         ).serialize()
 
         link = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {},
             201,
         )
@@ -132,14 +148,14 @@ class ShareLinkTestCase(PlaylistSharingTestCase):
 
         plaintext = "topsecret123"
         result = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {"password": plaintext},
             201,
         )
         self.assertNotIn("password", result)
         self.assertTrue(result.get("has_password"))
 
-        listing = self.get(f"/data/playlists/{self.playlist['id']}/share")
+        listing = self.get(self.share_path())
         self.assertEqual(len(listing), 1)
         self.assertNotIn("password", listing[0])
         self.assertTrue(listing[0].get("has_password"))
@@ -156,7 +172,7 @@ class ShareLinkTestCase(PlaylistSharingTestCase):
         """
         plaintext = "topsecret123"
         result = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {"password": plaintext},
             201,
         )
@@ -168,15 +184,15 @@ class ShareLinkTestCase(PlaylistSharingTestCase):
 
     def test_revoke_share_link(self):
         link = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {},
             201,
         )
         self.delete(
-            f"/data/playlists/{self.playlist['id']}/share/{link['token']}",
+            self.share_path(link["token"]),
             200,
         )
-        result = self.get(f"/data/playlists/{self.playlist['id']}/share")
+        result = self.get(self.share_path())
         self.assertEqual(len(result), 0)
 
     def test_invite_share_link(self):
@@ -194,7 +210,7 @@ class ShareLinkTestCase(PlaylistSharingTestCase):
             role="client",
         )
         link = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {"can_comment": True},
             201,
         )
@@ -203,7 +219,7 @@ class ShareLinkTestCase(PlaylistSharingTestCase):
             "zou.app.services.emails_service.send_share_invitation"
         ) as send_mock:
             result = self.post(
-                f"/data/playlists/{self.playlist['id']}/share/{link['token']}/invite",
+                self.share_path(link["token"], "/invite"),
                 {
                     "emails": [
                         "alice@example.com",
@@ -254,7 +270,7 @@ class ShareLinkTestCase(PlaylistSharingTestCase):
         from unittest.mock import patch
 
         link = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {"can_comment": True},
             201,
         )
@@ -263,7 +279,7 @@ class ShareLinkTestCase(PlaylistSharingTestCase):
             "zou.app.services.emails_service.send_share_invitation"
         ) as send_mock:
             self.post(
-                f"/data/playlists/{self.playlist['id']}/share/{link['token']}/invite",
+                self.share_path(link["token"], "/invite"),
                 {"emails": ["not-an-email"]},
                 400,
             )
@@ -278,12 +294,12 @@ class SharedPlaylistReadTestCase(PlaylistSharingTestCase):
 
     def test_get_shared_playlist(self):
         link = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {},
             201,
         )
         self.log_out()
-        result = self.get(f"/shared/playlists/{link['token']}")
+        result = self.get(self.shared_path(link["token"]))
         self.assertEqual(result["id"], self.playlist["id"])
 
     def test_get_shared_playlist_invalid_token(self):
@@ -292,25 +308,25 @@ class SharedPlaylistReadTestCase(PlaylistSharingTestCase):
 
     def test_get_shared_playlist_revoked(self):
         link = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {},
             201,
         )
         self.delete(
-            f"/data/playlists/{self.playlist['id']}/share/{link['token']}",
+            self.share_path(link["token"]),
             200,
         )
         self.log_out()
-        self.get(f"/shared/playlists/{link['token']}", 404)
+        self.get(self.shared_path(link["token"]), 404)
 
     def test_get_shared_playlist_context(self):
         link = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {},
             201,
         )
         self.log_out()
-        result = self.get(f"/shared/playlists/{link['token']}/context")
+        result = self.get(self.shared_path(link["token"], "/context"))
         self.assertIn("project", result)
         self.assertIn("task_types", result)
         self.assertIn("task_statuses", result)
@@ -324,13 +340,13 @@ class GuestTestCase(PlaylistSharingTestCase):
 
     def test_create_guest(self):
         link = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {},
             201,
         )
         self.log_out()
         guest = self.post(
-            f"/shared/playlists/{link['token']}/guest",
+            self.shared_path(link["token"], "/guest"),
             {"first_name": "John", "last_name": "Doe"},
             201,
         )
@@ -345,7 +361,7 @@ class GuestTestCase(PlaylistSharingTestCase):
         first comment. Without this the comment renders blank.
         """
         link = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {},
             201,
         )
@@ -362,7 +378,7 @@ class GuestTestCase(PlaylistSharingTestCase):
         events.register("person:new", "guest_person_new_sink", _Sink())
         try:
             guest = self.post(
-                f"/shared/playlists/{link['token']}/guest",
+                self.shared_path(link["token"], "/guest"),
                 {"first_name": "Lena"},
                 201,
             )
@@ -373,18 +389,18 @@ class GuestTestCase(PlaylistSharingTestCase):
 
     def test_reuse_guest(self):
         link = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {},
             201,
         )
         self.log_out()
         guest = self.post(
-            f"/shared/playlists/{link['token']}/guest",
+            self.shared_path(link["token"], "/guest"),
             {"first_name": "John"},
             201,
         )
         guest2 = self.post(
-            f"/shared/playlists/{link['token']}/guest",
+            self.shared_path(link["token"], "/guest"),
             {"first_name": "Jane", "guest_id": guest["id"]},
             200,
         )
@@ -397,12 +413,12 @@ class GuestTestCase(PlaylistSharingTestCase):
         could impersonate any reviewer who used the same name on link A.
         """
         link_a = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {},
             201,
         )
         link_b = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {},
             201,
         )
@@ -425,12 +441,12 @@ class GuestTestCase(PlaylistSharingTestCase):
         the server must ignore it and create a fresh guest instead.
         """
         link_a = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {},
             201,
         )
         link_b = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {},
             201,
         )
@@ -457,18 +473,18 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
 
     def test_guest_comment(self):
         link = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {"can_comment": True},
             201,
         )
         self.log_out()
         guest = self.post(
-            f"/shared/playlists/{link['token']}/guest",
+            self.shared_path(link["token"], "/guest"),
             {"first_name": "Reviewer"},
             201,
         )
         comment = self.post(
-            f"/shared/playlists/{link['token']}/comments",
+            self.shared_path(link["token"], "/comments"),
             {
                 "guest_id": guest["id"],
                 "task_id": str(self.task.id),
@@ -485,12 +501,12 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
         comment via share link B.
         """
         link_a = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {"can_comment": True},
             201,
         )
         link_b = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {"can_comment": True},
             201,
         )
@@ -540,18 +556,18 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
             }
         )
         link = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {"can_comment": True},
             201,
         )
         self.log_out()
         guest = self.post(
-            f"/shared/playlists/{link['token']}/guest",
+            self.shared_path(link["token"], "/guest"),
             {"first_name": "Reviewer"},
             201,
         )
         self.post(
-            f"/shared/playlists/{link['token']}/comments",
+            self.shared_path(link["token"], "/comments"),
             {
                 "guest_id": guest["id"],
                 "task_id": str(self.task.id),
@@ -576,18 +592,18 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
             entity_id=self.asset.id,
         )
         link = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {"can_comment": True},
             201,
         )
         self.log_out()
         guest = self.post(
-            f"/shared/playlists/{link['token']}/guest",
+            self.shared_path(link["token"], "/guest"),
             {"first_name": "Reviewer"},
             201,
         )
         self.post(
-            f"/shared/playlists/{link['token']}/comments",
+            self.shared_path(link["token"], "/comments"),
             {
                 "guest_id": guest["id"],
                 "task_id": str(foreign_task.id),
@@ -610,18 +626,18 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
             is_client_allowed=False,
         )
         link = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {"can_comment": True},
             201,
         )
         self.log_out()
         guest = self.post(
-            f"/shared/playlists/{link['token']}/guest",
+            self.shared_path(link["token"], "/guest"),
             {"first_name": "Reviewer"},
             201,
         )
         self.post(
-            f"/shared/playlists/{link['token']}/comments",
+            self.shared_path(link["token"], "/comments"),
             {
                 "guest_id": guest["id"],
                 "task_id": str(self.task.id),
@@ -633,18 +649,18 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
 
     def test_guest_comment_disabled(self):
         link = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {"can_comment": False},
             201,
         )
         self.log_out()
         guest = self.post(
-            f"/shared/playlists/{link['token']}/guest",
+            self.shared_path(link["token"], "/guest"),
             {"first_name": "Reviewer"},
             201,
         )
         self.post(
-            f"/shared/playlists/{link['token']}/comments",
+            self.shared_path(link["token"], "/comments"),
             {
                 "guest_id": guest["id"],
                 "task_id": str(self.task.id),
@@ -660,18 +676,18 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
         posted by that guest.
         """
         link = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {"can_comment": True},
             201,
         )
         self.log_out()
         guest = self.post(
-            f"/shared/playlists/{link['token']}/guest",
+            self.shared_path(link["token"], "/guest"),
             {"first_name": first_name},
             201,
         )
         comment = self.post(
-            f"/shared/playlists/{link['token']}/comments",
+            self.shared_path(link["token"], "/comments"),
             {
                 "guest_id": guest["id"],
                 "task_id": str(self.task.id),
@@ -712,7 +728,7 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
         """
         link, _, comment = self._guest_comment("Alice")
         other = self.post(
-            f"/shared/playlists/{link['token']}/guest",
+            self.shared_path(link["token"], "/guest"),
             {"first_name": "Bob"},
             201,
         )
@@ -730,8 +746,9 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
             os.path.join("thumbnails", "th01.png")
         )
         response = self.app.post(
-            f"/shared/playlists/{link['token']}"
-            f"/comments/{comment['id']}/attachments",
+            self.shared_path(
+                link["token"], f"/comments/{comment['id']}/attachments"
+            ),
             data={
                 "file": (open(fixture, "rb"), "th01.png"),
                 "guest_id": guest["id"],
@@ -768,7 +785,7 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
         """
         link, guest, comment = self._guest_comment()
         other_comment = self.post(
-            f"/shared/playlists/{link['token']}/comments",
+            self.shared_path(link["token"], "/comments"),
             {
                 "guest_id": guest["id"],
                 "task_id": str(self.task.id),
@@ -847,14 +864,15 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
         """
         preview_file, payload = self._attach_zip_preview_to_playlist()
         link = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {},
             201,
         )
         self.log_out()
         response = self.app.get(
-            f"/shared/playlists/{link['token']}"
-            f"/preview-files/{preview_file.id}/download"
+            self.shared_path(
+                link["token"], f"/preview-files/{preview_file.id}/download"
+            )
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data, payload)
@@ -884,14 +902,15 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
             person_id=self.person.id,
         )
         link = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {},
             201,
         )
         self.log_out()
         response = self.app.get(
-            f"/shared/playlists/{link['token']}"
-            f"/preview-files/{foreign.id}/download"
+            self.shared_path(
+                link["token"], f"/preview-files/{foreign.id}/download"
+            )
         )
         self.assertEqual(response.status_code, 403)
 
@@ -924,14 +943,15 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
         self.addCleanup(file_store.remove_file, "previews", str(sibling.id))
 
         link = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {},
             201,
         )
         self.log_out()
         response = self.app.get(
-            f"/shared/playlists/{link['token']}"
-            f"/preview-files/{sibling.id}/download"
+            self.shared_path(
+                link["token"], f"/preview-files/{sibling.id}/download"
+            )
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data, sibling_payload)
@@ -952,14 +972,15 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
             person_id=self.person.id,
         )
         link = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {},
             201,
         )
         self.log_out()
         response = self.app.get(
-            f"/shared/playlists/{link['token']}"
-            f"/preview-files/{other_revision.id}/download"
+            self.shared_path(
+                link["token"], f"/preview-files/{other_revision.id}/download"
+            )
         )
         self.assertEqual(response.status_code, 403)
 
@@ -1013,14 +1034,16 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
         """
         preview_file, payload = self._attach_gif_preview_to_playlist()
         link = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {},
             201,
         )
         self.log_out()
         response = self.app.get(
-            f"/shared/playlists/{link['token']}"
-            f"/pictures/originals/preview-files/{preview_file.id}.gif"
+            self.shared_path(
+                link["token"],
+                f"/pictures/originals/preview-files/{preview_file.id}.gif",
+            )
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data, payload)
@@ -1040,14 +1063,16 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
             person_id=self.person.id,
         )
         link = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {},
             201,
         )
         self.log_out()
         response = self.app.get(
-            f"/shared/playlists/{link['token']}"
-            f"/pictures/originals/preview-files/{foreign.id}.gif"
+            self.shared_path(
+                link["token"],
+                f"/pictures/originals/preview-files/{foreign.id}.gif",
+            )
         )
         self.assertEqual(response.status_code, 403)
 
@@ -1058,14 +1083,16 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
         """
         preview_file, _ = self._attach_gif_preview_to_playlist()
         link = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {},
             201,
         )
         self.log_out()
         response = self.app.get(
-            f"/shared/playlists/{link['token']}"
-            f"/pictures/originals/preview-files/{preview_file.id}.exe"
+            self.shared_path(
+                link["token"],
+                f"/pictures/originals/preview-files/{preview_file.id}.exe",
+            )
         )
         self.assertEqual(response.status_code, 400)
 
@@ -1108,14 +1135,16 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
             }
         )
         link = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {},
             201,
         )
         self.log_out()
         response = self.app.get(
-            f"/shared/playlists/{link['token']}"
-            f"/pictures/originals/preview-files/{preview_file.id}.png"
+            self.shared_path(
+                link["token"],
+                f"/pictures/originals/preview-files/{preview_file.id}.png",
+            )
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data, payload)
@@ -1147,13 +1176,15 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
             }
         )
         link = self.post(
-            f"/data/playlists/{self.playlist['id']}/share",
+            self.share_path(),
             {},
             201,
         )
         self.log_out()
         response = self.app.get(
-            f"/shared/playlists/{link['token']}"
-            f"/pictures/originals/preview-files/{preview_file.id}.gif"
+            self.shared_path(
+                link["token"],
+                f"/pictures/originals/preview-files/{preview_file.id}.gif",
+            )
         )
         self.assertEqual(response.status_code, 404)
