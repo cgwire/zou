@@ -10,7 +10,12 @@ from zou.app.models.task import Task
 from zou.app.services import comments_service, tasks_service
 
 
-class CommentRoutesTestCase(ApiDBTestCase):
+class CommentTestCase(ApiDBTestCase):
+    """
+    One task with a first comment on it, plus a client to read it as.
+    Holds no test of its own.
+    """
+
     def setUp(self):
         super().setUp()
         self.generate_fixture_project()
@@ -27,6 +32,27 @@ class CommentRoutesTestCase(ApiDBTestCase):
             self.user["id"],
             "first comment",
         )
+
+    def _make_sibling_task(self):
+        """
+        Create a second task on the same asset with a different task type.
+        """
+        return Task.create(
+            name="Modeling task",
+            project_id=self.project.id,
+            task_type_id=self.task_type_modeling.id,
+            task_status_id=self.task_status.id,
+            entity_id=self.asset.id,
+            assignees=[self.person],
+            assigner_id=self.assigner.id,
+        )
+
+
+class CommentRoutesTestCase(CommentTestCase):
+    """
+    Posting a comment, in batch or one at a time, and the author each
+    read embeds.
+    """
 
     def test_comment_task(self):
         result = self.post(
@@ -106,6 +132,23 @@ class CommentRoutesTestCase(ApiDBTestCase):
         self.assertIn("asset note", asset_texts)
         self.assertIn("shot note", shot_texts)
 
+    def test_comment_many_tasks(self):
+        result = self.post(
+            f"/actions/projects/{self.project.id}/tasks/comment-many",
+            [
+                {
+                    "object_id": str(self.task.id),
+                    "task_status_id": str(self.task_status.id),
+                    "comment": "Batch comment",
+                }
+            ],
+        )
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["text"], "Batch comment")
+        comments = tasks_service.get_comments(str(self.task.id))
+        texts = [c["text"] for c in comments]
+        self.assertIn("Batch comment", texts)
+
     def test_get_comment_embeds_author(self):
         comment = self.get(f"/data/comments/{self.comment['id']}")
         self.assertEqual(comment["person"]["id"], comment["person_id"])
@@ -136,6 +179,43 @@ class CommentRoutesTestCase(ApiDBTestCase):
         )
         self.assertEqual(reply["person"]["id"], reply["person_id"])
         self.assertEqual(reply["person"]["full_name"], "John Did")
+
+    def test_reply_comment(self):
+        result = self.post(
+            f"/data/tasks/{self.task.id}"
+            f"/comments/{self.comment['id']}/reply",
+            {"text": "My reply"},
+            200,
+        )
+        self.assertIn("text", result)
+        comment = tasks_service.get_comment(self.comment["id"])
+        replies = comment.get("replies", [])
+        reply_texts = [r["text"] for r in replies]
+        self.assertIn("My reply", reply_texts)
+
+    def test_delete_reply_comment(self):
+        reply = comments_service.reply_comment(
+            self.comment["id"],
+            "Reply to delete",
+            person_id=str(self.user["id"]),
+        )
+        reply_id = reply["id"]
+        self.delete(
+            f"/data/tasks/{self.task.id}"
+            f"/comments/{self.comment['id']}/reply/{reply_id}",
+            200,
+        )
+        comment = tasks_service.get_comment(self.comment["id"])
+        reply_ids = [r["id"] for r in comment.get("replies", [])]
+        self.assertNotIn(reply_id, reply_ids)
+
+
+class ClientVisibleCommentTestCase(CommentTestCase):
+    """
+    What a client is shown of a comment. Studio authors and editors
+    are hidden from them, their own peers are not, and a comment
+    not flagged for_client does not reach them at all.
+    """
 
     def test_reply_author_hidden_from_client(self):
         """
@@ -336,60 +416,6 @@ class CommentRoutesTestCase(ApiDBTestCase):
         result = self.get(f"/data/comments/{comment['id']}")
         self.assertIsNone(result["editor_id"])
 
-    def test_reply_comment(self):
-        result = self.post(
-            f"/data/tasks/{self.task.id}"
-            f"/comments/{self.comment['id']}/reply",
-            {"text": "My reply"},
-            200,
-        )
-        self.assertIn("text", result)
-        comment = tasks_service.get_comment(self.comment["id"])
-        replies = comment.get("replies", [])
-        reply_texts = [r["text"] for r in replies]
-        self.assertIn("My reply", reply_texts)
-
-    def test_delete_reply_comment(self):
-        reply = comments_service.reply_comment(
-            self.comment["id"],
-            "Reply to delete",
-            person_id=str(self.user["id"]),
-        )
-        reply_id = reply["id"]
-        self.delete(
-            f"/data/tasks/{self.task.id}"
-            f"/comments/{self.comment['id']}/reply/{reply_id}",
-            200,
-        )
-        comment = tasks_service.get_comment(self.comment["id"])
-        reply_ids = [r["id"] for r in comment.get("replies", [])]
-        self.assertNotIn(reply_id, reply_ids)
-
-    def test_get_project_attachment_files(self):
-        result = self.get(f"/data/projects/{self.project.id}/attachment-files")
-        self.assertIsInstance(result, list)
-
-    def test_get_task_attachment_files(self):
-        result = self.get(f"/data/tasks/{self.task.id}/attachment-files")
-        self.assertIsInstance(result, list)
-
-    def test_comment_many_tasks(self):
-        result = self.post(
-            f"/actions/projects/{self.project.id}/tasks/comment-many",
-            [
-                {
-                    "object_id": str(self.task.id),
-                    "task_status_id": str(self.task_status.id),
-                    "comment": "Batch comment",
-                }
-            ],
-        )
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0]["text"], "Batch comment")
-        comments = tasks_service.get_comments(str(self.task.id))
-        texts = [c["text"] for c in comments]
-        self.assertIn("Batch comment", texts)
-
     def test_comment_without_for_client_hidden_from_client(self):
         """
         A manager-authored comment without for_client stays hidden from
@@ -423,19 +449,13 @@ class CommentRoutesTestCase(ApiDBTestCase):
         )
         self.assertFalse(result["for_client"])
 
-    def _make_sibling_task(self):
-        """
-        Create a second task on the same asset with a different task type.
-        """
-        return Task.create(
-            name="Modeling task",
-            project_id=self.project.id,
-            task_type_id=self.task_type_modeling.id,
-            task_status_id=self.task_status.id,
-            entity_id=self.asset.id,
-            assignees=[self.person],
-            assigner_id=self.assigner.id,
-        )
+
+class MoveCommentTestCase(CommentTestCase):
+    """
+    Moving a comment from one task to another. Both tasks must belong
+    to the same entity and the caller must manage the production;
+    the notifications and the two task statuses follow the move.
+    """
 
     def test_move_comment_between_tasks(self):
         sibling = self._make_sibling_task()
@@ -476,47 +496,6 @@ class CommentRoutesTestCase(ApiDBTestCase):
         attachments = AttachmentFile.get_all_by(comment_id=self.comment["id"])
         self.assertEqual(len(attachments), 1)
         self.assertEqual(attachments[0].name, "brief.pdf")
-
-    def test_delete_attachment_rejects_a_foreign_attachment(self):
-        # Deleting one's own comment attachment skips the project check, so
-        # the attachment has to belong to the named comment: otherwise
-        # pointing at one's own comment removes any attachment at all.
-        sibling = self._make_sibling_task()
-        other_comment = comments_service.new_comment(
-            sibling.id,
-            self.task_status.id,
-            self.person.id,
-            "another comment",
-        )
-        attachment = AttachmentFile.create(
-            name="brief.pdf",
-            size=0,
-            extension="pdf",
-            mimetype="application/pdf",
-            comment_id=other_comment["id"],
-        )
-        self.delete(
-            f"/data/tasks/{self.task.id}"
-            f"/comments/{self.comment['id']}"
-            f"/attachments/{attachment.id}",
-            403,
-        )
-        self.assertIsNotNone(AttachmentFile.get(attachment.id))
-
-    def test_delete_attachment_of_own_comment(self):
-        attachment = AttachmentFile.create(
-            name="brief.pdf",
-            size=0,
-            extension="pdf",
-            mimetype="application/pdf",
-            comment_id=self.comment["id"],
-        )
-        self.delete(
-            f"/data/tasks/{self.task.id}"
-            f"/comments/{self.comment['id']}"
-            f"/attachments/{attachment.id}"
-        )
-        self.assertIsNone(AttachmentFile.get(attachment.id))
 
     def test_move_comment_rebuilds_notifications(self):
         self.generate_fixture_user_manager()
@@ -628,6 +607,21 @@ class CommentRoutesTestCase(ApiDBTestCase):
         )
         self.assertEqual(response.status_code, 403)
 
+
+class CommentAttachmentTestCase(CommentTestCase):
+    """
+    The files hanging from a comment, and the checks that keep one
+    comment from reaching another's attachments.
+    """
+
+    def test_get_project_attachment_files(self):
+        result = self.get(f"/data/projects/{self.project.id}/attachment-files")
+        self.assertIsInstance(result, list)
+
+    def test_get_task_attachment_files(self):
+        result = self.get(f"/data/tasks/{self.task.id}/attachment-files")
+        self.assertIsInstance(result, list)
+
     def test_add_attachment_to_own_comment(self):
         path = (
             f"/actions/tasks/{self.task.id}"
@@ -665,3 +659,44 @@ class CommentRoutesTestCase(ApiDBTestCase):
         self.assertEqual(
             len(AttachmentFile.get_all_by(comment_id=other_comment["id"])), 0
         )
+
+    def test_delete_attachment_of_own_comment(self):
+        attachment = AttachmentFile.create(
+            name="brief.pdf",
+            size=0,
+            extension="pdf",
+            mimetype="application/pdf",
+            comment_id=self.comment["id"],
+        )
+        self.delete(
+            f"/data/tasks/{self.task.id}"
+            f"/comments/{self.comment['id']}"
+            f"/attachments/{attachment.id}"
+        )
+        self.assertIsNone(AttachmentFile.get(attachment.id))
+
+    def test_delete_attachment_rejects_a_foreign_attachment(self):
+        # Deleting one's own comment attachment skips the project check, so
+        # the attachment has to belong to the named comment: otherwise
+        # pointing at one's own comment removes any attachment at all.
+        sibling = self._make_sibling_task()
+        other_comment = comments_service.new_comment(
+            sibling.id,
+            self.task_status.id,
+            self.person.id,
+            "another comment",
+        )
+        attachment = AttachmentFile.create(
+            name="brief.pdf",
+            size=0,
+            extension="pdf",
+            mimetype="application/pdf",
+            comment_id=other_comment["id"],
+        )
+        self.delete(
+            f"/data/tasks/{self.task.id}"
+            f"/comments/{self.comment['id']}"
+            f"/attachments/{attachment.id}",
+            403,
+        )
+        self.assertIsNotNone(AttachmentFile.get(attachment.id))
