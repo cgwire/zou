@@ -55,7 +55,8 @@ def clear_entity_cache(entity_id):
     # their TTL; only the entity's own name is invalidated here.
     from zou.app.services import names_service
 
-    cache.cache.delete_memoized(get_entity, entity_id)
+    entity_id = str(entity_id)
+    cache.cache.delete_memoized(_get_entity_cached, entity_id)
     cache.cache.delete_memoized(names_service.get_full_entity_name, entity_id)
 
 
@@ -64,7 +65,7 @@ def clear_entity_type_cache(entity_type_id):
     Drop the memoized serializations of given entity type. The by-name
     lookups are flushed whole, since the name is not known here.
     """
-    cache.cache.delete_memoized(get_entity_type, entity_type_id)
+    cache.cache.delete_memoized(_get_entity_type_cached, str(entity_type_id))
     cache.cache.delete_memoized(get_entity_type_by_name)
     cache.cache.delete_memoized(get_entity_type_by_name_or_not_found)
 
@@ -91,14 +92,22 @@ def is_edit(entity):
 
 
 @cache.memoize_function(240)
+def _get_entity_type_cached(entity_type_id):
+    return base_service.get_instance(
+        EntityType, entity_type_id, EntityTypeNotFoundException
+    ).serialize()
+
+
 def get_entity_type(entity_type_id):
     """
     Return an entity type matching given id, as a dict. Raises an exception
     if nothing is found.
+
+    The id is normalised before it reaches the memoization, which keys on
+    the argument: callers hold it as a UUID read off a row as often as they
+    hold the string form, and the two must not be two cache entries.
     """
-    return base_service.get_instance(
-        EntityType, entity_type_id, EntityTypeNotFoundException
-    ).serialize()
+    return _get_entity_type_cached(str(entity_type_id))
 
 
 @cache.memoize_function(240)
@@ -134,14 +143,21 @@ def get_entity_raw(entity_id):
 
 
 @cache.memoize_function(120)
+def _get_entity_cached(entity_id):
+    return base_service.get_instance(
+        Entity, entity_id, EntityNotFoundException
+    ).serialize()
+
+
 def get_entity(entity_id):
     """
     Return an entity type matching given id, as a dict. Raises an exception if
     nothing is found.
+
+    The id is normalised before it reaches the memoization: see
+    get_entity_type.
     """
-    return base_service.get_instance(
-        Entity, entity_id, EntityNotFoundException
-    ).serialize()
+    return _get_entity_cached(str(entity_id))
 
 
 def update_entity_preview(entity_id, preview_file_id):
