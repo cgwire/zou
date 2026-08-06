@@ -970,21 +970,29 @@ def delete_entry(model_name, event_name, model):
     return delete
 
 
+def forward_local_event(event_name, data):
+    """
+    Forward an event of the source instance to the local broadcaster. What
+    this instance emitted itself comes back flagged and is dropped here,
+    otherwise the two instances would keep answering each other.
+    """
+    if data.get("sync", False):
+        return
+    data["sync"] = True
+    logger.info(f"Forward event: {event_name}")
+    project_id = data.get("project_id", None)
+    events.emit(event_name, data, persist=False, project_id=project_id)
+
+
 def forward_event(event_name):
     """
     Generate a function that takes data in argument and that forwards it as
     given event name to the local event brodcaster.
-    It's useful to generate callbacks for event listener.
+    It's useful to generate callbacks for event listener. Call
+    forward_local_event directly when the name is already known: this one
+    only binds it, it forwards nothing by itself.
     """
-
-    def forward(data):
-        if not data.get("sync", False):
-            data["sync"] = True
-            logger.info(f"Forward event: {event_name}")
-            project_id = data.get("project_id", None)
-            events.emit(event_name, data, persist=False, project_id=project_id)
-
-    return forward
+    return lambda data: forward_local_event(event_name, data)
 
 
 def forward_base_event(event_name, event_type, data):
@@ -1030,7 +1038,7 @@ def retrieve_preview_file(data):
         preview_file_id = data["preview_file_id"]
         preview_file = PreviewFile.get(preview_file_id)
         download_preview_from_another_instance(preview_file)
-        forward_event({"name": "preview-file:add-file", "data": data})
+        forward_local_event("preview-file:add-file", data)
         logger.info(f"Preview file and related downloaded: {preview_file_id}")
     except gazu.exception.RouteNotFoundException as e:
         logger.error(f"Route not found: {e}")
@@ -1052,9 +1060,7 @@ def retrieve_preview_background_file(data):
         download_preview_background_from_another_instance(
             preview_background_file
         )
-        forward_event(
-            {"name": "preview-background-file:add-file", "data": data}
-        )
+        forward_local_event("preview-background-file:add-file", data)
         logger.info(
             f"Preview background file and related downloaded: {preview_background_file_id}"
         )
@@ -1075,11 +1081,12 @@ def get_retrieve_thumbnail(model_name):
         if data.get("sync", False):
             return
         try:
-            instance_id = data["preview_file_id"]
+            # The thumbnail of a person is stored under the person id: the
+            # <model>:set-thumbnail events carry that id, never the id of a
+            # preview file.
+            instance_id = data[f"{model_name}_id"]
             download_thumbnail_from_another_instance(model_name, instance_id)
-            forward_event(
-                {"name": f"{model_name}:set-thumbnail", "data": data}
-            )
+            forward_local_event(f"{model_name}:set-thumbnail", data)
             logger.info(f"Thumbnail downloaded: {model_name} {instance_id}")
         except gazu.exception.RouteNotFoundException as e:
             logger.error(f"Route not found: {e}")
