@@ -109,25 +109,29 @@ class NewOutputFileTestCase(OutputFileTestCase):
             code,
         )
 
-    def test_new_output(self):
-        result = self.publish()
+    def test_publishing_twice_takes_the_next_revision(self):
+        """
+        The revision is chosen for the caller, and the file name carries it.
+        Publishing the same name again moves to the next one rather than
+        refusing or overwriting.
+        """
+        first = self.publish()
+        second = self.publish()
 
         self.assertEqual(
-            result["folder_path"],
-            "/simple/productions/export/cosmos_landromat/assets/props/tree/"
-            "shaders/texture",
+            [first["file_name"], second["file_name"]],
+            [f"{self.stem}_main_v001", f"{self.stem}_main_v002"],
         )
-        self.assertEqual(
-            result["file_name"],
-            "cosmos_landromat_props_tree_shaders_texture_main_v001",
-        )
-
-        output_file_id = result["id"]
-        output_file = self.get(f"/data/output-files/{output_file_id}")
-
-        self.assertEqual(output_file["comment"], "test working file publish")
-        self.assertEqual(output_file["revision"], 1)
-        self.assertEqual(output_file["source_file_id"], self.working_file_id)
+        for revision, published in [(1, first), (2, second)]:
+            self.assertEqual(published["folder_path"], self.folder)
+            output_file = self.get(f"/data/output-files/{published['id']}")
+            self.assertEqual(output_file["revision"], revision)
+            self.assertEqual(
+                output_file["comment"], "test working file publish"
+            )
+            self.assertEqual(
+                output_file["source_file_id"], self.working_file_id
+            )
 
     def test_the_payload_extras_shape_the_published_path(self):
         """
@@ -171,27 +175,6 @@ class NewOutputFileTestCase(OutputFileTestCase):
                 for key, value in expected.items():
                     self.assertEqual(output_file[key], value)
                 self.assertEqual(output_file["path"], path)
-
-    def test_new_output_again(self):
-        self.publish()
-        result = self.publish()
-
-        self.assertEqual(
-            result["folder_path"],
-            "/simple/productions/export/cosmos_landromat/assets/props/tree/"
-            "shaders/texture",
-        )
-        self.assertEqual(
-            result["file_name"],
-            "cosmos_landromat_props_tree_shaders_texture_main_v002",
-        )
-
-        output_file_id = result["id"]
-        output_file = self.get(f"/data/output-files/{output_file_id}")
-
-        self.assertEqual(output_file["comment"], "test working file publish")
-        self.assertEqual(output_file["revision"], 2)
-        self.assertEqual(output_file["source_file_id"], self.working_file_id)
 
     def test_new_output_revision_forced(self):
         result = self.publish(revision=66)

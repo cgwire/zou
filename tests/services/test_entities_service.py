@@ -77,34 +77,26 @@ class EntitiesServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(sequences), 3)
         self.assertEqual(len(sequences[0]["tasks"]), 1)
 
-    def test_get_entity_tasks_shot(self):
+    def assert_the_tasks_of_the_entity_are_listed(self, entity_id):
         """
-        Test get_entity_tasks for shot entity
+        The listing carries every task of that entity and nothing else,
+        whatever kind of entity it is.
         """
-        shot_entity = entities_service.get_entity(str(self.shot.id))
-        tasks = entities_service.get_entity_tasks(shot_entity)
+        entity = entities_service.get_entity(str(entity_id))
 
-        self.assertIsInstance(tasks, list)
+        tasks = entities_service.get_entity_tasks(entity)
+
         self.assertGreater(len(tasks), 0)
-        task = tasks[0]
-        self.assertIn("id", task)
-        self.assertIn("task_type_name", task)
-        self.assertIn("entity_id", task)
-        self.assertEqual(task["entity_id"], str(self.shot.id))
+        for task in tasks:
+            self.assertEqual(task["entity_id"], str(entity_id))
+            self.assertIn("task_type_name", task)
+            self.assertIn("id", task)
+
+    def test_get_entity_tasks_shot(self):
+        self.assert_the_tasks_of_the_entity_are_listed(self.shot.id)
 
     def test_get_entity_tasks_asset(self):
-        """
-        Test get_entity_tasks for asset entity
-        """
-        asset_entity = entities_service.get_entity(str(self.asset.id))
-        tasks = entities_service.get_entity_tasks(asset_entity)
-        self.assertIsInstance(tasks, list)
-        self.assertGreater(len(tasks), 0)
-        task = tasks[0]
-        self.assertIn("id", task)
-        self.assertIn("task_type_name", task)
-        self.assertIn("entity_id", task)
-        self.assertEqual(task["entity_id"], str(self.asset.id))
+        self.assert_the_tasks_of_the_entity_are_listed(self.asset.id)
 
     def test_get_entity_tasks_no_tasks(self):
         """

@@ -184,12 +184,7 @@ class PersonRoutesTestCase(ApiDBTestCase):
         self.assertTrue(result.get("success"))
 
     def test_change_password_for_new_admin(self):
-        new_admin = Person.create(
-            first_name="New",
-            last_name="Admin",
-            role="admin",
-            email="new.admin@gmail.com",
-        )
+        new_admin = self.another_admin()
         result = self.post(
             f"/actions/persons/{new_admin.id}/change-password",
             {"password": "newpassword123", "password_2": "newpassword123"},
@@ -197,17 +192,27 @@ class PersonRoutesTestCase(ApiDBTestCase):
         )
         self.assertTrue(result.get("success"))
 
+    def another_admin(self, **overrides):
+        """
+        A second admin. Whether they carry a password is what separates the
+        routes that refuse from the routes that allow: an admin who has
+        never set one has nothing to steal.
+        """
+        return Person.create(
+            first_name="Other",
+            last_name="Admin",
+            role="admin",
+            email="other.admin@gmail.com",
+            **overrides,
+        )
+
     def assert_the_route_refuses_another_admin(self, action, data):
         """
         Neither password route lets an admin reach into another admin's
         account, and both say so rather than failing silently.
         """
-        other_admin = Person.create(
-            first_name="Other",
-            last_name="Admin",
-            role="admin",
-            email="other.admin@gmail.com",
-            password=auth.encrypt_password("existingpassword"),
+        other_admin = self.another_admin(
+            password=auth.encrypt_password("existingpassword")
         )
 
         result = self.post(
@@ -266,12 +271,7 @@ class PersonRoutesTestCase(ApiDBTestCase):
         self.assertEqual(first, second)
 
     def test_get_reset_password_link_for_new_admin(self):
-        new_admin = Person.create(
-            first_name="New",
-            last_name="Admin",
-            role="admin",
-            email="new.admin@gmail.com",
-        )
+        new_admin = self.another_admin()
         result = self.post(
             f"/actions/persons/{new_admin.id}/reset-password-link",
             {},
