@@ -19,7 +19,11 @@ from zou.app.services.exception import (
 )
 
 
-class ScheduleServiceTestCase(ApiDBTestCase):
+class ScheduleTestCase(ApiDBTestCase):
+    """
+    A shot suite with an assigned task on it. Holds no test of its own.
+    """
+
     def setUp(self):
         super().setUp()
         self.generate_shot_suite()
@@ -29,6 +33,13 @@ class ScheduleServiceTestCase(ApiDBTestCase):
         self.sequence_id = str(self.sequence.id)
         self.episode_id = str(self.episode.id)
         self.asset_type_id = str(self.asset_type.id)
+
+
+class ScheduleItemTestCase(ScheduleTestCase):
+    """
+    The rows a production schedule is drawn from, one per task type and
+    per entity level, created on demand by the listing that reads them.
+    """
 
     def test_get_schedule_items(self):
         items = schedule_service.get_task_types_schedule_items(self.project.id)
@@ -242,44 +253,39 @@ class ScheduleServiceTestCase(ApiDBTestCase):
         )
         self.assertEqual(len(milestones), 2)
 
-    def test_get_production_schedule_version_raw(self):
-        psv = ProductionScheduleVersion.create(
-            name="v1", project_id=self.project.id
+    def test_schedule_items_route_blocks_vendors(self):
+        """
+        A schedule lays out the whole production's dates, which a vendor
+        has no business reading even when they work on it.
+        """
+        # get_schedule_items returns the stored rows, it does not create the
+        # missing ones the way the task type listing does.
+        schedule_item = ScheduleItem.create(
+            project_id=self.project.id,
+            task_type_id=self.task_type.id,
+            object_id=self.sequence.id,
         )
-        result = schedule_service.get_production_schedule_version_raw(
-            str(psv.id)
-        )
-        self.assertEqual(result.id, psv.id)
+        path = f"/data/projects/{self.project_id}/schedule-items"
 
-    def test_get_production_schedule_version_raw_not_found(self):
-        with self.assertRaises(ProductionScheduleVersionNotFoundException):
-            schedule_service.get_production_schedule_version_raw("wrong-id")
+        items = self.get(path)
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["id"], str(schedule_item.id))
 
-    def test_get_production_schedule_version(self):
-        psv = ProductionScheduleVersion.create(
-            name="v1", project_id=self.project.id
+        self.generate_fixture_user_vendor()
+        projects_service.add_team_member(
+            self.project_id, self.user_vendor["id"]
         )
-        result = schedule_service.get_production_schedule_version(str(psv.id))
-        self.assertEqual(result["id"], str(psv.id))
-        self.assertEqual(result["name"], "v1")
+        self.log_in_vendor()
+        self.get(path, 403)
 
-    def test_update_production_schedule_version(self):
-        psv = ProductionScheduleVersion.create(
-            name="v1", project_id=self.project.id
-        )
-        result = schedule_service.update_production_schedule_version(
-            str(psv.id), {"name": "v2"}
-        )
-        self.assertEqual(result["name"], "v2")
 
-    def test_get_production_schedule_version_task_links(self):
-        psv = ProductionScheduleVersion.create(
-            name="v1", project_id=self.project.id
-        )
-        links = schedule_service.get_production_schedule_version_task_links(
-            str(psv.id)
-        )
-        self.assertEqual(len(links), 0)
+class ProductionScheduleVersionTestCase(ScheduleTestCase):
+    """
+    A saved version of a schedule and the task links it carries.
+    Filling it from the production or from another version is
+    idempotent, refreshes the assignees, and refuses to copy a version
+    onto itself or across productions.
+    """
 
     def _make_person(self, first_name, last_name):
         # generate_fixture_person reassigns self.person; restore it afterwards.
@@ -318,6 +324,45 @@ class ScheduleServiceTestCase(ApiDBTestCase):
         for task_id, person_id in rows:
             result.setdefault(str(task_id), set()).add(str(person_id))
         return result
+
+    def test_get_production_schedule_version_raw(self):
+        psv = ProductionScheduleVersion.create(
+            name="v1", project_id=self.project.id
+        )
+        result = schedule_service.get_production_schedule_version_raw(
+            str(psv.id)
+        )
+        self.assertEqual(result.id, psv.id)
+
+    def test_get_production_schedule_version_raw_not_found(self):
+        with self.assertRaises(ProductionScheduleVersionNotFoundException):
+            schedule_service.get_production_schedule_version_raw("wrong-id")
+
+    def test_get_production_schedule_version(self):
+        psv = ProductionScheduleVersion.create(
+            name="v1", project_id=self.project.id
+        )
+        result = schedule_service.get_production_schedule_version(str(psv.id))
+        self.assertEqual(result["id"], str(psv.id))
+        self.assertEqual(result["name"], "v1")
+
+    def test_update_production_schedule_version(self):
+        psv = ProductionScheduleVersion.create(
+            name="v1", project_id=self.project.id
+        )
+        result = schedule_service.update_production_schedule_version(
+            str(psv.id), {"name": "v2"}
+        )
+        self.assertEqual(result["name"], "v2")
+
+    def test_get_production_schedule_version_task_links(self):
+        psv = ProductionScheduleVersion.create(
+            name="v1", project_id=self.project.id
+        )
+        links = schedule_service.get_production_schedule_version_task_links(
+            str(psv.id)
+        )
+        self.assertEqual(len(links), 0)
 
     def test_set_production_schedule_version_task_links_from_production(self):
         # Two tasks assigned to DISTINCT people so a partial or cross-wired
@@ -730,28 +775,3 @@ class ScheduleServiceTestCase(ApiDBTestCase):
             ),
             1,
         )
-
-    def test_schedule_items_route_blocks_vendors(self):
-        """
-        A schedule lays out the whole production's dates, which a vendor
-        has no business reading even when they work on it.
-        """
-        # get_schedule_items returns the stored rows, it does not create the
-        # missing ones the way the task type listing does.
-        schedule_item = ScheduleItem.create(
-            project_id=self.project.id,
-            task_type_id=self.task_type.id,
-            object_id=self.sequence.id,
-        )
-        path = f"/data/projects/{self.project_id}/schedule-items"
-
-        items = self.get(path)
-        self.assertEqual(len(items), 1)
-        self.assertEqual(items[0]["id"], str(schedule_item.id))
-
-        self.generate_fixture_user_vendor()
-        projects_service.add_team_member(
-            self.project_id, self.user_vendor["id"]
-        )
-        self.log_in_vendor()
-        self.get(path, 403)
