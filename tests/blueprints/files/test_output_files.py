@@ -5,7 +5,12 @@ from zou.app.models.output_type import OutputType
 from zou.app.services import files_service, tasks_service
 
 
-class RouteOutputFilesTestCase(ApiDBTestCase):
+class OutputFileTestCase(ApiDBTestCase):
+    """
+    One asset with a task and a working file to publish from, plus the
+    helpers that build outputs. Holds no test of its own.
+    """
+
     def setUp(self):
         super().setUp()
 
@@ -70,33 +75,13 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
             render, 1, "variant-1"
         )
 
-    def test_get_last_output_files(self):
-        self.generate_output_files()
-        output_files = self.get(
-            f"/data/entities/{self.asset.id}/output-files/last-revisions"
-        )
 
-        self.assertIn(self.output_file_geometry.serialize(), output_files)
-        self.assertIn(self.output_file_cache.serialize(), output_files)
-        self.assertIn(self.output_file_texture.serialize(), output_files)
-        self.assertIn(self.output_file_render_1.serialize(), output_files)
-        self.assertIn(self.output_file_render_2.serialize(), output_files)
-
-    def test_get_entity_output_types(self):
-        self.generate_output_files()
-        alembic = self.generate_fixture_output_type("Alembic", "ab")
-        self.generate_fixture_output_file(alembic, 1, task=self.shot_task)
-        output_types = self.get(f"/data/entities/{self.asset.id}/output-types")
-        self.assertEqual(len(output_types), 4)
-        self.assertEqual(output_types[0]["name"], "Cache")
-
-    def test_get_entity_output_type_output_files(self):
-        self.generate_output_files()
-        output_files = self.get(
-            f"/data/entities/{self.asset.id}/output-types/{self.cache_type_id}/output-files"
-        )
-        self.assertEqual(len(output_files), 3)
-        self.assertEqual(output_files[0]["output_type_id"], self.cache_type_id)
+class NewOutputFileTestCase(OutputFileTestCase):
+    """
+    Publishing an output on an entity. The revision is chosen for the
+    caller unless it forces one, and asking twice for the same one
+    is refused.
+    """
 
     def test_new_output(self):
         data = {
@@ -336,6 +321,14 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
         )
         self.assertEqual(result["next_revision"], 1)
 
+
+class AssetInstanceOutputFileTestCase(OutputFileTestCase):
+    """
+    The same publishing, for an asset instance rather than an entity.
+    An instance carries its own revision count, per temporal entity
+    it is placed in.
+    """
+
     def test_new_instance_output(self):
         self.generate_fixture_scene()
         self.generate_fixture_scene_asset_instance()
@@ -539,6 +532,41 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
             f"data/asset-instances/{asset_instance_id}/entities/{asset_id}/output-files/last-revisions"
         )
         assert output_file["id"] in [f["id"] for f in result]
+
+
+class OutputFileListingTestCase(OutputFileTestCase):
+    """
+    Reading back what was published, by production, by entity, by
+    output type and by instance.
+    """
+
+    def test_get_last_output_files(self):
+        self.generate_output_files()
+        output_files = self.get(
+            f"/data/entities/{self.asset.id}/output-files/last-revisions"
+        )
+
+        self.assertIn(self.output_file_geometry.serialize(), output_files)
+        self.assertIn(self.output_file_cache.serialize(), output_files)
+        self.assertIn(self.output_file_texture.serialize(), output_files)
+        self.assertIn(self.output_file_render_1.serialize(), output_files)
+        self.assertIn(self.output_file_render_2.serialize(), output_files)
+
+    def test_get_entity_output_types(self):
+        self.generate_output_files()
+        alembic = self.generate_fixture_output_type("Alembic", "ab")
+        self.generate_fixture_output_file(alembic, 1, task=self.shot_task)
+        output_types = self.get(f"/data/entities/{self.asset.id}/output-types")
+        self.assertEqual(len(output_types), 4)
+        self.assertEqual(output_types[0]["name"], "Cache")
+
+    def test_get_entity_output_type_output_files(self):
+        self.generate_output_files()
+        output_files = self.get(
+            f"/data/entities/{self.asset.id}/output-types/{self.cache_type_id}/output-files"
+        )
+        self.assertEqual(len(output_files), 3)
+        self.assertEqual(output_files[0]["output_type_id"], self.cache_type_id)
 
     def test_get_output_types(self):
         self.generate_fixture_scene()
