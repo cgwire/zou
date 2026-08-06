@@ -28,7 +28,11 @@ from zou.app.services.preview_files_service import (
 )
 
 
-class PlaylistTestCase(ApiDBTestCase):
+class PreviewFileTestCase(ApiDBTestCase):
+    """
+    One task to hang preview files from. Holds no test of its own.
+    """
+
     def setUp(self):
         super().setUp()
         self.generate_base_context()
@@ -38,6 +42,319 @@ class PlaylistTestCase(ApiDBTestCase):
         self.generate_fixture_assigner()
         self.generate_fixture_person()
         self.generate_fixture_task()
+
+    def tearDown(self):
+        super().tearDown()
+        self.delete_test_folder()
+
+
+class PreviewFileServiceTestCase(PreviewFileTestCase):
+    """
+    Everything but the annotations: dimensions, fps, the movie
+    preparation and the broken status.
+    """
+
+    def test_save_variants_cleans_up_on_upload_failure(self):
+        import shutil
+
+        self.generate_fixture_preview_file()
+        folder = tempfile.mkdtemp()
+        picture_path = os.path.join(folder, "original.png")
+        shutil.copyfile(
+            self.get_fixture_file_path(os.path.join("thumbnails", "th01.png")),
+            picture_path,
+        )
+        with patch(
+            "zou.app.services.preview_files_service.file_store.add_picture",
+            side_effect=RuntimeError("storage down"),
+        ):
+            with self.assertRaises(RuntimeError):
+                preview_files_service.save_variants(
+                    str(self.preview_file.id), picture_path
+                )
+        self.assertEqual(os.listdir(folder), [])
+
+    def test_update_preview_file_raw_deleted_midflight_raises_not_found(self):
+        """
+        When the row is deleted by another process mid-update, base.update()
+        raises StaleDataError then rolls back, which expires the instance.
+        Reading preview_file.id in the error handler would then reload the
+        deleted row and raise ObjectDeletedError, masking the real error.
+        The id must be captured before update() so the handler never touches
+        the ORM instance again.
+
+        Modelled with a fake: the test DB harness runs each test in a single
+        rolled-back transaction, so a committed cross-process delete (the only
+        thing that makes .id reload fail) cannot be reproduced against a real
+        row.
+        """
+        from sqlalchemy.orm.exc import StaleDataError
+
+        from zou.app.services.exception import PreviewFileNotFoundException
+
+        class _VanishingPreviewFile:
+            def __init__(self):
+                self._live = True
+
+            @property
+            def id(self):
+                if not self._live:
+                    raise AssertionError(
+                        "id read after failed update reloads the deleted row"
+                    )
+                return "50aa09cb-3f13-4c12-8669-e3fb8f0d0ac7"
+
+            def update(self, data):
+                # A failed commit rolls back and expires the instance.
+                self._live = False
+                raise StaleDataError("0 rows matched")
+
+        with self.assertRaises(PreviewFileNotFoundException):
+            preview_files_service.update_preview_file_raw(
+                _VanishingPreviewFile(), {"status": "broken"}
+            )
+
+    def test_get_preview_file_dimensions(self):
+        self.assertFalse(_is_valid_resolution(""))
+        self.assertFalse(_is_valid_resolution(None))
+        self.assertTrue(_is_valid_resolution("203x121"))
+        self.assertTrue(_is_valid_resolution("1920x1080"))
+        self.assertTrue(_is_valid_resolution("3840x2160"))
+        self.assertFalse(_is_valid_partial_resolution("3840x2160"))
+        self.assertTrue(_is_valid_partial_resolution("x2160"))
+        project = self.project.serialize()
+        entity = self.asset.serialize()
+        dimensions = get_preview_file_dimensions(project, entity)
+        self.assertEqual(dimensions, (1920, 1080))
+        project["resolution"] = "x2160"
+        dimensions = get_preview_file_dimensions(project, entity)
+        self.assertEqual(dimensions, (None, 2160))
+        project["resolution"] = "3840x2160"
+        dimensions = get_preview_file_dimensions(project, entity)
+        self.assertEqual(dimensions, (3840, 2160))
+        entity["data"] = {"resolution": "800x600"}
+        dimensions = get_preview_file_dimensions(project, entity)
+        self.assertEqual(dimensions, (800, 600))
+
+    def test_get_preview_file_fps(self):
+        fps = get_preview_file_fps({"fps": "24.00"})
+        self.assertEqual(fps, "24.000")
+        fps = get_preview_file_fps({})
+        self.assertEqual(fps, "25.000")
+        fps = get_preview_file_fps({"fps": None})
+        self.assertEqual(fps, "25.000")
+
+    def test_get_project_from_preview_file(self):
+        preview_file = self.generate_fixture_preview_file()
+        project = preview_files_service.get_project_from_preview_file(
+            preview_file.id
+        )
+        self.assertEqual(project["id"], self.project_id)
+
+    def test_get_last_preview_file_for_task(self):
+        preview_file = self.generate_fixture_preview_file()
+        preview_file = preview_files_service.get_last_preview_file_for_task(
+            self.task_id
+        )
+        self.assertEqual(preview_file["revision"], 1)
+
+        preview_file = self.generate_fixture_preview_file(revision=2)
+        preview_file = preview_files_service.get_last_preview_file_for_task(
+            self.task_id
+        )
+        self.assertEqual(preview_file["revision"], 2)
+
+        preview_file = self.generate_fixture_preview_file(revision=3)
+        preview_file = preview_files_service.get_last_preview_file_for_task(
+            self.task_id
+        )
+        self.assertEqual(preview_file["revision"], 3)
+
+    @patch("zou.app.services.preview_files_service.movie.generate_tile")
+    @patch("zou.app.services.preview_files_service.save_variants")
+    @patch(
+        "zou.app.services.preview_files_service.thumbnail_utils"
+        ".turn_into_thumbnail"
+    )
+    @patch("zou.app.services.preview_files_service.movie.generate_thumbnail")
+    @patch("zou.app.services.preview_files_service.movie.normalize_movie")
+    @patch("zou.app.services.preview_files_service.file_store.add_movie")
+    def test_prepare_and_store_movie_saves_original_metadata(
+        self,
+        mock_add_movie,
+        mock_normalize,
+        mock_gen_thumbnail,
+        mock_turn_thumbnail,
+        mock_save_variants,
+        mock_gen_tile,
+    ):
+        preview_file = self.generate_fixture_preview_file(status="processing")
+        preview_file_id = str(preview_file.id)
+
+        # Create a small temp file to act as the uploaded movie
+        tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+        tmp.write(b"\x00" * 1024)
+        tmp.close()
+        uploaded_path = tmp.name
+
+        # Create temp files for normalized outputs
+        norm_path = uploaded_path + "_norm.mp4"
+        norm_low_path = uploaded_path + "_norm_low.mp4"
+        for p in (norm_path, norm_low_path):
+            with open(p, "wb") as f:
+                f.write(b"\x00" * 512)
+
+        mock_normalize.return_value = (norm_path, norm_low_path, None)
+        mock_gen_thumbnail.return_value = norm_path
+        mock_gen_tile.return_value = norm_path
+
+        original_width = 720
+        original_height = 1280
+        original_duration = 42.5
+        normalized_width = 1920
+        normalized_height = 1080
+
+        with patch(
+            "zou.app.services.preview_files_service.movie.get_movie_size"
+        ) as mock_size, patch(
+            "zou.app.services.preview_files_service.movie.get_movie_duration"
+        ) as mock_duration:
+
+            call_count = {"size": 0}
+
+            def size_side_effect(path, **kwargs):
+                call_count["size"] += 1
+                if call_count["size"] == 1:
+                    # First call: reading original file metadata
+                    return (original_width, original_height)
+                else:
+                    # Second call: reading normalized file metadata
+                    return (normalized_width, normalized_height)
+
+            mock_size.side_effect = size_side_effect
+
+            duration_call_count = {"n": 0}
+
+            def duration_side_effect(path=None, **kwargs):
+                duration_call_count["n"] += 1
+                if duration_call_count["n"] == 1:
+                    return original_duration
+                else:
+                    return 40.0
+
+            mock_duration.side_effect = duration_side_effect
+
+            preview_files_service.prepare_and_store_movie(
+                preview_file_id,
+                uploaded_path,
+                normalize=True,
+                add_source_to_file_store=False,
+            )
+
+        persisted = files_service.get_preview_file(preview_file_id)
+
+        # The width/height fields reflect the normalized output
+        self.assertEqual(persisted["width"], normalized_width)
+        self.assertEqual(persisted["height"], normalized_height)
+
+        # The data field preserves the original metadata
+        self.assertIsNotNone(persisted["data"])
+        self.assertEqual(persisted["data"]["original_width"], original_width)
+        self.assertEqual(persisted["data"]["original_height"], original_height)
+        self.assertEqual(
+            persisted["data"]["original_duration"], original_duration
+        )
+        self.assertEqual(persisted["data"]["original_file_size"], 1024)
+
+        # Clean up
+        for p in (uploaded_path, norm_path, norm_low_path):
+            if os.path.exists(p):
+                os.remove(p)
+
+    @patch("zou.app.services.preview_files_service.movie.generate_thumbnail")
+    @patch("zou.app.services.preview_files_service.movie.get_movie_duration")
+    @patch("zou.app.services.preview_files_service.movie.get_movie_size")
+    @patch("zou.app.services.preview_files_service.movie.normalize_movie")
+    @patch("zou.app.services.preview_files_service.file_store.add_movie")
+    def test_prepare_and_store_movie_thumbnail_failure_marks_broken(
+        self,
+        mock_add_movie,
+        mock_normalize,
+        mock_size,
+        mock_duration,
+        mock_gen_thumbnail,
+    ):
+        preview_file = self.generate_fixture_preview_file(status="processing")
+        preview_file_id = str(preview_file.id)
+
+        tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+        tmp.write(b"\x00" * 1024)
+        tmp.close()
+        uploaded_path = tmp.name
+        norm_path = uploaded_path + "_norm.mp4"
+        norm_low_path = uploaded_path + "_norm_low.mp4"
+        for p in (norm_path, norm_low_path):
+            with open(p, "wb") as f:
+                f.write(b"\x00" * 512)
+
+        mock_normalize.return_value = (norm_path, norm_low_path, None)
+        mock_size.return_value = (1920, 1080)
+        mock_duration.return_value = 10.0
+        mock_gen_thumbnail.side_effect = OSError("ffmpeg thumbnail crashed")
+
+        result = preview_files_service.prepare_and_store_movie(
+            preview_file_id,
+            uploaded_path,
+            normalize=True,
+            add_source_to_file_store=False,
+        )
+
+        self.assertEqual(result["status"], "broken")
+        persisted = files_service.get_preview_file(preview_file_id)
+        self.assertEqual(persisted["status"], "broken")
+        for p in (uploaded_path, norm_path, norm_low_path):
+            self.assertFalse(os.path.exists(p))
+
+    def test_mark_broken_on_job_failure(self):
+        preview_file = self.generate_fixture_preview_file(status="processing")
+        preview_file_id = str(preview_file.id)
+
+        tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+        tmp.write(b"\x00" * 8)
+        tmp.close()
+
+        job = SimpleNamespace(args=(preview_file_id, tmp.name, True, False))
+        preview_files_service.mark_broken_on_job_failure(
+            job, None, Exception, Exception("worker killed"), None
+        )
+
+        persisted = files_service.get_preview_file(preview_file_id)
+        self.assertEqual(persisted["status"], "broken")
+        self.assertFalse(os.path.exists(tmp.name))
+
+    def test_extract_skips_metadata_only_previews(self):
+        """
+        Imported-only previews have no local binary — extract functions
+        must short-circuit silently (return None) so callers can no-op
+        instead of crashing on FileNotFoundError.
+        """
+        preview_file = {
+            "id": "some-uuid",
+            "extension": "mp4",
+            "data": {"imported_only": True},
+        }
+        self.assertIsNone(extract_frame_from_preview_file(preview_file, 1))
+        self.assertIsNone(extract_tile_from_preview_file(preview_file))
+
+
+class PreviewFileAnnotationsTestCase(PreviewFileTestCase):
+    """
+    The annotation payloads a preview file carries, and the
+    normalisation that snaps their times onto frames.
+    """
+
+    def setUp(self):
+        super().setUp()
         self.annotations_1 = [
             {
                 "time": "0",
@@ -68,10 +385,6 @@ class PlaylistTestCase(ApiDBTestCase):
                 },
             }
         ]
-
-    def tearDown(self):
-        super().tearDown()
-        self.delete_test_folder()
 
     def test_add_annotations(self):
         preview_file = self.generate_fixture_preview_file().serialize()
@@ -395,291 +708,6 @@ class PlaylistTestCase(ApiDBTestCase):
             self.annotations_1,
             persisted_preview_file["annotations"],
         )
-
-    def test_save_variants_cleans_up_on_upload_failure(self):
-        import shutil
-
-        self.generate_fixture_preview_file()
-        folder = tempfile.mkdtemp()
-        picture_path = os.path.join(folder, "original.png")
-        shutil.copyfile(
-            self.get_fixture_file_path(os.path.join("thumbnails", "th01.png")),
-            picture_path,
-        )
-        with patch(
-            "zou.app.services.preview_files_service.file_store.add_picture",
-            side_effect=RuntimeError("storage down"),
-        ):
-            with self.assertRaises(RuntimeError):
-                preview_files_service.save_variants(
-                    str(self.preview_file.id), picture_path
-                )
-        self.assertEqual(os.listdir(folder), [])
-
-    def test_update_preview_file_raw_deleted_midflight_raises_not_found(self):
-        """
-        When the row is deleted by another process mid-update, base.update()
-        raises StaleDataError then rolls back, which expires the instance.
-        Reading preview_file.id in the error handler would then reload the
-        deleted row and raise ObjectDeletedError, masking the real error.
-        The id must be captured before update() so the handler never touches
-        the ORM instance again.
-
-        Modelled with a fake: the test DB harness runs each test in a single
-        rolled-back transaction, so a committed cross-process delete (the only
-        thing that makes .id reload fail) cannot be reproduced against a real
-        row.
-        """
-        from sqlalchemy.orm.exc import StaleDataError
-
-        from zou.app.services.exception import PreviewFileNotFoundException
-
-        class _VanishingPreviewFile:
-            def __init__(self):
-                self._live = True
-
-            @property
-            def id(self):
-                if not self._live:
-                    raise AssertionError(
-                        "id read after failed update reloads the deleted row"
-                    )
-                return "50aa09cb-3f13-4c12-8669-e3fb8f0d0ac7"
-
-            def update(self, data):
-                # A failed commit rolls back and expires the instance.
-                self._live = False
-                raise StaleDataError("0 rows matched")
-
-        with self.assertRaises(PreviewFileNotFoundException):
-            preview_files_service.update_preview_file_raw(
-                _VanishingPreviewFile(), {"status": "broken"}
-            )
-
-    def test_get_preview_file_dimensions(self):
-        self.assertFalse(_is_valid_resolution(""))
-        self.assertFalse(_is_valid_resolution(None))
-        self.assertTrue(_is_valid_resolution("203x121"))
-        self.assertTrue(_is_valid_resolution("1920x1080"))
-        self.assertTrue(_is_valid_resolution("3840x2160"))
-        self.assertFalse(_is_valid_partial_resolution("3840x2160"))
-        self.assertTrue(_is_valid_partial_resolution("x2160"))
-        project = self.project.serialize()
-        entity = self.asset.serialize()
-        dimensions = get_preview_file_dimensions(project, entity)
-        self.assertEqual(dimensions, (1920, 1080))
-        project["resolution"] = "x2160"
-        dimensions = get_preview_file_dimensions(project, entity)
-        self.assertEqual(dimensions, (None, 2160))
-        project["resolution"] = "3840x2160"
-        dimensions = get_preview_file_dimensions(project, entity)
-        self.assertEqual(dimensions, (3840, 2160))
-        entity["data"] = {"resolution": "800x600"}
-        dimensions = get_preview_file_dimensions(project, entity)
-        self.assertEqual(dimensions, (800, 600))
-
-    def test_get_preview_file_fps(self):
-        fps = get_preview_file_fps({"fps": "24.00"})
-        self.assertEqual(fps, "24.000")
-        fps = get_preview_file_fps({})
-        self.assertEqual(fps, "25.000")
-        fps = get_preview_file_fps({"fps": None})
-        self.assertEqual(fps, "25.000")
-
-    def test_get_last_preview_file_for_task(self):
-        preview_file = self.generate_fixture_preview_file()
-        preview_file = preview_files_service.get_last_preview_file_for_task(
-            self.task_id
-        )
-        self.assertEqual(preview_file["revision"], 1)
-
-        preview_file = self.generate_fixture_preview_file(revision=2)
-        preview_file = preview_files_service.get_last_preview_file_for_task(
-            self.task_id
-        )
-        self.assertEqual(preview_file["revision"], 2)
-
-        preview_file = self.generate_fixture_preview_file(revision=3)
-        preview_file = preview_files_service.get_last_preview_file_for_task(
-            self.task_id
-        )
-        self.assertEqual(preview_file["revision"], 3)
-
-    @patch("zou.app.services.preview_files_service.movie.generate_tile")
-    @patch("zou.app.services.preview_files_service.save_variants")
-    @patch(
-        "zou.app.services.preview_files_service.thumbnail_utils"
-        ".turn_into_thumbnail"
-    )
-    @patch("zou.app.services.preview_files_service.movie.generate_thumbnail")
-    @patch("zou.app.services.preview_files_service.movie.normalize_movie")
-    @patch("zou.app.services.preview_files_service.file_store.add_movie")
-    def test_prepare_and_store_movie_saves_original_metadata(
-        self,
-        mock_add_movie,
-        mock_normalize,
-        mock_gen_thumbnail,
-        mock_turn_thumbnail,
-        mock_save_variants,
-        mock_gen_tile,
-    ):
-        preview_file = self.generate_fixture_preview_file(status="processing")
-        preview_file_id = str(preview_file.id)
-
-        # Create a small temp file to act as the uploaded movie
-        tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
-        tmp.write(b"\x00" * 1024)
-        tmp.close()
-        uploaded_path = tmp.name
-
-        # Create temp files for normalized outputs
-        norm_path = uploaded_path + "_norm.mp4"
-        norm_low_path = uploaded_path + "_norm_low.mp4"
-        for p in (norm_path, norm_low_path):
-            with open(p, "wb") as f:
-                f.write(b"\x00" * 512)
-
-        mock_normalize.return_value = (norm_path, norm_low_path, None)
-        mock_gen_thumbnail.return_value = norm_path
-        mock_gen_tile.return_value = norm_path
-
-        original_width = 720
-        original_height = 1280
-        original_duration = 42.5
-        normalized_width = 1920
-        normalized_height = 1080
-
-        with patch(
-            "zou.app.services.preview_files_service.movie.get_movie_size"
-        ) as mock_size, patch(
-            "zou.app.services.preview_files_service.movie.get_movie_duration"
-        ) as mock_duration:
-
-            call_count = {"size": 0}
-
-            def size_side_effect(path, **kwargs):
-                call_count["size"] += 1
-                if call_count["size"] == 1:
-                    # First call: reading original file metadata
-                    return (original_width, original_height)
-                else:
-                    # Second call: reading normalized file metadata
-                    return (normalized_width, normalized_height)
-
-            mock_size.side_effect = size_side_effect
-
-            duration_call_count = {"n": 0}
-
-            def duration_side_effect(path=None, **kwargs):
-                duration_call_count["n"] += 1
-                if duration_call_count["n"] == 1:
-                    return original_duration
-                else:
-                    return 40.0
-
-            mock_duration.side_effect = duration_side_effect
-
-            preview_files_service.prepare_and_store_movie(
-                preview_file_id,
-                uploaded_path,
-                normalize=True,
-                add_source_to_file_store=False,
-            )
-
-        persisted = files_service.get_preview_file(preview_file_id)
-
-        # The width/height fields reflect the normalized output
-        self.assertEqual(persisted["width"], normalized_width)
-        self.assertEqual(persisted["height"], normalized_height)
-
-        # The data field preserves the original metadata
-        self.assertIsNotNone(persisted["data"])
-        self.assertEqual(persisted["data"]["original_width"], original_width)
-        self.assertEqual(persisted["data"]["original_height"], original_height)
-        self.assertEqual(
-            persisted["data"]["original_duration"], original_duration
-        )
-        self.assertEqual(persisted["data"]["original_file_size"], 1024)
-
-        # Clean up
-        for p in (uploaded_path, norm_path, norm_low_path):
-            if os.path.exists(p):
-                os.remove(p)
-
-    @patch("zou.app.services.preview_files_service.movie.generate_thumbnail")
-    @patch("zou.app.services.preview_files_service.movie.get_movie_duration")
-    @patch("zou.app.services.preview_files_service.movie.get_movie_size")
-    @patch("zou.app.services.preview_files_service.movie.normalize_movie")
-    @patch("zou.app.services.preview_files_service.file_store.add_movie")
-    def test_prepare_and_store_movie_thumbnail_failure_marks_broken(
-        self,
-        mock_add_movie,
-        mock_normalize,
-        mock_size,
-        mock_duration,
-        mock_gen_thumbnail,
-    ):
-        preview_file = self.generate_fixture_preview_file(status="processing")
-        preview_file_id = str(preview_file.id)
-
-        tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
-        tmp.write(b"\x00" * 1024)
-        tmp.close()
-        uploaded_path = tmp.name
-        norm_path = uploaded_path + "_norm.mp4"
-        norm_low_path = uploaded_path + "_norm_low.mp4"
-        for p in (norm_path, norm_low_path):
-            with open(p, "wb") as f:
-                f.write(b"\x00" * 512)
-
-        mock_normalize.return_value = (norm_path, norm_low_path, None)
-        mock_size.return_value = (1920, 1080)
-        mock_duration.return_value = 10.0
-        mock_gen_thumbnail.side_effect = OSError("ffmpeg thumbnail crashed")
-
-        result = preview_files_service.prepare_and_store_movie(
-            preview_file_id,
-            uploaded_path,
-            normalize=True,
-            add_source_to_file_store=False,
-        )
-
-        self.assertEqual(result["status"], "broken")
-        persisted = files_service.get_preview_file(preview_file_id)
-        self.assertEqual(persisted["status"], "broken")
-        for p in (uploaded_path, norm_path, norm_low_path):
-            self.assertFalse(os.path.exists(p))
-
-    def test_mark_broken_on_job_failure(self):
-        preview_file = self.generate_fixture_preview_file(status="processing")
-        preview_file_id = str(preview_file.id)
-
-        tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
-        tmp.write(b"\x00" * 8)
-        tmp.close()
-
-        job = SimpleNamespace(args=(preview_file_id, tmp.name, True, False))
-        preview_files_service.mark_broken_on_job_failure(
-            job, None, Exception, Exception("worker killed"), None
-        )
-
-        persisted = files_service.get_preview_file(preview_file_id)
-        self.assertEqual(persisted["status"], "broken")
-        self.assertFalse(os.path.exists(tmp.name))
-
-    def test_extract_skips_metadata_only_previews(self):
-        """
-        Imported-only previews have no local binary — extract functions
-        must short-circuit silently (return None) so callers can no-op
-        instead of crashing on FileNotFoundError.
-        """
-        preview_file = {
-            "id": "some-uuid",
-            "extension": "mp4",
-            "data": {"imported_only": True},
-        }
-        self.assertIsNone(extract_frame_from_preview_file(preview_file, 1))
-        self.assertIsNone(extract_tile_from_preview_file(preview_file))
 
 
 class MissingStatusTestCase(ApiDBTestCase):

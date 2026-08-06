@@ -3,7 +3,7 @@ import pytest
 from tests.base import ApiDBTestCase
 
 from zou.app.models.schedule_item import ScheduleItem
-from zou.app.services import edits_service, shots_service
+from zou.app.services import edits_service
 from zou.app.services.exception import EditNotFoundException
 
 
@@ -78,10 +78,6 @@ class EditUtilsTestCase(ApiDBTestCase):
     def test_is_edit(self):
         self.assertTrue(edits_service.is_edit(self.edit.serialize()))
         self.assertFalse(edits_service.is_edit(self.asset.serialize()))
-
-    def test_get_episode_from_edit(self):
-        episode = shots_service.get_episode(self.edit.parent_id)
-        self.assertEqual(episode["name"], "E01")
 
     def test_create_edit(self):
         edit_name = "Editor's Cut"

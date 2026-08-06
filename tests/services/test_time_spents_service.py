@@ -52,7 +52,7 @@ class TimeSpentsServiceTestCase(ApiDBTestCase):
             task_id, self.person_id, "2019-01-02", 850
         )
 
-    def test_get_task(self):
+    def test_time_spents_add_up_on_the_task(self):
         task = tasks_service.get_task(self.task_id)
         self.assertEqual(task["duration"], 3150)
 

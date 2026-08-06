@@ -3,7 +3,7 @@ import pytest
 from tests.base import ApiDBTestCase
 
 from zou.app import app
-from zou.app.services import files_service, preview_files_service
+from zou.app.services import files_service
 from zou.app.models.software import Software
 from zou.app.utils import fields
 from zou.app.services.exception import (
@@ -538,14 +538,6 @@ class FileServiceTestCase(ApiDBTestCase):
             )
         )
         self.assertEqual(len(output_files), 3)
-
-    def test_get_project_from_preview_file(self):
-        project_id = str(self.project.id)
-        self.generate_fixture_preview_file()
-        project = preview_files_service.get_project_from_preview_file(
-            self.preview_file.id
-        )
-        self.assertEqual(project["id"], project_id)
 
     def test_remove_preview_file(self):
         self.generate_fixture_preview_file()
