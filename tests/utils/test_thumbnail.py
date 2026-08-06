@@ -60,7 +60,7 @@ class ThumbnailTestCase(unittest.TestCase):
         thumbnail.convert_jpg_to_png(file_path)
         result_path = os.path.join(TEST_FOLDER, "th04.png")
         im = Image.open(result_path)
-        self.assertEqual(len(im.info.keys()), 0)
+        self.assertEqual(dict(im.info), {})
         self.assertTrue(os.path.exists(result_path))
 
     def test_save_file(self):

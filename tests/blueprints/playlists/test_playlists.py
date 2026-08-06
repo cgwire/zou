@@ -99,7 +99,7 @@ class PlaylistTestCase(ApiDBTestCase):
         playlists = self.get(f"data/projects/{self.project_id}/playlists")
         self.delete(f"data/playlists/{playlists[0]['id']}")
         playlists = self.get(f"data/projects/{self.project_id}/playlists")
-        self.assertEqual(len(playlists), 0)
+        self.assertEqual(playlists, [])
 
     def test_delete_playlist_with_notifications(self):
         self.generate_fixture_playlist("Playlist 1")
@@ -112,11 +112,11 @@ class PlaylistTestCase(ApiDBTestCase):
         playlists = self.get(f"data/projects/{self.project_id}/playlists")
         self.delete(f"data/playlists/{playlists[0]['id']}")
         playlists = self.get(f"data/projects/{self.project_id}/playlists")
-        self.assertEqual(len(playlists), 0)
+        self.assertEqual(playlists, [])
         notifications = Notification.query.filter_by(
             playlist_id=self.playlist.id
         ).all()
-        self.assertEqual(len(notifications), 0)
+        self.assertEqual(notifications, [])
 
     def test_remove_playlist_with_notifications(self):
         self.generate_fixture_playlist("Playlist 1")
@@ -128,11 +128,11 @@ class PlaylistTestCase(ApiDBTestCase):
         )
         playlists_service.remove_playlist(str(self.playlist.id))
         playlists = self.get(f"data/projects/{self.project_id}/playlists")
-        self.assertEqual(len(playlists), 0)
+        self.assertEqual(playlists, [])
         notifications = Notification.query.filter_by(
             playlist_id=self.playlist.id
         ).all()
-        self.assertEqual(len(notifications), 0)
+        self.assertEqual(notifications, [])
 
     def test_delete_playlist_with_share_links(self):
         self.generate_fixture_playlist("Playlist 1")
@@ -142,11 +142,11 @@ class PlaylistTestCase(ApiDBTestCase):
         playlists = self.get(f"data/projects/{self.project_id}/playlists")
         self.delete(f"data/playlists/{playlists[0]['id']}")
         playlists = self.get(f"data/projects/{self.project_id}/playlists")
-        self.assertEqual(len(playlists), 0)
+        self.assertEqual(playlists, [])
         share_links = PlaylistShareLink.query.filter_by(
             playlist_id=self.playlist.id
         ).all()
-        self.assertEqual(len(share_links), 0)
+        self.assertEqual(share_links, [])
 
     def test_remove_playlist_with_share_links(self):
         self.generate_fixture_playlist("Playlist 1")
@@ -155,11 +155,11 @@ class PlaylistTestCase(ApiDBTestCase):
         )
         playlists_service.remove_playlist(str(self.playlist.id))
         playlists = self.get(f"data/projects/{self.project_id}/playlists")
-        self.assertEqual(len(playlists), 0)
+        self.assertEqual(playlists, [])
         share_links = PlaylistShareLink.query.filter_by(
             playlist_id=self.playlist.id
         ).all()
-        self.assertEqual(len(share_links), 0)
+        self.assertEqual(share_links, [])
 
     def test_create_playlist_for_each_entity_type(self):
         """

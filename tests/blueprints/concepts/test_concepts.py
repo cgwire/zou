@@ -34,7 +34,7 @@ class ConceptRoutesTestCase(ApiDBTestCase):
 
     def test_get_all_concepts_empty(self):
         result = self.get("/data/concepts")
-        self.assertEqual(len(result), 0)
+        self.assertEqual(result, [])
 
     def test_get_concepts_with_tasks(self):
         self.create_concept("Concept With Tasks")
@@ -56,7 +56,7 @@ class ConceptRoutesTestCase(ApiDBTestCase):
         concept = self.create_concept("To Delete")
         self.delete(f"/data/concepts/{concept['id']}")
         concepts = self.get("/data/concepts")
-        self.assertEqual(len(concepts), 0)
+        self.assertEqual(concepts, [])
 
     def test_delete_concept_with_task_cancels(self):
         concept, _ = self.create_concept_with_task("Cancel Me")
@@ -68,7 +68,7 @@ class ConceptRoutesTestCase(ApiDBTestCase):
     def test_get_concept_task_types(self):
         concept = self.create_concept("Task Types Concept")
         result = self.get(f"/data/concepts/{concept['id']}/task-types")
-        self.assertEqual(len(result), 0)
+        self.assertEqual(result, [])
 
     def test_get_concept_task_types_with_task(self):
         concept, _ = self.create_concept_with_task("With Task Types")
@@ -81,7 +81,7 @@ class ConceptRoutesTestCase(ApiDBTestCase):
     def test_get_concept_tasks(self):
         concept = self.create_concept("Tasks Concept")
         result = self.get(f"/data/concepts/{concept['id']}/tasks")
-        self.assertEqual(len(result), 0)
+        self.assertEqual(result, [])
 
     def test_get_concept_tasks_with_task(self):
         concept, task = self.create_concept_with_task("With Tasks")
@@ -101,7 +101,7 @@ class ConceptRoutesTestCase(ApiDBTestCase):
 
     def test_get_project_concepts_empty(self):
         result = self.get(f"/data/projects/{self.project.id}/concepts")
-        self.assertEqual(len(result), 0)
+        self.assertEqual(result, [])
 
     def test_create_concept(self):
         result = self.post(

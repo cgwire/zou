@@ -65,7 +65,7 @@ class ImportShotgunAssetTestCase(ShotgunTestCase):
         self.assertEqual(asset["description"], sg_asset["description"])
         self.assertEqual(asset["shotgun_id"], sg_asset["id"])
         self.assertEqual(asset["project_id"], str(project.id))
-        self.assertEqual(len(asset["entities_out"]), 0)
+        self.assertEqual(asset["entities_out"], [])
 
         parent = Entity.get_by(shotgun_id=1)
         self.assertEqual(str(parent.entities_out[0].id), asset["id"])

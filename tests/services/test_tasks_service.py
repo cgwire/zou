@@ -124,7 +124,7 @@ class TaskServiceTestCase(ApiDBTestCase):
     def test_assign_task(self):
         self.task.assignees = []
         self.task.save()
-        self.assertEqual(len(self.task.assignees), 0)
+        self.assertEqual(self.task.assignees, [])
         tasks_service.assign_task(
             self.task.id, self.person.id, self.assigner.id
         )
@@ -394,7 +394,7 @@ class TaskServiceTestCase(ApiDBTestCase):
         tasks_service.assign_task(self.task.id, self.person.id)
         tasks_service.clear_assignation(task_id)
         task = tasks_service.get_task(task_id, relations=True)
-        self.assertEqual(len(task["assignees"]), 0)
+        self.assertEqual(task["assignees"], [])
 
     def test_clear_assignation_swallows_stale_data_error(self):
         from unittest import mock
@@ -419,7 +419,7 @@ class TaskServiceTestCase(ApiDBTestCase):
     def test_get_tasks_for_person(self):
         projects = [self.project.serialize()]
         tasks = tasks_service.get_person_tasks(self.user["id"], projects)
-        self.assertEqual(len(tasks), 0)
+        self.assertEqual(tasks, [])
 
         tasks_service.assign_task(self.task.id, self.user["id"])
         tasks = tasks_service.get_person_tasks(self.user["id"], projects)
@@ -443,11 +443,11 @@ class TaskServiceTestCase(ApiDBTestCase):
     def test_get_done_tasks_for_person(self):
         projects = [self.project.serialize()]
         tasks = tasks_service.get_person_done_tasks(self.user["id"], projects)
-        self.assertEqual(len(tasks), 0)
+        self.assertEqual(tasks, [])
 
         tasks_service.assign_task(self.task.id, self.user["id"])
         tasks = tasks_service.get_person_done_tasks(self.user["id"], projects)
-        self.assertEqual(len(tasks), 0)
+        self.assertEqual(tasks, [])
 
         done_status = tasks_service.get_or_create_status(
             "Done", "done", "#22d160", is_done=True
@@ -471,7 +471,7 @@ class TaskServiceTestCase(ApiDBTestCase):
         mentions = comments_service.get_comment_mentions(
             self.project_id, "Test @Emma Doe"
         )
-        self.assertEqual(len(mentions), 0)
+        self.assertEqual(mentions, [])
         mentions = comments_service.get_comment_mentions(
             self.project_id, "Test @John Doe"
         )

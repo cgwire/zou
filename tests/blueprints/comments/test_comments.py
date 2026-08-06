@@ -613,7 +613,7 @@ class CommentAttachmentTestCase(CommentTestCase):
             code=403,
         )
         self.assertEqual(
-            len(AttachmentFile.get_all_by(comment_id=other_comment["id"])), 0
+            AttachmentFile.get_all_by(comment_id=other_comment["id"]), []
         )
 
     def test_delete_attachment_of_own_comment(self):

@@ -90,7 +90,7 @@ class ShotTestCase(ApiDBTestCase):
         shots = self.get(
             f"data/shots?sequence_id={sequence_id}&name={shot_name}"
         )
-        self.assertEqual(len(shots), 0)
+        self.assertEqual(shots, [])
         tasks_service.assign_task(task_id, vendor_id)
         shots = self.get(
             f"data/shots?sequence_id={sequence_id}&name={shot_name}"

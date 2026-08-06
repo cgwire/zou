@@ -43,7 +43,7 @@ class AssetTypesTestCase(ApiDBTestCase):
 
     def test_get_shot_asset_types(self):
         asset_types = self.get(f"data/shots/{self.shot.id}/asset-types")
-        self.assertEqual(len(asset_types), 0)
+        self.assertEqual(asset_types, [])
 
         self.shot.entities_out = [self.asset]
         self.shot.save()

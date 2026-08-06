@@ -101,6 +101,6 @@ class ImportShotgunShotTestCase(ShotgunTestCase):
         self.shots = self.post(api_path, {"id": shot["shotgun_id"]}, 200)
 
         self.shots = self.get("data/shots/all")
-        self.assertEqual(len(self.shots), 0)
+        self.assertEqual(self.shots, [])
 
         self.get(f"data/shots/{shot['id']}", 404)

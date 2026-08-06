@@ -394,7 +394,7 @@ class ProjectBudgetRoutesTestCase(ApiDBTestCase):
             f"/data/projects/{self.project_id}" f"/budgets/{budget['id']}"
         )
         budgets = self.get(f"/data/projects/{self.project_id}/budgets")
-        self.assertEqual(len(budgets), 0)
+        self.assertEqual(budgets, [])
 
     def test_budget_entries(self):
         budget = self._create_budget("Entries Budget")
@@ -480,7 +480,7 @@ class ProjectBudgetRoutesTestCase(ApiDBTestCase):
             f"/data/projects/{self.project_id}"
             f"/budgets/{budget['id']}/entries"
         )
-        self.assertEqual(len(entries), 0)
+        self.assertEqual(entries, [])
 
     def test_get_budgets_time_spents(self):
         result = self.get(

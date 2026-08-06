@@ -160,4 +160,4 @@ class ImportShotgunTaskTestCase(ShotgunTestCase):
         response = self.post(api_path, sg_task, 200)
         self.assertEqual(response["removed_instance_id"], task["id"])
         self.tasks = self.get(f"data/tasks?shotgun_id={self.sg_task['id']}")
-        self.assertEqual(len(self.tasks), 0)
+        self.assertEqual(self.tasks, [])

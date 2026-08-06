@@ -362,15 +362,15 @@ class TaskAssignationTestCase(TaskTestCase):
         self.log_in_cg_artist()
         self.put(f"/actions/persons/{person_id}/assign", data)
         task = tasks_service.get_task(task_id, relations=True)
-        self.assertEqual(len(task["assignees"]), 0)
+        self.assertEqual(task["assignees"], [])
         task = tasks_service.get_task(shot_task_id, relations=True)
-        self.assertEqual(len(task["assignees"]), 0)
+        self.assertEqual(task["assignees"], [])
         persons_service.add_to_department(department_id, person_id)
         self.put(f"/actions/persons/{person_id}/assign", data)
         task = tasks_service.get_task(task_id, relations=True)
-        self.assertEqual(len(task["assignees"]), 0)
+        self.assertEqual(task["assignees"], [])
         task = tasks_service.get_task(shot_task_id, relations=True)
-        self.assertEqual(len(task["assignees"]), 0)
+        self.assertEqual(task["assignees"], [])
 
     def test_clear_assignation(self):
         self.generate_fixture_task()
@@ -383,9 +383,9 @@ class TaskAssignationTestCase(TaskTestCase):
         self.put("/actions/tasks/clear-assignation", data)
 
         task = tasks_service.get_task(task_id, relations=True)
-        self.assertEqual(len(task["assignees"]), 0)
+        self.assertEqual(task["assignees"], [])
         task = tasks_service.get_task(shot_task_id, relations=True)
-        self.assertEqual(len(task["assignees"]), 0)
+        self.assertEqual(task["assignees"], [])
 
     def test_update_task_assignees(self):
         # The fixture task starts assigned to self.person.
@@ -499,7 +499,7 @@ class TaskCommentTestCase(TaskTestCase):
         notifications = notifications_service.get_last_notifications("comment")
         self.assertEqual(len(notifications), 1)
         notifications = notifications_service.get_last_notifications("mention")
-        self.assertEqual(len(notifications), 0)
+        self.assertEqual(notifications, [])
 
         data = {
             "task_status_id": self.wip_status_id,
@@ -673,7 +673,7 @@ class TaskListingTestCase(TaskTestCase):
         tasks = self.get(
             f"/data/entities/{entity_id}/task-types/{task_type_animation_id}/tasks"
         )
-        self.assertEqual(len(tasks), 0)
+        self.assertEqual(tasks, [])
 
     def test_get_tasks_for_person(self):
         self.generate_fixture_task()
@@ -692,13 +692,13 @@ class TaskListingTestCase(TaskTestCase):
         self.assertIn(str(self.person.id), tasks[0]["assignees"])
 
         tasks = self.get(f"/data/persons/{self.user['id']}/tasks")
-        self.assertEqual(len(tasks), 0)
+        self.assertEqual(tasks, [])
 
     def test_get_done_tasks_for_person(self):
         self.generate_fixture_task()
         self.task_id = self.task.id
         tasks = self.get(f"/data/persons/{self.person.id}/done-tasks")
-        self.assertEqual(len(tasks), 0)
+        self.assertEqual(tasks, [])
 
         done_status = tasks_service.get_or_create_status(
             "Done", "done", "#22d160", is_done=True
@@ -734,7 +734,7 @@ class TaskListingTestCase(TaskTestCase):
         self.assertEqual(len(tasks), 3)
         self.log_in_cg_artist()
         tasks = self.get("/data/tasks/")
-        self.assertEqual(len(tasks), 0)
+        self.assertEqual(tasks, [])
         projects_service.add_team_member(self.project_id, user_id)
         tasks = self.get("/data/tasks/")
         self.assertEqual(len(tasks), 3)
@@ -742,10 +742,10 @@ class TaskListingTestCase(TaskTestCase):
         user_id = str(self.user_vendor["id"])
         self.log_in_vendor()
         tasks = self.get("/data/tasks/")
-        self.assertEqual(len(tasks), 0)
+        self.assertEqual(tasks, [])
         projects_service.add_team_member(self.project_id, user_id)
         tasks = self.get("/data/tasks/")
-        self.assertEqual(len(tasks), 0)
+        self.assertEqual(tasks, [])
         tasks_service.assign_task(task_1_id, user_id)
         tasks = self.get("/data/tasks/")
         self.assertEqual(len(tasks), 1)

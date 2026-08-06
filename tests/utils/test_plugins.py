@@ -431,7 +431,7 @@ class PluginStaticRoutesTestCase(ApiDBTestCase):
 
         add_static_routes(manifest, routes)
 
-        self.assertEqual(len(routes), 0)
+        self.assertEqual(routes, [])
 
 
 class PluginAlembicConfigTestCase(ApiDBTestCase):

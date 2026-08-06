@@ -86,7 +86,7 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
         types = self.get(
             f"/data/project-templates/{template['id']}/task-types"
         )
-        self.assertEqual(len(types), 0)
+        self.assertEqual(types, [])
 
     def test_task_type_reorder_route(self):
         template = self._create_template()
@@ -163,7 +163,7 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
         statuses = self.get(
             f"/data/project-templates/{template['id']}/task-statuses"
         )
-        self.assertEqual(len(statuses), 0)
+        self.assertEqual(statuses, [])
 
     def test_asset_type_link_routes(self):
         template = self._create_template()
@@ -182,7 +182,7 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
         items = self.get(
             f"/data/project-templates/{template['id']}/asset-types"
         )
-        self.assertEqual(len(items), 0)
+        self.assertEqual(items, [])
 
     def test_status_automation_link_routes(self):
         template = self._create_template()
@@ -201,7 +201,7 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
         items = self.get(
             f"/data/project-templates/{template['id']}/status-automations"
         )
-        self.assertEqual(len(items), 0)
+        self.assertEqual(items, [])
 
     def test_set_metadata_descriptors_route(self):
         template = self._create_template()

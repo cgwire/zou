@@ -220,7 +220,7 @@ class PersonServiceTestCase(ApiDBTestCase):
         persons_service.add_to_department(department["id"], person["id"])
         persons_service.remove_from_department(department["id"], person["id"])
         person = persons_service.get_person(person["id"])
-        self.assertEqual(len(person["departments"]), 0)
+        self.assertEqual(person["departments"], [])
 
     def test_get_persons(self):
         persons = persons_service.get_persons()

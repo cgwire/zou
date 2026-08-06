@@ -180,4 +180,4 @@ class BreakdownRoutesTestCase(ApiDBTestCase):
             f"/asset-instances/{self.asset_instance.id}"
         )
         instances = self.get(f"/data/shots/{self.shot_id}/asset-instances")
-        self.assertEqual(len(instances), 0)
+        self.assertEqual(instances, {})

@@ -314,7 +314,7 @@ class ProjectServiceTestCase(ApiDBTestCase):
         automations = projects_service.get_project_status_automations(
             self.project.id
         )
-        self.assertEqual(len(automations), 0)
+        self.assertEqual(automations, [])
 
     def test_add_preview_background_file_setting(self):
         self.generate_fixture_preview_background_file()
@@ -337,7 +337,7 @@ class ProjectServiceTestCase(ApiDBTestCase):
         files = projects_service.get_project_preview_background_files(
             self.project.id
         )
-        self.assertEqual(len(files), 0)
+        self.assertEqual(files, [])
 
     def test_get_project_fps(self):
         fps = projects_service.get_project_fps(self.project.id)
@@ -434,7 +434,7 @@ class ProjectMetadataDescriptorTestCase(ApiDBTestCase):
         descriptors = projects_service.get_metadata_descriptors(
             self.project.id, for_client=True
         )
-        self.assertEqual(len(descriptors), 0)
+        self.assertEqual(descriptors, [])
 
     def test_update_metadata_descriptor(self):
         asset = self.generate_fixture_asset_type()
@@ -470,16 +470,14 @@ class ProjectMetadataDescriptorTestCase(ApiDBTestCase):
         self.project = Project.get(self.project.id)
         self.assertIsNone((self.project.data or {}).get("studio_code"))
         self.assertEqual(
-            len(
-                [
-                    d
-                    for d in projects_service.get_metadata_descriptors(
-                        self.project.id
-                    )
-                    if d["entity_type"] == "Project"
-                ]
-            ),
-            0,
+            [
+                d
+                for d in projects_service.get_metadata_descriptors(
+                    self.project.id
+                )
+                if d["entity_type"] == "Project"
+            ],
+            [],
         )
 
     def test_reorder_project_metadata_descriptors(self):
@@ -507,7 +505,7 @@ class ProjectMetadataDescriptorTestCase(ApiDBTestCase):
         descriptors = projects_service.get_metadata_descriptors(
             self.project.id
         )
-        self.assertEqual(len(descriptors), 0)
+        self.assertEqual(descriptors, [])
         asset = Entity.get(asset.id)
         self.assertNotIn("contractor", asset.data)
 

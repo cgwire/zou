@@ -103,7 +103,7 @@ class ShotTasksTestCase(ApiDBTestCase):
         shots = self.get(f"data/shots/with-tasks?project_id={project_id}", 403)
         projects_service.add_team_member(project_id, person_id)
         shots = self.get(f"data/shots/with-tasks?project_id={project_id}")
-        self.assertEqual(len(shots), 0)
+        self.assertEqual(shots, [])
         tasks_service.assign_task(task_id, person_id)
         shots = self.get(f"data/shots/with-tasks?project_id={project_id}")
         self.assertEqual(len(shots), 1)

@@ -49,7 +49,7 @@ class UserServiceTestCase(ApiDBTestCase):
 
     def test_related_projects(self):
         projects = user_service.related_projects()
-        self.assertEqual(len(projects), 0)
+        self.assertEqual(projects, [])
 
         self.project.team.append(self.get_current_user_raw())
 
@@ -66,7 +66,7 @@ class UserServiceTestCase(ApiDBTestCase):
         projects_service.add_team_member(self.project_id, person_id)
         tasks_service.assign_task(self.task_id, person_id)
         notifications = user_service.get_last_notifications()
-        self.assertEqual(len(notifications), 0)
+        self.assertEqual(notifications, [])
         comments_service.create_comment(
             self.user["id"],
             self.task_id,
@@ -90,7 +90,7 @@ class UserServiceTestCase(ApiDBTestCase):
         )
         notifications = user_service.get_last_notifications()
         self.assertEqual(len(notifications), 2)
-        self.assertEqual(len(notifications[0]["comment_text"]), 0)
+        self.assertEqual(notifications[0]["comment_text"], "")
         self.assertGreater(len(notifications[1]["comment_text"]), 0)
 
 

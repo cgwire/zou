@@ -109,5 +109,5 @@ class EditsTestCase(BaseEditTestCase):
         self.delete(path)
 
         edits = edits_service.get_edits()
-        self.assertEqual(len(edits), 0)
+        self.assertEqual(edits, [])
         self.get(path, 404)

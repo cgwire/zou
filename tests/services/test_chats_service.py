@@ -103,7 +103,7 @@ class ChatsServiceTestCase(ApiDBTestCase):
         result = chats_service.delete_chat_message(message["id"])
         self.assertEqual(result["id"], message["id"])
         messages = chats_service.get_chat_messages(chat.id)
-        self.assertEqual(len(messages), 0)
+        self.assertEqual(messages, [])
 
     def _create_message(self):
         chat = chats_service.get_chat_raw(self.asset.id)

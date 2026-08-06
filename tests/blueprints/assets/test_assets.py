@@ -49,7 +49,7 @@ class AssetsTestCase(ApiDBTestCase):
 
     def test_get_shot_assets(self):
         assets = self.get(f"data/shots/{self.shot.id}/assets")
-        self.assertEqual(len(assets), 0)
+        self.assertEqual(assets, [])
 
         self.shot.entities_out = [self.asset]
         self.shot.save()

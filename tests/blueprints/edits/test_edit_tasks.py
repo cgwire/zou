@@ -33,7 +33,7 @@ class EditTasksTestCase(BaseEditTestCase):
         projects_service.add_team_member(project_id, person_id)
         projects_service.clear_project_cache(str(project_id))
         edits = self.get(f"data/edits/with-tasks?project_id={project_id}")
-        self.assertEqual(len(edits), 0)
+        self.assertEqual(edits, [])
         tasks_service.assign_task(task_id, person_id)
         edits = self.get(f"data/edits/with-tasks?project_id={project_id}")
         self.assertEqual(len(edits), 1)

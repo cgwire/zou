@@ -55,7 +55,7 @@ class EventsServiceTestCase(ApiDBTestCase):
         self.assertEqual(events[0]["name"], "task:update")
 
         events = events_service.get_last_events(project_ids=[])
-        self.assertEqual(len(events), 0)
+        self.assertEqual(events, [])
 
     def test_get_last_events_rejects_like_wildcards(self):
         # "task\n" is the fullmatch case: "$" alone would accept it.

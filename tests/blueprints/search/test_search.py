@@ -64,7 +64,7 @@ class AssetSearchTestCase(ApiDBTestCase):
         self.generate_fixture_user_manager()
         self.log_in_manager()
         assets = self.post("data/search", {"query": "rabbit"}, 200)["assets"]
-        self.assertEqual(len(assets), 0)
+        self.assertEqual(assets, [])
 
     def test_search_assets_partial(self):
         assets = self.post("data/search", {"query": "rab"}, 200)["assets"]
@@ -74,7 +74,7 @@ class AssetSearchTestCase(ApiDBTestCase):
 
     def test_search_assets_after_creation(self):
         assets = self.post("data/search", {"query": "girafe"}, 200)["assets"]
-        self.assertEqual(len(assets), 0)
+        self.assertEqual(assets, [])
         self.create_girafe_asset()
         assets = self.post("data/search", {"query": "girafe"}, 200)["assets"]
         self.assertEqual(len(assets), 1)
@@ -85,7 +85,7 @@ class AssetSearchTestCase(ApiDBTestCase):
         self.assertEqual(len(assets), 1)
         self.put(f"data/entities/{asset['id']}", {"name": "Elephant"})
         assets = self.post("data/search", {"query": "girafe"}, 200)["assets"]
-        self.assertEqual(len(assets), 0)
+        self.assertEqual(assets, [])
         assets = self.post("data/search", {"query": "elephant"}, 200)["assets"]
         self.assertEqual(len(assets), 1)
 
@@ -95,11 +95,11 @@ class AssetSearchTestCase(ApiDBTestCase):
         self.assertEqual(len(assets), 1)
         self.delete(f"data/entities/{asset['id']}")
         assets = self.post("data/search", {"query": "girafe"}, 200)["assets"]
-        self.assertEqual(len(assets), 0)
+        self.assertEqual(assets, [])
         asset = self.create_girafe_asset()
         self.delete(f"data/assets/{asset['id']}")
         assets = self.post("data/search", {"query": "girafe"}, 200)["assets"]
-        self.assertEqual(len(assets), 0)
+        self.assertEqual(assets, [])
 
     def test_search_persons(self):
         persons = self.post("data/search", {"query": "john"}, 200)["persons"]
@@ -118,7 +118,7 @@ class AssetSearchTestCase(ApiDBTestCase):
 
     def test_search_persons_after_creation(self):
         persons = self.post("data/search", {"query": "alicia"}, 200)["persons"]
-        self.assertEqual(len(persons), 0)
+        self.assertEqual(persons, [])
         self.create_person_alicia()
         persons = self.post("data/search", {"query": "alicia"}, 200)["persons"]
         self.assertEqual(len(persons), 1)
@@ -131,7 +131,7 @@ class AssetSearchTestCase(ApiDBTestCase):
         persons = self.post("data/search", {"query": "ann"}, 200)["persons"]
         self.assertEqual(len(persons), 1)
         persons = self.post("data/search", {"query": "alicia"}, 200)["persons"]
-        self.assertEqual(len(persons), 0)
+        self.assertEqual(persons, [])
 
     def test_search_persons_after_deletion(self):
         person = self.create_person_alicia()
@@ -139,7 +139,7 @@ class AssetSearchTestCase(ApiDBTestCase):
         self.assertEqual(len(persons), 1)
         self.delete(f"data/persons/{person['id']}")
         persons = self.post("data/search", {"query": "girafe"}, 200)["persons"]
-        self.assertEqual(len(persons), 0)
+        self.assertEqual(persons, [])
 
     def test_search_shots_exact(self):
         shots = self.post("data/search", {"query": "sh001"}, 200)["shots"]
@@ -149,7 +149,7 @@ class AssetSearchTestCase(ApiDBTestCase):
         self.generate_fixture_user_manager()
         self.log_in_manager()
         assets = self.post("data/search", {"query": "sh001"}, 200)["shots"]
-        self.assertEqual(len(assets), 0)
+        self.assertEqual(assets, [])
 
     def test_search_shots_partial(self):
         shots = self.post("data/search", {"query": "sH00"}, 200)["shots"]
@@ -158,7 +158,7 @@ class AssetSearchTestCase(ApiDBTestCase):
     def test_search_shots_after_creation(self):
         shots = self.post("data/search", {"query": "pl004"}, 200)["shots"]
         shots = self.post("data/search", {"query": "pl004"}, 200)["shots"]
-        self.assertEqual(len(shots), 0)
+        self.assertEqual(shots, [])
 
     def test_search_offset(self):
         for i in range(1, 11):

@@ -25,7 +25,7 @@ class DepartmentRoutesTestCase(ApiDBTestCase):
 
     def test_get_all_department_software_empty(self):
         result = self.get("/data/departments/software-licenses")
-        self.assertEqual(len(result), 0)
+        self.assertEqual(result, {})
 
     def test_add_software_to_department(self):
         result = self.post(
@@ -51,7 +51,7 @@ class DepartmentRoutesTestCase(ApiDBTestCase):
         result = departments_service.get_software_for_department(
             str(self.department.id)
         )
-        self.assertEqual(len(result), 0)
+        self.assertEqual(result, [])
 
     # --- Hardware routes ---
 
@@ -65,7 +65,7 @@ class DepartmentRoutesTestCase(ApiDBTestCase):
 
     def test_get_all_department_hardware_items_empty(self):
         result = self.get("/data/departments/hardware-items")
-        self.assertEqual(len(result), 0)
+        self.assertEqual(result, {})
 
     def test_add_hardware_item_to_department(self):
         result = self.post(
@@ -93,4 +93,4 @@ class DepartmentRoutesTestCase(ApiDBTestCase):
         result = departments_service.get_hardware_items_for_department(
             str(self.department.id)
         )
-        self.assertEqual(len(result), 0)
+        self.assertEqual(result, [])

@@ -65,7 +65,7 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
         self.assertEqual(len(shots_service.get_shots()), 4)
 
     def test_import_shots(self):
-        self.assertEqual(len(Task.query.all()), 0)
+        self.assertEqual(Task.query.all(), [])
         db.session.add(
             ProjectTaskTypeLink(
                 project_id=self.project_id, task_type_id=self.task_type.id

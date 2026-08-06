@@ -21,7 +21,7 @@ class EntityRoutesTestCase(ApiDBTestCase):
 
     def test_get_entity_news(self):
         result = self.get(f"/data/entities/{self.asset.id}/news")
-        self.assertEqual(len(result["data"]), 0)
+        self.assertEqual(result["data"], [])
 
     def test_get_entity_news_with_comment(self):
         comment = comments_service.new_comment(
@@ -38,7 +38,7 @@ class EntityRoutesTestCase(ApiDBTestCase):
     def test_get_entity_preview_files(self):
         result = self.get(f"/data/entities/{self.asset.id}/preview-files")
         self.assertIsInstance(result, list)
-        self.assertEqual(len(result), 0)
+        self.assertEqual(result, [])
 
     def test_get_entity_preview_files_with_data(self):
         self.generate_fixture_preview_file()
@@ -47,7 +47,7 @@ class EntityRoutesTestCase(ApiDBTestCase):
 
     def test_get_entity_time_spents(self):
         result = self.get(f"/data/entities/{self.asset.id}/time-spents")
-        self.assertEqual(len(result), 0)
+        self.assertEqual(result, [])
 
     def test_get_entity_time_spents_with_data(self):
         TimeSpent.create(
@@ -64,7 +64,7 @@ class EntityRoutesTestCase(ApiDBTestCase):
         result = self.get(
             f"/data/entities/{self.asset.id}/entities-linked/with-tasks"
         )
-        self.assertEqual(len(result), 0)
+        self.assertEqual(result, [])
 
     def test_get_entities_linked_with_tasks_with_link(self):
         self.generate_fixture_sequence()

@@ -148,7 +148,7 @@ class RouteTaskChangeTestCase(ApiDBTestCase):
         comments = self.get(f"data/tasks/{task_id}/comments")
         self.assertEqual(len(comments), 1)
         comments = self.get(f"data/tasks/{task2_id}/comments")
-        self.assertEqual(len(comments), 0)
+        self.assertEqual(comments, [])
 
     def test_attachments(self):
         self.delete_test_folder()

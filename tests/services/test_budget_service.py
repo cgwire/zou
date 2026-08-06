@@ -48,7 +48,7 @@ class BudgetServiceTestCase(ApiDBTestCase):
 
     def test_get_budgets(self):
         result = budget_service.get_budgets(str(self.project.id))
-        self.assertEqual(len(result), 0)
+        self.assertEqual(result, [])
 
         budget_service.create_budget(
             str(self.project.id), "Test Budget 1", "USD"
@@ -111,7 +111,7 @@ class BudgetServiceTestCase(ApiDBTestCase):
     def test_get_budget_entries(self):
         self.generate_fixture_budget()
         result = budget_service.get_budget_entries(str(self.budget.id))
-        self.assertEqual(len(result), 0)
+        self.assertEqual(result, [])
 
     def test_get_budget_entry_raw(self):
         self.generate_fixture_budget()

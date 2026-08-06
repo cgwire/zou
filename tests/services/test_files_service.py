@@ -568,7 +568,7 @@ class FileServiceTestCase(ApiDBTestCase):
         preview_files = files_service.get_preview_files_for_project(
             project_2_id
         )
-        self.assertEqual(len(preview_files), 0)
+        self.assertEqual(preview_files, [])
 
     def test_get_working_file_raw(self):
         raw = files_service.get_working_file_raw(self.working_file.id)
@@ -671,7 +671,7 @@ class FileServiceTestCase(ApiDBTestCase):
 
     def test_get_preview_background_files(self):
         result = files_service.get_preview_background_files()
-        self.assertEqual(len(result), 0)
+        self.assertEqual(result, [])
         self.generate_fixture_preview_background_file()
         files_service.clear_preview_background_file_cache(
             self.preview_background_file.id

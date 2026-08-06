@@ -22,7 +22,7 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         self.generate_fixture_task_type()
 
     def test_import_assets(self):
-        self.assertEqual(len(Task.query.all()), 0)
+        self.assertEqual(Task.query.all(), [])
         number_of_task_per_entity_to_create = len(
             TaskType.query.filter_by(for_entity="Asset").all()
         )
@@ -276,7 +276,7 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         )
         error = self.upload_file(path, file_path_fixture, 400)
         self.assertIn("Person not found", error["message"])
-        self.assertEqual(len(Entity.query.all()), 0)
+        self.assertEqual(Entity.query.all(), [])
 
     def test_import_assets_with_non_comma_delimiter(self):
         path = f"/import/csv/projects/{self.project.id}/assets"
@@ -306,7 +306,7 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         error = self.upload_file(path, file_path_fixture, 400)
         self.assertEqual(error["message"], "Could not determine delimiter")
         entities = Entity.query.all()
-        self.assertEqual(len(entities), 0)
+        self.assertEqual(entities, [])
 
     def test_import_assets_missing_header(self):
         # With missing columns on a given line. It should not work.
@@ -318,7 +318,7 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         # The header is file line 1, so the first data row is line 2.
         self.assertEqual(error["line_number"], 2)
         entities = Entity.query.all()
-        self.assertEqual(len(entities), 0)
+        self.assertEqual(entities, [])
 
     def test_import_assets_empty_type(self):
         # An empty Type cell used to create an asset type named "", which

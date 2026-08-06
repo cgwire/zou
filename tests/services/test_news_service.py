@@ -46,7 +46,7 @@ class NewsServiceTestCase(ApiDBTestCase):
         )
         news_service.delete_news_for_comment(self.comment["id"])
         news_list = News.get_all()
-        self.assertEqual(len(news_list), 0)
+        self.assertEqual(news_list, [])
 
     def test_get_last_news_for_project(self):
         self.generate_commented_shot_task()

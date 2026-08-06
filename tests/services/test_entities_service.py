@@ -114,7 +114,7 @@ class EntitiesServiceTestCase(ApiDBTestCase):
         deletion_service.remove_task(str(self.shot_task.id), force=True)
         tasks = entities_service.get_entity_tasks(shot_entity)
         self.assertIsInstance(tasks, list)
-        self.assertEqual(len(tasks), 0)
+        self.assertEqual(tasks, [])
 
     def test_get_entities_for_project(self):
         """

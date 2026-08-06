@@ -288,7 +288,7 @@ class TeamRoleServiceTestCase(ApiDBTestCase):
             "admin",
         )
         project = projects_service.get_project_raw(str(self.project.id))
-        self.assertEqual(len(project.team), 0)
+        self.assertEqual(project.team, [])
 
 
 class TeamRoleApiTestCase(ApiDBTestCase):
@@ -396,7 +396,7 @@ class AllShotsRoleTestCase(ApiDBTestCase):
         )
         self.log_in_manager()
         shots = self.get(f"data/shots?project_id={self.project.id}")
-        self.assertEqual(len(shots), 0)
+        self.assertEqual(shots, [])
         tasks_service.assign_task(str(self.shot_task.id), manager_id)
         shots = self.get(f"data/shots?project_id={self.project.id}")
         self.assertEqual(len(shots), 1)
@@ -674,7 +674,7 @@ class AllEditsRoleTestCase(ApiDBTestCase):
         )
         self.log_in_manager()
         edits = self.get(f"data/edits?project_id={self.project.id}")
-        self.assertEqual(len(edits), 0)
+        self.assertEqual(edits, [])
         tasks_service.assign_task(str(self.edit_task.id), manager_id)
         edits = self.get(f"data/edits?project_id={self.project.id}")
         self.assertEqual(len(edits), 1)

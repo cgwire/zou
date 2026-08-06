@@ -24,4 +24,4 @@ class PersonDepartmentTestCase(ApiDBTestCase):
         persons_service.add_to_department(department["id"], person["id"])
         self.delete(self.path + "/" + department["id"])
         person = persons_service.get_person(person["id"])
-        self.assertEqual(len(person["departments"]), 0)
+        self.assertEqual(person["departments"], [])

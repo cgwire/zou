@@ -236,7 +236,7 @@ class ScheduleItemTestCase(ScheduleTestCase):
         milestones = schedule_service.get_milestones_for_project(
             self.project_id
         )
-        self.assertEqual(len(milestones), 0)
+        self.assertEqual(milestones, [])
 
         Milestone.create(
             name="Alpha",
@@ -362,7 +362,7 @@ class ProductionScheduleVersionTestCase(ScheduleTestCase):
         links = schedule_service.get_production_schedule_version_task_links(
             str(psv.id)
         )
-        self.assertEqual(len(links), 0)
+        self.assertEqual(links, [])
 
     def test_set_production_schedule_version_task_links_from_production(self):
         # Two tasks assigned to DISTINCT people so a partial or cross-wired
@@ -698,13 +698,10 @@ class ProductionScheduleVersionTestCase(ScheduleTestCase):
             1,
         )
         self.assertEqual(
-            len(
-                self.get(
-                    f"/data/production-schedule-versions/{psv.id}"
-                    f"/task-links?task_type_id={self.task_type_animation.id}"
-                )
+            self.get(
+                f"/data/production-schedule-versions/{psv.id}/task-links?task_type_id={self.task_type_animation.id}"
             ),
-            0,
+            [],
         )
 
     def test_task_links_route_denies_a_client(self):

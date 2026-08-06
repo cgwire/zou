@@ -72,4 +72,4 @@ class EntityTestCase(ApiDBTestCase):
         self.assertEqual(len(entity_links), 1)
         self.delete(f"data/entity-links/{entity_link['id']}")
         entity_links = self.get("data/entity-links")
-        self.assertEqual(len(entity_links), 0)
+        self.assertEqual(entity_links, [])

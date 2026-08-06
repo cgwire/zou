@@ -247,7 +247,7 @@ class NotificationsServiceTestCase(ApiDBTestCase):
         )
         self.assertEqual(len(result), 1)
         notifications = Notification.get_all()
-        self.assertEqual(len(notifications), 0)
+        self.assertEqual(notifications, [])
 
     def test_get_last_notifications(self):
         self.generate_fixture_comment()
@@ -263,7 +263,7 @@ class NotificationsServiceTestCase(ApiDBTestCase):
         result = notifications_service.get_last_notifications(
             notification_type="assignation"
         )
-        self.assertEqual(len(result), 0)
+        self.assertEqual(result, [])
 
     def test_get_subscriptions_for_project(self):
         self.generate_fixture_comment()

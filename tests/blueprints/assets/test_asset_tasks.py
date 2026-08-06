@@ -182,7 +182,7 @@ class AssetTasksTestCase(ApiDBTestCase):
         projects_service.add_team_member(project_id, person_id)
         projects_service.clear_project_cache(str(project_id))
         assets = self.get(f"data/assets/with-tasks?project_id={project_id}")
-        self.assertEqual(len(assets), 0)
+        self.assertEqual(assets, [])
         tasks_service.assign_task(task_id, person_id)
         assets = self.get(f"data/assets/with-tasks?project_id={project_id}")
         self.assertEqual(len(assets), 1)

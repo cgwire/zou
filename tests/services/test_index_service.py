@@ -55,7 +55,7 @@ class IndexServiceTestCase(ApiDBTestCase):
 
     def test_search_assets_after_creation(self):
         assets = index_service.search_assets("girafe", self.project_ids)
-        self.assertEqual(len(assets), 0)
+        self.assertEqual(assets, [])
         assets_service.create_asset(
             self.project_id, self.asset_type_id, "Girafe", "", {}
         )
@@ -70,7 +70,7 @@ class IndexServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(assets), 1)
         assets_service.update_asset(asset["id"], {"name": "Elephant"})
         assets = index_service.search_assets("girafe")
-        self.assertEqual(len(assets), 0)
+        self.assertEqual(assets, [])
         assets = index_service.search_assets("elephant")
         self.assertEqual(len(assets), 1)
 
@@ -82,7 +82,7 @@ class IndexServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(assets), 1)
         assets_service.remove_asset(asset["id"])
         assets = index_service.search_assets("girafe")
-        self.assertEqual(len(assets), 0)
+        self.assertEqual(assets, [])
 
     def test_prepare_shot_with_missing_sequence(self):
         with patch.object(

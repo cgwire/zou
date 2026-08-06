@@ -50,8 +50,8 @@ class CommentsServiceTestCase(ApiDBTestCase):
         self.comment = comments_service.new_comment(
             self.task.id, self.task_status.id, self.user["id"], "first comment"
         )
-        self.assertIsNot(self.comment["id"], None)
-        self.assertIsNot(self.comment["created_at"], None)
+        self.assertIsNotNone(self.comment["id"])
+        self.assertIsNotNone(self.comment["created_at"])
         self.assertEqual(self.comment["object_id"], str(self.task.id))
         self.comment = comments_service.new_comment(
             self.task.id,
@@ -158,7 +158,7 @@ class CommentsServiceTestCase(ApiDBTestCase):
         task, status_changed = comments_service._manage_status_change(
             self.wfa_status, task, comment
         )
-        self.assertIsNot(task["end_date"], None)
+        self.assertIsNotNone(task["end_date"])
 
     def test_manage_status_change_emits_to_review(self):
         """
@@ -279,7 +279,7 @@ class CommentsServiceTestCase(ApiDBTestCase):
         attachments = comments_service.get_all_attachment_files_for_project(
             fields.gen_uuid()
         )
-        self.assertEqual(len(attachments), 0)
+        self.assertEqual(attachments, [])
 
     def test_get_all_attachment_files_for_task(self):
         comment = comments_service.new_comment(
@@ -294,7 +294,7 @@ class CommentsServiceTestCase(ApiDBTestCase):
         attachments = comments_service.get_all_attachment_files_for_task(
             fields.gen_uuid()
         )
-        self.assertEqual(len(attachments), 0)
+        self.assertEqual(attachments, [])
 
     def test_reply_comment(self):
         reply_text = "first reply"
@@ -502,7 +502,7 @@ class CommentsServiceTestCase(ApiDBTestCase):
         filtered = comments_service.filter_tasks_by_hashtags(
             tasks, [], task_type_animation
         )
-        self.assertEqual(len(filtered), 0)
+        self.assertEqual(filtered, [])
 
     def test_create_comment_with_hashtags(self):
         """

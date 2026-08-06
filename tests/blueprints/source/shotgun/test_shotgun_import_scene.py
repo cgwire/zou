@@ -83,6 +83,6 @@ class ImportShotgunSceneTestCase(ShotgunTestCase):
         self.scenes = self.post(api_path, {"id": self.sg_scene["id"]}, 200)
 
         self.scenes = self.get("data/scenes/all")
-        self.assertEqual(len(self.scenes), 0)
+        self.assertEqual(self.scenes, [])
 
         self.get(f"data/scenes/{scene['id']}", 404)

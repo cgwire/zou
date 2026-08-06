@@ -72,5 +72,5 @@ class EntityLinkTestCase(ApiDBTestCase):
         )
         self.delete(f"data/entity-links/{entity_link['id']}")
         entity_links = self.get("data/entity-links")
-        self.assertEqual(len(entity_links), 0)
+        self.assertEqual(entity_links, [])
         self.delete_404(f"data/entity-links/{fields.gen_uuid()}")

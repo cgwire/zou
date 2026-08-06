@@ -28,7 +28,7 @@ class DepartmentsServiceTestCase(ApiDBTestCase):
         result = departments_service.get_software_for_department(
             str(self.department.id)
         )
-        self.assertEqual(len(result), 0)
+        self.assertEqual(result, [])
 
         departments_service.add_software_to_department(
             str(self.department.id), str(self.software.id)
@@ -49,7 +49,7 @@ class DepartmentsServiceTestCase(ApiDBTestCase):
         result = departments_service.get_hardware_items_for_department(
             str(self.department.id)
         )
-        self.assertEqual(len(result), 0)
+        self.assertEqual(result, [])
 
         departments_service.add_hardware_item_to_department(
             str(self.department.id), str(self.hardware_item.id)
@@ -106,7 +106,7 @@ class DepartmentsServiceTestCase(ApiDBTestCase):
         software_list = departments_service.get_software_for_department(
             str(self.department.id)
         )
-        self.assertEqual(len(software_list), 0)
+        self.assertEqual(software_list, [])
 
     def test_remove_software_from_department_no_link(self):
         result = departments_service.remove_software_from_department(
@@ -167,7 +167,7 @@ class DepartmentsServiceTestCase(ApiDBTestCase):
         hardware_list = departments_service.get_hardware_items_for_department(
             str(self.department.id)
         )
-        self.assertEqual(len(hardware_list), 0)
+        self.assertEqual(hardware_list, [])
 
     def test_remove_hardware_item_from_department_no_link(self):
         result = departments_service.remove_hardware_item_from_department(
@@ -188,7 +188,7 @@ class DepartmentsServiceTestCase(ApiDBTestCase):
 
     def test_get_all_software_for_departments(self):
         result = departments_service.get_all_software_for_departments()
-        self.assertEqual(len(result), 0)
+        self.assertEqual(result, {})
 
         departments_service.add_software_to_department(
             str(self.department.id), str(self.software.id)
@@ -204,7 +204,7 @@ class DepartmentsServiceTestCase(ApiDBTestCase):
 
     def test_get_all_hardware_items_for_departments(self):
         result = departments_service.get_all_hardware_items_for_departments()
-        self.assertEqual(len(result), 0)
+        self.assertEqual(result, {})
 
         departments_service.add_hardware_item_to_department(
             str(self.department.id), str(self.hardware_item.id)

@@ -193,7 +193,7 @@ class ShareLinkTestCase(PlaylistSharingTestCase):
             200,
         )
         result = self.get(self.share_path())
-        self.assertEqual(len(result), 0)
+        self.assertEqual(result, [])
 
     def test_invite_share_link(self):
         """

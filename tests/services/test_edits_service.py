@@ -40,7 +40,7 @@ class EditUtilsTestCase(ApiDBTestCase):
         edits = sorted(edits, key=lambda s: s["name"])
         self.assertEqual(len(edits), 2)
         self.assertEqual(len(edits[0]["tasks"]), 2)
-        self.assertEqual(len(edits[1]["tasks"]), 0)
+        self.assertEqual(edits[1]["tasks"], [])
         self.assertEqual(edits[0]["episode_id"], str(self.episode.id))
         self.assertEqual(
             edits[0]["tasks"][0]["assignees"][0], str(self.person.id)

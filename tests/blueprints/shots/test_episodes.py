@@ -53,7 +53,7 @@ class EpisodeTestCase(ApiDBTestCase):
         projects_service.clear_project_cache(str(project_id))
         self.log_in_vendor()
         sequences = self.get(f"data/episodes/{self.episode_id}/sequences")
-        self.assertEqual(len(sequences), 0)
+        self.assertEqual(sequences, [])
         tasks_service.assign_task(task_id, person_id)
         sequences = self.get(f"data/episodes/{self.episode_id}/sequences")
         self.assertEqual(len(sequences), 1)
@@ -99,7 +99,7 @@ class EpisodeTestCase(ApiDBTestCase):
         projects_service.add_team_member(project_id, person_id)
         self.log_in_vendor()
         episodes = self.get(f"data/projects/{project_id}/episodes")
-        self.assertEqual(len(episodes), 0)
+        self.assertEqual(episodes, [])
         tasks_service.assign_task(task_id, person_id)
         episodes = self.get(f"data/projects/{project_id}/episodes")
         self.assertEqual(len(episodes), 1)
@@ -137,7 +137,7 @@ class EpisodeTestCase(ApiDBTestCase):
     def test_get_episodes_vendor_filters(self):
         self._setup_vendor()
         episodes = self.get(f"data/episodes?project_id={self.project_id}")
-        self.assertEqual(len(episodes), 0)
+        self.assertEqual(episodes, [])
         tasks_service.assign_task(self.shot_task.id, self.user_vendor["id"])
         episodes = self.get(f"data/episodes?project_id={self.project_id}")
         self.assertEqual(len(episodes), 1)
@@ -154,7 +154,7 @@ class EpisodeTestCase(ApiDBTestCase):
         self._setup_vendor()
         path = f"data/episodes/with-tasks?project_id={self.project_id}"
         # Without an assigned shot, the vendor gets no episode (but no 403).
-        self.assertEqual(len(self.get(path)), 0)
+        self.assertEqual(self.get(path), [])
         # Assigning a descendant shot task surfaces its episode.
         tasks_service.assign_task(self.shot_task.id, self.user_vendor["id"])
         episodes = self.get(path)

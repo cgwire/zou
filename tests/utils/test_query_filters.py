@@ -37,4 +37,4 @@ class QueryTestCase(ApiDBTestCase):
         entities = self.get(
             f"data/entities?name={entities[0]['name']}&project_id={self.project2_id}"
         )
-        self.assertEqual(len(entities), 0)
+        self.assertEqual(entities, [])

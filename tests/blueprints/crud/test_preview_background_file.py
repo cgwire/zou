@@ -116,7 +116,7 @@ class PreviewBackgroundFileTestCase(ApiDBTestCase):
             str(self.preview_background_file.id),
             project["preview_background_files"],
         )
-        self.assertEqual(len(project["preview_background_files"]), 0)
+        self.assertEqual(project["preview_background_files"], [])
         preview_background_file_ids = [
             p["id"]
             for p in self.get(
@@ -126,4 +126,4 @@ class PreviewBackgroundFileTestCase(ApiDBTestCase):
         self.assertNotIn(
             str(self.preview_background_file.id), preview_background_file_ids
         )
-        self.assertEqual(len(preview_background_file_ids), 0)
+        self.assertEqual(preview_background_file_ids, [])

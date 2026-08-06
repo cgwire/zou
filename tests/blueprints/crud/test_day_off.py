@@ -68,5 +68,5 @@ class DayOffTestCase(ApiDBTestCase):
         )
         self.delete(f"data/day-offs/{day_off['id']}")
         day_offs = self.get("data/day-offs")
-        self.assertEqual(len(day_offs), 0)
+        self.assertEqual(day_offs, [])
         self.delete_404(f"data/day-offs/{fields.gen_uuid()}")

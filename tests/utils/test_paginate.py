@@ -18,10 +18,10 @@ class PaginationTestCase(ApiDBTestCase):
 
     def test_404(self):
         result = self.get("data/persons?page=4")
-        self.assertEqual(len(result["data"]), 0)
+        self.assertEqual(result["data"], [])
         self.assertEqual(result["total"], 251)
         result = self.get("data/persons?page=0")
-        self.assertEqual(len(result["data"]), 0)
+        self.assertEqual(result["data"], [])
         self.assertEqual(result["total"], 251)
 
     def test_malformed_page_returns_400(self):

@@ -250,7 +250,7 @@ class AssetServiceTestCase(ApiDBTestCase):
             self.asset.id,
             relations=True,
         )
-        self.assertEqual(len(asset["entities_out"]), 0)
+        self.assertEqual(asset["entities_out"], [])
 
     def test_get_shared_assets_used_in_project(self):
         """

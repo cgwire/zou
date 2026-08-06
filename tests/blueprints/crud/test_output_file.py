@@ -99,7 +99,7 @@ class OutputFileTestCase(ApiDBTestCase):
         cg_artist_id = self.user_cg_artist["id"]
         self.log_in_cg_artist()
         output_files = self.get("data/output-files")
-        self.assertEqual(len(output_files), 0)
+        self.assertEqual(output_files, [])
         self.get(f"data/output-files/{output_file_id}", 403)
 
         projects_service.add_team_member(self.project_id, cg_artist_id)

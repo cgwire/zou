@@ -13,7 +13,7 @@ class DesktopLoginLogsTestCase(ApiDBTestCase):
         date_1 = self.now()
         data = {"date": date_1}
         logs = self.get(self.path)
-        self.assertEqual(len(logs), 0)
+        self.assertEqual(logs, [])
 
         self.post(self.path, data)
         date_2 = self.now()

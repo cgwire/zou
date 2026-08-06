@@ -69,7 +69,7 @@ class SequenceTestCase(ApiDBTestCase):
         self.log_in_vendor()
         projects_service.add_team_member(project_id, person_id)
         episodes = self.get(f"data/projects/{project_id}/sequences")
-        self.assertEqual(len(episodes), 0)
+        self.assertEqual(episodes, [])
         tasks_service.assign_task(task_id, person_id)
         episodes = self.get(f"data/projects/{project_id}/sequences")
         self.assertEqual(len(episodes), 1)
@@ -109,7 +109,7 @@ class SequenceTestCase(ApiDBTestCase):
     def test_get_sequences_vendor_unassigned(self):
         self._setup_vendor()
         sequences = self.get(f"data/sequences?project_id={self.project_id}")
-        self.assertEqual(len(sequences), 0)
+        self.assertEqual(sequences, [])
 
     def test_get_sequences_vendor_assigned(self):
         self._setup_vendor()
@@ -129,7 +129,7 @@ class SequenceTestCase(ApiDBTestCase):
         self._setup_vendor()
         path = f"data/sequences/with-tasks?project_id={self.project_id}"
         # Without an assigned shot, the vendor gets no sequence (but no 403).
-        self.assertEqual(len(self.get(path)), 0)
+        self.assertEqual(self.get(path), [])
         # Assigning a shot task surfaces its parent sequence.
         tasks_service.assign_task(self.shot_task.id, self.user_vendor["id"])
         sequences = self.get(path)

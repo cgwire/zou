@@ -297,7 +297,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         self.asset.update({"data": {"contractor": "contractor 1"}})
         self.delete(self.descriptors_path(descriptor))
         descriptors = self.get(self.descriptors_path())
-        self.assertEqual(len(descriptors), 0)
+        self.assertEqual(descriptors, [])
         asset = self.get(f"data/assets/{self.asset_id}")
         self.assertNotIn("contractor", asset["data"])
 

@@ -112,7 +112,7 @@ class UserEntityListingTestCase(UserContextTestCase):
         asset_types = self.get(
             f"data/user/projects/{self.project.id}/asset-types"
         )
-        self.assertEqual(len(asset_types), 0)
+        self.assertEqual(asset_types, [])
 
         self.assign_user(task_id)
         self.assign_user(task2_id)
@@ -128,7 +128,7 @@ class UserEntityListingTestCase(UserContextTestCase):
         assets = self.get(
             f"data/user/projects/{self.project.id}/asset-types/{self.asset_type.id}/assets"
         )
-        self.assertEqual(len(assets), 0)
+        self.assertEqual(assets, [])
         self.assign_user(task_id)
 
         assets = self.get(
@@ -141,7 +141,7 @@ class UserEntityListingTestCase(UserContextTestCase):
         task_id = self.task.id
 
         tasks = self.get(path)
-        self.assertEqual(len(tasks), 0)
+        self.assertEqual(tasks, [])
 
         self.assign_user(task_id)
         tasks = self.get(path)
@@ -152,7 +152,7 @@ class UserEntityListingTestCase(UserContextTestCase):
         shot_task_id = self.shot_task.id
 
         tasks = self.get(path)
-        self.assertEqual(len(tasks), 0)
+        self.assertEqual(tasks, [])
 
         self.assign_user(shot_task_id)
         tasks = self.get(path)
@@ -165,7 +165,7 @@ class UserEntityListingTestCase(UserContextTestCase):
         path = f"data/user/scenes/{self.scene.id}/tasks"
 
         tasks = self.get(path)
-        self.assertEqual(len(tasks), 0)
+        self.assertEqual(tasks, [])
 
         self.assign_user(scene_task_id)
         tasks = self.get(path)
@@ -177,7 +177,7 @@ class UserEntityListingTestCase(UserContextTestCase):
         )
         path = f"data/user/sequences/{self.sequence.id}/tasks"
 
-        self.assertEqual(len(self.get(path)), 0)
+        self.assertEqual(self.get(path), [])
 
         self.assign_user(sequence_task.id)
         tasks = self.get(path)
@@ -190,7 +190,7 @@ class UserEntityListingTestCase(UserContextTestCase):
         task_type_id = self.task_type.id
 
         task_types = self.get(path)
-        self.assertEqual(len(task_types), 0)
+        self.assertEqual(task_types, [])
 
         self.assign_user(task_id)
         task_types = self.get(path)
@@ -202,7 +202,7 @@ class UserEntityListingTestCase(UserContextTestCase):
         shot_task_id = self.shot_task.id
 
         task_types = self.get(path)
-        self.assertEqual(len(task_types), 0)
+        self.assertEqual(task_types, [])
 
         self.assign_user(shot_task_id)
         task_types = self.get(path)
@@ -215,7 +215,7 @@ class UserEntityListingTestCase(UserContextTestCase):
         scene_task_id = self.scene_task.id
 
         task_types = self.get(path)
-        self.assertEqual(len(task_types), 0)
+        self.assertEqual(task_types, [])
 
         self.assign_user(scene_task_id)
         task_types = self.get(path)
@@ -227,7 +227,7 @@ class UserEntityListingTestCase(UserContextTestCase):
         )
         path = f"data/user/sequences/{self.sequence.id}/task-types"
 
-        self.assertEqual(len(self.get(path)), 0)
+        self.assertEqual(self.get(path), [])
 
         self.assign_user(sequence_task.id)
         task_types = self.get(path)
@@ -248,7 +248,7 @@ class UserWorkloadTestCase(UserContextTestCase):
         self.generate_fixture_user_cg_artist()
         self.log_in_cg_artist()
         projects = self.get("data/user/projects/open")
-        self.assertEqual(len(projects), 0)
+        self.assertEqual(projects, [])
 
         project = Project.get(self.project_id)
         person = Person.get(self.user_cg_artist["id"])
@@ -271,7 +271,7 @@ class UserWorkloadTestCase(UserContextTestCase):
 
         self.log_in_cg_artist()
         projects = self.get("data/user/projects/open")
-        self.assertEqual(len(projects), 0)
+        self.assertEqual(projects, [])
 
     def test_get_todos(self):
         task_id = self.task.id
@@ -279,7 +279,7 @@ class UserWorkloadTestCase(UserContextTestCase):
 
         path = "data/user/tasks/"
         tasks = self.get(path)
-        self.assertEqual(len(tasks), 0)
+        self.assertEqual(tasks, [])
 
         self.assign_user(task_id)
         self.assign_user(shot_task_id)
@@ -321,13 +321,13 @@ class UserWorkloadTestCase(UserContextTestCase):
 
         path = "data/user/done-tasks/"
         tasks = self.get(path)
-        self.assertEqual(len(tasks), 0)
+        self.assertEqual(tasks, [])
 
         self.assign_user(task_id)
 
         path = "data/user/done-tasks/"
         tasks = self.get(path)
-        self.assertEqual(len(tasks), 0)
+        self.assertEqual(tasks, [])
 
         done_status = tasks_service.get_or_create_status(
             "Done", "done", "#22d160", is_done=True
@@ -342,7 +342,7 @@ class UserWorkloadTestCase(UserContextTestCase):
 
     def test_get_tasks_to_check(self):
         tasks = self.get("data/user/tasks-to-check")
-        self.assertEqual(len(tasks), 0)
+        self.assertEqual(tasks, [])
 
         feedback_status = tasks_service.get_or_create_status(
             "Waiting For Approval", "wfa", is_feedback_request=True
@@ -368,7 +368,7 @@ class UserWorkloadTestCase(UserContextTestCase):
 
     def test_get_time_spents_for_date(self):
         path = "data/user/time-spents/2026-08-05"
-        self.assertEqual(len(self.get(path)), 0)
+        self.assertEqual(self.get(path), [])
 
         tasks_service.create_or_update_time_spent(
             self.task_id, self.user_id, "2026-08-05", 3600
@@ -378,7 +378,7 @@ class UserWorkloadTestCase(UserContextTestCase):
         self.assertEqual(len(time_spents), 1)
         self.assertEqual(time_spents[0]["duration"], 3600)
         # Another day sees nothing.
-        self.assertEqual(len(self.get("data/user/time-spents/2026-08-06")), 0)
+        self.assertEqual(self.get("data/user/time-spents/2026-08-06"), [])
         self.get("data/user/time-spents/not-a-date", 400)
 
     def test_get_task_time_spent_for_date(self):
@@ -564,7 +564,7 @@ class UserNotificationTestCase(UserContextTestCase):
         date_1 = self.now()
         data = {"date": date_1}
         logs = self.get(path)
-        self.assertEqual(len(logs), 0)
+        self.assertEqual(logs, [])
 
         self.post(path, data)
         date_2 = self.now()
@@ -695,8 +695,8 @@ class UserContextRoutesTestCase(UserContextTestCase):
         self.assertEqual(len(context["project_status"]), 2)
         self.assertEqual(len(context["persons"]), 3)
         self.assertEqual(context["notification_count"], 0)
-        self.assertEqual(len(context["search_filters"]), 0)
-        self.assertEqual(len(context["custom_actions"]), 0)
+        self.assertEqual(context["search_filters"], {})
+        self.assertEqual(context["custom_actions"], [])
 
     def test_get_metadata_columns(self):
         projects_service.add_metadata_descriptor(

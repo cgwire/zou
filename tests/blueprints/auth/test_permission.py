@@ -122,7 +122,7 @@ class PermissionTestCase(ApiDBTestCase):
         self.log_in_cg_artist()
         user_id = str(self.user_cg_artist["id"])
         projects = self.get("data/projects")
-        self.assertEqual(len(projects), 0)
+        self.assertEqual(projects, [])
 
         projects_service.add_team_member(self.project_id, user_id)
         projects = self.get("data/projects")

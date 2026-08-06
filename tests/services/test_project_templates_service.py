@@ -131,7 +131,7 @@ class ProjectTemplateServiceTestCase(ApiDBTestCase):
         task_types = project_templates_service.get_template_task_types(
             template["id"]
         )
-        self.assertEqual(len(task_types), 0)
+        self.assertEqual(task_types, [])
 
     def test_add_and_remove_task_status(self):
         template = project_templates_service.create_project_template(
@@ -156,7 +156,7 @@ class ProjectTemplateServiceTestCase(ApiDBTestCase):
         statuses = project_templates_service.get_template_task_statuses(
             template["id"]
         )
-        self.assertEqual(len(statuses), 0)
+        self.assertEqual(statuses, [])
 
     def test_add_and_remove_asset_type(self):
         template = project_templates_service.create_project_template(
@@ -176,7 +176,7 @@ class ProjectTemplateServiceTestCase(ApiDBTestCase):
         asset_types = project_templates_service.get_template_asset_types(
             template["id"]
         )
-        self.assertEqual(len(asset_types), 0)
+        self.assertEqual(asset_types, [])
 
     def test_add_and_remove_status_automation(self):
         template = project_templates_service.create_project_template(
@@ -196,7 +196,7 @@ class ProjectTemplateServiceTestCase(ApiDBTestCase):
         items = project_templates_service.get_template_status_automations(
             template["id"]
         )
-        self.assertEqual(len(items), 0)
+        self.assertEqual(items, [])
 
     def test_set_metadata_descriptors(self):
         template = project_templates_service.create_project_template(
