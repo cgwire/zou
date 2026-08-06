@@ -681,6 +681,9 @@ def acknowledge_comment(comment_id):
     else:
         _ack_comment(project_id, comment, current_user)
     comment.save()
+    # Kitsu draws the checkmark from the comment it reads back, not from
+    # the answer of this call.
+    tasks_service.clear_comment_cache(str(comment.id))
     return comment.serialize(relations=True)
 
 
@@ -925,4 +928,10 @@ def add_attachments_to_comment(comment, files, reply_id=None):
             )
             comment["attachment_files"].append(attachment_file)
             new_attachment_files.append(attachment_file)
+    if new_attachment_files:
+        # The dict handed in is a serialization the caller read somewhere,
+        # and appending to it leaves the stored one behind: a file attached
+        # to a comment posted earlier would not show until the window
+        # closes.
+        tasks_service.clear_comment_cache(comment["id"])
     return comment, new_attachment_files
