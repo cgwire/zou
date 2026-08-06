@@ -164,7 +164,9 @@ def all_playlists_for_episode(
             .filter(Playlist.is_for_all == True)
         )
     else:
-        query = query.filter(Playlist.episode_id == episode_id)
+        query = query.filter(Playlist.episode_id == episode_id).filter(
+            Playlist.project_id == project_id
+        )
 
     query = _apply_playlist_pagination(query, page, sort_by)
     query = query.options(defer(Playlist.shots)).add_columns(

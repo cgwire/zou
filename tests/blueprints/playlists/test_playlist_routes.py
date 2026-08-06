@@ -45,6 +45,29 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
             [playlist["name"] for playlist in result], ["Episode Playlist"]
         )
 
+    def test_get_episode_playlists_is_scoped_to_the_production(self):
+        """
+        The episode listing must stay inside the production it is asked
+        about: an episode id of another production returns nothing, whoever
+        asks.
+        """
+        elsewhere = self.generate_fixture_project_standard()
+        other_episode = self.generate_fixture_episode(
+            "E99", project_id=elsewhere.id
+        )
+        self.generate_fixture_playlist(
+            "Theirs",
+            project_id=elsewhere.id,
+            episode_id=other_episode.id,
+        )
+
+        playlists = self.get(
+            f"/data/projects/{self.project_id}"
+            f"/episodes/{other_episode.id}/playlists"
+        )
+
+        self.assertEqual(playlists, [])
+
     def test_get_project_playlist(self):
         self.generate_fixture_playlist("Single Playlist")
         playlists = self.get(f"/data/projects/{self.project_id}/playlists")
