@@ -70,16 +70,10 @@ class ImportShotgunVersionTestCase(ShotgunTestCase):
         self.assertEqual(preview_file["name"], sg_version["code"])
         self.assertEqual(preview_file["source"], "Shotgun")
         self.assertEqual(preview_file["task_id"], str(task.id))
-
-        self.assertEqual(preview_file["name"], sg_version["code"])
         self.assertEqual(
             preview_file["description"], sg_version["description"]
         )
         self.assertEqual(preview_file["shotgun_id"], sg_version["id"])
-        self.assertEqual(
-            preview_file["uploaded_movie_url"],
-            sg_version["sg_uploaded_movie"]["url"],
-        )
         self.assertEqual(
             preview_file["uploaded_movie_url"],
             sg_version["sg_uploaded_movie"]["url"],

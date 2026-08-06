@@ -587,7 +587,6 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.assertEqual(
             tasks[0]["last_comment"]["person_id"], str(self.person.id)
         )
-        self.assertEqual(len(tasks), 1)
         self.assertTrue(str(self.person.id) in tasks[0]["assignees"])
 
         tasks = self.get(f"/data/persons/{self.user['id']}/tasks")

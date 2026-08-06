@@ -50,15 +50,15 @@ class TaskTestCase(ApiDBTestCase):
         self.task = self.post("data/tasks", data)
         self.assertIsNotNone(self.task["id"])
         self.assertEqual(str(self.person.id), self.task["assignees"][0])
-        self.assertEqual(str(self.person.id), self.task["assignees"][0])
 
-        tasks = self.get("data/tasks")
-        self.assertEqual(len(tasks), 4)
+        self.assertEqual(len(self.get("data/tasks")), 4)
 
-        del self.task["assignees"]
+        # A body carrying no assignees is accepted, the task just has none.
+        del data["assignees"]
         data["name"] = "Task without assignees"
-        self.task = self.post("data/tasks", data)
-        self.assertEqual(len(tasks), 4)
+        task = self.post("data/tasks", data)
+        self.assertEqual(task["assignees"], [])
+        self.assertEqual(len(self.get("data/tasks")), 5)
 
     def test_create_task_without_name_defaults_to_main(self):
         data = {

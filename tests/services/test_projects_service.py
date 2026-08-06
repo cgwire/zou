@@ -35,13 +35,14 @@ class ProjectServiceTestCase(ApiDBTestCase):
 
     def test_get_or_create_status(self):
         project_status = projects_service.get_or_create_status("Frozen")
-        statuses = ProjectStatus.query.all()
         self.assertEqual(project_status["name"], "Frozen")
-        self.assertEqual(len(statuses), 3)
+        self.assertEqual(ProjectStatus.query.count(), 3)
 
-        project_status = projects_service.get_or_create_status("Frozen")
-        self.assertEqual(project_status["name"], "Frozen")
-        self.assertEqual(len(statuses), 3)
+        # Asking again returns the same row rather than adding one. The
+        # count has to be read back, the second call is what could add it.
+        again = projects_service.get_or_create_status("Frozen")
+        self.assertEqual(again["id"], project_status["id"])
+        self.assertEqual(ProjectStatus.query.count(), 3)
 
     def test_get_or_create_open_status(self):
         project_status = projects_service.get_or_create_open_status()
