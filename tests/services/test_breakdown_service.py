@@ -94,15 +94,64 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         ]
         breakdown_service.update_casting(self.asset.id, new_casting)
         self.generate_fixture_asset("Park", "", self.asset_type_environment_id)
+        self.park_id = str(self.asset.id)
         new_casting = [{"asset_id": self.asset_props_id, "nb_occurences": 1}]
         breakdown_service.update_casting(self.asset.id, new_casting)
+
+        # An environment of another production, cast the same way.
+        self.generate_fixture_project_standard()
+        elsewhere = self.generate_fixture_asset(
+            "Lake",
+            "",
+            self.asset_type_environment_id,
+            project_id=self.project_standard.id,
+        )
+        breakdown_service.update_casting(
+            elsewhere.id,
+            [{"asset_id": self.asset_props_id, "nb_occurences": 1}],
+        )
+
         casting = breakdown_service.get_asset_type_casting(
             self.project_id, self.asset_type_environment_id
         )
-        self.assertTrue(self.forest_id in casting)
-        self.assertTrue(str(self.asset.id) in casting)
+        self.assertEqual(
+            sorted(casting.keys()), sorted([self.forest_id, self.park_id])
+        )
         self.assertEqual(len(casting[self.forest_id]), 2)
-        self.assertEqual(len(casting[str(self.asset.id)]), 1)
+        self.assertEqual(len(casting[self.park_id]), 1)
+
+    def test_get_production_episodes_casting(self):
+        """
+        The casting of every episode of one production, keyed by episode.
+        An episode of another production stays out.
+        """
+        episode_id = str(self.episode.id)
+        breakdown_service.update_casting(
+            episode_id, [{"asset_id": self.asset_id, "nb_occurences": 2}]
+        )
+
+        self.generate_fixture_project_standard()
+        elsewhere = self.generate_fixture_episode(
+            name="E99", project_id=self.project_standard.id
+        )
+        breakdown_service.update_casting(
+            elsewhere.id,
+            [{"asset_id": self.asset_id, "nb_occurences": 1}],
+        )
+
+        castings = breakdown_service.get_production_episodes_casting(
+            self.project_id
+        )
+
+        self.assertEqual(list(castings.keys()), [episode_id])
+        casting = castings[episode_id]
+        self.assertEqual(
+            [
+                (entry["asset_name"], entry["nb_occurences"])
+                for entry in casting
+            ],
+            [("Tree", 2)],
+        )
 
     def new_shot_instance(self, asset_instance_id):
         return breakdown_service.add_asset_instance_to_shot(
@@ -522,6 +571,19 @@ class CastingReadyStatsTestCase(ApiDBTestCase):
                 self.priority_map[self.compositing_id],
             ],
             [1, 2, 3],
+        )
+
+        # Another production ordering the same task types differently does
+        # not reach this one.
+        self.generate_fixture_project_standard()
+        projects_service.create_project_task_type_link(
+            str(self.project_standard.id), self.compositing_id, 9
+        )
+        self.assertEqual(
+            breakdown_service._get_task_type_priority_map(self.project_id)[
+                self.compositing_id
+            ],
+            3,
         )
 
     def test_an_asset_is_ready_up_to_the_step_it_is_ready_for(self):
