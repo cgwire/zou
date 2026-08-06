@@ -874,6 +874,10 @@ def clear_avatar(person_id):
     person = get_person_raw(person_id)
     person.update({"has_avatar": False})
     clear_person_cache()
+    # Setting an avatar goes through update_person and is announced; so is
+    # dropping one, otherwise the other connected clients keep asking for
+    # a picture that no longer exists.
+    events.emit("person:update", {"person_id": str(person_id)})
     if config.REMOVE_FILES:
         try:
             file_store.remove_picture("thumbnails", person_id)
