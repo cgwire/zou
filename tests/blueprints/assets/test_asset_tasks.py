@@ -187,7 +187,7 @@ class AssetTasksTestCase(ApiDBTestCase):
         assets = self.get(f"data/assets/with-tasks?project_id={project_id}")
         self.assertEqual(len(assets), 1)
         self.assertEqual(len(assets[0]["tasks"]), 1)
-        self.assertTrue(str(person_id) in assets[0]["tasks"][0]["assignees"])
+        self.assertIn(str(person_id), assets[0]["tasks"][0]["assignees"])
 
         assets_service.update_asset(
             self.asset_id, {"data": {"contractor": "test"}}
@@ -206,7 +206,7 @@ class AssetTasksTestCase(ApiDBTestCase):
             str(self.department_id), person_id
         )
         assets = self.get(f"data/assets/with-tasks?project_id={project_id}")
-        self.assertTrue("contractor" not in assets[0]["data"])
+        self.assertNotIn("contractor", assets[0]["data"])
 
     def test_get_task_types_for_asset(self):
         task_types = self.get(f"data/assets/{self.asset_id}/task-types")

@@ -23,7 +23,7 @@ class ShotRoutesTestCase(ApiDBTestCase):
             task_id=self.shot_task.id,
         )
         result = self.get(f"/data/shots/{self.shot.id}/preview-files")
-        self.assertTrue(len(result) > 0)
+        self.assertGreater(len(result), 0)
 
     def test_get_shot_versions(self):
         result = self.get(f"/data/shots/{self.shot.id}/versions")

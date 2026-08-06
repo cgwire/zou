@@ -43,7 +43,7 @@ class EntityRoutesTestCase(ApiDBTestCase):
     def test_get_entity_preview_files_with_data(self):
         self.generate_fixture_preview_file()
         result = self.get(f"/data/entities/{self.asset.id}/preview-files")
-        self.assertTrue(len(result) > 0)
+        self.assertGreater(len(result), 0)
 
     def test_get_entity_time_spents(self):
         result = self.get(f"/data/entities/{self.asset.id}/time-spents")
@@ -77,7 +77,7 @@ class EntityRoutesTestCase(ApiDBTestCase):
         result = self.get(
             f"/data/entities/{self.asset.id}/entities-linked/with-tasks"
         )
-        self.assertTrue(len(result) > 0)
+        self.assertGreater(len(result), 0)
 
     def test_delete_entities(self):
         self.generate_fixture_sequence()

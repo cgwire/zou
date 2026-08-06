@@ -43,26 +43,26 @@ class CastingCsvExportTestCase(ApiDBTestCase):
 
         path = f"/export/csv/projects/{project_id}/casting.csv"
         csv = self.get_raw(path)
-        self.assertTrue("MP;Environment;Lake;Props;Boat;1;setdress" in csv)
-        self.assertFalse("E01;SEQ01;SH01;Character;John;1;animate" in csv)
-        self.assertFalse("Episode;E01;Character;John;1;animate" in csv)
+        self.assertIn("MP;Environment;Lake;Props;Boat;1;setdress", csv)
+        self.assertNotIn("E01;SEQ01;SH01;Character;John;1;animate", csv)
+        self.assertNotIn("Episode;E01;Character;John;1;animate", csv)
 
         path = f"/export/csv/projects/{project_id}/casting.csv?is_shot_casting=true"
         csv = self.get_raw(path)
-        self.assertTrue("E01;SEQ01;SH01;Character;John;1;animate" in csv)
-        self.assertFalse("MP;Environment;Lake;Props;Boat;1;setdress" in csv)
-        self.assertTrue("E02;SEQ01;SH01;Character;Victor;1;animate" in csv)
-        self.assertFalse("Episode;E01;Character;John;1;animate" in csv)
+        self.assertIn("E01;SEQ01;SH01;Character;John;1;animate", csv)
+        self.assertNotIn("MP;Environment;Lake;Props;Boat;1;setdress", csv)
+        self.assertIn("E02;SEQ01;SH01;Character;Victor;1;animate", csv)
+        self.assertNotIn("Episode;E01;Character;John;1;animate", csv)
 
         path = f"/export/csv/projects/{project_id}/casting.csv?is_shot_casting=true&episode_id={episode2_id}"
         csv = self.get_raw(path)
-        self.assertFalse("E01;SEQ01;SH01;Character;John;1;animate" in csv)
-        self.assertFalse("MP;Environment;Lake;Props;Boat;1;setdress" in csv)
-        self.assertTrue("E02;SEQ01;SH01;Character;Victor;1;animate" in csv)
-        self.assertFalse("Episode;E01;Character;John;1;animate" in csv)
+        self.assertNotIn("E01;SEQ01;SH01;Character;John;1;animate", csv)
+        self.assertNotIn("MP;Environment;Lake;Props;Boat;1;setdress", csv)
+        self.assertIn("E02;SEQ01;SH01;Character;Victor;1;animate", csv)
+        self.assertNotIn("Episode;E01;Character;John;1;animate", csv)
 
         path = f"/export/csv/projects/{project_id}/casting.csv?episode_id=all"
         csv = self.get_raw(path)
-        self.assertFalse("E01;SEQ01;SH01;Character;John;1;animate" in csv)
-        self.assertFalse("MP;Environment;Lake;Props;Boat;1;setdress" in csv)
-        self.assertTrue("Episode;E01;Character;John;1;animate" in csv)
+        self.assertNotIn("E01;SEQ01;SH01;Character;John;1;animate", csv)
+        self.assertNotIn("MP;Environment;Lake;Props;Boat;1;setdress", csv)
+        self.assertIn("Episode;E01;Character;John;1;animate", csv)

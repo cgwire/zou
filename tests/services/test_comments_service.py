@@ -50,8 +50,8 @@ class CommentsServiceTestCase(ApiDBTestCase):
         self.comment = comments_service.new_comment(
             self.task.id, self.task_status.id, self.user["id"], "first comment"
         )
-        self.assertTrue(self.comment["id"] is not None)
-        self.assertTrue(self.comment["created_at"] is not None)
+        self.assertIsNot(self.comment["id"], None)
+        self.assertIsNot(self.comment["created_at"], None)
         self.assertEqual(self.comment["object_id"], str(self.task.id))
         self.comment = comments_service.new_comment(
             self.task.id,
@@ -158,7 +158,7 @@ class CommentsServiceTestCase(ApiDBTestCase):
         task, status_changed = comments_service._manage_status_change(
             self.wfa_status, task, comment
         )
-        self.assertTrue(task["end_date"] is not None)
+        self.assertIsNot(task["end_date"], None)
 
     def test_manage_status_change_emits_to_review(self):
         """
@@ -534,7 +534,7 @@ class CommentsServiceTestCase(ApiDBTestCase):
         for sibling in [modeling_task, concept_task]:
             comments = tasks_service.get_comments(sibling.id)
             self.assertEqual(len(comments), 1)
-            self.assertTrue("Animation" in comments[0]["text"])
+            self.assertIn("Animation", comments[0]["text"])
             # _handle_hashtags reposts with the target's current status, not
             # with the one the author picked, so the sibling does not move.
             self.assertEqual(comments[0]["task_status_id"], sibling_status_id)

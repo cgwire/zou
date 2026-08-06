@@ -38,7 +38,7 @@ class EditTasksTestCase(BaseEditTestCase):
         edits = self.get(f"data/edits/with-tasks?project_id={project_id}")
         self.assertEqual(len(edits), 1)
         self.assertEqual(len(edits[0]["tasks"]), 1)
-        self.assertTrue(str(person_id) in edits[0]["tasks"][0]["assignees"])
+        self.assertIn(str(person_id), edits[0]["tasks"][0]["assignees"])
 
         edits_service.update_edit(
             self.edit_id, {"data": {"contractor": "test"}}
@@ -57,7 +57,7 @@ class EditTasksTestCase(BaseEditTestCase):
             str(self.department_id), person_id
         )
         edits = self.get(f"data/edits/with-tasks?project_id={project_id}")
-        self.assertTrue("contractor" not in edits[0]["data"])
+        self.assertNotIn("contractor", edits[0]["data"])
 
     def test_get_task_types_for_edit(self):
         task_types = self.get(f"data/edits/{self.edit_id}/task-types")

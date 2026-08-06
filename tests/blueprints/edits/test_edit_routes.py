@@ -16,7 +16,7 @@ class EditRoutesTestCase(BaseEditTestCase):
             task_id=self.task.id,
         )
         result = self.get(f"/data/edits/{self.edit_id}/preview-files")
-        self.assertTrue(len(result) > 0)
+        self.assertGreater(len(result), 0)
 
     def test_get_edit_versions(self):
         result = self.get(f"/data/edits/{self.edit_id}/versions")

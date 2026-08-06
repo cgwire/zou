@@ -90,7 +90,7 @@ class BreakdownRoutesTestCase(ApiDBTestCase):
         self._set_shot_casting()
         result = self.get(f"/data/projects/{self.project_id}/episodes/casting")
         self.assertIsInstance(result, dict)
-        self.assertTrue(len(result) > 0)
+        self.assertGreater(len(result), 0)
 
     def test_get_sequence_casting(self):
         self._set_shot_casting()
@@ -108,7 +108,7 @@ class BreakdownRoutesTestCase(ApiDBTestCase):
             f"/episodes/{self.episode_id}/sequences/all/casting"
         )
         self.assertIsInstance(result, dict)
-        self.assertTrue(len(result) > 0)
+        self.assertGreater(len(result), 0)
 
     def test_get_sequences_all_casting(self):
         self._set_shot_casting()
@@ -116,7 +116,7 @@ class BreakdownRoutesTestCase(ApiDBTestCase):
             f"/data/projects/{self.project_id}/sequences/all/casting"
         )
         self.assertIsInstance(result, dict)
-        self.assertTrue(len(result) > 0)
+        self.assertGreater(len(result), 0)
 
     def test_delete_entity_link(self):
         self._set_shot_casting()
@@ -124,7 +124,7 @@ class BreakdownRoutesTestCase(ApiDBTestCase):
             f"/data/projects/{self.project_id}/entity-links?limit=100"
         )
         initial_count = len(links)
-        self.assertTrue(initial_count > 0)
+        self.assertGreater(initial_count, 0)
         link_id = links[0]["id"]
         self.delete(
             f"/data/projects/{self.project_id}/entity-links/{link_id}",
@@ -167,7 +167,7 @@ class BreakdownRoutesTestCase(ApiDBTestCase):
         )
         self.assertIsNotNone(result.get("id"))
         instances = self.get(f"/data/shots/{self.shot_id}/asset-instances")
-        self.assertTrue(len(instances) > 0)
+        self.assertGreater(len(instances), 0)
 
     def test_remove_asset_instance_from_shot(self):
         self.generate_fixture_scene_asset_instance()

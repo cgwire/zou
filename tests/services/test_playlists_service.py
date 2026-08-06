@@ -63,13 +63,9 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
             self.project.id
         )
         self.assertEqual(len(playlists), 3)
-        self.assertTrue(
-            "Playlist 2"
-            not in [
-                playlists[0]["name"],
-                playlists[1]["name"],
-                playlists[2]["name"],
-            ]
+        self.assertNotIn(
+            "Playlist 2",
+            [playlists[0]["name"], playlists[1]["name"], playlists[2]["name"]],
         )
         self.playlist.update({"for_client": True})
         playlists = playlists_service.all_playlists_for_project(
@@ -173,7 +169,7 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
             episode_id=self.episode.id,
         )
         playlist_dict = playlists_service.build_playlist_dict(playlist)
-        self.assertTrue("shots" not in playlist_dict)
+        self.assertNotIn("shots", playlist_dict)
         self.assertEqual(playlist_dict["for_entity"], "shot")
 
     def test_set_preview_files_skips_empty_entity_ids(self):

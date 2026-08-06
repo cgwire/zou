@@ -48,7 +48,7 @@ class AssetRoutesTestCase(ApiDBTestCase):
         self._set_casting()
         result = self.get(f"/data/assets/{self.asset_id}/cast-in")
         self.assertIsInstance(result, list)
-        self.assertTrue(len(result) > 0)
+        self.assertGreater(len(result), 0)
 
     def test_get_asset_shot_asset_instances(self):
         self.generate_fixture_scene_asset_instance()
@@ -123,7 +123,7 @@ class AssetRoutesTestCase(ApiDBTestCase):
             {"is_shared": True},
             200,
         )
-        self.assertTrue(len(result) > 0)
+        self.assertGreater(len(result), 0)
         self.assertTrue(all(a["is_shared"] for a in result))
         asset = self.get(f"/data/assets/{self.asset_id}")
         self.assertTrue(asset["is_shared"])

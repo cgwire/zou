@@ -91,7 +91,7 @@ class NotificationsServiceTestCase(ApiDBTestCase):
         recipients = notifications_service.get_notification_recipients(
             self.task_dict
         )
-        self.assertFalse(self.person_dict["id"] in recipients)
+        self.assertNotIn(self.person_dict["id"], recipients)
 
         notifications_service.subscribe_to_task(
             self.person_dict["id"], self.task_dict["id"]
@@ -103,7 +103,7 @@ class NotificationsServiceTestCase(ApiDBTestCase):
         recipients = notifications_service.get_notification_recipients(
             self.task_dict
         )
-        self.assertTrue(self.person_dict["id"] in recipients)
+        self.assertIn(self.person_dict["id"], recipients)
 
     def test_unsubscribe_task(self):
         self.generate_fixture_comment()
@@ -120,14 +120,14 @@ class NotificationsServiceTestCase(ApiDBTestCase):
         recipients = notifications_service.get_notification_recipients(
             self.task_dict
         )
-        self.assertFalse(self.person_dict["id"] in recipients)
+        self.assertNotIn(self.person_dict["id"], recipients)
 
     def test_subscribe_sequence(self):
         self.generate_fixture_comment()
         recipients = notifications_service.get_notification_recipients(
             self.task_dict
         )
-        self.assertFalse(self.person_dict["id"] in recipients)
+        self.assertNotIn(self.person_dict["id"], recipients)
 
         notifications_service.subscribe_to_sequence(
             self.person_dict["id"],
@@ -137,7 +137,7 @@ class NotificationsServiceTestCase(ApiDBTestCase):
         recipients = notifications_service.get_notification_recipients(
             self.task_dict
         )
-        self.assertTrue(self.person_dict["id"] in recipients)
+        self.assertIn(self.person_dict["id"], recipients)
 
     def test_unsubscribe_sequence(self):
         self.generate_fixture_comment()
@@ -154,7 +154,7 @@ class NotificationsServiceTestCase(ApiDBTestCase):
         recipients = notifications_service.get_notification_recipients(
             self.task_dict
         )
-        self.assertFalse(self.person_dict["id"] in recipients)
+        self.assertNotIn(self.person_dict["id"], recipients)
 
     def test_is_person_subscribed(self):
         self.generate_fixture_comment()

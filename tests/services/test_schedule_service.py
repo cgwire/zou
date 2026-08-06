@@ -48,8 +48,8 @@ class ScheduleItemTestCase(ScheduleTestCase):
         items = schedule_service.get_task_types_schedule_items(self.project.id)
         self.assertEqual(len(items), 2)
         task_type_ids = [item["task_type_id"] for item in items]
-        self.assertTrue(str(self.task_type.id) in task_type_ids)
-        self.assertTrue(str(self.task_type_animation.id) in task_type_ids)
+        self.assertIn(str(self.task_type.id), task_type_ids)
+        self.assertIn(str(self.task_type_animation.id), task_type_ids)
 
         self.shot_task.delete()
         items = schedule_service.get_task_types_schedule_items(self.project.id)

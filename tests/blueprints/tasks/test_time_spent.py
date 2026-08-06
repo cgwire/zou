@@ -111,7 +111,7 @@ class RouteTimeSpentTestCase(ApiDBTestCase):
         month_table = self.get("/data/persons/time-spents/month-table/2018")
         self.assertEqual(month_table["6"][self.person_id], 1400)
         self.assertEqual(month_table["6"][self.user_id], 600)
-        self.assertTrue("1" not in month_table)
+        self.assertNotIn("1", month_table)
 
     def test_get_day_table(self):
         self.create_time_spents()
@@ -119,7 +119,7 @@ class RouteTimeSpentTestCase(ApiDBTestCase):
         self.assertEqual(day_table["3"][self.person_id], 600)
         self.assertEqual(day_table["4"][self.person_id], 800)
         self.assertEqual(day_table["3"][self.user_id], 600)
-        self.assertTrue("1" not in day_table)
+        self.assertNotIn("1", day_table)
 
     def test_get_week_table(self):
         self.create_time_spents()
@@ -128,7 +128,7 @@ class RouteTimeSpentTestCase(ApiDBTestCase):
         self.assertEqual(week_table["22"][self.person_id], 600)
         self.assertEqual(week_table["22"][self.user_id], 600)
         self.assertEqual(week_table["23"][self.person_id], 800)
-        self.assertTrue("1" not in week_table)
+        self.assertNotIn("1", week_table)
 
     def test_get_time_spents_by_granularity(self):
         """

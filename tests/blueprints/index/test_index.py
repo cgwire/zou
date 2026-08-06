@@ -15,9 +15,9 @@ class VersionTestCase(ApiTestCase):
 
     def test_status_route(self):
         data = self.get("/status")
-        self.assertTrue("database-up" in data)
-        self.assertTrue("event-stream-up" in data)
-        self.assertTrue("key-value-store-up" in data)
+        self.assertIn("database-up", data)
+        self.assertIn("event-stream-up", data)
+        self.assertIn("key-value-store-up", data)
 
     def test_status_route_spawns_no_subprocess(self):
         # The job queue probe used to run `rq info --url

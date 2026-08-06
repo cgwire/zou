@@ -327,7 +327,7 @@ license = "MIT"
         result = Path(target_path)
 
         self.assertTrue(result.exists())
-        self.assertTrue(result.suffix == ".zip")
+        self.assertEqual(result.suffix, ".zip")
 
         with zipfile.ZipFile(result, "r") as zf:
             files = zf.namelist()

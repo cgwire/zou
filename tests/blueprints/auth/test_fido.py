@@ -83,7 +83,7 @@ class FidoRoutesTestCase(ApiDBTestCase):
 
     def test_register_device(self):
         result = self._register_device()
-        self.assertTrue(len(result["otp_recovery_codes"]) > 0)
+        self.assertGreater(len(result["otp_recovery_codes"]), 0)
         self.assertIn("access_token", result)
         person = Person.get(self.user["id"])
         self.assertTrue(person.fido_enabled)

@@ -108,7 +108,7 @@ class ShotTasksTestCase(ApiDBTestCase):
         shots = self.get(f"data/shots/with-tasks?project_id={project_id}")
         self.assertEqual(len(shots), 1)
         self.assertEqual(len(shots[0]["tasks"]), 1)
-        self.assertTrue(str(person_id) in shots[0]["tasks"][0]["assignees"])
+        self.assertIn(str(person_id), shots[0]["tasks"][0]["assignees"])
 
         shots_service.update_shot(
             self.shot_id, {"data": {"contractor": "test"}}
@@ -127,7 +127,7 @@ class ShotTasksTestCase(ApiDBTestCase):
             str(self.department_id), person_id
         )
         shots = self.get(f"data/shots/with-tasks?project_id={project_id}")
-        self.assertTrue("contractor" not in shots[0]["data"])
+        self.assertNotIn("contractor", shots[0]["data"])
 
     def test_get_task_types_for_shot(self):
         task_types = self.get(f"/data/shots/{self.shot_id}/task-types")

@@ -145,10 +145,10 @@ class WorkingFilesTestCase(ApiDBTestCase):
         previous_date = self.working_file.serialize()["updated_at"]
         working_file = self.put(path, {})
         current_date = working_file["updated_at"]
-        self.assertTrue(previous_date < current_date)
+        self.assertLess(previous_date, current_date)
 
         now = self.now()
-        self.assertTrue(current_date <= now)
+        self.assertLessEqual(current_date, now)
 
     def test_get_untyped_file(self):
         working_file_id = str(self.working_file.id)

@@ -59,7 +59,7 @@ class TimeSpentsServiceTestCase(ApiDBTestCase):
         month_table = time_spents_service.get_month_table("2018")
         self.assertEqual(month_table["6"][self.person_id], 1400)
         self.assertEqual(month_table["6"][self.user_id], 600)
-        self.assertTrue("1" not in month_table)
+        self.assertNotIn("1", month_table)
 
     def test_get_month_table_with_different_projects(self):
         self.generate_fixture_project_standard()
@@ -78,7 +78,7 @@ class TimeSpentsServiceTestCase(ApiDBTestCase):
         self.assertEqual(day_table["3"][self.person_id], 600)
         self.assertEqual(day_table["4"][self.person_id], 800)
         self.assertEqual(day_table["3"][self.user_id], 600)
-        self.assertTrue("1" not in day_table)
+        self.assertNotIn("1", day_table)
 
     def test_get_week_table(self):
         week_table = time_spents_service.get_week_table("2018")
@@ -86,7 +86,7 @@ class TimeSpentsServiceTestCase(ApiDBTestCase):
         self.assertEqual(week_table["22"][self.person_id], 600)
         self.assertEqual(week_table["22"][self.user_id], 600)
         self.assertEqual(week_table["23"][self.person_id], 800)
-        self.assertTrue("1" not in week_table)
+        self.assertNotIn("1", week_table)
 
     def test_get_month_time_spents(self):
         tasks = time_spents_service.get_month_time_spents(

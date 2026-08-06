@@ -261,7 +261,7 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
             201,
         )
         self.assertIsInstance(result, list)
-        self.assertTrue(len(result) > 0)
+        self.assertGreater(len(result), 0)
 
     def test_create_concept_tasks(self):
         concepts_service.create_concept(self.project_id, "Test Concept")
@@ -273,7 +273,7 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
             201,
         )
         self.assertIsInstance(result, list)
-        self.assertTrue(len(result) > 0)
+        self.assertGreater(len(result), 0)
 
     def test_set_main_preview(self):
         self.generate_fixture_preview_file()

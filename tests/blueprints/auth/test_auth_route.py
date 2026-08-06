@@ -355,7 +355,7 @@ class AuthTestCase(ApiDBTestCase):
             data=json.dumps(fields.serialize_value(self.credentials)),
             headers=headers,
         )
-        self.assertTrue("access_token" in response.headers["Set-Cookie"])
+        self.assertIn("access_token", response.headers["Set-Cookie"])
         response = self.app.get("data/persons")
         self.assertEqual(response.status_code, 200)
         response = self.app.get("auth/logout", headers=headers)

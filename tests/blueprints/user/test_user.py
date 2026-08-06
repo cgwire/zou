@@ -21,7 +21,7 @@ class UserRoutesTestCase(ApiDBTestCase):
     def test_get_asset_task_types(self):
         result = self.get(f"/data/user/assets/{self.asset.id}/task-types")
         self.assertIsInstance(result, list)
-        self.assertTrue(len(result) > 0)
+        self.assertGreater(len(result), 0)
 
     def test_task_subscription(self):
         path = f"/data/user/tasks/{self.task.id}/subscribed"

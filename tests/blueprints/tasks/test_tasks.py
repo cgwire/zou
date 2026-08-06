@@ -689,7 +689,7 @@ class TaskListingTestCase(TaskTestCase):
         self.assertEqual(
             tasks[0]["last_comment"]["person_id"], str(self.person.id)
         )
-        self.assertTrue(str(self.person.id) in tasks[0]["assignees"])
+        self.assertIn(str(self.person.id), tasks[0]["assignees"])
 
         tasks = self.get(f"/data/persons/{self.user['id']}/tasks")
         self.assertEqual(len(tasks), 0)
@@ -757,7 +757,7 @@ class TaskListingTestCase(TaskTestCase):
         shot_id = str(self.shot.id)
         tasks = self.get(f"/data/sequences/{self.sequence.id}/shot-tasks")
         self.assertEqual(len(tasks), 2)
-        self.assertTrue(shot_id in [task["entity_id"] for task in tasks])
+        self.assertIn(shot_id, [task["entity_id"] for task in tasks])
 
     def test_get_shot_tasks_for_episode(self):
         self.generate_fixture_task()
@@ -768,7 +768,7 @@ class TaskListingTestCase(TaskTestCase):
         shot_id = str(self.shot.id)
         tasks = self.get(f"/data/episodes/{self.episode.id}/shot-tasks")
         self.assertEqual(len(tasks), 2)
-        self.assertTrue(shot_id in [task["entity_id"] for task in tasks])
+        self.assertIn(shot_id, [task["entity_id"] for task in tasks])
 
     def test_open_tasks(self):
         self.generate_fixture_task()

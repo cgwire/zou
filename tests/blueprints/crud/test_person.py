@@ -118,7 +118,7 @@ class PersonTestCase(PersonFixtureTestCase):
         person_with_relations = self.get(
             f"data/persons/{person['id']}?relations=true"
         )
-        self.assertTrue("departments" in person_with_relations)
+        self.assertIn("departments", person_with_relations)
         self.get_404(f"data/persons/{fields.gen_uuid()}")
 
     def test_create_person(self):

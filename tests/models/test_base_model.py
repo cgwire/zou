@@ -47,7 +47,7 @@ class BaseModelTestCase(ApiDBTestCase):
         self.generate_fixture_project()
         project_id = self.generate_fixture_project("Second project").id
         project_map = Project.get_id_map(field="name")
-        self.assertTrue("Second project" in project_map)
+        self.assertIn("Second project", project_map)
         project_id_again = project_map["Second project"]
         self.assertEqual(project_id_again, project_id)
 

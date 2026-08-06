@@ -35,8 +35,8 @@ class AuthTokensTestCase(ApiTestCase):
     def test_keys(self):
         self.store.add("key-1", "true")
         self.store.add("key-2", "true")
-        self.assertTrue("key-1" in self.store.keys())
-        self.assertTrue("key-2" in self.store.keys())
+        self.assertIn("key-1", self.store.keys())
+        self.assertIn("key-2", self.store.keys())
 
     def test_ttl(self):
         self.store.add("key-1", "true", ttl=10)

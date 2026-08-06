@@ -299,7 +299,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         descriptors = self.get(self.descriptors_path())
         self.assertEqual(len(descriptors), 0)
         asset = self.get(f"data/assets/{self.asset_id}")
-        self.assertFalse("contractor" in asset["data"])
+        self.assertNotIn("contractor", asset["data"])
 
     def test_unallowed_delete_metadata_descriptor(self):
         descriptor = projects_service.add_metadata_descriptor(

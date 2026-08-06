@@ -76,8 +76,8 @@ class ShotCastingTestCase(ApiDBTestCase):
 
         assets = self.get(f"data/shots/{self.shot.id}/assets")
         self.assertEqual(len(assets), 3)
-        self.assertTrue(
-            assets[0]["id"] in [str(entity.id) for entity in self.entities]
+        self.assertIn(
+            assets[0]["id"], [str(entity.id) for entity in self.entities]
         )
 
     def test_update_asset_casting(self):
@@ -120,6 +120,6 @@ class ShotCastingTestCase(ApiDBTestCase):
 
         assets = self.get(f"data/assets/{self.asset.id}/assets")
         self.assertEqual(len(assets), 3)
-        self.assertTrue(
-            assets[0]["id"] in [str(entity.id) for entity in self.entities]
+        self.assertIn(
+            assets[0]["id"], [str(entity.id) for entity in self.entities]
         )

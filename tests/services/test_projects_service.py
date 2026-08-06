@@ -441,7 +441,7 @@ class ProjectMetadataDescriptorTestCase(ApiDBTestCase):
         asset = self.generate_fixture_asset()
         descriptor = self.add("Contractor")
         asset.update({"data": {"contractor": "contractor 1"}})
-        self.assertTrue("contractor" in asset.data)
+        self.assertIn("contractor", asset.data)
         projects_service.update_metadata_descriptor(
             descriptor["id"], {"name": "Team", "for_client": True}
         )
@@ -501,7 +501,7 @@ class ProjectMetadataDescriptorTestCase(ApiDBTestCase):
         asset = self.generate_fixture_asset()
         descriptor = self.add("Contractor")
         asset.update({"data": {"contractor": "contractor 1"}})
-        self.assertTrue("contractor" in asset.data)
+        self.assertIn("contractor", asset.data)
 
         projects_service.remove_metadata_descriptor(descriptor["id"])
         descriptors = projects_service.get_metadata_descriptors(
@@ -509,7 +509,7 @@ class ProjectMetadataDescriptorTestCase(ApiDBTestCase):
         )
         self.assertEqual(len(descriptors), 0)
         asset = Entity.get(asset.id)
-        self.assertFalse("contractor" in asset.data)
+        self.assertNotIn("contractor", asset.data)
 
     def test_reorder_metadata_descriptors(self):
         # Zone and Angle are created in the order that contradicts their

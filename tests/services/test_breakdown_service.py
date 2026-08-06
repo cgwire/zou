@@ -43,8 +43,8 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         new_casting = [{"asset_id": self.asset_id, "nb_occurences": 1}]
         breakdown_service.update_casting(self.shot.id, new_casting)
         casting = breakdown_service.get_sequence_casting(self.sequence.id)
-        self.assertTrue(self.shot_id in casting)
-        self.assertTrue(str(self.shot.id) in casting)
+        self.assertIn(self.shot_id, casting)
+        self.assertIn(str(self.shot.id), casting)
         self.assertEqual(len(casting[self.shot_id]), 2)
         self.assertEqual(len(casting[str(self.shot.id)]), 1)
 
@@ -62,8 +62,8 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         new_casting = [{"asset_id": self.asset_id, "nb_occurences": 1}]
         breakdown_service.update_casting(self.shot.id, new_casting)
         casting = breakdown_service.get_all_sequences_casting(self.project_id)
-        self.assertTrue(self.shot_id in casting)
-        self.assertTrue(str(self.shot.id) in casting)
+        self.assertIn(self.shot_id, casting)
+        self.assertIn(str(self.shot.id), casting)
         self.assertEqual(len(casting[self.shot_id]), 2)
         self.assertEqual(len(casting[str(self.shot.id)]), 1)
 
@@ -383,7 +383,7 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         instances = breakdown_service.get_asset_instances_for_shot(
             self.shot.id
         )
-        self.assertTrue(self.asset_character_id not in instances)
+        self.assertNotIn(self.asset_character_id, instances)
 
     def test_build_asset_instance_name(self):
         name = breakdown_service.build_asset_instance_name(self.asset_id, 3)

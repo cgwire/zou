@@ -23,7 +23,7 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
         self.generate_fixture_playlist("Playlist 1")
         result = self.get(f"/data/projects/{self.project_id}/playlists/all")
         self.assertIsInstance(result, list)
-        self.assertTrue(len(result) > 0)
+        self.assertGreater(len(result), 0)
 
     def test_get_episode_playlists(self):
         self.generate_fixture_playlist(

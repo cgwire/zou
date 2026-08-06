@@ -435,9 +435,9 @@ class UserFilterTestCase(UserContextTestCase):
         self.post(path, filter_group_3)
 
         result = self.get(path)
-        self.assertTrue("asset" in result)
-        self.assertTrue("shot" in result)
-        self.assertTrue("all" in result)
+        self.assertIn("asset", result)
+        self.assertIn("shot", result)
+        self.assertIn("all", result)
         self.assertEqual(len(result["asset"][project_id]), 1)
         self.assertEqual(len(result["shot"][project_id]), 1)
         self.assertEqual(len(result["all"][project_id]), 1)
@@ -456,7 +456,7 @@ class UserFilterTestCase(UserContextTestCase):
         }
         search_filter_group = self.post(path, filter_group_1)
         result = self.get(path)
-        self.assertTrue("asset" in result)
+        self.assertIn("asset", result)
         self.put(f"{path}/{search_filter_group['id']}", {"name": "updated"})
         result = self.get(
             f"data/search-filter-groups/{search_filter_group['id']}"
@@ -474,11 +474,11 @@ class UserFilterTestCase(UserContextTestCase):
         }
         search_filter_group = self.post(path, filter_group_1)
         result = self.get(path)
-        self.assertTrue("asset" in result)
+        self.assertIn("asset", result)
 
         self.delete(f"{path}/{search_filter_group['id']}")
         result = self.get(path)
-        self.assertFalse("asset" in result)
+        self.assertNotIn("asset", result)
 
     def test_get_filters(self):
         project_id = str(self.project.id)
@@ -506,9 +506,9 @@ class UserFilterTestCase(UserContextTestCase):
         self.post(path, filter_3)
 
         result = self.get(path)
-        self.assertTrue("asset" in result)
-        self.assertTrue("shot" in result)
-        self.assertTrue("all" in result)
+        self.assertIn("asset", result)
+        self.assertIn("shot", result)
+        self.assertIn("all", result)
         self.assertEqual(len(result["asset"][project_id]), 1)
         self.assertEqual(len(result["shot"][project_id]), 1)
         self.assertEqual(len(result["all"][project_id]), 1)
@@ -529,7 +529,7 @@ class UserFilterTestCase(UserContextTestCase):
         }
         search_filter = self.post(path, filter_1)
         result = self.get(path)
-        self.assertTrue("asset" in result)
+        self.assertIn("asset", result)
         self.put(f"{path}/{search_filter['id']}", {"name": "updated"})
         result = self.get(f"data/search-filters/{search_filter['id']}")
         self.assertEqual(result["name"], "updated")
@@ -545,12 +545,12 @@ class UserFilterTestCase(UserContextTestCase):
         }
         search_filter = self.post(path, filter_1)
         result = self.get(path)
-        self.assertTrue("asset" in result)
+        self.assertIn("asset", result)
 
         self.delete(f"{path}/{search_filter['id']}")
 
         result = self.get(path)
-        self.assertFalse("asset" in result)
+        self.assertNotIn("asset", result)
 
 
 class UserNotificationTestCase(UserContextTestCase):
@@ -622,13 +622,13 @@ class UserNotificationTestCase(UserContextTestCase):
         recipients = notifications_service.get_notification_recipients(
             self.task_dict
         )
-        self.assertFalse(self.user_id in recipients)
+        self.assertNotIn(self.user_id, recipients)
 
         self.post(f"/actions/user/tasks/{self.task_dict['id']}/subscribe", {})
         recipients = notifications_service.get_notification_recipients(
             self.task_dict
         )
-        self.assertTrue(self.user_id in recipients)
+        self.assertIn(self.user_id, recipients)
 
     def test_unsubscribe_task(self):
         self.post(f"/actions/user/tasks/{self.task_dict['id']}/subscribe", {})
@@ -636,13 +636,13 @@ class UserNotificationTestCase(UserContextTestCase):
         recipients = notifications_service.get_notification_recipients(
             self.task_dict
         )
-        self.assertFalse(self.user_id in recipients)
+        self.assertNotIn(self.user_id, recipients)
 
     def test_subscribe_sequence(self):
         recipients = notifications_service.get_notification_recipients(
             self.shot_task_dict
         )
-        self.assertFalse(self.user_id in recipients)
+        self.assertNotIn(self.user_id, recipients)
 
         path = f'/actions/user/sequences/{self.sequence_dict["id"]}/task-types/{self.task_type_dict["id"]}/subscribe'
         self.post(path, {})
@@ -650,7 +650,7 @@ class UserNotificationTestCase(UserContextTestCase):
         recipients = notifications_service.get_notification_recipients(
             self.shot_task_dict
         )
-        self.assertTrue(self.user_id in recipients)
+        self.assertIn(self.user_id, recipients)
 
         subscribed_path = (
             f'/data/user/sequences/{self.sequence_dict["id"]}'
@@ -676,7 +676,7 @@ class UserNotificationTestCase(UserContextTestCase):
         recipients = notifications_service.get_notification_recipients(
             self.shot_task_dict
         )
-        self.assertFalse(self.user_id in recipients)
+        self.assertNotIn(self.user_id, recipients)
 
 
 class UserContextRoutesTestCase(UserContextTestCase):

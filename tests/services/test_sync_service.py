@@ -75,7 +75,7 @@ class SyncServiceTestCase(ApiDBTestCase):
             "projects", "project", Project, "new"
         )
         create_func({"project_id": self.new_project_id})
-        self.assertTrue("project_id" in self.last_event_data)
+        self.assertIn("project_id", self.last_event_data)
         self.assertIsNotNone(Project.get(self.last_event_data["project_id"]))
 
         self.last_event_data = {}
@@ -85,7 +85,7 @@ class SyncServiceTestCase(ApiDBTestCase):
             "projects", "project", Project, "update"
         )
         create_func({"project_id": self.new_project_id})
-        self.assertTrue("project_id" in self.last_event_data)
+        self.assertIn("project_id", self.last_event_data)
         project = Project.get(self.last_event_data["project_id"])
         self.assertEqual(project.name, "Test Sync Project")
 
@@ -95,18 +95,18 @@ class SyncServiceTestCase(ApiDBTestCase):
         delete_func = sync_service.delete_entry("assets", "asset", Entity)
         delete_func({"asset_id": asset_id})
         self.assertIsNone(Entity.get(asset_id))
-        self.assertTrue("asset_id" in self.last_event_data)
+        self.assertIn("asset_id", self.last_event_data)
 
     def test_forward_event(self):
         events.register("task:update", "handle_event", self)
         forward_func = sync_service.forward_event("task:update")
         forward_func({"task_id": "test"})
-        self.assertTrue("task_id" in self.last_event_data)
+        self.assertIn("task_id", self.last_event_data)
 
     def test_forward_base_event(self):
         events.register("task:update", "handle_event", self)
         sync_service.forward_base_event("task", "update", {"task_id": "test"})
-        self.assertTrue("task_id" in self.last_event_data)
+        self.assertIn("task_id", self.last_event_data)
 
     def test_verify_target_counters_compile(self):
         """

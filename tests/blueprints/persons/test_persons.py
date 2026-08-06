@@ -35,7 +35,7 @@ class PersonRoutesTestCase(ApiDBTestCase):
         # Filtering on a ChoiceType column (role) used to 500: its SQLAlchemy
         # type raises NotImplementedError for python_type.
         persons = self.get("data/persons?role=admin")
-        self.assertTrue(len(persons) >= 1)
+        self.assertGreaterEqual(len(persons), 1)
         self.assertTrue(all(p["role"] == "admin" for p in persons))
 
     # --- Time spents ---
@@ -46,7 +46,7 @@ class PersonRoutesTestCase(ApiDBTestCase):
             f"?start_date=2024-06-01&end_date=2024-06-30"
         )
         self.assertIsInstance(result, list)
-        self.assertTrue(len(result) > 0)
+        self.assertGreater(len(result), 0)
 
     def test_get_person_year_time_spents(self):
         result = self.get(
@@ -70,7 +70,7 @@ class PersonRoutesTestCase(ApiDBTestCase):
             f"/data/persons/{self.person_id}/time-spents/week/2024/23"
         )
         self.assertIsInstance(result, list)
-        self.assertTrue(len(result) > 0)
+        self.assertGreater(len(result), 0)
 
     def test_get_person_day_time_spents(self):
         result = self.get(

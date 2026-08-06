@@ -80,7 +80,7 @@ class AssetInstanceInShotTestCase(ApiDBTestCase):
         self.new_scene_asset_instance(self.scene_id, self.asset_camera_id)
         instances = self.get(f"/data/scenes/{self.scene_id}/camera-instances")
         self.assertEqual(len(instances[str(self.asset_camera_id)]), 3)
-        self.assertTrue(self.asset_id not in instances)
+        self.assertNotIn(self.asset_id, instances)
 
     def test_add_instance_to_shot(self):
         instances = self.get(f"/data/shots/{self.shot_id}/asset-instances")
@@ -111,7 +111,7 @@ class AssetInstanceInShotTestCase(ApiDBTestCase):
             f"/data/shots/{self.shot_id}/asset-instances/{asset_instance['id']}"
         )
         instances = self.get(f"/data/shots/{self.shot_id}/asset-instances")
-        self.assertTrue(self.asset_character_id not in instances)
+        self.assertNotIn(self.asset_character_id, instances)
 
     def test_get_shot_asset_instances_for_asset(self):
         instances = self.get(

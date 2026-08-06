@@ -22,8 +22,8 @@ class ProjectScheduleRouteTestCase(ApiDBTestCase):
         items = self.get(path)
         self.assertEqual(len(items), 2)
         task_type_ids = [item["task_type_id"] for item in items]
-        self.assertTrue(str(self.task_type_id) in task_type_ids)
-        self.assertTrue(str(self.task_type_animation_id) in task_type_ids)
+        self.assertIn(str(self.task_type_id), task_type_ids)
+        self.assertIn(str(self.task_type_animation_id), task_type_ids)
 
     def test_get_schedule_sequence_items(self):
         path = f"/data/projects/{self.project_id}/schedule-items/{self.task_type_id}/sequences"

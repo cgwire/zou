@@ -48,7 +48,7 @@ class ImportCsvCastingTestCase(ApiDBTestCase):
 
         assets = self.get(f"data/shots/{self.e01seq01sh01_id}/assets")
         self.assertEqual(len(assets), 2)
-        self.assertTrue("Victor" in [assets[0]["name"], assets[1]["name"]])
+        self.assertIn("Victor", [assets[0]["name"], assets[1]["name"]])
 
         assets = self.get(f"data/shots/{self.e01seq01sh02_id}/assets")
         self.assertEqual(len(assets), 2)
@@ -61,13 +61,13 @@ class ImportCsvCastingTestCase(ApiDBTestCase):
 
         assets = self.get(f"data/assets/{self.asset_lake_id}/assets")
         self.assertEqual(len(assets), 3)
-        self.assertTrue(
-            "Boat" in [assets[0]["name"], assets[1]["name"], assets[2]["name"]]
+        self.assertIn(
+            "Boat", [assets[0]["name"], assets[1]["name"], assets[2]["name"]]
         )
 
         assets = self.get(f"data/assets/{self.asset_mine_id}/assets")
         self.assertEqual(len(assets), 2)
-        self.assertTrue("Wagon" in [assets[0]["name"], assets[1]["name"]])
+        self.assertIn("Wagon", [assets[0]["name"], assets[1]["name"]])
 
         links = EntityLink.query.all()
         self.assertEqual(len(links), 18)
