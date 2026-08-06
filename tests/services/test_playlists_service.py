@@ -1,5 +1,6 @@
 from tests.base import ApiDBTestCase
 
+from zou.app import db
 from zou.app.models.build_job import BuildJob
 from zou.app.models.playlist import Playlist
 from zou.app.services import (
@@ -21,7 +22,6 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         self.generate_fixture_sequence()
         self.generate_fixture_shot()
         self.sequence_dict = self.sequence.serialize()
-        self.project_dict = self.sequence.serialize()
 
     def generate_fixture_preview_files(self):
         self.generate_fixture_department()
@@ -57,50 +57,114 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         )
         return self.playlist.serialize()
 
-    def test_get_playlists_for_project(self):
+    def test_all_playlists_for_project_is_scoped_to_its_production(self):
         self.generate_fixture_playlists()
+
         playlists = playlists_service.all_playlists_for_project(
             self.project.id
         )
-        self.assertEqual(len(playlists), 3)
-        self.assertNotIn(
-            "Playlist 2",
-            [playlists[0]["name"], playlists[1]["name"], playlists[2]["name"]],
+
+        self.assertEqual(
+            sorted(playlist["name"] for playlist in playlists),
+            ["Playlist 1", "Playlist 3", "Playlist 4"],
         )
+
+    def test_all_playlists_for_project_holds_the_ones_for_clients(self):
+        self.generate_fixture_playlists()
         self.playlist.update({"for_client": True})
+
         playlists = playlists_service.all_playlists_for_project(
             self.project.id, True
         )
-        self.assertEqual(len(playlists), 1)
 
-    def test_get_playlist_for_episode(self):
-        # Not scoped to the production: all_playlists_for_episode filters on
-        # the episode alone when given a real episode id. Reported, not
-        # pinned here.
+        self.assertEqual(
+            [playlist["name"] for playlist in playlists], ["Playlist 4"]
+        )
+
+    def test_all_playlists_for_episode(self):
         self.generate_fixture_playlists()
+
         playlists = playlists_service.all_playlists_for_episode(
             self.project.id, self.episode_2.id
         )
-        self.assertEqual(len(playlists), 2)
-        self.assertEqual(playlists[0]["name"], "Playlist 4")
-        self.playlist.update({"for_client": True})
-        playlists = playlists_service.all_playlists_for_project(
-            self.project.id, True
-        )
-        self.assertEqual(len(playlists), 1)
 
+        self.assertEqual(
+            sorted(playlist["name"] for playlist in playlists),
+            ["Playlist 3", "Playlist 4"],
+        )
+
+    def test_all_playlists_for_episode_is_scoped_to_its_production(self):
+        # An episode belongs to one production, but the caller names both
+        # and the pair has to agree.
+        self.generate_fixture_playlists()
+        elsewhere = Playlist.create(
+            name="Elsewhere",
+            shots={},
+            project_id=self.project_standard.id,
+            episode_id=self.episode_2.id,
+        )
+
+        playlists = playlists_service.all_playlists_for_episode(
+            self.project_standard.id, self.episode_2.id
+        )
+
+        self.assertEqual(
+            [playlist["name"] for playlist in playlists], [elsewhere.name]
+        )
+
+    def test_the_main_pack_holds_what_belongs_to_no_episode(self):
+        self.generate_fixture_playlists()
         self.generate_fixture_playlist("Test main pack", for_entity="asset")
         self.generate_fixture_playlist(
             "Test all playlist", for_entity="asset", is_for_all=True
         )
+
         playlists = playlists_service.all_playlists_for_episode(
             self.project.id, "main"
         )
-        self.assertEqual(len(playlists), 1)
+
+        self.assertEqual(
+            [playlist["name"] for playlist in playlists], ["Test main pack"]
+        )
+
+    def test_the_main_pack_holds_the_playlists_that_predate_the_flag(self):
+        """
+        is_for_all was added to an existing table, nullable and without a
+        server default: every playlist made before that migration carries
+        null rather than false, and belongs in the main pack.
+        """
+        older = self.generate_fixture_playlist(
+            "Older than the flag", for_entity="asset"
+        )
+        db.session.execute(
+            db.text("UPDATE playlist SET is_for_all = NULL WHERE id = :id"),
+            {"id": older["id"]},
+        )
+        db.session.commit()
+
+        playlists = playlists_service.all_playlists_for_episode(
+            self.project.id, "main"
+        )
+
+        self.assertEqual(
+            [playlist["name"] for playlist in playlists],
+            ["Older than the flag"],
+        )
+
+    def test_the_all_pack_holds_what_is_meant_for_every_episode(self):
+        self.generate_fixture_playlist("Test main pack", for_entity="asset")
+        self.generate_fixture_playlist(
+            "Test all playlist", for_entity="asset", is_for_all=True
+        )
+
         playlists = playlists_service.all_playlists_for_episode(
             self.project.id, "all"
         )
-        self.assertEqual(len(playlists), 1)
+
+        self.assertEqual(
+            [playlist["name"] for playlist in playlists],
+            ["Test all playlist"],
+        )
 
     def test_generate_temp_playlist(self):
         self.generate_fixture_preview_files()

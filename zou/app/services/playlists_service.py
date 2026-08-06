@@ -154,7 +154,10 @@ def all_playlists_for_episode(
             query.filter(Playlist.episode_id == None)
             .filter(Playlist.project_id == project_id)
             .filter(
-                or_(Playlist.is_for_all is None, Playlist.is_for_all == False)
+                or_(
+                    Playlist.is_for_all.is_(None),
+                    Playlist.is_for_all == False,
+                )
             )
         )
     elif episode_id == "all":
