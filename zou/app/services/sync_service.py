@@ -325,8 +325,6 @@ def run_main_data_sync(project=None):
     Retrieve and import all cross-projects data from source instance.
     """
     for event in main_events:
-        if project is None and event == "project":
-            continue
         path = event_name_model_path_map[event]
         model = event_name_model_map[event]
         sync_entries(path, model, project=project)

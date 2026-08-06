@@ -570,6 +570,65 @@ class SyncProjectEntriesTestCase(ApiDBTestCase):
         self.assertEqual(Playlist.query.count(), 2)
 
 
+class RunMainDataSyncTestCase(ApiDBTestCase):
+    """
+    The pass importing everything that is not scoped to a production, the
+    productions themselves included.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project_status()
+        self.remote_project_id = str(uuid.uuid4())
+
+    def run_sync(self, project=None):
+        """
+        Run the whole pass against a source holding one production and
+        nothing else, and return the paths it asked for.
+        """
+        payload = {
+            "id": self.remote_project_id,
+            "name": "Remote Production",
+            "project_status_id": str(self.open_status.id),
+        }
+
+        def fetch_all(model_name, params=None):
+            data = [payload] if model_name == "projects" else []
+            return {"data": data, "nb_pages": 1}
+
+        with mock.patch.object(
+            sync_service.gazu.project,
+            "get_project_by_name",
+            return_value={"id": self.remote_project_id},
+        ), mock.patch.object(
+            sync_service.gazu.client, "fetch_all", side_effect=fetch_all
+        ) as fetch:
+            sync_service.run_main_data_sync(project=project)
+        return [call.args[0] for call in fetch.call_args_list]
+
+    def test_a_full_sync_imports_the_productions(self):
+        """
+        Every row the next passes import points at a production, so leaving
+        them out makes the whole sync fail on a foreign key, one silently
+        logged batch at a time.
+        """
+        self.assertIn("projects", self.run_sync())
+        self.assertIsNotNone(Project.get(self.remote_project_id))
+
+    def test_a_single_production_sync_imports_it_too(self):
+        self.assertIn("projects", self.run_sync(project="Remote Production"))
+        self.assertIsNotNone(Project.get(self.remote_project_id))
+
+    def test_every_cross_production_model_is_asked_for(self):
+        self.assertEqual(
+            self.run_sync(),
+            [
+                sync_service.event_name_model_path_map[event]
+                for event in sync_service.main_events
+            ],
+        )
+
+
 class CheckSyncAccountTestCase(unittest.TestCase):
     """
     The warning gate on the account the sync runs with. It never raises:
