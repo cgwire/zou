@@ -14,6 +14,7 @@ class SharedFilterMixin:
     """
 
     path = None
+    detail_path = None
 
     def clear_cache(self):
         raise NotImplementedError
@@ -50,6 +51,37 @@ class SharedFilterMixin:
         artist.departments.append(self.department)
         artist.save()
         persons_service.clear_person_cache()
+
+    def test_the_listing_is_grouped_by_list_type_and_project(self):
+        for list_type, name in [
+            ("asset", "a1"),
+            ("shot", "s1"),
+            ("all", "x1"),
+        ]:
+            self.create(name, list_type=list_type)
+        self.clear_cache()
+        result = self.get(self.path)
+        self.assertEqual(
+            {
+                list_type: [
+                    row["name"] for row in per_project[self.project_id]
+                ]
+                for list_type, per_project in result.items()
+            },
+            {"asset": ["a1"], "shot": ["s1"], "all": ["x1"]},
+        )
+
+    def test_updating_one_shows_on_its_own_route(self):
+        created = self.create("before")
+        self.put(f"{self.path}{created['id']}", {"name": "after"})
+        result = self.get(f"{self.detail_path}{created['id']}")
+        self.assertEqual(result["name"], "after")
+
+    def test_removing_one_empties_the_listing(self):
+        created = self.create("gone")
+        self.assertEqual(self.visible_names(), ["gone"])
+        self.delete(f"{self.path}{created['id']}")
+        self.assertEqual(self.visible_names(), [])
 
     def test_a_private_one_is_invisible_to_everyone_else(self):
         self.log_in_cg_artist()
@@ -113,6 +145,7 @@ class SharedFilterMixin:
 
 class SharedFilterTestCase(SharedFilterMixin, ApiDBTestCase):
     path = "data/user/filters/"
+    detail_path = "data/search-filters/"
 
     def clear_cache(self):
         user_service.clear_filter_cache()
@@ -126,9 +159,22 @@ class SharedFilterTestCase(SharedFilterMixin, ApiDBTestCase):
             **overrides,
         }
 
+    def test_the_query_is_stored_as_search_query(self):
+        """
+        The route takes "query" and the row carries "search_query": the two
+        names are part of the contract, so renaming either breaks clients.
+        """
+        self.create("props")
+        self.clear_cache()
+        result = self.get(self.path)
+        self.assertEqual(
+            result["asset"][self.project_id][0]["search_query"], "props"
+        )
+
 
 class SharedFilterGroupTestCase(SharedFilterMixin, ApiDBTestCase):
     path = "data/user/filter-groups/"
+    detail_path = "data/search-filter-groups/"
 
     def clear_cache(self):
         user_service.clear_filter_group_cache()
