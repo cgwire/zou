@@ -534,14 +534,21 @@ class OutputFileListingTestCase(OutputFileTestCase):
         self.generate_fixture_output_type()
         geometry = self.output_type
 
-        self.generate_fixture_output_file(geometry, 1, representation="obj")
-        self.generate_fixture_output_file(geometry, 2, representation="obj")
-        self.generate_fixture_output_file(geometry, 3, representation="obj")
-        self.generate_fixture_output_file(geometry, 4, representation="obj")
+        for revision in [1, 2, 3, 4]:
+            self.generate_fixture_output_file(
+                geometry, revision, representation="obj"
+            )
+
         output_files = self.get(
             f"data/projects/{self.project.id}/output-files"
         )
-        self.assertEqual(len(output_files), 4)
+
+        # Most recently created first, the reverse of the order they were
+        # published in.
+        self.assertEqual(
+            [output_file["revision"] for output_file in output_files],
+            [4, 3, 2, 1],
+        )
 
         self.generate_fixture_project("Sprite Fright")
         self.generate_fixture_asset("Rabbit")

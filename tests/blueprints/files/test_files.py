@@ -1,5 +1,8 @@
 from tests.base import ApiDBTestCase
 
+from zou.app.models.output_type import OutputType
+from zou.app.services import files_service
+
 
 class FileRoutesTestCase(ApiDBTestCase):
     def setUp(self):
@@ -41,17 +44,21 @@ class FileRoutesTestCase(ApiDBTestCase):
         )
         self.assertEqual(self.get(path), [])
 
-        self.generate_fixture_output_type()
-        self.generate_fixture_output_file(
-            asset_instance=self.asset_instance,
-            temporal_entity_id=self.scene.id,
-        )
+        cache = files_service.get_or_create_output_type("Cache", "cch")
+        geometry = files_service.get_or_create_output_type("Geometry", "geo")
+        for output_type in [cache, geometry]:
+            self.generate_fixture_output_file(
+                OutputType.get(output_type["id"]),
+                asset_instance=self.asset_instance,
+                temporal_entity_id=self.scene.id,
+            )
 
         result = self.get(path)
 
+        # Ordered by name, the reverse of the order they were made in.
         self.assertEqual(
-            [output_type["id"] for output_type in result],
-            [str(self.output_type.id)],
+            [output_type["name"] for output_type in result],
+            ["Cache", "Geometry"],
         )
 
     def test_guess_from_path(self):

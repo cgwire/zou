@@ -211,7 +211,11 @@ class FileServiceTestCase(ApiDBTestCase):
                 self.asset.id, geometry.id
             )
         )
-        self.assertEqual(len(output_files), 8)
+        # Newest revision first, both representations interleaved.
+        self.assertEqual(
+            [output_file["revision"] for output_file in output_files],
+            [4, 3, 3, 2, 2, 1, 1, 1],
+        )
 
         output_files = (
             files_service.get_output_files_for_output_type_and_entity(
@@ -355,9 +359,17 @@ class FileServiceTestCase(ApiDBTestCase):
         project_id = str(self.project.id)
         self.generate_fixture_project_standard()
         project_2_id = str(self.project_standard.id)
-        self.generate_fixture_preview_file()
+        first = self.generate_fixture_preview_file()
+        second = self.generate_fixture_preview_file(revision=2)
+
         preview_files = files_service.get_preview_files_for_project(project_id)
-        self.assertEqual(len(preview_files), 1)
+
+        # Most recently touched first, the reverse of the order they were
+        # made in.
+        self.assertEqual(
+            [preview["id"] for preview in preview_files],
+            [str(second.id), str(first.id)],
+        )
         preview_files = files_service.get_preview_files_for_project(
             project_2_id
         )
@@ -445,8 +457,16 @@ class FileServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(output_types), 1)
 
     def test_get_output_files_for_entity(self):
+        # Newest revision first, which one file could never show.
+        for revision in [2, 3]:
+            self.generate_fixture_output_file(self.output_type, revision)
+
         output_files = files_service.get_output_files_for_entity(self.asset.id)
-        self.assertEqual(len(output_files), 1)
+
+        self.assertEqual(
+            [output_file["revision"] for output_file in output_files],
+            [3, 2, 1],
+        )
 
     def test_get_working_files_for_entity(self):
         working_files = files_service.get_working_files_for_entity(
