@@ -14,10 +14,8 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
 
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_metadata_descriptor(entity_type="Shot")
-        self.generate_fixture_department()
         self.generate_fixture_task_type()
 
     def _tmp_csv_files(self):

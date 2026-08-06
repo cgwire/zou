@@ -6,7 +6,6 @@ from zou.app.models.project import Project
 class ImportShotgunEpisode(ShotgunTestCase):
     def setUp(self):
         super().setUp()
-        self.generate_fixture_asset_type()
 
     def test_import_episodes(self):
         self.load_fixture("projects")

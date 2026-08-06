@@ -15,8 +15,6 @@ class QueryTestCase(ApiDBTestCase):
         )
         self.project2_id = project.id
 
-        self.generate_fixture_asset_type()
-        self.generate_fixture_asset_types()
         self.generate_fixture_asset("Asset 1")
         self.generate_fixture_asset("Asset 2")
         self.generate_fixture_asset("Asset 3")

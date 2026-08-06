@@ -52,7 +52,6 @@ class PersonalCrudInstanceRoutesTestCase(ApiDBTestCase):
         self.generate_base_context()
         self.generate_fixture_asset()
         self.generate_fixture_person()
-        self.generate_fixture_assigner()
         self.generate_fixture_task()
         self.rows = self.build_one_row_per_table()
 

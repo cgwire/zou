@@ -8,11 +8,7 @@ from zou.app.utils import fields
 class CommentTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
-        self.generate_fixture_project_status()
-        self.generate_fixture_project()
-        self.generate_fixture_asset_type()
         self.generate_assigned_task()
-        self.generate_fixture_task_status_todo()
         self.comments = []
         self.comments.append(self.generate_fixture_comment())
         self.comments.append(self.generate_fixture_comment())

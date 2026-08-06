@@ -5,7 +5,6 @@ from tests.base import ApiDBTestCase
 class SpecialCharTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
 
     def test_repr(self):

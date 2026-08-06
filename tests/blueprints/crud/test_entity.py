@@ -6,7 +6,6 @@ from zou.app.utils import fields
 class EntityTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_asset_type()
         self.asset_1_id = str(self.generate_fixture_asset("Asset 1").id)

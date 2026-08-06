@@ -22,8 +22,6 @@ class CreateFromImportReturnsTestCase(ApiDBTestCase):
         super().setUp()
         self.generate_base_context()
         self.generate_fixture_person()
-        self.generate_fixture_assigner()
-        self.generate_fixture_asset()
         self.generate_fixture_task()
 
     def test_basemixin_default_returns_tuple(self):

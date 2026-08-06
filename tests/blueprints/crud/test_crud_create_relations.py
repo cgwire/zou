@@ -10,7 +10,6 @@ class CrudCreateRelationsTestCase(ApiDBTestCase):
 
     def setUp(self):
         super().setUp()
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
 
     def test_create_response_includes_relations(self):

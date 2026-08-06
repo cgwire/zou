@@ -11,9 +11,6 @@ class EventsRoutesTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp(expire_on_commit=False)
 
-        self.generate_fixture_project_status()
-        self.generate_fixture_project()
-        self.generate_fixture_asset_type()
         self.generate_fixture_asset()
         self.generate_fixture_person()
 

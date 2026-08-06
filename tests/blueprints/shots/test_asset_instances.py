@@ -7,7 +7,6 @@ class AssetInstanceInShotTestCase(ApiDBTestCase):
 
         self.generate_shot_suite()
         self.generate_fixture_asset()
-        self.generate_fixture_asset_types()
         self.generate_fixture_asset_character()
         self.scene_id = str(self.scene.id)
         self.shot_id = str(self.shot.id)

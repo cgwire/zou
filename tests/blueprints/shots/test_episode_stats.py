@@ -6,19 +6,14 @@ from zou.app.services import comments_service
 class EpisodeStatsTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
-        self.generate_fixture_department()
         self.generate_fixture_task_type()
         self.retake_id = str(self.generate_fixture_task_status_retake().id)
         self.wip_id = str(self.generate_fixture_task_status_wip().id)
         self.done_id = str(self.generate_fixture_task_status_done().id)
-        self.generate_fixture_task_status()
         self.person_id = str(self.generate_fixture_person().id)
-        self.generate_fixture_assigner()
 
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.project_id = str(self.project.id)
-        self.generate_fixture_asset_type()
         self.episode_ids = {}
 
         for i in range(3):

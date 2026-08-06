@@ -10,7 +10,6 @@ class ProjectRevisionPaddingTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
 
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.project_id = str(self.project.id)
 

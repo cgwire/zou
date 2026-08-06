@@ -7,7 +7,6 @@ from zou.app.models.entity import Entity
 class ImportShotgunSequence(ShotgunTestCase):
     def setUp(self):
         super().setUp()
-        self.generate_fixture_asset_type()
 
     def test_import_sequences(self):
         self.load_fixture("projects")

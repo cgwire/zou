@@ -77,8 +77,6 @@ class ExtractAnnotatedFrameRouteTestCase(ApiDBTestCase):
         super().setUp()
         self.generate_base_context()
         self.generate_fixture_asset()
-        self.generate_fixture_assigner()
-        self.generate_fixture_person()
         self.generate_fixture_task()
         self.preview_file = self.generate_fixture_preview_file().serialize()
         annotation = {
@@ -188,8 +186,6 @@ class ExtractAnnotatedFramePictureRouteTestCase(ApiDBTestCase):
         super().setUp()
         self.generate_base_context()
         self.generate_fixture_asset()
-        self.generate_fixture_assigner()
-        self.generate_fixture_person()
         self.generate_fixture_task()
         self.preview_file = self.generate_fixture_preview_file().serialize()
         # Make the fixture preview look like a picture preview.
@@ -272,8 +268,6 @@ class AnnotatedFramesRouteMixin:
         super().setUp()
         self.generate_base_context()
         self.generate_fixture_asset()
-        self.generate_fixture_assigner()
-        self.generate_fixture_person()
         self.generate_fixture_task()
         self.preview_file = self.generate_fixture_preview_file().serialize()
         annotations = [

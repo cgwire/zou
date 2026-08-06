@@ -115,8 +115,6 @@ class RenormalizeMoviePreviewFilesTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
         self.generate_base_context()
-        self.generate_fixture_asset()
-        self.generate_fixture_assigner()
         self.generate_fixture_person()
         self.generate_fixture_task()
         self.preview_file = self.generate_fixture_preview_file(status="broken")

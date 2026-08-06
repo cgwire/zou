@@ -6,9 +6,7 @@ from zou.app.services import projects_service, tasks_service
 class EpisodeTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
-        self.generate_fixture_asset_type()
         self.generate_fixture_episode("E01")
         self.project_id = str(self.project.id)
         self.serialized_episode = self.episode.serialize(obj_type="Episode")

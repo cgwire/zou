@@ -7,10 +7,7 @@ class OpenProjectRouteTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
 
-        self.generate_fixture_project_status()
-        self.generate_fixture_project_closed_status()
         self.project_id = str(self.generate_fixture_project().id)
-        self.generate_fixture_project_closed()
 
     def test_open_projects(self):
         projects = self.get("data/projects/open/")

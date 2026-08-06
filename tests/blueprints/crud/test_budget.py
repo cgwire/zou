@@ -10,7 +10,6 @@ class BudgetTestCase(ApiDBTestCase):
 
     def setUp(self):
         super().setUp()
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_department()
         self.project_id = str(self.project.id)
@@ -79,7 +78,6 @@ class BudgetEntryTestCase(ApiDBTestCase):
 
     def setUp(self):
         super().setUp()
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_department()
         self.budget = Budget.create(

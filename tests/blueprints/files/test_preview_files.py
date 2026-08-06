@@ -12,10 +12,6 @@ class PreviewFilesTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
         self.generate_base_context()
-        self.generate_fixture_asset()
-        self.generate_fixture_assigner()
-        self.generate_fixture_person()
-        self.generate_fixture_task()
 
     def test_get_running_preview_filless(self):
         self.generate_fixture_preview_file().serialize()

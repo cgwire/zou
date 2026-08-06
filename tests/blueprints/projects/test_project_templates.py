@@ -6,7 +6,6 @@ from zou.app.models.metadata_descriptor import MetadataDescriptor
 class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_department()
         self.generate_fixture_task_type()

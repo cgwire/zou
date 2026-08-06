@@ -10,17 +10,11 @@ from zou.app.services import projects_service, tasks_service
 class PlaylistRoutesTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
-        self.generate_fixture_asset_type()
         self.generate_fixture_episode("E01")
         self.generate_fixture_sequence("SE01")
         self.generate_fixture_shot("SH01")
-        self.generate_fixture_person()
-        self.generate_fixture_assigner()
-        self.generate_fixture_department()
         self.generate_fixture_task_type()
-        self.generate_fixture_task_status()
         self.generate_fixture_shot_task()
         self.project_id = str(self.project.id)
         self.episode_id = str(self.episode.id)

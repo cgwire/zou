@@ -4,7 +4,6 @@ from tests.base import ApiDBTestCase
 class CastingCsvExportTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.project.update({"production_type": "tvshow"})
         self.generate_fixture_asset_type()

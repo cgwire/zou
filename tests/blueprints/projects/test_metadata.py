@@ -8,11 +8,8 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
 
-        self.generate_fixture_project_status()
-        self.generate_fixture_project_closed_status()
         self.generate_fixture_project()
         self.generate_fixture_project_closed()
-        self.generate_fixture_asset_type()
         self.generate_fixture_asset()
         self.project_id = self.project.id
         self.asset_id = self.asset.id

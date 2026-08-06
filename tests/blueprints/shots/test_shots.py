@@ -6,10 +6,8 @@ from zou.app.services import projects_service, shots_service, tasks_service
 class ShotTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.project_id = str(self.project.id)
-        self.generate_fixture_asset_type()
         self.generate_fixture_episode()
         self.generate_fixture_sequence()
         self.generate_fixture_shot("SH01")
@@ -28,8 +26,6 @@ class ShotTestCase(ApiDBTestCase):
         self.shot_02_id = str(shot_02.id)
         self.shot_03 = self.generate_fixture_shot("SH03")
         self.generate_fixture_asset()
-
-        self.generate_fixture_project_standard()
 
     def test_get_shots(self):
         shots = self.get("data/shots/all")

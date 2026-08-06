@@ -11,12 +11,8 @@ class ImportCsvTaskTypeEstimationsTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
 
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
-        self.generate_fixture_department()
         self.generate_fixture_task_type()
-        self.generate_fixture_person()
-        self.generate_fixture_assigner()
 
     def write_csv(self, content):
         """

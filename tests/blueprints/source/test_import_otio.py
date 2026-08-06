@@ -11,7 +11,6 @@ from zou.app.services import shots_service
 class ImportOTIOEdlTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
-        self.generate_fixture_project_status()
         self.generate_fixture_project(name="TestProject")
         self.project.update({"fps": "25"})
 

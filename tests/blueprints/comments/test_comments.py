@@ -13,11 +13,8 @@ from zou.app.services import comments_service, tasks_service
 class CommentRoutesTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
-        self.generate_fixture_asset_type()
         self.generate_fixture_asset()
-        self.generate_fixture_department()
         self.generate_fixture_task_type()
         self.generate_fixture_task_status()
         self.generate_fixture_person()

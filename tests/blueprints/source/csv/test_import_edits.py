@@ -10,10 +10,7 @@ class ImportCsvEditsTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
 
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
-        self.generate_fixture_department()
-        self.generate_fixture_task_type()
         self.path = f"/import/csv/projects/{self.project.id}/edits"
 
     def write_csv(self, content):
