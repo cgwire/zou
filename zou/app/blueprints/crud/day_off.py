@@ -16,6 +16,21 @@ from zou.app.services.exception import WrongParameterException
 from zou.app.utils import permissions
 
 
+def _remove_time_spents_covered_by(day_off):
+    """
+    A day off wipes the hours logged on the days it covers. Both bounds
+    are read from the column: writing them the other way round, as
+    `day_off.date >= TimeSpent.date`, makes Python fall back to the
+    reflected operator and silently inverts the interval, which then
+    matches nothing beyond a one day long day off.
+    """
+    TimeSpent.delete_all_by(
+        TimeSpent.date >= day_off.date,
+        TimeSpent.date <= day_off.end_date,
+        person_id=day_off.person_id,
+    )
+
+
 class DayOffsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, DayOff)
@@ -172,11 +187,7 @@ class DayOffsResource(BaseModelsResource):
         return data
 
     def post_creation(self, instance):
-        TimeSpent.delete_all_by(
-            instance.date >= TimeSpent.date,
-            instance.end_date <= TimeSpent.date,
-            person_id=instance.person_id,
-        )
+        _remove_time_spents_covered_by(instance)
         return instance.serialize(relations=True)
 
 
@@ -357,11 +368,7 @@ class DayOffResource(BaseModelResource):
         return permissions_service.check_day_off_access(instance_dict)
 
     def post_update(self, instance_dict, data):
-        TimeSpent.delete_all_by(
-            self.instance.date >= TimeSpent.date,
-            self.instance.end_date <= TimeSpent.date,
-            person_id=self.instance.person_id,
-        )
+        _remove_time_spents_covered_by(self.instance)
         return instance_dict
 
     def pre_update(self, instance_dict, data):
