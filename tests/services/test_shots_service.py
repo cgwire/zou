@@ -45,14 +45,25 @@ class FirstEpisodeTestCase(ApiDBTestCase):
 
         self.assertEqual(episode["id"], str(first.id))
 
-    def test_a_production_with_no_episode_gets_one(self):
-        # The name it is given is not asserted here: create_episode takes
-        # (project_id, name, status) and the call site passes ("running",
-        # "E01"), so the episode is currently named after the status.
+    def test_only_an_episode_can_be_the_first_episode(self):
+        # The name is sorted on, and every entity type shares the column: an
+        # asset named before the first episode must not be taken for one.
+        self.generate_fixture_asset("Aardvark")
+        first = self.generate_fixture_episode("E01")
+
         episode = shots_service.get_or_create_first_episode(
             str(self.project.id)
         )
 
+        self.assertEqual(episode["id"], str(first.id))
+
+    def test_a_production_with_no_episode_gets_one(self):
+        episode = shots_service.get_or_create_first_episode(
+            str(self.project.id)
+        )
+
+        self.assertEqual(episode["name"], "E01")
+        self.assertEqual(episode["status"], "running")
         self.assertEqual(
             episode["entity_type_id"], shots_service.get_episode_type()["id"]
         )

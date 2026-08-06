@@ -845,17 +845,18 @@ def get_or_create_first_episode(project_id, created_by=None):
     """
     Get the first episode of the production.
     """
+    episode_type = get_episode_type()
     episode = (
-        Entity.query.filter_by(project_id=project_id)
+        Entity.query.filter_by(
+            project_id=project_id, entity_type_id=episode_type["id"]
+        )
         .order_by(Entity.name)
         .first()
     )
     if episode is not None:
         return episode.serialize()
     else:
-        return create_episode(
-            project_id, "running", "E01", created_by=created_by
-        )
+        return create_episode(project_id, "E01", created_by=created_by)
 
 
 def get_episodes_for_project(project_id, only_assigned=False):
