@@ -1734,7 +1734,10 @@ def get_weighted_quota_shots_between(
         .join(Task, Entity.id == Task.entity_id)
         .join(Project, Project.id == Task.project_id)
         .join(TimeSpent, Task.id == TimeSpent.task_id)
-        .add_columns(Task.duration, TimeSpent.duration)
+        # TimeSpent.id is selected only to keep the rows apart: the legacy
+        # Query.all() drops duplicates, and two days logged for the same
+        # duration on one task are identical in every other column.
+        .add_columns(Task.duration, TimeSpent.duration, TimeSpent.id)
     )
 
     if feedback:
@@ -1743,7 +1746,7 @@ def get_weighted_quota_shots_between(
         query = query.filter(Task.done_date != None)
 
     query_shots = query.all()
-    for entity, task_duration, duration in query_shots:
+    for entity, task_duration, duration, _ in query_shots:
         shot = entity.serialize()
         if shot["id"] not in already_listed:
             full_name, _, _ = names_service.get_full_entity_name(shot["id"])

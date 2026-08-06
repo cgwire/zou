@@ -608,10 +608,12 @@ class ShotUtilsTestCase(ApiDBTestCase):
             )
             tasks[shot.name] = task
 
-        # A second day logged on one shot: it comes back as a second row,
-        # and the two shares have to add up rather than the last one winning.
+        # A second day logged on one shot, for the same duration as the
+        # first: the two shares have to add up rather than the last one
+        # winning, and the rows must stay apart even though everything the
+        # query selects of them is equal.
         tasks_service.create_or_update_time_spent(
-            str(tasks["Z01"].id), str(self.person.id), "2018-06-05", 500
+            str(tasks["Z01"].id), str(self.person.id), "2018-06-05", 250
         )
 
         quota_shots = shots_service.get_weighted_quota_shots_between(
@@ -624,7 +626,7 @@ class ShotUtilsTestCase(ApiDBTestCase):
 
         self.assertEqual(
             [(shot["name"], shot["weight"]) for shot in quota_shots],
-            [("P01", 0.25), ("Z01", 0.5)],
+            [("P01", 0.25), ("Z01", 0.4)],
         )
 
     def test_set_frames_from_task_type_previews(self):
