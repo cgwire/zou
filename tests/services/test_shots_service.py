@@ -6,7 +6,8 @@ from sqlalchemy.exc import IntegrityError
 from tests.base import ApiDBTestCase
 
 from zou.app.models.entity import Entity
-from zou.app.services import breakdown_service, shots_service
+from zou.app.services import breakdown_service, shots_service, tasks_service
+from zou.app.utils import fields
 from zou.app.services.exception import (
     EpisodeNotFoundException,
     SceneNotFoundException,
@@ -50,11 +51,17 @@ class ShotUtilsTestCase(ApiDBTestCase):
         self.assertEqual(sequences[0]["id"], str(self.sequence.id))
 
     def test_get_shots(self):
+        shot_dict = self.shot.serialize(obj_type="Shot")
+        shot_dict["project_name"] = self.project.name
+        shot_dict["sequence_name"] = self.sequence.name
+
+        # Named to come first while created last, so the listing order is
+        # the query's rather than the insertion one.
+        self.generate_fixture_shot("A01")
+
         shots = shots_service.get_shots()
-        self.shot_dict = self.shot.serialize(obj_type="Shot")
-        self.shot_dict["project_name"] = self.project.name
-        self.shot_dict["sequence_name"] = self.sequence.name
-        self.assertDictEqual(shots[0], self.shot_dict)
+        self.assertEqual([shot["name"] for shot in shots], ["A01", "P01"])
+        self.assertDictEqual(shots[1], shot_dict)
 
     def test_get_scenes(self):
         scenes = shots_service.get_scenes()
@@ -323,14 +330,69 @@ class ShotUtilsTestCase(ApiDBTestCase):
         self.assertEqual(len(scenes), 1)
 
     def test_get_scenes_for_sequence(self):
+        """
+        Scoped to the sequence and ordered by name, whatever production the
+        scenes belong to.
+        """
         self.generate_fixture_project_standard()
         self.generate_fixture_sequence_standard()
         self.generate_fixture_sequence(name="SQ02")
         self.generate_fixture_scene(
-            project_id=self.project_standard.id, sequence_id=self.sequence.id
+            name="SC02",
+            project_id=self.project_standard.id,
+            sequence_id=self.sequence.id,
         )
+        self.generate_fixture_scene(
+            name="SC01",
+            project_id=self.project_standard.id,
+            sequence_id=self.sequence.id,
+        )
+
         scenes = shots_service.get_scenes_for_sequence(self.sequence.id)
-        self.assertEqual(len(scenes), 1)
+
+        self.assertEqual([scene["name"] for scene in scenes], ["SC01", "SC02"])
+
+    def test_get_weighted_quota_shots_between(self):
+        """
+        The shots a person worked on in the window, weighted by the share of
+        the task duration they logged, and returned in full name order.
+        """
+        self.generate_fixture_department()
+        self.generate_fixture_task_status()
+        self.generate_fixture_task_type()
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
+
+        # Named to come last while created first, so the sort has work to
+        # do. generate_fixture_shot repoints self.shot, hence the local.
+        first_shot = self.shot
+        shots = [self.generate_fixture_shot("Z01"), first_shot]
+        for shot in shots:
+            task = self.generate_fixture_shot_task(
+                name=f"quota {shot.name}", shot_id=shot.id
+            )
+            task.update({"end_date": fields.get_date_object("2018-06-10")})
+            # The task duration is the sum of every time spent on it, so a
+            # second worker is what makes the share below one.
+            tasks_service.create_or_update_time_spent(
+                str(task.id), str(self.person.id), "2018-06-04", 250
+            )
+            tasks_service.create_or_update_time_spent(
+                str(task.id), self.user["id"], "2018-06-04", 750
+            )
+
+        quota_shots = shots_service.get_weighted_quota_shots_between(
+            str(self.person.id),
+            "2018-06-01T00:00:00",
+            "2018-06-30T00:00:00",
+            project_id=str(self.project.id),
+            task_type_id=str(self.task_type_animation.id),
+        )
+
+        self.assertEqual(
+            [(shot["name"], shot["weight"]) for shot in quota_shots],
+            [("P01", 0.25), ("Z01", 0.25)],
+        )
 
     def test_set_frames_from_task_type_previews(self):
         self.generate_fixture_department()
