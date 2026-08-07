@@ -1,6 +1,3 @@
-from flask.views import MethodView
-
-
 def configure_api_from_blueprint(blueprint, route_tuples, decorators=None):
     """
     Register route tuples (path, resource class) on the given blueprint.

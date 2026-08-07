@@ -1,0 +1,31 @@
+from tests.base import ApiDBTestCase
+
+
+class SceneTasksTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_scene()
+        self.generate_fixture_person()
+        self.generate_fixture_task_type()
+        self.generate_fixture_scene_task()
+        self.person_id = str(self.person.id)
+
+    def test_get_tasks_for_scene(self):
+        tasks = self.get(f"data/scenes/{self.scene.id}/tasks")
+        self.assertEqual(len(tasks), 1)
+        self.assertEqual(tasks[0]["id"], str(self.scene_task.id))
+
+    def test_get_scenes_and_tasks(self):
+        self.generate_fixture_scene_task(name="Secondary")
+        scenes = self.get("data/scenes/with-tasks")
+        self.assertEqual(len(scenes), 1)
+        self.assertEqual(len(scenes[0]["tasks"]), 2)
+        self.assertEqual(scenes[0]["tasks"][0]["assignees"][0], self.person_id)
+        self.assertEqual(scenes[0]["name"], "SC01")
+
+    def test_get_task_types_for_scene(self):
+        task_types = self.get(f"/data/scenes/{self.scene.id}/task-types")
+        self.assertEqual(len(task_types), 1)
+        self.assertDictEqual(
+            task_types[0], self.task_type_animation.serialize()
+        )

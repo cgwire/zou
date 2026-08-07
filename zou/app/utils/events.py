@@ -56,14 +56,14 @@ def unregister_all():
 
 
 def emit(event, data=None, persist=True, project_id=None):
-    if data is None:
-        data = {}
     """
     Emit an event which leads to the execution of all event handlers registered
     for that event name.
     It publishes too the event to other services
     (like the realtime event daemon).
     """
+    if data is None:
+        data = {}
     event = event.lower()
     event_handlers = handlers.get(event, {})
     if project_id is not None:
@@ -111,6 +111,21 @@ def save_event(event, data, project_id=None):
     if project_id == "None":
         project_id = None
 
-    return ApiEvent.create(
+    api_event = ApiEvent.create(
         name=event, data=data, user_id=person_id, project_id=project_id
     )
+
+    try:
+        from zou.app.services.events_service import (
+            invalidate_event_names_cache,
+        )
+
+        invalidate_event_names_cache(event)
+    except Exception:
+        # Refreshing the name list must never break the write path: an
+        # unreachable cache only means the log filters stay stale until the
+        # entry expires.
+        current_app.logger.warning(
+            "Could not invalidate the event name list cache.", exc_info=1
+        )
+    return api_event

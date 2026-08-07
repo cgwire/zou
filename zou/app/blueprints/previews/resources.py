@@ -29,6 +29,7 @@ from zou.app.services import (
     projects_service,
     preview_files_service,
     tasks_service,
+    permissions_service,
     user_service,
 )
 from zou.app.stores import queue_store
@@ -532,7 +533,7 @@ class CreatePreviewFilePictureResource(
             )
             raise PreviewFileReuploadNotAllowedException
 
-        user_service.check_task_action_access(preview_file["task_id"])
+        permissions_service.check_task_action_access(preview_file["task_id"])
         return True
 
 
@@ -579,14 +580,18 @@ class BaseBatchComment(BaseNewPreviewFilePicture, ArgsMixin):
         args = self.get_comments_args()
 
         if task_id is not None:
-            user_service.check_task_action_access(task_id)
+            permissions_service.check_task_action_access(task_id)
 
         new_comments = []
         for i, comment in enumerate(args["comments"]):
-            user_service.check_task_status_access(comment["task_status_id"])
+            permissions_service.check_task_status_access(
+                comment["task_status_id"]
+            )
 
             if task_id is None:
-                user_service.check_task_action_access(comment["task_id"])
+                permissions_service.check_task_action_access(
+                    comment["task_id"]
+                )
 
             if not permissions.has_manager_permissions():
                 comment["person_id"] = None
@@ -730,7 +735,7 @@ class BasePreviewFileResource(MethodView):
         self.preview_file = files_service.get_preview_file_for_access(
             preview_file_id
         )
-        user_service.check_task_access(self.preview_file["task_id"])
+        permissions_service.check_task_access(self.preview_file["task_id"])
         self.last_modified = date_helpers.get_datetime_from_string(
             self.preview_file["updated_at"]
         )
@@ -1040,15 +1045,15 @@ class AttachmentThumbnailResource(MethodView):
             comment = tasks_service.get_comment(
                 self.attachment_file["comment_id"]
             )
-            user_service.check_task_access(comment["object_id"])
+            permissions_service.check_task_access(comment["object_id"])
         elif self.attachment_file["chat_message_id"] is not None:
             message = chats_service.get_chat_message(
                 self.attachment_file["chat_message_id"]
             )
             chat = chats_service.get_chat_by_id(message["chat_id"])
             entity = entities_service.get_entity(chat["object_id"])
-            user_service.check_project_access(entity["project_id"])
-            user_service.check_entity_access(chat["object_id"])
+            permissions_service.check_project_access(entity["project_id"])
+            permissions_service.check_entity_access(chat["object_id"])
         else:
             raise permissions.PermissionDenied
         return True
@@ -1159,14 +1164,14 @@ class BasePreviewFileThumbnailResource(BasePreviewPictureResource):
         )
         task = tasks_service.get_task(self.preview_file["task_id"])
         entity = entities_service.get_entity(task["entity_id"])
-        user_service.resolve_project_role(task["project_id"])
+        permissions_service.resolve_project_role(task["project_id"])
         if (
             entity["preview_file_id"] != preview_file_id
             or not entity["is_shared"]
             or permissions.has_vendor_permissions()
         ):
-            user_service.check_project_access(task["project_id"])
-            user_service.check_entity_access(task["entity_id"])
+            permissions_service.check_project_access(task["project_id"])
+            permissions_service.check_entity_access(task["entity_id"])
         self.last_modified = date_helpers.get_datetime_from_string(
             self.preview_file["updated_at"]
         )
@@ -1371,7 +1376,7 @@ class PersonThumbnailResource(BaseThumbnailResource):
         )
 
     def check_allowed_to_post(self, instance_id):
-        user_service.check_person_access(instance_id)
+        permissions_service.check_person_access(instance_id)
 
     def prepare_creation(self, instance_id):
         self.model = self.update_model_func(
@@ -1415,13 +1420,13 @@ class ProjectThumbnailResource(BaseThumbnailResource):
     def check_allowed_to_get(self, instance_id):
         super().check_allowed_to_get(instance_id)
         if not permissions.has_manager_permissions():
-            user_service.check_project_access(instance_id)
+            permissions_service.check_project_access(instance_id)
 
 
 class CreateProjectThumbnailResource(ProjectThumbnailResource):
 
     def check_allowed_to_post(self, instance_id):
-        return user_service.check_manager_project_access(instance_id)
+        return permissions_service.check_manager_project_access(instance_id)
 
 
 class SetMainPreviewResource(MethodView, ArgsMixin):
@@ -1480,8 +1485,8 @@ class SetMainPreviewResource(MethodView, ArgsMixin):
         frame_number = body.frame_number
         preview_file = files_service.get_preview_file(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
-        user_service.check_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
+        permissions_service.check_project_access(task["project_id"])
+        permissions_service.check_entity_access(task["entity_id"])
         # Clients review content but must not redefine how an entity is
         # illustrated.
         if permissions.has_client_permissions():
@@ -1556,7 +1561,7 @@ class UpdatePreviewPositionResource(MethodView, ArgsMixin):
             PreviewFilePositionSchema
         )
         preview_file = files_service.get_preview_file(preview_file_id)
-        user_service.check_task_action_access(preview_file["task_id"])
+        permissions_service.check_task_action_access(preview_file["task_id"])
         return preview_files_service.update_preview_file_position(
             preview_file_id, body.position
         )
@@ -1632,7 +1637,7 @@ class UpdateAnnotationsResource(MethodView, ArgsMixin):
         """
         preview_file = files_service.get_preview_file(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
-        user_service.check_project_access(task["project_id"])
+        permissions_service.check_project_access(task["project_id"])
         is_manager = permissions.has_manager_permissions()
         is_client = permissions.has_client_permissions()
         is_supervisor_allowed = False
@@ -1778,7 +1783,7 @@ class ExtractFrameFromPreview(MethodView, ArgsMixin):
         args = self.get_args([("frame_number", 0, False, int)])
         preview_file = files_service.get_preview_file(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
-        user_service.check_manager_project_access(task["project_id"])
+        permissions_service.check_manager_project_access(task["project_id"])
         extracted_frame_path = (
             preview_files_service.extract_frame_from_preview_file(
                 preview_file, args["frame_number"]
@@ -1851,7 +1856,7 @@ class ExtractAnnotatedFrameFromPreview(MethodView):
         )
         preview_file = files_service.get_preview_file(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
-        user_service.check_manager_project_access(task["project_id"])
+        permissions_service.check_manager_project_access(task["project_id"])
         extracted_frame_path = (
             preview_files_service.extract_annotation_frame_from_preview_file(
                 preview_file, args.frame_number
@@ -1881,7 +1886,7 @@ def _serve_annotated_frames_bundle(
     """
     preview_file = files_service.get_preview_file(preview_file_id)
     task = tasks_service.get_task(preview_file["task_id"])
-    user_service.check_manager_project_access(task["project_id"])
+    permissions_service.check_manager_project_access(task["project_id"])
     bundle_path = build_bundle(preview_file)
     if bundle_path is None:
         return {"error": "preview file binary is not available"}, 404
@@ -2029,7 +2034,7 @@ class ExtractTileFromPreview(MethodView):
                   format: binary
         """
         preview_file = files_service.get_preview_file(preview_file_id)
-        user_service.check_task_access(preview_file["task_id"])
+        permissions_service.check_task_access(preview_file["task_id"])
         extracted_tile_path = (
             preview_files_service.extract_tile_from_preview_file(preview_file)
         )

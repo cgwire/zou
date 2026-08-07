@@ -2,7 +2,7 @@ from flask_jwt_extended import jwt_required
 
 from zou.app.models.asset_instance import AssetInstance
 
-from zou.app.services import assets_service, user_service
+from zou.app.services import assets_service, permissions_service, user_service
 from zou.app.utils import permissions
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
@@ -294,8 +294,8 @@ class AssetInstanceResource(BaseModelResource):
         else:
             asset_instance = self.get_model_or_404(instance["id"])
             asset = assets_service.get_asset(asset_instance.asset_id)
-            user_service.check_project_access(asset["project_id"])
-            user_service.check_entity_access(asset["id"])
+            permissions_service.check_project_access(asset["project_id"])
+            permissions_service.check_entity_access(asset["id"])
             return True
 
     def check_update_permissions(self, asset_instance, data):
@@ -303,6 +303,6 @@ class AssetInstanceResource(BaseModelResource):
             return True
         else:
             asset = assets_service.get_asset(asset_instance["asset_id"])
-            user_service.check_project_access(asset["project_id"])
-            user_service.check_entity_access(asset["id"])
+            permissions_service.check_project_access(asset["project_id"])
+            permissions_service.check_entity_access(asset["id"])
             return True

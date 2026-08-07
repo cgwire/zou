@@ -3,6 +3,7 @@ from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.entities.schemas import CreateEntityTasksSchema
+from zou.app.mixin import ArgsMixin
 from zou.app.services.exception import EntityNotFoundException
 from zou.app.services import (
     deletion_service,
@@ -13,6 +14,7 @@ from zou.app.services import (
     projects_service,
     tasks_service,
     time_spents_service,
+    permissions_service,
     user_service,
 )
 from zou.app.utils import permissions, validation
@@ -87,8 +89,8 @@ class EntityNewsResource(MethodView):
                         example: "2023-01-01T12:30:00Z"
         """
         entity = entities_service.get_entity(entity_id)
-        user_service.check_project_access(entity["project_id"])
-        user_service.check_entity_access(entity_id)
+        permissions_service.check_project_access(entity["project_id"])
+        permissions_service.check_entity_access(entity_id)
         return news_service.get_news_for_entity(entity_id)
 
 
@@ -155,8 +157,8 @@ class EntityPreviewFilesResource(MethodView):
                         example: c46c8gc6-eg97-6887-c292-79675204e47
         """
         entity = entities_service.get_entity(entity_id)
-        user_service.check_project_access(entity["project_id"])
-        user_service.check_entity_access(entity_id)
+        permissions_service.check_project_access(entity["project_id"])
+        permissions_service.check_entity_access(entity_id)
         return preview_files_service.get_preview_files_for_entity(entity_id)
 
 
@@ -220,8 +222,8 @@ class EntityTimeSpentsResource(MethodView):
                         example: c46c8gc6-eg97-6887-c292-79675204e47
         """
         entity = entities_service.get_entity(entity_id)
-        user_service.check_project_access(entity["project_id"])
-        user_service.check_entity_access(entity_id)
+        permissions_service.check_project_access(entity["project_id"])
+        permissions_service.check_entity_access(entity_id)
         return time_spents_service.get_time_spents_for_entity(entity_id)
 
 
@@ -299,8 +301,8 @@ class EntitiesLinkedWithTasksResource(MethodView):
                               example: f79f1jf9-hj20-9010-f625-02998537h80
         """
         entity = entities_service.get_entity(entity_id)
-        user_service.check_project_access(entity["project_id"])
-        user_service.check_entity_access(entity_id)
+        permissions_service.check_project_access(entity["project_id"])
+        permissions_service.check_entity_access(entity_id)
         return entities_service.get_linked_entities_with_tasks(entity_id)
 
 
@@ -355,8 +357,8 @@ class EntityTaskCreationResource(MethodView):
               entity
         """
         entity = entities_service.get_entity(entity_id)
-        user_service.check_project_access(entity["project_id"])
-        user_service.check_entity_access(entity_id)
+        permissions_service.check_project_access(entity["project_id"])
+        permissions_service.check_entity_access(entity_id)
         if (
             permissions.has_vendor_permissions()
             or permissions.has_client_permissions()
@@ -371,7 +373,7 @@ class EntityTaskCreationResource(MethodView):
         return tasks, 201
 
 
-class ProjectDeleteEntitiesResource(MethodView):
+class ProjectDeleteEntitiesResource(MethodView, ArgsMixin):
     @jwt_required()
     def post(self, project_id):
         """
@@ -379,10 +381,10 @@ class ProjectDeleteEntitiesResource(MethodView):
         ---
         description: Delete assets, shots, edits and concepts given by id
           list in a single request. Each entity follows the same rules as
-          its single deletion route. Entities with tasks are marked as
-          canceled on first deletion, then removed for real when already
-          canceled; concepts are always removed. Only entity creators or
-          project managers can delete entities.
+          its single deletion route. Without force, entities with tasks are
+          marked as canceled on first deletion, then removed for real when
+          already canceled; concepts are always removed. Only entity
+          creators or project managers can delete entities.
         tags:
           - Entities
         parameters:
@@ -394,6 +396,14 @@ class ProjectDeleteEntitiesResource(MethodView):
               format: uuid
             description: Unique identifier of the project
             example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: force
+            required: false
+            schema:
+              type: boolean
+            description: Remove the entities and their tasks for real,
+              instead of only canceling the ones that have tasks
+            example: false
         requestBody:
           required: true
           content:
@@ -417,6 +427,7 @@ class ProjectDeleteEntitiesResource(MethodView):
                     type: string
                     format: uuid
         """
+        force = self.get_force()
         projects_service.get_project(project_id)
         entity_ids = validation.validate_id_list()
         current_user_id = persons_service.get_current_user()["id"]
@@ -430,8 +441,13 @@ class ProjectDeleteEntitiesResource(MethodView):
                 # Nothing to authorize for an entity that is already gone.
                 continue
             if entity["created_by"] == current_user_id:
-                user_service.check_belong_to_project(project_id)
+                permissions_service.check_belong_to_project(project_id)
             else:
-                user_service.check_manager_project_access(project_id)
+                permissions_service.check_manager_project_access(project_id)
 
-        return deletion_service.remove_entities(project_id, entity_ids), 200
+        return (
+            deletion_service.remove_entities(
+                project_id, entity_ids, force=force
+            ),
+            200,
+        )

@@ -93,10 +93,12 @@ class SalaryScalesResource(BaseModelsResource):
 
 
 class SalaryScaleResource(BaseModelResource):
-    protected_fields = ["id", "created_at", "updated_at", "department_id"]
-
     def __init__(self):
         BaseModelResource.__init__(self, SalaryScale)
+        # BaseModelResource.__init__ assigns protected_fields on the instance,
+        # so the class attribute this used to declare never applied and
+        # department_id was writable through a PUT.
+        self.protected_fields.append("department_id")
 
     @jwt_required()
     def get(self, instance_id):

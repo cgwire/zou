@@ -6,7 +6,12 @@ from sqlalchemy.orm import aliased
 from zou.app.models.entity import Entity, EntityLink
 from zou.app.models.entity_type import EntityType
 
-from zou.app.services import projects_service, shots_service, user_service
+from zou.app.services import (
+    permissions_service,
+    projects_service,
+    shots_service,
+    user_service,
+)
 from zou.app.utils import csv_utils
 
 from zou.app.mixin import ArgsMixin
@@ -89,8 +94,8 @@ class CastingCsvExport(MethodView, ArgsMixin):
         return csv_utils.build_csv_response(csv_content, slugify(file_name))
 
     def check_permissions(self, project_id):
-        user_service.check_project_access(project_id)
-        user_service.block_access_to_vendor()
+        permissions_service.check_project_access(project_id)
+        permissions_service.block_access_to_vendor()
 
     def build_headers(self, is_tv_show=False, episode_id=None):
         headers = [

@@ -206,10 +206,6 @@ OIDC_FAMILY_NAME_CLAIM = os.getenv("OIDC_FAMILY_NAME_CLAIM", "family_name")
 OIDC_REQUIRE_EMAIL_VERIFIED = envtobool("OIDC_REQUIRE_EMAIL_VERIFIED", True)
 OIDC_SKIP_2FA = envtobool("OIDC_SKIP_2FA", False)
 
-LOGS_MODE = os.getenv("LOGS_MODE", "default")
-LOGS_HOST = os.getenv("LOGS_HOST", "localhost")
-LOGS_PORT = os.getenv("LOGS_PORT", 2202)
-LOGS_TOKEN = os.getenv("LOGS_TOKEN")
 LOG_FILE_NOT_FOUND = envtobool("LOG_FILE_NOT_FOUND", False)
 
 SENTRY_ENABLED = envtobool("SENTRY_ENABLED", False)

@@ -15,6 +15,7 @@ from zou.app.services import (
     shots_service,
     stats_service,
     tasks_service,
+    permissions_service,
     user_service,
 )
 
@@ -80,8 +81,8 @@ class ShotResource(MethodView, ArgsMixin):
                           example: {"camera": "camA", "cut_in": 1001}
         """
         shot = shots_service.get_full_shot(shot_id)
-        user_service.check_project_access(shot["project_id"])
-        user_service.check_entity_access(shot["id"])
+        permissions_service.check_project_access(shot["project_id"])
+        permissions_service.check_entity_access(shot["id"])
         return shot
 
     @jwt_required()
@@ -153,7 +154,7 @@ class ShotResource(MethodView, ArgsMixin):
                 description: Invalid body or unsupported fields
         """
         shot = shots_service.get_shot(shot_id)
-        user_service.check_manager_project_access(shot["project_id"])
+        permissions_service.check_manager_project_access(shot["project_id"])
         data = request.json
         if data is None:
             raise WrongParameterException(
@@ -199,9 +200,11 @@ class ShotResource(MethodView, ArgsMixin):
         force = self.get_force()
         shot = shots_service.get_shot(shot_id)
         if shot["created_by"] == persons_service.get_current_user()["id"]:
-            user_service.check_belong_to_project(shot["project_id"])
+            permissions_service.check_belong_to_project(shot["project_id"])
         else:
-            user_service.check_manager_project_access(shot["project_id"])
+            permissions_service.check_manager_project_access(
+                shot["project_id"]
+            )
         shots_service.remove_shot(shot_id, force=force)
         return "", 204
 
@@ -243,8 +246,8 @@ class SceneResource(MethodView):
                           example: b24a6ea4-ce75-4665-a070-57453082c25
         """
         scene = shots_service.get_full_scene(scene_id)
-        user_service.check_project_access(scene["project_id"])
-        user_service.check_entity_access(scene["id"])
+        permissions_service.check_project_access(scene["project_id"])
+        permissions_service.check_entity_access(scene["id"])
         return scene
 
     @jwt_required()
@@ -268,9 +271,11 @@ class SceneResource(MethodView):
         """
         scene = shots_service.get_scene(scene_id)
         if scene["created_by"] == persons_service.get_current_user()["id"]:
-            user_service.check_belong_to_project(scene["project_id"])
+            permissions_service.check_belong_to_project(scene["project_id"])
         else:
-            user_service.check_manager_project_access(scene["project_id"])
+            permissions_service.check_manager_project_access(
+                scene["project_id"]
+            )
         shots_service.remove_scene(scene_id)
         return "", 204
 
@@ -336,7 +341,9 @@ class ShotsResource(MethodView):
             criterions["project_id"] = sequence["project_id"]
             criterions["parent_id"] = sequence["id"]
             del criterions["sequence_id"]
-        user_service.check_project_access(criterions.get("project_id", None))
+        permissions_service.check_project_access(
+            criterions.get("project_id", None)
+        )
         if permissions.has_vendor_permissions():
             criterions["assigned_to"] = persons_service.get_current_user()[
                 "id"
@@ -405,7 +412,9 @@ class AllShotsResource(MethodView):
             criterions["project_id"] = sequence["project_id"]
             criterions["parent_id"] = sequence["id"]
             del criterions["sequence_id"]
-        user_service.check_project_access(criterions.get("project_id", None))
+        permissions_service.check_project_access(
+            criterions.get("project_id", None)
+        )
         if permissions.has_vendor_permissions():
             criterions["assigned_to"] = persons_service.get_current_user()[
                 "id"
@@ -453,7 +462,9 @@ class ScenesResource(MethodView):
                             example: b24a6ea4-ce75-4665-a070-57453082c25
         """
         criterions = query.get_query_criterions_from_request(request)
-        user_service.check_project_access(criterions.get("project_id", None))
+        permissions_service.check_project_access(
+            criterions.get("project_id", None)
+        )
         if permissions.has_vendor_permissions():
             raise permissions.PermissionDenied
         return shots_service.get_scenes(criterions)
@@ -499,8 +510,8 @@ class ShotAssetsResource(MethodView):
                             example: b24a6ea4-ce75-4665-a070-57453082c25
         """
         shot = shots_service.get_shot(shot_id)
-        user_service.check_project_access(shot["project_id"])
-        user_service.check_entity_access(shot["id"])
+        permissions_service.check_project_access(shot["project_id"])
+        permissions_service.check_entity_access(shot["id"])
         return breakdown_service.get_entity_casting(shot_id)
 
 
@@ -539,8 +550,8 @@ class ShotTaskTypesResource(MethodView):
                             example: Animation
         """
         shot = shots_service.get_shot(shot_id)
-        user_service.check_project_access(shot["project_id"])
-        user_service.check_entity_access(shot["id"])
+        permissions_service.check_project_access(shot["project_id"])
+        permissions_service.check_entity_access(shot["id"])
         return tasks_service.get_task_types_for_shot(shot_id)
 
 
@@ -602,8 +613,8 @@ class ShotTasksResource(MethodView, ArgsMixin):
                             example: ["f24a6ea4-ce75-4665-a070-57453082c25"]
         """
         shot = shots_service.get_shot(shot_id)
-        user_service.check_project_access(shot["project_id"])
-        user_service.check_entity_access(shot["id"])
+        permissions_service.check_project_access(shot["project_id"])
+        permissions_service.check_entity_access(shot["id"])
         relations = self.get_relations()
         return tasks_service.get_tasks_for_shot(shot_id, relations=relations)
 
@@ -656,8 +667,8 @@ class SequenceShotTasksResource(MethodView, ArgsMixin):
                             example: d24a6ea4-ce75-4665-a070-57453082c25
         """
         sequence = shots_service.get_sequence(sequence_id)
-        user_service.check_project_access(sequence["project_id"])
-        user_service.check_entity_access(sequence["id"])
+        permissions_service.check_project_access(sequence["project_id"])
+        permissions_service.check_entity_access(sequence["id"])
         if permissions.has_vendor_permissions():
             raise permissions.PermissionDenied
         relations = self.get_relations()
@@ -714,8 +725,8 @@ class EpisodeShotTasksResource(MethodView, ArgsMixin):
                             example: d24a6ea4-ce75-4665-a070-57453082c25
         """
         episode = shots_service.get_episode(episode_id)
-        user_service.check_project_access(episode["project_id"])
-        user_service.check_entity_access(episode["id"])
+        permissions_service.check_project_access(episode["project_id"])
+        permissions_service.check_entity_access(episode["id"])
         if permissions.has_vendor_permissions():
             raise permissions.PermissionDenied
         relations = self.get_relations()
@@ -772,8 +783,8 @@ class EpisodeAssetTasksResource(MethodView, ArgsMixin):
                             example: d24a6ea4-ce75-4665-a070-57453082c25
         """
         episode = shots_service.get_episode(episode_id)
-        user_service.check_project_access(episode["project_id"])
-        user_service.check_entity_access(episode["id"])
+        permissions_service.check_project_access(episode["project_id"])
+        permissions_service.check_entity_access(episode["id"])
         if permissions.has_vendor_permissions():
             raise permissions.PermissionDenied
         relations = self.get_relations()
@@ -826,8 +837,8 @@ class EpisodeShotsResource(MethodView, ArgsMixin):
                             example: c24a6ea4-ce75-4665-a070-57453082c25
         """
         episode = shots_service.get_episode(episode_id)
-        user_service.check_project_access(episode["project_id"])
-        user_service.check_entity_access(episode["id"])
+        permissions_service.check_project_access(episode["project_id"])
+        permissions_service.check_entity_access(episode["id"])
         relations = self.get_relations()
         return shots_service.get_shots_for_episode(
             episode_id, relations=relations
@@ -884,8 +895,8 @@ class ShotPreviewsResource(MethodView):
                       ]
         """
         shot = shots_service.get_shot(shot_id)
-        user_service.check_project_access(shot["project_id"])
-        user_service.check_entity_access(shot["id"])
+        permissions_service.check_project_access(shot["project_id"])
+        permissions_service.check_entity_access(shot["id"])
         return playlists_service.get_preview_files_for_entity(shot_id)
 
 
@@ -941,8 +952,8 @@ class SequenceTasksResource(MethodView, ArgsMixin):
                             example: e24a6ea4-ce75-4665-a070-57453082c25
         """
         sequence = shots_service.get_sequence(sequence_id)
-        user_service.check_project_access(sequence["project_id"])
-        user_service.check_entity_access(sequence["id"])
+        permissions_service.check_project_access(sequence["project_id"])
+        permissions_service.check_entity_access(sequence["id"])
         relations = self.get_relations()
         if permissions.has_vendor_permissions():
             return user_service.get_tasks_for_entity(sequence["id"])
@@ -986,8 +997,8 @@ class SequenceTaskTypesResource(MethodView):
                             example: Animation
         """
         sequence = shots_service.get_sequence(sequence_id)
-        user_service.check_project_access(sequence["project_id"])
-        user_service.check_entity_access(sequence_id)
+        permissions_service.check_project_access(sequence["project_id"])
+        permissions_service.check_entity_access(sequence_id)
         return tasks_service.get_task_types_for_sequence(sequence_id)
 
 
@@ -1066,7 +1077,9 @@ class ShotsAndTasksResource(MethodView):
         stream = criterions.pop("stream", "false") == "true"
         compact = criterions.pop("compact", "false") == "true"
         query.check_criterion_id_format(criterions)
-        user_service.check_project_access(criterions.get("project_id", None))
+        permissions_service.check_project_access(
+            criterions.get("project_id", None)
+        )
         if permissions.has_vendor_permissions():
             criterions["assigned_to"] = persons_service.get_current_user()[
                 "id"
@@ -1152,7 +1165,9 @@ class SceneAndTasksResource(MethodView):
         query.check_criterion_id_format(
             criterions, ["project_id", "episode_id"]
         )
-        user_service.check_project_access(criterions.get("project_id", None))
+        permissions_service.check_project_access(
+            criterions.get("project_id", None)
+        )
         if permissions.has_vendor_permissions():
             raise permissions.PermissionDenied
         criterions["entity_type_id"] = shots_service.get_scene_type()["id"]
@@ -1214,7 +1229,9 @@ class SequenceAndTasksResource(MethodView):
         query.check_criterion_id_format(
             criterions, ["project_id", "episode_id"]
         )
-        user_service.check_project_access(criterions.get("project_id", None))
+        permissions_service.check_project_access(
+            criterions.get("project_id", None)
+        )
         criterions["entity_type_id"] = shots_service.get_sequence_type()["id"]
         if permissions.has_vendor_permissions():
             # Vendors only see sequences holding a shot with a task assigned
@@ -1291,7 +1308,9 @@ class EpisodeAndTasksResource(MethodView):
         query.check_criterion_id_format(
             criterions, ["project_id", "episode_id"]
         )
-        user_service.check_project_access(criterions.get("project_id", None))
+        permissions_service.check_project_access(
+            criterions.get("project_id", None)
+        )
         criterions["entity_type_id"] = shots_service.get_episode_type()["id"]
         if permissions.has_vendor_permissions():
             # Vendors only see episodes holding a shot with a task assigned
@@ -1350,7 +1369,7 @@ class ProjectShotsResource(MethodView, ArgsMixin):
                             example: c24a6ea4-ce75-4665-a070-57453082c25
         """
         projects_service.get_project(project_id)
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         return shots_service.get_shots_for_project(
             project_id, only_assigned=permissions.has_vendor_permissions()
         )
@@ -1429,7 +1448,7 @@ class ProjectShotsResource(MethodView, ArgsMixin):
         """
         body = validation.validate_request_body(NewShotSchema)
         projects_service.get_project(project_id)
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
 
         shot = shots_service.create_shot(
             project_id,
@@ -1487,7 +1506,7 @@ class ProjectSequencesResource(MethodView, ArgsMixin):
                             example: c24a6ea4-ce75-4665-a070-57453082c25
         """
         projects_service.get_project(project_id)
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         return shots_service.get_sequences_for_project(
             project_id, only_assigned=permissions.has_vendor_permissions()
         )
@@ -1555,7 +1574,7 @@ class ProjectSequencesResource(MethodView, ArgsMixin):
         """
         body = validation.validate_request_body(NewSequenceSchema)
         projects_service.get_project(project_id)
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         sequence = shots_service.create_sequence(
             project_id,
             str(body.episode_id) if body.episode_id else None,
@@ -1613,7 +1632,7 @@ class ProjectEpisodesResource(MethodView, ArgsMixin):
                             example: running
         """
         projects_service.get_project(project_id)
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         return shots_service.get_episodes_for_project(
             project_id, only_assigned=permissions.has_vendor_permissions()
         )
@@ -1684,7 +1703,7 @@ class ProjectEpisodesResource(MethodView, ArgsMixin):
         """
         body = validation.validate_request_body(NewEpisodeSchema)
         projects_service.get_project(project_id)
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         return (
             shots_service.create_episode(
                 project_id,
@@ -1757,7 +1776,7 @@ class ProjectEpisodeStatsResource(MethodView):
                               drawings: 600
         """
         projects_service.get_project(project_id)
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         return stats_service.get_episode_stats_for_project(
             project_id, only_assigned=permissions.has_vendor_permissions()
         )
@@ -1900,7 +1919,7 @@ class ProjectEpisodeRetakeStatsResource(MethodView):
                               drawings: 1000
         """
         projects_service.get_project(project_id)
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         return stats_service.get_episode_retake_stats_for_project(
             project_id, only_assigned=permissions.has_vendor_permissions()
         )
@@ -1950,8 +1969,8 @@ class EpisodeResource(MethodView, ArgsMixin):
                           example: running
         """
         episode = shots_service.get_full_episode(episode_id)
-        user_service.check_project_access(episode["project_id"])
-        user_service.check_entity_access(episode["id"])
+        permissions_service.check_project_access(episode["project_id"])
+        permissions_service.check_entity_access(episode["id"])
         return episode
 
     @jwt_required()
@@ -1977,9 +1996,11 @@ class EpisodeResource(MethodView, ArgsMixin):
         force = self.get_force()
         episode = shots_service.get_episode(episode_id)
         if episode["created_by"] == persons_service.get_current_user()["id"]:
-            user_service.check_belong_to_project(episode["project_id"])
+            permissions_service.check_belong_to_project(episode["project_id"])
         else:
-            user_service.check_manager_project_access(episode["project_id"])
+            permissions_service.check_manager_project_access(
+                episode["project_id"]
+            )
         deletion_service.remove_episode(episode_id, force=force)
         return "", 204
 
@@ -2030,7 +2051,9 @@ class EpisodesResource(MethodView):
                             example: running
         """
         criterions = query.get_query_criterions_from_request(request)
-        user_service.check_project_access(criterions.get("project_id", None))
+        permissions_service.check_project_access(
+            criterions.get("project_id", None)
+        )
         if permissions.has_vendor_permissions():
             project_id = criterions.get("project_id", None)
             if project_id is not None:
@@ -2094,7 +2117,7 @@ class EpisodeSequencesResource(MethodView):
         if not fields.is_valid_id(episode_id):
             return []
         episode = shots_service.get_episode(episode_id)
-        user_service.check_project_access(episode["project_id"])
+        permissions_service.check_project_access(episode["project_id"])
         criterions = query.get_query_criterions_from_request(request)
         criterions["parent_id"] = episode_id
         if permissions.has_vendor_permissions():
@@ -2139,8 +2162,8 @@ class EpisodeTaskTypesResource(MethodView):
                             example: Animation
         """
         episode = shots_service.get_episode(episode_id)
-        user_service.check_project_access(episode["project_id"])
-        user_service.check_entity_access(episode_id)
+        permissions_service.check_project_access(episode["project_id"])
+        permissions_service.check_entity_access(episode_id)
         return tasks_service.get_task_types_for_episode(episode_id)
 
 
@@ -2200,8 +2223,8 @@ class EpisodeTasksResource(MethodView):
                             example: ["f24a6ea4-ce75-4665-a070-57453082c25"]
         """
         episode = shots_service.get_episode(episode_id)
-        user_service.check_project_access(episode["project_id"])
-        user_service.check_entity_access(episode["id"])
+        permissions_service.check_project_access(episode["project_id"])
+        permissions_service.check_entity_access(episode["id"])
         if permissions.has_vendor_permissions():
             return user_service.get_tasks_for_entity(episode["id"])
         return tasks_service.get_tasks_for_episode(episode_id)
@@ -2248,8 +2271,8 @@ class SequenceResource(MethodView, ArgsMixin):
                           example: c24a6ea4-ce75-4665-a070-57453082c25
         """
         sequence = shots_service.get_full_sequence(sequence_id)
-        user_service.check_project_access(sequence["project_id"])
-        user_service.check_entity_access(sequence["id"])
+        permissions_service.check_project_access(sequence["project_id"])
+        permissions_service.check_entity_access(sequence["id"])
         return sequence
 
     @jwt_required()
@@ -2275,9 +2298,11 @@ class SequenceResource(MethodView, ArgsMixin):
         force = self.get_force()
         sequence = shots_service.get_sequence(sequence_id)
         if sequence["created_by"] != persons_service.get_current_user()["id"]:
-            user_service.check_belong_to_project(sequence["project_id"])
+            permissions_service.check_belong_to_project(sequence["project_id"])
         else:
-            user_service.check_manager_project_access(sequence["project_id"])
+            permissions_service.check_manager_project_access(
+                sequence["project_id"]
+            )
         shots_service.remove_sequence(sequence_id, force=force)
         return "", 204
 
@@ -2331,7 +2356,9 @@ class SequencesResource(MethodView):
             criterions["project_id"] = episode["project_id"]
             criterions["parent_id"] = episode["id"]
             del criterions["episode_id"]
-        user_service.check_project_access(criterions.get("project_id", None))
+        permissions_service.check_project_access(
+            criterions.get("project_id", None)
+        )
         if permissions.has_vendor_permissions():
             project_id = criterions.get("project_id", None)
             if project_id is not None:
@@ -2393,7 +2420,7 @@ class SequenceShotsResource(MethodView):
                             example: c24a6ea4-ce75-4665-a070-57453082c25
         """
         sequence = shots_service.get_sequence(sequence_id)
-        user_service.check_project_access(sequence["project_id"])
+        permissions_service.check_project_access(sequence["project_id"])
         criterions = query.get_query_criterions_from_request(request)
         criterions["parent_id"] = sequence_id
         if permissions.has_vendor_permissions():
@@ -2446,7 +2473,7 @@ class ProjectScenesResource(MethodView, ArgsMixin):
                             example: c24a6ea4-ce75-4665-a070-57453082c25
         """
         projects_service.get_project(project_id)
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         only_assigned = permissions.has_vendor_permissions()
         return shots_service.get_scenes_for_project(
             project_id, only_assigned=only_assigned
@@ -2513,7 +2540,7 @@ class ProjectScenesResource(MethodView, ArgsMixin):
         """
         body = validation.validate_request_body(NewSceneSchema)
         projects_service.get_project(project_id)
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         scene = shots_service.create_scene(
             project_id,
             str(body.sequence_id) if body.sequence_id else None,
@@ -2566,8 +2593,8 @@ class SequenceScenesResource(MethodView):
                             example: c24a6ea4-ce75-4665-a070-57453082c25
         """
         sequence = shots_service.get_sequence(sequence_id)
-        user_service.check_project_access(sequence["project_id"])
-        user_service.check_entity_access(sequence_id)
+        permissions_service.check_project_access(sequence["project_id"])
+        permissions_service.check_entity_access(sequence_id)
         return shots_service.get_scenes_for_sequence(sequence_id)
 
 
@@ -2606,8 +2633,8 @@ class SceneTaskTypesResource(MethodView):
                             example: Animation
         """
         scene = shots_service.get_scene(scene_id)
-        user_service.check_project_access(scene["project_id"])
-        user_service.check_entity_access(scene["id"])
+        permissions_service.check_project_access(scene["project_id"])
+        permissions_service.check_entity_access(scene["id"])
         return tasks_service.get_task_types_for_scene(scene_id)
 
 
@@ -2662,8 +2689,8 @@ class SceneTasksResource(MethodView):
                             example: e24a6ea4-ce75-4665-a070-57453082c25
         """
         scene = shots_service.get_scene(scene_id)
-        user_service.check_project_access(scene["project_id"])
-        user_service.check_entity_access(scene["id"])
+        permissions_service.check_project_access(scene["project_id"])
+        permissions_service.check_entity_access(scene["id"])
         return tasks_service.get_tasks_for_scene(scene_id)
 
 
@@ -2706,8 +2733,8 @@ class SceneShotsResource(MethodView, ArgsMixin):
                             example: b24a6ea4-ce75-4665-a070-57453082c25
         """
         scene = shots_service.get_scene(scene_id)
-        user_service.check_project_access(scene["project_id"])
-        user_service.check_entity_access(scene["id"])
+        permissions_service.check_project_access(scene["project_id"])
+        permissions_service.check_entity_access(scene["id"])
         return scenes_service.get_shots_by_scene(scene_id)
 
     @jwt_required()
@@ -2759,7 +2786,7 @@ class SceneShotsResource(MethodView, ArgsMixin):
         body = validation.validate_request_body(AddShotToSceneSchema)
 
         scene = shots_service.get_scene(scene_id)
-        user_service.check_project_access(scene["project_id"])
+        permissions_service.check_project_access(scene["project_id"])
         shot = shots_service.get_shot(str(body.shot_id))
         return scenes_service.add_shot_to_scene(scene, shot), 201
 
@@ -2790,7 +2817,7 @@ class RemoveShotFromSceneResource(MethodView):
                 description: Given shot deleted from given scene
         """
         scene = shots_service.get_scene(scene_id)
-        user_service.check_project_access(scene["project_id"])
+        permissions_service.check_project_access(scene["project_id"])
         shot = shots_service.get_shot(shot_id)
         scenes_service.remove_shot_from_scene(scene, shot)
         return "", 204
@@ -2837,8 +2864,8 @@ class ShotVersionsResource(MethodView):
                             example: "2024-01-15T10:30:00Z"
         """
         shot = shots_service.get_shot(shot_id)
-        user_service.check_project_access(shot["project_id"])
-        user_service.check_entity_access(shot["id"])
+        permissions_service.check_project_access(shot["project_id"])
+        permissions_service.check_entity_access(shot["id"])
         return shots_service.get_shot_versions(shot_id)
 
 
@@ -2898,7 +2925,7 @@ class ProjectQuotasResource(MethodView, ArgsMixin):
                 description: Invalid count_mode or parameter
         """
         projects_service.get_project(project_id)
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         args = self.get_args(
             [
                 ("count_mode", "weighted", False, str),
@@ -2989,14 +3016,14 @@ class ProjectPersonQuotasResource(MethodView, ArgsMixin):
                 description: Invalid count_mode or parameter
         """
         projects_service.get_project(project_id)
-        user_service.resolve_project_role(project_id)
+        permissions_service.resolve_project_role(project_id)
         if (
             permissions.has_manager_permissions()
             or permissions.has_supervisor_permissions()
         ):
-            user_service.check_project_access(project_id)
+            permissions_service.check_project_access(project_id)
         else:
-            user_service.check_person_access(person_id)
+            permissions_service.check_person_access(person_id)
         args = self.get_args(
             [
                 ("count_mode", "weighted", False, str),
@@ -3078,7 +3105,7 @@ class SetShotsFramesResource(MethodView, ArgsMixin):
             400:
                 description: Invalid ids or parameters
         """
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         if not fields.is_valid_id(task_type_id) or not fields.is_valid_id(
             project_id
         ):

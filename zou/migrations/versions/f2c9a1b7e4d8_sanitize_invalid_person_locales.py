@@ -21,7 +21,6 @@ from alembic import op
 from babel import Locale
 from babel.core import UnknownLocaleError
 
-
 # revision identifiers, used by Alembic.
 revision = "f2c9a1b7e4d8"
 down_revision = "a3d9c1e7b5f2"

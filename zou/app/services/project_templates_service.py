@@ -19,7 +19,6 @@ from zou.app.models.task_type import TaskType
 
 from zou.app.services import projects_service
 from zou.app.services.exception import (
-    ProjectNotFoundException,
     ProjectTemplateNotFoundException,
     WrongParameterException,
 )
@@ -53,7 +52,17 @@ def clear_project_template_cache():
     now because templates are admin-only and updated infrequently — adding
     a memoize layer is easy if/when access patterns change.
     """
-    pass
+
+
+def _notify_template_change(template_id, action="update"):
+    """
+    Drop the template cache and tell the clients the template moved.
+    """
+    clear_project_template_cache()
+    events.emit(
+        f"project-template:{action}",
+        {"project_template_id": str(template_id)},
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -90,6 +99,9 @@ def get_project_templates():
 
 
 def get_project_template_by_name(name):
+    """
+    Return the template matching given name, case insensitively, or raise.
+    """
     template = ProjectTemplate.query.filter(
         ProjectTemplate.name.ilike(name)
     ).first()
@@ -119,10 +131,7 @@ def create_project_template(name, description=None, **settings):
         raise WrongParameterException(
             "A project template with this name already exists"
         )
-    clear_project_template_cache()
-    events.emit(
-        "project-template:new", {"project_template_id": str(template.id)}
-    )
+    _notify_template_change(template.id, action="new")
     return template.serialize()
 
 
@@ -153,11 +162,7 @@ def update_project_template(template_id, changes):
         raise WrongParameterException(
             "A project template with this name already exists"
         )
-    clear_project_template_cache()
-    events.emit(
-        "project-template:update",
-        {"project_template_id": str(template.id)},
-    )
+    _notify_template_change(template.id)
     return template.serialize()
 
 
@@ -168,11 +173,7 @@ def delete_project_template(template_id):
     template = get_project_template_raw(template_id)
     template_dict = template.serialize()
     template.delete()
-    clear_project_template_cache()
-    events.emit(
-        "project-template:delete",
-        {"project_template_id": template_dict["id"]},
-    )
+    _notify_template_change(template_dict["id"], action="delete")
     return template_dict
 
 
@@ -182,10 +183,32 @@ def delete_project_template(template_id):
 
 
 def _ensure_template_exists(template_id):
+    """
+    Raise if no template matches given id, and return it.
+    """
     return get_project_template_raw(template_id)
 
 
+def _check_required_id(model, value, field_name, label):
+    """
+    Raise a WrongParameterException unless given id is a valid UUID pointing
+    at an existing row, and return that row.
+    """
+    if not value or not fields.is_valid_id(value):
+        raise WrongParameterException(
+            f"{field_name} is required and must be a valid UUID"
+        )
+    instance = model.get(value)
+    if instance is None:
+        raise WrongParameterException(f"{label} {value} does not exist")
+    return instance
+
+
 def get_template_task_types(template_id):
+    """
+    Return the task types of given template, each carrying the priority
+    stored on its link, sorted by priority then name.
+    """
     template = _ensure_template_exists(template_id)
     links = ProjectTemplateTaskTypeLink.get_all_by(
         project_template_id=template_id
@@ -203,14 +226,11 @@ def get_template_task_types(template_id):
 
 
 def add_task_type_to_template(template_id, task_type_id, priority=None):
-    if not task_type_id or not fields.is_valid_id(task_type_id):
-        raise WrongParameterException(
-            "task_type_id is required and must be a valid UUID"
-        )
-    if TaskType.get(task_type_id) is None:
-        raise WrongParameterException(
-            f"Task type {task_type_id} does not exist"
-        )
+    """
+    Link a task type to given template, or update its priority when the
+    link already exists.
+    """
+    _check_required_id(TaskType, task_type_id, "task_type_id", "Task type")
     _ensure_template_exists(template_id)
     if priority is not None:
         priority = int(priority)
@@ -225,28 +245,27 @@ def add_task_type_to_template(template_id, task_type_id, priority=None):
         )
     elif priority is not None:
         link.update({"priority": priority})
-    clear_project_template_cache()
-    events.emit(
-        "project-template:update",
-        {"project_template_id": str(template_id)},
-    )
+    _notify_template_change(template_id)
     return link.serialize()
 
 
 def remove_task_type_from_template(template_id, task_type_id):
+    """
+    Unlink a task type from given template, no-op when not linked.
+    """
     link = ProjectTemplateTaskTypeLink.get_by(
         project_template_id=template_id, task_type_id=task_type_id
     )
     if link is not None:
         link.delete()
-    clear_project_template_cache()
-    events.emit(
-        "project-template:update",
-        {"project_template_id": str(template_id)},
-    )
+    _notify_template_change(template_id)
 
 
 def get_template_task_statuses(template_id):
+    """
+    Return the task statuses of given template, each carrying the priority
+    and the board roles stored on its link, sorted by priority then name.
+    """
     template = _ensure_template_exists(template_id)
     links = ProjectTemplateTaskStatusLink.get_all_by(
         project_template_id=template_id
@@ -270,14 +289,13 @@ def get_template_task_statuses(template_id):
 def add_task_status_to_template(
     template_id, task_status_id, priority=None, roles_for_board=None
 ):
-    if not task_status_id or not fields.is_valid_id(task_status_id):
-        raise WrongParameterException(
-            "task_status_id is required and must be a valid UUID"
-        )
-    if TaskStatus.get(task_status_id) is None:
-        raise WrongParameterException(
-            f"Task status {task_status_id} does not exist"
-        )
+    """
+    Link a task status to given template, or update the fields provided
+    when the link already exists. Fields left to None are untouched.
+    """
+    _check_required_id(
+        TaskStatus, task_status_id, "task_status_id", "Task status"
+    )
     _ensure_template_exists(template_id)
     if priority is not None:
         priority = int(priority)
@@ -299,25 +317,20 @@ def add_task_status_to_template(
             update_data["roles_for_board"] = roles_for_board
         if update_data:
             link.update(update_data)
-    clear_project_template_cache()
-    events.emit(
-        "project-template:update",
-        {"project_template_id": str(template_id)},
-    )
+    _notify_template_change(template_id)
     return link.serialize()
 
 
 def remove_task_status_from_template(template_id, task_status_id):
+    """
+    Unlink a task status from given template, no-op when not linked.
+    """
     link = ProjectTemplateTaskStatusLink.get_by(
         project_template_id=template_id, task_status_id=task_status_id
     )
     if link is not None:
         link.delete()
-    clear_project_template_cache()
-    events.emit(
-        "project-template:update",
-        {"project_template_id": str(template_id)},
-    )
+    _notify_template_change(template_id)
 
 
 def set_template_task_type_priorities(template_id, task_type_ids):
@@ -345,6 +358,9 @@ def set_template_task_status_priorities(template_id, task_status_ids):
 
 
 def get_template_asset_types(template_id):
+    """
+    Return the asset types of given template, id and name only.
+    """
     template = _ensure_template_exists(template_id)
     return [
         {"id": str(asset_type.id), "name": asset_type.name}
@@ -353,28 +369,24 @@ def get_template_asset_types(template_id):
 
 
 def add_asset_type_to_template(template_id, asset_type_id):
-    if not asset_type_id or not fields.is_valid_id(asset_type_id):
-        raise WrongParameterException(
-            "asset_type_id is required and must be a valid UUID"
-        )
-    asset_type = EntityType.get(asset_type_id)
-    if asset_type is None:
-        raise WrongParameterException(
-            f"Asset type {asset_type_id} does not exist"
-        )
+    """
+    Link an asset type to given template, no-op when already linked.
+    """
+    asset_type = _check_required_id(
+        EntityType, asset_type_id, "asset_type_id", "Asset type"
+    )
     template = _ensure_template_exists(template_id)
     if str(asset_type.id) not in [str(at.id) for at in template.asset_types]:
         template.asset_types.append(asset_type)
         template.save()
-    clear_project_template_cache()
-    events.emit(
-        "project-template:update",
-        {"project_template_id": str(template_id)},
-    )
+    _notify_template_change(template_id)
     return {"id": str(asset_type.id), "name": asset_type.name}
 
 
 def remove_asset_type_from_template(template_id, asset_type_id):
+    """
+    Unlink an asset type from given template, no-op when not linked.
+    """
     template = _ensure_template_exists(template_id)
     asset_type = EntityType.get(asset_type_id)
     if asset_type is not None:
@@ -383,45 +395,41 @@ def remove_asset_type_from_template(template_id, asset_type_id):
             template.save()
         except ValueError:
             pass
-    clear_project_template_cache()
-    events.emit(
-        "project-template:update",
-        {"project_template_id": str(template_id)},
-    )
+    _notify_template_change(template_id)
 
 
 def get_template_status_automations(template_id):
+    """
+    Return the status automations of given template.
+    """
     template = _ensure_template_exists(template_id)
     return ProjectTemplate.serialize_list(template.status_automations)
 
 
 def add_status_automation_to_template(template_id, status_automation_id):
-    if not status_automation_id or not fields.is_valid_id(
-        status_automation_id
-    ):
-        raise WrongParameterException(
-            "status_automation_id is required and must be a valid UUID"
-        )
-    automation = StatusAutomation.get(status_automation_id)
-    if automation is None:
-        raise WrongParameterException(
-            f"Status automation {status_automation_id} does not exist"
-        )
+    """
+    Link a status automation to given template, no-op when already linked.
+    """
+    automation = _check_required_id(
+        StatusAutomation,
+        status_automation_id,
+        "status_automation_id",
+        "Status automation",
+    )
     template = _ensure_template_exists(template_id)
     if str(automation.id) not in [
         str(a.id) for a in template.status_automations
     ]:
         template.status_automations.append(automation)
         template.save()
-    clear_project_template_cache()
-    events.emit(
-        "project-template:update",
-        {"project_template_id": str(template_id)},
-    )
+    _notify_template_change(template_id)
     return automation.serialize()
 
 
 def remove_status_automation_from_template(template_id, status_automation_id):
+    """
+    Unlink a status automation from given template, no-op when not linked.
+    """
     template = _ensure_template_exists(template_id)
     automation = StatusAutomation.get(status_automation_id)
     if automation is not None:
@@ -430,14 +438,14 @@ def remove_status_automation_from_template(template_id, status_automation_id):
             template.save()
         except ValueError:
             pass
-    clear_project_template_cache()
-    events.emit(
-        "project-template:update",
-        {"project_template_id": str(template_id)},
-    )
+    _notify_template_change(template_id)
 
 
 def get_template_preview_background_files(template_id):
+    """
+    Return the preview background files of given template, with the flag
+    telling which one is the default.
+    """
     template = _ensure_template_exists(template_id)
     return [
         {
@@ -452,28 +460,23 @@ def get_template_preview_background_files(template_id):
 def add_preview_background_file_to_template(
     template_id, preview_background_file_id
 ):
-    if not preview_background_file_id or not fields.is_valid_id(
-        preview_background_file_id
-    ):
-        raise WrongParameterException(
-            "preview_background_file_id is required and must be a valid UUID"
-        )
-    background = PreviewBackgroundFile.get(preview_background_file_id)
-    if background is None:
-        raise WrongParameterException(
-            f"Preview background file {preview_background_file_id} does not exist"
-        )
+    """
+    Link a preview background file to given template, no-op when already
+    linked.
+    """
+    background = _check_required_id(
+        PreviewBackgroundFile,
+        preview_background_file_id,
+        "preview_background_file_id",
+        "Preview background file",
+    )
     template = _ensure_template_exists(template_id)
     if str(background.id) not in [
         str(b.id) for b in template.preview_background_files
     ]:
         template.preview_background_files.append(background)
         template.save()
-    clear_project_template_cache()
-    events.emit(
-        "project-template:update",
-        {"project_template_id": str(template_id)},
-    )
+    _notify_template_change(template_id)
     return {
         "id": str(background.id),
         "name": background.name,
@@ -484,6 +487,10 @@ def add_preview_background_file_to_template(
 def remove_preview_background_file_from_template(
     template_id, preview_background_file_id
 ):
+    """
+    Unlink a preview background file from given template, and clear the
+    template default when it was the one removed.
+    """
     template = _ensure_template_exists(template_id)
     background = PreviewBackgroundFile.get(preview_background_file_id)
     if background is not None:
@@ -497,16 +504,15 @@ def remove_preview_background_file_from_template(
         preview_background_file_id
     ):
         template.update({"default_preview_background_file_id": None})
-    clear_project_template_cache()
-    events.emit(
-        "project-template:update",
-        {"project_template_id": str(template_id)},
-    )
+    _notify_template_change(template_id)
 
 
 def set_template_default_preview_background_file(
     template_id, preview_background_file_id
 ):
+    """
+    Set which of the template's preview background files is the default.
+    """
     template = _ensure_template_exists(template_id)
     if preview_background_file_id is not None:
         linked_ids = [str(b.id) for b in template.preview_background_files]
@@ -517,11 +523,7 @@ def set_template_default_preview_background_file(
     template.update(
         {"default_preview_background_file_id": preview_background_file_id}
     )
-    clear_project_template_cache()
-    events.emit(
-        "project-template:update",
-        {"project_template_id": str(template_id)},
-    )
+    _notify_template_change(template_id)
     return template.serialize()
 
 
@@ -542,11 +544,7 @@ def set_template_metadata_descriptors(template_id, descriptors):
             )
         cleaned.append(_clean_descriptor_dict(entry))
     template.update({"metadata_descriptors": cleaned})
-    clear_project_template_cache()
-    events.emit(
-        "project-template:update",
-        {"project_template_id": str(template.id)},
-    )
+    _notify_template_change(template.id)
     return template.serialize()
 
 
@@ -666,11 +664,7 @@ def create_template_from_project(project_id, name, description=None):
         )
     db.session.commit()
 
-    clear_project_template_cache()
-    events.emit(
-        "project-template:new",
-        {"project_template_id": str(template.id)},
-    )
+    _notify_template_change(template.id, action="new")
     return template.serialize()
 
 

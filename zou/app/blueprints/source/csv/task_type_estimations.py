@@ -9,6 +9,7 @@ from zou.app.services import (
     shots_service,
     tasks_service,
     persons_service,
+    permissions_service,
     user_service,
 )
 
@@ -18,7 +19,7 @@ from zou.app.utils import date_helpers
 class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
 
     def check_permissions(self, project_id, task_type, episode_id=None):
-        return user_service.check_supervisor_project_task_type_access(
+        return permissions_service.check_supervisor_project_task_type_access(
             project_id, task_type["id"]
         )
 

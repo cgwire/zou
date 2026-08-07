@@ -1,0 +1,483 @@
+from tests.base import ApiDBTestCase
+
+from zou.app.services import projects_service
+from zou.app.utils import fields
+
+
+class ProjectMetadataRouteTestCase(ApiDBTestCase):
+
+    def descriptors_path(self, descriptor=None):
+        """
+        The metadata descriptor list of the production, or one of them.
+        """
+        path = f"data/projects/{self.project_id}/metadata-descriptors"
+        if descriptor is not None:
+            path += f"/{descriptor['id']}"
+        return path
+
+    def setUp(self):
+        super().setUp()
+
+        self.generate_fixture_project()
+        self.generate_fixture_project_closed()
+        self.generate_fixture_asset()
+        self.project_id = self.project.id
+        self.asset_id = self.asset.id
+
+    def test_add_project_metadata_descriptor(self):
+        descriptor = self.post(
+            self.descriptors_path(),
+            {
+                "entity_type": "Project",
+                "name": "Delivery code",
+                "data_type": "string",
+            },
+        )
+        self.assertEqual(descriptor["entity_type"], "Project")
+        self.assertEqual(descriptor["field_name"], "delivery_code")
+        self.put(
+            f"data/projects/{self.project_id}",
+            {"data": {"delivery_code": "X-12"}},
+        )
+        self.put(
+            self.descriptors_path(descriptor),
+            {"name": "Ship code", "data_type": "string"},
+        )
+        project = self.get(f"data/projects/{self.project_id}")
+        self.assertEqual(project["data"].get("ship_code"), "X-12")
+        self.assertIsNone((project.get("data") or {}).get("delivery_code"))
+        self.delete(self.descriptors_path(descriptor))
+        project = self.get(f"data/projects/{self.project_id}")
+        self.assertIsNone((project.get("data") or {}).get("ship_code"))
+
+    def test_add_date_metadata_descriptor(self):
+        descriptor = self.post(
+            self.descriptors_path(),
+            {
+                "entity_type": "Asset",
+                "name": "Due date",
+                "data_type": "date",
+            },
+        )
+        self.assertEqual(descriptor["data_type"], "date")
+
+    def test_add_url_metadata_descriptor(self):
+        descriptor = self.post(
+            self.descriptors_path(),
+            {
+                "entity_type": "Asset",
+                "name": "Brief link",
+                "data_type": "url",
+            },
+        )
+        self.assertEqual(descriptor["data_type"], "url")
+
+    def test_add_textarea_metadata_descriptor(self):
+        descriptor = self.post(
+            self.descriptors_path(),
+            {
+                "entity_type": "Asset",
+                "name": "Notes",
+                "data_type": "textarea",
+            },
+        )
+        self.assertEqual(descriptor["data_type"], "textarea")
+
+    def test_add_person_metadata_descriptor(self):
+        descriptor = self.post(
+            self.descriptors_path(),
+            {
+                "entity_type": "Asset",
+                "name": "Reviewer",
+                "data_type": "person",
+            },
+        )
+        self.assertEqual(descriptor["data_type"], "person")
+
+    def test_all_projects_metadata_descriptor(self):
+        first_project_id = str(self.project_id)
+        second_project = self.generate_fixture_project(name="Second Project")
+        second_project_id = str(second_project.id)
+        closed_project_id = str(self.project_closed.id)
+
+        created = self.post(
+            "data/metadata-descriptors/all-projects",
+            {
+                "entity_type": "Project",
+                "name": "Delivery code",
+                "data_type": "string",
+            },
+            201,
+        )
+        # Both open projects, the closed one is left out.
+        self.assertEqual(len(created), 2)
+        for project_id in (first_project_id, second_project_id):
+            descriptors = self.get(
+                f"data/projects/{project_id}/metadata-descriptors"
+            )
+            self.assertTrue(
+                any(d["field_name"] == "delivery_code" for d in descriptors)
+            )
+        closed = self.get(
+            f"data/projects/{closed_project_id}/metadata-descriptors"
+        )
+        self.assertFalse(
+            any(d["field_name"] == "delivery_code" for d in closed)
+        )
+
+        updated = self.put(
+            "data/metadata-descriptors/all-projects/delivery_code",
+            {
+                "entity_type": "Project",
+                "name": "Ship code",
+                "data_type": "string",
+            },
+        )
+        self.assertEqual(len(updated), 2)
+
+        self.post(
+            "actions/metadata-descriptors/all-projects/reorder",
+            {"entity_type": "Project", "field_order": ["ship_code"]},
+            200,
+        )
+
+        self.delete(
+            "data/metadata-descriptors/all-projects/ship_code"
+            "?entity_type=Project",
+            200,
+        )
+        for project_id in (first_project_id, second_project_id):
+            descriptors = self.get(
+                f"data/projects/{project_id}/metadata-descriptors"
+            )
+            self.assertFalse(
+                any(d["field_name"] == "ship_code" for d in descriptors)
+            )
+
+    def test_all_projects_metadata_descriptor_follows_the_project_role(self):
+        # A role on the team link replaces the global one, so belonging to a
+        # production is not enough to reshape its metadata: these routes
+        # used to touch every project of the team on a global manager check,
+        # which the per project routes refuse.
+        managed = self.generate_fixture_project(name="Managed Project")
+        joined = self.generate_fixture_project(name="Joined Project")
+        self.generate_fixture_user_manager()
+        manager_id = self.user_manager["id"]
+        for project in (managed, joined):
+            projects_service.add_team_member(project.id, manager_id)
+        projects_service.update_team_member_role(joined.id, manager_id, "user")
+        self.log_in_manager()
+
+        created = self.post(
+            "data/metadata-descriptors/all-projects",
+            {
+                "entity_type": "Project",
+                "name": "Delivery code",
+                "data_type": "string",
+            },
+            201,
+        )
+        touched = {descriptor["project_id"] for descriptor in created}
+        self.assertIn(str(managed.id), touched)
+        self.assertNotIn(str(joined.id), touched)
+
+    def test_new_project_copies_project_descriptors(self):
+        # A Project descriptor on an open project and one on a closed
+        # project: only the open one is copied onto a new project.
+        self.post(
+            self.descriptors_path(),
+            {
+                "entity_type": "Project",
+                "name": "Delivery code",
+                "data_type": "string",
+            },
+        )
+        projects_service.add_metadata_descriptor(
+            str(self.project_closed.id),
+            "Project",
+            "Closed only",
+            "string",
+            [],
+            False,
+        )
+        project = self.post("data/projects", {"name": "Fresh Project"}, 201)
+        descriptors = self.get(
+            f"data/projects/{project['id']}/metadata-descriptors"
+        )
+        field_names = [d["field_name"] for d in descriptors]
+        self.assertIn("delivery_code", field_names)
+        self.assertNotIn("closed_only", field_names)
+
+    def test_add_asset_metadata_descriptor(self):
+        descriptor = self.post(
+            self.descriptors_path(),
+            {
+                "entity_type": "Asset",
+                "name": "environment type",
+                "data_type": "list",
+                "choices": ["indoor", "outdoor"],
+            },
+        )
+        descriptor = self.get(self.descriptors_path(descriptor))
+        descriptor = self.post(
+            self.descriptors_path(),
+            {
+                "entity_type": "Shot",
+                "name": "Contractor",
+                "data_type": "list",
+                "choices": ["studio1", "studio2"],
+            },
+        )
+        descriptors = self.get(
+            self.descriptors_path(),
+        )
+        self.assertEqual(len(descriptors), 2)
+        self.assertEqual(descriptors[0]["id"], descriptor["id"])
+        self.assertEqual(descriptors[0]["data_type"], "list")
+        self.assertEqual(descriptors[0]["field_name"], "contractor")
+        self.assertEqual(descriptors[1]["field_name"], "environment_type")
+        self.assertEqual(descriptors[1]["choices"], ["indoor", "outdoor"])
+        self.assertEqual(descriptors[1]["data_type"], "list")
+
+        projects = self.get("data/projects/open/")
+        self.assertEqual(len(projects), 1)
+        self.assertEqual(len(projects[0]["descriptors"]), 2)
+
+    def test_unallowed_add_asset_metadata_descriptor(self):
+        self.generate_fixture_user_manager()
+        self.log_in_manager()
+        self.post(
+            self.descriptors_path(),
+            {
+                "entity_type": "Asset",
+                "name": "environment type",
+                "data_type": "list",
+                "choices": ["indoor", "outdoor"],
+            },
+            403,
+        )
+
+    def test_update_metadata_descriptor(self):
+        descriptor = self.post(
+            self.descriptors_path(),
+            {
+                "entity_type": "Asset",
+                "name": "Contractor",
+                "data_type": "list",
+                "choices": ["contractor 1", "contractor 2"],
+            },
+        )
+        self.asset.update({"data": {"contractor": "contractor 1"}})
+        asset = self.get(f"data/assets/{self.asset_id}")
+        self.put(
+            self.descriptors_path(descriptor),
+            {"name": "Team", "data_type": "list"},
+        )
+        descriptors = self.get(self.descriptors_path())
+        self.assertEqual(len(descriptors), 1)
+        asset = self.get(f"data/entities/{self.asset_id}")
+        self.assertEqual(asset["data"].get("team"), "contractor 1")
+
+    def test_unallowed_update_metadata_descriptor(self):
+        descriptor = projects_service.add_metadata_descriptor(
+            self.project_id, "Asset", "Contractor", "string", [], False
+        )
+        self.generate_fixture_user_manager()
+        self.log_in_manager()
+        self.put(
+            self.descriptors_path(descriptor),
+            {"name": "Team", "data_type": "list"},
+            403,
+        )
+
+    def test_delete_metadata_descriptor(self):
+        descriptor = projects_service.add_metadata_descriptor(
+            self.project_id, "Asset", "Contractor", "string", [], False
+        )
+        self.asset.update({"data": {"contractor": "contractor 1"}})
+        self.delete(self.descriptors_path(descriptor))
+        descriptors = self.get(self.descriptors_path())
+        self.assertEqual(descriptors, [])
+        asset = self.get(f"data/assets/{self.asset_id}")
+        self.assertNotIn("contractor", asset["data"])
+
+    def test_unallowed_delete_metadata_descriptor(self):
+        descriptor = projects_service.add_metadata_descriptor(
+            self.project_id, "Asset", "Contractor", "string", [], False
+        )
+        self.generate_fixture_user_manager()
+        self.log_in_manager()
+        self.delete(
+            self.descriptors_path(descriptor),
+            403,
+        )
+
+    def post_task_descriptor(self, task_type_id, name="Render layer"):
+        return self.post(
+            self.descriptors_path(),
+            {
+                "entity_type": "Task",
+                "task_type_id": task_type_id,
+                "name": name,
+                "data_type": "string",
+            },
+        )
+
+    def test_add_task_metadata_descriptor(self):
+        self.generate_fixture_task()
+        task_type_id = str(self.task_type.id)
+        descriptor = self.post_task_descriptor(task_type_id)
+        self.assertEqual(descriptor["entity_type"], "Task")
+        self.assertEqual(descriptor["task_type_id"], task_type_id)
+        self.assertEqual(descriptor["field_name"], "render_layer")
+        # The same field name is allowed on another task type but not
+        # twice on the same one.
+        other = self.post_task_descriptor(str(self.task_type_modeling.id))
+        self.assertEqual(other["field_name"], "render_layer")
+        self.post(
+            self.descriptors_path(),
+            {
+                "entity_type": "Task",
+                "task_type_id": task_type_id,
+                "name": "Render layer",
+                "data_type": "string",
+            },
+            400,
+        )
+
+    def test_task_metadata_descriptor_in_open_projects_payload(self):
+        self.generate_fixture_task()
+        task_type_id = str(self.task_type.id)
+        self.post_task_descriptor(task_type_id)
+        projects = self.get("data/projects/open")
+        descriptor = projects[0]["descriptors"][0]
+        self.assertEqual(descriptor["task_type_id"], task_type_id)
+
+    def test_task_metadata_descriptor_requires_valid_task_type(self):
+        self.generate_fixture_task()
+        self.post(
+            self.descriptors_path(),
+            {
+                "entity_type": "Task",
+                "name": "Render layer",
+                "data_type": "string",
+            },
+            400,
+        )
+        self.post(
+            self.descriptors_path(),
+            {
+                "entity_type": "Task",
+                "task_type_id": str(fields.gen_uuid()),
+                "name": "Render layer",
+                "data_type": "string",
+            },
+            400,
+        )
+        self.post(
+            self.descriptors_path(),
+            {
+                "entity_type": "Asset",
+                "task_type_id": str(self.task_type.id),
+                "name": "Render layer",
+                "data_type": "string",
+            },
+            400,
+        )
+
+    def test_update_task_data_merges_metadata(self):
+        self.generate_fixture_task()
+        task_id = str(self.task.id)
+        self.put(f"data/tasks/{task_id}", {"data": {"render_layer": "bg"}})
+        self.put(f"data/tasks/{task_id}", {"data": {"note": "wip"}})
+        task = self.get(f"data/tasks/{task_id}")
+        self.assertEqual(task["data"].get("render_layer"), "bg")
+        self.assertEqual(task["data"].get("note"), "wip")
+
+    def test_rename_and_delete_task_metadata_descriptor(self):
+        self.generate_fixture_task()
+        task_id = str(self.task.id)
+        descriptor = self.post_task_descriptor(str(self.task_type.id))
+        self.post_task_descriptor(str(self.task_type_modeling.id))
+        other_task = self.generate_fixture_task(
+            name="Second", task_type_id=self.task_type_modeling.id
+        )
+        other_task_id = str(other_task.id)
+        self.put(f"data/tasks/{task_id}", {"data": {"render_layer": "bg"}})
+        self.put(
+            f"data/tasks/{other_task_id}", {"data": {"render_layer": "fg"}}
+        )
+        self.put(
+            self.descriptors_path(descriptor),
+            {"name": "Layer", "data_type": "string"},
+        )
+        task = self.get(f"data/tasks/{task_id}")
+        self.assertEqual(task["data"].get("layer"), "bg")
+        self.assertNotIn("render_layer", task["data"])
+        # The same field on another task type is left untouched.
+        other_task_data = self.get(f"data/tasks/{other_task_id}")["data"]
+        self.assertEqual(other_task_data.get("render_layer"), "fg")
+        self.delete(self.descriptors_path(descriptor))
+        task = self.get(f"data/tasks/{task_id}")
+        self.assertNotIn("layer", task["data"] or {})
+        other_task_data = self.get(f"data/tasks/{other_task_id}")["data"]
+        self.assertEqual(other_task_data.get("render_layer"), "fg")
+
+    def _new_descriptor(self, name):
+        return self.post(
+            self.descriptors_path(),
+            {"entity_type": "Asset", "name": name, "data_type": "string"},
+        )
+
+    def test_reorder_metadata_descriptors(self):
+        first = self._new_descriptor("Alpha")
+        second = self._new_descriptor("Beta")
+        third = self._new_descriptor("Gamma")
+
+        result = self.post(
+            f"data/projects/{self.project_id}/metadata-descriptors/reorder",
+            {
+                "entity_type": "Asset",
+                "descriptor_ids": [third["id"], first["id"], second["id"]],
+            },
+            200,
+        )
+
+        positions = {
+            descriptor["id"]: descriptor["position"] for descriptor in result
+        }
+        self.assertEqual(positions[third["id"]], 1)
+        self.assertEqual(positions[first["id"]], 2)
+        self.assertEqual(positions[second["id"]], 3)
+
+    def test_reorder_rejects_a_descriptor_of_another_project(self):
+        """
+        The ids come from the client next to a project id it manages. A
+        descriptor belonging to another project, or to another entity type,
+        must not be reachable through this route.
+        """
+        descriptor = self._new_descriptor("Alpha")
+        # generate_fixture_project repoints self.project_id at the project it
+        # creates, so keep this one before asking for a second production.
+        project_id = self.project_id
+        other_project = self.generate_fixture_project("Other Production")
+        other_descriptor = self.post(
+            f"data/projects/{other_project.id}/metadata-descriptors",
+            {"entity_type": "Asset", "name": "Foreign", "data_type": "string"},
+        )
+
+        path = f"data/projects/{project_id}/metadata-descriptors/reorder"
+        self.post(
+            path,
+            {
+                "entity_type": "Asset",
+                "descriptor_ids": [other_descriptor["id"]],
+            },
+            400,
+        )
+        # Same descriptor, wrong entity type, is refused too.
+        self.post(
+            path,
+            {"entity_type": "Shot", "descriptor_ids": [descriptor["id"]]},
+            400,
+        )

@@ -1,0 +1,121 @@
+from tests.base import ApiDBTestCase
+
+from zou.app.services import assets_service
+from zou.app.models.entity import Entity
+
+from zou.app.utils import events
+
+
+class AssetsTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project()
+        self.generate_fixture_asset_type()
+        self.generate_fixture_asset()
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+        self.generate_fixture_task()
+        self.generate_fixture_task(name="Secondary")
+        self.asset_dict = self.asset.serialize(obj_type="Asset")
+        self.maxDiff = None
+
+        self.is_event_fired = False
+        events.unregister_all()
+
+    def handle_event(self, data):
+        self.is_event_fired = True
+
+    def test_get_assets(self):
+        assets = self.get("data/assets/all")
+        self.assertEqual(len(assets), 1)
+        self.assertEqual(assets[0]["name"], self.asset_dict["name"])
+
+    def test_get_asset(self):
+        asset = self.get(f"data/assets/{self.asset.id}")
+        self.assertEqual(asset["id"], str(self.asset.id))
+        self.assertEqual(asset["project_name"], self.project.name)
+        self.assertEqual(asset["asset_type_id"], str(self.asset_type.id))
+        self.assertEqual(asset["asset_type_name"], str(self.asset_type.name))
+        self.assertEqual(len(asset["tasks"]), 2)
+
+    def test_get_asset_by_name(self):
+        assets = self.get(f"data/assets/all?name={self.asset.name.lower()}")
+        self.assertEqual(assets[0]["id"], str(self.asset.id))
+
+    def test_get_project_assets(self):
+        assets = self.get(f"data/projects/{self.project.id}/assets")
+        self.assertEqual(len(assets), 1)
+        self.assertEqual(assets[0]["type"], "Asset")
+
+    def test_get_shot_assets(self):
+        assets = self.get(f"data/shots/{self.shot.id}/assets")
+        self.assertEqual(assets, [])
+
+        self.shot.entities_out = [self.asset]
+        self.shot.save()
+        assets = self.get(f"data/shots/{self.shot.id}/assets")
+        self.assertEqual(len(assets), 1)
+        self.assertEqual(assets[0]["type"], "Asset")
+
+    def test_get_project_and_type_assets(self):
+        asset_type = assets_service.get_or_create_asset_type("VFX")
+        Entity.create(
+            name="Smoke",
+            entity_type_id=asset_type["id"],
+            project_id=self.project.id,
+        )
+        path = (
+            f"data/projects/{self.project.id}/asset-types/"
+            f"{self.asset_type.id}/assets"
+        )
+        assets = self.get(path)
+        self.assertEqual(len(assets), 1)
+        self.assertDictEqual(assets[0], self.asset_dict)
+
+    def test_create_asset(self):
+        events.register("asset:new", "handle_event", self)
+        self.asset_data = {
+            "name": "car",
+            "description": "Test description",
+            "data": {"extra": "test extra"},
+        }
+        path = f"data/projects/{self.project.id}/asset-types/{self.asset_type.id}/assets/new"
+        asset = self.post(path, self.asset_data)
+        assets = assets_service.get_assets()
+        self.assertIsNotNone(asset.get("id", None))
+        self.assertEqual(len(assets), 2)
+        self.assertEqual(assets[1]["name"], self.asset_data["name"])
+        self.assertEqual(
+            assets[1]["description"], self.asset_data["description"]
+        )
+        self.assertDictEqual(assets[1]["data"], self.asset_data["data"])
+
+    def test_remove_asset(self):
+        self.generate_fixture_asset_types()
+        self.generate_fixture_asset_character()
+        path = f"data/assets/{self.asset_character.id}"
+        self.delete(path)
+        assets = assets_service.get_assets()
+        self.assertEqual(len(assets), 1)
+        self.get(path, 404)
+
+    def test_remove_asset_with_children(self):
+        self.generate_fixture_asset_types()
+        self.generate_fixture_asset_character()
+        child = Entity.create(
+            name="Child",
+            entity_type_id=self.asset_type_character.id,
+            project_id=self.project.id,
+            parent_id=self.asset_character.id,
+        )
+        path = f"data/assets/{self.asset_character.id}"
+        self.delete(path)
+        child_again = Entity.get(child.id)
+        self.assertIsNone(child_again.parent_id)
+
+    def test_remove_asset_with_tasks(self):
+        path = f"data/assets/{self.asset_dict['id']}"
+        self.delete(path)
+        assets = assets_service.get_assets()
+        self.assertEqual(len(assets), 1)
+        self.assertEqual(assets[0]["canceled"], True)

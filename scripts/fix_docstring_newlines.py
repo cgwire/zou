@@ -24,7 +24,9 @@ def _needs_fix(inner: str) -> bool:
         return False
 
     if not inner.strip():
-        return not inner.startswith("\n") or bool(inner.split("\n")[-1].strip())
+        return not inner.startswith("\n") or bool(
+            inner.split("\n")[-1].strip()
+        )
 
     if not inner.startswith("\n"):
         return True
@@ -112,7 +114,11 @@ def fix_source(source: str) -> tuple[str, int]:
                 replacements.append((token.start, token.end, fixed))
                 fixes += 1
 
-        if token.type not in {tokenize.NL, tokenize.COMMENT, tokenize.ENCODING}:
+        if token.type not in {
+            tokenize.NL,
+            tokenize.COMMENT,
+            tokenize.ENCODING,
+        }:
             prev_significant = token
 
     if not replacements:

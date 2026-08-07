@@ -30,6 +30,7 @@ from zou.app.services import (
     preview_files_service,
     projects_service,
     shots_service,
+    permissions_service,
     user_service,
 )
 from zou.app.services.exception import (
@@ -109,8 +110,8 @@ class ProjectPlaylistsResource(MethodView, ArgsMixin):
                         description: Project unique identifier
                         example: b35b7fb5-df86-5776-b181-68564193d36
         """
-        user_service.block_access_to_vendor()
-        user_service.check_project_access(project_id)
+        permissions_service.block_access_to_vendor()
+        permissions_service.check_project_access(project_id)
         page = self.get_page()
         sort_by = self.get_sort_by()
         task_type_id = self.get_text_parameter("task_type_id")
@@ -177,8 +178,8 @@ class EpisodePlaylistsResource(MethodView, ArgsMixin):
                         description: Episode unique identifier
                         example: b35b7fb5-df86-5776-b181-68564193d36
         """
-        user_service.block_access_to_vendor()
-        user_service.check_project_access(project_id)
+        permissions_service.block_access_to_vendor()
+        permissions_service.check_project_access(project_id)
         page = self.get_page()
         sort_by = self.get_sort_by()
         task_type_id = self.get_text_parameter("task_type_id")
@@ -251,8 +252,8 @@ class ProjectPlaylistResource(MethodView):
                         type: object
                         example: [{"id": "uuid", "preview_file_id": "uuid"}]
         """
-        user_service.block_access_to_vendor()
-        user_service.check_project_access(project_id)
+        permissions_service.block_access_to_vendor()
+        permissions_service.check_project_access(project_id)
         # The web client loads annotations on demand, so omit the heavy
         # annotation blobs from this payload.
         return playlists_service.get_playlist_with_preview_file_revisions(
@@ -304,8 +305,8 @@ class EntityPreviewsResource(MethodView):
                           example: "preview_v001.png"
         """
         entity = entities_service.get_entity(entity_id)
-        user_service.check_project_access(entity["project_id"])
-        user_service.check_entity_access(entity_id)
+        permissions_service.check_project_access(entity["project_id"])
+        permissions_service.check_entity_access(entity_id)
         return playlists_service.get_preview_files_for_entity(entity_id)
 
 
@@ -354,7 +355,7 @@ class PlaylistAddEntityResource(MethodView, ArgsMixin):
                   type: object
         """
         playlist = playlists_service.get_playlist(playlist_id)
-        user_service.check_playlist_update_access(playlist)
+        permissions_service.check_playlist_update_access(playlist)
 
         body = validation.validate_request_body(AddEntityToPlaylistSchema)
         updated_playlist = playlists_service.add_entity_to_playlist(
@@ -422,7 +423,7 @@ class PlaylistAddEntitiesResource(MethodView, ArgsMixin):
                   type: object
         """
         playlist = playlists_service.get_playlist(playlist_id)
-        user_service.check_playlist_update_access(playlist)
+        permissions_service.check_playlist_update_access(playlist)
 
         body = validation.validate_request_body(AddEntitiesToPlaylistSchema)
         entities = [
@@ -488,9 +489,11 @@ class PlaylistDownloadResource(MethodView):
                       description: Error message
                       example: "Build is not finished"
         """
-        user_service.block_access_to_vendor()
+        permissions_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
-        user_service.check_playlist_access(playlist, supervisor_access=True)
+        permissions_service.check_playlist_access(
+            playlist, supervisor_access=True
+        )
         build_job = playlists_service.get_build_job(build_job_id)
         if str(build_job["playlist_id"]) != str(playlist_id):
             raise BuildJobNotFoundException
@@ -575,7 +578,9 @@ class BuildPlaylistMovieResource(MethodView, ArgsMixin):
                       example: "2022-07-12T10:30:00Z"
         """
         playlist = playlists_service.get_playlist(playlist_id)
-        user_service.check_manager_project_access(playlist["project_id"])
+        permissions_service.check_manager_project_access(
+            playlist["project_id"]
+        )
 
         project = projects_service.get_project(playlist["project_id"])
         width, height = preview_files_service.get_preview_file_dimensions(
@@ -662,9 +667,11 @@ class PlaylistZipDownloadResource(MethodView):
                   type: string
                   format: binary
         """
-        user_service.block_access_to_vendor()
+        permissions_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
-        user_service.check_playlist_access(playlist, supervisor_access=True)
+        permissions_service.check_playlist_access(
+            playlist, supervisor_access=True
+        )
         project = projects_service.get_project(playlist["project_id"])
         zip_file_path = playlists_service.build_playlist_zip_file(playlist)
         context_name = playlists_service.get_playlist_download_context_name(
@@ -742,9 +749,9 @@ class BuildJobResource(MethodView):
                       description: Build job creation timestamp
                       example: "2022-07-12T10:30:00Z"
         """
-        user_service.block_access_to_vendor()
+        permissions_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
-        user_service.check_playlist_access(playlist)
+        permissions_service.check_playlist_access(playlist)
         build_job = playlists_service.get_build_job(build_job_id)
         if str(build_job["playlist_id"]) != str(playlist_id):
             raise BuildJobNotFoundException
@@ -779,9 +786,9 @@ class BuildJobResource(MethodView):
           204:
             description: Build job removed successfully
         """
-        user_service.block_access_to_vendor()
+        permissions_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
-        user_service.check_playlist_access(playlist)
+        permissions_service.check_playlist_access(playlist)
         build_job = playlists_service.get_build_job(build_job_id)
         if str(build_job["playlist_id"]) != str(playlist_id):
             raise BuildJobNotFoundException
@@ -955,11 +962,11 @@ class TempPlaylistResource(MethodView, ArgsMixin):
           400:
             description: Invalid task IDs
         """
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         body = validation.validate_request_body(TempPlaylistCreateSchema)
         task_ids = [str(t) for t in body.task_ids]
         for task_id in task_ids:
-            user_service.check_task_access(task_id)
+            permissions_service.check_task_access(task_id)
         sort = self.get_bool_parameter("sort")
         return (
             playlists_service.generate_temp_playlist(task_ids, sort=sort) or []
@@ -1016,7 +1023,9 @@ class NotifyClientsResource(MethodView, ArgsMixin):
                       example: "success"
         """
         playlist = playlists_service.get_playlist(playlist_id)
-        user_service.check_manager_project_access(playlist["project_id"])
+        permissions_service.check_manager_project_access(
+            playlist["project_id"]
+        )
         body = validation.validate_request_body(
             NotifyClientsPlaylistSchema,
             data=request.get_json(silent=True) or {},
@@ -1038,7 +1047,9 @@ class PlaylistShareLinksResource(MethodView):
     def get(self, playlist_id):
         permissions.check_manager_permissions()
         playlist = playlists_service.get_playlist(playlist_id)
-        user_service.check_manager_project_access(playlist["project_id"])
+        permissions_service.check_manager_project_access(
+            playlist["project_id"]
+        )
         return playlist_sharing_service.get_share_links_for_playlist(
             playlist_id
         )
@@ -1047,7 +1058,9 @@ class PlaylistShareLinksResource(MethodView):
     def post(self, playlist_id):
         permissions.check_manager_permissions()
         playlist = playlists_service.get_playlist(playlist_id)
-        user_service.check_manager_project_access(playlist["project_id"])
+        permissions_service.check_manager_project_access(
+            playlist["project_id"]
+        )
         person = persons_service.get_current_user()
         body = validation.validate_request_body(CreatePlaylistShareLinkSchema)
         share_link = playlist_sharing_service.create_share_link(
@@ -1069,7 +1082,9 @@ class PlaylistShareLinkResource(MethodView):
     def delete(self, playlist_id, token):
         permissions.check_manager_permissions()
         playlist = playlists_service.get_playlist(playlist_id)
-        user_service.check_manager_project_access(playlist["project_id"])
+        permissions_service.check_manager_project_access(
+            playlist["project_id"]
+        )
         share_link = playlist_sharing_service.get_share_link_by_token_raw(
             token
         )
@@ -1148,7 +1163,9 @@ class PlaylistShareLinkInviteResource(MethodView):
         """
         permissions.check_manager_permissions()
         playlist = playlists_service.get_playlist(playlist_id)
-        user_service.check_manager_project_access(playlist["project_id"])
+        permissions_service.check_manager_project_access(
+            playlist["project_id"]
+        )
         share_link = playlist_sharing_service.get_share_link_by_token_raw(
             token
         )

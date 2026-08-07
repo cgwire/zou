@@ -1,0 +1,42 @@
+from tests.base import ApiDBTestCase
+
+
+class SequenceTasksTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_sequence()
+        self.generate_fixture_person()
+        self.generate_fixture_task_type()
+        self.generate_fixture_sequence_task()
+        self.person_id = str(self.person.id)
+
+    def test_get_tasks_for_sequence(self):
+        tasks = self.get(f"data/sequences/{self.sequence.id}/tasks")
+        self.assertEqual(len(tasks), 1)
+        self.assertEqual(tasks[0]["id"], str(self.sequence_task.id))
+
+    def test_get_sequences_and_tasks(self):
+        self.generate_fixture_sequence_task(name="Secondary")
+        sequences = self.get("data/sequences/with-tasks")
+        self.assertEqual(len(sequences), 1)
+        self.assertEqual(len(sequences[0]["tasks"]), 2)
+        self.assertEqual(
+            sequences[0]["tasks"][0]["assignees"][0], self.person_id
+        )
+        self.assertEqual(sequences[0]["name"], "S01")
+
+    def test_get_sequences_and_tasks_include_task_data(self):
+        self.sequence_task.update({"data": {"render_layer": "bg"}})
+        sequences = self.get("data/sequences/with-tasks")
+        self.assertEqual(
+            sequences[0]["tasks"][0]["data"], {"render_layer": "bg"}
+        )
+
+    def test_get_task_types_for_sequence(self):
+        self.generate_fixture_shot()
+        self.generate_fixture_shot_task()
+        task_types = self.get(f"/data/sequences/{self.sequence.id}/task-types")
+        self.assertEqual(len(task_types), 1)
+        self.assertDictEqual(
+            task_types[0], self.task_type_animation.serialize()
+        )

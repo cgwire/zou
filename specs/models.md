@@ -86,6 +86,27 @@ The `Entity` model is polymorphic. The `entity_type_id` determines the kind:
 
 Assets, shots, etc. are all rows in the `entity` table distinguished by `entity_type_id`. Helper services (`shots_service`, `assets_service`) provide typed access.
 
+## Deletion is handled by the services, not by the database
+
+Relationships carry no `cascade=`, and `ondelete="CASCADE"` appears on only a
+handful of foreign keys. Deleting a parent row therefore does **not** clean up
+its children on its own: it either fails on the foreign key or leaves orphans.
+
+This is deliberate. `zou/app/services/deletion_service.py` owns the order in
+which children are removed, because most deletions also have to drop files
+from the store, invalidate caches and emit events, none of which a database
+cascade can do. `ModelWithRelationsDeletionException` is the guard that
+surfaces the cases the service has not covered.
+
+Two consequences when adding a model:
+
+- Add its cleanup to `deletion_service` for every parent it hangs off, rather
+  than declaring a cascade on the relationship.
+- Foreign keys used by those cleanup queries need an explicit `index=True`.
+  Postgres indexes primary keys and unique constraints, never foreign keys,
+  so a `delete_all_by(parent_id=...)` on an unindexed column is a full scan
+  of the child table.
+
 ## Naming conventions
 
 - Model class: `PascalCase` (e.g., `TaskStatus`)

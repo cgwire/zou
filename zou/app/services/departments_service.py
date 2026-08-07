@@ -15,6 +15,9 @@ from zou.app.services.exception import (
 
 
 def _check_department_exists(department_id):
+    """
+    Raise if no department matches given id, and return it.
+    """
     department = Department.get(department_id)
     if not department:
         raise DepartmentNotFoundException
@@ -22,6 +25,9 @@ def _check_department_exists(department_id):
 
 
 def _check_software_exists(software_id):
+    """
+    Raise if no software matches given id, and return it.
+    """
     software = Software.get(software_id)
     if not software:
         raise SoftwareNotFoundException
@@ -29,10 +35,31 @@ def _check_software_exists(software_id):
 
 
 def _check_hardware_item_exists(hardware_item_id):
+    """
+    Raise if no hardware item matches given id, and return it.
+    """
     hardware_item = HardwareItem.get(hardware_item_id)
     if not hardware_item:
         raise HardwareItemNotFoundException
     return hardware_item
+
+
+def _group_by_department(model, link_model):
+    """
+    Return the serialized rows of given model grouped by the department they
+    are linked to, as a dictionary keyed by department id.
+    """
+    rows = (
+        model.query.join(link_model)
+        .add_columns(link_model.department_id)
+        .all()
+    )
+    department_map = {}
+    for instance, department_id in rows:
+        department_map.setdefault(department_id, []).append(
+            instance.serialize()
+        )
+    return department_map
 
 
 def get_all_software_for_departments():
@@ -41,17 +68,7 @@ def get_all_software_for_departments():
     in a dictionary where the key is the department id and the value is a
     list of linked software items.
     """
-    software_list = (
-        Software.query.join(SoftwareDepartmentLink)
-        .add_columns(SoftwareDepartmentLink.department_id)
-        .all()
-    )
-    department_map = {}
-    for software, department_id in software_list:
-        if department_id not in department_map:
-            department_map[department_id] = []
-        department_map[department_id].append(software.serialize())
-    return department_map
+    return _group_by_department(Software, SoftwareDepartmentLink)
 
 
 def get_all_hardware_items_for_departments():
@@ -60,17 +77,7 @@ def get_all_hardware_items_for_departments():
     in a dictionary where the key is the department id and the value is a
     list of linked hardware items.
     """
-    hardware_item_list = (
-        HardwareItem.query.join(HardwareItemDepartmentLink)
-        .add_columns(HardwareItemDepartmentLink.department_id)
-        .all()
-    )
-    department_map = {}
-    for hardware_item, department_id in hardware_item_list:
-        if department_id not in department_map:
-            department_map[department_id] = []
-        department_map[department_id].append(hardware_item.serialize())
-    return department_map
+    return _group_by_department(HardwareItem, HardwareItemDepartmentLink)
 
 
 def get_software_for_department(department_id):
@@ -120,9 +127,8 @@ def remove_software_from_department(department_id, software_id):
     )
     if not link:
         return None
-    else:
-        link.delete()
-        return link.serialize()
+    link.delete()
+    return link.serialize()
 
 
 def add_hardware_item_to_department(department_id, hardware_item_id):
@@ -148,6 +154,5 @@ def remove_hardware_item_from_department(department_id, hardware_item_id):
     )
     if not link:
         return None
-    else:
-        link.delete()
-        return link.serialize()
+    link.delete()
+    return link.serialize()

@@ -5,6 +5,7 @@ from zou.app.mixin import ArgsMixin
 from zou.app.services import (
     news_service,
     projects_service,
+    permissions_service,
     user_service,
     persons_service,
 )
@@ -219,7 +220,7 @@ class ProjectNewsResource(MethodView, NewsMixin, ArgsMixin):
             description: Project not found
         """
         projects_service.get_project(project_id)
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         return self.get_news([project_id])
 
 
@@ -410,8 +411,8 @@ class ProjectSingleNewsResource(MethodView):
             description: News item or project not found
         """
         projects_service.get_project(project_id)
-        user_service.check_project_access(project_id)
-        user_service.block_access_to_vendor()
+        permissions_service.check_project_access(project_id)
+        permissions_service.block_access_to_vendor()
         news = news_service.get_news(project_id, news_id)
         if len(news["data"]) > 0:
             return news["data"][0]

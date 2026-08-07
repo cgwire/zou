@@ -10,6 +10,7 @@ from zou.app.services import (
     schedule_service,
     tasks_service,
     time_spents_service,
+    permissions_service,
     user_service,
 )
 from zou.app.utils import permissions, validation
@@ -216,7 +217,7 @@ class ProductionTeamResource(MethodView, ArgsMixin):
                           means the person's global role applies.
                         example: "supervisor"
         """
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         project = projects_service.get_project_raw(project_id)
         role_map = projects_service.get_team_roles(project_id)
         persons = []
@@ -288,7 +289,7 @@ class ProductionTeamResource(MethodView, ArgsMixin):
         """
         body = validation.validate_request_body(ProjectTeamSchema)
 
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         return (
             projects_service.add_team_member(
                 project_id, body.person_id, role=body.role
@@ -328,7 +329,7 @@ class ProductionTeamMemberResource(MethodView):
           204:
             description: Person removed from production team
         """
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         projects_service.remove_team_member(project_id, person_id)
         return "", 204
 
@@ -372,7 +373,7 @@ class ProductionTeamMemberResource(MethodView):
             description: Person is not a member of the project team
         """
         body = validation.validate_request_body(ProjectTeamRoleSchema)
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         return projects_service.update_team_member_role(
             project_id, person_id, body.role
         )
@@ -436,7 +437,7 @@ class ProductionAssetTypeResource(MethodView, ArgsMixin):
         """
         body = validation.validate_request_body(ProjectAssetTypeSchema)
 
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         project = projects_service.add_asset_type_setting(
             project_id, body.asset_type_id
         )
@@ -474,7 +475,7 @@ class ProductionAssetTypeRemoveResource(MethodView):
           204:
             description: Asset type removed from production
         """
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         projects_service.remove_asset_type_setting(project_id, asset_type_id)
         return "", 204
 
@@ -511,7 +512,7 @@ class ProductionTaskTypesResource(MethodView, ArgsMixin):
                   items:
                     type: object
         """
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         return projects_service.get_project_task_types(project_id)
 
 
@@ -577,7 +578,7 @@ class ProductionTaskTypeResource(MethodView, ArgsMixin):
         """
         body = validation.validate_request_body(ProjectTaskTypeSchema)
 
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         project = projects_service.add_task_type_setting(
             project_id, body.task_type_id, body.priority
         )
@@ -618,7 +619,7 @@ class ProductionTaskTypeRemoveResource(MethodView):
           204:
             description: Task type removed from production
         """
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         projects_service.remove_task_type_setting(project_id, task_type_id)
         return "", 204
 
@@ -655,7 +656,7 @@ class ProductionTaskStatusResource(MethodView, ArgsMixin):
                   items:
                     type: object
         """
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         return projects_service.get_project_task_statuses(project_id)
 
     @jwt_required()
@@ -711,7 +712,7 @@ class ProductionTaskStatusResource(MethodView, ArgsMixin):
         """
         body = validation.validate_request_body(ProjectTaskStatusSchema)
 
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         project = projects_service.add_task_status_setting(
             project_id, body.task_status_id
         )
@@ -752,7 +753,7 @@ class ProductionTaskStatusRemoveResource(MethodView):
           204:
             description: Task status removed from production
         """
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         projects_service.remove_task_status_setting(project_id, task_status_id)
         return "", 204
 
@@ -819,7 +820,7 @@ class ProductionSettingsBatchResource(MethodView):
             description: Updated project
         """
         body = validation.validate_request_body(ProjectSettingsBatchSchema)
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         return projects_service.update_project_settings(
             project_id,
             task_types=[entry.model_dump() for entry in body.task_types],
@@ -861,7 +862,7 @@ class ProductionStatusAutomationResource(MethodView, ArgsMixin):
                   items:
                     type: object
         """
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         return projects_service.get_project_status_automations(project_id)
 
     @jwt_required()
@@ -915,7 +916,7 @@ class ProductionStatusAutomationResource(MethodView, ArgsMixin):
         """
         body = validation.validate_request_body(ProjectStatusAutomationSchema)
 
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         project = projects_service.add_status_automation_setting(
             project_id, body.status_automation_id
         )
@@ -956,7 +957,7 @@ class ProductionStatusAutomationRemoveResource(MethodView):
           204:
             description: Status automation removed from production
         """
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         projects_service.remove_status_automation_setting(
             project_id, status_automation_id
         )
@@ -995,7 +996,7 @@ class ProductionPreviewBackgroundFileResource(MethodView, ArgsMixin):
                   items:
                     type: object
         """
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         return projects_service.get_project_preview_background_files(
             project_id
         )
@@ -1051,7 +1052,7 @@ class ProductionPreviewBackgroundFileResource(MethodView, ArgsMixin):
         """
         body = validation.validate_request_body(ProjectPreviewBackgroundSchema)
 
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         project = projects_service.add_preview_background_file_setting(
             project_id, body.preview_background_file_id
         )
@@ -1092,7 +1093,7 @@ class ProductionPreviewBackgroundFileRemoveResource(MethodView):
           204:
             description: Preview background file removed from production
         """
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         projects_service.remove_preview_background_file_setting(
             project_id, preview_background_file_id
         )
@@ -1133,7 +1134,7 @@ class ProductionMetadataDescriptorsResource(MethodView, ArgsMixin):
                   items:
                     type: object
         """
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         for_client = permissions.has_client_permissions()
         return projects_service.get_metadata_descriptors(
             project_id, for_client
@@ -1237,7 +1238,9 @@ class ProductionMetadataDescriptorsResource(MethodView, ArgsMixin):
         """
         body = validation.validate_request_body(MetadataDescriptorSchema)
 
-        user_service.check_all_departments_access(project_id, body.departments)
+        permissions_service.check_all_departments_access(
+            project_id, body.departments
+        )
 
         if body.entity_type not in [
             "Asset",
@@ -1326,7 +1329,7 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
                 schema:
                   type: object
         """
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         return projects_service.get_metadata_descriptor(metadata_descriptor_id)
 
     @jwt_required()
@@ -1392,7 +1395,7 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
                   type: object
         """
         body = validation.validate_request_body(MetadataDescriptorUpdateSchema)
-        user_service.check_all_departments_access(
+        permissions_service.check_all_departments_access(
             project_id,
             projects_service.get_metadata_descriptor(metadata_descriptor_id)[
                 "departments"
@@ -1442,7 +1445,7 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
           204:
             description: Metadata descriptor deleted
         """
-        user_service.check_all_departments_access(
+        permissions_service.check_all_departments_access(
             project_id,
             projects_service.get_metadata_descriptor(metadata_descriptor_id)[
                 "departments"
@@ -1535,7 +1538,7 @@ class ProductionMetadataDescriptorsReorderResource(MethodView, ArgsMixin):
         """
         body = validation.validate_request_body(MetadataDescriptorOrderSchema)
 
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
 
         if body.entity_type not in [
             "Asset",
@@ -1811,7 +1814,7 @@ class ProductionTimeSpentsResource(MethodView):
                   items:
                     type: object
         """
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         return tasks_service.get_time_spents_for_project(project_id)
 
 
@@ -1847,7 +1850,7 @@ class ProductionMilestonesResource(MethodView):
                   items:
                     type: object
         """
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         return schedule_service.get_milestones_for_project(project_id)
 
 
@@ -1883,8 +1886,8 @@ class ProductionScheduleItemsResource(MethodView):
                   items:
                     type: object
         """
-        user_service.check_project_access(project_id)
-        user_service.block_access_to_vendor()
+        permissions_service.check_project_access(project_id)
+        permissions_service.block_access_to_vendor()
         return schedule_service.get_schedule_items(project_id)
 
 
@@ -1920,8 +1923,8 @@ class ProductionTaskTypeScheduleItemsResource(MethodView):
                   items:
                     type: object
         """
-        user_service.check_project_access(project_id)
-        user_service.block_access_to_vendor()
+        permissions_service.check_project_access(project_id)
+        permissions_service.block_access_to_vendor()
         return schedule_service.get_task_types_schedule_items(project_id)
 
 
@@ -1972,8 +1975,8 @@ class ProductionAssetTypesScheduleItemsResource(MethodView, ArgsMixin):
                   items:
                     type: object
         """
-        user_service.check_project_access(project_id)
-        user_service.block_access_to_vendor()
+        permissions_service.check_project_access(project_id)
+        permissions_service.block_access_to_vendor()
         self.check_id_parameter(project_id)
         self.check_id_parameter(task_type_id)
         episode_id = self.get_id_parameter("episode") or None
@@ -2029,8 +2032,8 @@ class ProductionEpisodesScheduleItemsResource(MethodView, ArgsMixin):
                   items:
                     type: object
         """
-        user_service.check_project_access(project_id)
-        user_service.block_access_to_vendor()
+        permissions_service.check_project_access(project_id)
+        permissions_service.block_access_to_vendor()
         self.check_id_parameter(project_id)
         self.check_id_parameter(task_type_id)
         episode_id = self.get_id_parameter("episode") or None
@@ -2086,8 +2089,8 @@ class ProductionSequencesScheduleItemsResource(MethodView, ArgsMixin):
                   items:
                     type: object
         """
-        user_service.check_project_access(project_id)
-        user_service.block_access_to_vendor()
+        permissions_service.check_project_access(project_id)
+        permissions_service.block_access_to_vendor()
         self.check_id_parameter(project_id)
         self.check_id_parameter(task_type_id)
         episode_id = self.get_id_parameter("episode") or None
@@ -2143,8 +2146,8 @@ class ProductionEditsScheduleItemsResource(MethodView, ArgsMixin):
                   items:
                     type: object
         """
-        user_service.check_project_access(project_id)
-        user_service.block_access_to_vendor()
+        permissions_service.check_project_access(project_id)
+        permissions_service.block_access_to_vendor()
         self.check_id_parameter(project_id)
         self.check_id_parameter(task_type_id)
         episode_id = self.get_id_parameter("episode") or None
@@ -2182,7 +2185,7 @@ class ProductionBudgetsResource(MethodView, ArgsMixin):
                   items:
                     type: object
         """
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         self.check_id_parameter(project_id)
         return budget_service.get_budgets(project_id)
 
@@ -2246,7 +2249,7 @@ class ProductionBudgetsResource(MethodView, ArgsMixin):
             description: Invalid parameters
         """
         self.check_id_parameter(project_id)
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         body = validation.validate_request_body(BudgetSchema)
         return budget_service.create_budget(
             project_id, body.name, body.currency
@@ -2293,7 +2296,7 @@ class ProductionBudgetResource(MethodView, ArgsMixin):
         """
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         budget = budget_service.get_budget(budget_id)
         if budget["project_id"] != project_id:
             raise BudgetNotFoundException
@@ -2349,7 +2352,7 @@ class ProductionBudgetResource(MethodView, ArgsMixin):
         """
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         body = validation.validate_request_body(BudgetUpdateSchema)
         return budget_service.update_budget(
             budget_id, name=body.name, currency=body.currency
@@ -2386,7 +2389,7 @@ class ProductionBudgetResource(MethodView, ArgsMixin):
         """
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         budget_service.delete_budget(budget_id)
         return "", 204
 
@@ -2430,7 +2433,7 @@ class ProductionBudgetEntriesResource(MethodView, ArgsMixin):
         """
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         return budget_service.get_budget_entries(budget_id)
 
     @jwt_required()
@@ -2522,7 +2525,7 @@ class ProductionBudgetEntriesResource(MethodView, ArgsMixin):
         """
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         body = validation.validate_request_body(BudgetEntrySchema)
         return budget_service.create_budget_entry(
             budget_id,
@@ -2579,7 +2582,7 @@ class ProductionBudgetEntryResource(MethodView, ArgsMixin):
                 schema:
                   type: object
         """
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
         self.check_id_parameter(entry_id)
@@ -2673,7 +2676,7 @@ class ProductionBudgetEntryResource(MethodView, ArgsMixin):
                 schema:
                   type: object
         """
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
         self.check_id_parameter(entry_id)
@@ -2720,7 +2723,7 @@ class ProductionBudgetEntryResource(MethodView, ArgsMixin):
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
         self.check_id_parameter(entry_id)
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         budget_service.delete_budget_entry(entry_id)
         return "", 204
 
@@ -2806,7 +2809,7 @@ class ProductionScheduleVersionTaskLinksResource(MethodView, ArgsMixin):
                 production_schedule_version_id
             )
         )
-        user_service.check_project_access(
+        permissions_service.check_project_access(
             production_schedule_version["project_id"]
         )
         if (
@@ -2873,7 +2876,7 @@ class ProductionScheduleVersionSetTaskLinksFromTasksResource(
                 production_schedule_version_id
             )
         )
-        user_service.check_manager_project_access(
+        permissions_service.check_manager_project_access(
             production_schedule_version["project_id"]
         )
 
@@ -2924,7 +2927,7 @@ class ProductionScheduleVersionApplyToProductionResource(
                 production_schedule_version_id
             )
         )
-        user_service.check_manager_project_access(
+        permissions_service.check_manager_project_access(
             production_schedule_version["project_id"]
         )
 
@@ -2993,7 +2996,7 @@ class ProductionScheduleVersionSetTaskLinksFromProductionScheduleVersionResource
                 production_schedule_version_id
             )
         )
-        user_service.check_manager_project_access(
+        permissions_service.check_manager_project_access(
             production_schedule_version["project_id"]
         )
 
@@ -3100,7 +3103,7 @@ class ProductionTaskTypesTimeSpentsResource(MethodView, ArgsMixin):
           400:
             description: Invalid date range parameters
         """
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         self.check_id_parameter(task_type_id)
         arguments = self.get_args(["start_date", "end_date"])
         start_date, end_date = arguments["start_date"], arguments["end_date"]
@@ -3189,7 +3192,7 @@ class ProductionDayOffsResource(MethodView, ArgsMixin):
           400:
             description: Invalid date range parameters
         """
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         if (
             permissions.has_client_permissions()
             or permissions.has_vendor_permissions()

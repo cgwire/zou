@@ -8,6 +8,7 @@ from zou.app.models.task import Task
 from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
 from zou.app.services import (
+    permissions_service,
     user_service,
     tasks_service,
 )
@@ -190,11 +191,11 @@ class PreviewFileResource(BaseModelResource):
         If it's an artist, check if preview file belongs to user projects.
         """
         task = tasks_service.get_task(preview_file["task_id"])
-        user_service.resolve_project_role(task["project_id"])
+        permissions_service.resolve_project_role(task["project_id"])
         if permissions.has_vendor_permissions():
-            user_service.check_working_on_task(preview_file["task_id"])
+            permissions_service.check_working_on_task(preview_file["task_id"])
         else:
-            user_service.check_project_access(task["project_id"])
+            permissions_service.check_project_access(task["project_id"])
         return True
 
     @jwt_required()
@@ -326,9 +327,9 @@ class PreviewFileResource(BaseModelResource):
 
     def check_update_permissions(self, preview_file, data):
         task = tasks_service.get_task(preview_file["task_id"])
-        user_service.check_project_access(task["project_id"])
+        permissions_service.check_project_access(task["project_id"])
         if not permissions.has_manager_permissions():
-            user_service.check_working_on_task(task["entity_id"])
+            permissions_service.check_working_on_task(task["entity_id"])
         return True
 
     def pre_update(self, instance_dict, data):
@@ -358,7 +359,7 @@ class PreviewFileResource(BaseModelResource):
 
     def check_delete_permissions(self, preview_file):
         task = tasks_service.get_task(preview_file["task_id"])
-        user_service.check_manager_project_access(task["project_id"])
+        permissions_service.check_manager_project_access(task["project_id"])
         return True
 
     @jwt_required()

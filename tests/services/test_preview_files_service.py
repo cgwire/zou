@@ -1,14 +1,25 @@
 import os
+import shutil
 import tempfile
+import unittest
+from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import patch
+
+from sqlalchemy.orm.exc import StaleDataError
 
 from tests.base import ApiDBTestCase
 
 
+from zou.app.models.preview_file import PreviewFile
 from zou.app.services import files_service, preview_files_service
+from zou.app.stores import file_store
+from zou.app.utils import thumbnail as thumbnail_utils
+from zou.utils import movie
 from zou.app.services.exception import (
+    AnnotationLockTimeoutException,
     AnnotationNotFoundException,
+    PreviewFileNotFoundException,
     WrongParameterException,
 )
 from zou.app.services.preview_files_service import (
@@ -24,377 +35,31 @@ from zou.app.services.preview_files_service import (
 )
 
 
-class PlaylistTestCase(ApiDBTestCase):
+class PreviewFileTestCase(ApiDBTestCase):
+    """
+    One task to hang preview files from. Holds no test of its own.
+    """
+
     def setUp(self):
-        super(PlaylistTestCase, self).setUp()
+        super().setUp()
         self.generate_base_context()
         self.project_id = str(self.project.id)
         self.user_id = self.user["id"]
         self.generate_fixture_asset()
-        self.generate_fixture_assigner()
-        self.generate_fixture_person()
         self.generate_fixture_task()
-        self.annotations_1 = [
-            {
-                "time": "0",
-                "drawing": {
-                    "objects": [
-                        {"id": "obj1", "type": "path", "path": ["Q", 0, 10]}
-                    ]
-                },
-            }
-        ]
-        self.annotations_2 = [
-            {
-                "time": "2",
-                "drawing": {
-                    "objects": [
-                        {"id": "obj2", "type": "path", "path": ["Q", 1, 11]}
-                    ]
-                },
-            }
-        ]
-        self.annotations_3 = [
-            {
-                "time": "0",
-                "drawing": {
-                    "objects": [
-                        {"id": "obj3", "type": "path", "path": ["Q", 1, 11]}
-                    ]
-                },
-            }
-        ]
 
     def tearDown(self):
-        super(PlaylistTestCase, self).tearDown()
+        super().tearDown()
         self.delete_test_folder()
 
-    def test_add_annotations(self):
-        preview_file = self.generate_fixture_preview_file().serialize()
-        preview_files_service.update_preview_file_annotations(
-            self.user_id,
-            self.project_id,
-            preview_file["id"],
-            additions=self.annotations_1,
-        )
-        persisted_preview_file = files_service.get_preview_file(
-            preview_file["id"]
-        )
-        self.assertEqual(
-            self.annotations_1,
-            persisted_preview_file["annotations"],
-        )
 
-    def test_add_annotations_different_time(self):
-        preview_file = self.generate_fixture_preview_file().serialize()
-        preview_files_service.update_preview_file_annotations(
-            self.user_id,
-            self.project_id,
-            preview_file["id"],
-            additions=self.annotations_1,
-        )
-        preview_files_service.update_preview_file_annotations(
-            self.user_id,
-            self.project_id,
-            preview_file["id"],
-            additions=self.annotations_2,
-        )
-        persisted_preview_file = files_service.get_preview_file(
-            preview_file["id"]
-        )
-        self.assertEqual(
-            self.annotations_1 + self.annotations_2,
-            persisted_preview_file["annotations"],
-        )
-
-    def test_add_annotations_different_objects(self):
-        expected_result = [
-            {
-                "time": "0",
-                "drawing": {
-                    "objects": [
-                        self.annotations_1[0]["drawing"]["objects"][0],
-                        self.annotations_3[0]["drawing"]["objects"][0],
-                    ]
-                },
-            }
-        ]
-        preview_file = self.generate_fixture_preview_file().serialize()
-        preview_files_service.update_preview_file_annotations(
-            self.user_id,
-            self.project_id,
-            preview_file["id"],
-            additions=self.annotations_1,
-        )
-        preview_files_service.update_preview_file_annotations(
-            self.user_id,
-            self.project_id,
-            preview_file["id"],
-            additions=self.annotations_3,
-        )
-        annotations = files_service.get_preview_file(preview_file["id"])[
-            "annotations"
-        ]
-        self.assertEqual(expected_result, annotations)
-        preview_files_service.update_preview_file_annotations(
-            self.user_id,
-            self.project_id,
-            preview_file["id"],
-            additions=self.annotations_3,
-        )
-        annotations = files_service.get_preview_file(preview_file["id"])[
-            "annotations"
-        ]
-        self.assertEqual(expected_result, annotations)
-
-    def test_delete_annotations(self):
-        preview_file = self.generate_fixture_preview_file().serialize()
-        preview_files_service.update_preview_file_annotations(
-            self.user_id,
-            self.project_id,
-            preview_file["id"],
-            additions=self.annotations_1,
-        )
-        preview_files_service.update_preview_file_annotations(
-            self.user_id,
-            self.project_id,
-            preview_file["id"],
-            additions=[],
-            deletions=[{"time": "2", "objects": ["obj1"]}],
-        )
-        persisted_preview_file = files_service.get_preview_file(
-            preview_file["id"]
-        )
-        self.assertEqual(
-            self.annotations_1,
-            persisted_preview_file["annotations"],
-        )
-        preview_files_service.update_preview_file_annotations(
-            self.user_id,
-            self.project_id,
-            preview_file["id"],
-            additions=[],
-            deletions=[{"time": "0", "objects": ["obj4"]}],
-        )
-        persisted_preview_file = files_service.get_preview_file(
-            preview_file["id"]
-        )
-        self.assertEqual(
-            self.annotations_1,
-            persisted_preview_file["annotations"],
-        )
-        preview_files_service.update_preview_file_annotations(
-            self.user_id,
-            self.project_id,
-            preview_file["id"],
-            additions=[],
-            deletions=[{"time": "0", "objects": ["obj1"]}],
-        )
-        persisted_preview_file = files_service.get_preview_file(
-            preview_file["id"]
-        )
-        self.assertEqual(
-            [],
-            persisted_preview_file["annotations"],
-        )
-
-    def test_update_annotations(self):
-        self.modifications = [
-            {
-                "time": "0",
-                "drawing": {
-                    "objects": [
-                        {"id": "obj1", "type": "path", "path": ["Q", 2, 14]}
-                    ]
-                },
-            }
-        ]
-        preview_file = self.generate_fixture_preview_file().serialize()
-        preview_files_service.update_preview_file_annotations(
-            self.user_id,
-            self.project_id,
-            preview_file["id"],
-            additions=self.annotations_1 + self.annotations_2,
-        )
-        persisted_preview_file = files_service.get_preview_file(
-            preview_file["id"]
-        )
-        preview_files_service.update_preview_file_annotations(
-            self.user_id,
-            self.project_id,
-            preview_file["id"],
-            updates=self.modifications,
-        )
-        persisted_preview_file = files_service.get_preview_file(
-            preview_file["id"]
-        )
-        self.assertEqual(
-            self.modifications + self.annotations_2,
-            persisted_preview_file["annotations"],
-        )
-
-    def test_normalize_annotation_times_merges_same_frame_entries(self):
-        annotations = [
-            {
-                "time": 0.6,
-                "frame": 16,
-                "drawing": {"objects": [{"id": "new-1"}]},
-            },
-            {
-                "time": 0.616,
-                "frame": "017",
-                "drawing": {"objects": [{"id": "old-1"}, {"id": "old-2"}]},
-            },
-        ]
-        result, changed = preview_files_service.normalize_annotation_times(
-            annotations, 25
-        )
-        self.assertTrue(changed)
-        self.assertEqual(1, len(result))
-        self.assertEqual(0.6, result[0]["time"])
-        self.assertEqual(
-            ["new-1", "old-1", "old-2"],
-            [o["id"] for o in result[0]["drawing"]["objects"]],
-        )
-
-    def test_normalize_annotation_times_snaps_string_times(self):
-        annotations = [
-            {"time": "2", "drawing": {"objects": [{"id": "obj-1"}]}}
-        ]
-        result, changed = preview_files_service.normalize_annotation_times(
-            annotations, 25
-        )
-        self.assertTrue(changed)
-        self.assertEqual(2.0, result[0]["time"])
-
-    def test_normalize_annotation_times_keeps_distinct_frames(self):
-        annotations = [
-            {"time": 0.6, "drawing": {"objects": [{"id": "a"}]}},
-            {"time": 0.88, "drawing": {"objects": [{"id": "b"}]}},
-        ]
-        result, changed = preview_files_service.normalize_annotation_times(
-            annotations, 25
-        )
-        self.assertFalse(changed)
-        self.assertEqual(2, len(result))
-
-    def test_normalize_annotation_times_deduplicates_objects_by_id(self):
-        annotations = [
-            {"time": 0.6, "drawing": {"objects": [{"id": "a"}]}},
-            {
-                "time": 0.616,
-                "drawing": {"objects": [{"id": "a"}, {"id": "b"}]},
-            },
-        ]
-        result, _ = preview_files_service.normalize_annotation_times(
-            annotations, 25
-        )
-        self.assertEqual(
-            ["a", "b"], [o["id"] for o in result[0]["drawing"]["objects"]]
-        )
-
-    def test_normalize_annotation_times_keeps_unparseable_entries(self):
-        annotations = [{"time": "abc", "drawing": {"objects": [{"id": "a"}]}}]
-        result, changed = preview_files_service.normalize_annotation_times(
-            annotations, 25
-        )
-        self.assertFalse(changed)
-        self.assertEqual(annotations, result)
-
-    def test_normalize_annotation_times_does_not_mutate_input(self):
-        annotations = [
-            {"time": 0.6, "drawing": {"objects": [{"id": "a"}]}},
-            {"time": 0.616, "drawing": {"objects": [{"id": "b"}]}},
-        ]
-        preview_files_service.normalize_annotation_times(annotations, 25)
-        self.assertEqual(0.616, annotations[1]["time"])
-        self.assertEqual(1, len(annotations[0]["drawing"]["objects"]))
-
-    def test_normalize_preview_file_annotation_times(self):
-        preview_file = self.generate_fixture_preview_file()
-        preview_file.update(
-            {
-                "annotations": [
-                    {
-                        "time": 0.6,
-                        "drawing": {"objects": [{"id": "new-1"}]},
-                    },
-                    {
-                        "time": 0.616,
-                        "drawing": {"objects": [{"id": "old-1"}]},
-                    },
-                ]
-            }
-        )
-        changed = (
-            preview_files_service.normalize_preview_file_annotation_times(
-                preview_file
-            )
-        )
-        self.assertTrue(changed)
-        persisted = files_service.get_preview_file(str(preview_file.id))
-        self.assertEqual(1, len(persisted["annotations"]))
-        self.assertEqual(
-            ["new-1", "old-1"],
-            [
-                o["id"]
-                for o in persisted["annotations"][0]["drawing"]["objects"]
-            ],
-        )
-        changed = (
-            preview_files_service.normalize_preview_file_annotation_times(
-                preview_file
-            )
-        )
-        self.assertFalse(changed)
-
-    def test_update_annotations_aborts_when_lock_unavailable(self):
-        """
-        When the Redis lock can't be acquired (Redis down or wait
-        timeout exceeded), the service must surface a 503 instead of
-        silently racing through the read-modify-write without
-        serialization.
-        """
-        from contextlib import contextmanager
-
-        from zou.app.services.exception import AnnotationLockTimeoutException
-
-        preview_file = self.generate_fixture_preview_file().serialize()
-        preview_files_service.update_preview_file_annotations(
-            self.user_id,
-            self.project_id,
-            preview_file["id"],
-            additions=self.annotations_1,
-        )
-
-        @contextmanager
-        def unavailable_lock(*args, **kwargs):
-            yield False
-
-        with patch(
-            "zou.app.services.preview_files_service." "with_preview_file_lock",
-            side_effect=unavailable_lock,
-        ):
-            self.assertRaises(
-                AnnotationLockTimeoutException,
-                preview_files_service.update_preview_file_annotations,
-                self.user_id,
-                self.project_id,
-                preview_file["id"],
-                additions=self.annotations_2,
-            )
-
-        persisted_preview_file = files_service.get_preview_file(
-            preview_file["id"]
-        )
-        self.assertEqual(
-            self.annotations_1,
-            persisted_preview_file["annotations"],
-        )
+class PreviewFileServiceTestCase(PreviewFileTestCase):
+    """
+    Everything but the annotations: dimensions, fps, the movie
+    preparation and the broken status.
+    """
 
     def test_save_variants_cleans_up_on_upload_failure(self):
-        import shutil
-
         self.generate_fixture_preview_file()
         folder = tempfile.mkdtemp()
         picture_path = os.path.join(folder, "original.png")
@@ -412,6 +77,21 @@ class PlaylistTestCase(ApiDBTestCase):
                 )
         self.assertEqual(os.listdir(folder), [])
 
+    def test_update_preview_file_drops_its_cache(self):
+        # Everything the movie pipeline writes goes through here, and the
+        # preview file is read back through a memoized serialization.
+        preview_file_id = str(
+            self.generate_fixture_preview_file(status="processing").id
+        )
+        files_service.get_preview_file(preview_file_id)
+
+        preview_files_service.set_preview_file_as_broken(preview_file_id)
+
+        self.assertEqual(
+            files_service.get_preview_file(preview_file_id)["status"],
+            "broken",
+        )
+
     def test_update_preview_file_raw_deleted_midflight_raises_not_found(self):
         """
         When the row is deleted by another process mid-update, base.update()
@@ -426,9 +106,6 @@ class PlaylistTestCase(ApiDBTestCase):
         thing that makes .id reload fail) cannot be reproduced against a real
         row.
         """
-        from sqlalchemy.orm.exc import StaleDataError
-
-        from zou.app.services.exception import PreviewFileNotFoundException
 
         class _VanishingPreviewFile:
             def __init__(self):
@@ -452,14 +129,17 @@ class PlaylistTestCase(ApiDBTestCase):
                 _VanishingPreviewFile(), {"status": "broken"}
             )
 
-    def test_get_preview_file_dimensions(self):
+    def test_a_resolution_is_two_numbers_around_an_x(self):
         self.assertFalse(_is_valid_resolution(""))
         self.assertFalse(_is_valid_resolution(None))
         self.assertTrue(_is_valid_resolution("203x121"))
         self.assertTrue(_is_valid_resolution("1920x1080"))
         self.assertTrue(_is_valid_resolution("3840x2160"))
+        # A partial resolution is a height alone, so a full one is not one.
         self.assertFalse(_is_valid_partial_resolution("3840x2160"))
         self.assertTrue(_is_valid_partial_resolution("x2160"))
+
+    def test_get_preview_file_dimensions(self):
         project = self.project.serialize()
         entity = self.asset.serialize()
         dimensions = get_preview_file_dimensions(project, entity)
@@ -482,6 +162,13 @@ class PlaylistTestCase(ApiDBTestCase):
         fps = get_preview_file_fps({"fps": None})
         self.assertEqual(fps, "25.000")
 
+    def test_get_project_from_preview_file(self):
+        preview_file = self.generate_fixture_preview_file()
+        project = preview_files_service.get_project_from_preview_file(
+            preview_file.id
+        )
+        self.assertEqual(project["id"], self.project_id)
+
     def test_get_last_preview_file_for_task(self):
         preview_file = self.generate_fixture_preview_file()
         preview_file = preview_files_service.get_last_preview_file_for_task(
@@ -500,6 +187,90 @@ class PlaylistTestCase(ApiDBTestCase):
             self.task_id
         )
         self.assertEqual(preview_file["revision"], 3)
+
+    def test_update_preview_file_position(self):
+        """
+        Moving a preview within its revision renumbers the whole revision,
+        so the positions stay contiguous whichever way it is moved. The
+        answer is the revision in its new order.
+        """
+        self.generate_fixture_preview_file(revision=1)
+        self.generate_fixture_preview_file(revision=2, name="first")
+        preview_file = self.generate_fixture_preview_file(
+            revision=2, name="second"
+        )
+        preview_file_id = str(preview_file.id)
+        self.generate_fixture_preview_file(revision=2, name="third")
+
+        def revision_two():
+            return (
+                PreviewFile.query.filter_by(task_id=self.task_id, revision=2)
+                .order_by(PreviewFile.position)
+                .all()
+            )
+
+        moved = preview_files_service.update_preview_file_position(
+            preview_file_id, 1
+        )
+        preview_files = revision_two()
+        self.assertEqual(
+            [preview.position for preview in preview_files], [1, 2, 3]
+        )
+        self.assertEqual(str(preview_files[0].id), preview_file_id)
+        self.assertEqual(
+            [preview["name"] for preview in moved],
+            ["second", "first", "third"],
+        )
+
+        moved = preview_files_service.update_preview_file_position(
+            preview_file_id, 3
+        )
+        preview_files = revision_two()
+        self.assertEqual(
+            [preview.position for preview in preview_files], [1, 2, 3]
+        )
+        self.assertEqual(str(preview_files[2].id), preview_file_id)
+        self.assertEqual(
+            [preview["name"] for preview in moved],
+            ["first", "third", "second"],
+        )
+
+    def test_update_preview_file_position_ignores_a_position_out_of_range(
+        self,
+    ):
+        self.generate_fixture_preview_file(revision=1, name="first")
+        second = self.generate_fixture_preview_file(revision=1, name="second")
+
+        for position in [0, 3]:
+            with self.subTest(position=position):
+                moved = preview_files_service.update_preview_file_position(
+                    str(second.id), position
+                )
+                self.assertEqual(
+                    [preview["name"] for preview in moved],
+                    ["first", "second"],
+                )
+
+    def test_update_preview_file_position_drops_the_caches(self):
+        # Every preview of the revision is renumbered, and each one is read
+        # through a memoized serialization of its own.
+        first = self.generate_fixture_preview_file(revision=1, name="first")
+        second = self.generate_fixture_preview_file(revision=1, name="second")
+        preview_file_ids = [str(first.id), str(second.id)]
+        for preview_file_id in preview_file_ids:
+            files_service.get_preview_file(preview_file_id)
+
+        preview_files_service.update_preview_file_position(
+            preview_file_ids[1], 1
+        )
+
+        self.assertEqual(
+            [
+                files_service.get_preview_file(preview_file_id)["position"]
+                for preview_file_id in preview_file_ids
+            ],
+            [2, 1],
+        )
 
     @patch("zou.app.services.preview_files_service.movie.generate_tile")
     @patch("zou.app.services.preview_files_service.save_variants")
@@ -678,13 +449,266 @@ class PlaylistTestCase(ApiDBTestCase):
         self.assertIsNone(extract_tile_from_preview_file(preview_file))
 
 
+class PreviewFileAnnotationsTestCase(PreviewFileTestCase):
+    """
+    The annotations a preview file carries. Each update is a read, a merge
+    and a write, under a lock, addressing drawing objects by id.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.preview_file_id = str(self.generate_fixture_preview_file().id)
+        self.at_zero = [self.annotation("0", "obj1")]
+        self.at_two = [self.annotation("2", "obj2")]
+        self.also_at_zero = [self.annotation("0", "obj3")]
+
+    def annotation(self, time, object_id, path=None):
+        return {
+            "time": time,
+            "drawing": {
+                "objects": [
+                    {
+                        "id": object_id,
+                        "type": "path",
+                        "path": path or ["Q", 0, 10],
+                    }
+                ]
+            },
+        }
+
+    def annotate(self, **changes):
+        """
+        Run one annotation update and return what it left on the preview.
+        """
+        preview_files_service.update_preview_file_annotations(
+            self.user_id, self.project_id, self.preview_file_id, **changes
+        )
+        return files_service.get_preview_file(self.preview_file_id)[
+            "annotations"
+        ]
+
+    def test_an_addition_lands_on_the_preview(self):
+        self.assertEqual(self.annotate(additions=self.at_zero), self.at_zero)
+
+    def test_an_addition_at_another_time_is_a_new_entry(self):
+        self.annotate(additions=self.at_zero)
+
+        self.assertEqual(
+            self.annotate(additions=self.at_two), self.at_zero + self.at_two
+        )
+
+    def test_an_addition_at_the_same_time_joins_the_objects(self):
+        merged = [
+            {
+                "time": "0",
+                "drawing": {
+                    "objects": [
+                        self.at_zero[0]["drawing"]["objects"][0],
+                        self.also_at_zero[0]["drawing"]["objects"][0],
+                    ]
+                },
+            }
+        ]
+        self.annotate(additions=self.at_zero)
+
+        self.assertEqual(self.annotate(additions=self.also_at_zero), merged)
+        # Replaying the same addition never doubles nor overwrites.
+        self.assertEqual(self.annotate(additions=self.also_at_zero), merged)
+
+    def test_a_deletion_names_a_time_and_the_objects_to_drop(self):
+        self.annotate(additions=self.at_zero)
+
+        # Neither an unannotated time nor an unknown object drops anything.
+        self.assertEqual(
+            self.annotate(deletions=[{"time": "2", "objects": ["obj1"]}]),
+            self.at_zero,
+        )
+        self.assertEqual(
+            self.annotate(deletions=[{"time": "0", "objects": ["obj4"]}]),
+            self.at_zero,
+        )
+        # A time left without a single object goes away with them.
+        self.assertEqual(
+            self.annotate(deletions=[{"time": "0", "objects": ["obj1"]}]), []
+        )
+
+    def test_an_update_replaces_the_object_it_names(self):
+        modified = [self.annotation("0", "obj1", path=["Q", 2, 14])]
+        self.annotate(additions=self.at_zero + self.at_two)
+
+        self.assertEqual(
+            self.annotate(updates=modified), modified + self.at_two
+        )
+
+    def test_an_update_needs_the_lock(self):
+        """
+        When the Redis lock cannot be acquired (Redis down, or the wait
+        timed out), the update is refused rather than raced through the
+        read-modify-write without serialization.
+        """
+        self.annotate(additions=self.at_zero)
+
+        @contextmanager
+        def unavailable_lock(*args, **kwargs):
+            yield False
+
+        with patch(
+            "zou.app.services.preview_files_service.with_preview_file_lock",
+            side_effect=unavailable_lock,
+        ):
+            self.assertRaises(
+                AnnotationLockTimeoutException,
+                preview_files_service.update_preview_file_annotations,
+                self.user_id,
+                self.project_id,
+                self.preview_file_id,
+                additions=self.at_two,
+            )
+
+        self.assertEqual(
+            files_service.get_preview_file(self.preview_file_id)[
+                "annotations"
+            ],
+            self.at_zero,
+        )
+
+    def test_normalize_preview_file_annotation_times(self):
+        preview_file = files_service.get_preview_file_raw(self.preview_file_id)
+        preview_file.update(
+            {
+                "annotations": [
+                    {"time": 0.6, "drawing": {"objects": [{"id": "new-1"}]}},
+                    {"time": 0.616, "drawing": {"objects": [{"id": "old-1"}]}},
+                ]
+            }
+        )
+
+        self.assertTrue(
+            preview_files_service.normalize_preview_file_annotation_times(
+                preview_file
+            )
+        )
+
+        persisted = files_service.get_preview_file(self.preview_file_id)
+        self.assertEqual(len(persisted["annotations"]), 1)
+        self.assertEqual(
+            [
+                drawing_object["id"]
+                for drawing_object in persisted["annotations"][0]["drawing"][
+                    "objects"
+                ]
+            ],
+            ["new-1", "old-1"],
+        )
+        # A second run has nothing left to snap.
+        self.assertFalse(
+            preview_files_service.normalize_preview_file_annotation_times(
+                preview_file
+            )
+        )
+
+
+class NormalizeAnnotationTimesTestCase(unittest.TestCase):
+    """
+    Snapping annotation times onto the frame grid the player draws on.
+    Two times landing on the same frame become one annotation.
+    """
+
+    def normalize(self, annotations, fps=25):
+        return preview_files_service.normalize_annotation_times(
+            annotations, fps
+        )
+
+    def test_two_times_on_one_frame_are_merged(self):
+        result, changed = self.normalize(
+            [
+                {
+                    "time": 0.6,
+                    "frame": 16,
+                    "drawing": {"objects": [{"id": "new-1"}]},
+                },
+                {
+                    "time": 0.616,
+                    "frame": "017",
+                    "drawing": {"objects": [{"id": "old-1"}, {"id": "old-2"}]},
+                },
+            ]
+        )
+
+        self.assertTrue(changed)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["time"], 0.6)
+        self.assertEqual(
+            [
+                drawing_object["id"]
+                for drawing_object in result[0]["drawing"]["objects"]
+            ],
+            ["new-1", "old-1", "old-2"],
+        )
+
+    def test_a_merge_keeps_one_object_per_id(self):
+        result, _ = self.normalize(
+            [
+                {"time": 0.6, "drawing": {"objects": [{"id": "a"}]}},
+                {
+                    "time": 0.616,
+                    "drawing": {"objects": [{"id": "a"}, {"id": "b"}]},
+                },
+            ]
+        )
+
+        self.assertEqual(
+            [
+                drawing_object["id"]
+                for drawing_object in result[0]["drawing"]["objects"]
+            ],
+            ["a", "b"],
+        )
+
+    def test_a_time_stored_as_a_string_is_snapped(self):
+        result, changed = self.normalize(
+            [{"time": "2", "drawing": {"objects": [{"id": "obj-1"}]}}]
+        )
+
+        self.assertTrue(changed)
+        self.assertEqual(result[0]["time"], 2.0)
+
+    def test_two_frames_apart_are_left_alone(self):
+        result, changed = self.normalize(
+            [
+                {"time": 0.6, "drawing": {"objects": [{"id": "a"}]}},
+                {"time": 0.88, "drawing": {"objects": [{"id": "b"}]}},
+            ]
+        )
+
+        self.assertFalse(changed)
+        self.assertEqual(len(result), 2)
+
+    def test_a_time_that_is_not_a_number_is_kept_as_is(self):
+        annotations = [{"time": "abc", "drawing": {"objects": [{"id": "a"}]}}]
+
+        result, changed = self.normalize(annotations)
+
+        self.assertFalse(changed)
+        self.assertEqual(result, annotations)
+
+    def test_the_annotations_handed_in_are_left_untouched(self):
+        annotations = [
+            {"time": 0.6, "drawing": {"objects": [{"id": "a"}]}},
+            {"time": 0.616, "drawing": {"objects": [{"id": "b"}]}},
+        ]
+
+        self.normalize(annotations)
+
+        self.assertEqual(annotations[1]["time"], 0.616)
+        self.assertEqual(len(annotations[0]["drawing"]["objects"]), 1)
+
+
 class MissingStatusTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
         self.generate_base_context()
         self.generate_fixture_asset()
-        self.generate_fixture_assigner()
-        self.generate_fixture_person()
         self.generate_fixture_task()
         self.preview_file = self.generate_fixture_preview_file(
             status="processing"
@@ -695,8 +719,6 @@ class MissingStatusTestCase(ApiDBTestCase):
         self.delete_test_folder()
 
     def _reload_preview(self):
-        from zou.app.models.preview_file import PreviewFile
-
         return PreviewFile.get(self.preview_file.id)
 
     def test_set_preview_file_as_missing_persists_missing(self):
@@ -715,8 +737,6 @@ class ExtractAnnotationFrameTestCase(ApiDBTestCase):
         super().setUp()
         self.generate_base_context()
         self.generate_fixture_asset()
-        self.generate_fixture_assigner()
-        self.generate_fixture_person()
         self.generate_fixture_task()
         self.preview_file = self.generate_fixture_preview_file().serialize()
         self.preview_file["annotations"] = [
@@ -873,8 +893,6 @@ class ExtractAnnotationFramePictureTestCase(ApiDBTestCase):
         super().setUp()
         self.generate_base_context()
         self.generate_fixture_asset()
-        self.generate_fixture_assigner()
-        self.generate_fixture_person()
         self.generate_fixture_task()
         self.preview_file = self.generate_fixture_preview_file().serialize()
         self.preview_file["extension"] = "png"
@@ -941,8 +959,6 @@ class ExtractAllAnnotationFramesTestCase(ApiDBTestCase):
         super().setUp()
         self.generate_base_context()
         self.generate_fixture_asset()
-        self.generate_fixture_assigner()
-        self.generate_fixture_person()
         self.generate_fixture_task()
         self.preview_file = self.generate_fixture_preview_file().serialize()
         self.preview_file["annotations"] = [
@@ -1077,11 +1093,9 @@ class ExtractAllAnnotationFramesTestCase(ApiDBTestCase):
         # differently: each entry path must be unique and NOT the shared
         # path. That alone guarantees concurrent shared-path operations
         # can't corrupt the bundle.
-        from zou.app.services.preview_files_service import (
-            _build_annotated_frame_entries,
+        entries = preview_files_service._build_annotated_frame_entries(
+            self.preview_file
         )
-
-        entries = _build_annotated_frame_entries(self.preview_file)
         try:
             paths = [p for _, p in entries]
             self.assertEqual(
@@ -1158,8 +1172,6 @@ class ExtractAllAnnotationFramesPdfTestCase(ApiDBTestCase):
         super().setUp()
         self.generate_base_context()
         self.generate_fixture_asset()
-        self.generate_fixture_assigner()
-        self.generate_fixture_person()
         self.generate_fixture_task()
         self.preview_file = self.generate_fixture_preview_file().serialize()
         self.preview_file["annotations"] = [
@@ -1217,3 +1229,82 @@ class ExtractAllAnnotationFramesPdfTestCase(ApiDBTestCase):
             extract_all_annotation_frames_pdf_from_preview_file(
                 self.preview_file
             )
+
+
+class ResetPictureFilesMetadataTestCase(ApiDBTestCase):
+    """
+    The command that backfills width, height and file size on picture
+    previews, for rows created before those columns were filled in.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_asset()
+        self.generate_fixture_task()
+        self.preview_file = self.generate_fixture_preview_file()
+        self.preview_file.update({"extension": "png"})
+
+    def store_original_picture(self):
+        path = file_store.get_local_picture_path(
+            "original", str(self.preview_file.id)
+        )
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open("tests/fixtures/thumbnails/th01.png", "rb") as source:
+            with open(path, "wb") as target:
+                target.write(source.read())
+        return path
+
+    def test_reset_picture_files_metadata(self):
+        path = self.store_original_picture()
+        expected = thumbnail_utils.get_dimensions(path)
+
+        preview_files_service.reset_picture_files_metadata()
+
+        preview_file = PreviewFile.get(self.preview_file.id)
+        self.assertEqual((preview_file.width, preview_file.height), expected)
+        self.assertEqual(preview_file.file_size, os.path.getsize(path))
+
+    def test_a_missing_binary_does_not_stop_the_run(self):
+        # The command walks the whole instance: one preview whose file never
+        # made it to storage must not take the rest of the run down.
+        before = PreviewFile.get(self.preview_file.id).updated_at
+
+        preview_files_service.reset_picture_files_metadata()
+
+        self.assertEqual(
+            PreviewFile.get(self.preview_file.id).updated_at, before
+        )
+
+
+class ResetMovieFilesMetadataTestCase(ApiDBTestCase):
+    """
+    Same backfill as the picture one, reading the movie dimensions and
+    duration back from the encoded file.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_asset()
+        self.generate_fixture_task()
+        self.preview_file = self.generate_fixture_preview_file()
+
+    def test_reset_movie_files_metadata(self):
+        path = file_store.get_local_movie_path(
+            "previews", str(self.preview_file.id)
+        )
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open("tests/fixtures/videos/test_preview_tiles.mp4", "rb") as f:
+            with open(path, "wb") as target:
+                target.write(f.read())
+
+        preview_files_service.reset_movie_files_metadata()
+
+        preview_file = PreviewFile.get(self.preview_file.id)
+        self.assertEqual(
+            (preview_file.width, preview_file.height),
+            movie.get_movie_size(path),
+        )
+        self.assertEqual(preview_file.file_size, os.path.getsize(path))
+        self.assertGreater(preview_file.duration, 0)

@@ -1,0 +1,167 @@
+from tests.base import ApiDBTestCase
+
+from zou.app.services import entities_service, projects_service, tasks_service
+
+
+class SequenceTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project()
+        self.generate_fixture_task_type()
+
+        self.generate_fixture_episode()
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+        self.serialized_sequence = self.sequence.serialize(obj_type="Sequence")
+        self.sequence_id = self.serialized_sequence["id"]
+        sequence_02 = self.generate_fixture_sequence("SE02")
+        self.sequence_02_id = str(sequence_02.id)
+        self.generate_fixture_sequence("SE03")
+
+    def test_get_sequences(self):
+        sequences = self.get("data/sequences")
+        self.assertEqual(len(sequences), 3)
+        self.assertDictEqual(sequences[0], self.serialized_sequence)
+
+    def test_get_sequence(self):
+        sequence = self.get(f"data/sequences/{self.sequence.id}")
+        self.assertEqual(sequence["id"], str(self.sequence.id))
+        self.assertEqual(sequence["name"], self.sequence.name)
+        self.assertEqual(sequence["episode_name"], self.episode.name)
+        self.assertEqual(sequence["episode_id"], str(self.episode.id))
+        self.assertEqual(sequence["project_name"], self.project.name)
+
+    def test_get_sequence_by_name(self):
+        sequences = self.get(
+            f"data/sequences?name={self.sequence.name.lower()}"
+        )
+        self.assertEqual(sequences[0]["id"], str(self.sequence.id))
+
+    def test_get_sequence_tasks(self):
+        self.generate_fixture_sequence_task()
+        tasks = self.get(f"data/sequences/{self.sequence.id}/tasks")
+        self.assertEqual(len(tasks), 1)
+        self.assertEqual(tasks[0]["id"], str(self.sequence_task.id))
+
+    def test_create_sequence(self):
+        self.generate_fixture_episode()
+        sequence_name = "NSE01"
+        project_id = str(self.project.id)
+        episode_id = str(self.episode.id)
+        data = {"name": sequence_name, "episode_id": episode_id}
+        sequence = self.post(f"data/projects/{project_id}/sequences", data)
+        sequence = self.get(f"data/sequences/{sequence['id']}")
+        self.assertEqual(sequence["name"], sequence_name)
+        self.assertEqual(sequence["parent_id"], episode_id)
+
+    def test_get_sequences_for_project(self):
+        sequences = self.get(f"data/projects/{self.project.id}/sequences")
+        self.assertEqual(len(sequences), 3)
+        self.assertDictEqual(sequences[0], self.serialized_sequence)
+
+    def test_get_sequences_for_project_with_vendor(self):
+        self.generate_fixture_shot_task(name="Secondary")
+        self.generate_fixture_user_vendor()
+        task_id = self.shot_task.id
+        project_id = self.project_id
+        person_id = self.user_vendor["id"]
+        projects_service.clear_project_cache(str(project_id))
+        self.log_in_vendor()
+        projects_service.add_team_member(project_id, person_id)
+        episodes = self.get(f"data/projects/{project_id}/sequences")
+        self.assertEqual(episodes, [])
+        tasks_service.assign_task(task_id, person_id)
+        episodes = self.get(f"data/projects/{project_id}/sequences")
+        self.assertEqual(len(episodes), 1)
+
+    def test_get_sequences_for_project_404(self):
+        self.get("data/projects/unknown/sequences", 404)
+
+    def test_get_shots_for_sequence(self):
+        self.generate_fixture_shot()
+        shot = self.shot.serialize(obj_type="Shot")
+        shots = self.get(f"data/sequences/{self.sequence.id}/shots")
+        self.assertEqual(len(shots), 1)
+        self.assertEqual(shots[0]["id"], shot["id"])
+
+    def test_get_sequences_by_project_and_name(self):
+        self.get("data/sequences?project_id=undefined&name=S01", 400)
+        sequences = self.get(
+            f"data/sequences?project_id={self.project_id}&name=SE02"
+        )
+        self.assertEqual(sequences[0]["id"], str(self.sequence_02_id))
+
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        sequences = self.get(
+            f"data/sequences?project_id={self.project_id}&name=SE01", 403
+        )
+
+    def _setup_vendor(self):
+        self.generate_fixture_shot_task(name="VendorTask")
+        self.generate_fixture_user_vendor()
+        projects_service.add_team_member(
+            self.project_id, self.user_vendor["id"]
+        )
+        projects_service.clear_project_cache(str(self.project_id))
+        self.log_in_vendor()
+
+    def test_get_sequences_vendor_unassigned(self):
+        self._setup_vendor()
+        sequences = self.get(f"data/sequences?project_id={self.project_id}")
+        self.assertEqual(sequences, [])
+
+    def test_get_sequences_vendor_assigned(self):
+        self._setup_vendor()
+        tasks_service.assign_task(self.shot_task.id, self.user_vendor["id"])
+        sequences = self.get(f"data/sequences?project_id={self.project_id}")
+        self.assertEqual(len(sequences), 1)
+
+    def test_get_sequence_vendor_no_task(self):
+        self._setup_vendor()
+        self.get(f"data/sequences/{self.sequence_02_id}", 403)
+
+    def test_get_sequence_tasks_vendor_no_task(self):
+        self._setup_vendor()
+        self.get(f"data/sequences/{self.sequence_id}/tasks", 403)
+
+    def test_get_sequences_with_tasks_vendor(self):
+        self._setup_vendor()
+        path = f"data/sequences/with-tasks?project_id={self.project_id}"
+        # Without an assigned shot, the vendor gets no sequence (but no 403).
+        self.assertEqual(self.get(path), [])
+        # Assigning a shot task surfaces its parent sequence.
+        tasks_service.assign_task(self.shot_task.id, self.user_vendor["id"])
+        sequences = self.get(path)
+        self.assertEqual(len(sequences), 1)
+        self.assertEqual(sequences[0]["id"], self.sequence_id)
+        # Sequence-level tasks stay hidden unless directly assigned.
+        self.assertEqual(sequences[0]["tasks"], [])
+
+    def test_get_sequences_with_tasks_vendor_task_filter(self):
+        self._setup_vendor()
+        tasks_service.assign_task(self.shot_task.id, self.user_vendor["id"])
+        # A task on the very sequence holding the assigned shot, not yet
+        # assigned to the vendor.
+        sequence = entities_service.get_entity(self.shot.parent_id)
+        sequence_task = tasks_service.create_task(
+            self.task_type_animation.serialize(), sequence
+        )
+        path = f"data/sequences/with-tasks?project_id={self.project_id}"
+        # The sequence is visible but its task stays hidden.
+        sequences = self.get(path)
+        self.assertEqual(len(sequences), 1)
+        self.assertEqual(sequences[0]["tasks"], [])
+        # Once assigned to the vendor, the sequence task shows up.
+        tasks_service.assign_task(sequence_task["id"], self.user_vendor["id"])
+        sequences = self.get(path)
+        self.assertEqual(len(sequences[0]["tasks"]), 1)
+
+    def test_force_delete_sequence(self):
+        self.get(f"data/sequences/{self.sequence_id}")
+        self.delete(f"data/sequences/{self.sequence_id}?force=true")
+        self.get(f"data/sequences/{self.sequence_id}", 404)
+
+    def test_cant_delete_sequence(self):
+        self.get(f"data/sequences/{self.sequence_id}")
+        self.delete(f"data/sequences/{self.sequence_id}", 400)

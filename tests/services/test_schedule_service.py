@@ -5,22 +5,28 @@ from tests.base import ApiDBTestCase
 from zou.app import db
 from zou.app.models.entity import Entity
 from zou.app.models.milestone import Milestone
+from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.production_schedule_version import (
     ProductionScheduleVersion,
     ProductionScheduleVersionTaskLink,
     ProductionScheduleVersionTaskLinkPersonLink,
 )
 from zou.app.models.task import Task
-from zou.app.services import schedule_service
+from zou.app.models.task_type import TaskType
+from zou.app.services import projects_service, schedule_service, tasks_service
 from zou.app.services.exception import (
     ProductionScheduleVersionNotFoundException,
     WrongParameterException,
 )
 
 
-class ScheduleServiceTestCase(ApiDBTestCase):
+class ScheduleTestCase(ApiDBTestCase):
+    """
+    A shot suite with an assigned task on it. Holds no test of its own.
+    """
+
     def setUp(self):
-        super(ScheduleServiceTestCase, self).setUp()
+        super().setUp()
         self.generate_shot_suite()
         self.generate_assigned_task()
         self.project_id = str(self.project.id)
@@ -29,6 +35,13 @@ class ScheduleServiceTestCase(ApiDBTestCase):
         self.episode_id = str(self.episode.id)
         self.asset_type_id = str(self.asset_type.id)
 
+
+class ScheduleItemTestCase(ScheduleTestCase):
+    """
+    The rows a production schedule is drawn from, one per task type and
+    per entity level, created on demand by the listing that reads them.
+    """
+
     def test_get_schedule_items(self):
         items = schedule_service.get_task_types_schedule_items(self.project.id)
         self.assertEqual(len(items), 1)
@@ -36,21 +49,39 @@ class ScheduleServiceTestCase(ApiDBTestCase):
         items = schedule_service.get_task_types_schedule_items(self.project.id)
         self.assertEqual(len(items), 2)
         task_type_ids = [item["task_type_id"] for item in items]
-        self.assertTrue(str(self.task_type.id) in task_type_ids)
-        self.assertTrue(str(self.task_type_animation.id) in task_type_ids)
+        self.assertIn(str(self.task_type.id), task_type_ids)
+        self.assertIn(str(self.task_type_animation.id), task_type_ids)
 
         self.shot_task.delete()
         items = schedule_service.get_task_types_schedule_items(self.project.id)
         self.assertEqual(len(items), 1)
 
     def test_get_schedule_sequence_items(self):
+        """
+        One row per sequence of the production. A row of another production
+        on its own sequence stays out.
+        """
+        self.generate_fixture_project_standard()
+        elsewhere = self.generate_fixture_sequence(
+            name="SQ99", project_id=self.project_standard.id
+        )
+        ScheduleItem.create(
+            project_id=self.project_standard.id,
+            task_type_id=self.task_type.id,
+            object_id=elsewhere.id,
+        )
+
         items = schedule_service.get_sequences_schedule_items(
             self.project.id, self.task_type_id
         )
-        self.assertEqual(len(items), 1)
-        self.assertEqual(items[0]["object_id"], self.sequence_id)
-        self.assertEqual(items[0]["task_type_id"], self.task_type_id)
-        self.assertEqual(items[0]["project_id"], self.project_id)
+
+        self.assertEqual(
+            [
+                (item["object_id"], item["task_type_id"], item["project_id"])
+                for item in items
+            ],
+            [(self.sequence_id, self.task_type_id, self.project_id)],
+        )
 
     def test_get_schedule_sequence_items_for_episode(self):
         episode_2 = self.generate_fixture_episode(name="E02")
@@ -172,12 +203,70 @@ class ScheduleServiceTestCase(ApiDBTestCase):
         self.assertEqual(items[0]["object_id"], edit_id)
 
     def test_get_schedule_asset_type_items(self):
+        """
+        One row per asset type the production uses, created on read. A row
+        of another production for the same asset type stays out.
+        """
+        self.generate_fixture_project_standard()
+        ScheduleItem.create(
+            project_id=self.project_standard.id,
+            task_type_id=self.task_type.id,
+            object_id=self.asset_type.id,
+        )
+
         items = schedule_service.get_asset_types_schedule_items(
             self.project.id, self.task_type_id
         )
-        self.assertEqual(items[0]["object_id"], self.asset_type_id)
-        self.assertEqual(items[0]["task_type_id"], self.task_type_id)
-        self.assertEqual(items[0]["project_id"], self.project_id)
+
+        self.assertEqual(
+            [
+                (item["object_id"], item["task_type_id"], item["project_id"])
+                for item in items
+            ],
+            [(self.asset_type_id, self.task_type_id, self.project_id)],
+        )
+
+    def test_get_schedule_asset_type_items_drops_the_orphan_rows(self):
+        """
+        An asset type the production no longer uses keeps its row in the
+        table. The listing names each row after its object, so a row left
+        in would be named after an entry the listing does not hold.
+        """
+        self.generate_fixture_asset_types()
+        orphan = ScheduleItem.create(
+            project_id=self.project.id,
+            task_type_id=self.task_type.id,
+            object_id=self.asset_type_character.id,
+        )
+
+        items = schedule_service.get_asset_types_schedule_items(
+            self.project.id, self.task_type_id
+        )
+
+        self.assertNotIn(str(orphan.id), [item["id"] for item in items])
+        self.assertEqual(
+            [item["object_id"] for item in items], [self.asset_type_id]
+        )
+
+    def test_get_schedule_asset_type_items_are_sorted_by_name(self):
+        # The rows are gathered in a set, so without the sort the listing
+        # comes out in an order the client cannot draw a schedule from.
+        self.generate_fixture_asset_types()
+        self.generate_fixture_asset(
+            name="Rabbit", asset_type_id=self.asset_type_character.id
+        )
+        self.generate_fixture_asset(
+            name="Forest", asset_type_id=self.asset_type_environment.id
+        )
+
+        items = schedule_service.get_asset_types_schedule_items(
+            self.project.id, self.task_type_id
+        )
+
+        self.assertEqual(
+            [item["name"] for item in items],
+            ["Character", "Environment", "Props"],
+        )
 
     def test_get_schedule_asset_type_items_for_episode(self):
         self.generate_fixture_asset_types()
@@ -215,16 +304,78 @@ class ScheduleServiceTestCase(ApiDBTestCase):
         object_ids = {item["object_id"] for item in items}
         self.assertEqual(object_ids, {asset_type_character_id})
 
+    def test_get_task_types_schedule_items_ignores_the_entity_rows(self):
+        """
+        A task type row is the one attached to no object. The rows of the
+        entity listings share the task type, so reading them here would
+        stand in for the row the production schedule is drawn from.
+        """
+        entity_item = ScheduleItem.create(
+            project_id=self.project.id,
+            task_type_id=self.task_type.id,
+            object_id=self.sequence.id,
+        )
+
+        items = schedule_service.get_task_types_schedule_items(self.project.id)
+
+        self.assertNotIn(str(entity_item.id), [item["id"] for item in items])
+        self.assertEqual([item["object_id"] for item in items], [None])
+        self.assertEqual(
+            [item["task_type_id"] for item in items], [self.task_type_id]
+        )
+
+    def test_get_task_types_schedule_items_ignores_concepts(self):
+        """
+        Only the task types of the entities a schedule lays out get a row.
+        A concept task type is scheduled with no one, so it gets none.
+        """
+        concept_type = TaskType.create(
+            name="Concept Art",
+            for_entity="Concept",
+            color="#8D6E63",
+            priority=1,
+        )
+        Task.create(
+            name="concept",
+            project_id=self.project.id,
+            task_type_id=concept_type.id,
+            task_status_id=self.task_status.id,
+            entity_id=self.asset.id,
+            assigner_id=self.assigner.id,
+        )
+
+        items = schedule_service.get_task_types_schedule_items(self.project.id)
+
+        self.assertEqual(
+            [item["task_type_id"] for item in items], [self.task_type_id]
+        )
+
     def test_get_all_schedule_items(self):
-        schedule_service.get_task_types_schedule_items(self.project.id)
+        """
+        The sync listing returns the stored rows of one production only.
+        """
+        self.generate_fixture_project_standard()
+        elsewhere = ScheduleItem.create(
+            project_id=self.project_standard.id,
+            task_type_id=self.task_type.id,
+        )
+        created = schedule_service.get_task_types_schedule_items(
+            self.project.id
+        )
+
         items = schedule_service.get_schedule_items(self.project.id)
-        self.assertGreater(len(items), 0)
+
+        self.assertEqual(
+            {item["id"] for item in items},
+            {item["id"] for item in created},
+        )
+        self.assertNotIn(str(elsewhere.id), [item["id"] for item in items])
 
     def test_get_milestones_for_project(self):
-        milestones = schedule_service.get_milestones_for_project(
-            self.project_id
+        self.generate_fixture_project_standard()
+        self.assertEqual(
+            schedule_service.get_milestones_for_project(self.project_id), []
         )
-        self.assertEqual(len(milestones), 0)
 
         Milestone.create(
             name="Alpha",
@@ -236,49 +387,53 @@ class ScheduleServiceTestCase(ApiDBTestCase):
             project_id=self.project.id,
             date="2024-09-01",
         )
+        Milestone.create(
+            name="Elsewhere",
+            project_id=self.project_standard.id,
+            date="2024-09-01",
+        )
+
         milestones = schedule_service.get_milestones_for_project(
             self.project_id
         )
-        self.assertEqual(len(milestones), 2)
+        self.assertEqual(
+            sorted(milestone["name"] for milestone in milestones),
+            ["Alpha", "Beta"],
+        )
 
-    def test_get_production_schedule_version_raw(self):
-        psv = ProductionScheduleVersion.create(
-            name="v1", project_id=self.project.id
+    def test_schedule_items_route_blocks_vendors(self):
+        """
+        A schedule lays out the whole production's dates, which a vendor
+        has no business reading even when they work on it.
+        """
+        # get_schedule_items returns the stored rows, it does not create the
+        # missing ones the way the task type listing does.
+        schedule_item = ScheduleItem.create(
+            project_id=self.project.id,
+            task_type_id=self.task_type.id,
+            object_id=self.sequence.id,
         )
-        result = schedule_service.get_production_schedule_version_raw(
-            str(psv.id)
-        )
-        self.assertEqual(result.id, psv.id)
+        path = f"/data/projects/{self.project_id}/schedule-items"
 
-    def test_get_production_schedule_version_raw_not_found(self):
-        with self.assertRaises(ProductionScheduleVersionNotFoundException):
-            schedule_service.get_production_schedule_version_raw("wrong-id")
+        items = self.get(path)
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["id"], str(schedule_item.id))
 
-    def test_get_production_schedule_version(self):
-        psv = ProductionScheduleVersion.create(
-            name="v1", project_id=self.project.id
+        self.generate_fixture_user_vendor()
+        projects_service.add_team_member(
+            self.project_id, self.user_vendor["id"]
         )
-        result = schedule_service.get_production_schedule_version(str(psv.id))
-        self.assertEqual(result["id"], str(psv.id))
-        self.assertEqual(result["name"], "v1")
+        self.log_in_vendor()
+        self.get(path, 403)
 
-    def test_update_production_schedule_version(self):
-        psv = ProductionScheduleVersion.create(
-            name="v1", project_id=self.project.id
-        )
-        result = schedule_service.update_production_schedule_version(
-            str(psv.id), {"name": "v2"}
-        )
-        self.assertEqual(result["name"], "v2")
 
-    def test_get_production_schedule_version_task_links(self):
-        psv = ProductionScheduleVersion.create(
-            name="v1", project_id=self.project.id
-        )
-        links = schedule_service.get_production_schedule_version_task_links(
-            str(psv.id)
-        )
-        self.assertEqual(len(links), 0)
+class ProductionScheduleVersionTestCase(ScheduleTestCase):
+    """
+    A saved version of a schedule and the task links it carries.
+    Filling it from the production or from another version is
+    idempotent, refreshes the assignees, and refuses to copy a version
+    onto itself or across productions.
+    """
 
     def _make_person(self, first_name, last_name):
         # generate_fixture_person reassigns self.person; restore it afterwards.
@@ -317,6 +472,54 @@ class ScheduleServiceTestCase(ApiDBTestCase):
         for task_id, person_id in rows:
             result.setdefault(str(task_id), set()).add(str(person_id))
         return result
+
+    def test_get_production_schedule_version_raw(self):
+        psv = ProductionScheduleVersion.create(
+            name="v1", project_id=self.project.id
+        )
+        result = schedule_service.get_production_schedule_version_raw(
+            str(psv.id)
+        )
+        self.assertEqual(result.id, psv.id)
+
+    def test_get_production_schedule_version_raw_not_found(self):
+        with self.assertRaises(ProductionScheduleVersionNotFoundException):
+            schedule_service.get_production_schedule_version_raw("wrong-id")
+
+    def test_get_production_schedule_version(self):
+        psv = ProductionScheduleVersion.create(
+            name="v1", project_id=self.project.id
+        )
+        result = schedule_service.get_production_schedule_version(str(psv.id))
+        self.assertEqual(result["id"], str(psv.id))
+        self.assertEqual(result["name"], "v1")
+
+    def test_update_production_schedule_version(self):
+        psv = ProductionScheduleVersion.create(
+            name="v1", project_id=self.project.id
+        )
+        psv_id = str(psv.id)
+        schedule_service.get_production_schedule_version(psv_id)
+
+        result = schedule_service.update_production_schedule_version(
+            psv_id, {"name": "v2"}
+        )
+
+        self.assertEqual(result["name"], "v2")
+        # The read is memoized, so the update has to drop it.
+        self.assertEqual(
+            schedule_service.get_production_schedule_version(psv_id)["name"],
+            "v2",
+        )
+
+    def test_get_production_schedule_version_task_links(self):
+        psv = ProductionScheduleVersion.create(
+            name="v1", project_id=self.project.id
+        )
+        links = schedule_service.get_production_schedule_version_task_links(
+            str(psv.id)
+        )
+        self.assertEqual(links, [])
 
     def test_set_production_schedule_version_task_links_from_production(self):
         # Two tasks assigned to DISTINCT people so a partial or cross-wired
@@ -487,9 +690,7 @@ class ScheduleServiceTestCase(ApiDBTestCase):
         )
         # The copy records its origin version.
         copied = ProductionScheduleVersion.get(target.id)
-        self.assertEqual(
-            str(copied.production_schedule_from), str(source.id)
-        )
+        self.assertEqual(str(copied.production_schedule_from), str(source.id))
 
     def test_set_production_schedule_version_task_links_from_version_preserves_unrelated(
         self,
@@ -609,8 +810,10 @@ class ScheduleServiceTestCase(ApiDBTestCase):
             }
         )
 
-        result = schedule_service.apply_production_schedule_version_to_production(
-            str(psv.id)
+        result = (
+            schedule_service.apply_production_schedule_version_to_production(
+                str(psv.id)
+            )
         )
         self.assertEqual(result, {"success": True, "task_count": 1})
 
@@ -625,4 +828,147 @@ class ScheduleServiceTestCase(ApiDBTestCase):
         db.session.refresh(self.project)
         self.assertEqual(
             str(self.project.from_schedule_version_id), str(psv.id)
+        )
+
+    def test_apply_production_schedule_version_drops_the_task_cache(self):
+        # The dates are written by a bulk UPDATE the ORM never sees, and the
+        # task:update event makes every client refetch straight away. A task
+        # left in the cache is served with its pre-schedule dates to all of
+        # them, for the rest of the TTL.
+        psv = ProductionScheduleVersion.create(
+            name="v1", project_id=self.project.id
+        )
+        schedule_service.set_production_schedule_version_task_links_from_production(
+            str(psv.id)
+        )
+        link = ProductionScheduleVersionTaskLink.get_by(
+            production_schedule_version_id=psv.id, task_id=self.task.id
+        )
+        link.update({"estimation": 321, "due_date": datetime(2022, 5, 20)})
+        task_id = str(self.task.id)
+        tasks_service.get_task(task_id)
+
+        schedule_service.apply_production_schedule_version_to_production(
+            str(psv.id)
+        )
+
+        task = tasks_service.get_task(task_id)
+        self.assertEqual(task["estimation"], 321)
+        self.assertEqual(task["due_date"], "2022-05-20T00:00:00")
+
+    def test_apply_production_schedule_version_warns_the_clients(self):
+        psv = ProductionScheduleVersion.create(
+            name="v1", project_id=self.project.id
+        )
+        schedule_service.set_production_schedule_version_task_links_from_production(
+            str(psv.id)
+        )
+        events = self.capture_events("task:update")
+
+        schedule_service.apply_production_schedule_version_to_production(
+            str(psv.id)
+        )
+
+        self.assertEqual(
+            [event["task_id"] for event in events], [str(self.task.id)]
+        )
+
+    def test_get_production_schedule_version_task_links_route(self):
+        psv = ProductionScheduleVersion.create(
+            name="v1", project_id=self.project.id
+        )
+        schedule_service.set_production_schedule_version_task_links_from_production(
+            str(psv.id)
+        )
+
+        links = self.get(
+            f"/data/production-schedule-versions/{psv.id}/task-links"
+        )
+        self.assertEqual(len(links), 1)
+        self.assertEqual(links[0]["task_id"], str(self.task.id))
+
+        # The optional filter narrows on the task type of the linked task.
+        self.assertEqual(
+            len(
+                self.get(
+                    f"/data/production-schedule-versions/{psv.id}"
+                    f"/task-links?task_type_id={self.task_type_id}"
+                )
+            ),
+            1,
+        )
+        self.assertEqual(
+            self.get(
+                f"/data/production-schedule-versions/{psv.id}/task-links?task_type_id={self.task_type_animation.id}"
+            ),
+            [],
+        )
+
+    def test_task_links_route_denies_a_client(self):
+        """
+        A schedule carries dates and assignees the studio does not show to a
+        client, so the route turns clients and vendors away even when they
+        are on the production.
+        """
+        psv = ProductionScheduleVersion.create(
+            name="v1", project_id=self.project.id
+        )
+        self.generate_fixture_user_client()
+        projects_service.add_team_member(
+            self.project_id, self.user_client["id"]
+        )
+        self.log_in_client()
+
+        self.get(
+            f"/data/production-schedule-versions/{psv.id}/task-links", 403
+        )
+
+    def test_apply_to_production_route(self):
+        """
+        The service behind this is tested on its own; the route adds the
+        guard, and only a manager of the production may push a schedule back
+        onto its tasks.
+        """
+        psv = ProductionScheduleVersion.create(
+            name="v1", project_id=self.project.id
+        )
+        schedule_service.set_production_schedule_version_task_links_from_production(
+            str(psv.id)
+        )
+        path = (
+            f"/actions/production-schedule-versions/{psv.id}"
+            f"/apply-to-production"
+        )
+
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        self.post(path, {}, 403)
+
+        self.log_in_admin()
+        result = self.post(path, {}, 200)
+        self.assertEqual(result, {"success": True, "task_count": 1})
+        self.assertTrue(ProductionScheduleVersion.get(psv.id).locked)
+
+    def test_set_task_links_from_production_route(self):
+        psv = ProductionScheduleVersion.create(
+            name="v1", project_id=self.project.id
+        )
+        path = (
+            f"/actions/production-schedule-versions/{psv.id}"
+            f"/set-task-links-from-production"
+        )
+
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        self.post(path, {}, 403)
+
+        self.log_in_admin()
+        self.post(path, {}, 200)
+        self.assertEqual(
+            len(
+                ProductionScheduleVersionTaskLink.get_all_by(
+                    production_schedule_version_id=psv.id
+                )
+            ),
+            1,
         )

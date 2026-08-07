@@ -1,7 +1,7 @@
 import unittest
 import os
 
-from PIL import Image
+from PIL import Image, ImageCms
 
 from werkzeug.datastructures import FileStorage
 
@@ -19,12 +19,12 @@ class ThumbnailTestCase(unittest.TestCase):
         return file_path_fixture
 
     def setUp(self):
-        super(ThumbnailTestCase, self).setUp()
+        super().setUp()
         fs.mkdir_p(TEST_FOLDER)
         self.folder_name = os.path.join(TEST_FOLDER, "persons")
 
     def tearDown(self):
-        super(ThumbnailTestCase, self).tearDown()
+        super().tearDown()
         fs.rm_rf(self.folder_name)
         # Only remove what these tests create (everything lives in
         # TEST_FOLDER). Never touch PREVIEW_FOLDER: outside CI it can
@@ -60,7 +60,7 @@ class ThumbnailTestCase(unittest.TestCase):
         thumbnail.convert_jpg_to_png(file_path)
         result_path = os.path.join(TEST_FOLDER, "th04.png")
         im = Image.open(result_path)
-        self.assertEqual(len(im.info.keys()), 0)
+        self.assertEqual(dict(im.info), {})
         self.assertTrue(os.path.exists(result_path))
 
     def test_save_file(self):
@@ -135,6 +135,34 @@ class ThumbnailTestCase(unittest.TestCase):
         )
         self.assertTrue(os.path.exists(file_path))
         self.assertTrue(Image.open(file_path).size, thumbnail.SQUARE_SIZE)
+
+    def test_to_srgb(self):
+        profile = ImageCms.ImageCmsProfile(
+            ImageCms.createProfile("sRGB")
+        ).tobytes()
+
+        im = Image.new("RGB", (4, 4), (200, 30, 30))
+        im.info["icc_profile"] = profile
+        self.assertEqual(thumbnail.to_srgb(im).tobytes(), im.tobytes())
+
+        im = Image.new("RGBA", (4, 4), (200, 30, 30, 128))
+        im.info["icc_profile"] = profile
+        converted = thumbnail.to_srgb(im)
+        self.assertEqual(converted.mode, "RGBA")
+        self.assertEqual(converted.getpixel((0, 0)), (200, 30, 30, 128))
+
+        im = Image.new("CMYK", (4, 4), (0, 255, 255, 0))
+        self.assertEqual(thumbnail.to_srgb(im).mode, "RGB")
+        self.assertEqual(thumbnail.to_srgb(im, "RGBA").mode, "RGBA")
+        self.assertEqual(
+            thumbnail.to_srgb(im, "RGBA").getpixel((0, 0))[3], 255
+        )
+
+        im.info["icc_profile"] = b"not a profile"
+        self.assertEqual(thumbnail.to_srgb(im).mode, "RGB")
+
+        im = Image.new("L", (4, 4))
+        self.assertEqual(thumbnail.to_srgb(im).mode, "L")
 
     def test_turn_hdr_into_thumbnail(self):
         file_path_fixture = self.get_fixture_file_path("thumbnails/sample.hdr")

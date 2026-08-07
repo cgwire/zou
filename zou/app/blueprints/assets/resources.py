@@ -12,6 +12,7 @@ from zou.app.services import (
     persons_service,
     shots_service,
     tasks_service,
+    permissions_service,
     user_service,
 )
 from zou.app.blueprints.assets.schemas import (
@@ -22,10 +23,14 @@ from zou.app.blueprints.assets.schemas import (
 
 
 def check_criterion_access(criterions):
-    # Answers 403 when the caller names a project or episode it may not see.
-    # The team scoping of the whole list lives in assets_service.get_assets
-    # (only_user_projects), so a request without a project is not open here:
-    # it is filtered there.
+    """
+    Raise 403 if the caller filters by a project or episode they cannot access.
+
+    Resolves ``project_id`` from the criterions (directly, or via the episode)
+    and calls ``permissions_service.check_project_access``. When no project/episode is
+    given, access is not checked here: ``assets_service.get_assets`` already
+    scopes the list with ``only_user_projects``.
+    """
     project_id = None
     if "project_id" in criterions:
         project_id = criterions.get("project_id", None)
@@ -34,7 +39,7 @@ def check_criterion_access(criterions):
         project_id = shots_service.get_episode(episode_id)["project_id"]
 
     if project_id is not None:
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
     return True
 
 
@@ -95,8 +100,8 @@ class AssetResource(MethodView, ArgsMixin):
                       example: "2023-01-01T12:30:00Z"
         """
         asset = assets_service.get_full_asset(asset_id)
-        user_service.check_project_access(asset["project_id"])
-        user_service.check_entity_access(asset["id"])
+        permissions_service.check_project_access(asset["project_id"])
+        permissions_service.check_entity_access(asset["id"])
         return asset
 
     @jwt_required()
@@ -129,9 +134,11 @@ class AssetResource(MethodView, ArgsMixin):
 
         asset = assets_service.get_full_asset(asset_id)
         if asset["created_by"] == persons_service.get_current_user()["id"]:
-            user_service.check_belong_to_project(asset["project_id"])
+            permissions_service.check_belong_to_project(asset["project_id"])
         else:
-            user_service.check_manager_project_access(asset["project_id"])
+            permissions_service.check_manager_project_access(
+                asset["project_id"]
+            )
 
         assets_service.remove_asset(asset_id, force=force)
         return "", 204
@@ -502,7 +509,7 @@ class ProjectAssetTypesResource(MethodView):
                         description: Project identifier
                         example: b35b7fb5-df86-5776-b181-68564193d36
         """
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         return assets_service.get_asset_types_for_project(project_id)
 
 
@@ -550,7 +557,7 @@ class ShotAssetTypesResource(MethodView):
                         example: d57d9hd7-fh08-7998-d403-80786315f58
         """
         shot = shots_service.get_shot(shot_id)
-        user_service.check_project_access(shot["project_id"])
+        permissions_service.check_project_access(shot["project_id"])
         return assets_service.get_asset_types_for_shot(shot_id)
 
 
@@ -626,7 +633,7 @@ class ProjectAssetsResource(MethodView):
                         description: Asset type name
                         example: "Character"
         """
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         criterions = query.get_query_criterions_from_request(request)
         criterions["project_id"] = project_id
         if permissions.has_vendor_permissions():
@@ -709,7 +716,7 @@ class ProjectAssetTypeAssetsResource(MethodView):
                         description: Asset type name
                         example: "Character"
         """
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         criterions = query.get_query_criterions_from_request(request)
         criterions["project_id"] = project_id
         criterions["entity_type_id"] = asset_type_id
@@ -769,8 +776,8 @@ class AssetAssetsResource(MethodView):
                         example: c46c8gc6-eg97-6887-c292-79675204e47
         """
         asset = assets_service.get_asset(asset_id)
-        user_service.check_project_access(asset["project_id"])
-        user_service.check_entity_access(asset_id)
+        permissions_service.check_project_access(asset["project_id"])
+        permissions_service.check_entity_access(asset_id)
         return breakdown_service.get_entity_casting(asset_id)
 
 
@@ -855,8 +862,8 @@ class AssetTasksResource(MethodView, ArgsMixin):
                         example: "2023-01-01T12:30:00Z"
         """
         asset = assets_service.get_asset(asset_id)
-        user_service.check_project_access(asset["project_id"])
-        user_service.check_entity_access(asset["id"])
+        permissions_service.check_project_access(asset["project_id"])
+        permissions_service.check_entity_access(asset["id"])
         return tasks_service.get_tasks_for_asset(
             asset_id, relations=self.get_relations()
         )
@@ -913,8 +920,8 @@ class AssetTaskTypesResource(MethodView):
                         example: "Asset"
         """
         asset = assets_service.get_asset(asset_id)
-        user_service.check_project_access(asset["project_id"])
-        user_service.check_entity_access(asset["id"])
+        permissions_service.check_project_access(asset["project_id"])
+        permissions_service.check_entity_access(asset["id"])
         return tasks_service.get_task_types_for_asset(asset_id)
 
 
@@ -1026,7 +1033,7 @@ class NewAssetResource(MethodView, ArgsMixin):
         """
         body = validation.validate_request_body(NewAssetSchema)
 
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         asset = assets_service.create_asset(
             project_id,
             asset_type_id,
@@ -1096,8 +1103,8 @@ class AssetCastingResource(MethodView):
                             example: "shot"
         """
         asset = assets_service.get_asset(asset_id)
-        user_service.check_project_access(asset["project_id"])
-        user_service.check_entity_access(asset_id)
+        permissions_service.check_project_access(asset["project_id"])
+        permissions_service.check_entity_access(asset_id)
         return breakdown_service.get_casting(asset_id)
 
     @jwt_required()
@@ -1175,7 +1182,7 @@ class AssetCastingResource(MethodView):
         if not isinstance(casting, list):
             raise WrongParameterException("Request body must be a JSON array.")
         asset = assets_service.get_asset(asset_id)
-        user_service.check_manager_project_access(asset["project_id"])
+        permissions_service.check_manager_project_access(asset["project_id"])
         return breakdown_service.update_casting(asset_id, casting)
 
 
@@ -1240,8 +1247,8 @@ class AssetCastInResource(MethodView):
                         example: 100
         """
         asset = assets_service.get_asset(asset_id)
-        user_service.check_project_access(asset["project_id"])
-        user_service.check_entity_access(asset["id"])
+        permissions_service.check_project_access(asset["project_id"])
+        permissions_service.check_entity_access(asset["id"])
         return breakdown_service.get_cast_in(asset_id)
 
 
@@ -1298,7 +1305,7 @@ class AssetShotAssetInstancesResource(MethodView):
                         example: "Main character instance"
         """
         asset = assets_service.get_asset(asset_id)
-        user_service.check_project_access(asset["project_id"])
+        permissions_service.check_project_access(asset["project_id"])
         return breakdown_service.get_shot_asset_instances_for_asset(asset_id)
 
 
@@ -1354,7 +1361,7 @@ class AssetSceneAssetInstancesResource(MethodView):
                         example: "Main character instance"
         """
         asset = assets_service.get_asset(asset_id)
-        user_service.check_project_access(asset["project_id"])
+        permissions_service.check_project_access(asset["project_id"])
         return breakdown_service.get_scene_asset_instances_for_asset(asset_id)
 
 
@@ -1410,7 +1417,7 @@ class AssetAssetInstancesResource(MethodView, ArgsMixin):
                         example: "Main character instance"
         """
         asset = assets_service.get_asset(asset_id)
-        user_service.check_project_access(asset["project_id"])
+        permissions_service.check_project_access(asset["project_id"])
         return breakdown_service.get_asset_instances_for_asset(asset_id)
 
     @jwt_required()
@@ -1487,7 +1494,7 @@ class AssetAssetInstancesResource(MethodView, ArgsMixin):
         body = validation.validate_request_body(AssetInstanceSchema)
 
         asset = assets_service.get_asset(asset_id)
-        user_service.check_project_access(asset["project_id"])
+        permissions_service.check_project_access(asset["project_id"])
         asset_instance = breakdown_service.add_asset_instance_to_asset(
             asset_id, str(body.asset_to_instantiate_id), body.description
         )
@@ -1562,7 +1569,7 @@ class SetSharedProjectAssetsResource(BaseSetSharedAssetsResource):
                       example: b35b7fb5-df86-5776-b181-68564193d36
         """
         body = validation.validate_request_body(SetSharedAssetsSchema)
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         asset_ids = (
             [str(a) for a in body.asset_ids] if body.asset_ids else None
         )
@@ -1628,7 +1635,7 @@ class SetSharedProjectAssetTypeAssetsResource(BaseSetSharedAssetsResource):
                       description: Asset type identifier
                       example: c46c8gc6-eg97-6887-c292-79675204e47
         """
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         return super().post(project_id=project_id, asset_type_id=asset_type_id)
 
 
@@ -1688,7 +1695,7 @@ class SetSharedAssetsResource(BaseSetSharedAssetsResource):
         for asset_id in asset_ids:
             project_ids.add(assets_service.get_asset(asset_id)["project_id"])
         for project_id in project_ids:
-            user_service.check_manager_project_access(project_id)
+            permissions_service.check_manager_project_access(project_id)
         return super().post(asset_ids=asset_ids)
 
 
@@ -1743,7 +1750,7 @@ class ProjectAssetsSharedUsedResource(MethodView):
                         description: Whether the asset is shared
                         example: true
         """
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         return assets_service.get_shared_assets_used_in_project(project_id)
 
 
@@ -1811,7 +1818,7 @@ class ProjectEpisodeAssetsSharedUsedResource(MethodView):
                         description: Episode identifier
                         example: d57d9hd7-fh08-7998-d403-80786315f58
         """
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         return assets_service.get_shared_assets_used_in_project(
             project_id, episode_id
         )

@@ -877,7 +877,7 @@ def get_email_translation(locale, key, **params):
     fallback_chain = (
         normalized,
         "en_US",  # Always fall back to US English if locale unsupported
-        getattr(config, "DEFAULT_LOCALE", "en_US"),
+        config.DEFAULT_LOCALE,
     )
     for candidate in fallback_chain:
         if not candidate:

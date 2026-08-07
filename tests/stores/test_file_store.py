@@ -8,14 +8,14 @@ from zou.app.stores import file_store
 
 class FileStoreTestCase(unittest.TestCase):
     def setUp(self):
-        super(FileStoreTestCase, self).setUp()
+        super().setUp()
         app.app_context().push()
         self.preview_path = app.config["PREVIEW_FOLDER"]
         self.store = file_store
         self.store.clear()
 
     def tearDown(self):
-        super(FileStoreTestCase, self).tearDown()
+        super().tearDown()
         self.store.clear()
 
     def get_fixture_file_path(self, relative_path):

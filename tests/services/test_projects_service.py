@@ -18,10 +18,8 @@ from zou.app.services.exception import (
 
 class ProjectServiceTestCase(ApiDBTestCase):
     def setUp(self):
-        super(ProjectServiceTestCase, self).setUp()
+        super().setUp()
 
-        self.generate_fixture_project_status()
-        self.generate_fixture_project_closed_status()
         self.generate_fixture_project()
         self.generate_fixture_project_closed()
 
@@ -37,13 +35,14 @@ class ProjectServiceTestCase(ApiDBTestCase):
 
     def test_get_or_create_status(self):
         project_status = projects_service.get_or_create_status("Frozen")
-        statuses = ProjectStatus.query.all()
         self.assertEqual(project_status["name"], "Frozen")
-        self.assertEqual(len(statuses), 3)
+        self.assertEqual(ProjectStatus.query.count(), 3)
 
-        project_status = projects_service.get_or_create_status("Frozen")
-        self.assertEqual(project_status["name"], "Frozen")
-        self.assertEqual(len(statuses), 3)
+        # Asking again returns the same row rather than adding one. The
+        # count has to be read back, the second call is what could add it.
+        again = projects_service.get_or_create_status("Frozen")
+        self.assertEqual(again["id"], project_status["id"])
+        self.assertEqual(ProjectStatus.query.count(), 3)
 
     def test_get_or_create_open_status(self):
         project_status = projects_service.get_or_create_open_status()
@@ -127,179 +126,41 @@ class ProjectServiceTestCase(ApiDBTestCase):
         project = projects_service.get_project(self.project.id, relations=True)
         self.assertEqual(project["team"], [])
 
-    def test_add_asset_type_setting(self):
+    def test_add_and_remove_project_settings(self):
+        """
+        The three settings that are plain links on the project: adding one
+        puts its id in the project relations, removing it takes the id back
+        out. The round trip is the contract, so both halves live in one case.
+        """
         self.generate_fixture_asset_type()
-        projects_service.add_asset_type_setting(
-            self.project.id, self.asset_type.id
-        )
-        project = projects_service.get_project(self.project.id, relations=True)
-        self.assertEqual(project["asset_types"], [str(self.asset_type.id)])
-
-    def test_remove_asset_type(self):
-        self.generate_fixture_asset_type()
-        projects_service.add_asset_type_setting(
-            self.project.id, self.asset_type.id
-        )
-        projects_service.remove_asset_type_setting(
-            self.project.id, self.asset_type.id
-        )
-        project = projects_service.get_project(self.project.id, relations=True)
-        self.assertEqual(project["asset_types"], [])
-
-    def test_add_task_type_setting(self):
         self.generate_fixture_department()
         self.generate_fixture_task_type()
-        projects_service.add_task_type_setting(
-            self.project.id, self.task_type.id
-        )
-        project = projects_service.get_project(self.project.id, relations=True)
-        self.assertEqual(project["task_types"], [str(self.task_type.id)])
-
-    def test_remove_task_type(self):
-        self.generate_fixture_department()
-        self.generate_fixture_task_type()
-        projects_service.add_task_type_setting(
-            self.project.id, self.task_type.id
-        )
-        projects_service.remove_task_type_setting(
-            self.project.id, self.task_type.id
-        )
-        project = projects_service.get_project(self.project.id, relations=True)
-        self.assertEqual(project["task_types"], [])
-
-    def test_add_task_status_setting(self):
         self.generate_fixture_task_status()
-        projects_service.add_task_status_setting(
-            self.project.id, self.task_status.id
-        )
-        project = projects_service.get_project(self.project.id, relations=True)
-        self.assertEqual(project["task_statuses"], [str(self.task_status.id)])
+        cases = [
+            ("asset_types", "asset_type_setting", self.asset_type.id),
+            ("task_types", "task_type_setting", self.task_type.id),
+            ("task_statuses", "task_status_setting", self.task_status.id),
+        ]
+        # str(), not the UUID: clear_project_cache stringifies the id, so a
+        # read made with a UUID object caches under a key no clear reaches
+        # and the second half of the round trip sees the first half's value.
+        project_id = str(self.project.id)
+        for relation, setting, setting_id in cases:
+            with self.subTest(relation=relation):
+                add = getattr(projects_service, f"add_{setting}")
+                remove = getattr(projects_service, f"remove_{setting}")
 
-    def test_remove_task_status(self):
-        self.generate_fixture_task_status()
-        projects_service.add_task_status_setting(
-            self.project.id, self.task_status.id
-        )
-        projects_service.remove_task_status_setting(
-            self.project.id, self.task_status.id
-        )
-        project = projects_service.get_project(self.project.id, relations=True)
-        self.assertEqual(project["task_statuses"], [])
+                add(project_id, setting_id)
+                project = projects_service.get_project(
+                    project_id, relations=True
+                )
+                self.assertEqual(project[relation], [str(setting_id)])
 
-    def test_add_asset_metadata_descriptor(self):
-        descriptor = projects_service.add_metadata_descriptor(
-            self.project.id, "Asset", "Is Outdoor", "string", [], False
-        )
-        self.assertIsNotNone(MetadataDescriptor.get(descriptor["id"]))
-        descriptor = projects_service.add_metadata_descriptor(
-            self.project.id,
-            "Asset",
-            "Contractor",
-            "list",
-            ["contractor 1", "contractor 2"],
-            False,
-        )
-        descriptors = projects_service.get_metadata_descriptors(
-            self.project.id
-        )
-        self.assertEqual(len(descriptors), 2)
-        self.assertEqual(descriptors[0]["id"], descriptor["id"])
-        self.assertEqual(descriptors[0]["field_name"], "contractor")
-        self.assertEqual(descriptors[1]["field_name"], "is_outdoor")
-
-        descriptors = projects_service.get_metadata_descriptors(
-            self.project.id, for_client=True
-        )
-        self.assertEqual(len(descriptors), 0)
-
-    def test_update_metadata_descriptor(self):
-        asset = self.generate_fixture_asset_type()
-        asset = self.generate_fixture_asset()
-        descriptor = projects_service.add_metadata_descriptor(
-            self.project.id, "Asset", "Contractor", "string", [], False
-        )
-        asset.update({"data": {"contractor": "contractor 1"}})
-        self.assertTrue("contractor" in asset.data)
-        projects_service.update_metadata_descriptor(
-            descriptor["id"], {"name": "Team", "for_client": True}
-        )
-        descriptors = projects_service.get_metadata_descriptors(
-            self.project.id
-        )
-        self.assertEqual(len(descriptors), 1)
-        self.assertTrue(descriptors[0]["for_client"])
-        asset = Entity.get(asset.id)
-        self.assertEqual(asset.data.get("team"), "contractor 1")
-
-    def test_update_project_metadata_descriptor_renames_project_data(self):
-        descriptor = projects_service.add_metadata_descriptor(
-            self.project.id, "Project", "Studio code", "string", [], False
-        )
-        self.project.update({"data": {"studio_code": "A1"}})
-        projects_service.update_metadata_descriptor(
-            descriptor["id"], {"name": "Code", "for_client": False}
-        )
-        self.project = Project.get(self.project.id)
-        self.assertEqual(self.project.data.get("code"), "A1")
-        self.assertIsNone(self.project.data.get("studio_code"))
-
-    def test_remove_project_metadata_descriptor_clears_project_data(self):
-        descriptor = projects_service.add_metadata_descriptor(
-            self.project.id, "Project", "Studio code", "string", [], False
-        )
-        self.project.update({"data": {"studio_code": "A1"}})
-        projects_service.remove_metadata_descriptor(descriptor["id"])
-        self.project = Project.get(self.project.id)
-        self.assertIsNone((self.project.data or {}).get("studio_code"))
-        self.assertEqual(
-            len(
-                [
-                    d
-                    for d in projects_service.get_metadata_descriptors(
-                        self.project.id
-                    )
-                    if d["entity_type"] == "Project"
-                ]
-            ),
-            0,
-        )
-
-    def test_reorder_project_metadata_descriptors(self):
-        d1 = projects_service.add_metadata_descriptor(
-            self.project.id, "Project", "Alpha", "string", [], False
-        )
-        d2 = projects_service.add_metadata_descriptor(
-            self.project.id, "Project", "Beta", "string", [], False
-        )
-        d3 = projects_service.add_metadata_descriptor(
-            self.project.id, "Project", "Gamma", "string", [], False
-        )
-        reordered = projects_service.reorder_metadata_descriptors(
-            self.project.id,
-            "Project",
-            [str(d3["id"]), str(d1["id"]), str(d2["id"])],
-        )
-        self.assertEqual(reordered[0]["id"], d3["id"])
-        self.assertEqual(reordered[0]["position"], 1)
-        self.assertEqual(reordered[1]["id"], d1["id"])
-        self.assertEqual(reordered[2]["id"], d2["id"])
-
-    def test_add_delete_metadata_descriptor(self):
-        asset = self.generate_fixture_asset_type()
-        asset = self.generate_fixture_asset()
-        descriptor = projects_service.add_metadata_descriptor(
-            self.project.id, "Asset", "Contractor", "string", [], False
-        )
-        asset.update({"data": {"contractor": "contractor 1"}})
-        self.assertTrue("contractor" in asset.data)
-
-        projects_service.remove_metadata_descriptor(descriptor["id"])
-        descriptors = projects_service.get_metadata_descriptors(
-            self.project.id
-        )
-        self.assertEqual(len(descriptors), 0)
-        asset = Entity.get(asset.id)
-        self.assertFalse("contractor" in asset.data)
+                remove(project_id, setting_id)
+                project = projects_service.get_project(
+                    project_id, relations=True
+                )
+                self.assertEqual(project[relation], [])
 
     def test_delete_project(self):
         self.generate_fixture_asset_type()
@@ -325,125 +186,6 @@ class ProjectServiceTestCase(ApiDBTestCase):
             projects_service.is_open(self.project_closed.serialize())
         )
 
-    def test_reorder_metadata_descriptors(self):
-        descriptor1 = projects_service.add_metadata_descriptor(
-            self.project.id, "Asset", "Contractor", "string", [], False
-        )
-        descriptor2 = projects_service.add_metadata_descriptor(
-            self.project.id, "Asset", "Environment", "string", [], False
-        )
-        descriptor3 = projects_service.add_metadata_descriptor(
-            self.project.id, "Asset", "Location", "string", [], False
-        )
-        descriptor4 = projects_service.add_metadata_descriptor(
-            self.project.id, "Asset", "Type", "string", [], False
-        )
-        descriptor5 = projects_service.add_metadata_descriptor(
-            self.project.id, "Asset", "Status", "string", [], False
-        )
-
-        descriptors = projects_service.get_metadata_descriptors(
-            self.project.id
-        )
-        self.assertEqual(len(descriptors), 5)
-
-        descriptor_ids = [
-            str(descriptor3["id"]),
-            str(descriptor1["id"]),
-            str(descriptor5["id"]),
-        ]
-        reordered = projects_service.reorder_metadata_descriptors(
-            self.project.id, "Asset", descriptor_ids
-        )
-
-        self.assertEqual(len(reordered), 5)
-        self.assertEqual(reordered[0]["id"], descriptor3["id"])
-        self.assertEqual(reordered[0]["position"], 1)
-        self.assertEqual(reordered[1]["id"], descriptor1["id"])
-        self.assertEqual(reordered[1]["position"], 2)
-        self.assertEqual(reordered[2]["id"], descriptor5["id"])
-        self.assertEqual(reordered[2]["position"], 3)
-        self.assertEqual(reordered[3]["id"], descriptor2["id"])
-        self.assertEqual(reordered[3]["position"], 4)
-        self.assertEqual(reordered[4]["id"], descriptor4["id"])
-        self.assertEqual(reordered[4]["position"], 5)
-
-        self.assertIn(reordered[3]["name"], ["Environment"])
-        self.assertIn(reordered[4]["name"], ["Type"])
-
-    def test_reorder_metadata_descriptors_all_included(self):
-        descriptor1 = projects_service.add_metadata_descriptor(
-            self.project.id, "Asset", "Contractor", "string", [], False
-        )
-        descriptor2 = projects_service.add_metadata_descriptor(
-            self.project.id, "Asset", "Environment", "string", [], False
-        )
-
-        descriptor_ids = [
-            str(descriptor2["id"]),
-            str(descriptor1["id"]),
-        ]
-        reordered = projects_service.reorder_metadata_descriptors(
-            self.project.id, "Asset", descriptor_ids
-        )
-
-        self.assertEqual(len(reordered), 2)
-        self.assertEqual(reordered[0]["id"], descriptor2["id"])
-        self.assertEqual(reordered[0]["position"], 1)
-        self.assertEqual(reordered[1]["id"], descriptor1["id"])
-        self.assertEqual(reordered[1]["position"], 2)
-
-    def test_reorder_metadata_descriptors_empty_list(self):
-        descriptor1 = projects_service.add_metadata_descriptor(
-            self.project.id, "Asset", "Contractor", "string", [], False
-        )
-        descriptor2 = projects_service.add_metadata_descriptor(
-            self.project.id, "Asset", "Environment", "string", [], False
-        )
-        descriptor3 = projects_service.add_metadata_descriptor(
-            self.project.id, "Asset", "Location", "string", [], False
-        )
-
-        descriptor_ids = []
-        reordered = projects_service.reorder_metadata_descriptors(
-            self.project.id, "Asset", descriptor_ids
-        )
-
-        self.assertEqual(len(reordered), 3)
-        self.assertEqual(reordered[0]["name"], "Contractor")
-        self.assertEqual(reordered[0]["position"], 1)
-        self.assertEqual(reordered[1]["name"], "Environment")
-        self.assertEqual(reordered[1]["position"], 2)
-        self.assertEqual(reordered[2]["name"], "Location")
-        self.assertEqual(reordered[2]["position"], 3)
-
-    def test_reorder_metadata_descriptors_descriptor_not_found(self):
-        descriptor1 = projects_service.add_metadata_descriptor(
-            self.project.id, "Asset", "Contractor", "string", [], False
-        )
-
-        fake_id = "00000000-0000-0000-0000-000000000000"
-        descriptor_ids = [fake_id]
-
-        with self.assertRaises(WrongParameterException):
-            projects_service.reorder_metadata_descriptors(
-                self.project.id, "Asset", descriptor_ids
-            )
-
-    def test_reorder_metadata_descriptors_different_entity_type(self):
-        asset_descriptor = projects_service.add_metadata_descriptor(
-            self.project.id, "Asset", "Contractor", "string", [], False
-        )
-        shot_descriptor = projects_service.add_metadata_descriptor(
-            self.project.id, "Shot", "Location", "string", [], False
-        )
-        descriptor_ids = [str(shot_descriptor["id"])]
-
-        with self.assertRaises(WrongParameterException):
-            projects_service.reorder_metadata_descriptors(
-                self.project.id, "Asset", descriptor_ids
-            )
-
     def test_get_project_raw(self):
         project = projects_service.get_project_raw(self.project.id)
         self.assertEqual(project.name, self.project.name)
@@ -467,26 +209,6 @@ class ProjectServiceTestCase(ApiDBTestCase):
         ids = projects_service.open_project_ids()
         self.assertIn(str(self.project.id), ids)
         self.assertNotIn(str(self.project_closed.id), ids)
-
-    def test_get_metadata_descriptor_raw(self):
-        descriptor = projects_service.add_metadata_descriptor(
-            self.project.id, "Asset", "Weight", "string", [], False
-        )
-        raw = projects_service.get_metadata_descriptor_raw(descriptor["id"])
-        self.assertEqual(str(raw.id), descriptor["id"])
-        self.assertRaises(
-            MetadataDescriptorNotFoundException,
-            projects_service.get_metadata_descriptor_raw,
-            "wrong-id",
-        )
-
-    def test_get_metadata_descriptor(self):
-        descriptor = projects_service.add_metadata_descriptor(
-            self.project.id, "Asset", "Weight", "string", [], False
-        )
-        result = projects_service.get_metadata_descriptor(descriptor["id"])
-        self.assertEqual(result["id"], descriptor["id"])
-        self.assertEqual(result["name"], "Weight")
 
     def test_create_project_task_type_link(self):
         self.generate_fixture_department()
@@ -569,7 +291,7 @@ class ProjectServiceTestCase(ApiDBTestCase):
         automations = projects_service.get_project_status_automations(
             self.project.id
         )
-        self.assertEqual(len(automations), 0)
+        self.assertEqual(automations, [])
 
     def test_add_preview_background_file_setting(self):
         self.generate_fixture_preview_background_file()
@@ -592,7 +314,32 @@ class ProjectServiceTestCase(ApiDBTestCase):
         files = projects_service.get_project_preview_background_files(
             self.project.id
         )
-        self.assertEqual(len(files), 0)
+        self.assertEqual(files, [])
+
+    def test_an_update_drops_every_form_of_the_cached_project(self):
+        """
+        The memoization keys on the argument, and an omitted default is a
+        key of its own: the id as a UUID, the id as a string and the
+        related serialization would be three entries. An update has to drop
+        what every caller reads, whichever form they hold.
+        """
+        project_id = self.project.id
+        projects_service.get_project(project_id)
+        projects_service.get_project(str(project_id))
+        projects_service.get_project(project_id, relations=True)
+
+        projects_service.update_project(str(project_id), {"fps": "30"})
+
+        self.assertEqual(
+            [
+                projects_service.get_project(project_id)["fps"],
+                projects_service.get_project(str(project_id))["fps"],
+                projects_service.get_project(project_id, relations=True)[
+                    "fps"
+                ],
+            ],
+            ["30", "30", "30"],
+        )
 
     def test_get_project_fps(self):
         fps = projects_service.get_project_fps(self.project.id)
@@ -601,37 +348,300 @@ class ProjectServiceTestCase(ApiDBTestCase):
         fps = projects_service.get_project_fps(self.project.id)
         self.assertEqual(fps, 30.00)
 
-    def test_get_task_type_priority_map(self):
+    def link_the_same_task_type_to_both_productions(self, here, elsewhere):
+        """
+        The same task type ordered differently in two productions, which is
+        what the scoping has to tell apart.
+        """
         self.generate_fixture_department()
         self.generate_fixture_task_type()
+        self.generate_fixture_project_standard()
         projects_service.create_project_task_type_link(
-            str(self.project.id), str(self.task_type.id), 3
+            str(self.project.id), str(self.task_type.id), here
         )
+        projects_service.create_project_task_type_link(
+            str(self.project_standard.id), str(self.task_type.id), elsewhere
+        )
+
+    def test_get_task_type_priority_map(self):
+        self.link_the_same_task_type_to_both_productions(3, 9)
+
         priority_map = projects_service.get_task_type_priority_map(
             self.project.id
         )
-        self.assertIn(str(self.task_type.id), priority_map)
-        self.assertEqual(priority_map[str(self.task_type.id)], 3)
+
+        self.assertEqual(priority_map, {str(self.task_type.id): 3})
 
     def test_get_task_type_links(self):
-        self.generate_fixture_department()
-        self.generate_fixture_task_type()
-        projects_service.create_project_task_type_link(
-            str(self.project.id), str(self.task_type.id), 2
-        )
+        self.link_the_same_task_type_to_both_productions(2, 9)
+
         links = projects_service.get_task_type_links(self.project.id)
-        self.assertEqual(len(links), 1)
+
+        self.assertEqual(
+            [(link["task_type_id"], link["priority"]) for link in links],
+            [(str(self.task_type.id), 2)],
+        )
 
     def test_get_department_team(self):
-        self.generate_fixture_department()
-        self.generate_fixture_person()
-        projects_service.add_team_member(self.project.id, self.person.id)
+        """
+        Scoped twice: the production and the department. A member of the
+        same department on another production stays out.
+        """
         from zou.app.services import persons_service
 
-        persons_service.add_to_department(
-            str(self.department.id), str(self.person.id)
+        self.generate_fixture_department()
+        self.generate_fixture_person()
+        # generate_fixture_person repoints self.person, hence the local.
+        here = self.person
+        self.generate_fixture_project_standard()
+        elsewhere = self.generate_fixture_person(
+            first_name="Alice",
+            last_name="Zulu",
+            desktop_login="alice.zulu",
+            email="alice.zulu@gmail.com",
         )
+        projects_service.add_team_member(self.project.id, here.id)
+        projects_service.add_team_member(
+            self.project_standard.id, elsewhere.id
+        )
+        for person in [here, elsewhere]:
+            persons_service.add_to_department(
+                str(self.department.id), str(person.id)
+            )
+
         team = projects_service.get_department_team(
             self.project.id, self.department.id
         )
-        self.assertEqual(len(team), 1)
+
+        self.assertEqual([person.id for person in team], [here.id])
+
+
+class ProjectMetadataDescriptorTestCase(ApiDBTestCase):
+    """
+    The custom columns a production adds to its assets, shots or to
+    itself. They carry a position, which is what the reorder route
+    rewrites, and renaming or removing one rewrites the entity data
+    that used the old name.
+    """
+
+    def setUp(self):
+        super().setUp()
+
+        self.generate_fixture_project()
+        self.generate_fixture_project_closed()
+
+    def names_and_positions(self, descriptors):
+        return [(d["name"], d["position"]) for d in descriptors]
+
+    def add(self, name, entity_type="Asset", choices=None):
+        """
+        A string descriptor of given name, the shape all these tests want.
+        """
+        return projects_service.add_metadata_descriptor(
+            self.project.id,
+            entity_type,
+            name,
+            "list" if choices else "string",
+            choices or [],
+            False,
+        )
+
+    def test_add_asset_metadata_descriptor(self):
+        descriptor = self.add("Is Outdoor")
+        self.assertIsNotNone(MetadataDescriptor.get(descriptor["id"]))
+        descriptor = projects_service.add_metadata_descriptor(
+            self.project.id,
+            "Asset",
+            "Contractor",
+            "list",
+            ["contractor 1", "contractor 2"],
+            False,
+        )
+        descriptors = projects_service.get_metadata_descriptors(
+            self.project.id
+        )
+        self.assertEqual(len(descriptors), 2)
+        self.assertEqual(descriptors[0]["id"], descriptor["id"])
+        self.assertEqual(descriptors[0]["field_name"], "contractor")
+        self.assertEqual(descriptors[1]["field_name"], "is_outdoor")
+
+        descriptors = projects_service.get_metadata_descriptors(
+            self.project.id, for_client=True
+        )
+        self.assertEqual(descriptors, [])
+
+    def test_update_metadata_descriptor(self):
+        asset = self.generate_fixture_asset_type()
+        asset = self.generate_fixture_asset()
+        descriptor = self.add("Contractor")
+        asset.update({"data": {"contractor": "contractor 1"}})
+        self.assertIn("contractor", asset.data)
+        projects_service.update_metadata_descriptor(
+            descriptor["id"], {"name": "Team", "for_client": True}
+        )
+        descriptors = projects_service.get_metadata_descriptors(
+            self.project.id
+        )
+        self.assertEqual(len(descriptors), 1)
+        self.assertTrue(descriptors[0]["for_client"])
+        asset = Entity.get(asset.id)
+        self.assertEqual(asset.data.get("team"), "contractor 1")
+
+    def test_update_project_metadata_descriptor_renames_project_data(self):
+        descriptor = self.add("Studio code", "Project")
+        self.project.update({"data": {"studio_code": "A1"}})
+        projects_service.update_metadata_descriptor(
+            descriptor["id"], {"name": "Code", "for_client": False}
+        )
+        self.project = Project.get(self.project.id)
+        self.assertEqual(self.project.data.get("code"), "A1")
+        self.assertIsNone(self.project.data.get("studio_code"))
+
+    def test_remove_project_metadata_descriptor_clears_project_data(self):
+        descriptor = self.add("Studio code", "Project")
+        self.project.update({"data": {"studio_code": "A1"}})
+        projects_service.remove_metadata_descriptor(descriptor["id"])
+        self.project = Project.get(self.project.id)
+        self.assertIsNone((self.project.data or {}).get("studio_code"))
+        self.assertEqual(
+            [
+                d
+                for d in projects_service.get_metadata_descriptors(
+                    self.project.id
+                )
+                if d["entity_type"] == "Project"
+            ],
+            [],
+        )
+
+    def test_reorder_project_metadata_descriptors(self):
+        d1 = self.add("Alpha", "Project")
+        d2 = self.add("Beta", "Project")
+        d3 = self.add("Gamma", "Project")
+        reordered = projects_service.reorder_metadata_descriptors(
+            self.project.id,
+            "Project",
+            [str(d3["id"]), str(d1["id"]), str(d2["id"])],
+        )
+        self.assertEqual(reordered[0]["id"], d3["id"])
+        self.assertEqual(reordered[0]["position"], 1)
+        self.assertEqual(reordered[1]["id"], d1["id"])
+        self.assertEqual(reordered[2]["id"], d2["id"])
+
+    def test_add_delete_metadata_descriptor(self):
+        asset = self.generate_fixture_asset_type()
+        asset = self.generate_fixture_asset()
+        descriptor = self.add("Contractor")
+        asset.update({"data": {"contractor": "contractor 1"}})
+        self.assertIn("contractor", asset.data)
+
+        projects_service.remove_metadata_descriptor(descriptor["id"])
+        descriptors = projects_service.get_metadata_descriptors(
+            self.project.id
+        )
+        self.assertEqual(descriptors, [])
+        asset = Entity.get(asset.id)
+        self.assertNotIn("contractor", asset.data)
+
+    def test_reorder_metadata_descriptors(self):
+        # Zone and Angle are created in the order that contradicts their
+        # alphabetical one, which is the order the leftovers fall back to.
+        descriptor1 = self.add("Contractor")
+        descriptor2 = self.add("Zone")
+        descriptor3 = self.add("Location")
+        descriptor4 = self.add("Angle")
+        descriptor5 = self.add("Status")
+
+        self.assertEqual(
+            len(projects_service.get_metadata_descriptors(self.project.id)), 5
+        )
+
+        reordered = projects_service.reorder_metadata_descriptors(
+            self.project.id,
+            "Asset",
+            [
+                str(descriptor3["id"]),
+                str(descriptor1["id"]),
+                str(descriptor5["id"]),
+            ],
+        )
+
+        # The three named first, then the two left out, alphabetically
+        # rather than in the order they were created.
+        self.assertEqual(
+            self.names_and_positions(reordered),
+            [
+                ("Location", 1),
+                ("Contractor", 2),
+                ("Status", 3),
+                ("Angle", 4),
+                ("Zone", 5),
+            ],
+        )
+
+    def test_reorder_metadata_descriptors_all_included(self):
+        descriptor1 = self.add("Contractor")
+        descriptor2 = self.add("Environment")
+
+        reordered = projects_service.reorder_metadata_descriptors(
+            self.project.id,
+            "Asset",
+            [str(descriptor2["id"]), str(descriptor1["id"])],
+        )
+
+        self.assertEqual(
+            self.names_and_positions(reordered),
+            [("Environment", 1), ("Contractor", 2)],
+        )
+
+    def test_reorder_metadata_descriptors_empty_list(self):
+        self.add("Contractor")
+        self.add("Environment")
+        self.add("Location")
+
+        reordered = projects_service.reorder_metadata_descriptors(
+            self.project.id, "Asset", []
+        )
+
+        # Naming none of them still renumbers, alphabetically.
+        self.assertEqual(
+            self.names_and_positions(reordered),
+            [("Contractor", 1), ("Environment", 2), ("Location", 3)],
+        )
+
+    def test_reorder_metadata_descriptors_descriptor_not_found(self):
+        self.add("Contractor")
+
+        fake_id = "00000000-0000-0000-0000-000000000000"
+        descriptor_ids = [fake_id]
+
+        with self.assertRaises(WrongParameterException):
+            projects_service.reorder_metadata_descriptors(
+                self.project.id, "Asset", descriptor_ids
+            )
+
+    def test_reorder_metadata_descriptors_different_entity_type(self):
+        self.add("Contractor")
+        shot_descriptor = self.add("Location", "Shot")
+        descriptor_ids = [str(shot_descriptor["id"])]
+
+        with self.assertRaises(WrongParameterException):
+            projects_service.reorder_metadata_descriptors(
+                self.project.id, "Asset", descriptor_ids
+            )
+
+    def test_get_metadata_descriptor_raw(self):
+        descriptor = self.add("Weight")
+        raw = projects_service.get_metadata_descriptor_raw(descriptor["id"])
+        self.assertEqual(str(raw.id), descriptor["id"])
+        self.assertRaises(
+            MetadataDescriptorNotFoundException,
+            projects_service.get_metadata_descriptor_raw,
+            "wrong-id",
+        )
+
+    def test_get_metadata_descriptor(self):
+        descriptor = self.add("Weight")
+        result = projects_service.get_metadata_descriptor(descriptor["id"])
+        self.assertEqual(result["id"], descriptor["id"])
+        self.assertEqual(result["name"], "Weight")

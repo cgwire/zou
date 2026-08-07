@@ -23,6 +23,7 @@ from zou.app.services import (
     index_service,
     persons_service,
     shots_service,
+    permissions_service,
     user_service,
     concepts_service,
 )
@@ -59,7 +60,7 @@ class EntitiesResource(BaseModelsResource, EntityEventMixin):
         return [Entity.entities_out, Entity.instance_casting]
 
     def check_create_permissions(self, entity):
-        user_service.check_manager_project_access(entity["project_id"])
+        permissions_service.check_manager_project_access(entity["project_id"])
 
     @jwt_required()
     def get(self):
@@ -272,11 +273,13 @@ class EntityResource(BaseModelResource, EntityEventMixin):
         return entity
 
     def check_read_permissions(self, entity):
-        user_service.check_project_access(entity["project_id"])
-        user_service.check_entity_access(entity["id"])
+        permissions_service.check_project_access(entity["project_id"])
+        permissions_service.check_entity_access(entity["id"])
 
     def check_update_permissions(self, entity, data):
-        return user_service.check_metadata_department_access(entity, data)
+        return permissions_service.check_metadata_department_access(
+            entity, data
+        )
 
     def pre_update(self, instance_dict, data):
         """
@@ -427,7 +430,9 @@ class EntityResource(BaseModelResource, EntityEventMixin):
     def check_delete_permissions(self, entity):
         return entity["created_by"] == persons_service.get_current_user()[
             "id"
-        ] or user_service.check_manager_project_access(entity["project_id"])
+        ] or permissions_service.check_manager_project_access(
+            entity["project_id"]
+        )
 
     def pre_delete(self, entity):
         if shots_service.is_sequence(entity):

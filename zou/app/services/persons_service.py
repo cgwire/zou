@@ -20,9 +20,15 @@ from zou.app.models.time_spent import TimeSpent
 from zou.app import config, file_store, db
 from zou.app.utils import fields, events, cache, emails, date_helpers
 from zou.app.utils.email_i18n import get_email_translation
-from zou.app.services import index_service, auth_service, templates_service
+from zou.app.services import (
+    base_service,
+    index_service,
+    auth_service,
+    templates_service,
+)
 from zou.app.stores import auth_tokens_store
 from zou.app.services.exception import (
+    OrganisationNotFoundException,
     PersonNotFoundException,
     PersonInProtectedAccounts,
     WrongParameterException,
@@ -32,6 +38,9 @@ logger = logging.getLogger(__name__)
 
 
 def clear_person_cache():
+    """
+    Drop the memoized person lists and serializations.
+    """
     cache.cache.delete_memoized(_get_person_raw_for_cache)
     cache.cache.delete_memoized(get_person)
     cache.cache.delete_memoized(get_person_by_email)
@@ -42,6 +51,9 @@ def clear_person_cache():
 
 
 def clear_organisation_cache():
+    """
+    Drop the memoized organisation.
+    """
     cache.cache.delete_memoized(get_organisation)
     cache.cache.delete_memoized(get_organisation, True)
 
@@ -241,6 +253,11 @@ def get_person_by_desktop_login(desktop_login):
     Return person that matches given desktop login as a dictionary. It is useful
     to authenticate user from their desktop session login.
     """
+    # An empty desktop login is what create_person gives anybody who has
+    # none, and the column is not unique, so matching on it handed out the
+    # first such account, usually the admin created at install time.
+    if not desktop_login:
+        raise PersonNotFoundException()
     try:
         person = Person.get_by(desktop_login=desktop_login, is_bot=False)
     except StatementError:
@@ -312,6 +329,11 @@ def get_person_by_email_desktop_login(email_or_desktop_login):
     """
     Return person that matches given email or desktop login as a dictionary.
     """
+    # Neither column is unique nor NOT NULL, so a falsy identifier must
+    # never reach a query: it would resolve to whichever account happens to
+    # have a blank one. Public routes pass a raw query parameter here.
+    if not email_or_desktop_login:
+        raise PersonNotFoundException()
     try:
         return get_person_by_email(email_or_desktop_login, unsafe=True)
     except PersonNotFoundException:
@@ -354,11 +376,14 @@ def create_person(
         email = email.strip()
 
     if expiration_date is not None:
-        if isinstance(expiration_date, str):
-            expiration_date = date_helpers.get_date_from_string(
-                expiration_date
-            )
         try:
+            # Parsed inside the guard: this is where the date arrives as
+            # the string a caller typed, and the clause below exists for
+            # exactly the ValueError an unreadable one raises.
+            if isinstance(expiration_date, str):
+                expiration_date = date_helpers.get_date_from_string(
+                    expiration_date
+                )
             if expiration_date.date() < datetime.date.today():
                 raise WrongParameterException(
                     "Expiration date can't be in the past."
@@ -485,7 +510,9 @@ def delete_person(person_id):
     """
     Delete person entry from database.
     """
-    person = Person.get(person_id)
+    person = base_service.get_instance(
+        Person, person_id, PersonNotFoundException
+    )
     person_dict = person.serialize()
     person.delete()
     index_service.remove_person_index(person_id)
@@ -531,15 +558,14 @@ def update_person_last_presence(person_id):
         .order_by(TimeSpent.date.desc())
         .first()
     )
-    date = None
-    if (
-        log is not None
-        and time_spent is not None
-        and log.date > time_spent.date
-    ):
-        date = log.date
-    elif time_spent is not None:
-        date = time_spent.date
+    dates = []
+    if log is not None:
+        # A login is stored to the second, a time spent and the field being
+        # written are days: the two are not comparable until it is trimmed.
+        dates.append(log.date.date())
+    if time_spent is not None:
+        dates.append(time_spent.date)
+    date = max(dates, default=None)
     return update_person(
         person_id, {"last_presence": date}, bypass_protected_accounts=True
     )
@@ -557,7 +583,10 @@ def get_presence_logs(year, month):
     _, limit = monthrange(year, month)
     headers += [str(i) for i in range(1, limit + 1)]
     start_date = datetime.datetime(year, month, 1, 0, 0, 0)
-    end_date = datetime.date.today() + relativedelta.relativedelta(months=1)
+    # The sheet holds the days of one month and each login is written at
+    # its day number, so a login of any later month would be stamped on
+    # the column carrying the same number.
+    end_date = start_date + relativedelta.relativedelta(months=1)
 
     csv_content.append(headers)
     for person in persons:
@@ -581,6 +610,9 @@ def get_presence_logs(year, month):
 
 
 def is_admin(person):
+    """
+    Return True when given person dict has the admin role.
+    """
     return person["role"] == "admin"
 
 
@@ -640,6 +672,18 @@ def get_or_create_password_reset_link(person_id):
     return build_password_reset_url(person["email"], token)
 
 
+def _get_email_locale(person):
+    """
+    Return the locale given person must be written to in. A Babel Locale
+    object, which the dict carries when it comes straight from the ORM, is
+    turned back into its string form.
+    """
+    locale = person.get("locale") or config.DEFAULT_LOCALE
+    if hasattr(locale, "language"):
+        locale = str(locale)
+    return locale
+
+
 def invite_person(person_id):
     """
     Send an invitation email to given person (a mail telling him/her how to
@@ -655,9 +699,7 @@ def invite_person(person_id):
         person["email"], token, token_type="new"
     )
 
-    locale = person.get("locale") or getattr(config, "DEFAULT_LOCALE", "en_US")
-    if hasattr(locale, "language"):
-        locale = str(locale)
+    locale = _get_email_locale(person)
     subject = get_email_translation(
         locale,
         "auth_invitation_subject",
@@ -678,72 +720,53 @@ def invite_person(person_id):
     emails.send_email(subject, email_html_body, person["email"], locale=locale)
 
 
-def send_password_changed_by_admin_email(person, admin_user, person_IP=None):
+def _send_admin_action_email(person, translation_prefix, person_IP=None):
     """
-    Send an email to the person notifying that an admin changed their password.
+    Tell a person that an admin acted on their account. The three
+    translation keys are built from the prefix (_subject, _title, _body).
     """
     organisation = get_organisation()
-    locale = person.get("locale") or getattr(config, "DEFAULT_LOCALE", "en_US")
-    if hasattr(locale, "language"):
-        locale = str(locale)
+    locale = _get_email_locale(person)
     time_string = format_datetime(
         date_helpers.get_utc_now_datetime(),
         tzinfo=person.get("timezone"),
         locale=person.get("locale"),
     )
-    person_IP = person_IP or ""
     subject = get_email_translation(
         locale,
-        "auth_password_changed_by_admin_subject",
+        f"{translation_prefix}_subject",
         organisation_name=organisation["name"],
     )
-    title = get_email_translation(
-        locale, "auth_password_changed_by_admin_title"
-    )
+    title = get_email_translation(locale, f"{translation_prefix}_title")
     html = get_email_translation(
         locale,
-        "auth_password_changed_by_admin_body",
+        f"{translation_prefix}_body",
         first_name=person["first_name"],
         time_string=time_string,
-        person_IP=person_IP,
+        person_IP=person_IP or "",
     )
     email_html_body = templates_service.generate_html_body(
         title, html, locale=locale
     )
     emails.send_email(subject, email_html_body, person["email"], locale=locale)
+
+
+def send_password_changed_by_admin_email(person, admin_user, person_IP=None):
+    """
+    Send an email to the person notifying that an admin changed their password.
+    """
+    _send_admin_action_email(
+        person, "auth_password_changed_by_admin", person_IP=person_IP
+    )
 
 
 def send_2fa_disabled_by_admin_email(person, admin_user, person_IP=None):
     """
     Send an email to the person notifying that an admin disabled their 2FA.
     """
-    organisation = get_organisation()
-    locale = person.get("locale") or getattr(config, "DEFAULT_LOCALE", "en_US")
-    if hasattr(locale, "language"):
-        locale = str(locale)
-    time_string = format_datetime(
-        date_helpers.get_utc_now_datetime(),
-        tzinfo=person.get("timezone"),
-        locale=person.get("locale"),
+    _send_admin_action_email(
+        person, "auth_2fa_disabled_by_admin", person_IP=person_IP
     )
-    person_IP = person_IP or ""
-    subject = get_email_translation(
-        locale,
-        "auth_2fa_disabled_by_admin_subject",
-        organisation_name=organisation["name"],
-    )
-    title = get_email_translation(locale, "auth_2fa_disabled_by_admin_title")
-    html = get_email_translation(
-        locale,
-        "auth_2fa_disabled_by_admin_body",
-        first_name=person["first_name"],
-        time_string=time_string,
-        person_IP=person_IP,
-    )
-    email_html_body = templates_service.generate_html_body(
-        title, html, locale=locale
-    )
-    emails.send_email(subject, email_html_body, person["email"], locale=locale)
 
 
 @cache.memoize_function(120)
@@ -763,7 +786,9 @@ def update_organisation(organisation_id, data):
     """
     Update organisation entry with data given in parameter.
     """
-    organisation = Organisation.get(organisation_id)
+    organisation = base_service.get_instance(
+        Organisation, organisation_id, OrganisationNotFoundException
+    )
     organisation.update(data)
     events.emit("organisation:update", {"organisation_id": organisation_id})
     clear_organisation_cache()
@@ -822,6 +847,7 @@ def add_to_department(department_id, person_id):
     person.departments.append(department)
     person.save()
     clear_person_cache()
+    events.emit("person:update", {"person_id": person_id})
     return person.serialize_safe(relations=True)
 
 
@@ -837,6 +863,7 @@ def remove_from_department(department_id, person_id):
     ]
     person.save()
     clear_person_cache()
+    events.emit("person:update", {"person_id": person_id})
     return person.serialize_safe(relations=True)
 
 
@@ -847,6 +874,10 @@ def clear_avatar(person_id):
     person = get_person_raw(person_id)
     person.update({"has_avatar": False})
     clear_person_cache()
+    # Setting an avatar goes through update_person and is announced; so is
+    # dropping one, otherwise the other connected clients keep asking for
+    # a picture that no longer exists.
+    events.emit("person:update", {"person_id": str(person_id)})
     if config.REMOVE_FILES:
         try:
             file_store.remove_picture("thumbnails", person_id)

@@ -32,7 +32,10 @@ jobs:
       - name: Update openapi.json
         run: |
           cd docs
-          curl --output openapi.json https://kitsu-staging.cg-wire.com/api/openapi.json
+          curl --fail --location --silent --show-error \
+            --output openapi.json \
+            https://kitsu-staging.cg-wire.com/api/openapi.json
+          python -c "import json; json.load(open('openapi.json'))['paths']"
           git config --global user.email "no-reply@cg-wire.com"
           git config --global user.name "CGWire bot"
           git add openapi.json || false
@@ -43,8 +46,6 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           branch: apidocs
       - name: Push on bump.sh
-        uses: bump-sh/github-action@v1
-        with:
-          doc: kitsu-api
-          token: ${{secrets.BUMP_TOKEN}}
-          file: docs/openapi.json
+        run: npx --yes bump-cli@2 deploy docs/openapi.json --doc kitsu-api
+        env:
+          BUMP_TOKEN: ${{ secrets.BUMP_TOKEN }}

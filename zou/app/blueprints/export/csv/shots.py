@@ -7,6 +7,7 @@ from zou.app.services import (
     shots_service,
     projects_service,
     tasks_service,
+    permissions_service,
     user_service,
     persons_service,
 )
@@ -70,8 +71,8 @@ class ShotsCsvExport(MethodView):
         return csv_utils.build_csv_response(csv_content, slugify(file_name))
 
     def check_permissions(self, project_id):
-        user_service.check_project_access(project_id)
-        user_service.block_access_to_vendor()
+        permissions_service.check_project_access(project_id)
+        permissions_service.block_access_to_vendor()
 
     def build_headers(self, metadata_infos, validation_columns):
         headers = [

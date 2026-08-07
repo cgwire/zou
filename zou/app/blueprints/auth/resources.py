@@ -40,7 +40,7 @@ from zou.app.services import (
     templates_service,
 )
 
-from zou.app.utils.flask import is_from_browser
+from zou.app.utils.flask_utils import is_from_browser
 from zou.app.utils.saml import saml_client_for
 from zou.app.utils import oidc
 
@@ -207,6 +207,8 @@ class LoginResource(MethodView, ArgsMixin):
             description: Login successful
           400:
             description: Login failed
+          401:
+            description: User is unactive, flagged by "unactive" in the body
         """
         body = validation.validate_request_body(LoginSchema)
         email = body.email
@@ -323,6 +325,7 @@ class LoginResource(MethodView, ArgsMixin):
                 {
                     "error": True,
                     "login": False,
+                    "unactive": True,
                     "message": "User is unactive, he cannot log in.",
                 },
                 401,
@@ -542,6 +545,19 @@ class ChangePasswordResource(MethodView, ArgsMixin):
             return {"error": True, "message": "User is unactive."}, 400
         except WrongPasswordException:
             return {"error": True, "message": "Old password is wrong."}, 400
+        except TooMuchLoginFailedAttemps:
+            # check_auth applies the login lockout here too, so a user who
+            # just failed five logins and then changes his password used to
+            # get a 500. The caller holds a token for the account, telling
+            # him the truth discloses nothing.
+            return (
+                {
+                    "error": True,
+                    "message": "Too many failed login attempts.",
+                    "too_many_failed_login_attemps": True,
+                },
+                400,
+            )
 
     def get_arguments(self):
         body = validation.validate_request_body(ChangePasswordSchema)
@@ -883,9 +899,8 @@ class EmailOTPResource(MethodView, ArgsMixin):
             description: User email address
         responses:
           200:
-            description: OTP by email sent
-          400:
-            description: OTP by email not enabled
+            description: Answered the same way whether or not the address
+              belongs to an account able to receive an OTP
         """
         args = self.get_args(
             [
@@ -894,27 +909,24 @@ class EmailOTPResource(MethodView, ArgsMixin):
             location="values",
         )
 
+        # Answer with the same status and the same body whether or not the
+        # account exists, is active and has OTP by email enabled. This used
+        # to answer 404 "User not found.", 400 "OTP by email not enabled."
+        # and 200, which told the three apart in a single unauthenticated
+        # request. Response time still tracks the one branch that mails the
+        # OTP, emails.send_email talking SMTP synchronously.
+        generic_response = {"success": True}
         try:
-            try:
-                person = persons_service.get_person_by_email_desktop_login(
-                    args["email"]
-                )
-            except PersonNotFoundException:
-                raise WrongUserException()
-            if not person["email_otp_enabled"]:
-                raise EmailOTPNotEnabledException
-            auth_service.send_email_otp(person)
-            return {"success": True}
-        except EmailOTPNotEnabledException:
-            return (
-                {"error": True, "message": "OTP by email not enabled."},
-                400,
+            person = persons_service.get_person_by_email_desktop_login(
+                args["email"]
             )
-        except WrongUserException:
-            return (
-                {"error": True, "message": "User not found."},
-                404,
-            )
+        except PersonNotFoundException:
+            return generic_response
+        if not person["active"] or not person["email_otp_enabled"]:
+            return generic_response
+
+        auth_service.send_email_otp(person)
+        return generic_response
 
     @jwt_required()
     @permissions.require_person
@@ -1092,7 +1104,7 @@ class FIDOResource(MethodView, ArgsMixin):
           200:
             description: FIDO challenge generated
           400:
-            description: FIDO not enabled
+            description: No FIDO challenge available for this address
         """
         args = self.get_args(
             [
@@ -1101,26 +1113,28 @@ class FIDOResource(MethodView, ArgsMixin):
             location="values",
         )
 
+        # An unknown address, a deactivated account and an account without
+        # FIDO all get the same answer, so this public endpoint does not
+        # tell a registered address from an unknown one. It used to answer
+        # 404 "User not found." to the first and 400 to the second. What a
+        # challenge still discloses is that the account has FIDO enabled;
+        # hiding that too would mean handing out a decoy challenge no
+        # authenticator could ever honour.
         try:
-            try:
-                person = persons_service.get_person_by_email_desktop_login(
-                    args["email"]
-                )
-            except PersonNotFoundException:
-                raise WrongUserException()
-            if not person["fido_enabled"]:
-                raise FIDONotEnabledException
-            return auth_service.get_challenge_fido(person["id"])
-        except FIDONotEnabledException:
-            return (
-                {"error": True, "message": "FIDO not enabled."},
-                400,
+            person = persons_service.get_person_by_email_desktop_login(
+                args["email"]
             )
-        except WrongUserException:
-            return (
-                {"error": True, "message": "User not found."},
-                404,
-            )
+        except PersonNotFoundException:
+            person = None
+
+        if (
+            person is None
+            or not person["active"]
+            or not person["fido_enabled"]
+        ):
+            return {"error": True, "message": "FIDO not enabled."}, 400
+
+        return auth_service.get_challenge_fido(person["id"])
 
     @jwt_required()
     @permissions.require_person

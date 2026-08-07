@@ -1,6 +1,6 @@
 import unittest
 
-from zou.app.utils.flask import ParsedUserAgent, is_from_browser
+from zou.app.utils.flask_utils import ParsedUserAgent, is_from_browser
 
 
 class FlaskUtilsTestCase(unittest.TestCase):

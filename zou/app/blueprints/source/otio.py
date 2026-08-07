@@ -16,6 +16,7 @@ from zou.app.utils import fields
 from zou.app.services import (
     shots_service,
     projects_service,
+    permissions_service,
     user_service,
     persons_service,
 )
@@ -76,7 +77,7 @@ class OTIOBaseResource(MethodView, ArgsMixin):
             description: Invalid file format or parsing error
         """
         args = self.post_args()
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         uploaded_file = request.files["file"]
         # run_import selects the OTIO adapter from the extension.
         extension = os.path.splitext(uploaded_file.filename or "")[1]

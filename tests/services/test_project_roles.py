@@ -14,6 +14,7 @@ from zou.app.services import (
     entities_service,
     projects_service,
     tasks_service,
+    permissions_service,
     user_service,
 )
 from zou.app.services.exception import WrongParameterException
@@ -23,7 +24,6 @@ from zou.app.utils import permissions
 class ProjectPersonLinkRoleTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_person()
 
@@ -46,7 +46,6 @@ class ProjectPersonLinkRoleTestCase(ApiDBTestCase):
 class GetProjectRoleTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_person()
 
@@ -63,7 +62,7 @@ class GetProjectRoleTestCase(ApiDBTestCase):
     def test_explicit_link_role_wins(self):
         self.add_to_team(self.person, role="supervisor")
         self.assertEqual(
-            user_service.get_project_role(
+            permissions_service.get_project_role(
                 str(self.person.id), str(self.project.id)
             ),
             "supervisor",
@@ -72,7 +71,7 @@ class GetProjectRoleTestCase(ApiDBTestCase):
     def test_null_link_role_inherits_global_role(self):
         self.add_to_team(self.person)
         self.assertEqual(
-            user_service.get_project_role(
+            permissions_service.get_project_role(
                 str(self.person.id), str(self.project.id)
             ),
             self.person.role.code,
@@ -80,7 +79,7 @@ class GetProjectRoleTestCase(ApiDBTestCase):
 
     def test_no_link_falls_back_to_global_role(self):
         self.assertEqual(
-            user_service.get_project_role(
+            permissions_service.get_project_role(
                 str(self.person.id), str(self.project.id)
             ),
             self.person.role.code,
@@ -98,11 +97,15 @@ class GetProjectRoleTestCase(ApiDBTestCase):
                 return_value=current_user,
             ):
                 self.assertTrue(
-                    user_service.check_belong_to_project(str(project_a.id))
+                    permissions_service.check_belong_to_project(
+                        str(project_a.id)
+                    )
                 )
                 self.assertEqual(g.get("project_role"), "supervisor")
                 self.assertFalse(
-                    user_service.check_belong_to_project(str(project_b.id))
+                    permissions_service.check_belong_to_project(
+                        str(project_b.id)
+                    )
                 )
                 self.assertIsNone(g.get("project_role"))
 
@@ -136,7 +139,6 @@ class ProjectRoleRouteTestCase(ApiDBTestCase):
 
     def setUp(self):
         super().setUp()
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
         # generate_fixture_project reassigns self.project on every call, so
         # the first project must be captured before creating the second one.
@@ -218,7 +220,6 @@ class ProjectRoleSemanticsTestCase(ApiDBTestCase):
 class TeamRoleServiceTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_person()
 
@@ -287,13 +288,64 @@ class TeamRoleServiceTestCase(ApiDBTestCase):
             "admin",
         )
         project = projects_service.get_project_raw(str(self.project.id))
-        self.assertEqual(len(project.team), 0)
+        self.assertEqual(project.team, [])
+
+    def test_a_role_that_is_not_one_is_refused(self):
+        """
+        The route validates the role against its own list, but the service
+        is called from plugins and from the shell too, and the column is an
+        enum: writing a typo raises deep in the driver.
+        """
+        projects_service.add_team_member(
+            str(self.project.id), str(self.person.id)
+        )
+        for role in ["supreme-leader", "Manager", ""]:
+            with self.subTest(role=role):
+                self.assertRaises(
+                    WrongParameterException,
+                    projects_service.update_team_member_role,
+                    str(self.project.id),
+                    str(self.person.id),
+                    role,
+                )
+                self.assertRaises(
+                    WrongParameterException,
+                    projects_service.add_team_member,
+                    str(self.project.id),
+                    str(self.person.id),
+                    role,
+                )
+
+    def test_a_role_leaves_the_team_with_the_person(self):
+        """
+        The role lives on the membership link: someone taken off a team and
+        put back on it comes back with their global role, not with the one
+        they were given last time.
+        """
+        projects_service.add_team_member(
+            str(self.project.id), str(self.person.id), role="manager"
+        )
+        projects_service.remove_team_member(
+            str(self.project.id), str(self.person.id)
+        )
+        self.assertIsNone(
+            ProjectPersonLink.query.filter_by(
+                project_id=self.project.id, person_id=self.person.id
+            ).first()
+        )
+
+        projects_service.add_team_member(
+            str(self.project.id), str(self.person.id)
+        )
+
+        self.assertEqual(
+            projects_service.get_team_roles(str(self.project.id)), {}
+        )
 
 
 class TeamRoleApiTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_person()
 
@@ -373,7 +425,34 @@ class DirectRoleReadTestCase(ApiDBTestCase):
         self.assertEqual(comment_map, {})
 
 
-class AllShotsRoleTestCase(ApiDBTestCase):
+class DemotedRoleTestCase(ApiDBTestCase):
+    """
+    The shape every check below shares: someone globally privileged holds a
+    weaker role on one production, and is refused there what that weaker role
+    forbids. It is the ordering trap of permissions._effective_role, which
+    only sees the project role once the project has been resolved, so each
+    subclass drives the one route whose ordering was wrong.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_user_manager()
+
+    def demote_manager(self, role):
+        """
+        Give the manager fixture a weaker role on the production, log them
+        in, and return their id.
+        """
+        manager_id = str(self.user_manager["id"])
+        projects_service.add_team_member(
+            str(self.project.id), manager_id, role=role
+        )
+        self.log_in_manager()
+        return manager_id
+
+
+class AllShotsRoleTestCase(DemotedRoleTestCase):
     """
     Coverage audit fix: shots/resources.py AllShotsResource.get moves
     check_project_access above the vendor filter so a project-scoped
@@ -382,27 +461,21 @@ class AllShotsRoleTestCase(ApiDBTestCase):
 
     def setUp(self):
         super().setUp()
-        self.generate_base_context()
         self.generate_fixture_episode()
         self.generate_fixture_sequence()
         self.generate_fixture_shot()
         self.generate_fixture_shot_task()
-        self.generate_fixture_user_manager()
 
     def test_demoted_vendor_scoped_to_assigned_shots(self):
-        manager_id = str(self.user_manager["id"])
-        projects_service.add_team_member(
-            str(self.project.id), manager_id, role="vendor"
-        )
-        self.log_in_manager()
+        manager_id = self.demote_manager("vendor")
         shots = self.get(f"data/shots?project_id={self.project.id}")
-        self.assertEqual(len(shots), 0)
+        self.assertEqual(shots, [])
         tasks_service.assign_task(str(self.shot_task.id), manager_id)
         shots = self.get(f"data/shots?project_id={self.project.id}")
         self.assertEqual(len(shots), 1)
 
 
-class ProjectPersonQuotasRoleTestCase(ApiDBTestCase):
+class ProjectPersonQuotasRoleTestCase(DemotedRoleTestCase):
     """
     Coverage audit fix: shots/resources.py ProjectPersonQuotasResource.get
     resolves the project role before branching, so a demoted manager falls
@@ -411,16 +484,10 @@ class ProjectPersonQuotasRoleTestCase(ApiDBTestCase):
 
     def setUp(self):
         super().setUp()
-        self.generate_base_context()
-        self.generate_fixture_user_manager()
         self.generate_fixture_person()
 
     def test_demoted_manager_cannot_view_other_person_quotas(self):
-        manager_id = str(self.user_manager["id"])
-        projects_service.add_team_member(
-            str(self.project.id), manager_id, role="user"
-        )
-        self.log_in_manager()
+        self.demote_manager("user")
         self.get(
             f"data/projects/{self.project.id}/quotas/persons/"
             f"{self.person.id}",
@@ -428,7 +495,7 @@ class ProjectPersonQuotasRoleTestCase(ApiDBTestCase):
         )
 
 
-class TaskCommentDeleteRoleTestCase(ApiDBTestCase):
+class TaskCommentDeleteRoleTestCase(DemotedRoleTestCase):
     """
     Coverage audit fix: tasks/resources.py TaskCommentResource.delete
     resolves the project role before branching, so a demoted manager
@@ -437,24 +504,18 @@ class TaskCommentDeleteRoleTestCase(ApiDBTestCase):
 
     def setUp(self):
         super().setUp()
-        self.generate_base_context()
         self.generate_fixture_asset()
         self.generate_fixture_task()
         self.generate_fixture_comment()
-        self.generate_fixture_user_manager()
 
     def test_demoted_manager_cannot_delete_others_comment(self):
-        manager_id = str(self.user_manager["id"])
-        projects_service.add_team_member(
-            str(self.project.id), manager_id, role="user"
-        )
-        self.log_in_manager()
+        self.demote_manager("user")
         self.delete(
             f"data/tasks/{self.task.id}/comments/{self.comment['id']}", 403
         )
 
 
-class CommentUpdateRoleTestCase(ApiDBTestCase):
+class CommentUpdateRoleTestCase(DemotedRoleTestCase):
     """
     Coverage audit fix: crud/comments.py
     CommentResource.check_update_permissions resolves the project role via
@@ -464,18 +525,12 @@ class CommentUpdateRoleTestCase(ApiDBTestCase):
 
     def setUp(self):
         super().setUp()
-        self.generate_base_context()
         self.generate_fixture_asset()
         self.generate_fixture_task()
         self.generate_fixture_comment()
-        self.generate_fixture_user_manager()
 
     def test_demoted_manager_cannot_edit_others_comment(self):
-        manager_id = str(self.user_manager["id"])
-        projects_service.add_team_member(
-            str(self.project.id), manager_id, role="user"
-        )
-        self.log_in_manager()
+        self.demote_manager("user")
         self.put(
             f"data/comments/{self.comment['id']}",
             {"text": "Edited"},
@@ -531,7 +586,7 @@ class CommentReplyRoleTestCase(ApiDBTestCase):
         )
 
 
-class PreviewThumbnailRoleTestCase(ApiDBTestCase):
+class PreviewThumbnailRoleTestCase(DemotedRoleTestCase):
     """
     Coverage audit fix: previews/resources.py
     BasePreviewFileThumbnailResource.is_allowed resolves the project role
@@ -541,7 +596,6 @@ class PreviewThumbnailRoleTestCase(ApiDBTestCase):
 
     def setUp(self):
         super().setUp()
-        self.generate_base_context()
         self.generate_fixture_asset()
         self.generate_fixture_task()
         self.generate_fixture_preview_file()
@@ -551,21 +605,16 @@ class PreviewThumbnailRoleTestCase(ApiDBTestCase):
                 "is_shared": True,
             }
         )
-        self.generate_fixture_user_manager()
 
     def test_demoted_vendor_must_be_assigned_for_shared_thumbnail(self):
-        manager_id = str(self.user_manager["id"])
-        projects_service.add_team_member(
-            str(self.project.id), manager_id, role="vendor"
-        )
-        self.log_in_manager()
+        self.demote_manager("vendor")
         self.get(
             f"/pictures/thumbnails/preview-files/{self.preview_file.id}.png",
             403,
         )
 
 
-class PreviewFileReadRoleTestCase(ApiDBTestCase):
+class PreviewFileReadRoleTestCase(DemotedRoleTestCase):
     """
     Coverage audit fix: crud/preview_file.py
     PreviewFileResource.check_read_permissions resolves the project role
@@ -575,22 +624,16 @@ class PreviewFileReadRoleTestCase(ApiDBTestCase):
 
     def setUp(self):
         super().setUp()
-        self.generate_base_context()
         self.generate_fixture_asset()
         self.generate_fixture_task()
         self.generate_fixture_preview_file()
-        self.generate_fixture_user_manager()
 
     def test_demoted_vendor_not_working_on_task_cannot_read(self):
-        manager_id = str(self.user_manager["id"])
-        projects_service.add_team_member(
-            str(self.project.id), manager_id, role="vendor"
-        )
-        self.log_in_manager()
+        self.demote_manager("vendor")
         self.get(f"data/preview-files/{self.preview_file.id}", 403)
 
 
-class OutputFileUpdateRoleTestCase(ApiDBTestCase):
+class OutputFileUpdateRoleTestCase(DemotedRoleTestCase):
     """
     Coverage audit fix: crud/output_file.py
     OutputFileResource.check_update_permissions checks
@@ -601,18 +644,12 @@ class OutputFileUpdateRoleTestCase(ApiDBTestCase):
 
     def setUp(self):
         super().setUp()
-        self.generate_base_context()
         self.generate_fixture_asset()
         self.generate_fixture_output_type()
         self.generate_fixture_output_file()
-        self.generate_fixture_user_manager()
 
     def test_demoted_manager_must_be_working_on_entity(self):
-        manager_id = str(self.user_manager["id"])
-        projects_service.add_team_member(
-            str(self.project.id), manager_id, role="user"
-        )
-        self.log_in_manager()
+        self.demote_manager("user")
         self.put(
             f"data/output-files/{self.output_file.id}",
             {"comment": "Updated"},
@@ -620,7 +657,7 @@ class OutputFileUpdateRoleTestCase(ApiDBTestCase):
         )
 
 
-class ProductionScheduleVersionRoleTestCase(ApiDBTestCase):
+class ProductionScheduleVersionRoleTestCase(DemotedRoleTestCase):
     """
     Coverage audit fix: crud/production_schedule_version.py
     check_read_permissions methods run check_project_access before the
@@ -630,19 +667,13 @@ class ProductionScheduleVersionRoleTestCase(ApiDBTestCase):
 
     def setUp(self):
         super().setUp()
-        self.generate_base_context()
-        self.generate_fixture_user_manager()
         self.version = self.post(
             "data/production-schedule-versions",
             {"name": "Version 1", "project_id": str(self.project.id)},
         )
 
     def test_demoted_client_cannot_read_production_schedule_version(self):
-        manager_id = str(self.user_manager["id"])
-        projects_service.add_team_member(
-            str(self.project.id), manager_id, role="client"
-        )
-        self.log_in_manager()
+        self.demote_manager("client")
         self.get(
             f"data/production-schedule-versions/{self.version['id']}", 403
         )
@@ -653,7 +684,7 @@ class ProductionScheduleVersionRoleTestCase(ApiDBTestCase):
         self.get("data/production-schedule-versions", 403)
 
 
-class AllEditsRoleTestCase(ApiDBTestCase):
+class AllEditsRoleTestCase(DemotedRoleTestCase):
     """
     Coverage audit fix: edits/resources.py AllEditsResource.get moves
     check_project_access above the vendor filter so a project-scoped
@@ -662,27 +693,21 @@ class AllEditsRoleTestCase(ApiDBTestCase):
 
     def setUp(self):
         super().setUp()
-        self.generate_base_context()
         self.generate_fixture_edit()
         self.generate_fixture_edit_task()
-        self.generate_fixture_user_manager()
 
     def test_demoted_vendor_scoped_to_assigned_edits(self):
-        manager_id = str(self.user_manager["id"])
-        projects_service.add_team_member(
-            str(self.project.id), manager_id, role="vendor"
-        )
-        self.log_in_manager()
+        manager_id = self.demote_manager("vendor")
         edits = self.get(f"data/edits?project_id={self.project.id}")
-        self.assertEqual(len(edits), 0)
+        self.assertEqual(edits, [])
         tasks_service.assign_task(str(self.edit_task.id), manager_id)
         edits = self.get(f"data/edits?project_id={self.project.id}")
         self.assertEqual(len(edits), 1)
 
 
-class EntityMetadataRoleTestCase(ApiDBTestCase):
+class EntityMetadataRoleTestCase(DemotedRoleTestCase):
     """
-    Coverage audit fix: user_service.check_metadata_department_access
+    Coverage audit fix: permissions_service.check_metadata_department_access
     resolves check_belong_to_project before has_manager/has_supervisor, so
     a demoted manager loses entity metadata write access.
 
@@ -696,45 +721,30 @@ class EntityMetadataRoleTestCase(ApiDBTestCase):
 
     def setUp(self):
         super().setUp()
-        self.generate_base_context()
         self.generate_fixture_asset()
-        self.generate_fixture_user_manager()
 
     def test_demoted_manager_cannot_update_entity_metadata(self):
-        manager_id = str(self.user_manager["id"])
-        projects_service.add_team_member(
-            str(self.project.id), manager_id, role="user"
-        )
-        self.log_in_manager()
+        self.demote_manager("user")
         entity = entities_service.get_entity(str(self.asset.id))
         with app.test_request_context(headers=self.auth_headers):
             verify_jwt_in_request()
             self.assertRaises(
                 permissions.PermissionDenied,
-                user_service.check_metadata_department_access,
+                permissions_service.check_metadata_department_access,
                 entity,
                 {"name": "Updated Tree"},
             )
 
 
-class AllDepartmentsAccessRoleTestCase(ApiDBTestCase):
+class AllDepartmentsAccessRoleTestCase(DemotedRoleTestCase):
     """
-    Coverage audit fix: user_service.check_all_departments_access resolves
+    Coverage audit fix: permissions_service.check_all_departments_access resolves
     check_belong_to_project before has_manager/has_supervisor, so a
     demoted manager loses department-wide access.
     """
 
-    def setUp(self):
-        super().setUp()
-        self.generate_base_context()
-        self.generate_fixture_user_manager()
-
     def test_demoted_manager_cannot_create_metadata_descriptor(self):
-        manager_id = str(self.user_manager["id"])
-        projects_service.add_team_member(
-            str(self.project.id), manager_id, role="user"
-        )
-        self.log_in_manager()
+        self.demote_manager("user")
         data = {
             "name": "Custom Field",
             "data_type": "string",

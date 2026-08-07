@@ -1,3 +1,4 @@
+import os
 import tempfile
 import unittest
 from unittest import mock
@@ -13,6 +14,17 @@ class FakeConfig:
 
     def __init__(self, tmp_dir):
         self.TMP_DIR = tmp_dir
+
+
+class MkdirTestCase(unittest.TestCase):
+    def test_mkdirp(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = os.path.join(tmp_dir, "one")
+            folder = os.path.join(root, "two", "three")
+            fs.mkdir_p(folder)
+            self.assertTrue(os.path.exists(folder))
+            fs.rm_rf(root)
+            self.assertTrue(not os.path.exists(folder))
 
 
 class GetFilePathAndFileTestCase(unittest.TestCase):

@@ -5,7 +5,11 @@ from zou.app.models.custom_action import CustomAction
 from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
 from zou.app.services.exception import WrongParameterException
 
-from zou.app.services import custom_actions_service, user_service
+from zou.app.services import (
+    custom_actions_service,
+    permissions_service,
+    user_service,
+)
 
 
 class CustomActionsResource(BaseModelsResource):
@@ -13,7 +17,7 @@ class CustomActionsResource(BaseModelsResource):
         BaseModelsResource.__init__(self, CustomAction)
 
     def check_read_permissions(self, options=None):
-        user_service.block_access_to_vendor()
+        permissions_service.block_access_to_vendor()
         return True
 
     def check_creation_integrity(self, data):

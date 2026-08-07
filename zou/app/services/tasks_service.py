@@ -86,66 +86,104 @@ from zou.app.services import (
     persons_service,
     projects_service,
     shots_service,
+    permissions_service,
     user_service,
 )
 
 
 def clear_task_status_cache(task_status_id):
+    """
+    Drop the memoized serialization of given task status, and the list.
+    """
+    cache.cache.delete_memoized(get_task_status, task_status_id)
     cache.cache.delete_memoized(get_task_statuses)
 
 
 def clear_task_type_cache(task_type_id):
+    """
+    Drop the memoized serializations of given task type, and the list.
+    """
     cache.cache.delete_memoized(get_task_type, task_type_id)
     cache.cache.delete_memoized(get_task_types)
 
 
 def clear_department_cache(department_id):
+    """
+    Drop the memoized serializations of given department, and the list.
+    """
     cache.cache.delete_memoized(get_department, department_id)
     cache.cache.delete_memoized(get_departments)
 
 
 def clear_studio_cache(studio_id):
+    """
+    Drop the memoized serializations of given studio, and the list.
+    """
     cache.cache.delete_memoized(get_studio, studio_id)
     cache.cache.delete_memoized(get_studios)
 
 
 def clear_task_cache(task_id):
+    """
+    Drop every memoized serialization of given task.
+    """
     cache.cache.delete_memoized(get_task, task_id)
     cache.cache.delete_memoized(get_task, task_id, True)
 
 
 def clear_comment_cache(comment_id):
+    """
+    Drop every memoized serialization of given comment.
+    """
     cache.cache.delete_memoized(get_comment, comment_id)
     cache.cache.delete_memoized(get_comment, comment_id, True)
 
 
 @cache.memoize_function(120)
 def get_departments():
+    """
+    Return every department.
+    """
     return fields.serialize_models(Department.get_all())
 
 
 @cache.memoize_function(120)
 def get_studios():
+    """
+    Return every studio.
+    """
     return fields.serialize_models(Studio.get_all())
 
 
 @cache.memoize_function(120)
 def get_task_types():
+    """
+    Return every task type.
+    """
     return fields.serialize_models(TaskType.get_all())
 
 
 @cache.memoize_function(120)
 def get_task_statuses():
+    """
+    Return every task status.
+    """
     return fields.serialize_models(TaskStatus.get_all())
 
 
 @cache.memoize_function(120)
 def get_to_review_status():
+    """
+    Return the task status previews are set to on upload.
+    """
     return get_or_create_status(config.TO_REVIEW_TASK_STATUS, "pndng")
 
 
 @cache.memoize_function(120)
 def get_default_status(for_concept=False):
+    """
+    Return the task status new tasks start on.
+    """
     if for_concept:
         return get_or_create_status(
             "Neutral",
@@ -180,15 +218,9 @@ def get_department(department_id):
     """
     Get department matching given id as a dictionary.
     """
-    try:
-        department = Department.get(department_id)
-    except StatementError:
-        raise DepartmentNotFoundException
-
-    if department is None:
-        raise DepartmentNotFoundException
-
-    return department.serialize()
+    return base_service.get_instance(
+        Department, department_id, DepartmentNotFoundException
+    ).serialize()
 
 
 @cache.memoize_function(120)
@@ -196,15 +228,9 @@ def get_studio(studio_id):
     """
     Get studio matching given id as a dictionary.
     """
-    try:
-        studio = Studio.get(studio_id)
-    except StatementError:
-        raise StudioNotFoundException
-
-    if studio is None:
-        raise StudioNotFoundException
-
-    return studio.serialize()
+    return base_service.get_instance(
+        Studio, studio_id, StudioNotFoundException
+    ).serialize()
 
 
 def get_department_from_task_type(task_type_id):
@@ -227,15 +253,9 @@ def get_task_type_raw(task_type_id):
     """
     Get task type matching given id as an active record.
     """
-    try:
-        task_type = TaskType.get(task_type_id)
-    except StatementError:
-        raise TaskTypeNotFoundException
-
-    if task_type is None:
-        raise TaskTypeNotFoundException
-
-    return task_type
+    return base_service.get_instance(
+        TaskType, task_type_id, TaskTypeNotFoundException
+    )
 
 
 @cache.memoize_function(1200)
@@ -250,15 +270,7 @@ def get_task_raw(task_id):
     """
     Get task matching given id as an active record.
     """
-    try:
-        task = Task.get(task_id)
-    except StatementError:
-        raise TaskNotFoundException
-
-    if task is None:
-        raise TaskNotFoundException
-
-    return task
+    return base_service.get_instance(Task, task_id, TaskNotFoundException)
 
 
 @cache.memoize_function(120)
@@ -379,6 +391,10 @@ def get_task_dicts_for_entity(entity_id, relations=True):
 
 
 def _get_entity_task_query(relations=False):
+    """
+    Base query joining a task to everything the detailed task view needs:
+    project, task type, task status, entity and assignees.
+    """
     return (
         Task.query.order_by(Task.name)
         .join(Project, Task.project_id == Project.id)
@@ -396,6 +412,10 @@ def _get_entity_task_query(relations=False):
 
 
 def _convert_rows_to_detailed_tasks(rows, relations=False):
+    """
+    Turn the rows of _get_entity_task_query into the task dicts the API
+    returns, assignee ids included.
+    """
     task_dicts = [
         {
             **task_object.serialize(relations=False),
@@ -743,6 +763,10 @@ def get_comments(task_id, is_client=False, is_manager=False):
 
 
 def _prepare_query(task_id, is_client, is_manager):
+    """
+    Build the comment query of a task, scoped to what the caller may read:
+    a client only sees the comments flagged for clients.
+    """
     Editor = aliased(Person, name="editor_id")
     query = (
         Comment.query.order_by(Comment.created_at.desc())
@@ -805,6 +829,11 @@ def embed_reply_authors(comments, is_client=False):
 
 
 def _run_task_comments_query(query):
+    """
+    Execute a comment query and hydrate each comment with its mentions,
+    acknowledgements, previews and attachments, in a fixed number of
+    queries whatever the number of comments.
+    """
     comment_ids = []
     comments = []
     for result in query.all():
@@ -853,35 +882,49 @@ def _run_task_comments_query(query):
 
 
 def _build_link_map_for_comments(comment_ids, table, value_column):
+    """
+    Group the rows of a comment link table by comment id, in one query.
+    """
     link_map = {}
     for link in (
         db.session.query(table).filter(table.c.comment.in_(comment_ids)).all()
     ):
         comment_id = str(link.comment)
         value = str(getattr(link, value_column))
-        if comment_id not in link_map:
-            link_map[comment_id] = []
-        link_map[comment_id].append(value)
+        link_map.setdefault(comment_id, []).append(value)
     return link_map
 
 
 def _build_ack_map_for_comments(comment_ids):
+    """
+    Return the ids of the people who acknowledged each comment.
+    """
     return _build_link_map_for_comments(
         comment_ids, acknowledgements_table, "person"
     )
 
 
 def _build_mention_map_for_comments(comment_ids):
+    """
+    Return the ids of the people mentioned in each comment.
+    """
     return _build_link_map_for_comments(comment_ids, mentions_table, "person")
 
 
 def _build_department_mention_map_for_comments(comment_ids):
+    """
+    Return the ids of the departments mentioned in each comment.
+    """
     return _build_link_map_for_comments(
         comment_ids, department_mentions_table, "department"
     )
 
 
 def _build_preview_map_for_comments(comment_ids, is_client=False):
+    """
+    Return the previews attached to each comment. Clients never get the
+    previews of a revision that is not published to them.
+    """
     preview_map = {}
     query = (
         PreviewFile.query.join(CommentPreviewLink)
@@ -920,6 +963,9 @@ def _build_preview_map_for_comments(comment_ids, is_client=False):
 
 
 def _build_attachment_map_for_comments(comment_ids):
+    """
+    Return the attachment files of each comment.
+    """
     attachment_file_map = {}
     attachment_files = AttachmentFile.query.filter(
         AttachmentFile.comment_id.in_(comment_ids)
@@ -1240,6 +1286,9 @@ def get_person_tasks_to_check(project_ids=None, department_ids=None):
 
 
 def get_last_comment_map(task_ids):
+    """
+    Return the last comment of each given task, in one query.
+    """
     task_comment_map = {}
     comments = (
         Comment.query.filter(Comment.object_id.in_(task_ids))
@@ -1335,7 +1384,8 @@ def create_tasks_for_entity(entity, task_types=None):
     for the entity: enabled in the project, in the asset-type workflow
     (for assets), and whose for_entity matches the entity kind. When a
     list is provided, each task type is validated against those same
-    constraints. Existing tasks for the same (entity, task_type,
+    constraints. An asset type with no configured workflow accepts every
+    task type. Existing tasks for the same (entity, task_type,
     name="main") are skipped.
     """
     project_id = entity["project_id"]
@@ -1354,6 +1404,8 @@ def create_tasks_for_entity(entity, task_types=None):
             ProjectTaskTypeLink.project_id == project_id
         ).all()
     }
+    # None means unrestricted: not an asset, or no workflow configured
+    # on the asset type ("Includes all asset task types" in Kitsu).
     enabled_in_workflow = None
     if is_asset:
         enabled_in_workflow = {
@@ -1361,11 +1413,11 @@ def create_tasks_for_entity(entity, task_types=None):
             for link in TaskTypeAssetTypeLink.query.filter(
                 TaskTypeAssetTypeLink.asset_type_id == entity["entity_type_id"]
             ).all()
-        }
+        } or None
 
     if not task_types:
         candidate_ids = enabled_in_project
-        if is_asset:
+        if enabled_in_workflow is not None:
             candidate_ids = candidate_ids & enabled_in_workflow
         if not candidate_ids:
             return []
@@ -1392,7 +1444,10 @@ def create_tasks_for_entity(entity, task_types=None):
                     f"Task type {type_id} is not enabled in project "
                     f"{project_id}."
                 )
-            if is_asset and str(type_id) not in enabled_in_workflow:
+            if (
+                enabled_in_workflow is not None
+                and str(type_id) not in enabled_in_workflow
+            ):
                 raise WrongParameterException(
                     f"Task type {type_id} is not in the workflow of "
                     f"asset type {entity['entity_type_id']}."
@@ -1471,6 +1526,10 @@ def create_task(task_type, entity, name="main"):
 
 
 def _finalize_task_creation(task_type, task_status, task):
+    """
+    Run what follows the insert of a task: cache invalidation and the
+    task:new event.
+    """
     task_dict = task.serialize()
     task_dict["assignees"] = []
     task_dict.update(
@@ -1560,6 +1619,7 @@ def get_or_create_status(
             is_client_allowed=is_client_allowed,
             is_wip=is_wip,
         )
+        clear_task_status_cache(str(task_status.id))
         events.emit("task-status:new", {"task_status_id": task_status.id})
     return task_status.serialize()
 
@@ -1621,7 +1681,7 @@ def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
     except DataError:
         raise WrongDateFormatException
 
-    task = Task.get(task_id)
+    task = base_service.get_instance(Task, task_id, TaskNotFoundException)
     project_id = str(task.project_id)
     if time_spent is not None:
         if add:
@@ -1671,7 +1731,7 @@ def delete_time_spent(task_id, person_id, date):
     if time_spent is None:
         raise TimeSpentNotFoundException
 
-    task = Task.get(task_id)
+    task = base_service.get_instance(Task, task_id, TaskNotFoundException)
     project_id = str(task.project_id)
     time_spent.duration = 0
     time_spent.delete()
@@ -1754,13 +1814,13 @@ def assign_task(task_id, person_id, assigner_id=None):
 def task_to_review(
     task_id, person, comment, preview_path=None, change_status=True
 ):
-    if preview_path is None:
-        preview_path = {}
     """
     Deprecated
     Change the task status to "waiting for approval" if it is not already the
     case. It emits a *task:to-review* event.
     """
+    if preview_path is None:
+        preview_path = {}
     task = get_task_raw(task_id)
     to_review_status = get_to_review_status()
     task_dict_before = task.serialize()
@@ -1866,6 +1926,7 @@ def add_preview_file_to_comment(comment_id, person_id, task_id, revision=None):
     )
     comment.previews.append(preview_file)
     comment.save()
+    clear_comment_cache(comment_id)
     if news is not None:
         news.update({"preview_file_id": preview_file.id})
     events.emit(
@@ -1875,12 +1936,16 @@ def add_preview_file_to_comment(comment_id, person_id, task_id, revision=None):
 
 
 def update_preview_file_info(preview_file):
+    """
+    Refresh the task fields derived from its last preview: revision,
+    last preview file id and preview counters.
+    """
     entity = None
     task = get_task_raw(preview_file["task_id"])
     if preview_file["position"] == 1:
         task.update({"last_preview_file_id": preview_file["id"]})
         clear_task_cache(str(task.id))
-        project = projects_service.get_project(task.project_id)
+        project = projects_service.get_project(str(task.project_id))
 
         if project["is_set_preview_automated"]:
             entity = entities_service.update_entity_preview(
@@ -1944,6 +2009,10 @@ def get_tasks_for_project(
 
 
 def get_full_task(task_id, user_id):
+    """
+    Return a task with everything the task page displays: entity, project,
+    task type, status, assignees, time spents and subscription state.
+    """
     task = get_task(task_id, relations=True)
     task_type = get_task_type(task["task_type_id"])
     project = projects_service.get_project(task["project_id"])
@@ -1994,12 +2063,19 @@ def get_full_task(task_id, user_id):
 
 
 def reset_tasks_data(project_id):
+    """
+    Recompute the derived fields of every task of given project.
+    """
     for task in Task.get_all_by(project_id=project_id):
         reset_task_data(str(task.id))
 
 
 def reset_task_data(task_id):
-    task = Task.get(task_id)
+    """
+    Recompute the fields derived from the task comment history: status,
+    retake count, start, end and last comment dates.
+    """
+    task = base_service.get_instance(Task, task_id, TaskNotFoundException)
     retake_count = 0
     real_start_date = None
     last_comment_date = None
@@ -2198,7 +2274,7 @@ def get_open_tasks(
         TaskType.name,
     )
 
-    if project_id is not None and user_service.check_project_access(
+    if project_id is not None and permissions_service.check_project_access(
         project_id
     ):
         query = query.filter(Project.id == project_id)

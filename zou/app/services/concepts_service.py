@@ -21,6 +21,7 @@ from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 
 from zou.app.services import (
+    base_service,
     deletion_service,
     entities_service,
     notifications_service,
@@ -32,15 +33,40 @@ from zou.app.services.exception import (
     EntityNotFoundException,
 )
 
+CONCEPTS_AND_TASKS_TASK_FIELDS = [
+    "id",
+    "duration",
+    "due_date",
+    "end_date",
+    "entity_id",
+    "estimation",
+    "last_comment_date",
+    "nb_assets_ready",
+    "priority",
+    "real_start_date",
+    "retake_count",
+    "start_date",
+    "task_status_id",
+    "task_type_id",
+    "data",
+]
+
 
 def clear_concept_cache(concept_id):
+    """
+    Drop every memoized serialization of given concept.
+    """
     cache.cache.delete_memoized(get_concept, concept_id)
     cache.cache.delete_memoized(get_concept, concept_id, True)
     cache.cache.delete_memoized(get_full_concept, concept_id)
+    entities_service.clear_entity_cache(concept_id)
 
 
 @cache.memoize_function(1200)
 def get_concept_type():
+    """
+    Return the Concept entity type.
+    """
     return entities_service.get_temporal_entity_type_by_name("Concept")
 
 
@@ -48,18 +74,9 @@ def get_concept_raw(concept_id):
     """
     Return given concept as an active record.
     """
-    concept_type = get_concept_type()
-    try:
-        concept = Entity.get_by(
-            entity_type_id=concept_type["id"], id=concept_id
-        )
-    except StatementError:
-        raise ConceptNotFoundException
-
-    if concept is None:
-        raise ConceptNotFoundException
-
-    return concept
+    return base_service.get_typed_instance(
+        Entity, concept_id, get_concept_type()["id"], ConceptNotFoundException
+    )
 
 
 @cache.memoize_function(120)
@@ -78,12 +95,11 @@ def get_full_concept(concept_id):
     Return given concept as a dictionary with extra data like project.
     """
     concepts = get_concepts_and_tasks({"id": concept_id})
-    if len(concepts) > 0:
-        concept = concepts[0]
-        concept.update(get_concept(concept_id, relations=True))
-        return concept
-    else:
+    if len(concepts) == 0:
         raise ConceptNotFoundException
+    concept = concepts[0]
+    concept.update(get_concept(concept_id, relations=True))
+    return concept
 
 
 def remove_concept(concept_id, force=False):
@@ -103,6 +119,7 @@ def remove_concept(concept_id, force=False):
             project_id=str(concept.project_id),
         )
     else:
+        # Imported here because tasks_service imports this module back.
         from zou.app.services import tasks_service
 
         tasks = Task.query.filter_by(entity_id=concept_id).all()
@@ -125,8 +142,7 @@ def remove_concept(concept_id, force=False):
         )
         clear_concept_cache(concept_id)
 
-    deleted_concept = concept.serialize(obj_type="Concept")
-    return deleted_concept
+    return concept.serialize(obj_type="Concept")
 
 
 def get_concepts(criterions=None):
@@ -165,25 +181,6 @@ def get_concepts(criterions=None):
         concepts.append(concept)
 
     return concepts
-
-
-CONCEPTS_AND_TASKS_TASK_FIELDS = [
-    "id",
-    "duration",
-    "due_date",
-    "end_date",
-    "entity_id",
-    "estimation",
-    "last_comment_date",
-    "nb_assets_ready",
-    "priority",
-    "real_start_date",
-    "retake_count",
-    "start_date",
-    "task_status_id",
-    "task_type_id",
-    "data",
-]
 
 
 def get_concepts_and_tasks(criterions=None):
@@ -316,14 +313,18 @@ def get_concepts_for_project(project_id, only_assigned=False):
 def create_concept(
     project_id,
     name,
-    data={},
+    data=None,
     description=None,
-    entity_concept_links=[],
+    entity_concept_links=None,
     created_by=None,
 ):
     """
     Create concept for given project.
     """
+    if data is None:
+        data = {}
+    if entity_concept_links is None:
+        entity_concept_links = []
     concept_type = get_concept_type()
 
     concept = Entity.get_by(
