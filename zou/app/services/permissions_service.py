@@ -161,6 +161,24 @@ def block_access_to_vendor():
     return True
 
 
+def scope_criterions_to_vendor(criterions):
+    """
+    Narrow a listing to what a vendor is allowed to see, in place. Anyone
+    else is left untouched.
+
+    A vendor only ever lists what they are assigned to, and the departments
+    travel with the assignee so that the query can keep the tasks of their
+    own departments on the entities they reach.
+    """
+    if permissions.has_vendor_permissions():
+        criterions["assigned_to"] = persons_service.get_current_user()["id"]
+        criterions["vendor_departments"] = [
+            str(department.id)
+            for department in persons_service.get_current_user_raw().departments
+        ]
+    return criterions
+
+
 def check_entity_access(entity_id):
     """
     Return true if current user is not a vendor or has a task assigned for this

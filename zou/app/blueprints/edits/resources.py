@@ -9,7 +9,6 @@ from zou.app.services import (
     edits_service,
     tasks_service,
     permissions_service,
-    user_service,
 )
 
 from zou.app.mixin import ArgsMixin
@@ -751,14 +750,7 @@ class EditsAndTasksResource(MethodView):
         permissions_service.check_project_access(
             criterions.get("project_id", None)
         )
-        if permissions.has_vendor_permissions():
-            criterions["assigned_to"] = persons_service.get_current_user()[
-                "id"
-            ]
-            criterions["vendor_departments"] = [
-                str(department.id)
-                for department in persons_service.get_current_user_raw().departments
-            ]
+        permissions_service.scope_criterions_to_vendor(criterions)
         return edits_service.get_edits_and_tasks(criterions)
 
 

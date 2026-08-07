@@ -1,10 +1,8 @@
-import orjson
-
-from flask import request, Response
+from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
-from zou.app.utils import permissions, query, validation
+from zou.app.utils import flask_utils, permissions, query, validation
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
     assets_service,
@@ -13,7 +11,6 @@ from zou.app.services import (
     shots_service,
     tasks_service,
     permissions_service,
-    user_service,
 )
 from zou.app.blueprints.assets.schemas import (
     NewAssetSchema,
@@ -328,14 +325,7 @@ class AssetsAndTasksResource(MethodView, ArgsMixin):
         compact = criterions.pop("compact", "false") == "true"
         query.check_criterion_id_format(criterions)
         check_criterion_access(criterions)
-        if permissions.has_vendor_permissions():
-            criterions["assigned_to"] = persons_service.get_current_user()[
-                "id"
-            ]
-            criterions["vendor_departments"] = [
-                str(department.id)
-                for department in persons_service.get_current_user_raw().departments
-            ]
+        permissions_service.scope_criterions_to_vendor(criterions)
         only_user_projects = not permissions.has_admin_permissions()
         if not stream and not compact:
             return assets_service.get_assets_and_tasks(
@@ -353,17 +343,7 @@ class AssetsAndTasksResource(MethodView, ArgsMixin):
                 assets_service.ASSETS_AND_TASKS_ASSET_FIELDS
             )
             header["task_fields"] = assets_service.ASSETS_AND_TASKS_TASK_FIELDS
-
-        if not stream:
-            header["rows"] = list(rows)
-            return header
-
-        def generate():
-            yield orjson.dumps(header) + b"\n"
-            for item in rows:
-                yield orjson.dumps(item) + b"\n"
-
-        return Response(generate(), mimetype="application/x-ndjson")
+        return flask_utils.rows_response(header, rows, stream)
 
 
 class AssetTypeResource(MethodView):

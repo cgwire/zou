@@ -84,6 +84,23 @@ config_store.config_store = fakeredis.FakeStrictRedis(decode_responses=True)
 _CACHED_PASSWORD_HASH = auth.encrypt_password("mypassword")
 
 
+def rebuild_from_compact(entity_fields, task_fields, rows):
+    """
+    Reverse the compact encoding of a listing by mapping positional values
+    back to the field names its header carries, as a client is expected to
+    do. Reading the names from the header rather than hardcoding positions
+    is the whole contract of the compact form.
+    """
+    entities = []
+    for row in rows:
+        entity = dict(zip(entity_fields, row))
+        entity["tasks"] = [
+            dict(zip(task_fields, task_row)) for task_row in entity["tasks"]
+        ]
+        entities.append(entity)
+    return entities
+
+
 class ApiTestCase(unittest.TestCase):
     """
     Set of helpers to make test development easier.

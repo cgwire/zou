@@ -1,6 +1,4 @@
-import orjson
-
-from flask import request, Response
+from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
@@ -20,7 +18,13 @@ from zou.app.services import (
 )
 
 from zou.app.mixin import ArgsMixin
-from zou.app.utils import fields, query, permissions, validation
+from zou.app.utils import (
+    fields,
+    flask_utils,
+    permissions,
+    query,
+    validation,
+)
 from zou.app.blueprints.shots.schemas import (
     NewShotSchema,
     NewSequenceSchema,
@@ -1080,14 +1084,7 @@ class ShotsAndTasksResource(MethodView):
         permissions_service.check_project_access(
             criterions.get("project_id", None)
         )
-        if permissions.has_vendor_permissions():
-            criterions["assigned_to"] = persons_service.get_current_user()[
-                "id"
-            ]
-            criterions["vendor_departments"] = [
-                str(department.id)
-                for department in persons_service.get_current_user_raw().departments
-            ]
+        permissions_service.scope_criterions_to_vendor(criterions)
         if not stream and not compact:
             return shots_service.get_shots_and_tasks(criterions)
 
@@ -1098,17 +1095,7 @@ class ShotsAndTasksResource(MethodView):
         if compact:
             header["shot_fields"] = shots_service.SHOTS_AND_TASKS_SHOT_FIELDS
             header["task_fields"] = shots_service.SHOTS_AND_TASKS_TASK_FIELDS
-
-        if not stream:
-            header["rows"] = list(rows)
-            return header
-
-        def generate():
-            yield orjson.dumps(header) + b"\n"
-            for item in rows:
-                yield orjson.dumps(item) + b"\n"
-
-        return Response(generate(), mimetype="application/x-ndjson")
+        return flask_utils.rows_response(header, rows, stream)
 
 
 class SceneAndTasksResource(MethodView):

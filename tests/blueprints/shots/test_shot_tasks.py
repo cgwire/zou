@@ -1,4 +1,4 @@
-from tests.base import ApiDBTestCase
+from tests.base import ApiDBTestCase, rebuild_from_compact
 
 from zou.app.services import (
     persons_service,
@@ -6,21 +6,6 @@ from zou.app.services import (
     tasks_service,
     shots_service,
 )
-
-
-def rebuild_from_compact(shot_fields, task_fields, rows):
-    """
-    Reverse the compact encoding by mapping positional values back to
-    field names, as a client is expected to do.
-    """
-    shots = []
-    for row in rows:
-        shot = dict(zip(shot_fields, row))
-        shot["tasks"] = [
-            dict(zip(task_fields, task_row)) for task_row in shot["tasks"]
-        ]
-        shots.append(shot)
-    return shots
 
 
 class ShotTasksTestCase(ApiDBTestCase):
