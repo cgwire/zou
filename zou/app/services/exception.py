@@ -187,6 +187,10 @@ class PlaylistNotFoundException(NotFound):
     pass
 
 
+class PlaylistLockTimeoutException(ServiceUnavailable):
+    pass
+
+
 class PlaylistShareLinkNotFoundException(NotFound):
     pass
 

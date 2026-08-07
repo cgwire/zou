@@ -49,6 +49,7 @@ from zou.app.services import (
 
 from zou.app.services.exception import (
     BuildJobNotFoundException,
+    PlaylistLockTimeoutException,
     PlaylistNotFoundException,
 )
 
@@ -551,7 +552,11 @@ def add_entity_to_playlist(playlist_id, entity_id, preview_file_id=None):
     entity_id_str = str(entity_id)
     with with_playlist_lock(
         playlist_id, timeout=30, wait_timeout=35
-    ) as _acquired:
+    ) as acquired:
+        if not acquired:
+            raise PlaylistLockTimeoutException(
+                "Could not acquire the lock of this playlist"
+            )
         playlist_dict = _add_entity_to_playlist_db(
             playlist_id, entity_id_str, preview_file_id
         )
@@ -623,7 +628,11 @@ def add_entities_to_playlist(playlist_id, entities):
     ]
     with with_playlist_lock(
         playlist_id, timeout=30, wait_timeout=35
-    ) as _acquired:
+    ) as acquired:
+        if not acquired:
+            raise PlaylistLockTimeoutException(
+                "Could not acquire the lock of this playlist"
+            )
         playlist = Playlist.get(playlist_id)
         task_type_id = (
             str(playlist.task_type_id)

@@ -1,3 +1,6 @@
+from contextlib import contextmanager
+from unittest.mock import patch
+
 from tests.base import ApiDBTestCase
 
 from zou.app import db
@@ -8,6 +11,7 @@ from zou.app.services import (
     entities_service,
     projects_service,
 )
+from zou.app.services.exception import PlaylistLockTimeoutException
 
 
 class PlaylistsServiceTestCase(ApiDBTestCase):
@@ -152,10 +156,15 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         )
 
     def test_the_all_pack_holds_what_is_meant_for_every_episode(self):
+        self.generate_fixture_playlists()
         self.generate_fixture_playlist("Test main pack", for_entity="asset")
         self.generate_fixture_playlist(
             "Test all playlist", for_entity="asset", is_for_all=True
         )
+        # A playlist of one episode is not for every episode, whatever the
+        # flag on it says. generate_fixture_playlist repointed self.playlist
+        # on its way, so the row is read back by name.
+        Playlist.get_by(name="Playlist 4").update({"is_for_all": True})
 
         playlists = playlists_service.all_playlists_for_episode(
             self.project.id, "all"
@@ -235,8 +244,31 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
             project_id=self.project.id,
             episode_id=self.episode.id,
         )
+
         playlist_dict = playlists_service.build_playlist_dict(playlist)
+
+        # The shots column can hold megabytes and the listing never shows
+        # them.
         self.assertNotIn("shots", playlist_dict)
+        self.assertEqual(playlist_dict["name"], "Playlist 1")
+        self.assertEqual(playlist_dict["type"], "Playlist")
+
+    def test_build_playlist_dict_of_a_playlist_older_than_for_entity(self):
+        # for_entity was added to an existing table with no server default,
+        # so an older row carries null and is a shot playlist.
+        playlist = Playlist.create(
+            name="Older", shots={}, project_id=self.project.id
+        )
+        db.session.execute(
+            db.text("UPDATE playlist SET for_entity = NULL WHERE id = :id"),
+            {"id": str(playlist.id)},
+        )
+        db.session.commit()
+
+        playlist_dict = playlists_service.build_playlist_dict(
+            Playlist.get(playlist.id)
+        )
+
         self.assertEqual(playlist_dict["for_entity"], "shot")
 
     def test_set_preview_files_skips_empty_entity_ids(self):
@@ -327,6 +359,103 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         job = playlists_service.end_build_job(playlist, job, False)
         self.assertEqual(job["status"], "failed")
         self.assertIsNotNone(job["ended_at"])
+
+    def test_an_entity_is_added_with_the_preview_it_names(self):
+        self.generate_fixture_preview_files()
+        playlist = Playlist.create(
+            name="Playlist", shots=[], project_id=self.project.id
+        )
+
+        playlists_service.add_entity_to_playlist(
+            str(playlist.id), str(self.shot.id), str(self.preview_file.id)
+        )
+
+        self.assertEqual(
+            Playlist.get(playlist.id).shots,
+            [
+                {
+                    "entity_id": str(self.shot.id),
+                    "preview_file_id": str(self.preview_file.id),
+                }
+            ],
+        )
+
+    def test_the_entities_added_at_once_carry_their_latest_preview(self):
+        """
+        A couple with no preview is completed with the latest revision of
+        the entity, restricted to the task type of the playlist when it has
+        one.
+        """
+        self.generate_fixture_preview_files()
+        playlist = Playlist.create(
+            name="Playlist", shots=[], project_id=self.project.id
+        )
+
+        playlists_service.add_entities_to_playlist(
+            str(playlist.id), [{"entity_id": str(self.shot.id)}]
+        )
+
+        self.assertEqual(
+            Playlist.get(playlist.id).shots,
+            [
+                {
+                    "entity_id": str(self.shot.id),
+                    "preview_file_id": str(self.preview_file.id),
+                }
+            ],
+        )
+
+    def test_the_same_couple_is_added_once(self):
+        self.generate_fixture_preview_files()
+        playlist = Playlist.create(
+            name="Playlist", shots=[], project_id=self.project.id
+        )
+        couple = {
+            "entity_id": str(self.shot.id),
+            "preview_file_id": str(self.preview_file.id),
+        }
+
+        playlists_service.add_entities_to_playlist(
+            str(playlist.id), [couple, couple]
+        )
+        playlists_service.add_entities_to_playlist(str(playlist.id), [couple])
+
+        self.assertEqual(Playlist.get(playlist.id).shots, [couple])
+
+    def test_an_entity_is_not_added_without_the_lock(self):
+        """
+        The shots column is rewritten whole, so two adds that are not
+        serialized lose one another's entry. The lock only answers false
+        under genuine contention: going ahead then is the lost update it
+        exists to prevent.
+        """
+        self.generate_fixture_preview_files()
+        playlist = Playlist.create(
+            name="Playlist", shots=[], project_id=self.project.id
+        )
+
+        @contextmanager
+        def unavailable_lock(*args, **kwargs):
+            yield False
+
+        with patch(
+            "zou.app.services.playlists_service.with_playlist_lock",
+            side_effect=unavailable_lock,
+        ):
+            self.assertRaises(
+                PlaylistLockTimeoutException,
+                playlists_service.add_entity_to_playlist,
+                str(playlist.id),
+                str(self.shot.id),
+            )
+            self.assertRaises(
+                PlaylistLockTimeoutException,
+                playlists_service.add_entities_to_playlist,
+                str(playlist.id),
+                [{"entity_id": str(self.shot.id)}],
+            )
+
+        self.assertEqual(Playlist.get(playlist.id).shots, [])
 
     def test_end_build_job_of_a_deleted_job(self):
         # The job row may be gone by the time the build ends: the clients
