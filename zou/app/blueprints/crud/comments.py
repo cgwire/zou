@@ -524,6 +524,9 @@ class CommentResource(BaseModelResource):
                     permissions_service.check_task_action_access(
                         instance["object_id"]
                     )
+                permissions_service.resolve_project_role(
+                    tasks_service.get_task(instance["object_id"])["project_id"]
+                )
                 permissions_service.check_task_status_access(
                     data["task_status_id"]
                 )
