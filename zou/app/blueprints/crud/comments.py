@@ -514,9 +514,10 @@ class CommentResource(BaseModelResource):
                 raise permissions.PermissionDenied
 
             if "task_status_id" in data.keys():
-                if str(data["task_status_id"]).lower() != str(
-                    instance["task_status_id"]
-                ).lower():
+                if (
+                    str(data["task_status_id"]).lower()
+                    != str(instance["task_status_id"]).lower()
+                ):
                     # Writing in a task and steering it are different
                     # rights: a mentioned person may author a comment, but
                     # moving the status through an update of it requires
@@ -524,6 +525,9 @@ class CommentResource(BaseModelResource):
                     permissions_service.check_task_action_access(
                         instance["object_id"]
                     )
+                permissions_service.resolve_project_role(
+                    tasks_service.get_task(instance["object_id"])["project_id"]
+                )
                 permissions_service.check_task_status_access(
                     data["task_status_id"]
                 )

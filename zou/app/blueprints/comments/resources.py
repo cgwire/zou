@@ -282,6 +282,9 @@ class CommentTaskResource(MethodView):
                 != str(task["task_status_id"]).lower()
             ):
                 raise
+        permissions_service.resolve_project_role(
+            tasks_service.get_task(task_id)["project_id"]
+        )
         permissions_service.check_task_status_access(task_status_id)
         files = request.files
 
@@ -588,6 +591,9 @@ class CommentManyTasksResource(MethodView):
                 or "comment" not in comment
             ):
                 continue
+            permissions_service.resolve_project_role(
+                tasks_service.get_task(comment["object_id"])["project_id"]
+            )
             permissions_service.check_task_status_access(
                 comment["task_status_id"]
             )

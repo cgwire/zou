@@ -584,14 +584,19 @@ class BaseBatchComment(BaseNewPreviewFilePicture, ArgsMixin):
 
         new_comments = []
         for i, comment in enumerate(args["comments"]):
-            permissions_service.check_task_status_access(
-                comment["task_status_id"]
-            )
-
             if task_id is None:
                 permissions_service.check_task_action_access(
                     comment["task_id"]
                 )
+
+            permissions_service.resolve_project_role(
+                tasks_service.get_task(task_id or comment["task_id"])[
+                    "project_id"
+                ]
+            )
+            permissions_service.check_task_status_access(
+                comment["task_status_id"]
+            )
 
             if not permissions.has_manager_permissions():
                 comment["person_id"] = None

@@ -7,7 +7,7 @@ from zou.app.models.comment import Comment
 from zou.app.models.notification import Notification
 from zou.app.models.person import Person
 from zou.app.models.task import Task
-from zou.app.services import comments_service, tasks_service
+from zou.app.services import comments_service, projects_service, tasks_service
 
 
 class CommentTestCase(ApiDBTestCase):
@@ -131,6 +131,62 @@ class CommentRoutesTestCase(CommentTestCase):
         ]
         self.assertIn("asset note", asset_texts)
         self.assertIn("shot note", shot_texts)
+
+    def an_artist_of_the_team(self):
+        artist = self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(self.project.id, artist["id"])
+        tasks_service.assign_task(str(self.task.id), artist["id"])
+        self.log_in_cg_artist()
+        return artist
+
+    def a_status_closed_to_artists(self):
+        status = self.generate_fixture_task_status_wip()
+        status.update({"is_artist_allowed": False})
+        tasks_service.clear_task_status_cache(str(status.id))
+        return str(status.id)
+
+    def test_batch_comment_tasks_refuses_a_status_closed_to_artists(self):
+        """
+        is_artist_allowed is read off the role the caller holds on the
+        production, which only the access check resolves. On this route the
+        status check used to run before that check, so the first comment of
+        the batch was measured against the global role and went through.
+        """
+        closed = self.a_status_closed_to_artists()
+        self.an_artist_of_the_team()
+
+        self.post(
+            "/actions/tasks/batch-comment",
+            {
+                "comments": [
+                    {
+                        "task_id": str(self.task.id),
+                        "task_status_id": closed,
+                        "text": "refused",
+                    }
+                ]
+            },
+            403,
+        )
+        texts = [c["text"] for c in tasks_service.get_comments(self.task.id)]
+        self.assertNotIn("refused", texts)
+
+    def test_batch_comment_task_refuses_a_status_closed_to_artists(self):
+        """
+        The single task route resolves the production before the loop, so
+        it always applied the restriction. Kept next to its twin: the two
+        serve the same data and must keep the same policy.
+        """
+        closed = self.a_status_closed_to_artists()
+        self.an_artist_of_the_team()
+
+        self.post(
+            f"/actions/tasks/{self.task.id}/batch-comment",
+            {"comments": [{"task_status_id": closed, "text": "refused"}]},
+            403,
+        )
+        texts = [c["text"] for c in tasks_service.get_comments(self.task.id)]
+        self.assertNotIn("refused", texts)
 
     def test_comment_many_tasks(self):
         result = self.post(

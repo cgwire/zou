@@ -182,6 +182,11 @@ def check_entity_access(entity_id):
 def check_task_status_access(task_status_id):
     """
     Return true if current user can use this task status.
+
+    is_artist_allowed and is_client_allowed are read off the role the caller
+    holds on the production, so the caller resolves it first. Without a
+    resolved role the restriction does not apply at all: it lets everything
+    through rather than raise.
     """
     is_artist = permissions.has_artist_permissions()
     is_client = permissions.has_client_permissions()
