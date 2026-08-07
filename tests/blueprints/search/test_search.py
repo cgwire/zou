@@ -17,6 +17,9 @@ class AssetSearchTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
 
+        # John Doe is the second person the "john" searches count, next to
+        # the John Did every test logs in as. Nothing reads self.person.
+        self.generate_fixture_person()
         self.generate_fixture_project()
         self.generate_fixture_asset_type()
         self.generate_fixture_asset()
