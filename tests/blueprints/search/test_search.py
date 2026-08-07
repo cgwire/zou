@@ -2,7 +2,7 @@ import pytest
 
 from tests.base import ApiDBTestCase, indexer_is_up
 
-from zou.app.services import index_service
+from zou.app.services import index_service, projects_service, tasks_service
 
 pytestmark = [
     pytest.mark.integration,
@@ -196,3 +196,65 @@ class AssetSearchTestCase(ApiDBTestCase):
             200,
         )["assets"]
         self.assertEqual(len(assets), 2)
+
+
+class VendorSearchTestCase(ApiDBTestCase):
+    """
+    A vendor reads through the index what they read through the listings:
+    only the entities they hold a task on, without the metadata reserved to
+    departments they are not part of.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project_status()
+        self.generate_fixture_project()
+        self.generate_fixture_asset_type()
+        self.generate_fixture_asset(name="Girafe")
+        self.generate_fixture_asset_character("Chameau")
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
+        self.generate_fixture_department()
+        self.generate_fixture_task_status()
+        self.generate_fixture_task_type()
+        self.generate_fixture_task()
+
+        project_id = str(self.project.id)
+        self.generate_fixture_user_vendor()
+        person_id = self.user_vendor["id"]
+        projects_service.add_team_member(project_id, person_id)
+        projects_service.clear_project_cache(project_id)
+        # The vendor works on Girafe. Chameau is another asset of the same
+        # production, and none of their business.
+        tasks_service.assign_task(str(self.task.id), person_id)
+        projects_service.add_metadata_descriptor(
+            project_id,
+            "Asset",
+            "Contractor",
+            "list",
+            ["value 1"],
+            False,
+            [str(self.department.id)],
+        )
+        for asset in [self.asset, self.asset_character]:
+            asset.update({"data": {"contractor": "secret"}})
+        index_service.reset_index()
+        self.log_in_vendor()
+
+    def search_assets(self, query):
+        return self.post(
+            "data/search", {"query": query, "index_names": ["assets"]}, 200
+        )["assets"]
+
+    def test_an_asset_they_work_on_comes_back(self):
+        self.assertEqual(
+            [asset["name"] for asset in self.search_assets("Gira")], ["Girafe"]
+        )
+
+    def test_an_asset_they_do_not_work_on_does_not(self):
+        self.assertEqual(self.search_assets("Cham"), [])
+
+    def test_a_descriptor_of_another_department_is_left_out(self):
+        asset = self.search_assets("Gira")[0]
+
+        self.assertNotIn("contractor", asset["data"])

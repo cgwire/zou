@@ -221,6 +221,28 @@ def check_entity_access(entity_id):
     return is_allowed
 
 
+def keep_entities_a_vendor_reaches(entities):
+    """
+    Drop from a listing the entities a vendor holds no task on. Anyone else
+    keeps all of them.
+
+    This is check_entity_access applied to a whole answer at once, for the
+    paths that do not walk their rows one by one. A page can come back
+    shorter than it was asked for, which beats handing over a production a
+    vendor was never meant to read.
+    """
+    if not entities or not permissions.has_vendor_permissions():
+        return entities
+    assigned = {
+        str(entity_id)
+        for (entity_id,) in Task.query.with_entities(Task.entity_id)
+        .filter(Task.entity_id.in_([entity["id"] for entity in entities]))
+        .filter(user_service.build_assignee_filter())
+        .all()
+    }
+    return [entity for entity in entities if entity["id"] in assigned]
+
+
 def check_task_status_access(task_status_id):
     """
     Return true if current user can use this task status.
