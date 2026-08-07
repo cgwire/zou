@@ -2,7 +2,7 @@ from ua_parser import user_agent_parser
 from werkzeug.user_agent import UserAgent
 from werkzeug.utils import cached_property
 from flask.json.provider import JSONProvider
-from flask import request, abort
+from flask import Response, request, abort
 
 import orjson
 
@@ -56,6 +56,27 @@ def is_from_browser(user_agent):
         "Safari",
         "Vivaldi",
     ]
+
+
+def rows_response(header, rows, stream=False):
+    """
+    Answer a listing described by a header, either as a single JSON object
+    carrying every row, or as NDJSON: the header on the first line, then one
+    row per line.
+
+    Streaming exists so that a full production never sits in memory at once,
+    so rows stays a generator until the last moment: the non streamed branch
+    is the only one that spends it.
+    """
+    if not stream:
+        return {**header, "rows": list(rows)}
+
+    def generate():
+        yield orjson.dumps(header) + b"\n"
+        for row in rows:
+            yield orjson.dumps(row) + b"\n"
+
+    return Response(generate(), mimetype="application/x-ndjson")
 
 
 def wrong_auth_handler(identity_user=None):

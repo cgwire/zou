@@ -1,4 +1,4 @@
-from tests.base import ApiDBTestCase
+from tests.base import ApiDBTestCase, rebuild_from_compact
 
 from zou.app.models.entity import EntityLink
 from zou.app.models.person import Person
@@ -8,21 +8,6 @@ from zou.app.services import (
     assets_service,
     persons_service,
 )
-
-
-def rebuild_from_compact(asset_fields, task_fields, rows):
-    """
-    Reverse the compact encoding by mapping positional values back to
-    field names, as a client is expected to do.
-    """
-    assets = []
-    for row in rows:
-        asset = dict(zip(asset_fields, row))
-        asset["tasks"] = [
-            dict(zip(task_fields, task_row)) for task_row in asset["tasks"]
-        ]
-        assets.append(asset)
-    return assets
 
 
 class AssetTasksTestCase(ApiDBTestCase):
