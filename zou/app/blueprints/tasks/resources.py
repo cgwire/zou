@@ -2823,8 +2823,8 @@ class PersonsTasksDatesResource(MethodView, ArgsMixin):
         - Tasks
         description: For each active person, return the first start date of all
           tasks assigned to them and the last end date. Useful for schedule
-          planning. Admins get the studio-wide view; managers are restricted to
-          the projects of their own teams.
+          planning. Admins get the studio-wide view; managers and supervisors
+          are restricted to the projects of their own teams.
         parameters:
           - in: query
             name: project_id
@@ -2859,6 +2859,21 @@ class PersonsTasksDatesResource(MethodView, ArgsMixin):
                           description: Last task due date for this person
                             within the requested scope
                           example: "2024-03-21 00:00:00"
+                        busy_periods:
+                          type: array
+                          description: Anonymous, merged date intervals
+                            covering the person's tasks in open productions
+                            outside the caller's scope. No production or
+                            task detail is exposed.
+                          items:
+                            type: object
+                            properties:
+                              start_date:
+                                type: string
+                                example: "2024-01-15 00:00:00"
+                              end_date:
+                                type: string
+                                example: "2024-03-21 00:00:00"
         """
         # Normalise the `project_id` filter once, before branching on the
         # caller's role. An empty or whitespace-only `?project_id=` is treated
@@ -2869,14 +2884,30 @@ class PersonsTasksDatesResource(MethodView, ArgsMixin):
         if project_id is not None and not fields.is_valid_id(project_id):
             raise WrongParameterException("Invalid project_id.")
         project_ids = None
+        busy_project_ids = None
         if not permissions.has_admin_permissions():
-            permissions.check_manager_permissions()
+            # Supervisors reach the team schedule page too (kitsu#1579):
+            # like managers, they only see the projects of their own teams.
+            permissions.check_at_least_supervisor_permissions()
             if project_id is not None:
-                permissions_service.check_manager_project_access(project_id)
+                if not permissions_service.check_belong_to_project(project_id):
+                    raise permissions.PermissionDenied
             else:
                 project_ids = user_service.get_open_project_ids()
+                # The other open productions come back as anonymous busy
+                # periods: date pairs only, so the schedule can show a
+                # person is taken without naming the production or the
+                # task.
+                own_project_ids = set(project_ids)
+                busy_project_ids = [
+                    open_project_id
+                    for open_project_id in projects_service.open_project_ids()
+                    if open_project_id not in own_project_ids
+                ]
         return tasks_service.get_persons_tasks_dates(
-            project_id=project_id, project_ids=project_ids
+            project_id=project_id,
+            project_ids=project_ids,
+            busy_project_ids=busy_project_ids,
         )
 
 

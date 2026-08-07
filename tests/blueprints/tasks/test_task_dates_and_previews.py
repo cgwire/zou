@@ -77,12 +77,21 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
         self.assertIn(str(self.person.id), person_ids)
 
     def test_get_persons_task_dates_manager_scoped_to_own_projects(self):
-        # A manager who belongs to no project sees no one (the default view is
-        # scoped to the caller's projects, not studio-wide).
+        # A manager who belongs to no project gets no task dates: other
+        # productions only show as anonymous busy periods, without any
+        # production or task detail (kitsu#1579).
         self.generate_fixture_user_manager()
         self.log_in_manager()
         result = self.get("/data/persons/task-dates")
-        self.assertEqual(result, [])
+        for entry in result:
+            self.assertIsNone(entry["min_date"])
+            self.assertIsNone(entry["max_date"])
+            self.assertEqual(
+                set(entry.keys()),
+                {"person_id", "min_date", "max_date", "busy_periods"},
+            )
+        person_ids = [entry["person_id"] for entry in result]
+        self.assertIn(str(self.person.id), person_ids)
 
     def test_get_persons_task_dates_manager_own_project_id(self):
         self.generate_fixture_user_manager()
@@ -109,6 +118,35 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
             403,
         )
 
+    def test_get_persons_task_dates_as_supervisor(self):
+        # A supervisor reaches the team schedule too (kitsu#1579), scoped
+        # to their own projects like a manager.
+        self.generate_fixture_user_supervisor()
+        projects_service.add_team_member(
+            self.project_id, self.user_supervisor["id"]
+        )
+        self.log_in_supervisor()
+        result = self.get("/data/persons/task-dates")
+        person_ids = [entry["person_id"] for entry in result]
+        self.assertIn(str(self.person.id), person_ids)
+
+    def test_get_persons_task_dates_supervisor_foreign_project_id(self):
+        self.generate_fixture_user_supervisor()
+        projects_service.add_team_member(
+            self.project_id, self.user_supervisor["id"]
+        )
+        self.generate_fixture_project_standard()
+        self.log_in_supervisor()
+        self.get(
+            f"/data/persons/task-dates?project_id={self.project_standard.id}",
+            403,
+        )
+
+    def test_get_persons_task_dates_refused_to_artists(self):
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        self.get("/data/persons/task-dates", 403)
+
     def test_get_persons_task_dates_admin_project_id(self):
         # Admin can scope the studio-wide view to a single project.
         result = self.get(
@@ -117,9 +155,10 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
         person_ids = [entry["person_id"] for entry in result]
         self.assertIn(str(self.person.id), person_ids)
 
-    def test_get_persons_task_dates_manager_excludes_foreign_persons(self):
-        # A manager only sees persons from their own projects, never a person
-        # whose tasks live solely in a project they are not a member of.
+    def test_get_persons_task_dates_foreign_work_is_anonymous(self):
+        # A person whose tasks live solely in a project the manager is not a
+        # member of appears with anonymous busy periods only: merged date
+        # pairs, no task dates, no production or task detail (kitsu#1579).
         person_id = str(self.person.id)
         self.generate_fixture_user_manager()
         projects_service.add_team_member(
@@ -131,22 +170,49 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
             last_name="Artist",
             email="foreign.artist@gmail.com",
         )
-        Task.create(
-            name="Foreign task",
-            project_id=self.project_standard.id,
-            task_type_id=self.task_type.id,
-            task_status_id=self.task_status.id,
-            entity_id=self.asset_standard.id,
-            assignees=[foreign_person],
-            assigner_id=self.assigner.id,
-            start_date=fields.get_date_object("2017-02-20"),
-            due_date=fields.get_date_object("2017-02-28"),
-        )
+        for name, start_date, due_date in [
+            ("Foreign task", "2017-02-20", "2017-02-28"),
+            # Overlaps the first task: both must merge into one period so
+            # the split of the hidden work is not revealed.
+            ("Foreign task 2", "2017-02-24", "2017-03-06"),
+        ]:
+            Task.create(
+                name=name,
+                project_id=self.project_standard.id,
+                task_type_id=self.task_type.id,
+                task_status_id=self.task_status.id,
+                entity_id=self.asset_standard.id,
+                assignees=[foreign_person],
+                assigner_id=self.assigner.id,
+                start_date=fields.get_date_object(start_date),
+                due_date=fields.get_date_object(due_date),
+            )
         self.log_in_manager()
         result = self.get("/data/persons/task-dates")
-        person_ids = [entry["person_id"] for entry in result]
-        self.assertIn(person_id, person_ids)
-        self.assertNotIn(str(foreign_person.id), person_ids)
+        entries = {entry["person_id"]: entry for entry in result}
+        self.assertIn(person_id, entries)
+        foreign_entry = entries[str(foreign_person.id)]
+        self.assertIsNone(foreign_entry["min_date"])
+        self.assertIsNone(foreign_entry["max_date"])
+        self.assertEqual(
+            foreign_entry["busy_periods"],
+            [
+                {
+                    "start_date": "2017-02-20 00:00:00",
+                    "end_date": "2017-03-06 00:00:00",
+                }
+            ],
+        )
+        self.assertEqual(
+            set(foreign_entry.keys()),
+            {"person_id", "min_date", "max_date", "busy_periods"},
+        )
+
+    def test_get_persons_task_dates_admin_has_no_busy_periods(self):
+        # Admin sees every project in detail, nothing is anonymised.
+        result = self.get("/data/persons/task-dates")
+        for entry in result:
+            self.assertEqual(entry["busy_periods"], [])
 
     def test_get_persons_task_dates_empty_project_id(self):
         # An empty `?project_id=` filter is treated as absent, not as an
@@ -207,11 +273,15 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
         person_ids = [entry["person_id"] for entry in result]
         self.assertIn(str(closed_person.id), person_ids)
 
-    def test_get_persons_task_dates_supervisor_unauthorized(self):
-        # The gate is manager-or-above: a supervisor is rejected.
+    def test_get_persons_task_dates_supervisor_scoped_to_own_projects(self):
+        # The gate is supervisor-or-above (kitsu#1579): a supervisor who
+        # belongs to no project gets anonymous busy periods only, not a 403.
         self.generate_fixture_user_supervisor()
         self.log_in_supervisor()
-        self.get("/data/persons/task-dates", 403)
+        result = self.get("/data/persons/task-dates")
+        for entry in result:
+            self.assertIsNone(entry["min_date"])
+            self.assertIsNone(entry["max_date"])
 
     def test_get_persons_task_dates_unauthorized(self):
         self.generate_fixture_user_vendor()
