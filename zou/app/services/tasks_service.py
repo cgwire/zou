@@ -2186,8 +2186,8 @@ def get_persons_tasks_dates(
     - busy_project_ids lists the projects the caller must not see in detail:
       tasks found there come back as anonymous busy_periods, merged date
       pairs carrying no production or task information, so a schedule can
-      show that a person is taken without leaking what they work on
-      (kitsu#1579). A person with only such tasks is listed with null
+      show that a person is taken without leaking what they work on. A
+      person with only such tasks is listed with null
       min_date / max_date.
     """
     if project_id is not None:

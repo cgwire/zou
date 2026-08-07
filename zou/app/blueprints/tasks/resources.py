@@ -2886,8 +2886,8 @@ class PersonsTasksDatesResource(MethodView, ArgsMixin):
         project_ids = None
         busy_project_ids = None
         if not permissions.has_admin_permissions():
-            # Supervisors reach the team schedule page too (kitsu#1579):
-            # like managers, they only see the projects of their own teams.
+            # Supervisors reach the team schedule page too: like managers,
+            # they only see the projects of their own teams.
             permissions.check_at_least_supervisor_permissions()
             if project_id is not None:
                 if not permissions_service.check_belong_to_project(project_id):
