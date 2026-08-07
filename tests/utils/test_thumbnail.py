@@ -1,7 +1,7 @@
 import unittest
 import os
 
-from PIL import Image
+from PIL import Image, ImageCms
 
 from werkzeug.datastructures import FileStorage
 
@@ -135,6 +135,34 @@ class ThumbnailTestCase(unittest.TestCase):
         )
         self.assertTrue(os.path.exists(file_path))
         self.assertTrue(Image.open(file_path).size, thumbnail.SQUARE_SIZE)
+
+    def test_to_srgb(self):
+        profile = ImageCms.ImageCmsProfile(
+            ImageCms.createProfile("sRGB")
+        ).tobytes()
+
+        im = Image.new("RGB", (4, 4), (200, 30, 30))
+        im.info["icc_profile"] = profile
+        self.assertEqual(thumbnail.to_srgb(im).tobytes(), im.tobytes())
+
+        im = Image.new("RGBA", (4, 4), (200, 30, 30, 128))
+        im.info["icc_profile"] = profile
+        converted = thumbnail.to_srgb(im)
+        self.assertEqual(converted.mode, "RGBA")
+        self.assertEqual(converted.getpixel((0, 0)), (200, 30, 30, 128))
+
+        im = Image.new("CMYK", (4, 4), (0, 255, 255, 0))
+        self.assertEqual(thumbnail.to_srgb(im).mode, "RGB")
+        self.assertEqual(thumbnail.to_srgb(im, "RGBA").mode, "RGBA")
+        self.assertEqual(
+            thumbnail.to_srgb(im, "RGBA").getpixel((0, 0))[3], 255
+        )
+
+        im.info["icc_profile"] = b"not a profile"
+        self.assertEqual(thumbnail.to_srgb(im).mode, "RGB")
+
+        im = Image.new("L", (4, 4))
+        self.assertEqual(thumbnail.to_srgb(im).mode, "L")
 
     def test_turn_hdr_into_thumbnail(self):
         file_path_fixture = self.get_fixture_file_path("thumbnails/sample.hdr")
