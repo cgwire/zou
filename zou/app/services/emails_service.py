@@ -273,7 +273,11 @@ def get_task_descriptors(person_id, task):
     elif task_type["for_entity"] == "Edit":
         entity_type = "edits"
     if project["production_type"] == "tvshow":
-        episode_segment = f"/episodes/{episode_id}"
+        # An asset of a tv show hangs off no episode of its own. Kitsu reads
+        # "main" as the pseudo episode holding them, which the playlist url
+        # below already builds: without it every mail about such a task
+        # linked to /episodes/None/.
+        episode_segment = f"/episodes/{episode_id or 'main'}"
 
     task_name = f"{project['name']} / {entity_name} / {task_type['name']}"
     task_url = (

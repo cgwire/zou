@@ -251,3 +251,96 @@ class PlaylistMailTestCase(EmailsServiceTestCase):
 
         self.assertNotIn("<script>", html)
         self.assertIn("&lt;script&gt;", html)
+
+
+class TaskUrlTestCase(EmailsServiceTestCase):
+    """
+    The link every notification mail carries. A tv show scopes it to an
+    episode, and an asset of one has none of its own.
+    """
+
+    def url_of(self, task):
+        return emails_service.get_task_descriptors(
+            self.person.id, task.serialize()
+        )[2]
+
+    def test_a_standard_production_names_no_episode(self):
+        self.assertIn("/assets/tasks/", self.url_of(self.task))
+        self.assertNotIn("/episodes/", self.url_of(self.task))
+
+    def test_a_tv_show_scopes_a_shot_task_to_its_episode(self):
+        self.project.update({"production_type": "tvshow"})
+        self.generate_fixture_shot_task()
+
+        self.assertIn(
+            f"/episodes/{self.episode.id}/shots/tasks/",
+            self.url_of(self.shot_task),
+        )
+
+    def test_a_tv_show_sends_an_asset_task_to_the_main_episode(self):
+        """
+        Assets of a tv show hang off no episode, so the link used to name
+        one called None and led nowhere. Kitsu reads main as the pseudo
+        episode holding them.
+        """
+        self.project.update({"production_type": "tvshow"})
+
+        url = self.url_of(self.task)
+
+        self.assertIn("/episodes/main/assets/tasks/", url)
+        self.assertNotIn("None", url)
+
+
+class SenderTestCase(EmailsServiceTestCase):
+    """
+    The four senders nothing held. Each writes to whoever it is given, and
+    stays quiet on a person who turned notifications off.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.comment = {"text": "Wrong picture"}
+        self.reply = {"text": "Fixed"}
+        self.task_dict = self.task.serialize()
+
+    def senders(self, person_id):
+        author_id = str(self.person.id)
+        return {
+            "mention": lambda: emails_service.send_mention_notification(
+                person_id, author_id, self.comment, self.task_dict
+            ),
+            "assignation": lambda: (
+                emails_service.send_assignation_notification(
+                    person_id, author_id, self.task_dict
+                )
+            ),
+            "reply": lambda: emails_service.send_reply_notification(
+                person_id, author_id, self.comment, self.task_dict, self.reply
+            ),
+            "comment": lambda: emails_service.send_comment_notification(
+                person_id, author_id, self.comment, self.task_dict
+            ),
+        }
+
+    def mail_of(self, send):
+        with patch(
+            "zou.app.services.emails_service.emails.send_email"
+        ) as mock_send:
+            send()
+            return mock_send.call_args[0][1] if mock_send.called else None
+
+    def test_each_sender_writes_the_task_it_is_given(self):
+        recipient = self.a_person("Jean", "en_US")
+
+        for name, send in self.senders(str(recipient.id)).items():
+            with self.subTest(sender=name):
+                html = self.mail_of(send)
+                self.assertIn("Shaders", html)
+                self.assertIn(str(self.task.id), html)
+
+    def test_no_sender_writes_to_someone_who_turned_them_off(self):
+        quiet = self.a_person("Muet", "en_US", notifications_enabled=False)
+
+        for name, send in self.senders(str(quiet.id)).items():
+            with self.subTest(sender=name):
+                self.assertIsNone(self.mail_of(send))
