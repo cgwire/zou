@@ -619,6 +619,10 @@ def update_preview_file_position(preview_file_id, position):
         tmp_list.insert(position - 1, preview_file)
         for i, preview in enumerate(tmp_list):
             preview.update({"position": i + 1})
+            files_service.clear_preview_file_cache(str(preview.id))
+        # The list was read in the order the positions used to be in, so it
+        # has to follow the move to answer the revision in its new order.
+        preview_files = tmp_list
     return PreviewFile.serialize_list(preview_files)
 
 
