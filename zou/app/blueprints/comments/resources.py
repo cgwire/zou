@@ -277,7 +277,10 @@ class CommentTaskResource(MethodView):
             # still require the full task action access.
             permissions_service.check_task_mention_access(task_id)
             task = tasks_service.get_task(task_id)
-            if str(task_status_id) != str(task["task_status_id"]):
+            if (
+                str(task_status_id).lower()
+                != str(task["task_status_id"]).lower()
+            ):
                 raise
         permissions_service.check_task_status_access(task_status_id)
         files = request.files
