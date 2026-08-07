@@ -193,6 +193,13 @@ class AssetTasksTestCase(ApiDBTestCase):
         assets = self.get(f"data/assets/with-tasks?project_id={project_id}")
         self.assertNotIn("contractor", assets[0]["data"])
 
+        # The listings without the tasks answer the same production, so they
+        # hide the same descriptor.
+        for path in ["data/assets", "data/assets/all"]:
+            with self.subTest(path=path):
+                assets = self.get(f"{path}?project_id={project_id}")
+                self.assertNotIn("contractor", assets[0]["data"])
+
     def test_get_task_types_for_asset(self):
         task_types = self.get(f"data/assets/{self.asset_id}/task-types")
         self.assertEqual(len(task_types), 1)

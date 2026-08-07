@@ -348,10 +348,7 @@ class ShotsResource(MethodView):
         permissions_service.check_project_access(
             criterions.get("project_id", None)
         )
-        if permissions.has_vendor_permissions():
-            criterions["assigned_to"] = persons_service.get_current_user()[
-                "id"
-            ]
+        permissions_service.scope_criterions_to_vendor(criterions)
         return shots_service.get_shots(criterions)
 
 
@@ -419,10 +416,7 @@ class AllShotsResource(MethodView):
         permissions_service.check_project_access(
             criterions.get("project_id", None)
         )
-        if permissions.has_vendor_permissions():
-            criterions["assigned_to"] = persons_service.get_current_user()[
-                "id"
-            ]
+        permissions_service.scope_criterions_to_vendor(criterions)
         return shots_service.get_shots(criterions)
 
 
@@ -2410,10 +2404,7 @@ class SequenceShotsResource(MethodView):
         permissions_service.check_project_access(sequence["project_id"])
         criterions = query.get_query_criterions_from_request(request)
         criterions["parent_id"] = sequence_id
-        if permissions.has_vendor_permissions():
-            criterions["assigned_to"] = persons_service.get_current_user()[
-                "id"
-            ]
+        permissions_service.scope_criterions_to_vendor(criterions)
         return shots_service.get_shots(criterions)
 
 

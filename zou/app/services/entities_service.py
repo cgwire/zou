@@ -588,6 +588,30 @@ def remove_not_allowed_fields_from_metadata(
     }
 
 
+def remove_not_allowed_metadata_for_vendor(entity_type, criterions, entities):
+    """
+    Strip from a serialized listing the metadata a vendor must not see, in
+    place. Anyone else is left untouched.
+
+    The twin listing that carries the tasks picks its columns one by one and
+    masks them while it builds its rows. This one hands back whole serialized
+    entities, so the restricted descriptors come along unless they are taken
+    out here.
+    """
+    if "vendor_departments" not in criterions:
+        return entities
+    not_allowed_map = get_not_allowed_descriptors_fields_for_vendor(
+        entity_type,
+        criterions["vendor_departments"],
+        set(entity["project_id"] for entity in entities),
+    )
+    for entity in entities:
+        entity["data"] = remove_not_allowed_fields_from_metadata(
+            not_allowed_map[entity["project_id"]], entity["data"]
+        )
+    return entities
+
+
 def get_linked_entities_with_tasks(entity_id):
     """
     Return all entities and their tasks linked to given entity.

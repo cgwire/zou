@@ -214,10 +214,7 @@ class AllAssetsResource(MethodView):
         """
         criterions = query.get_query_criterions_from_request(request)
         check_criterion_access(criterions)
-        if permissions.has_vendor_permissions():
-            criterions["assigned_to"] = persons_service.get_current_user()[
-                "id"
-            ]
+        permissions_service.scope_criterions_to_vendor(criterions)
         return assets_service.get_assets(
             criterions,
             only_user_projects=not permissions.has_admin_permissions(),
@@ -616,10 +613,7 @@ class ProjectAssetsResource(MethodView):
         permissions_service.check_project_access(project_id)
         criterions = query.get_query_criterions_from_request(request)
         criterions["project_id"] = project_id
-        if permissions.has_vendor_permissions():
-            criterions["assigned_to"] = persons_service.get_current_user()[
-                "id"
-            ]
+        permissions_service.scope_criterions_to_vendor(criterions)
         return assets_service.get_assets(criterions)
 
 
@@ -700,10 +694,7 @@ class ProjectAssetTypeAssetsResource(MethodView):
         criterions = query.get_query_criterions_from_request(request)
         criterions["project_id"] = project_id
         criterions["entity_type_id"] = asset_type_id
-        if permissions.has_vendor_permissions():
-            criterions["assigned_to"] = persons_service.get_current_user()[
-                "id"
-            ]
+        permissions_service.scope_criterions_to_vendor(criterions)
         return assets_service.get_assets(criterions)
 
 

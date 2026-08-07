@@ -196,10 +196,7 @@ class EditsResource(MethodView):
         permissions_service.check_project_access(
             criterions.get("project_id", None)
         )
-        if permissions.has_vendor_permissions():
-            criterions["assigned_to"] = persons_service.get_current_user()[
-                "id"
-            ]
+        permissions_service.scope_criterions_to_vendor(criterions)
         return edits_service.get_edits(criterions)
 
 
@@ -281,10 +278,7 @@ class AllEditsResource(MethodView):
         permissions_service.check_project_access(
             criterions.get("project_id", None)
         )
-        if permissions.has_vendor_permissions():
-            criterions["assigned_to"] = persons_service.get_current_user()[
-                "id"
-            ]
+        permissions_service.scope_criterions_to_vendor(criterions)
         return edits_service.get_edits(criterions)
 
 
