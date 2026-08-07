@@ -2149,7 +2149,9 @@ def reset_task_data(task_id):
     return task.serialize(relations=True)
 
 
-def get_persons_tasks_dates(project_id=None, project_ids=None):
+def get_persons_tasks_dates(
+    project_id=None, project_ids=None, busy_project_ids=None
+):
     """
     For schedule usages, for each active person, it returns the first start
     date of all tasks of assigned to this person and the last end date.
@@ -2166,6 +2168,12 @@ def get_persons_tasks_dates(project_id=None, project_ids=None):
       project gets an empty result -- the guard must stay an `is None` identity
       test and never become `if not project_ids:`, otherwise such a manager
       would leak the studio-wide view.
+    - busy_project_ids lists the projects the caller must not see in detail:
+      tasks found there come back as anonymous busy_periods, merged date
+      pairs carrying no production or task information, so a schedule can
+      show that a person is taken without leaking what they work on
+      (kitsu#1579). A person with only such tasks is listed with null
+      min_date / max_date.
     """
     if project_id is not None:
         # An explicit, access-checked project scopes the lookup directly. This
@@ -2187,14 +2195,58 @@ def get_persons_tasks_dates(project_id=None, project_ids=None):
         .join(Task.assignees)
     )
 
-    return [
-        {
+    entries = {}
+    for person_id, min_date, max_date in query.all():
+        entries[str(person_id)] = {
             "person_id": str(person_id),
             "min_date": str(min_date),
             "max_date": str(max_date),
+            "busy_periods": [],
         }
-        for (person_id, min_date, max_date) in query.all()
-    ]
+
+    if busy_project_ids:
+        busy_query = (
+            Task.query.with_entities(Person.id, Task.start_date, Task.due_date)
+            .filter(Person.active)
+            .filter(Task.project_id.in_(busy_project_ids))
+            .filter(Task.start_date != None)
+            .filter(Task.due_date != None)
+            .join(Task.assignees)
+        )
+        intervals_by_person = {}
+        for person_id, start_date, due_date in busy_query.all():
+            intervals_by_person.setdefault(str(person_id), []).append(
+                (start_date, due_date)
+            )
+        for person_id, intervals in intervals_by_person.items():
+            if person_id not in entries:
+                entries[person_id] = {
+                    "person_id": person_id,
+                    "min_date": None,
+                    "max_date": None,
+                    "busy_periods": [],
+                }
+            entries[person_id]["busy_periods"] = [
+                {"start_date": str(start), "end_date": str(end)}
+                for start, end in _merge_date_intervals(intervals)
+            ]
+
+    return list(entries.values())
+
+
+def _merge_date_intervals(intervals):
+    """
+    Merge overlapping (start, end) pairs into the smallest set of disjoint
+    intervals, so anonymous busy periods reveal neither the task count nor
+    how the underlying work is split.
+    """
+    merged = []
+    for start, end in sorted(intervals):
+        if merged and start <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], end)
+        else:
+            merged.append([start, end])
+    return [(start, end) for start, end in merged]
 
 
 def get_open_tasks(
