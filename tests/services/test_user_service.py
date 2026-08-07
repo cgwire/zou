@@ -19,6 +19,7 @@ from zou.app.services import (
 )
 from zou.app.services.exception import (
     DepartmentNotFoundException,
+    NotificationNotFoundException,
     SearchFilterNotFoundException,
     SearchFilterGroupNotFoundException,
     WrongParameterException,
@@ -84,45 +85,211 @@ class RelatedProjectsTestCase(UserContextTestCase):
         with self.as_user():
             self.assertEqual(user_service.related_projects(), [])
 
-    def test_get_last_notifications(self):
-        """
-        What the artist sees in their bell: a comment on a task they hold.
-        A comment written by a client comes back with its text blanked,
-        since the artist may not read it.
-        """
+
+class NotificationTestCase(UserContextTestCase):
+    """
+    The bell of one artist: what lands in it, what it can be narrowed on,
+    and what a filter the driver cannot read answers.
+    """
+
+    def setUp(self):
+        super().setUp()
+
+        self.generate_fixture_project()
+        self.generate_fixture_asset()
+        self.generate_fixture_task_status_to_review()
+        self.generate_fixture_task()
         self.generate_fixture_user_cg_artist()
-        artist = self.user_cg_artist
-        projects_service.add_team_member(self.project_id, artist["id"])
-        tasks_service.assign_task(self.task_id, artist["id"])
+        self.generate_fixture_user_client()
+        self.artist = self.user_cg_artist
+        self.task_id = str(self.task.id)
+        self.project_id = str(self.project.id)
+        projects_service.add_team_member(self.project_id, self.artist["id"])
+        tasks_service.assign_task(self.task_id, self.artist["id"])
 
-        with self.as_user(artist):
-            self.assertEqual(user_service.get_last_notifications(), [])
-
-        comments_service.create_comment(
-            self.user["id"],
+    def a_comment(self, author=None, text="A note"):
+        """
+        A comment on the task the artist holds, which rings their bell.
+        """
+        return comments_service.create_comment(
+            (author or self.user)["id"],
             self.task_id,
             str(self.task_status_to_review.id),
-            "Lets go",
-            [],
-            {},
-            None,
-        )
-        comments_service.create_comment(
-            self.user_client["id"],
-            self.task_id,
-            str(self.task_status_to_review.id),
-            "Wrong picture",
+            text,
             [],
             {},
             None,
         )
 
-        with self.as_user(artist):
-            notifications = user_service.get_last_notifications()
+    def bell(self, **kwargs):
+        with self.as_user(self.artist):
+            return user_service.get_last_notifications(**kwargs)
 
-        self.assertEqual(len(notifications), 2)
-        self.assertEqual(notifications[0]["comment_text"], "")
-        self.assertEqual(notifications[1]["comment_text"], "Lets go")
+    def texts(self, **kwargs):
+        return [
+            notification["comment_text"]
+            for notification in self.bell(**kwargs)
+        ]
+
+    def test_the_bell_is_empty_until_someone_writes(self):
+        self.assertEqual(self.bell(), [])
+
+    def test_a_comment_on_a_held_task_rings_newest_first(self):
+        self.a_comment(text="Lets go")
+        self.a_comment(text="And again")
+
+        self.assertEqual(self.texts(), ["And again", "Lets go"])
+
+    def test_a_client_comment_comes_back_without_its_text(self):
+        """
+        An artist may not read what a client wrote, so the text is blanked
+        rather than the notification hidden: the bell still rings.
+        """
+        self.a_comment(text="Lets go")
+        self.a_comment(self.user_client, text="Wrong picture")
+
+        self.assertEqual(self.texts(), ["", "Lets go"])
+
+    def test_the_bell_holds_one_notification(self):
+        self.a_comment(text="Lets go")
+        self.a_comment(text="And again")
+        first = self.bell()[1]
+
+        self.assertEqual(self.texts(notification_id=first["id"]), ["Lets go"])
+
+    def test_the_bell_is_bounded_by_dates(self):
+        self.a_comment(text="Lets go")
+
+        self.assertEqual(self.texts(after="2020-01-01"), ["Lets go"])
+        self.assertEqual(self.texts(before="2020-01-01"), [])
+        self.assertEqual(self.texts(after="2100-01-01"), [])
+        self.assertEqual(self.texts(before="2100-01-01"), ["Lets go"])
+
+    def test_the_bell_holds_one_task_type(self):
+        self.a_comment(text="Lets go")
+        task_type_id = str(self.task.task_type_id)
+
+        self.assertEqual(self.texts(task_type_id=task_type_id), ["Lets go"])
+        self.assertEqual(self.texts(task_type_id=UNKNOWN), [])
+
+    def test_the_bell_holds_one_task_status(self):
+        self.a_comment(text="Lets go")
+        status_id = str(self.task_status_to_review.id)
+
+        self.assertEqual(self.texts(task_status_id=status_id), ["Lets go"])
+        self.assertEqual(self.texts(task_status_id=UNKNOWN), [])
+
+    def test_the_bell_holds_one_kind(self):
+        self.a_comment(text="Lets go")
+
+        self.assertEqual(self.texts(notification_type="comment"), ["Lets go"])
+        self.assertEqual(self.texts(notification_type="mention"), [])
+
+    def test_the_bell_holds_what_has_been_read(self):
+        self.a_comment(text="Lets go")
+        notification = self.bell()[0]
+
+        self.assertEqual(self.texts(read=False), ["Lets go"])
+        self.assertEqual(self.texts(read=True), [])
+
+        with self.as_user(self.artist):
+            user_service.update_notification(notification["id"], True)
+
+        self.assertEqual(self.texts(read=False), [])
+        self.assertEqual(self.texts(read=True), ["Lets go"])
+
+    def test_the_bell_holds_what_is_being_watched(self):
+        self.a_comment(text="Lets go")
+
+        self.assertEqual(self.texts(watching=True), [])
+        self.assertEqual(self.texts(watching=False), ["Lets go"])
+
+        with self.as_user(self.artist):
+            user_service.subscribe_to_task(self.task_id)
+
+        self.assertEqual(self.texts(watching=True), ["Lets go"])
+        self.assertEqual(self.texts(watching=False), [])
+
+    def test_a_malformed_id_is_answered_as_a_wrong_parameter(self):
+        """
+        These reach the query as raw values, so the driver used to reject
+        them and the route answered 500 where the caller made the mistake.
+        """
+        for field in ["notification_id", "task_type_id", "task_status_id"]:
+            with self.subTest(field=field):
+                with self.assertRaises(WrongParameterException):
+                    self.bell(**{field: "notanid"})
+
+    def test_a_date_the_driver_refuses_is_a_wrong_parameter(self):
+        """
+        The bounds are cast in SQL, so the driver is what refuses them and
+        it only speaks when the query runs. One value per case: the failed
+        statement leaves a transaction to roll back, and the rollback takes
+        the fixtures this class logs in with.
+        """
+        with self.assertRaises(WrongParameterException):
+            self.bell(after="notadate")
+
+    def test_an_empty_date_bound_is_a_wrong_parameter(self):
+        # A screen that drops its filter tends to send it empty rather
+        # than leave it out, and empty is not a date either.
+        with self.assertRaises(WrongParameterException):
+            self.bell(before="")
+
+    def test_get_notification(self):
+        self.a_comment(text="Lets go")
+        notification = self.bell()[0]
+
+        with self.as_user(self.artist):
+            again = user_service.get_notification(notification["id"])
+        self.assertEqual(again, notification)
+
+    def test_get_notification_of_someone_else(self):
+        """
+        The listing it runs is already scoped to the caller, so a
+        notification of another person reads as missing rather than leaking.
+        """
+        self.a_comment(text="Lets go")
+        notification = self.bell()[0]
+
+        with self.as_user():
+            with self.assertRaises(NotificationNotFoundException):
+                user_service.get_notification(notification["id"])
+
+    def test_update_notification_announces_both_ways(self):
+        self.a_comment(text="Lets go")
+        notification = self.bell()[0]
+
+        events = self.capture_events("notification:read")
+        with self.as_user(self.artist):
+            read = user_service.update_notification(notification["id"], True)
+        self.assertTrue(read["read"])
+        self.assertEqual(len(events), 1)
+
+        events = self.capture_events("notification:unread")
+        with self.as_user(self.artist):
+            unread = user_service.update_notification(
+                notification["id"], False
+            )
+        self.assertFalse(unread["read"])
+        self.assertEqual(len(events), 1)
+
+    def test_update_notification_of_someone_else(self):
+        self.a_comment(text="Lets go")
+        notification = self.bell()[0]
+
+        with self.as_user():
+            with self.assertRaises(NotificationNotFoundException):
+                user_service.update_notification(notification["id"], True)
+
+    def test_the_unread_count_and_marking_them_all(self):
+        self.a_comment(text="Lets go")
+        self.a_comment(text="And again")
+
+        with self.as_user(self.artist):
+            self.assertEqual(user_service.get_unread_notifications_count(), 2)
+            user_service.mark_notifications_as_read()
+            self.assertEqual(user_service.get_unread_notifications_count(), 0)
 
 
 class SearchFilterTestCase(UserContextTestCase):

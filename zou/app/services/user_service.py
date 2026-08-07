@@ -1,5 +1,6 @@
 from sqlalchemy.orm import aliased
 from sqlalchemy import func, or_, and_
+from sqlalchemy.exc import DataError
 
 from zou.app.models.comment import Comment
 from zou.app.models.entity import Entity
@@ -903,6 +904,19 @@ def get_last_notifications(
     """
     Return last 100 user notifications.
     """
+    # These reach the query as raw values, so the driver is the one that
+    # rejects them: a malformed id raises a StatementError while binding,
+    # a malformed date a DataError on execution. Both surfaced as a 500.
+    for id_field, value in (
+        ("notification_id", notification_id),
+        ("task_type_id", task_type_id),
+        ("task_status_id", task_status_id),
+    ):
+        if value is not None and not fields.is_valid_id(value):
+            raise WrongParameterException(
+                f"Invalid UUID format for {id_field}: {value}"
+            )
+
     current_user = persons_service.get_current_user()
     Author = aliased(Person, name="author")
     is_current_user_artist = current_user["role"] == "user"
@@ -968,7 +982,12 @@ def get_last_notifications(
         else:
             query = query.filter(Subscription.id == None)
 
-    notifications = query.limit(100).all()
+    try:
+        # The query is lazy: a date the driver refuses raises here, not
+        # while the filters are being stacked above.
+        notifications = query.limit(100).all()
+    except DataError:
+        raise WrongParameterException("Wrong date format for after or before.")
 
     for (
         notification,
