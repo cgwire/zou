@@ -399,14 +399,23 @@ class FileCallbackTestCase(ApiDBTestCase):
         with mock.patch.object(
             sync_service, "download_preview_from_another_instance"
         ) as download_preview, mock.patch.object(
+            sync_service, "download_preview_background_from_another_instance"
+        ) as download_background, mock.patch.object(
             sync_service, "download_thumbnail_from_another_instance"
         ) as download_thumbnail:
             sync_service.retrieve_preview_file(
                 {"preview_file_id": str(uuid.uuid4()), "sync": True}
             )
+            sync_service.retrieve_preview_background_file(
+                {
+                    "preview_background_file_id": str(uuid.uuid4()),
+                    "sync": True,
+                }
+            )
             sync_service.get_retrieve_thumbnail("person")(
                 {"person_id": self.person_id, "sync": True}
             )
+        download_background.assert_not_called()
         download_preview.assert_not_called()
         download_thumbnail.assert_not_called()
 
@@ -989,7 +998,15 @@ class VerifyProjectSyncTestCase(ApiDBTestCase):
         )
 
     def test_a_table_out_of_scope_is_named_rather_than_compared(self):
-        self.assertIn("NOT SYNCED", self.verify())
+        """
+        A table the sync does not migrate holds the same count on both sides
+        only because both are empty. Reading that as a match would tell the
+        operator the transfer is complete when it never started.
+        """
+        self.assertEqual(
+            self.row(self.verify(), "Budget"),
+            ["Budget", "0", "0", "+0", "NOT", "SYNCED"],
+        )
 
     def test_a_production_missing_locally_is_reported(self):
         report = self.verify(
