@@ -6,7 +6,11 @@ from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
 
 from zou.app.models.status_automation import StatusAutomation
 from zou.app.models.project import ProjectStatusAutomationLink
-from zou.app.services import status_automations_service, user_service
+from zou.app.services import (
+    permissions_service,
+    status_automations_service,
+    user_service,
+)
 
 
 class StatusAutomationsResource(BaseModelsResource):
@@ -14,7 +18,7 @@ class StatusAutomationsResource(BaseModelsResource):
         BaseModelsResource.__init__(self, StatusAutomation)
 
     def check_read_permissions(self, options=None):
-        user_service.block_access_to_vendor()
+        permissions_service.block_access_to_vendor()
         return True
 
     @jwt_required()

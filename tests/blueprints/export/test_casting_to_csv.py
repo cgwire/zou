@@ -1,0 +1,68 @@
+from tests.base import ApiDBTestCase
+
+
+class CastingCsvExportTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project()
+        self.project.update({"production_type": "tvshow"})
+        self.generate_fixture_asset_type()
+        self.generate_fixture_asset_types()
+
+    def test_import_casting(self):
+        for name, asset_type_id in [
+            ("Lake", self.asset_type_environment.id),
+            ("Mine", self.asset_type_environment.id),
+            ("Boat", self.asset_type_props.id),
+            ("Pool", self.asset_type_props.id),
+            ("Flowers", self.asset_type_props.id),
+            ("Block", self.asset_type_props.id),
+            ("Wagon", self.asset_type_props.id),
+            ("Victor", self.asset_type_character.id),
+            ("John", self.asset_type_character.id),
+        ]:
+            self.generate_fixture_asset(name, asset_type_id=asset_type_id)
+            if name == "Lake":
+                self.asset_lake_id = self.asset.id
+            if name == "Mine":
+                self.asset_mine_id = self.asset.id
+
+        self.generate_fixture_episode("E01")
+        self.generate_fixture_sequence("SEQ01")
+        self.generate_fixture_shot("SH01").id
+        self.generate_fixture_shot("SH02").id
+        self.generate_fixture_sequence("SEQ02")
+        self.generate_fixture_shot("SH01").id
+        episode2_id = self.generate_fixture_episode("E02").id
+        self.generate_fixture_sequence("SEQ01")
+        self.generate_fixture_shot("SH01").id
+        project_id = str(self.project.id)
+
+        path = f"/import/csv/projects/{project_id}/casting"
+        self.upload_csv(path, "casting")
+
+        path = f"/export/csv/projects/{project_id}/casting.csv"
+        csv = self.get_raw(path)
+        self.assertIn("MP;Environment;Lake;Props;Boat;1;setdress", csv)
+        self.assertNotIn("E01;SEQ01;SH01;Character;John;1;animate", csv)
+        self.assertNotIn("Episode;E01;Character;John;1;animate", csv)
+
+        path = f"/export/csv/projects/{project_id}/casting.csv?is_shot_casting=true"
+        csv = self.get_raw(path)
+        self.assertIn("E01;SEQ01;SH01;Character;John;1;animate", csv)
+        self.assertNotIn("MP;Environment;Lake;Props;Boat;1;setdress", csv)
+        self.assertIn("E02;SEQ01;SH01;Character;Victor;1;animate", csv)
+        self.assertNotIn("Episode;E01;Character;John;1;animate", csv)
+
+        path = f"/export/csv/projects/{project_id}/casting.csv?is_shot_casting=true&episode_id={episode2_id}"
+        csv = self.get_raw(path)
+        self.assertNotIn("E01;SEQ01;SH01;Character;John;1;animate", csv)
+        self.assertNotIn("MP;Environment;Lake;Props;Boat;1;setdress", csv)
+        self.assertIn("E02;SEQ01;SH01;Character;Victor;1;animate", csv)
+        self.assertNotIn("Episode;E01;Character;John;1;animate", csv)
+
+        path = f"/export/csv/projects/{project_id}/casting.csv?episode_id=all"
+        csv = self.get_raw(path)
+        self.assertNotIn("E01;SEQ01;SH01;Character;John;1;animate", csv)
+        self.assertNotIn("MP;Environment;Lake;Props;Boat;1;setdress", csv)
+        self.assertIn("Episode;E01;Character;John;1;animate", csv)

@@ -10,6 +10,28 @@ logger = logging.getLogger(__name__)
 
 
 class BaseMixin(object):
+    """
+    Primary key, audit timestamps and the CRUD shorthands shared by every
+    model. Models declare it as ``class Thing(db.Model, BaseMixin,
+    SerializerMixin)``.
+
+    Two conventions run through the class:
+
+    - Methods come in pairs. ``create``/``update``/``delete`` commit and roll
+      back on failure; their ``*_no_commit`` counterparts only stage the
+      change, so a caller can group several writes into one transaction and
+      commit once.
+    - ``update`` and ``create`` accept relationship fields as lists of ids,
+      dicts holding an id, or loaded instances. ``_resolve_relations`` turns
+      them into ORM instances and silently drops the ids that match nothing.
+
+    Note that ``db.Model`` sits before this class in the MRO, so anything it
+    already defines wins. That is why there is no ``query`` and no
+    ``__repr__`` here: Flask-SQLAlchemy provides both, and a definition on
+    this mixin would never be reached. Models that want a friendlier repr
+    define ``__repr__`` on themselves, as a dozen of them do.
+    """
+
     id = db.Column(
         UUIDType(binary=False),
         primary_key=True,
@@ -26,18 +48,9 @@ class BaseMixin(object):
         onupdate=date_helpers.get_utc_now_datetime,
     )
 
-    def __repr__(self):
-        """
-        String representation based on type and name by default.
-        """
-        return f"<{type(self).__name__} {self.name}>"
-
-    @classmethod
-    def query(cls):
-        """
-        Shorthand to access session query object.
-        """
-        return db.session.query(cls)
+    # ------------------------------------------------------------------
+    # Lookups
+    # ------------------------------------------------------------------
 
     @classmethod
     def get(cls, id):
@@ -85,14 +98,20 @@ class BaseMixin(object):
         return cls.query.filter_by(**kw).all()
 
     @classmethod
-    def get_or_create(cls, **kw):
+    def get_id_map(cls, field="shotgun_id"):
         """
-        Shorthand to retrieve data by using filters.
+        Build a map to easily match a field value with an id. It's useful during
+        mass import to build foreign keys.
         """
-        instance = cls.get_by(**kw)
-        if instance is None:
-            instance = cls.create(**kw)
-        return instance
+        entry_map = {}
+        entries = cls.query.all()
+        for entry in entries:
+            entry_map[getattr(entry, field)] = entry.id
+        return entry_map
+
+    # ------------------------------------------------------------------
+    # Creation
+    # ------------------------------------------------------------------
 
     @classmethod
     def create(cls, **kw):
@@ -107,6 +126,115 @@ class BaseMixin(object):
             db.session.rollback()
             raise
         return instance
+
+    @classmethod
+    def create_no_commit(cls, **kw):
+        """
+        Shorthand to create an entry via the database session without commiting
+        the request.
+        """
+        kw.update(cls._resolve_relations(kw))
+        instance = cls(**kw)
+        db.session.add(instance)
+        return instance
+
+    @classmethod
+    def get_or_create(cls, **kw):
+        """
+        Shorthand to retrieve data by using filters.
+        """
+        instance = cls.get_by(**kw)
+        if instance is None:
+            instance = cls.create(**kw)
+        return instance
+
+    # ------------------------------------------------------------------
+    # Instance mutation
+    # ------------------------------------------------------------------
+
+    def save(self):
+        """
+        Shorthand to create an entry via the database session based on current
+        instance fields.
+        """
+        try:
+            self.updated_at = date_helpers.get_utc_now_datetime()
+            db.session.add(self)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            raise
+
+    def update(self, data):
+        """
+        Shorthand to update an entry via the database session based on current
+        instance fields.
+        """
+        try:
+            self.update_no_commit(data)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            raise
+
+    def update_no_commit(self, data):
+        """
+        Shorthand to update an entry via the database session based on current
+        instance fields. It doesn't generate a commit.
+        """
+        self.updated_at = date_helpers.get_utc_now_datetime()
+        resolved = self._resolve_relations(data)
+        for key, value in data.items():
+            field_key = getattr(self.__class__, key, None)
+            if not hasattr(field_key, "property"):
+                continue
+            setattr(self, key, resolved.get(key, value))
+        db.session.add(self)
+
+    def delete(self):
+        """
+        Shorthand to delete an entry via the database session based on current
+        instance id.
+        """
+        try:
+            self.delete_no_commit()
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            raise
+
+    def delete_no_commit(self):
+        """
+        Shorthand to delete an entry via the database session based on current
+        instance id. The change is not commited.
+        """
+        db.session.delete(self)
+        return True
+
+    @classmethod
+    def delete_all_by(cls, *criterions, **kw):
+        """
+        Shorthand to delete data by using filters.
+        """
+        result = cls.query.filter(*criterions).filter_by(**kw).delete()
+        db.session.commit()
+        return result
+
+    @classmethod
+    def commit(cls):
+        """
+        Commit the pending changes, rolling back the session on failure so
+        it stays usable for the next request.
+        """
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            raise
+
+    # ------------------------------------------------------------------
+    # Relations
+    # ------------------------------------------------------------------
 
     @classmethod
     def _resolve_relations(cls, data):
@@ -137,37 +265,24 @@ class BaseMixin(object):
             resolved[key] = values
         return resolved
 
-    @classmethod
-    def create_no_commit(cls, **kw):
+    def set_links(self, ids, LinkTable, field_left, field_right):
         """
-        Shorthand to create an entry via the database session without commiting
-        the request.
+        Point this instance at the given ids through a link table, adding
+        the rows that are missing. Existing links are left untouched and
+        none are removed, so this adds to the set, it does not replace it.
         """
-        kw.update(cls._resolve_relations(kw))
-        instance = cls(**kw)
-        db.session.add(instance)
-        return instance
-
-    @classmethod
-    def delete_all_by(cls, *criterions, **kw):
-        """
-        Shorthand to delete data by using filters.
-        """
-        result = cls.query.filter(*criterions).filter_by(**kw).delete()
+        for id in ids:
+            link = LinkTable.query.filter_by(
+                **{field_left: self.id, field_right: id}
+            ).first()
+            if link is None:
+                link = LinkTable(**{field_left: self.id, field_right: id})
+                db.session.add(link)
         db.session.commit()
-        return result
 
-    @classmethod
-    def get_id_map(cls, field="shotgun_id"):
-        """
-        Build a map to easily match a field value with an id. It's useful during
-        mass import to build foreign keys.
-        """
-        entry_map = {}
-        entries = cls.query.all()
-        for entry in entries:
-            entry_map[getattr(entry, field)] = entry.id
-        return entry_map
+    # ------------------------------------------------------------------
+    # Import from another Zou instance
+    # ------------------------------------------------------------------
 
     @classmethod
     def create_from_import(cls, data):
@@ -213,80 +328,3 @@ class BaseMixin(object):
         if instance is not None:
             instance.delete()
         return instance_id
-
-    @classmethod
-    def commit(cls):
-        try:
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-            raise
-
-    def save(self):
-        """
-        Shorthand to create an entry via the database session based on current
-        instance fields.
-        """
-        try:
-            self.updated_at = date_helpers.get_utc_now_datetime()
-            db.session.add(self)
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-            raise
-
-    def delete(self):
-        """
-        Shorthand to delete an entry via the database session based on current
-        instance id.
-        """
-        try:
-            self.delete_no_commit()
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-            raise
-
-    def delete_no_commit(self):
-        """
-        Shorthand to delete an entry via the database session based on current
-        instance id. The change is not commited.
-        """
-        db.session.delete(self)
-        return True
-
-    def update(self, data):
-        """
-        Shorthand to update an entry via the database session based on current
-        instance fields.
-        """
-        try:
-            self.update_no_commit(data)
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-            raise
-
-    def update_no_commit(self, data):
-        """
-        Shorthand to update an entry via the database session based on current
-        instance fields. It doesn't generate a commit.
-        """
-        self.updated_at = date_helpers.get_utc_now_datetime()
-        resolved = self._resolve_relations(data)
-        for key, value in data.items():
-            field_key = getattr(self.__class__, key, None)
-            if not hasattr(field_key, "property"):
-                continue
-            setattr(self, key, resolved.get(key, value))
-        db.session.add(self)
-
-    def set_links(self, ids, LinkTable, field_left, field_right):
-        for id in ids:
-            link = LinkTable.query.filter_by(
-                **{field_left: self.id, field_right: id}
-            ).first()
-            if link is None:
-                link = LinkTable(**{field_left: self.id, field_right: id})
-                db.session.add(link)
-        db.session.commit()

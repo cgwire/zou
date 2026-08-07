@@ -1,0 +1,53 @@
+from tests.base import ApiDBTestCase
+
+from zou.app.models.software import Software
+
+from zou.app.utils import fields
+
+
+class SoftwareTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_data(Software, 3)
+
+    def test_get_softwares(self):
+        softwares = self.get("data/softwares")
+        self.assertEqual(len(softwares), 3)
+
+    def test_get_software(self):
+        software = self.get_first("data/softwares")
+        software_again = self.get(f"data/softwares/{software['id']}")
+        self.assertEqual(software, software_again)
+        self.get_404(f"data/softwares/{fields.gen_uuid()}")
+
+    def test_create_software(self):
+        data = {
+            "name": "3dsMax",
+            "short_name": "max",
+            "file_extension": ".max",
+        }
+        self.software = self.post("data/softwares", data)
+        self.assertIsNotNone(self.software["id"])
+
+        softwares = self.get("data/softwares")
+        self.assertEqual(len(softwares), 4)
+
+    def test_update_software(self):
+        software = self.get_first("data/softwares")
+        data = {
+            "name": "Maya",
+            "file_extension": ".ma",
+        }
+        self.put(f"data/softwares/{software['id']}", data)
+        software_again = self.get(f"data/softwares/{software['id']}")
+        self.assertEqual(data["name"], software_again["name"])
+        self.put_404(f"data/softwares/{fields.gen_uuid()}", data)
+
+    def test_delete_software(self):
+        softwares = self.get("data/softwares")
+        self.assertEqual(len(softwares), 3)
+        software = softwares[0]
+        self.delete(f"data/softwares/{software['id']}")
+        softwares = self.get("data/softwares")
+        self.assertEqual(len(softwares), 2)
+        self.delete_404(f"data/softwares/{fields.gen_uuid()}")

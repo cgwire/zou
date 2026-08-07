@@ -14,7 +14,7 @@ from babel.dates import format_datetime
 
 
 from zou.app.services import persons_service, templates_service
-from zou.app.models.person import Person
+from zou.app.models.person import Person, SENSITIVE_FIELDS
 from zou.app.services.exception import (
     EmailOTPAlreadyEnabledException,
     EmailOTPNotEnabledException,
@@ -48,6 +48,14 @@ from fido2.webauthn import AttestedCredentialData
 
 MAX_LOGIN_FAILED_ATTEMPS = 5
 LOGIN_LOCKOUT_DELAY = timedelta(minutes=1)
+
+# Which method the preferred one falls back to when it gets disabled, in
+# order of preference.
+TWO_FACTOR_FALLBACKS = {
+    "totp": ["fido", "email_otp"],
+    "email_otp": ["fido", "totp"],
+    "fido": ["totp", "email_otp"],
+}
 
 # Hash compared against when the address is unknown, so that a login costs
 # the same bcrypt round whether or not the account exists. Built on first
@@ -150,26 +158,16 @@ def check_auth(
     if login_failed_attemps > 0:
         update_login_failed_attemps(person["id"], 0)
 
-    # The person dict may come straight from the memoize cache: strip the
-    # secrets from a copy so the cached entry is left untouched.
-    person = dict(person)
-
-    if "password" in person:
-        del person["password"]
-
-    if "totp_secret" in person:
-        del person["totp_secret"]
-
-    if "email_otp_secret" in person:
-        del person["email_otp_secret"]
-
-    if "otp_recovery_codes" in person:
-        del person["otp_recovery_codes"]
-
-    if "fido_credentials" in person:
-        del person["fido_credentials"]
-
-    return person
+    # This dict is what the login route hands back to the client, and it
+    # was read with the unsafe serialization to reach the secrets above.
+    # Strip on the model's own list rather than naming the fields here:
+    # named one by one, jti was missed and rode along to the client.
+    # A copy, since the dict may come straight from the memoize cache.
+    return {
+        key: value
+        for key, value in person.items()
+        if key not in SENSITIVE_FIELDS
+    }
 
 
 def no_password_auth_strategy(person, password, app):
@@ -317,11 +315,47 @@ def check_two_factor_authentication(
 
 
 def person_two_factor_authentication_enabled(person):
+    """
+    Return True if given person has at least one 2FA method enabled.
+    """
     return (
         person["totp_enabled"]
         or person["email_otp_enabled"]
         or person["fido_enabled"]
     )
+
+
+def _enable_two_factor_method(person, method):
+    """
+    Record given method as enabled: issue the recovery codes if the person
+    has none yet, and make it the preferred method if none was set. Returns
+    the plain recovery codes when they were just generated, None otherwise.
+    """
+    otp_recovery_codes = None
+    if not person.otp_recovery_codes:
+        otp_recovery_codes = generate_recovery_codes()
+        person.otp_recovery_codes = hash_recovery_codes(otp_recovery_codes)
+    if not person.preferred_two_factor_authentication:
+        person.preferred_two_factor_authentication = method
+    return otp_recovery_codes
+
+
+def _disable_two_factor_method(person, method):
+    """
+    Update the preferred method after given one was disabled: fall back to
+    another enabled method, or drop the preference and the recovery codes
+    when nothing is left. The caller has already turned the method off.
+    """
+    if not person_two_factor_authentication_enabled_raw(person):
+        person.otp_recovery_codes = None
+        person.preferred_two_factor_authentication = None
+        return
+    if person.preferred_two_factor_authentication != method:
+        return
+    for fallback in TWO_FACTOR_FALLBACKS[method]:
+        if getattr(person, f"{fallback}_enabled"):
+            person.preferred_two_factor_authentication = fallback
+            return
 
 
 def is_user_exempt_from_2fa(person, app):
@@ -333,12 +367,18 @@ def is_user_exempt_from_2fa(person, app):
 
 
 def person_two_factor_authentication_enabled_raw(person):
+    """
+    Same as person_two_factor_authentication_enabled, on an active record.
+    """
     return (
         person.totp_enabled or person.email_otp_enabled or person.fido_enabled
     )
 
 
 def get_two_factor_authentication_enabled(person):
+    """
+    Return the list of the 2FA methods given person can authenticate with.
+    """
     two_factor_authentication_enabled = ["recovery_code"]
     if person["totp_enabled"]:
         two_factor_authentication_enabled.append("totp")
@@ -426,17 +466,17 @@ def pre_enable_totp(person_id):
     person = Person.get(person_id)
     if person.totp_enabled:
         raise TOTPAlreadyEnabledException()
-    else:
-        person.totp_secret = pyotp.random_base32()
-        totp = pyotp.TOTP(person.totp_secret)
-        organisation = persons_service.get_organisation()
-        totp_provisionning_uri = totp.provisioning_uri(
-            name=person.email, issuer_name=f"Kitsu {organisation['name']}"
-        )
-        person.totp_enabled = False
-        person.commit()
-        persons_service.clear_person_cache()
-        return totp_provisionning_uri, person.totp_secret
+
+    person.totp_secret = pyotp.random_base32()
+    totp = pyotp.TOTP(person.totp_secret)
+    organisation = persons_service.get_organisation()
+    totp_provisionning_uri = totp.provisioning_uri(
+        name=person.email, issuer_name=f"Kitsu {organisation['name']}"
+    )
+    person.totp_enabled = False
+    person.commit()
+    persons_service.clear_person_cache()
+    return totp_provisionning_uri, person.totp_secret
 
 
 def enable_totp(person_id, totp):
@@ -446,19 +486,14 @@ def enable_totp(person_id, totp):
     person = Person.get(person_id)
     if person.totp_enabled:
         raise TOTPAlreadyEnabledException()
-    elif check_totp(person.serialize(), totp):
-        person.totp_enabled = True
-        otp_recovery_codes = None
-        if not person.otp_recovery_codes:
-            otp_recovery_codes = generate_recovery_codes()
-            person.otp_recovery_codes = hash_recovery_codes(otp_recovery_codes)
-        if not person.preferred_two_factor_authentication:
-            person.preferred_two_factor_authentication = "totp"
-        person.commit()
-        persons_service.clear_person_cache()
-        return otp_recovery_codes
-    else:
+    if not check_totp(person.serialize(), totp):
         raise WrongOTPException
+
+    person.totp_enabled = True
+    otp_recovery_codes = _enable_two_factor_method(person, "totp")
+    person.commit()
+    persons_service.clear_person_cache()
+    return otp_recovery_codes
 
 
 def disable_totp(person_id):
@@ -470,14 +505,7 @@ def disable_totp(person_id):
         raise TOTPNotEnabledException()
     person.totp_enabled = False
     person.totp_secret = None
-    if not person_two_factor_authentication_enabled_raw(person):
-        person.otp_recovery_codes = None
-        person.preferred_two_factor_authentication = None
-    elif person.preferred_two_factor_authentication == "totp":
-        if person.fido_enabled:
-            person.preferred_two_factor_authentication = "fido"
-        elif person.email_otp_enabled:
-            person.preferred_two_factor_authentication = "email_otp"
+    _disable_two_factor_method(person, "totp")
     person.commit()
     persons_service.clear_person_cache()
     return True
@@ -490,13 +518,13 @@ def pre_enable_email_otp(person_id):
     person = Person.get(person_id)
     if person.email_otp_enabled:
         raise EmailOTPAlreadyEnabledException()
-    else:
-        person.email_otp_secret = pyotp.random_base32()
-        person.email_otp_enabled = False
-        person.commit()
-        send_email_otp(person.serialize())
-        persons_service.clear_person_cache()
-        return True
+
+    person.email_otp_secret = pyotp.random_base32()
+    person.email_otp_enabled = False
+    person.commit()
+    send_email_otp(person.serialize())
+    persons_service.clear_person_cache()
+    return True
 
 
 def enable_email_otp(person_id, email_otp):
@@ -506,19 +534,14 @@ def enable_email_otp(person_id, email_otp):
     person = Person.get(person_id)
     if person.email_otp_enabled:
         raise EmailOTPAlreadyEnabledException()
-    elif check_email_otp(person.serialize(), email_otp):
-        person.email_otp_enabled = True
-        otp_recovery_codes = None
-        if not person.otp_recovery_codes:
-            otp_recovery_codes = generate_recovery_codes()
-            person.otp_recovery_codes = hash_recovery_codes(otp_recovery_codes)
-        if not person.preferred_two_factor_authentication:
-            person.preferred_two_factor_authentication = "email_otp"
-        person.commit()
-        persons_service.clear_person_cache()
-        return otp_recovery_codes
-    else:
+    if not check_email_otp(person.serialize(), email_otp):
         raise WrongOTPException
+
+    person.email_otp_enabled = True
+    otp_recovery_codes = _enable_two_factor_method(person, "email_otp")
+    person.commit()
+    persons_service.clear_person_cache()
+    return otp_recovery_codes
 
 
 def disable_email_otp(person_id):
@@ -530,14 +553,7 @@ def disable_email_otp(person_id):
         raise EmailOTPNotEnabledException()
     person.email_otp_enabled = False
     person.email_otp_secret = None
-    if not person_two_factor_authentication_enabled_raw(person):
-        person.otp_recovery_codes = None
-        person.preferred_two_factor_authentication = None
-    elif person.preferred_two_factor_authentication == "email_otp":
-        if person.fido_enabled:
-            person.preferred_two_factor_authentication = "fido"
-        elif person.totp_enabled:
-            person.preferred_two_factor_authentication = "totp"
+    _disable_two_factor_method(person, "email_otp")
     person.commit()
     persons_service.clear_person_cache()
     return True
@@ -554,7 +570,7 @@ def send_email_otp(person):
         f"email-otp-count-{person['email']}", count, ttl=60 * 5
     )
     organisation = persons_service.get_organisation()
-    locale = person.get("locale") or getattr(config, "DEFAULT_LOCALE", "en_US")
+    locale = person.get("locale") or config.DEFAULT_LOCALE
     if hasattr(locale, "language"):
         locale = str(locale)
     time_string = format_datetime(
@@ -587,6 +603,9 @@ def send_email_otp(person):
 def get_fido_attested_credential_data_from_person(
     fido_person_credentials=None,
 ):
+    """
+    Rebuild the fido2 credential objects from the JSON stored on the person.
+    """
     credentials = []
     if isinstance(fido_person_credentials, list):
         for credential in fido_person_credentials:
@@ -661,12 +680,7 @@ def register_fido(person_id, registration_response, device_name):
     person.fido_credentials.append(credential_data)
     flag_modified(person, "fido_credentials")
     person.fido_enabled = True
-    otp_recovery_codes = None
-    if not person.otp_recovery_codes:
-        otp_recovery_codes = generate_recovery_codes()
-        person.otp_recovery_codes = hash_recovery_codes(otp_recovery_codes)
-    if not person.preferred_two_factor_authentication:
-        person.preferred_two_factor_authentication = "fido"
+    otp_recovery_codes = _enable_two_factor_method(person, "fido")
     person.commit()
     persons_service.clear_person_cache()
     return otp_recovery_codes
@@ -684,14 +698,7 @@ def unregister_fido(person_id, device_name):
     flag_modified(person, "fido_credentials")
     if len(person.fido_credentials) == 0:
         person.fido_enabled = False
-    if not person_two_factor_authentication_enabled_raw(person):
-        person.otp_recovery_codes = None
-        person.preferred_two_factor_authentication = None
-    elif person.preferred_two_factor_authentication == "fido":
-        if person.totp_enabled:
-            person.preferred_two_factor_authentication = "totp"
-        elif person.email_otp_enabled:
-            person.preferred_two_factor_authentication = "email_otp"
+    _disable_two_factor_method(person, "fido")
     person.commit()
     persons_service.clear_person_cache()
     return True
@@ -712,6 +719,9 @@ def get_challenge_fido(person_id):
 
 
 def disable_two_factor_authentication_for_person(person_id):
+    """
+    Turn every 2FA method off for a person and drop their recovery codes.
+    """
     person = Person.get(person_id)
     if not person_two_factor_authentication_enabled_raw(person):
         raise TwoFactorAuthenticationNotEnabledException()
@@ -851,6 +861,10 @@ def check_login_failed_attemps(person):
 
 
 def logout(jti, refresh_jti=None):
+    """
+    Revoke the tokens of the current session. An unreachable token store
+    must not fail the logout: the client drops its tokens either way.
+    """
     try:
         revoke_tokens(current_app, jti, refresh_jti=refresh_jti)
     except Exception:

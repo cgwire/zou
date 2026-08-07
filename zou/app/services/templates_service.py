@@ -116,9 +116,10 @@ def get_signature(locale=None):
     is translated (e.g. "Best regards" / "Cordialement").
     """
     organisation = persons_service.get_organisation()
-    loc = locale or getattr(config, "DEFAULT_LOCALE", "en_US")
     return get_email_translation(
-        loc, "email_signature", organisation_name=organisation["name"]
+        locale or config.DEFAULT_LOCALE,
+        "email_signature",
+        organisation_name=organisation["name"],
     )
 
 

@@ -40,7 +40,7 @@ class MovieTestCase(unittest.TestCase):
         shutil.copyfile(self.source_path, self.video_only_path)
 
     def tearDown(self):
-        super(MovieTestCase, self).tearDown()
+        super().tearDown()
         shutil.rmtree(self.tmpdir)
 
     def test_soundtrack(self):

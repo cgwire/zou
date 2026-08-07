@@ -1,8 +1,82 @@
 import os
 import tempfile
 
+import flask_bcrypt
+import pytest
+
+# Must be set before zou.app is imported.
+os.environ.setdefault("CACHE_TYPE", "simple")
+os.environ.setdefault("BCRYPT_LOG_ROUNDS", "4")
+os.environ.setdefault("DB_POOL_PRE_PING", "false")
+
 # Force an isolated preview store before any zou module reads the config.
 # Without this, running the tests from a working checkout resolves
 # PREVIEW_FOLDER to ./previews — a live development store — which route
 # tests then write into and which teardowns may remove entirely.
 os.environ["PREVIEW_FOLDER"] = tempfile.mkdtemp(prefix="zou-test-previews-")
+
+# flask_bcrypt module-level functions create a Bcrypt() instance without
+# the app, so BCRYPT_LOG_ROUNDS is ignored and rounds default to 12.
+# Wrap them to force 4 rounds in tests.
+_TEST_ROUNDS = 4
+_orig_generate = flask_bcrypt.generate_password_hash
+
+
+def _fast_generate(password, rounds=None):
+    return _orig_generate(password, rounds=rounds or _TEST_ROUNDS)
+
+
+flask_bcrypt.generate_password_hash = _fast_generate
+
+
+@pytest.fixture(autouse=True)
+def _skip_bcrypt_check(request, monkeypatch):
+    """
+    Bypass bcrypt verification during login, since paying ~100 ms per
+    login would dominate the suite. A test that asserts on the
+    verification itself opts out with the real_bcrypt marker, set at
+    module level: pytestmark = pytest.mark.real_bcrypt.
+    """
+    if request.node.get_closest_marker("real_bcrypt") is None:
+        monkeypatch.setattr(
+            "flask_bcrypt.check_password_hash",
+            lambda *args, **kwargs: True,
+        )
+
+
+def pytest_configure(config):
+    """
+    Build the application explicitly and create the database schema once
+    for the entire test session. Importing zou.app no longer builds the
+    app as a side effect: the suite owns the moment (and the config
+    environment) the app is wired with.
+    """
+    from zou.app import create_app
+    from zou.app.utils import dbhelpers
+
+    app = create_app()
+
+    # Register the admin blueprint so it can be tested.
+    from zou.app.blueprints.admin import blueprint as admin_blueprint
+
+    if "admin" not in app.blueprints:
+        app.register_blueprint(admin_blueprint)
+
+    with app.app_context():
+        from zou.app import db
+
+        dbhelpers.drop_all()
+        db.engine.dispose()
+        dbhelpers.create_all()
+        db.engine.dispose()
+
+
+def pytest_unconfigure(config):
+    """
+    Drop database schema at the end of the test session.
+    """
+    from zou.app import app
+    from zou.app.utils import dbhelpers
+
+    with app.app_context():
+        dbhelpers.drop_all()

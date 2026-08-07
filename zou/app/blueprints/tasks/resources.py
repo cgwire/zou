@@ -26,6 +26,7 @@ from zou.app.services import (
     projects_service,
     shots_service,
     tasks_service,
+    permissions_service,
     user_service,
     concepts_service,
 )
@@ -124,7 +125,7 @@ class AddPreviewResource(MethodView, ArgsMixin):
         """
         body = validation.validate_request_body(CommentPreviewSchema)
 
-        user_service.check_task_action_access(task_id)
+        permissions_service.check_task_action_access(task_id)
 
         person = persons_service.get_current_user()
         preview_file = tasks_service.add_preview_file_to_comment(
@@ -207,7 +208,7 @@ class AddExtraPreviewResource(MethodView, ArgsMixin):
             400:
               description: Bad request
         """
-        user_service.check_task_action_access(task_id)
+        permissions_service.check_task_action_access(task_id)
         tasks_service.get_comment(comment_id)
 
         person = persons_service.get_current_user()
@@ -264,7 +265,7 @@ class AddExtraPreviewResource(MethodView, ArgsMixin):
         self.check_id_parameter(comment_id)
         self.check_id_parameter(preview_file_id)
         task = tasks_service.get_task(task_id)
-        user_service.check_project_access(task["project_id"])
+        permissions_service.check_project_access(task["project_id"])
         deletion_service.remove_preview_file_by_id(
             preview_file_id, force=self.get_force()
         )
@@ -323,7 +324,7 @@ class TaskPreviewsResource(MethodView):
                           format: date-time
                           example: "2024-01-15T10:30:00Z"
         """
-        user_service.check_task_access(task_id)
+        permissions_service.check_task_access(task_id)
         return files_service.get_preview_files_for_task(task_id)
 
 
@@ -379,7 +380,7 @@ class TaskCommentsResource(MethodView):
                           format: date-time
                           example: "2024-01-15T11:00:00Z"
         """
-        user_service.check_task_access(task_id)
+        permissions_service.check_task_access(task_id)
         is_client = permissions.has_client_permissions()
         is_manager = permissions.has_manager_permissions()
         is_supervisor = permissions.has_supervisor_permissions()
@@ -448,7 +449,7 @@ class TaskCommentResource(MethodView):
         comment = tasks_service.get_comment(comment_id)
         if comment["object_id"] != task_id:
             raise CommentNotFoundException
-        user_service.check_comment_access(comment)
+        permissions_service.check_comment_access(comment)
         return comment
 
     def pre_delete(self, comment):
@@ -501,11 +502,11 @@ class TaskCommentResource(MethodView):
         """
         comment = tasks_service.get_comment(comment_id)
         task = tasks_service.get_task(comment["object_id"])
-        user_service.resolve_project_role(task["project_id"])
+        permissions_service.resolve_project_role(task["project_id"])
         if permissions.has_manager_permissions():
-            user_service.check_project_access(task["project_id"])
+            permissions_service.check_project_access(task["project_id"])
         else:
-            user_service.check_person_access(comment["person_id"])
+            permissions_service.check_person_access(comment["person_id"])
         self.pre_delete(comment)
         deletion_service.remove_comment(comment_id)
         tasks_service.reset_task_data(comment["object_id"])
@@ -573,7 +574,7 @@ class PersonTasksResource(MethodView):
                             format: uuid
                           example: ["f24a6ea4-ce75-4665-a070-57453082c25"]
         """
-        user_service.check_person_is_not_bot(person_id)
+        permissions_service.check_person_is_not_bot(person_id)
         current_user = persons_service.get_current_user()
         if (
             person_id != current_user["id"]
@@ -659,7 +660,7 @@ class PersonRelatedTasksResource(MethodView):
                             format: uuid
                           example: ["f24a6ea4-ce75-4665-a070-57453082c25"]
         """
-        user_service.check_person_is_not_bot(person_id)
+        permissions_service.check_person_is_not_bot(person_id)
         current_user = persons_service.get_current_user()
         if (
             person_id != current_user["id"]
@@ -728,7 +729,7 @@ class PersonDoneTasksResource(MethodView):
                             format: uuid
                           example: ["f24a6ea4-ce75-4665-a070-57453082c25"]
         """
-        user_service.check_person_is_not_bot(person_id)
+        permissions_service.check_person_is_not_bot(person_id)
         current_user = persons_service.get_current_user()
         if (
             person_id != current_user["id"]
@@ -821,7 +822,7 @@ class CreateShotTasksResource(MethodView):
             400:
               description: Bad request
         """
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         task_type = tasks_service.get_task_type(task_type_id)
 
         shot_ids = validation.validate_id_list(required=False)
@@ -913,7 +914,7 @@ class CreateConceptTasksResource(MethodView):
             400:
               description: Bad request
         """
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         if (
             permissions.has_vendor_permissions()
             or permissions.has_client_permissions()
@@ -934,7 +935,7 @@ class CreateConceptTasksResource(MethodView):
             concepts = concepts_service.get_concepts(criterions)
 
         for concept in concepts:
-            user_service.check_entity_access(concept["id"])
+            permissions_service.check_entity_access(concept["id"])
 
         tasks = tasks_service.create_tasks(task_type, concepts)
         return tasks, 201
@@ -1020,7 +1021,7 @@ class CreateEntityTasksResource(MethodView):
             400:
               description: Bad request
         """
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         task_type = tasks_service.get_task_type(task_type_id)
         entity_type_dict = (
             entities_service.get_entity_type_by_name_or_not_found(
@@ -1119,7 +1120,7 @@ class CreateAssetTasksResource(MethodView):
             400:
               description: Bad request
         """
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         task_type = tasks_service.get_task_type(task_type_id)
 
         asset_ids = validation.validate_id_list(required=False)
@@ -1211,7 +1212,7 @@ class CreateEditTasksResource(MethodView):
             400:
               description: Wrong criterions format
         """
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         task_type = tasks_service.get_task_type(task_type_id)
 
         edit_ids = validation.validate_id_list(required=False)
@@ -1321,8 +1322,8 @@ class ToReviewResource(MethodView, ArgsMixin):
 
         try:
             task = tasks_service.get_task(task_id)
-            user_service.check_project_access(task["project_id"])
-            user_service.check_entity_access(task["entity_id"])
+            permissions_service.check_project_access(task["project_id"])
+            permissions_service.check_entity_access(task["entity_id"])
 
             if person_id is not None:
                 person = persons_service.get_person(person_id)
@@ -1401,7 +1402,7 @@ class ClearAssignationResource(MethodView, ArgsMixin):
         tasks = []
         for task_id in body.task_ids:
             try:
-                user_service.check_task_department_access_for_unassign(
+                permissions_service.check_task_department_access_for_unassign(
                     task_id, body.person_id
                 )
                 tasks_service.clear_assignation(
@@ -1466,7 +1467,7 @@ class SetTasksPriorityResource(MethodView, ArgsMixin):
         for task_id in body.task_ids:
             try:
                 task = tasks_service.get_task(task_id)
-                user_service.check_supervisor_task_access(task, data)
+                permissions_service.check_supervisor_task_access(task, data)
                 tasks.append(tasks_service.update_task(task_id, dict(data)))
             except permissions.PermissionDenied:
                 pass
@@ -1562,8 +1563,12 @@ class TasksAssignResource(MethodView, ArgsMixin):
         for task_id in body.task_ids:
             try:
                 project_id = tasks_service.get_task(task_id)["project_id"]
-                user_service.check_person_is_not_bot(person_id, project_id)
-                user_service.check_task_department_access(task_id, person_id)
+                permissions_service.check_person_is_not_bot(
+                    person_id, project_id
+                )
+                permissions_service.check_task_department_access(
+                    task_id, person_id
+                )
                 task = tasks_service.assign_task(
                     task_id, person_id, current_user["id"]
                 )
@@ -1658,8 +1663,10 @@ class TaskAssignResource(MethodView, ArgsMixin):
         current_user = persons_service.get_current_user()
         try:
             project_id = tasks_service.get_task(task_id)["project_id"]
-            user_service.check_person_is_not_bot(person_id, project_id)
-            user_service.check_task_department_access(task_id, person_id)
+            permissions_service.check_person_is_not_bot(person_id, project_id)
+            permissions_service.check_task_department_access(
+                task_id, person_id
+            )
             task = tasks_service.assign_task(
                 task_id, person_id, current_user["id"]
             )
@@ -1762,8 +1769,8 @@ class TaskFullResource(MethodView):
         task = tasks_service.get_full_task(
             task_id, persons_service.get_current_user()["id"]
         )
-        user_service.check_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
+        permissions_service.check_project_access(task["project_id"])
+        permissions_service.check_entity_access(task["entity_id"])
         return task
 
 
@@ -1834,7 +1841,7 @@ class TaskForEntityResource(MethodView):
                             example: ["f24a6ea4-ce75-4665-a070-57453082c25"]
         """
         entity = entities_service.get_entity(entity_id)
-        user_service.check_project_access(entity["project_id"])
+        permissions_service.check_project_access(entity["project_id"])
         return tasks_service.get_tasks_for_entity_and_task_type(
             entity_id, task_type_id
         )
@@ -1916,10 +1923,10 @@ class SetTimeSpentResource(MethodView, ArgsMixin):
                 description: Invalid parameters
         """
         project_id = tasks_service.get_task(task_id)["project_id"]
-        user_service.check_person_is_not_bot(person_id, project_id)
+        permissions_service.check_person_is_not_bot(person_id, project_id)
         body = validation.validate_request_body(TimeSpentSchema)
         try:
-            user_service.check_time_spent_access(task_id, person_id)
+            permissions_service.check_time_spent_access(task_id, person_id)
             time_spent = tasks_service.create_or_update_time_spent(
                 task_id,
                 person_id,
@@ -1995,9 +2002,9 @@ class SetTimeSpentResource(MethodView, ArgsMixin):
             400:
                 description: Invalid parameters
         """
-        user_service.check_person_is_not_bot(person_id)
+        permissions_service.check_person_is_not_bot(person_id)
         try:
-            user_service.check_time_spent_access(task_id, person_id)
+            permissions_service.check_time_spent_access(task_id, person_id)
             time_spent = tasks_service.delete_time_spent(
                 task_id,
                 person_id,
@@ -2086,10 +2093,10 @@ class AddTimeSpentResource(MethodView, ArgsMixin):
                 description: Invalid parameters
         """
         project_id = tasks_service.get_task(task_id)["project_id"]
-        user_service.check_person_is_not_bot(person_id, project_id)
+        permissions_service.check_person_is_not_bot(person_id, project_id)
         body = validation.validate_request_body(TimeSpentSchema)
         try:
-            user_service.check_time_spent_access(task_id, person_id)
+            permissions_service.check_time_spent_access(task_id, person_id)
             time_spent = tasks_service.create_or_update_time_spent(
                 task_id,
                 person_id,
@@ -2155,7 +2162,7 @@ class GetTimeSpentResource(MethodView):
                             format: date-time
                             example: "2024-01-15T10:30:00Z"
         """
-        user_service.check_task_access(task_id)
+        permissions_service.check_task_access(task_id)
         return tasks_service.get_time_spents(task_id)
 
 
@@ -2218,7 +2225,7 @@ class GetTimeSpentDateResource(MethodView):
                             example: "2024-01-15T10:30:00Z"
         """
         try:
-            user_service.check_task_access(task_id)
+            permissions_service.check_task_access(task_id)
             return tasks_service.get_time_spents(task_id, date)
         except WrongDateFormatException:
             raise WrongParameterException("Wrong date format.")
@@ -2294,7 +2301,7 @@ class DeleteTasksResource(MethodView):
                         format: uuid
                       example: ["a24a6ea4-ce75-4665-a070-57453082c25"]
         """
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
         task_ids = validation.validate_id_list()
         task_ids = deletion_service.remove_tasks(project_id, task_ids)
         for task_id in task_ids:
@@ -2518,7 +2525,7 @@ class ProjectTasksResource(MethodView, ArgsMixin):
                           example: true
         """
         projects_service.get_project(project_id)
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         page = self.get_page()
         task_type_id = self.get_task_type_id()
         episode_id = self.get_episode_id()
@@ -2586,7 +2593,7 @@ class ProjectCommentsResource(MethodView, ArgsMixin):
                             example: "2024-01-15T11:00:00Z"
         """
         projects_service.get_project(project_id)
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         if (
             permissions.has_vendor_permissions()
             or permissions.has_client_permissions()
@@ -2726,8 +2733,8 @@ class SetTaskMainPreviewResource(MethodView):
                           example: "2024-01-15T11:00:00Z"
         """
         task = tasks_service.get_task(task_id)
-        user_service.check_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
+        permissions_service.check_project_access(task["project_id"])
+        permissions_service.check_entity_access(task["entity_id"])
         # Clients review content but must not redefine how an entity is
         # illustrated.
         if permissions.has_client_permissions():
@@ -2784,8 +2791,8 @@ class SetTasksMainPreviewResource(MethodView):
         entities = []
         for task_id in body.task_ids:
             task = tasks_service.get_task(task_id)
-            user_service.check_project_access(task["project_id"])
-            user_service.check_entity_access(task["entity_id"])
+            permissions_service.check_project_access(task["project_id"])
+            permissions_service.check_entity_access(task["entity_id"])
             # Clients review content but must not redefine how an entity is
             # illustrated. The test comes after check_project_access, which
             # resolves the project role: before it, it reads the global one
@@ -2865,7 +2872,7 @@ class PersonsTasksDatesResource(MethodView, ArgsMixin):
         if not permissions.has_admin_permissions():
             permissions.check_manager_permissions()
             if project_id is not None:
-                user_service.check_manager_project_access(project_id)
+                permissions_service.check_manager_project_access(project_id)
             else:
                 project_ids = user_service.get_open_project_ids()
         return tasks_service.get_persons_tasks_dates(

@@ -13,143 +13,165 @@ from zou.app.services import budget_service
 
 
 class BudgetServiceTestCase(ApiDBTestCase):
+    """
+    Budgets of a production and the lines they are made of. A second
+    production stands beside the first throughout, since every listing here
+    is meant to be scoped to one.
+    """
 
     def setUp(self):
-        super(BudgetServiceTestCase, self).setUp()
+        super().setUp()
 
-        self.generate_fixture_project_status()
         self.project_alt = self.generate_fixture_project("Project 2")
         self.project = self.generate_fixture_project()
         self.generate_fixture_department()
         self.generate_fixture_person()
 
-    def generate_fixture_budget(self):
+    def a_budget(self, name="Test Budget", project=None):
         self.budget = Budget.create(
-            project_id=self.project.id, name="Test Budget", revision=1
+            project_id=(project or self.project).id, name=name, revision=1
         )
         return self.budget
 
+    def an_entry(self, budget=None, **overrides):
+        """
+        One line of a budget, with the parts a case does not care about
+        filled in.
+        """
+        fields = {
+            "budget_id": (budget or self.a_budget()).id,
+            "department_id": self.department.id,
+            "start_date": datetime.date.today(),
+            "months_duration": 12,
+            "daily_salary": 500,
+            "position": "artist",
+            "seniority": "junior",
+            **overrides,
+        }
+        return BudgetEntry.create(**fields)
+
     def test_get_budget_raw(self):
+        budget = self.a_budget()
+
+        self.assertEqual(
+            budget_service.get_budget_raw(str(budget.id)).id, budget.id
+        )
         with self.assertRaises(BudgetNotFoundException):
             budget_service.get_budget_raw("123")
 
-        budget = Budget.create(
-            project_id=self.project.id, name="Test Budget", revision=1
-        )
-        result = budget_service.get_budget_raw(str(budget.id))
-        self.assertEqual(result.id, budget.id)
-
     def test_get_budget(self):
-        budget = Budget.create(
-            project_id=self.project.id, name="Test Budget", revision=1
-        )
+        budget = self.a_budget()
+
         result = budget_service.get_budget(str(budget.id))
+
         self.assertEqual(result["id"], str(budget.id))
         self.assertEqual(result["name"], "Test Budget")
 
-    def test_get_budgets(self):
-        result = budget_service.get_budgets(str(self.project.id))
-        self.assertEqual(len(result), 0)
-
-        budget_service.create_budget(
-            str(self.project.id), "Test Budget 1", "USD"
-        )
-        budget_service.create_budget(
-            str(self.project.id), "Test Budget 2", "USD"
-        )
+    def test_get_budgets_is_scoped_to_the_production(self):
+        self.assertEqual(budget_service.get_budgets(str(self.project.id)), [])
+        for name in ["Test Budget 1", "Test Budget 2"]:
+            budget_service.create_budget(str(self.project.id), name, "USD")
         budget_service.create_budget(
             str(self.project_alt.id), "Test Budget 3", "USD"
         )
-        result = budget_service.get_budgets(str(self.project.id))
-        self.assertEqual(len(result), 2)
 
-    def test_create_budget(self):
-        result = budget_service.create_budget(
+        result = budget_service.get_budgets(str(self.project.id))
+
+        self.assertEqual(
+            sorted(budget["name"] for budget in result),
+            ["Test Budget 1", "Test Budget 2"],
+        )
+
+    def test_create_budget_numbers_the_revisions(self):
+        """
+        Each budget of a production takes the revision after the highest one
+        already there, which is per production and not global.
+        """
+        first = budget_service.create_budget(
             str(self.project.id), "New Budget", "USD"
         )
-        self.assertEqual(result["name"], "New Budget")
-        self.assertEqual(result["currency"], "USD")
-        self.assertEqual(result["revision"], 1)
-
-        result = budget_service.create_budget(
+        second = budget_service.create_budget(
             str(self.project.id), "Second Budget", "EUR"
         )
-        budget = Budget.get(result["id"])
-        self.assertEqual(budget.revision, 2)
+        third = budget_service.create_budget(
+            str(self.project.id), "Third Budget", "EUR"
+        )
+        elsewhere = budget_service.create_budget(
+            str(self.project_alt.id), "Alt Budget", "USD"
+        )
+
+        self.assertEqual(first["currency"], "USD")
+        self.assertEqual(
+            [budget["revision"] for budget in [first, second, third]],
+            [1, 2, 3],
+        )
+        self.assertEqual(elsewhere["revision"], 1)
 
     def test_update_budget(self):
-        budget_dict = Budget.create(
-            project_id=self.project.id, name="Test Budget", revision=1
-        )
+        budget = self.a_budget()
+
         budget_service.update_budget(
-            str(budget_dict.id), name="Updated Budget", currency="EUR"
+            str(budget.id), name="Updated Budget", currency="EUR"
         )
-        budget = budget_service.get_budget(str(budget_dict.id))
-        self.assertEqual(budget["name"], "Updated Budget")
-        self.assertEqual(budget["currency"], "EUR")
 
-    def test_delete_budget(self):
-        budget = Budget.create(
-            project_id=self.project.id, name="Test Budget", revision=1
-        )
-        budget_entry = BudgetEntry.create(
-            budget_id=budget.id,
-            department_id=self.department.id,
-            start_date=datetime.date.today(),
-            months_duration=12,
-            daily_salary=500,
-        )
-        budget_entry_id = str(budget_entry.id)
+        updated = budget_service.get_budget(str(budget.id))
+        self.assertEqual(updated["name"], "Updated Budget")
+        self.assertEqual(updated["currency"], "EUR")
+
+    def test_update_budget_leaves_out_what_it_is_not_given(self):
+        budget = self.a_budget()
+        budget_service.update_budget(str(budget.id), currency="EUR")
+
+        budget_service.update_budget(str(budget.id), name="Renamed")
+
+        updated = budget_service.get_budget(str(budget.id))
+        self.assertEqual(updated["name"], "Renamed")
+        self.assertEqual(updated["currency"], "EUR")
+
+    def test_delete_budget_takes_its_entries_with_it(self):
+        budget = self.a_budget()
+        entry_id = str(self.an_entry(budget=budget).id)
+
         result = budget_service.delete_budget(str(budget.id))
-        self.assertEqual(result["id"], str(budget.id))
 
+        self.assertEqual(result["id"], str(budget.id))
         with self.assertRaises(BudgetNotFoundException):
             budget_service.get_budget_raw(str(budget.id))
-
         with self.assertRaises(BudgetEntryNotFoundException):
-            budget_service.get_budget_entry_raw(budget_entry_id)
+            budget_service.get_budget_entry_raw(entry_id)
 
-    def test_get_budget_entries(self):
-        self.generate_fixture_budget()
-        result = budget_service.get_budget_entries(str(self.budget.id))
-        self.assertEqual(len(result), 0)
+    def test_get_budget_entries_is_scoped_to_the_budget(self):
+        budget = self.a_budget()
+        other_budget = self.a_budget("Other Budget")
+        self.assertEqual(budget_service.get_budget_entries(str(budget.id)), [])
+        entry = self.an_entry(budget=budget)
+        self.an_entry(budget=other_budget)
+
+        result = budget_service.get_budget_entries(str(budget.id))
+
+        self.assertEqual([line["id"] for line in result], [str(entry.id)])
 
     def test_get_budget_entry_raw(self):
-        self.generate_fixture_budget()
+        entry = self.an_entry()
 
-        budget_entry = BudgetEntry.create(
-            budget_id=self.budget.id,
-            department_id=self.department.id,
-            start_date=datetime.date.today(),
-            months_duration=12,
-            daily_salary=500,
+        self.assertEqual(
+            budget_service.get_budget_entry_raw(str(entry.id)).id, entry.id
         )
         with self.assertRaises(BudgetEntryNotFoundException):
             budget_service.get_budget_entry_raw("123")
 
-        budget_entry_test = budget_service.get_budget_entry_raw(
-            str(budget_entry.id)
-        )
-        self.assertEqual(str(budget_entry_test.id), str(budget_entry.id))
-
     def test_get_budget_entry(self):
-        self.generate_fixture_budget()
-        budget_entry = BudgetEntry.create(
-            budget_id=self.budget.id,
-            department_id=self.department.id,
-            start_date=datetime.date.today(),
-            months_duration=12,
-            daily_salary=500,
-            position="artist",
-            seniority="junior",
-        )
-        result = budget_service.get_budget_entry(str(budget_entry.id))
-        self.assertEqual(result["id"], str(budget_entry.id))
+        entry = self.an_entry()
+
+        result = budget_service.get_budget_entry(str(entry.id))
+
+        self.assertEqual(result["id"], str(entry.id))
 
     def test_create_budget_entry(self):
-        self.generate_fixture_budget()
+        budget = self.a_budget()
+
         result = budget_service.create_budget_entry(
-            str(self.budget.id),
+            str(budget.id),
             str(self.department.id),
             datetime.date.today(),
             12,
@@ -158,40 +180,60 @@ class BudgetServiceTestCase(ApiDBTestCase):
             "junior",
             str(self.person.id),
         )
-        budget_entry = BudgetEntry.get(result["id"])
-        self.assertEqual(budget_entry.department_id, self.department.id)
-        self.assertEqual(budget_entry.person_id, self.person.id)
-        self.assertEqual(budget_entry.position, "artist")
+
+        entry = BudgetEntry.get(result["id"])
+        self.assertEqual(entry.department_id, self.department.id)
+        self.assertEqual(entry.person_id, self.person.id)
+        self.assertEqual(entry.position, "artist")
+        # Created with an empty exception map rather than a null one, so the
+        # column is always a map for whoever reads it.
+        self.assertEqual(entry.exceptions, {})
 
     def test_update_budget_entry(self):
-        self.generate_fixture_budget()
-        budget_entry = BudgetEntry.create(
-            budget_id=self.budget.id,
-            department_id=self.department.id,
-            start_date=datetime.date.today(),
-            months_duration=12,
-            daily_salary=500,
-            position="artist",
-            seniority="junior",
-        )
+        entry = self.an_entry()
+
         result = budget_service.update_budget_entry(
-            str(budget_entry.id), {"position": "lead", "daily_salary": 600}
+            str(entry.id), {"position": "lead", "daily_salary": 600}
         )
-        budget_entry = BudgetEntry.get(result["id"])
-        self.assertEqual(budget_entry.position, "lead")
-        self.assertEqual(budget_entry.daily_salary, 600)
+
+        entry = BudgetEntry.get(result["id"])
+        self.assertEqual(entry.position, "lead")
+        self.assertEqual(entry.daily_salary, 600)
+
+    def test_update_budget_entry_cleans_the_exceptions(self):
+        """
+        The exception map holds the months whose salary departs from the
+        line: a null map becomes empty, months at zero or null are dropped
+        rather than stored, and what is kept is stored as an int.
+        """
+        entry = self.an_entry()
+        cases = {
+            "a month that departs": ({"3": "700"}, {"3": 700}),
+            "a month at zero": ({"3": 700, "4": 0}, {"3": 700}),
+            "a month at null": ({"3": 700, "4": None}, {"3": 700}),
+            "no map at all": (None, {}),
+        }
+        for reason, (given, expected) in cases.items():
+            with self.subTest(reason=reason):
+                result = budget_service.update_budget_entry(
+                    str(entry.id), {"exceptions": given}
+                )
+                self.assertEqual(result["exceptions"], expected)
+
+    def test_update_budget_entry_leaves_the_exceptions_alone(self):
+        # A payload that says nothing about them keeps what is there.
+        entry = self.an_entry(exceptions={"3": 700})
+
+        result = budget_service.update_budget_entry(
+            str(entry.id), {"position": "lead"}
+        )
+
+        self.assertEqual(result["exceptions"], {"3": 700})
 
     def test_delete_budget_entry(self):
-        self.generate_fixture_budget()
-        budget_entry = BudgetEntry.create(
-            budget_id=self.budget.id,
-            department_id=self.department.id,
-            start_date=datetime.date.today(),
-            months_duration=12,
-            daily_salary=500,
-            position="artist",
-            seniority="junior",
-        )
-        budget_service.delete_budget_entry(str(budget_entry.id))
+        entry = self.an_entry()
+
+        budget_service.delete_budget_entry(str(entry.id))
+
         with self.assertRaises(BudgetEntryNotFoundException):
-            budget_service.get_budget_entry_raw(str(budget_entry.id))
+            budget_service.get_budget_entry_raw(str(entry.id))

@@ -73,18 +73,25 @@ Contributors
 
 * @aboellinger (Xilam/Spa)
 * @BigRoy (Colorbleed)
-* @EvanBldy (CGWire) - *maintainer*
+* @CoralieGold (Unit Image)
+* @EvanBldy (CGWire)
 * @ex5 (Blender Studio)
+* @FabianSantiago
 * @flablog (Les Fées Spéciales)
 * @frankrousseau (CGWire) - *maintainer*
+* @Fuitad
 * @kaamaurice (Tchak)
-* @g-Lul (TNZPV)
-* @pilou (Freelancer)
 * @LedruRollin (Cube-Xilam)
-* @mathbou (Zag)
+* @level-antoine
 * @manuelrais (TNZPV)
+* @mathbou (Zag)
+* @mxatmx
 * @NehmatH (CGWire)
-* @pcharmoille (Unit Image)
+* @NicoPennec (CGWire)
+* @nledez
+* @pchar2 (Unit Image)
+* @pilou- (Freelancer)
+* @robin-vagner (Unit Image)
 * @Tilix4 (Normaal)
 
 About authors

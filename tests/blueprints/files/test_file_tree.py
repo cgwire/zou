@@ -1,0 +1,281 @@
+from tests.base import ApiDBTestCase
+
+from zou.app.services import files_service
+
+
+class FolderPathTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+
+        self.generate_fixture_asset()
+        self.generate_fixture_shot()
+        self.generate_fixture_scene()
+        self.generate_fixture_task_type()
+        self.generate_fixture_shot_task()
+        self.generate_fixture_scene_task()
+        self.generate_fixture_episode_task()
+        self.generate_fixture_task()
+        self.generate_fixture_software()
+
+    def test_get_path_shot(self):
+        data = {"software": self.software_max.id}
+        result = self.post(
+            f"/data/tasks/{self.shot_task.id}/working-file-path", data, 200
+        )
+        self.assertEqual(
+            result["path"],
+            "/simple/productions/cosmos_landromat/shots/s01/p01/animation/"
+            "3ds_max",
+        )
+
+    def test_get_path_scene(self):
+        data = {"software": self.software_max.id}
+        result = self.post(
+            f"/data/tasks/{self.scene_task.id}/working-file-path", data, 200
+        )
+        self.assertEqual(
+            result["path"],
+            "/simple/productions/cosmos_landromat/scenes/s01/sc01/animation/"
+            "3ds_max",
+        )
+
+    def test_get_path_episode(self):
+        data = {"software": self.software_max.id}
+        result = self.post(
+            f"/data/tasks/{self.episode_task.id}/working-file-path",
+            data,
+            200,
+        )
+        self.assertEqual(
+            result["path"],
+            "/simple/productions/cosmos_landromat/episodes/e01/animation/"
+            "3ds_max",
+        )
+
+    def test_get_file_path_asset(self):
+        self.generate_fixture_working_file("hotfix", revision=1)
+        self.generate_fixture_working_file("hotfix", revision=2)
+        self.generate_fixture_working_file("hotfix", revision=3)
+        self.generate_fixture_working_file("hotfix", revision=4)
+
+        task_id = str(self.task.id)
+        data = {"name": "main"}
+        result = self.post(
+            f"/data/tasks/{task_id}/working-file-path", data, 200
+        )
+        self.assertEqual(
+            result["path"],
+            "/simple/productions/cosmos_landromat/assets/props/tree/shaders/"
+            "3ds_max",
+        )
+        self.assertEqual(
+            result["name"], "cosmos_landromat_props_tree_shaders_main_v001"
+        )
+
+        data = {"name": "hotfix"}
+        result = self.post(
+            f"/data/tasks/{task_id}/working-file-path", data, 200
+        )
+        self.assertEqual(
+            result["name"], "cosmos_landromat_props_tree_shaders_hotfix_v005"
+        )
+
+        data = {"name": "hotfix", "revision": 3}
+        result = self.post(
+            f"/data/tasks/{task_id}/working-file-path", data, 200
+        )
+        self.assertEqual(
+            result["name"], "cosmos_landromat_props_tree_shaders_hotfix_v003"
+        )
+
+    def test_get_folder_path_asset(self):
+        data = {}
+        result = self.post(
+            f"/data/tasks/{self.task.id}/working-file-path", data, 200
+        )
+        self.assertEqual(
+            result["path"],
+            "/simple/productions/cosmos_landromat/assets/props/tree/"
+            "shaders/3ds_max",
+        )
+
+    def instance_output_file_path(self, entity, output_type, task_type):
+        """
+        Ask for the path of an output published on an asset instance seen
+        through given entity.
+        """
+        return self.post(
+            f"/data/asset-instances/{self.asset_instance.id}"
+            f"/entities/{entity.id}/output-file-path",
+            {
+                "name": "main",
+                "temporal_entity_id": entity.id,
+                "output_type_id": output_type["id"],
+                "task_type_id": task_type.id,
+                "representation": "abc",
+                "revision": 3,
+            },
+            200,
+        )
+
+    def test_get_path_shot_asset_instance(self):
+        output_type = files_service.get_or_create_output_type("Cache")
+        self.generate_fixture_scene_asset_instance()
+        self.generate_fixture_shot_asset_instance(
+            self.shot, self.asset_instance
+        )
+
+        result = self.instance_output_file_path(
+            self.shot, output_type, self.task_type_animation
+        )
+
+        self.assertEqual(
+            result["folder_path"],
+            "/simple/productions/export/cosmos_landromat/shot/s01/p01/"
+            "animation/cache/props/tree/instance_0001/abc",
+        )
+        self.assertEqual(
+            result["file_name"],
+            "cosmos_landromat_s01_p01_animation_cache_main_tree_0001_v003",
+        )
+
+    def test_get_path_scene_asset_instance(self):
+        output_type = files_service.get_or_create_output_type("Cache")
+        self.generate_fixture_scene_asset_instance()
+
+        result = self.instance_output_file_path(
+            self.scene, output_type, self.task_type_animation
+        )
+
+        self.assertEqual(
+            result["folder_path"],
+            "/simple/productions/export/cosmos_landromat/scene/s01/sc01/"
+            "animation/cache/props/tree/instance_0001/abc",
+        )
+        self.assertEqual(
+            result["file_name"],
+            "cosmos_landromat_s01_sc01_animation_cache_main_tree_0001_v003",
+        )
+
+    def test_get_path_asset_asset_instance(self):
+        output_type = files_service.get_or_create_output_type("Materials")
+        self.generate_fixture_asset_types()
+        self.generate_fixture_asset_character()
+        self.generate_fixture_asset_asset_instance()
+
+        result = self.instance_output_file_path(
+            self.asset, output_type, self.task_type
+        )
+
+        self.assertEqual(
+            result["folder_path"],
+            "/simple/productions/export/cosmos_landromat/assets/props/"
+            "tree/shaders/materials/character/rabbit/instance_0001/abc",
+        )
+        self.assertEqual(
+            result["file_name"],
+            "cosmos_landromat_props_tree_shaders_materials_main_rabbit"
+            "_0001_v003",
+        )
+
+    def test_get_path_asset_software(self):
+        data = {"software_id": self.software.id}
+        result = self.post(
+            f"/data/tasks/{self.task.id}/working-file-path", data, 200
+        )
+        self.assertEqual(
+            result["path"],
+            "/simple/productions/cosmos_landromat/assets/props/tree/shaders/"
+            "blender",
+        )
+
+    def test_get_file_path_asset_with_revision(self):
+        data = {"revision": 3}
+        result = self.post(
+            f"/data/tasks/{self.task.id}/working-file-path", data, 200
+        )
+        self.assertEqual(
+            result["path"],
+            "/simple/productions/cosmos_landromat/assets/props/tree/shaders/"
+            "3ds_max",
+        )
+        self.assertEqual(
+            result["name"], "cosmos_landromat_props_tree_shaders_main_v003"
+        )
+
+    def test_get_folder_separator(self):
+        data = {"sep": "\\"}
+        result = self.post(
+            f"data/tasks/{self.task.id}/working-file-path", data, 200
+        )
+        self.assertEqual(
+            result["path"],
+            "/simple\\productions\\cosmos_landromat\\assets\\props\\tree\\"
+            "shaders\\3ds_max",
+        )
+
+    def test_get_file_separator(self):
+        """
+        The separator applies to the folder path only. The file name is built
+        from the same template whatever the client asks for.
+        """
+        result = self.post(
+            f"data/tasks/{self.task.id}/working-file-path",
+            {"sep": "\\"},
+            200,
+        )
+        self.assertEqual(
+            result["name"], "cosmos_landromat_props_tree_shaders_main_v001"
+        )
+        self.assertNotIn("\\", result["name"])
+
+    def test_get_path_wrong_task_id(self):
+        data = {}
+        self.post(
+            f"/data/tasks/{self.task_type.id}/working-file-path", data, 404
+        )
+
+    def test_get_path_wrong_mode(self):
+        data = {"mode": "unknown"}
+        self.post(f"/data/tasks/{self.task.id}/working-file-path", data, 400)
+
+    def test_get_entity_output_file_path(self):
+        """
+        The plain entity variant of the output path, next to the asset
+        instance one above. It resolves the revision itself when the client
+        does not pin one.
+        """
+        output_type = files_service.get_or_create_output_type("Cache")
+        data = {
+            "name": "main",
+            "output_type_id": output_type["id"],
+            "task_type_id": str(self.task_type.id),
+            "revision": 3,
+        }
+        result = self.post(
+            f"/data/entities/{self.asset.id}/output-file-path", data, 200
+        )
+        self.assertEqual(
+            result["folder_path"],
+            "/simple/productions/export/cosmos_landromat/assets/props/tree/"
+            "shaders/cache",
+        )
+        self.assertEqual(
+            result["file_name"],
+            "cosmos_landromat_props_tree_shaders_cache_main_v003",
+        )
+
+    def test_get_entity_output_file_path_next_revision(self):
+        output_type = files_service.get_or_create_output_type("Cache")
+        data = {
+            "name": "main",
+            "output_type_id": output_type["id"],
+            "task_type_id": str(self.task_type.id),
+            "revision": 0,
+        }
+        result = self.post(
+            f"/data/entities/{self.asset.id}/output-file-path", data, 200
+        )
+        self.assertTrue(
+            result["file_name"].endswith("_v001"), result["file_name"]
+        )

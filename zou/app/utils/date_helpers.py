@@ -145,6 +145,9 @@ def get_business_days(start, end):
 
 
 def add_business_days_to_date(date, nb_days):
+    """
+    Add a number of business days to a date. Business days are Monday to Friday.
+    """
     while nb_days > 0:
         date += datetime.timedelta(days=1)
         if date.weekday() < 5:

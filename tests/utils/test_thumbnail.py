@@ -19,12 +19,12 @@ class ThumbnailTestCase(unittest.TestCase):
         return file_path_fixture
 
     def setUp(self):
-        super(ThumbnailTestCase, self).setUp()
+        super().setUp()
         fs.mkdir_p(TEST_FOLDER)
         self.folder_name = os.path.join(TEST_FOLDER, "persons")
 
     def tearDown(self):
-        super(ThumbnailTestCase, self).tearDown()
+        super().tearDown()
         fs.rm_rf(self.folder_name)
         # Only remove what these tests create (everything lives in
         # TEST_FOLDER). Never touch PREVIEW_FOLDER: outside CI it can
@@ -60,7 +60,7 @@ class ThumbnailTestCase(unittest.TestCase):
         thumbnail.convert_jpg_to_png(file_path)
         result_path = os.path.join(TEST_FOLDER, "th04.png")
         im = Image.open(result_path)
-        self.assertEqual(len(im.info.keys()), 0)
+        self.assertEqual(dict(im.info), {})
         self.assertTrue(os.path.exists(result_path))
 
     def test_save_file(self):

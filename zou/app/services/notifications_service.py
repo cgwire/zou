@@ -21,6 +21,30 @@ from zou.app.utils import date_helpers, events, fields, query as query_utils
 from zou.app.utils import cache
 
 
+def _emit_notification(notification, recipient_id, project_id):
+    """
+    Tell the recipient's client that a notification landed. Not persisted:
+    the notification row is the record, the event is only the live signal.
+    """
+    events.emit(
+        "notification:new",
+        {"notification_id": notification["id"], "person_id": recipient_id},
+        project_id=project_id,
+        persist=False,
+    )
+
+
+def _get_subscription_raw(**criterions):
+    """
+    Return the subscription matching given criterions as an active record,
+    or None when one of the given ids is malformed.
+    """
+    try:
+        return Subscription.get_by(**criterions)
+    except StatementError:
+        return None
+
+
 @cache.memoize_function(120)
 def is_person_subscribed(person_id, task_id):
     """
@@ -68,22 +92,13 @@ def get_notification_recipients(task, replies=None):
     """
     if replies is None:
         replies = []
-    recipients = set()
-    task_subscriptions = get_task_subscriptions(task)
-    sequence_subscriptions = get_sequence_subscriptions(task)
-
-    for assignee_id in task["assignees"]:
-        recipients.add(assignee_id)
-
-    for subscription in task_subscriptions:
+    recipients = set(task["assignees"])
+    for subscription in get_task_subscriptions(task):
         recipients.add(str(subscription.person_id))
-
-    for subscription in sequence_subscriptions:
+    for subscription in get_sequence_subscriptions(task):
         recipients.add(str(subscription.person_id))
-
     for reply in replies:
         recipients.add(reply["person_id"])
-
     return recipients
 
 
@@ -133,15 +148,7 @@ def create_notifications_for_task_and_comment(task, comment, change=False):
             emails_service.send_comment_notification(
                 recipient_id, author_id, comment, task
             )
-            events.emit(
-                "notification:new",
-                {
-                    "notification_id": notification["id"],
-                    "person_id": recipient_id,
-                },
-                project_id=task["project_id"],
-                persist=False,
-            )
+            _emit_notification(notification, recipient_id, task["project_id"])
         except PersonNotFoundException:
             pass
 
@@ -158,15 +165,7 @@ def create_notifications_for_task_and_comment(task, comment, change=False):
             emails_service.send_mention_notification(
                 recipient_id, author_id, comment, task
             )
-            events.emit(
-                "notification:new",
-                {
-                    "notification_id": notification["id"],
-                    "person_id": recipient_id,
-                },
-                project_id=task["project_id"],
-                persist=False,
-            )
+            _emit_notification(notification, recipient_id, task["project_id"])
 
     return recipient_ids
 
@@ -215,15 +214,7 @@ def create_notifications_for_task_and_reply(task, comment, reply):
             emails_service.send_reply_notification(
                 recipient_id, author_id, comment, task, reply
             )
-            events.emit(
-                "notification:new",
-                {
-                    "notification_id": notification["id"],
-                    "person_id": recipient_id,
-                },
-                project_id=task["project_id"],
-                persist=False,
-            )
+            _emit_notification(notification, recipient_id, task["project_id"])
         except PersonNotFoundException:
             pass
 
@@ -242,15 +233,7 @@ def create_notifications_for_task_and_reply(task, comment, reply):
             emails_service.send_mention_notification(
                 recipient_id, author_id, comment, task
             )
-            events.emit(
-                "notification:new",
-                {
-                    "notification_id": notification["id"],
-                    "person_id": recipient_id,
-                },
-                project_id=task["project_id"],
-                persist=False,
-            )
+            _emit_notification(notification, recipient_id, task["project_id"])
 
     return recipient_ids
 
@@ -261,8 +244,11 @@ def reset_notifications_for_mentions(comment):
     to the comment and recreate notifications for the mentions listed in the
     comment.
     """
+    # Only the mentions: they are the ones rebuilt below. The notifications
+    # raised by the replies of that comment belong to the replies, which
+    # clean up after themselves in delete_reply, and nothing here would
+    # bring them back.
     Notification.delete_all_by(type="mention", comment_id=comment["id"])
-    Notification.delete_all_by(type="reply", comment_id=comment["id"])
     notifications = []
     task = tasks_service.get_task(comment["object_id"])
     author_id = comment["person_id"]
@@ -280,12 +266,7 @@ def reset_notifications_for_mentions(comment):
             recipient_id, author_id, comment, task
         )
         notifications.append(notification)
-        events.emit(
-            "notification:new",
-            {"notification_id": notification["id"], "person_id": recipient_id},
-            project_id=task["project_id"],
-            persist=False,
-        )
+        _emit_notification(notification, recipient_id, task["project_id"])
     return notifications
 
 
@@ -297,35 +278,24 @@ def create_assignation_notification(task_id, person_id, author_id=None):
     if author_id is None:
         author_id = task.assigner_id
 
-    if str(author_id) != person_id:
-        notification = create_notification(
-            person_id, author_id=author_id, task_id=task_id, type="assignation"
-        )
-        emails_service.send_assignation_notification(
-            person_id, author_id, task.serialize()
-        )
-        events.emit(
-            "notification:new",
-            {"notification_id": notification["id"], "person_id": person_id},
-            project_id=str(task.project_id),
-            persist=False,
-        )
-        return notification
-    else:
+    if str(author_id) == person_id:
         return None
+
+    notification = create_notification(
+        person_id, author_id=author_id, task_id=task_id, type="assignation"
+    )
+    emails_service.send_assignation_notification(
+        person_id, author_id, task.serialize()
+    )
+    _emit_notification(notification, person_id, str(task.project_id))
+    return notification
 
 
 def get_task_subscription_raw(person_id, task_id):
     """
     Return subscription matching given person and task.
     """
-    try:
-        subscription = Subscription.get_by(
-            person_id=person_id, task_id=task_id
-        )
-        return subscription
-    except StatementError:
-        return None
+    return _get_subscription_raw(person_id=person_id, task_id=task_id)
 
 
 def has_task_subscription(person_id, task_id):
@@ -354,27 +324,22 @@ def unsubscribe_from_task(person_id, task_id):
     Remove subscription entry for given person and task.
     """
     subscription = get_task_subscription_raw(person_id, task_id)
-    if subscription is not None:
-        subscription.delete()
-        cache.cache.delete_memoized(is_person_subscribed, person_id, task_id)
-        return subscription.serialize()
-    else:
+    if subscription is None:
         return {}
+    subscription.delete()
+    cache.cache.delete_memoized(is_person_subscribed, person_id, task_id)
+    return subscription.serialize()
 
 
 def get_sequence_subscription_raw(person_id, sequence_id, task_type_id):
     """
     Return subscription matching given person, sequence and task type.
     """
-    try:
-        subscription = Subscription.get_by(
-            person_id=person_id,
-            entity_id=sequence_id,
-            task_type_id=task_type_id,
-        )
-        return subscription
-    except StatementError:
-        return None
+    return _get_subscription_raw(
+        person_id=person_id,
+        entity_id=sequence_id,
+        task_type_id=task_type_id,
+    )
 
 
 def has_sequence_subscription(person_id, sequence_id, task_type_id):
@@ -411,11 +376,10 @@ def unsubscribe_from_sequence(person_id, sequence_id, task_type_id):
     subscription = get_sequence_subscription_raw(
         person_id, sequence_id, task_type_id
     )
-    if subscription is not None:
-        subscription.delete()
-        return subscription.serialize()
-    else:
+    if subscription is None:
         return {}
+    subscription.delete()
+    return subscription.serialize()
 
 
 def get_all_sequence_subscriptions(person_id, project_id, task_type_id):
@@ -438,6 +402,10 @@ def get_all_sequence_subscriptions(person_id, project_id, task_type_id):
 
 
 def delete_notifications_for_comment(comment_id):
+    """
+    Delete every notification tied to given comment. Mandatory before the
+    comment itself can be deleted.
+    """
     notifications = Notification.get_all_by(comment_id=comment_id)
     for notification in notifications:
         notification.delete()
@@ -478,28 +446,27 @@ def get_notifications_for_project(project_id, page=0):
 
 
 def get_subscriptions_for_user(project_id, entity_type_id=None):
-    subscription_map = {}
-    if project_id is not None:
-        user_id = persons_service.get_current_user()["id"]
-        if entity_type_id is not None:
-            subscriptions = (
-                Subscription.query.join(Task)
-                .join(Entity, Task.entity_id == Entity.id)
-                .filter(Subscription.person_id == user_id)
-                .filter(Entity.entity_type_id == entity_type_id)
-                .filter(Task.project_id == project_id)
-            ).all()
-        else:
-            subscriptions = (
-                Subscription.query.join(Task)
-                .join(Entity, Task.entity_id == Entity.id)
-                .filter(Subscription.person_id == user_id)
-                .filter(Task.project_id == project_id)
-                .filter(assets_service.build_asset_type_filter())
-            ).all()
-        for subscription in subscriptions:
-            subscription_map[str(subscription.task_id)] = True
-    return subscription_map
+    """
+    Return a map of the task ids the current user subscribed to in given
+    project. Scoped to the caller, so it must never be memoized.
+    """
+    if project_id is None:
+        return {}
+
+    user_id = persons_service.get_current_user()["id"]
+    query = (
+        Subscription.query.join(Task)
+        .join(Entity, Task.entity_id == Entity.id)
+        .filter(Subscription.person_id == user_id)
+        .filter(Task.project_id == project_id)
+    )
+    if entity_type_id is not None:
+        query = query.filter(Entity.entity_type_id == entity_type_id)
+    else:
+        # Without an explicit type, keep the asset types the caller may see.
+        query = query.filter(assets_service.build_asset_type_filter())
+
+    return {str(subscription.task_id): True for subscription in query.all()}
 
 
 def notify_clients_playlist_ready(
@@ -508,7 +475,6 @@ def notify_clients_playlist_ready(
     """
     Notify clients that given playlist is ready.
     """
-
     author = persons_service.get_current_user()
     project_id = playlist["project_id"]
     query = (
@@ -542,12 +508,4 @@ def notify_clients_playlist_ready(
         emails_service.send_playlist_ready_notification(
             recipient_id, author_id, playlist
         )
-        events.emit(
-            "notification:new",
-            {
-                "notification_id": notification["id"],
-                "person_id": recipient_id,
-            },
-            project_id=playlist["project_id"],
-            persist=False,
-        )
+        _emit_notification(notification, recipient_id, playlist["project_id"])

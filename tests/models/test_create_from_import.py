@@ -1,107 +1,243 @@
+from unittest import mock
+
+from sqlalchemy.exc import IntegrityError
+
 from tests.base import ApiDBTestCase
 
-from zou.app.models.attachment_file import AttachmentFile
-from zou.app.models.metadata_descriptor import (
-    DepartmentMetadataDescriptorLink,
-    MetadataDescriptor,
-)
-from zou.app.models.milestone import Milestone
+from zou.app.models.entity import Entity, EntityLink
 from zou.app.models.news import News
-from zou.app.utils import fields
+from zou.app.models.project import Project
+from zou.app.models.person import Person
+from zou.app.models.playlist import Playlist
+from zou.app.models.preview_file import PreviewFile
+from zou.app.models.task import Task
 
 
-class CreateFromImportReturnsTestCase(ApiDBTestCase):
-    """
-    Cover the (instance, is_update) contract on the create_from_import
-    classmethod. The Kitsu import routes in zou/app/blueprints/source/kitsu.py
-    rely on this tuple shape — every model that may travel through them must
-    follow the convention: False on create, True on update.
-    """
-
+class CreateFromImportTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
-        self.generate_base_context()
-        self.generate_fixture_person()
-        self.generate_fixture_assigner()
+        self.generate_fixture_project_status()
+        self.generate_fixture_project()
+        self.generate_fixture_asset_types()
         self.generate_fixture_asset()
+        self.generate_fixture_episode()
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+        self.generate_fixture_person()
+        self.generate_fixture_task_status()
+        self.generate_fixture_task_type()
         self.generate_fixture_task()
+        self.generate_fixture_comment()
 
-    def test_basemixin_default_returns_tuple(self):
-        # Milestone has no override, so it exercises BaseMixin's default.
-        self.generate_fixture_milestone()
-        data = self.milestone.serialize()
-
-        # Same ID → update path.
-        instance, is_update = Milestone.create_from_import(data)
-        self.assertEqual(str(instance.id), str(data["id"]))
-        self.assertTrue(is_update)
-
-        # New ID → create path.
-        data["id"] = str(fields.gen_uuid())
-        data["name"] = "Fresh milestone"
-        instance, is_update = Milestone.create_from_import(data)
-        self.assertEqual(str(instance.id), data["id"])
-        self.assertFalse(is_update)
-
-    def test_news_create_returns_false(self):
-        # Regression: News used to return True on create / False on update,
-        # the inverse of every other tuple-returning create_from_import.
-        news = News.create(
-            change=False,
-            author_id=self.person.id,
-            task_id=self.task.id,
+    def test_project(self):
+        project_id = "d98a6269-e566-4e11-b29f-b3faa2039d79"
+        project_name = "Caminandes"
+        Project.create_from_import(
+            {
+                "team": [str(self.person.id)],
+                "id": project_id,
+                "created_at": "2019-06-20T12:28:16",
+                "updated_at": "2019-08-30T12:48:09",
+                "name": project_name,
+                "has_avatar": True,
+                "fps": "25",
+                "production_type": "tvshow",
+                "start_date": "2019-07-01",
+                "end_date": "2021-12-31",
+                "project_status_id": str(self.open_status.id),
+                "type": "Project",
+            }
         )
-        data = news.serialize()
+        project = Project.get(project_id)
+        self.assertEqual(project.name, project_name)
 
-        instance, is_update = News.create_from_import(data)
-        self.assertEqual(str(instance.id), str(data["id"]))
-        self.assertTrue(is_update)
+    def test_entity(self):
+        entity_dict = {
+            "id": "49ed2011-3186-4405-8dc8-d6cb3a68ff1c",
+            "entities_out": [],
+            "created_at": "2019-06-20T12:28:16",
+            "updated_at": "2019-08-16T11:44:31",
+            "name": "Lama",
+            "description": "",
+            "canceled": False,
+            "project_id": str(self.project.id),
+            "entity_type_id": str(self.asset_type_character.id),
+            "preview_file_id": None,
+            "entities_in": [],
+            "type": "Asset",
+        }
+        Entity.create_from_import(entity_dict)
+        entity = Entity.get(entity_dict["id"])
+        self.assertEqual(entity_dict["name"], entity.name)
 
-        data["id"] = str(fields.gen_uuid())
-        instance, is_update = News.create_from_import(data)
-        self.assertEqual(str(instance.id), data["id"])
-        self.assertFalse(is_update)
+    def test_create_from_import_list_skips_broken_rows(self):
+        def entity_dict(entity_id, name, entity_type_id):
+            return {
+                "id": entity_id,
+                "entities_out": [],
+                "created_at": "2019-06-20T12:28:16",
+                "updated_at": "2019-08-16T11:44:31",
+                "name": name,
+                "description": "",
+                "canceled": False,
+                "project_id": str(self.project.id),
+                "entity_type_id": entity_type_id,
+                "preview_file_id": None,
+                "entities_in": [],
+                "type": "Asset",
+            }
 
-    def test_attachment_file_returns_tuple(self):
-        attachment = AttachmentFile.create(
-            name="bug.png",
-            size=42,
-            extension="png",
-            mimetype="image/png",
-        )
-        data = attachment.serialize()
+        valid_type_id = str(self.asset_type_character.id)
+        first_id = "11111111-3186-4405-8dc8-d6cb3a68ff1c"
+        broken_id = "22222222-3186-4405-8dc8-d6cb3a68ff1c"
+        last_id = "33333333-3186-4405-8dc8-d6cb3a68ff1c"
 
-        instance, is_update = AttachmentFile.create_from_import(data)
-        self.assertEqual(str(instance.id), str(data["id"]))
-        self.assertTrue(is_update)
+        # Simulate a broken row: a real FK violation would roll back the
+        # test harness outer transaction, so raise from the import
+        # instead (in production each row commits independently).
+        original = Entity.create_from_import.__func__
 
-        data["id"] = str(fields.gen_uuid())
-        instance, is_update = AttachmentFile.create_from_import(data)
-        self.assertEqual(str(instance.id), data["id"])
-        self.assertFalse(is_update)
+        def flaky_import(data):
+            if data["id"] == broken_id:
+                raise IntegrityError("insert", {}, Exception("boom"))
+            return original(Entity, data)
 
-    def test_metadata_descriptor_sets_departments(self):
-        self.generate_fixture_metadata_descriptor()
-        data = self.meta_descriptor.serialize()
-        data["departments"] = [str(self.department.id)]
+        with mock.patch.object(
+            Entity, "create_from_import", side_effect=flaky_import
+        ):
+            Entity.create_from_import_list(
+                [
+                    entity_dict(first_id, "Lama", valid_type_id),
+                    entity_dict(broken_id, "Broken", valid_type_id),
+                    entity_dict(last_id, "Alpaga", valid_type_id),
+                ]
+            )
+        self.assertIsNotNone(Entity.get(first_id))
+        self.assertIsNone(Entity.get(broken_id))
+        self.assertIsNotNone(Entity.get(last_id))
 
-        instance, is_update = MetadataDescriptor.create_from_import(data)
-        self.assertTrue(is_update)
-        links = DepartmentMetadataDescriptorLink.query.filter_by(
-            metadata_descriptor_id=instance.id
-        ).all()
-        self.assertEqual(len(links), 1)
-        self.assertEqual(str(links[0].department_id), str(self.department.id))
+    def test_entity_link(self):
+        entity_link_dict = {
+            "id": "726f9b44-526f-4fce-a979-6bf8bc8962a4",
+            "created_at": "2019-06-28T09:47:42",
+            "updated_at": "2019-06-28T09:47:42",
+            "entity_in_id": str(self.shot.id),
+            "entity_out_id": str(self.asset.id),
+            "nb_occurences": 1,
+            "label": "animation",
+            "type": "EntityLink",
+        }
+        EntityLink.create_from_import(entity_link_dict)
+        entity_link = EntityLink.get_by(id=entity_link_dict["id"])
+        self.assertEqual(entity_link_dict["label"], entity_link.label)
 
-        # Re-import without a "departments" key: existing links stay untouched.
-        # create_from_import already popped the key on the first call, so
-        # asserting absence is enough.
-        self.assertNotIn("departments", data)
-        data["name"] = "Renamed"
-        instance, is_update = MetadataDescriptor.create_from_import(data)
-        self.assertTrue(is_update)
-        self.assertEqual(instance.name, "Renamed")
-        links = DepartmentMetadataDescriptorLink.query.filter_by(
-            metadata_descriptor_id=instance.id
-        ).all()
-        self.assertEqual(len(links), 1)
+    def test_news(self):
+        news_dict = {
+            "id": "2b63ba4a-695f-4d4d-b13c-ecf3991e64b7",
+            "type": "News",
+            "author_id": str(self.person.id),
+            "comment_id": self.comment["id"],
+            "task_id": str(self.task.id),
+            "task_type_id": str(self.task_type.id),
+            "task_status_id": str(self.task_status.id),
+            "task_entity_id": str(self.asset.id),
+            "preview_file_id": None,
+            "preview_file_extension": None,
+            "project_id": str(self.project.id),
+            "project_name": "Caminandes",
+            "created_at": "2019-08-25T23:05:05",
+            "change": True,
+            "episode_id": None,
+        }
+        News.create_from_import(news_dict)
+        news = News.get(news_dict["id"])
+        self.assertEqual(str(news.comment_id), self.comment["id"])
+
+    def test_person(self):
+        person_dict = {
+            "departments": [],
+            "id": "b86127df-909b-4bc2-983e-a959ea5a7319",
+            "created_at": "2019-06-29T15:05:22",
+            "updated_at": "2019-06-29T15:05:22",
+            "first_name": "John",
+            "last_name": "Doe",
+            "email": "jhon01@gmail.com",
+            "phone": "",
+            "active": True,
+            "desktop_login": "",
+            "timezone": "Europe/Paris",
+            "locale": "en_US",
+            "role": "user",
+            "has_avatar": True,
+            "notifications_enabled": False,
+            "notifications_slack_enabled": False,
+            "notifications_slack_userid": None,
+            "type": "Person",
+            "full_name": "John Doe",
+        }
+        Person.create_from_import(person_dict)
+        person = Person.get(person_dict["id"])
+        self.assertEqual(person.first_name, person_dict["first_name"])
+
+    def test_playlist(self):
+        playlist_dict = {
+            "build_jobs": [],
+            "id": "36f6ab50-4e33-4da8-b853-2261d74fb64b",
+            "created_at": "2019-08-06T11:11:02",
+            "updated_at": "2019-08-06T13:11:02",
+            "name": "2019-08-06 13:11:02 New playlist ",
+            "shots": [],
+            "project_id": str(self.project.id),
+            "episode_id": str(self.episode.id),
+            "type": "Playlist",
+        }
+        Playlist.create_from_import(playlist_dict)
+        playlist = Playlist.get(playlist_dict["id"])
+        self.assertEqual(playlist.name, playlist_dict["name"])
+
+    def test_preview_file(self):
+        preview_file_dict = {
+            "id": "2b65b36d-a394-41f9-8415-9e92abeb0d49",
+            "created_at": "2019-08-25T16:48:34",
+            "updated_at": "2019-08-25T18:48:34",
+            "name": "d7c1d6ec-b3e6",
+            "original_name": "picture.png",
+            "revision": 1,
+            "source": "webgui",
+            "extension": "png",
+            "annotations": [],
+            "task_id": str(self.task.id),
+            "person_id": str(self.person.id),
+            "source_file_id": None,
+            "type": "PreviewFile",
+            "comments": [self.comment["id"]],
+        }
+        PreviewFile.create_from_import(preview_file_dict)
+        preview_file = PreviewFile.get(preview_file_dict["id"])
+        self.assertEqual(preview_file.name, preview_file_dict["name"])
+
+    def test_task(self):
+        task_dict = {
+            "assignees": [str(self.person.id)],
+            "id": "3629fc9f-355f-420e-b3c7-5d69f02888e6",
+            "created_at": "2019-06-03T10:05:57",
+            "updated_at": "2019-06-05T10:05:57",
+            "name": "main",
+            "priority": 2,
+            "duration": 3,
+            "estimation": 2,
+            "completion_rate": 50,
+            "retake_count": 1,
+            "sort_order": 1,
+            "real_start_date": "2019-06-04T10:05:57",
+            "last_comment_date": "2019-06-05T10:05:57",
+            "project_id": str(self.project.id),
+            "task_type_id": str(self.task_type.id),
+            "task_status_id": str(self.task_status.id),
+            "entity_id": str(self.asset.id),
+            "assigner_id": str(self.user["id"]),
+            "type": "Task",
+        }
+        Task.create_from_import(task_dict)
+        task = Task.get(task_dict["id"])
+        self.assertEqual(task.name, task_dict["name"])

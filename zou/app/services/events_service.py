@@ -123,7 +123,7 @@ def get_last_events(
         )
 
     if cursor_event_id is not None:
-        cursor_event = ApiEvent.query.get(cursor_event_id)
+        cursor_event = ApiEvent.get(cursor_event_id)
         if cursor_event is None:
             raise WrongParameterException(
                 f"No event found with id: {cursor_event_id}"
@@ -212,7 +212,7 @@ def get_last_login_logs(
         )
 
     if cursor_login_log_id is not None:
-        cursor_log = LoginLog.query.get(cursor_login_log_id)
+        cursor_log = LoginLog.get(cursor_login_log_id)
         if cursor_log is None:
             raise WrongParameterException(
                 f"No login log found with id: {cursor_login_log_id}"

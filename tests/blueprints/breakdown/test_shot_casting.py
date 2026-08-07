@@ -1,0 +1,118 @@
+from tests.base import ApiDBTestCase
+
+from zou.app.models.entity import Entity
+
+
+class ShotCastingTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project()
+        self.generate_fixture_asset_type()
+        self.generate_fixture_asset_types()
+        self.generate_fixture_episode()
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+        self.generate_fixture_asset()
+        self.generate_fixture_asset_character()
+
+    def test_update_casting(self):
+        self.project_id = str(self.project.id)
+        self.shot_id = str(self.shot.id)
+        self.asset_id = str(self.asset.id)
+        self.asset_character_id = str(self.asset_character.id)
+        self.asset_type_character_id = str(self.asset_type_character.id)
+        self.shot_name = self.shot.name
+        self.sequence_name = self.sequence.name
+        self.episode_name = self.episode.name
+
+        casting = self.get(
+            f"/data/projects/{self.project_id}/entities/{self.shot_id}/casting"
+        )
+        self.assertListEqual(casting, [])
+        newCasting = [
+            {"asset_id": self.asset_id, "nb_occurences": 1},
+            {"asset_id": self.asset_character_id, "nb_occurences": 3},
+        ]
+        path = f"/data/shots/{self.shot_id!s}/casting"
+        path = (
+            f"/data/projects/{self.project_id}/entities/{self.shot_id}/casting"
+        )
+        self.put(path, newCasting, 200)
+
+        casting = self.get(
+            f"/data/projects/{self.project_id}/entities/{self.shot_id}/casting"
+        )
+        casting = sorted(casting, key=lambda x: x["nb_occurences"])
+        self.assertEqual(casting[0]["asset_id"], newCasting[0]["asset_id"])
+        self.assertEqual(
+            casting[0]["nb_occurences"], newCasting[0]["nb_occurences"]
+        )
+        self.assertEqual(casting[1]["asset_id"], newCasting[1]["asset_id"])
+        self.assertEqual(
+            casting[1]["nb_occurences"], newCasting[1]["nb_occurences"]
+        )
+        self.assertEqual(casting[1]["asset_name"], self.asset_character.name)
+        self.assertEqual(
+            casting[1]["asset_type_name"], self.asset_type_character.name
+        )
+
+        cast_in = self.get(f"/data/assets/{self.asset_id}/cast-in")
+        self.assertEqual(cast_in[0]["shot_name"], self.shot.name)
+        self.assertEqual(cast_in[0]["sequence_name"], self.sequence.name)
+        self.assertEqual(cast_in[0]["episode_name"], self.episode.name)
+
+    def cast_three_assets_in(self, entity):
+        """
+        Three assets cast in given entity, returned as their ids.
+        """
+        entities = self.generate_data(
+            Entity,
+            3,
+            entities_out=[],
+            entities_in=[],
+            instance_casting=[],
+            project_id=self.project.id,
+            entity_type_id=self.asset_type.id,
+        )
+        entity.entities_out = entities
+        entity.save()
+        return sorted(str(cast.id) for cast in entities)
+
+    def test_get_assets_for_shots(self):
+        cast_ids = self.cast_three_assets_in(self.shot)
+
+        assets = self.get(f"data/shots/{self.shot.id}/assets")
+
+        self.assertEqual(sorted(asset["id"] for asset in assets), cast_ids)
+
+    def test_update_asset_casting(self):
+        self.asset_id = str(self.asset.id)
+        self.asset_character_id = str(self.asset_character.id)
+        self.asset_type_character_id = str(self.asset_type_character.id)
+
+        casting = self.get(f"/data/assets/{self.asset_id}/casting")
+        self.assertListEqual(casting, [])
+        newCasting = [
+            {"asset_id": self.asset_character_id, "nb_occurences": 3}
+        ]
+        path = f"/data/assets/{self.asset_id!s}/casting"
+        self.put(path, newCasting, 200)
+
+        casting = self.get(f"/data/assets/{self.asset_id}/casting")
+        casting = sorted(casting, key=lambda x: x["nb_occurences"])
+        self.assertEqual(casting[0]["asset_id"], newCasting[0]["asset_id"])
+        self.assertEqual(
+            casting[0]["nb_occurences"], newCasting[0]["nb_occurences"]
+        )
+        self.assertEqual(casting[0]["asset_name"], self.asset_character.name)
+
+        cast_in = self.get(f"/data/assets/{self.asset_character_id}/cast-in")
+        self.assertEqual(len(cast_in), 1)
+        self.assertEqual(cast_in[0]["asset_name"], self.asset.name)
+
+    def test_get_casting_for_assets(self):
+        cast_ids = self.cast_three_assets_in(self.asset)
+
+        assets = self.get(f"data/assets/{self.asset.id}/assets")
+
+        self.assertEqual(sorted(asset["id"] for asset in assets), cast_ids)

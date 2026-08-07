@@ -1,3 +1,19 @@
+"""
+Domain exceptions raised by the services.
+
+The base class decides what the client gets when nothing catches the
+exception, so pick it deliberately:
+
+- NotFound, BadRequest, Forbidden, Unauthorized, ServiceUnavailable are
+  werkzeug HTTP exceptions: Flask turns them into 404, 400, 403, 401 and
+  503 on its own, no handling needed in the resource.
+- Exception yields a 500. Those are the ones a resource *must* catch to
+  answer anything else, which several of them do (WrongDateFormatException
+  is caught for a 400, MalformedFileTreeException for a 400 too).
+
+So a new exception inheriting Exception is a 500 until a route handles it.
+"""
+
 from werkzeug.exceptions import (
     NotFound,
     Forbidden,
@@ -135,6 +151,14 @@ class CommentNotFoundException(NotFound):
     pass
 
 
+class ChatNotFoundException(NotFound):
+    pass
+
+
+class OrganisationNotFoundException(NotFound):
+    pass
+
+
 class ReplyNotFoundException(NotFound):
     pass
 
@@ -160,6 +184,10 @@ class BuildJobNotFoundException(NotFound):
 
 
 class PlaylistNotFoundException(NotFound):
+    pass
+
+
+class PlaylistLockTimeoutException(ServiceUnavailable):
     pass
 
 
@@ -346,4 +374,8 @@ class IsUserLimitReachedException(Exception):
 
 
 class ProductionScheduleVersionNotFoundException(NotFound):
+    pass
+
+
+class BackupFailedException(Exception):
     pass

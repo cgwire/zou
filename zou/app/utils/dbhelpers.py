@@ -3,14 +3,6 @@ from sqlalchemy_utils import database_exists, create_database
 from sqlalchemy.orm import close_all_sessions
 
 
-def reset_all():
-    """
-    Drop all tables then recreate them.
-    """
-    drop_all()
-    return create_all()
-
-
 def create_all():
     """
     Create all database tables.

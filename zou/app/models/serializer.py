@@ -41,7 +41,7 @@ class SerializerMixin(object):
         obj_type=None,
         relations=False,
         milliseconds=False,
-        ignored_attrs=[],
+        ignored_attrs=(),
     ):
         all_attrs, plain_attrs = self._serializable_attrs()
         attrs = all_attrs if relations else plain_attrs

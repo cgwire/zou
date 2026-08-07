@@ -12,7 +12,11 @@ from zou.app.mixin import ArgsMixin
 from zou.app import app
 from zou.app.models.person import Person
 from zou.app.utils import permissions, string
-from zou.app.services import user_service, projects_service
+from zou.app.services import (
+    permissions_service,
+    projects_service,
+    user_service,
+)
 
 
 class ImportRowException(Exception):
@@ -156,7 +160,7 @@ class BaseCsvProjectImportResource(BaseCsvImportResource, ArgsMixin):
         import next door and the CSV exports, which all scope to the
         project.
         """
-        return user_service.check_manager_project_access(project_id)
+        return permissions_service.check_manager_project_access(project_id)
 
     def get_descriptor_field_map(self, project_id, entity_type):
         descriptor_map = {}

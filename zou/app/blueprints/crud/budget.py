@@ -2,7 +2,7 @@ from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
 
-from zou.app.models.salary_scale import Budget
+from zou.app.models.budget import Budget
 
 
 class BudgetsResource(BaseModelsResource):
@@ -143,16 +143,12 @@ class BudgetsResource(BaseModelsResource):
 
 
 class BudgetResource(BaseModelResource):
-    protected_fields = [
-        "id",
-        "created_at",
-        "updated_at",
-        "project_id",
-        "revision",
-    ]
-
     def __init__(self):
         BaseModelResource.__init__(self, Budget)
+        # BaseModelResource.__init__ assigns protected_fields on the instance,
+        # so a class attribute of the same name never applies: append after it.
+        # project_id is already added there, revision identifies the quote.
+        self.protected_fields.append("revision")
 
     @jwt_required()
     def get(self, instance_id):

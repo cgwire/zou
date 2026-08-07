@@ -9,7 +9,7 @@ from mixer.backend.flask import mixer
 
 from zou.app import app, db
 from zou.app.models.status_automation import StatusAutomation
-from zou.app.utils import fields, auth, fs
+from zou.app.utils import events, fields, auth, fs
 from zou.app.services import (
     breakdown_service,
     comments_service,
@@ -30,7 +30,6 @@ from zou.app.models.milestone import Milestone
 from zou.app.models.notification import Notification
 from zou.app.models.output_file import OutputFile
 from zou.app.models.output_type import OutputType
-from zou.app.models.organisation import Organisation
 from zou.app.models.person import Person
 from zou.app.models.playlist import Playlist
 from zou.app.models.preview_background_file import PreviewBackgroundFile
@@ -175,6 +174,17 @@ class ApiTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, code)
         return response.data.decode("utf-8")
 
+    def get_ndjson(self, path, code=200):
+        """
+        Read a streamed listing. The first line is a header describing the
+        rows, the ones after it are the rows themselves.
+        """
+        response = self.app.get(path, headers=self.base_headers)
+        self.assertEqual(response.status_code, code)
+        self.assertEqual(response.mimetype, "application/x-ndjson")
+        lines = response.data.decode("utf-8").strip().split("\n")
+        return json.loads(lines[0]), [json.loads(line) for line in lines[1:]]
+
     def get_first(self, path, code=200):
         """
         Get first element of data at given path. It makes the assumption that
@@ -182,6 +192,24 @@ class ApiTestCase(unittest.TestCase):
         """
         rows = self.get(path, code)
         return rows[0]
+
+    def capture_events(self, event):
+        """
+        Collect the payloads of given event in a list and return it. Every
+        handler registered so far is dropped first, so the list holds that
+        one event and nothing else.
+        """
+        captured = []
+
+        class Handler:
+            __name__ = f"{event}_test_handler"
+
+            def handle_event(self, data=None):
+                captured.append(data or {})
+
+        events.unregister_all()
+        events.register(event, Handler.__name__, Handler())
+        return captured
 
     def get_404(self, path):
         """
@@ -276,6 +304,52 @@ class ApiTestCase(unittest.TestCase):
 class ApiDBTestCase(ApiTestCase):
     """
     Set of helpers for Api tests.
+
+    Five things about the fixtures below are worth knowing before writing a
+    test that steps outside the usual one project, one asset, one task shape.
+
+    - Every generator repoints the attribute it names, on every call. The
+      ones that take a name guard the default call so it returns what is
+      already there, but a call with any other argument builds a new row and
+      self.<thing> becomes that row:
+
+          shot = self.shot                       # P01
+          self.generate_fixture_shot("Z01")      # self.shot is Z01 now
+
+      Which matters twice over, because the later fixtures default to those
+      same attributes: after that line a shot task lands on Z01. Keep what
+      you need in a local first. generate_fixture_project also assigns
+      self.project_id, and several generators read self.project on the way,
+      so one that runs after a second production lands in that production,
+      or tries to recreate the default one and hits the unique name
+      constraint. Build the row by hand when it has to belong somewhere
+      precise.
+    - The app treats the organisation as a singleton it creates on demand.
+      There is deliberately no generator for it: one would add a second row
+      the routes never read. Go through persons_service.get_organisation().
+    - Caching is on during tests (conftest sets CACHE_TYPE), so changing a
+      model the service also writes leaves the route reading a stale value.
+      project.team.append() is the common one: use
+      projects_service.add_team_member().
+
+    Two more, about the request rather than the fixtures:
+
+    - Driving a service directly as a given role means opening a request
+      context with that person's token, since the permission helpers read
+      the token rather than get_current_user. flask.g lives on the
+      application context, which setUp pushes once and test_request_context
+      reuses, so g.project_role survives from one such block to the next:
+      pop it on the way in, the way a real request would start clean.
+      Pushing a fresh application context instead looks tidier and is
+      wrong, since the session is scoped to it and every row the fixtures
+      hold comes back detached.
+    - An exception raised in setUp leaves the transaction open, and the
+      next class blocks on the truncation instead of failing. A hanging
+      suite usually means a broken setUp, not a slow test. The quiet way
+      to break setUp is to give a helper of your own a name this class
+      already uses: setUp calls log_in itself, so redefining it with
+      another signature raises before a single fixture exists, and the
+      failure shows up as the next class hanging.
     """
 
     # Schema is created once per session in conftest.py.
@@ -298,7 +372,7 @@ class ApiDBTestCase(ApiTestCase):
         Configure application before each test.
         set up database transaction.
         """
-        super(ApiDBTestCase, self).setUp()
+        super().setUp()
 
         self._db_connection = db.engine.connect()
         self._db_transaction = self._db_connection.begin()
@@ -320,7 +394,7 @@ class ApiDBTestCase(ApiTestCase):
         Configure application after each test.
         Rollback transaction to return database to its original state.
         """
-        super(ApiDBTestCase, self).tearDown()
+        super().tearDown()
         if not self._db_transaction._deactivated_from_connection:
             self._db_transaction.rollback()
         self._db_connection.close()
@@ -372,7 +446,7 @@ class ApiDBTestCase(ApiTestCase):
 
     def generate_fixture_project_standard(self):
         if hasattr(self, "project_standard"):
-            return
+            return self.project_standard
         self.generate_fixture_project_status()
         self.project_standard = Project.create(
             name="Big Buck Bunny", project_status_id=self.open_status.id
@@ -380,17 +454,7 @@ class ApiDBTestCase(ApiTestCase):
         self.project_standard.update(
             {"file_tree": file_tree_service.get_tree_from_file("default")}
         )
-
-    def generate_fixture_project_no_preview_tree(self):
-        if hasattr(self, "project_no_preview_tree"):
-            return
-        self.generate_fixture_project_status()
-        self.project_no_preview_tree = Project.create(
-            name="Agent 327", project_status_id=self.open_status.id
-        )
-        self.project_no_preview_tree.update(
-            {"file_tree": file_tree_service.get_tree_from_file("no_preview")}
-        )
+        return self.project_standard
 
     def generate_fixture_asset(
         self,
@@ -1152,6 +1216,27 @@ class ApiDBTestCase(ApiTestCase):
         )
         return self.comment
 
+    def generate_commented_shot_task(self):
+        """
+        A shot task with one comment on it, and a second person around to be
+        notified. Named apart from generate_fixture_comment, which comments
+        on whatever task the caller already has.
+        """
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
+        self.generate_fixture_department()
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status()
+        self.task = self.generate_fixture_shot_task()
+        self.task_dict = self.task.serialize()
+        self.generate_fixture_person(
+            first_name="Jane", email="jane.doe@gmail.com"
+        )
+        self.comment = comments_service.new_comment(
+            self.task.id, self.task_status.id, self.user["id"], "first comment"
+        )
+        return self.comment
+
     def generate_fixture_file_status(self):
         if hasattr(self, "file_status"):
             return
@@ -1184,6 +1269,7 @@ class ApiDBTestCase(ApiTestCase):
             person_id=self.person.id,
             software_id=self.software.id,
         )
+        return self.working_file
 
     def generate_fixture_output_file(
         self,
@@ -1244,13 +1330,6 @@ class ApiDBTestCase(ApiTestCase):
             name="3dsMax", short_name="max", file_extension=".max"
         )
 
-    def generate_fixture_organisation(self):
-        if hasattr(self, "organisation"):
-            return
-        self.organisation = Organisation.create(
-            name="My Studio", hours_by_day=8, use_original_file_name=False
-        )
-
     def generate_fixture_preview_file(
         self,
         revision=1,
@@ -1281,8 +1360,11 @@ class ApiDBTestCase(ApiTestCase):
     def generate_fixture_preview_background_file(
         self,
         name="test",
+        is_default=False,
     ):
-        self.preview_background_file = PreviewBackgroundFile.create(name=name)
+        self.preview_background_file = PreviewBackgroundFile.create(
+            name=name, is_default=is_default
+        )
         return self.preview_background_file
 
     def get_fixture_file_path(self, relative_path):

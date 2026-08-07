@@ -1,6 +1,7 @@
 from zou.app.models.budget import Budget
 from zou.app.models.budget_entry import BudgetEntry
 
+from zou.app.services import base_service
 from zou.app.services.exception import (
     BudgetNotFoundException,
     BudgetEntryNotFoundException,
@@ -9,24 +10,32 @@ from zou.app.services.exception import (
 from zou.app.utils import events
 from zou.app.utils import fields
 
-from sqlalchemy.exc import StatementError
+
+def _clean_exceptions(data):
+    """
+    Normalize the exception map of a budget entry: a missing map becomes an
+    empty one, and months set to zero or to null are dropped rather than
+    stored.
+    """
+    if "exceptions" in data:
+        if data["exceptions"] is None:
+            data["exceptions"] = {}
+        else:
+            data["exceptions"] = {
+                k: int(v)
+                for k, v in data["exceptions"].items()
+                if v is not None and int(v) > 0
+            }
+    return data
 
 
 def get_budget_raw(budget_id):
     """
     Return budget corresponding to given budget ID.
     """
-    if budget_id is None:
-        raise BudgetNotFoundException()
-
-    try:
-        budget = Budget.get(budget_id)
-    except StatementError:
-        raise BudgetNotFoundException()
-
-    if budget is None:
-        raise BudgetNotFoundException()
-    return budget
+    return base_service.get_instance(
+        Budget, budget_id, BudgetNotFoundException
+    )
 
 
 def get_budget(budget_id):
@@ -53,14 +62,12 @@ def create_budget(project_id, name, currency=None):
         .order_by(Budget.revision.desc())
         .first()
     )
-    last_revision = 1
-    if last_budget is not None:
-        last_revision = last_budget.revision + 1
+    revision = 1 if last_budget is None else last_budget.revision + 1
     budget = Budget(
         project_id=project_id,
         name=name,
         currency=currency,
-        revision=last_revision,
+        revision=revision,
     )
     budget.save()
     events.emit(
@@ -94,7 +101,7 @@ def delete_budget(budget_id):
     Delete budget corresponding to given budget ID.
     """
     budget = get_budget_raw(budget_id)
-    budget_entries = BudgetEntry.delete_all_by(budget_id=budget_id)
+    BudgetEntry.delete_all_by(budget_id=budget_id)
     budget.delete()
     events.emit(
         "budget:delete",
@@ -116,14 +123,9 @@ def get_budget_entry_raw(budget_entry_id):
     """
     Return budget entry corresponding to given budget entry ID.
     """
-    try:
-        budget_entry = BudgetEntry.get(budget_entry_id)
-    except StatementError:
-        raise BudgetEntryNotFoundException()
-
-    if budget_entry is None:
-        raise BudgetEntryNotFoundException()
-    return budget_entry
+    return base_service.get_instance(
+        BudgetEntry, budget_entry_id, BudgetEntryNotFoundException
+    )
 
 
 def get_budget_entry(budget_entry_id):
@@ -180,19 +182,6 @@ def update_budget_entry(budget_entry_id, data):
         project_id=str(budget.project_id),
     )
     return budget_entry.serialize()
-
-
-def _clean_exceptions(data):
-    if "exceptions" in data:
-        if data["exceptions"] is None:
-            data["exceptions"] = {}
-        else:
-            data["exceptions"] = {
-                k: int(v)
-                for k, v in data["exceptions"].items()
-                if v is not None and int(v) > 0
-            }
-    return data
 
 
 def delete_budget_entry(budget_entry_id):

@@ -4,7 +4,7 @@ from flask_jwt_extended import jwt_required
 from zou.app.mixin import ArgsMixin
 from zou.app.utils import fields, permissions
 
-from zou.app.services import events_service, user_service
+from zou.app.services import events_service, permissions_service, user_service
 from zou.app.services.exception import (
     ProjectNotFoundException,
     WrongParameterException,
@@ -160,7 +160,7 @@ class EventsResource(MethodView, ArgsMixin):
             and not permissions.has_manager_permissions()
         ):
             try:
-                user_service.resolve_project_role(project_id)
+                permissions_service.resolve_project_role(project_id)
             except ProjectNotFoundException:
                 raise permissions.PermissionDenied
         permissions.check_manager_permissions()

@@ -158,6 +158,7 @@ class CastingCsvImportResource(BaseCsvProjectImportResource):
                     target_id, asset_id, occurences, label
                 )
                 entity.update({"nb_entities_out": entity.nb_entities_out + 1})
+                entities_service.clear_entity_cache(str(entity.id))
             else:
                 link.update({"nb_occurences": occurences, "label": label})
             entity_id = str(entity.id)

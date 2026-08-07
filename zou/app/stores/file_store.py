@@ -1,29 +1,33 @@
 import os
 import time
 import flask_fs
-
 from contextlib import contextmanager
-
 from flask import current_app
 from werkzeug.utils import cached_property
-
 from zou.app import config
-
 from flask_fs.backends.local import LocalBackend
+
+# ----------------------------------------------------------------------
+# Module state
+# ----------------------------------------------------------------------
 
 pictures = None
 movies = None
 files = None
 
 
+# ----------------------------------------------------------------------
+# Prometheus metrics
+# ----------------------------------------------------------------------
+
 _PROM_ENABLED = False
+
 _OPS = _BYTES = _DURATION = _INFLIGHT = _ETAG_MISMATCH = None
 
 try:
     from flask_fs.backends.swift import ETagMismatchError as _ETagMismatchError
 except ImportError:
     _ETagMismatchError = None
-
 
 if getattr(config, "PROMETHEUS_METRICS_ENABLED", False):
     try:
@@ -138,6 +142,11 @@ def _measure(op, bucket, byte_count=None, tracker=None):
                 _BYTES.labels(op=op, bucket=bucket).inc(n)
 
 
+@contextmanager
+def _noop_measure():
+    yield
+
+
 def _safe_size(path):
     try:
         return os.path.getsize(path)
@@ -145,7 +154,31 @@ def _safe_size(path):
         return None
 
 
+# ----------------------------------------------------------------------
+# LocalBackend patches
+# ----------------------------------------------------------------------
+
+
 def path(self, filename):
+    """
+    Resolve a storage key to its absolute path on disk (LocalBackend only).
+
+    Keys follow ``{prefix}-{id}`` (see ``make_key``): the first dash separates
+    the logical folder (e.g. ``thumbnails``, ``dbbackup``) from the file id.
+
+    Layout rules:
+    - ``dbbackup`` keys are flat: ``{root}/dbbackup/{id}``. The id may contain
+      dashes (backup timestamps), so UUID-style sharding is skipped.
+    - All other keys are sharded by the first six characters of the id to
+      avoid huge directories: ``{root}/{prefix}/{id[0:3]}/{id[3:6]}/{id}``.
+
+    Example::
+
+        thumbnails-63e453f1-9655-49ad-acba-ff7f27c49e9d
+        -> {root}/thumbnails/63e/453/63e453f1-9655-49ad-acba-ff7f27c49e9d
+
+    Also exposed as ``file_store.path(bucket, key)`` for direct lookups.
+    """
     folder_one = filename.split("-")[0]
     file_name = "-".join(filename.split("-")[1:])
 
@@ -164,6 +197,7 @@ def path(self, filename):
         file_path = os.path.join(
             root, folder_one, folder_two, folder_three, file_name
         )
+
     # Normalize path to handle any remaining relative components
     return os.path.normpath(file_path)
 
@@ -189,7 +223,22 @@ def _default_root(self):
 LocalBackend.default_root = _default_root
 
 
+# ----------------------------------------------------------------------
+# Storage setup
+# ----------------------------------------------------------------------
+
+
+def make_storage(bucket):
+    return flask_fs.Storage(
+        f"{config.FS_BUCKET_PREFIX}{bucket}",
+        overwrite=True,
+    )
+
+
 def configure_storages(app):
+    """
+    Configure the storage buckets for the application.
+    """
     global pictures, movies, files
     pictures = make_storage("pictures")
     movies = make_storage("movies")
@@ -199,6 +248,9 @@ def configure_storages(app):
 
 
 def clear_bucket(bucket):
+    """
+    Delete all files in a storage bucket.
+    """
     for filename in bucket.list_files():
         if isinstance(bucket.backend, LocalBackend):
             parts = filename.split("/")
@@ -210,13 +262,52 @@ def clear_bucket(bucket):
             bucket.delete(filename)
 
 
+def clear():
+    clear_bucket(pictures)
+    clear_bucket(movies)
+    clear_bucket(files)
+
+
+# ----------------------------------------------------------------------
+# Generic bucket operations
+# ----------------------------------------------------------------------
+
+
 def make_key(prefix, id):
+    """
+    Build a storage key as ``{prefix}-{id}`` (see ``path``).
+    """
     return f"{prefix}-{id}"
 
 
-@contextmanager
-def _noop_measure():
-    yield
+def _read(bucket, key, bucket_name):
+    tracker = _ByteTracker()
+    with _measure("download", bucket_name, tracker=tracker):
+        data = bucket.read(key)
+        if data is not None:
+            tracker.add(len(data))
+    return data
+
+
+def _upload(bucket, key, path, bucket_name):
+    with _measure("upload", bucket_name, byte_count=_safe_size(path)):
+        with open(path, "rb") as fd:
+            return bucket.write(key, fd)
+
+
+def _exists(bucket, key, bucket_name):
+    with _measure("exists", bucket_name):
+        return bucket.exists(key)
+
+
+def _delete(bucket, key, bucket_name):
+    with _measure("delete", bucket_name):
+        return bucket.delete(key)
+
+
+def _copy(bucket, key, target, bucket_name):
+    with _measure("copy", bucket_name):
+        return bucket.copy(key, target)
 
 
 def make_read_generator(bucket, key, bucket_name=None):
@@ -252,33 +343,17 @@ def make_read_generator(bucket, key, bucket_name=None):
     return read_generator(read_stream)
 
 
-def make_storage(bucket):
-    return flask_fs.Storage(
-        f"{config.FS_BUCKET_PREFIX}{bucket}",
-        overwrite=True,
-    )
-
-
-def clear():
-    clear_bucket(pictures)
-    clear_bucket(movies)
-    clear_bucket(files)
+# ----------------------------------------------------------------------
+# Pictures
+# ----------------------------------------------------------------------
 
 
 def add_picture(prefix, id, path):
-    key = make_key(prefix, id)
-    with _measure("upload", "pictures", byte_count=_safe_size(path)):
-        with open(path, "rb") as fd:
-            return pictures.write(key, fd)
+    return _upload(pictures, make_key(prefix, id), path, "pictures")
 
 
 def get_picture(prefix, id):
-    key = make_key(prefix, id)
-    with _measure("download", "pictures"):
-        data = pictures.read(key)
-    if _PROM_ENABLED and data is not None:
-        _BYTES.labels(op="download", bucket="pictures").inc(len(data))
-    return data
+    return _read(pictures, make_key(prefix, id), "pictures")
 
 
 def open_picture(prefix, id):
@@ -287,24 +362,15 @@ def open_picture(prefix, id):
 
 
 def read_picture(prefix, id):
-    key = make_key(prefix, id)
-    with _measure("download", "pictures"):
-        data = pictures.read(key)
-    if _PROM_ENABLED and data is not None:
-        _BYTES.labels(op="download", bucket="pictures").inc(len(data))
-    return data
+    return _read(pictures, make_key(prefix, id), "pictures")
 
 
 def exists_picture(prefix, id):
-    key = make_key(prefix, id)
-    with _measure("exists", "pictures"):
-        return pictures.exists(key)
+    return _exists(pictures, make_key(prefix, id), "pictures")
 
 
 def remove_picture(prefix, id):
-    key = make_key(prefix, id)
-    with _measure("delete", "pictures"):
-        return pictures.delete(key)
+    return _delete(pictures, make_key(prefix, id), "pictures")
 
 
 def get_local_picture_path(prefix, id):
@@ -312,26 +378,25 @@ def get_local_picture_path(prefix, id):
 
 
 def copy_picture(prefix, id, new_prefix, new_id):
-    key = make_key(prefix, id)
-    target = make_key(new_prefix, new_id)
-    with _measure("copy", "pictures"):
-        return pictures.copy(key, target)
+    return _copy(
+        pictures,
+        make_key(prefix, id),
+        make_key(new_prefix, new_id),
+        "pictures",
+    )
+
+
+# ----------------------------------------------------------------------
+# Movies
+# ----------------------------------------------------------------------
 
 
 def add_movie(prefix, id, path):
-    key = make_key(prefix, id)
-    with _measure("upload", "movies", byte_count=_safe_size(path)):
-        with open(path, "rb") as fd:
-            return movies.write(key, fd)
+    return _upload(movies, make_key(prefix, id), path, "movies")
 
 
 def get_movie(prefix, id):
-    key = make_key(prefix, id)
-    with _measure("download", "movies"):
-        data = movies.read(key)
-    if _PROM_ENABLED and data is not None:
-        _BYTES.labels(op="download", bucket="movies").inc(len(data))
-    return data
+    return _read(movies, make_key(prefix, id), "movies")
 
 
 def open_movie(prefix, id):
@@ -340,24 +405,15 @@ def open_movie(prefix, id):
 
 
 def read_movie(prefix, id):
-    key = make_key(prefix, id)
-    with _measure("download", "movies"):
-        data = movies.read(key)
-    if _PROM_ENABLED and data is not None:
-        _BYTES.labels(op="download", bucket="movies").inc(len(data))
-    return data
+    return _read(movies, make_key(prefix, id), "movies")
 
 
 def exists_movie(prefix, id):
-    key = make_key(prefix, id)
-    with _measure("exists", "movies"):
-        return movies.exists(key)
+    return _exists(movies, make_key(prefix, id), "movies")
 
 
 def remove_movie(prefix, id):
-    key = make_key(prefix, id)
-    with _measure("delete", "movies"):
-        return movies.delete(key)
+    return _delete(movies, make_key(prefix, id), "movies")
 
 
 def get_local_movie_path(prefix, id):
@@ -365,26 +421,25 @@ def get_local_movie_path(prefix, id):
 
 
 def copy_movie(prefix, id, new_prefix, new_id):
-    key = make_key(prefix, id)
-    target = make_key(new_prefix, new_id)
-    with _measure("copy", "movies"):
-        return movies.copy(key, target)
+    return _copy(
+        movies,
+        make_key(prefix, id),
+        make_key(new_prefix, new_id),
+        "movies",
+    )
+
+
+# ----------------------------------------------------------------------
+# Files
+# ----------------------------------------------------------------------
 
 
 def add_file(prefix, id, path):
-    key = make_key(prefix, id)
-    with _measure("upload", "files", byte_count=_safe_size(path)):
-        with open(path, "rb") as fd:
-            return files.write(key, fd)
+    return _upload(files, make_key(prefix, id), path, "files")
 
 
 def get_file(prefix, id):
-    key = make_key(prefix, id)
-    with _measure("download", "files"):
-        data = files.read(key)
-    if _PROM_ENABLED and data is not None:
-        _BYTES.labels(op="download", bucket="files").inc(len(data))
-    return data
+    return _read(files, make_key(prefix, id), "files")
 
 
 def open_file(prefix, id):
@@ -393,24 +448,15 @@ def open_file(prefix, id):
 
 
 def read_file(prefix, id):
-    key = make_key(prefix, id)
-    with _measure("download", "files"):
-        data = files.read(key)
-    if _PROM_ENABLED and data is not None:
-        _BYTES.labels(op="download", bucket="files").inc(len(data))
-    return data
+    return _read(files, make_key(prefix, id), "files")
 
 
 def exists_file(prefix, id):
-    key = make_key(prefix, id)
-    with _measure("exists", "files"):
-        return files.exists(key)
+    return _exists(files, make_key(prefix, id), "files")
 
 
 def remove_file(prefix, id):
-    key = make_key(prefix, id)
-    with _measure("delete", "files"):
-        return files.delete(key)
+    return _delete(files, make_key(prefix, id), "files")
 
 
 def get_local_file_path(prefix, id):
@@ -418,7 +464,9 @@ def get_local_file_path(prefix, id):
 
 
 def copy_file(prefix, id, new_prefix, new_id):
-    key = make_key(prefix, id)
-    target = make_key(new_prefix, new_id)
-    with _measure("copy", "files"):
-        return files.copy(key, target)
+    return _copy(
+        files,
+        make_key(prefix, id),
+        make_key(new_prefix, new_id),
+        "files",
+    )

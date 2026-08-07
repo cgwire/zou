@@ -93,8 +93,8 @@ class HTMLStripper(HTMLParser):
         elif tag in ("p", "div"):
             self.text.write("\n")
 
-    def handle_data(self, d):
-        self.text.write(d)
+    def handle_data(self, data):
+        self.text.write(data)
 
     def get_data(self):
         return self.text.getvalue()
@@ -105,9 +105,9 @@ def strip_html_tags(html):
     Convert HTML email to plain text, preserving URLs from links
     and maintaining basic formatting with line breaks.
     """
-    s = HTMLStripper()
-    s.feed(html)
-    text = s.get_data()
+    stripper = HTMLStripper()
+    stripper.feed(html)
+    text = stripper.get_data()
     # Clean up multiple consecutive newlines
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()

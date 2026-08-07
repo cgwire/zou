@@ -49,6 +49,7 @@ from zou.app.services import (
 
 from zou.app.services.exception import (
     BuildJobNotFoundException,
+    PlaylistLockTimeoutException,
     PlaylistNotFoundException,
 )
 
@@ -154,7 +155,10 @@ def all_playlists_for_episode(
             query.filter(Playlist.episode_id == None)
             .filter(Playlist.project_id == project_id)
             .filter(
-                or_(Playlist.is_for_all is None, Playlist.is_for_all == False)
+                or_(
+                    Playlist.is_for_all.is_(None),
+                    Playlist.is_for_all == False,
+                )
             )
         )
     elif episode_id == "all":
@@ -164,7 +168,9 @@ def all_playlists_for_episode(
             .filter(Playlist.is_for_all == True)
         )
     else:
-        query = query.filter(Playlist.episode_id == episode_id)
+        query = query.filter(Playlist.episode_id == episode_id).filter(
+            Playlist.project_id == project_id
+        )
 
     query = _apply_playlist_pagination(query, page, sort_by)
     query = query.options(defer(Playlist.shots)).add_columns(
@@ -278,6 +284,10 @@ def get_playlist_with_preview_file_revisions(
 
 
 def _add_build_job_infos_to_playlist_dict(playlist, playlist_dict):
+    """
+    Add the state of the last build job to a playlist dict, so the client
+    knows whether a movie is available or still building.
+    """
     playlist_dict["build_jobs"] = []
     for build_job in reversed(playlist.build_jobs):
         playlist_dict["build_jobs"].append(build_job.present())
@@ -531,35 +541,15 @@ def get_playlist(playlist_id):
 
 def add_entity_to_playlist(playlist_id, entity_id, preview_file_id=None):
     """
-    Atomically append an entity to the playlist shots list.
-    This function is designed to be safe under concurrent access.
-
-    Uses a Redis-based distributed lock to prevent race conditions
-    when multiple processes try to add entities to the same playlist
-    concurrently. Falls back to database-level locking if Redis is
-    unavailable.
+    Append one entity to the playlist shots list. Same rules as
+    add_entities_to_playlist, which this runs: a playlist entry is the
+    couple (entity, preview), so the same entity can be added again under
+    another preview, and a call naming no preview gets the latest one.
     """
-    entity_id_str = str(entity_id)
-    with with_playlist_lock(
-        playlist_id, timeout=30, wait_timeout=35
-    ) as _acquired:
-        playlist_dict = _add_entity_to_playlist_db(
-            playlist_id, entity_id_str, preview_file_id
-        )
-
-    events.emit(
-        "playlist:add_entity",
-        {
-            "playlist_id": playlist_dict["id"],
-            "entity_id": entity_id_str,
-            "preview_file_id": (
-                str(preview_file_id) if preview_file_id is not None else None
-            ),
-        },
-        project_id=playlist_dict["project_id"],
+    return add_entities_to_playlist(
+        playlist_id,
+        [{"entity_id": entity_id, "preview_file_id": preview_file_id}],
     )
-
-    return playlist_dict
 
 
 def get_latest_preview_file_ids_for_entities(entity_ids, task_type_id=None):
@@ -614,8 +604,12 @@ def add_entities_to_playlist(playlist_id, entities):
     ]
     with with_playlist_lock(
         playlist_id, timeout=30, wait_timeout=35
-    ) as _acquired:
-        playlist = Playlist.get(playlist_id)
+    ) as acquired:
+        if not acquired:
+            raise PlaylistLockTimeoutException(
+                "Could not acquire the lock of this playlist"
+            )
+        playlist = get_playlist_raw(playlist_id)
         task_type_id = (
             str(playlist.task_type_id)
             if playlist.task_type_id is not None
@@ -665,27 +659,6 @@ def add_entities_to_playlist(playlist_id, entities):
             project_id=playlist_dict["project_id"],
         )
     return playlist_dict
-
-
-def _add_entity_to_playlist_db(playlist_id, entity_id_str, preview_file_id):
-    """
-    Internal helper function to add an entity to playlist in the database.
-    Assumes the caller has acquired appropriate locking (Redis).
-    """
-    playlist = Playlist.get(playlist_id)
-    shots = list(playlist.shots or [])
-
-    if not any(shot.get("entity_id") == entity_id_str for shot in shots):
-        shot = {
-            "entity_id": entity_id_str,
-        }
-        if preview_file_id is not None:
-            shot["preview_file_id"] = str(preview_file_id)
-        shots.append(shot)
-        playlist.shots = shots
-        playlist.update({"shots": shots})
-
-    return playlist.serialize()
 
 
 def playlist_previews(shots, only_movies=False):
@@ -756,6 +729,10 @@ def retrieve_playlist_tmp_files(preview_files, full=False):
 
 
 def retrieve_playlist_tmp_file(preview_file):
+    """
+    Download one preview of a playlist to the temp folder, so ffmpeg can
+    concatenate it locally.
+    """
     if preview_file["extension"] == "mp4":
         get_path_func = file_store.get_local_movie_path
         open_func = file_store.open_movie
@@ -872,6 +849,10 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
 def _run_concatenation(
     playlist, job, tmp_file_paths, movie_file_path, params, mode
 ):
+    """
+    Concatenate the downloaded previews into the playlist movie, then
+    store it and clean the temporary files up.
+    """
     success = False
     try:
         result = movie.build_playlist_movie(
@@ -900,6 +881,10 @@ def _run_concatenation(
 def _run_remote_job_build_playlist(
     app, job, previews, params, movie_file_path, full
 ):
+    """
+    Hand the concatenation over to a remote worker instead of running it
+    in process, when a job queue is configured.
+    """
     preview_ids = [
         preview["id"] for preview in previews if preview["extension"] == "mp4"
     ]
@@ -927,8 +912,8 @@ def _run_remote_job_build_playlist(
 
 def start_build_job(playlist):
     """
-    clients that a new job is running.
     Register in database that a new build is running. Emits an event to notify
+    clients that a new job is running.
     """
     job = BuildJob.create(
         status="running", job_type="movie", playlist_id=playlist["id"]
@@ -1240,20 +1225,41 @@ def generate_playlisted_entity_from_task(task_id, task_type_links):
     return playlisted_entity
 
 
-def get_base_episode_for_playlist(entity, task_id):
-    episode = shots_service.get_episode(entity["id"])
-    playlisted_entity = {
-        "id": episode["id"],
-        "name": episode["name"],
+def _build_playlisted_entity(entity, task_id, parent_name="", **extra):
+    """
+    Build a playlist entry carrying the whole key set, whatever the kind of
+    entity: a consumer reads episode_id or sequence_name on any entry
+    without having to know which builder produced it. Keys that do not
+    apply stay empty, which the clients already treat as absent.
+    """
+    entry = {
+        "id": entity["id"],
+        "name": entity["name"],
         "preview_file_task_id": task_id,
+        "parent_name": parent_name,
+        "episode_id": "",
+        "episode_name": "",
         "sequence_id": "",
         "sequence_name": "",
-        "parent_name": "",
+        "asset_type_id": "",
+        "asset_type_name": "",
     }
-    return playlisted_entity
+    entry.update(extra)
+    return entry
+
+
+def get_base_episode_for_playlist(entity, task_id):
+    """
+    Build the playlist entry of an episode: it has no parent to show.
+    """
+    episode = shots_service.get_episode(entity["id"])
+    return _build_playlisted_entity(episode, task_id)
 
 
 def get_base_sequence_for_playlist(entity, task_id):
+    """
+    Build the playlist entry of a sequence, showing its episode as parent.
+    """
     sequence = shots_service.get_sequence(entity["id"])
     episode = None
     try:
@@ -1264,42 +1270,36 @@ def get_base_sequence_for_playlist(entity, task_id):
             sequence.get("parent_id"),
             e,
         )
-    if episode is not None:
-        playlisted_entity = {
-            "id": sequence["id"],
-            "name": sequence["name"],
-            "preview_file_task_id": task_id,
-            "episode_id": episode["id"],
-            "episode_name": episode["name"],
-            "parent_name": episode["name"],
-        }
-    else:
-        playlisted_entity = {
-            "id": sequence["id"],
-            "name": sequence["name"],
-            "preview_file_task_id": task_id,
-            "sequence_id": "",
-            "sequence_name": "",
-            "parent_name": "",
-        }
-    return playlisted_entity
+    if episode is None:
+        return _build_playlisted_entity(sequence, task_id)
+    return _build_playlisted_entity(
+        sequence,
+        task_id,
+        parent_name=episode["name"],
+        episode_id=episode["id"],
+        episode_name=episode["name"],
+    )
 
 
 def get_base_shot_for_playlist(entity, task_id):
+    """
+    Build the playlist entry of a shot, showing its sequence as parent.
+    """
     shot = shots_service.get_shot(entity["id"])
     sequence = shots_service.get_sequence(shot["parent_id"])
-    playlisted_entity = {
-        "id": shot["id"],
-        "name": shot["name"],
-        "preview_file_task_id": task_id,
-        "sequence_id": sequence["id"],
-        "sequence_name": sequence["name"],
-        "parent_name": sequence["name"],
-    }
-    return playlisted_entity
+    return _build_playlisted_entity(
+        shot,
+        task_id,
+        parent_name=sequence["name"],
+        sequence_id=sequence["id"],
+        sequence_name=sequence["name"],
+    )
 
 
 def get_base_edit_for_playlist(entity, task_id):
+    """
+    Build the playlist entry of an edit, showing its episode as parent.
+    """
     edit = edits_service.get_edit(entity["id"])
     episode = None
     try:
@@ -1308,39 +1308,30 @@ def get_base_edit_for_playlist(entity, task_id):
         logger.debug(
             f"No episode for edit parent_id={edit.get('parent_id')}: {e}"
         )
-    if episode is not None:
-        playlisted_entity = {
-            "id": edit["id"],
-            "name": edit["name"],
-            "preview_file_task_id": task_id,
-            "episode_id": episode["id"],
-            "episode_name": episode["name"],
-            "parent_name": episode["name"],
-        }
-    else:
-        playlisted_entity = {
-            "id": edit["id"],
-            "name": edit["name"],
-            "preview_file_task_id": task_id,
-            "episode_id": "",
-            "episode_name": "",
-            "parent_name": "",
-        }
-    return playlisted_entity
+    if episode is None:
+        return _build_playlisted_entity(edit, task_id)
+    return _build_playlisted_entity(
+        edit,
+        task_id,
+        parent_name=episode["name"],
+        episode_id=episode["id"],
+        episode_name=episode["name"],
+    )
 
 
 def get_base_asset_for_playlist(entity, task_id):
+    """
+    Build the playlist entry of an asset, showing its type as parent.
+    """
     asset = assets_service.get_asset(entity["id"])
     asset_type = assets_service.get_asset_type(asset["entity_type_id"])
-    playlisted_entity = {
-        "id": asset["id"],
-        "name": asset["name"],
-        "preview_file_task_id": task_id,
-        "asset_type_id": asset_type["id"],
-        "asset_type_name": asset_type["name"],
-        "parent_name": asset_type["name"],
-    }
-    return playlisted_entity
+    return _build_playlisted_entity(
+        asset,
+        task_id,
+        parent_name=asset_type["name"],
+        asset_type_id=asset_type["id"],
+        asset_type_name=asset_type["name"],
+    )
 
 
 def get_preview_files_for_task(task_id):

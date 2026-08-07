@@ -7,7 +7,7 @@ from zou.app.models.preview_background_file import PreviewBackgroundFile
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.metadata_descriptor import MetadataDescriptor
-from zou.app.models.person import Person, DepartmentLink
+from zou.app.models.person import Person, DepartmentLink, ROLE_TYPES
 from zou.app.models.project import (
     Project,
     ProjectPersonLink,
@@ -43,8 +43,14 @@ from sqlalchemy import or_
 
 
 def clear_project_cache(project_id):
-    cache.cache.delete_memoized(get_project, project_id)
-    cache.cache.delete_memoized(get_project, project_id, True)
+    """
+    Drop every memoized serialization of given project, and the project lists.
+    """
+    # Both arguments are given: an omitted default is a cache key of its
+    # own, so deleting on the id alone would leave the common entry behind.
+    project_id = str(project_id)
+    cache.cache.delete_memoized(_get_project_cached, project_id, False)
+    cache.cache.delete_memoized(_get_project_cached, project_id, True)
     cache.cache.delete_memoized(get_project_by_name)
     cache.cache.delete_memoized(open_projects)
 
@@ -117,6 +123,11 @@ def get_projects_with_extra_data(
 def _fetch_metadata_descriptors_by_project(
     project_ids, for_client=False, vendor_departments=None
 ):
+    """
+    Return the metadata descriptors of given projects grouped by project,
+    in one query. Clients only get the descriptors published to them, and
+    a vendor only the ones of their departments.
+    """
     if for_client:
         descriptors_query = MetadataDescriptor.query.filter(
             MetadataDescriptor.project_id.in_(project_ids),
@@ -150,6 +161,9 @@ def _fetch_metadata_descriptors_by_project(
 
 
 def _fetch_task_type_links_by_project(project_ids):
+    """
+    Return the task type links of given projects grouped by project.
+    """
     task_type_links = ProjectTaskTypeLink.query.filter(
         ProjectTaskTypeLink.project_id.in_(project_ids)
     ).all()
@@ -162,6 +176,9 @@ def _fetch_task_type_links_by_project(project_ids):
 
 
 def _fetch_task_status_links_by_project(project_ids):
+    """
+    Return the task status links of given projects grouped by project.
+    """
     task_status_links = ProjectTaskStatusLink.query.filter(
         ProjectTaskStatusLink.project_id.in_(project_ids)
     ).all()
@@ -175,6 +192,10 @@ def _fetch_task_status_links_by_project(project_ids):
 
 
 def _fetch_first_episodes_by_project(project_ids):
+    """
+    Return the first episode of each given project, the one the clients
+    land on when they open a TV show.
+    """
     if not project_ids:
         return {}
 
@@ -216,6 +237,9 @@ def _fetch_first_episodes_by_project(project_ids):
 
 
 def _serialize_descriptor(descriptor):
+    """
+    Serialize a metadata descriptor with the departments it is limited to.
+    """
     return {
         "id": fields.serialize_value(descriptor.id),
         "name": descriptor.name,
@@ -239,6 +263,10 @@ def _build_project_dict_with_extra_data(
     task_statuses_by_project,
     first_episodes_by_project,
 ):
+    """
+    Assemble one project dict from the project row and the maps prefetched
+    for the whole page, so no query is issued per project.
+    """
     project_dict = project.serialize(relations=True)
 
     project_dict["descriptors"] = [
@@ -293,6 +321,9 @@ def get_projects():
 
 
 def _fetch_all_project_descriptors_by_project():
+    """
+    Return the metadata descriptors of every project grouped by project.
+    """
     descriptors = (
         MetadataDescriptor.query.filter(
             MetadataDescriptor.entity_type == "Project"
@@ -308,6 +339,9 @@ def _fetch_all_project_descriptors_by_project():
 
 @cache.memoize_function(480)
 def get_project_statuses():
+    """
+    Return every project status.
+    """
     return fields.serialize_models(ProjectStatus.get_all())
 
 
@@ -387,12 +421,20 @@ def get_project_raw(project_id):
 
 
 @cache.memoize_function(240)
+def _get_project_cached(project_id, relations=False):
+    return get_project_raw(project_id).serialize(relations=relations)
+
+
 def get_project(project_id, relations=False):
     """
     Get project matching given id, as a dict. Raises an exception if project is
     not found.
+
+    The id is normalised before it reaches the memoization, which keys on the
+    argument: a UUID and its string form would otherwise be two entries, and
+    clear_project_cache would only ever drop one of them.
     """
-    return get_project_raw(project_id).serialize(relations=relations)
+    return _get_project_cached(str(project_id), relations)
 
 
 @cache.memoize_function(120)
@@ -420,16 +462,29 @@ def update_project(project_id, data):
     return project.serialize()
 
 
+def _check_project_role(role):
+    """
+    Refuse a role a project link cannot carry. admin is global by design,
+    and anything else is a typo: the column is an enum, so writing it
+    raises a KeyError deep in the driver rather than answering the caller.
+    """
+    if role is None:
+        return
+    if role == "admin":
+        raise WrongParameterException(
+            "admin is a global role and cannot be set per project"
+        )
+    if role not in [code for code, _ in ROLE_TYPES]:
+        raise WrongParameterException(f"{role} is not a role")
+
+
 def add_team_member(project_id, person_id, role=None):
     """
     Add a person listed in database to the project team, with an optional
     project-specific role. The role is validated before the membership is
     created so an invalid role leaves no partial state behind.
     """
-    if role == "admin":
-        raise WrongParameterException(
-            "admin is a global role and cannot be set per project"
-        )
+    _check_project_role(role)
     project = _add_to_list_attr(project_id, Person, person_id, "team")
     if role is not None:
         update_team_member_role(project_id, person_id, role)
@@ -449,10 +504,7 @@ def update_team_member_role(project_id, person_id, role):
     Set the role of given person on given project. A None role restores
     inheritance of the person's global role.
     """
-    if role == "admin":
-        raise WrongParameterException(
-            "admin is a global role and cannot be set per project"
-        )
+    _check_project_role(role)
     link = ProjectPersonLink.query.filter_by(
         project_id=project_id, person_id=person_id
     ).first()
@@ -674,6 +726,9 @@ def remove_preview_background_file_setting(
 
 
 def _add_to_list_attr(project_id, model_class, model_id, list_attr):
+    """
+    Append a row to one of the project settings lists, no-op when already there.
+    """
     project = get_project_raw(project_id)
     model = model_class.get(model_id)
     if model is None:
@@ -696,6 +751,9 @@ def _add_to_list_attr(project_id, model_class, model_id, list_attr):
 
 
 def _remove_from_list_attr(project_id, model_class, model_id, list_attr):
+    """
+    Remove a row from one of the project settings lists, no-op when absent.
+    """
     project = get_project_raw(project_id)
     model = model_class.get(model_id)
     try:
@@ -706,6 +764,9 @@ def _remove_from_list_attr(project_id, model_class, model_id, list_attr):
 
 
 def _save_project(project):
+    """
+    Persist the project, drop its cache and notify the clients.
+    """
     project.save()
     clear_project_cache(str(project.id))
     events.emit("project:update", {}, project_id=str(project.id))
@@ -1084,6 +1145,18 @@ def copy_project_metadata_descriptors(project_id):
     return created
 
 
+def _find_descriptors_by_field(project_ids, entity_type, field_name):
+    """
+    Return the metadata descriptors sharing given field name and entity type
+    across given projects.
+    """
+    return MetadataDescriptor.query.filter(
+        MetadataDescriptor.project_id.in_(project_ids),
+        MetadataDescriptor.entity_type == entity_type,
+        MetadataDescriptor.field_name == field_name,
+    ).all()
+
+
 def update_metadata_descriptor_on_projects(
     project_ids, entity_type, field_name, changes
 ):
@@ -1091,11 +1164,9 @@ def update_metadata_descriptor_on_projects(
     Update every metadata descriptor sharing the given field name and entity
     type across the given projects. Returns the list of updated descriptors.
     """
-    descriptors = MetadataDescriptor.query.filter(
-        MetadataDescriptor.project_id.in_(project_ids),
-        MetadataDescriptor.entity_type == entity_type,
-        MetadataDescriptor.field_name == field_name,
-    ).all()
+    descriptors = _find_descriptors_by_field(
+        project_ids, entity_type, field_name
+    )
     return [
         update_metadata_descriptor(str(descriptor.id), dict(changes))
         for descriptor in descriptors
@@ -1109,11 +1180,9 @@ def remove_metadata_descriptor_from_projects(
     Remove every metadata descriptor sharing the given field name and entity
     type across the given projects. Returns the list of removed ids.
     """
-    descriptors = MetadataDescriptor.query.filter(
-        MetadataDescriptor.project_id.in_(project_ids),
-        MetadataDescriptor.entity_type == entity_type,
-        MetadataDescriptor.field_name == field_name,
-    ).all()
+    descriptors = _find_descriptors_by_field(
+        project_ids, entity_type, field_name
+    )
     removed_ids = []
     for descriptor in descriptors:
         descriptor_id = str(descriptor.id)
@@ -1153,15 +1222,36 @@ def reorder_metadata_descriptors_on_projects(
 
 
 def is_tv_show(project):
+    """
+    Return True when given project is a TV show, so episodes apply.
+    """
     return project["production_type"] == "tvshow"
 
 
 def is_open(project):
+    """
+    Return True when given project is still open.
+    """
     open_status = get_open_status()
     return project["project_status_id"] == open_status["id"]
 
 
+def _notify_project_settings_change(project_id):
+    """
+    Drop the project cache and notify the clients after a change on one of its
+    task type or task status links. Those tables are not the project, but the
+    clients read them through it, so the project is what they have to refetch.
+    """
+    project_id = str(project_id)
+    clear_project_cache(project_id)
+    events.emit("project:update", {}, project_id=project_id)
+
+
 def create_project_task_type_link(project_id, task_type_id, priority):
+    """
+    Link a task type to given project with a priority, or update the
+    priority when the link already exists.
+    """
     if not task_type_id or not fields.is_valid_id(task_type_id):
         raise WrongParameterException(
             "task_type_id is required and must be a valid UUID"
@@ -1181,12 +1271,18 @@ def create_project_task_type_link(project_id, task_type_id, priority):
     else:
         task_type_link.update({"priority": priority})
 
-    return task_type_link.serialize()
+    task_type_link_dict = task_type_link.serialize()
+    _notify_project_settings_change(task_type_link_dict["project_id"])
+    return task_type_link_dict
 
 
 def create_project_task_status_link(
     project_id, task_status_id, priority, roles_for_board=None
 ):
+    """
+    Link a task status to given project, or update the priority and the
+    board roles when the link already exists.
+    """
     if not task_status_id or not fields.is_valid_id(task_status_id):
         raise WrongParameterException(
             "task_status_id is required and must be a valid UUID"
@@ -1211,7 +1307,9 @@ def create_project_task_status_link(
             {"priority": priority, "roles_for_board": roles_for_board}
         )
 
-    return task_status_link.serialize()
+    task_status_link_dict = task_status_link.serialize()
+    _notify_project_settings_change(task_status_link_dict["project_id"])
+    return task_status_link_dict
 
 
 def set_project_task_type_link_priorities(project_id, task_type_ids):
@@ -1228,7 +1326,7 @@ def set_project_task_type_link_priorities(project_id, task_type_ids):
         if link is not None:
             link.update({"priority": priority})
             links.append(link.serialize())
-    clear_project_cache(project_id)
+    _notify_project_settings_change(project_id)
     return links
 
 
@@ -1246,26 +1344,38 @@ def set_project_task_status_link_priorities(project_id, task_status_ids):
         if link is not None:
             link.update({"priority": priority})
             links.append(link.serialize())
-    clear_project_cache(project_id)
+    _notify_project_settings_change(project_id)
     return links
 
 
 def get_project_task_types(project_id):
+    """
+    Return the task types configured on given project.
+    """
     project = get_project_raw(project_id)
     return Project.serialize_list(project.task_types)
 
 
 def get_project_task_statuses(project_id):
+    """
+    Return the task statuses configured on given project.
+    """
     project = get_project_raw(project_id)
     return Project.serialize_list(project.task_statuses)
 
 
 def get_project_status_automations(project_id):
+    """
+    Return the status automations configured on given project.
+    """
     project = get_project_raw(project_id)
     return Project.serialize_list(project.status_automations)
 
 
 def get_project_preview_background_files(project_id):
+    """
+    Return the preview background files configured on given project.
+    """
     project = get_project_raw(project_id)
     return Project.serialize_list(project.preview_background_files)
 

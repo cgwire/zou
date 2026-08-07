@@ -56,14 +56,14 @@ def unregister_all():
 
 
 def emit(event, data=None, persist=True, project_id=None):
-    if data is None:
-        data = {}
     """
     Emit an event which leads to the execution of all event handlers registered
     for that event name.
     It publishes too the event to other services
     (like the realtime event daemon).
     """
+    if data is None:
+        data = {}
     event = event.lower()
     event_handlers = handlers.get(event, {})
     if project_id is not None:

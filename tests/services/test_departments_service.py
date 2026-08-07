@@ -1,7 +1,5 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.models.department import Department
-from zou.app.models.software import Software
 from zou.app.models.hardware_item import HardwareItem
 from zou.app.services.exception import (
     DepartmentNotFoundException,
@@ -11,11 +9,23 @@ from zou.app.services.exception import (
 
 from zou.app.services import departments_service
 
+UNKNOWN = "00000000-0000-0000-0000-000000000000"
 
-class DepartmentsServiceTestCase(ApiDBTestCase):
+
+class DepartmentLinksMixin:
+    """
+    Software and hardware hang off departments through two mirrored sets of
+    functions built on one grouping helper, so they share one story here and
+    differ only in what each subclass points at.
+
+    Not a TestCase, so neither loader collects it on its own.
+    """
+
+    item_key = None
+    item_not_found = None
 
     def setUp(self):
-        super(DepartmentsServiceTestCase, self).setUp()
+        super().setUp()
 
         self.generate_fixture_department()
         self.generate_fixture_software()
@@ -25,198 +35,115 @@ class DepartmentsServiceTestCase(ApiDBTestCase):
         self.hardware_item_2 = HardwareItem.create(
             name="GPU RTX", short_name="gpu"
         )
+        self.department_id = str(self.department.id)
+        self.other_department_id = str(self.department_animation.id)
+        first, second = self.items()
+        self.item_id = str(first.id)
+        self.other_item_id = str(second.id)
+        self.item_name = first.name
 
-    def test_get_software_for_department(self):
-        result = departments_service.get_software_for_department(
-            str(self.department.id)
-        )
-        self.assertEqual(len(result), 0)
+    def items(self):
+        raise NotImplementedError
 
-        departments_service.add_software_to_department(
-            str(self.department.id), str(self.software.id)
-        )
-        result = departments_service.get_software_for_department(
-            str(self.department.id)
-        )
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0]["name"], "Blender")
+    def test_the_listing_starts_empty_and_holds_what_is_added(self):
+        self.assertEqual(self.listing(self.department_id), [])
 
-    def test_get_software_for_department_not_found(self):
+        self.add(self.department_id, self.item_id)
+
+        result = self.listing(self.department_id)
+        self.assertEqual([held["name"] for held in result], [self.item_name])
+
+    def test_the_listing_is_scoped_to_its_department(self):
+        self.add(self.department_id, self.item_id)
+
+        self.assertEqual(self.listing(self.other_department_id), [])
+
+    def test_the_listing_refuses_an_unknown_department(self):
         with self.assertRaises(DepartmentNotFoundException):
-            departments_service.get_software_for_department(
-                "00000000-0000-0000-0000-000000000000"
-            )
+            self.listing(UNKNOWN)
 
-    def test_get_hardware_items_for_department(self):
-        result = departments_service.get_hardware_items_for_department(
-            str(self.department.id)
-        )
-        self.assertEqual(len(result), 0)
+    def test_adding_returns_the_link(self):
+        result = self.add(self.department_id, self.item_id)
 
-        departments_service.add_hardware_item_to_department(
-            str(self.department.id), str(self.hardware_item.id)
-        )
-        result = departments_service.get_hardware_items_for_department(
-            str(self.department.id)
-        )
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0]["name"], "Wacom Tablet")
+        self.assertEqual(result["department_id"], self.department_id)
+        self.assertEqual(result[self.item_key], self.item_id)
 
-    def test_get_hardware_items_for_department_not_found(self):
+    def test_adding_twice_leaves_one_link(self):
+        self.add(self.department_id, self.item_id)
+
+        self.add(self.department_id, self.item_id)
+
+        self.assertEqual(len(self.listing(self.department_id)), 1)
+
+    def test_adding_refuses_an_unknown_side(self):
         with self.assertRaises(DepartmentNotFoundException):
-            departments_service.get_hardware_items_for_department(
-                "00000000-0000-0000-0000-000000000000"
-            )
+            self.add(UNKNOWN, self.item_id)
+        with self.assertRaises(self.item_not_found):
+            self.add(self.department_id, UNKNOWN)
 
-    def test_add_software_to_department(self):
-        result = departments_service.add_software_to_department(
-            str(self.department.id), str(self.software.id)
-        )
-        self.assertEqual(result["department_id"], str(self.department.id))
-        self.assertEqual(result["software_id"], str(self.software.id))
+    def test_removing_takes_the_link_out(self):
+        self.add(self.department_id, self.item_id)
 
-    def test_add_software_to_department_idempotent(self):
-        departments_service.add_software_to_department(
-            str(self.department.id), str(self.software.id)
-        )
-        departments_service.add_software_to_department(
-            str(self.department.id), str(self.software.id)
-        )
-        result = departments_service.get_software_for_department(
-            str(self.department.id)
-        )
-        self.assertEqual(len(result), 1)
+        self.assertIsNotNone(self.remove(self.department_id, self.item_id))
 
-    def test_add_software_to_department_not_found(self):
+        self.assertEqual(self.listing(self.department_id), [])
+
+    def test_removing_what_was_never_linked_is_no_error(self):
+        self.assertIsNone(self.remove(self.department_id, self.item_id))
+
+    def test_removing_refuses_an_unknown_side(self):
         with self.assertRaises(DepartmentNotFoundException):
-            departments_service.add_software_to_department(
-                "00000000-0000-0000-0000-000000000000", str(self.software.id)
-            )
-        with self.assertRaises(SoftwareNotFoundException):
-            departments_service.add_software_to_department(
-                str(self.department.id), "00000000-0000-0000-0000-000000000000"
-            )
+            self.remove(UNKNOWN, self.item_id)
+        with self.assertRaises(self.item_not_found):
+            self.remove(self.department_id, UNKNOWN)
 
-    def test_remove_software_from_department(self):
-        departments_service.add_software_to_department(
-            str(self.department.id), str(self.software.id)
-        )
-        result = departments_service.remove_software_from_department(
-            str(self.department.id), str(self.software.id)
-        )
-        self.assertIsNotNone(result)
-        software_list = departments_service.get_software_for_department(
-            str(self.department.id)
-        )
-        self.assertEqual(len(software_list), 0)
+    def test_the_studio_wide_listing_groups_by_department(self):
+        self.assertEqual(self.all_listings(), {})
+        self.add(self.department_id, self.item_id)
+        self.add(self.other_department_id, self.other_item_id)
 
-    def test_remove_software_from_department_no_link(self):
-        result = departments_service.remove_software_from_department(
-            str(self.department.id), str(self.software.id)
-        )
-        self.assertIsNone(result)
+        result = self.all_listings()
 
-    def test_remove_software_from_department_not_found(self):
-        with self.assertRaises(DepartmentNotFoundException):
-            departments_service.remove_software_from_department(
-                "00000000-0000-0000-0000-000000000000", str(self.software.id)
-            )
-        with self.assertRaises(SoftwareNotFoundException):
-            departments_service.remove_software_from_department(
-                str(self.department.id), "00000000-0000-0000-0000-000000000000"
-            )
-
-    def test_add_hardware_item_to_department(self):
-        result = departments_service.add_hardware_item_to_department(
-            str(self.department.id), str(self.hardware_item.id)
-        )
-        self.assertEqual(result["department_id"], str(self.department.id))
+        # Keyed by the raw department ids the query returns.
         self.assertEqual(
-            result["hardware_item_id"], str(self.hardware_item.id)
+            {
+                str(department_id): [held["id"] for held in held_items]
+                for department_id, held_items in result.items()
+            },
+            {
+                self.department_id: [self.item_id],
+                self.other_department_id: [self.other_item_id],
+            },
         )
 
-    def test_add_hardware_item_to_department_idempotent(self):
-        departments_service.add_hardware_item_to_department(
-            str(self.department.id), str(self.hardware_item.id)
-        )
-        departments_service.add_hardware_item_to_department(
-            str(self.department.id), str(self.hardware_item.id)
-        )
-        result = departments_service.get_hardware_items_for_department(
-            str(self.department.id)
-        )
-        self.assertEqual(len(result), 1)
 
-    def test_add_hardware_item_to_department_not_found(self):
-        with self.assertRaises(DepartmentNotFoundException):
-            departments_service.add_hardware_item_to_department(
-                "00000000-0000-0000-0000-000000000000",
-                str(self.hardware_item.id),
-            )
-        with self.assertRaises(HardwareItemNotFoundException):
-            departments_service.add_hardware_item_to_department(
-                str(self.department.id), "00000000-0000-0000-0000-000000000000"
-            )
+class DepartmentSoftwareTestCase(DepartmentLinksMixin, ApiDBTestCase):
+    item_key = "software_id"
+    item_not_found = SoftwareNotFoundException
+    add = staticmethod(departments_service.add_software_to_department)
+    remove = staticmethod(departments_service.remove_software_from_department)
+    listing = staticmethod(departments_service.get_software_for_department)
+    all_listings = staticmethod(
+        departments_service.get_all_software_for_departments
+    )
 
-    def test_remove_hardware_item_from_department(self):
-        departments_service.add_hardware_item_to_department(
-            str(self.department.id), str(self.hardware_item.id)
-        )
-        result = departments_service.remove_hardware_item_from_department(
-            str(self.department.id), str(self.hardware_item.id)
-        )
-        self.assertIsNotNone(result)
-        hardware_list = departments_service.get_hardware_items_for_department(
-            str(self.department.id)
-        )
-        self.assertEqual(len(hardware_list), 0)
+    def items(self):
+        return self.software, self.software_max
 
-    def test_remove_hardware_item_from_department_no_link(self):
-        result = departments_service.remove_hardware_item_from_department(
-            str(self.department.id), str(self.hardware_item.id)
-        )
-        self.assertIsNone(result)
 
-    def test_remove_hardware_item_from_department_not_found(self):
-        with self.assertRaises(DepartmentNotFoundException):
-            departments_service.remove_hardware_item_from_department(
-                "00000000-0000-0000-0000-000000000000",
-                str(self.hardware_item.id),
-            )
-        with self.assertRaises(HardwareItemNotFoundException):
-            departments_service.remove_hardware_item_from_department(
-                str(self.department.id), "00000000-0000-0000-0000-000000000000"
-            )
+class DepartmentHardwareTestCase(DepartmentLinksMixin, ApiDBTestCase):
+    item_key = "hardware_item_id"
+    item_not_found = HardwareItemNotFoundException
+    add = staticmethod(departments_service.add_hardware_item_to_department)
+    remove = staticmethod(
+        departments_service.remove_hardware_item_from_department
+    )
+    listing = staticmethod(
+        departments_service.get_hardware_items_for_department
+    )
+    all_listings = staticmethod(
+        departments_service.get_all_hardware_items_for_departments
+    )
 
-    def test_get_all_software_for_departments(self):
-        result = departments_service.get_all_software_for_departments()
-        self.assertEqual(len(result), 0)
-
-        departments_service.add_software_to_department(
-            str(self.department.id), str(self.software.id)
-        )
-        departments_service.add_software_to_department(
-            str(self.department_animation.id), str(self.software_max.id)
-        )
-        result = departments_service.get_all_software_for_departments()
-        self.assertEqual(len(result), 2)
-        self.assertIn(self.department.id, result)
-        self.assertIn(self.department_animation.id, result)
-        self.assertEqual(len(result[self.department.id]), 1)
-
-    def test_get_all_hardware_items_for_departments(self):
-        result = departments_service.get_all_hardware_items_for_departments()
-        self.assertEqual(len(result), 0)
-
-        departments_service.add_hardware_item_to_department(
-            str(self.department.id), str(self.hardware_item.id)
-        )
-        departments_service.add_hardware_item_to_department(
-            str(self.department_animation.id),
-            str(self.hardware_item_2.id),
-        )
-        result = departments_service.get_all_hardware_items_for_departments()
-        self.assertEqual(len(result), 2)
-        self.assertIn(self.department.id, result)
-        self.assertIn(self.department_animation.id, result)
-        self.assertEqual(len(result[self.department.id]), 1)
+    def items(self):
+        return self.hardware_item, self.hardware_item_2

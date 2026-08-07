@@ -5,13 +5,32 @@ from zou.app.utils import events
 def get_instance(model, instance_id, exception):
     """
     Get instance of any model from its ID and raise given exception if not
-    found.
+    found. An ID that is not a valid UUID raises the same exception: the
+    driver rejects it with a StatementError, which callers must not have to
+    tell apart from a missing row.
     """
     if instance_id is None:
         raise exception()
 
     try:
         instance = model.get(instance_id)
+    except StatementError:
+        raise exception()
+
+    if instance is None:
+        raise exception()
+
+    return instance
+
+
+def get_typed_instance(model, instance_id, entity_type_id, exception):
+    """
+    Same as get_instance for a polymorphic model, where the id alone does not
+    say what the row is. Matching the type too is what turns an id of the
+    wrong kind into the given exception instead of the wrong object.
+    """
+    try:
+        instance = model.get_by(id=instance_id, entity_type_id=entity_type_id)
     except StatementError:
         raise exception()
 
@@ -29,21 +48,21 @@ def get_or_create_instance_by_name(model, **kwargs):
     instance = model.get_by(name=kwargs["name"])
     if instance is None:
         instance = model.create(**kwargs)
-        project_id = None
-        if hasattr(instance, "project_id"):
-            project_id = instance.project_id
+        project_id = getattr(instance, "project_id", None)
+        if project_id is not None:
+            project_id = str(project_id)
         events.emit(
             f"{model.__tablename__}:new",
             {f"{model.__tablename__}_id": instance.id},
-            project_id=str(project_id),
+            project_id=project_id,
         )
     return instance.serialize()
 
 
 def get_model_map_from_array(models):
     """
-    Return a map matching based on given model list. The maps keys are the model
-    IDs and the values are the models. It's convenient to check find a model by
-    its ID.
+    Return a map matching based on given model list. The map keys are the model
+    IDs and the values are the models. It's convenient to find a model by its
+    ID.
     """
     return {model["id"]: model for model in models}

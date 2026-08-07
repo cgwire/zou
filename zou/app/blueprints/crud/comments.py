@@ -10,6 +10,7 @@ from zou.app.services import (
     notifications_service,
     persons_service,
     tasks_service,
+    permissions_service,
     user_service,
 )
 from zou.app.utils import events, permissions
@@ -421,7 +422,7 @@ class CommentResource(BaseModelResource):
         return comment
 
     def check_read_permissions(self, instance):
-        return user_service.check_comment_access(instance["id"])
+        return permissions_service.check_comment_access(instance["id"])
 
     def check_update_permissions(self, instance, data):
         if permissions.has_admin_permissions():
@@ -432,7 +433,9 @@ class CommentResource(BaseModelResource):
             )
             task_type = tasks_service.get_task_type(task["task_type_id"])
             current_user = persons_service.get_current_user(relations=True)
-            if not user_service.check_belong_to_project(task["project_id"]):
+            if not permissions_service.check_belong_to_project(
+                task["project_id"]
+            ):
                 raise permissions.PermissionDenied
 
             if permissions.has_manager_permissions():
@@ -511,7 +514,9 @@ class CommentResource(BaseModelResource):
                 raise permissions.PermissionDenied
 
             if "task_status_id" in data.keys():
-                user_service.check_task_status_access(data["task_status_id"])
+                permissions_service.check_task_status_access(
+                    data["task_status_id"]
+                )
 
             return True
 
@@ -566,11 +571,11 @@ class CommentResource(BaseModelResource):
         """
         comment = tasks_service.get_comment(instance_id)
         task = tasks_service.get_task(comment["object_id"])
-        user_service.resolve_project_role(task["project_id"])
+        permissions_service.resolve_project_role(task["project_id"])
         if permissions.has_manager_permissions():
-            user_service.check_project_access(task["project_id"])
+            permissions_service.check_project_access(task["project_id"])
         else:
-            user_service.check_person_access(comment["person_id"])
+            permissions_service.check_person_access(comment["person_id"])
         self.pre_delete(comment)
         deletion_service.remove_comment(comment["id"])
         tasks_service.reset_task_data(comment["object_id"])

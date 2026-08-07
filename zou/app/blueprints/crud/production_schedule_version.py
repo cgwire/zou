@@ -6,7 +6,12 @@ from zou.app.models.production_schedule_version import (
 )
 
 from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
-from zou.app.services import user_service, tasks_service, schedule_service
+from zou.app.services import (
+    permissions_service,
+    schedule_service,
+    tasks_service,
+    user_service,
+)
 from zou.app.utils import permissions
 from zou.app.services.exception import WrongParameterException
 
@@ -17,7 +22,7 @@ class ProductionScheduleVersionsResource(BaseModelsResource):
 
     def check_read_permissions(self, options=None):
         if options and "project_id" in options:
-            user_service.check_project_access(options["project_id"])
+            permissions_service.check_project_access(options["project_id"])
         else:
             permissions.check_admin_permissions()
         if (
@@ -165,7 +170,7 @@ class ProductionScheduleVersionsResource(BaseModelsResource):
         return super().post()
 
     def check_create_permissions(self, data):
-        return user_service.check_manager_project_access(
+        return permissions_service.check_manager_project_access(
             project_id=data["project_id"]
         )
 
@@ -175,7 +180,7 @@ class ProductionScheduleVersionResource(BaseModelResource):
         BaseModelResource.__init__(self, ProductionScheduleVersion)
 
     def check_read_permissions(self, instance_dict):
-        user_service.check_project_access(instance_dict["project_id"])
+        permissions_service.check_project_access(instance_dict["project_id"])
         if (
             permissions.has_vendor_permissions()
             or permissions.has_client_permissions()
@@ -326,7 +331,7 @@ class ProductionScheduleVersionResource(BaseModelResource):
         return super().delete(instance_id)
 
     def check_update_permissions(self, instance_dict, data):
-        return user_service.check_manager_project_access(
+        return permissions_service.check_manager_project_access(
             project_id=instance_dict["project_id"]
         )
 
@@ -340,7 +345,7 @@ class ProductionScheduleVersionTaskLinksResource(BaseModelsResource):
 
     def check_read_permissions(self, options=None):
         if options and "project_id" in options:
-            user_service.check_project_access(options["project_id"])
+            permissions_service.check_project_access(options["project_id"])
         else:
             permissions.check_admin_permissions()
         if (
@@ -503,7 +508,7 @@ class ProductionScheduleVersionTaskLinksResource(BaseModelsResource):
             raise WrongParameterException(
                 "The task and the production schedule version must be in the same project."
             )
-        return user_service.check_manager_project_access(
+        return permissions_service.check_manager_project_access(
             project_id=project_id_from_production_version_schedule
         )
 
@@ -521,7 +526,7 @@ class ProductionScheduleVersionTaskLinkResource(BaseModelResource):
 
     def check_read_permissions(self, instance_dict):
         task = tasks_service.get_task(instance_dict["task_id"])
-        user_service.check_project_access(task["project_id"])
+        permissions_service.check_project_access(task["project_id"])
         if (
             permissions.has_vendor_permissions()
             or permissions.has_client_permissions()
@@ -675,12 +680,12 @@ class ProductionScheduleVersionTaskLinkResource(BaseModelResource):
 
     def check_update_permissions(self, instance_dict, data):
         task = tasks_service.get_task(instance_dict["task_id"])
-        return user_service.check_manager_project_access(
+        return permissions_service.check_manager_project_access(
             project_id=task["project_id"]
         )
 
     def check_delete_permissions(self, instance_dict):
         task = tasks_service.get_task(instance_dict["task_id"])
-        return user_service.check_manager_project_access(
+        return permissions_service.check_manager_project_access(
             project_id=task["project_id"]
         )

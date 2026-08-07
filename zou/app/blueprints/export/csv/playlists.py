@@ -12,6 +12,7 @@ from zou.app.services import (
     persons_service,
     projects_service,
     shots_service,
+    permissions_service,
     user_service,
     tasks_service,
 )
@@ -48,9 +49,11 @@ class PlaylistCsvExport(MethodView):
                     type: string
                   example: "Entity name,Nb Frames,Task Type,Retake count,Revision,Task Status,Last comment author,Last comment date,Last comment\nSH010,120,Animation,2,10,WIP,John Doe,2024-01-15,Good work"
         """
-        user_service.block_access_to_vendor()
+        permissions_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
-        user_service.check_playlist_access(playlist, supervisor_access=True)
+        permissions_service.check_playlist_access(
+            playlist, supervisor_access=True
+        )
         project = projects_service.get_project(playlist["project_id"])
         self.task_type_map = tasks_service.get_task_type_map()
         self.task_status_map = tasks_service.get_task_status_map()

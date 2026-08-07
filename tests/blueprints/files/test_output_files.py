@@ -1,0 +1,681 @@
+from tests.base import ApiDBTestCase
+
+from zou.app.models.output_type import OutputType
+
+from zou.app.services import files_service, tasks_service
+
+
+class OutputFileTestCase(ApiDBTestCase):
+    """
+    One asset with a task and a working file to publish from, plus the
+    helpers that build outputs. Holds no test of its own.
+    """
+
+    def setUp(self):
+        super().setUp()
+
+        self.generate_fixture_project()
+        self.generate_fixture_asset()
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+        self.generate_fixture_task_type()
+        self.generate_fixture_person()
+        self.generate_fixture_task()
+        self.generate_fixture_shot_task()
+        self.generate_fixture_working_file()
+
+        self.task_id = str(self.task.id)
+        self.tx_type_id = str(
+            files_service.get_or_create_output_type("Texture", "tx")["id"]
+        )
+        self.cache_type_id = str(
+            files_service.get_or_create_output_type("Cache", "cch")["id"]
+        )
+        self.render_id = str(
+            files_service.get_or_create_output_type("Render", "rdr")["id"]
+        )
+        self.maxDiff = None
+        self.task_id = self.task.id
+        self.person_id = str(self.person.id)
+        self.working_file_id = str(self.working_file.id)
+        self.asset_id = str(self.asset.id)
+        self.task_type_id = str(self.task_type.id)
+
+    def new_output(self, data, code=201):
+        return self.post(
+            f"data/entities/{self.asset_id}/output-files/new", data, code
+        )
+
+    def generate_output_files(self):
+        geometry = self.generate_fixture_output_type()
+        self.geometry_id = str(geometry.id)
+        cache = OutputType.get(self.cache_type_id)
+        texture = OutputType.get(self.tx_type_id)
+        render = OutputType.get(self.render_id)
+
+        self.generate_fixture_output_file(geometry, 1)
+        self.generate_fixture_output_file(geometry, 2)
+        self.generate_fixture_output_file(geometry, 3)
+        self.generate_fixture_output_file(geometry, 4)
+        self.output_file_geometry = self.generate_fixture_output_file(
+            geometry, 5
+        )
+        self.generate_fixture_output_file(cache, 1)
+        self.generate_fixture_output_file(cache, 2)
+        self.output_file_cache = self.generate_fixture_output_file(cache, 3)
+        self.output_file_texture = self.generate_fixture_output_file(
+            texture, 1
+        )
+
+        self.generate_fixture_output_file(render, 1)
+        self.output_file_render_1 = self.generate_fixture_output_file(
+            render, 2
+        )
+        self.output_file_render_2 = self.generate_fixture_output_file(
+            render, 1, "variant-1"
+        )
+
+
+class NewOutputFileTestCase(OutputFileTestCase):
+    """
+    Publishing an output on an entity. The revision is chosen for the
+    caller unless it forces one, and asking twice for the same one
+    is refused.
+    """
+
+    folder = (
+        "/simple/productions/export/cosmos_landromat/assets/props/tree/"
+        "shaders/texture"
+    )
+    stem = "cosmos_landromat_props_tree_shaders_texture"
+
+    def publish(self, code=201, **overrides):
+        """
+        Publish an output from the working file, overriding any part of the
+        payload the case cares about.
+        """
+        data = {
+            "person_id": self.person_id,
+            "comment": "test working file publish",
+            "output_type_id": self.tx_type_id,
+            "task_type_id": self.task_type_id,
+            "working_file_id": self.working_file_id,
+            **overrides,
+        }
+        # None means "leave this out", which is how a case publishes with no
+        # source file at all.
+        return self.new_output(
+            {key: value for key, value in data.items() if value is not None},
+            code,
+        )
+
+    def test_publishing_twice_takes_the_next_revision(self):
+        """
+        The revision is chosen for the caller, and the file name carries it.
+        Publishing the same name again moves to the next one rather than
+        refusing or overwriting.
+        """
+        first = self.publish()
+        second = self.publish()
+
+        self.assertEqual(
+            [first["file_name"], second["file_name"]],
+            [f"{self.stem}_main_v001", f"{self.stem}_main_v002"],
+        )
+        for revision, published in [(1, first), (2, second)]:
+            self.assertEqual(published["folder_path"], self.folder)
+            output_file = self.get(f"/data/output-files/{published['id']}")
+            self.assertEqual(output_file["revision"], revision)
+            self.assertEqual(
+                output_file["comment"], "test working file publish"
+            )
+            self.assertEqual(
+                output_file["source_file_id"], self.working_file_id
+            )
+
+    def test_the_payload_extras_shape_the_published_path(self):
+        """
+        Extension, forced name and element count all reach the path the
+        publish returns. Publishing without a source file changes nothing
+        about it.
+        """
+        # Each case publishes under its own name: two publishes of the
+        # same name would be revision 1 then revision 2, and the paths below
+        # all say v001.
+        cases = {
+            "an extension": (
+                {"extension": ".tx"},
+                {"extension": ".tx"},
+                f"{self.folder}/{self.stem}_main_v001.tx",
+            ),
+            "no source file": (
+                {
+                    "extension": ".tx",
+                    "name": "nosource",
+                    "working_file_id": None,
+                },
+                {"extension": ".tx", "source_file_id": None},
+                f"{self.folder}/{self.stem}_nosource_v001.tx",
+            ),
+            "a forced name": (
+                {"extension": ".tx", "name": "special"},
+                {"extension": ".tx"},
+                f"{self.folder}/{self.stem}_special_v001.tx",
+            ),
+            "an element count": (
+                {"extension": ".jpg", "nb_elements": 50, "name": "sequence"},
+                {"extension": ".jpg", "nb_elements": 50},
+                f"{self.folder}/{self.stem}_sequence_v001_[1-50].jpg",
+            ),
+        }
+        for reason, (overrides, expected, path) in cases.items():
+            with self.subTest(reason=reason):
+                result = self.publish(**overrides)
+                output_file = self.get(f"/data/output-files/{result['id']}")
+                for key, value in expected.items():
+                    self.assertEqual(output_file[key], value)
+                self.assertEqual(output_file["path"], path)
+
+    def test_new_output_revision_forced(self):
+        result = self.publish(revision=66)
+
+        self.assertEqual(
+            result["file_name"],
+            "cosmos_landromat_props_tree_shaders_texture_main_v066",
+        )
+
+        output_file_id = result["id"]
+        output_file = self.get(f"/data/output-files/{output_file_id}")
+        self.assertEqual(output_file["revision"], 66)
+
+    def test_new_output_wrong_data(self):
+        data = {"comment_wrong": "test file publish"}
+        self.new_output(data, 400)
+
+    def test_create_same_output_file(self):
+        self.publish(revision=66)
+        self.publish(revision=66, code=400)
+
+    def test_to_review(self):
+        data = {"person_id": str(self.person_id)}
+        status_id = str(tasks_service.get_to_review_status()["id"])
+        self.put(f"/actions/tasks/{self.task_id}/to-review", data)
+        task = self.get(f"data/tasks/{self.task_id}")
+        self.assertEqual(task["task_status_id"], status_id)
+
+    def test_get_next_revision(self):
+        self.generate_fixture_output_type()
+        self.generate_fixture_output_file()
+        result = self.post(
+            f"/data/entities/{self.asset.id}/output-files/next-revision",
+            {
+                "output_type_id": self.output_type.id,
+                "task_type_id": self.task_type_id,
+            },
+            200,
+        )
+        self.assertEqual(result["next_revision"], 2)
+
+    def test_get_next_revision_with_name(self):
+        self.generate_fixture_output_type()
+        self.generate_fixture_output_file(revision=5, name="other-output")
+        result = self.post(
+            f"/data/entities/{self.asset.id}/output-files/next-revision",
+            {
+                "name": "other-output",
+                "output_type_id": self.output_type.id,
+                "task_type_id": self.task_type_id,
+            },
+            200,
+        )
+        self.assertEqual(result["next_revision"], 6)
+
+    def test_get_next_revision_wrong_data(self):
+        self.generate_fixture_output_type()
+        self.post(
+            "/data/entities/unknown/output-files/next-revision",
+            {
+                "name": "main",
+                "output_type_id": self.output_type.id,
+                "task_type_id": self.task_type_id,
+            },
+            404,
+        )
+
+    def test_get_next_revision_with_empty_revision(self):
+        self.generate_fixture_output_type()
+        result = self.post(
+            f"/data/entities/{self.asset.id}/output-files/next-revision",
+            {
+                "name": "main",
+                "output_type_id": self.output_type.id,
+                "task_type_id": self.task_type_id,
+            },
+            200,
+        )
+        self.assertEqual(result["next_revision"], 1)
+
+
+class AssetInstanceOutputFileTestCase(OutputFileTestCase):
+    """
+    The same publishing, for an asset instance rather than an entity.
+    An instance carries its own revision count, per temporal entity
+    it is placed in.
+    """
+
+    def test_new_instance_output(self):
+        self.generate_fixture_scene()
+        self.generate_fixture_scene_asset_instance()
+        self.generate_fixture_shot_asset_instance(
+            self.shot, self.asset_instance
+        )
+        data = {
+            "person_id": self.person_id,
+            "comment": "test working file publish",
+            "output_type_id": self.cache_type_id,
+            "task_type_id": self.task_type_animation.id,
+            "working_file_id": self.working_file_id,
+            "representation": "abc",
+        }
+        result = self.post(
+            f"data/asset-instances/{self.asset_instance.id}/entities/{self.shot.id}/output-files/new",
+            data,
+        )
+
+        self.assertEqual(
+            result["folder_path"],
+            "/simple/productions/export/cosmos_landromat/shot/s01/p01/"
+            "animation/cache/props/tree/instance_0001/abc",
+        )
+        self.assertEqual(
+            result["file_name"],
+            "cosmos_landromat_s01_p01_animation_cache_main_tree_" "0001_v001",
+        )
+        self.assertEqual(
+            result["path"],
+            "/simple/productions/export/cosmos_landromat/shot/s01/p01/"
+            "animation/cache/props/tree/instance_0001/abc/cosmos_landromat_s01_"
+            "p01_animation_cache_main_tree_0001_v001",
+        )
+
+        output_file_id = result["id"]
+        output_file = self.get(f"/data/output-files/{output_file_id}")
+
+        self.assertEqual(output_file["comment"], data["comment"])
+        self.assertEqual(output_file["revision"], 1)
+        self.assertEqual(output_file["source_file_id"], self.working_file_id)
+
+    def test_get_next_instance_revision(self):
+        self.generate_fixture_scene()
+        self.generate_fixture_scene_asset_instance()
+        self.generate_fixture_shot_asset_instance(
+            self.shot, self.asset_instance
+        )
+        self.task_type_animation_id = self.task_type_animation.id
+        asset_instance_id = self.asset_instance.id
+        shot_id = self.shot.id
+
+        data = {
+            "person_id": self.person_id,
+            "comment": "test working file publish",
+            "output_type_id": self.cache_type_id,
+            "task_type_id": self.task_type_animation.id,
+            "working_file_id": self.working_file_id,
+        }
+        self.post(
+            f"data/asset-instances/{asset_instance_id}/entities/{shot_id}/output-files/new",
+            data,
+        )
+
+        data = {
+            "output_type_id": self.cache_type_id,
+            "task_type_id": self.task_type_animation_id,
+            "name": "main",
+        }
+        result = self.post(
+            f"data/asset-instances/{asset_instance_id}/entities/{shot_id}/output-files/next-revision",
+            data,
+            200,
+        )
+        self.assertEqual(result["next_revision"], 2)
+
+    def test_get_last_instance_outputs(self):
+        self.generate_fixture_scene()
+        self.generate_fixture_scene_asset_instance()
+        self.generate_fixture_shot_asset_instance(
+            self.shot, self.asset_instance
+        )
+        self.task_type_animation_id = str(self.task_type_animation.id)
+        asset_instance_id = str(self.asset_instance.id)
+        shot_id = str(self.shot.id)
+
+        data = {
+            "person_id": self.person_id,
+            "comment": "test working file publish",
+            "output_type_id": self.cache_type_id,
+            "task_type_id": self.task_type_animation.id,
+            "working_file_id": self.working_file_id,
+        }
+        output_file = self.post(
+            f"data/asset-instances/{asset_instance_id}/entities/{shot_id}/output-files/new",
+            data,
+        )
+
+        result = self.get(
+            f"data/asset-instances/{asset_instance_id}/entities/{shot_id}/output-files/last-revisions"
+        )
+        self.assertIn(output_file["id"], [f["id"] for f in result])
+
+    def test_new_asset_asset_instance_output(self):
+        self.generate_fixture_asset_types()
+        self.generate_fixture_asset_character()
+        self.generate_fixture_asset_asset_instance()
+        data = {
+            "person_id": self.person_id,
+            "comment": "test working file publish",
+            "output_type_id": self.tx_type_id,
+            "task_type_id": self.task_type.id,
+            "working_file_id": self.working_file_id,
+            "representation": ".tx",
+        }
+        result = self.post(
+            f"data/asset-instances/{self.asset_instance.id}/entities/{self.asset.id}/output-files/new",
+            data,
+        )
+
+        self.assertEqual(
+            result["folder_path"],
+            "/simple/productions/export/cosmos_landromat/assets/props/tree/"
+            "shaders/texture/character/rabbit/instance_0001/tx",
+        )
+        self.assertEqual(
+            result["file_name"],
+            "cosmos_landromat_props_tree_shaders_texture_main_rabbit_"
+            "0001_v001",
+        )
+        self.assertEqual(
+            result["path"],
+            "/simple/productions/export/cosmos_landromat/assets/props/tree/"
+            "shaders/texture/character/rabbit/instance_0001/tx/"
+            "cosmos_landromat_props_tree_shaders_texture_main_rabbit_"
+            "0001_v001",
+        )
+
+        output_file_id = result["id"]
+        output_file = self.get(f"/data/output-files/{output_file_id}")
+
+        self.assertEqual(output_file["comment"], data["comment"])
+        self.assertEqual(output_file["revision"], 1)
+        self.assertEqual(output_file["source_file_id"], self.working_file_id)
+
+    def test_get_next_asset_asset_instance_revision(self):
+        self.generate_fixture_asset_types()
+        self.generate_fixture_asset_character()
+        self.generate_fixture_asset_asset_instance()
+
+        self.task_type_id = self.task_type.id
+        asset_instance_id = self.asset_instance.id
+        asset_id = self.asset.id
+
+        data = {
+            "person_id": self.person_id,
+            "comment": "test working file publish",
+            "output_type_id": self.tx_type_id,
+            "task_type_id": self.task_type.id,
+            "working_file_id": self.working_file_id,
+        }
+        self.post(
+            f"data/asset-instances/{asset_instance_id}/entities/{asset_id}/output-files/new",
+            data,
+        )
+
+        data = {
+            "output_type_id": self.tx_type_id,
+            "task_type_id": self.task_type_id,
+            "name": "main",
+        }
+        result = self.post(
+            f"data/asset-instances/{asset_instance_id}/entities/{asset_id}/output-files/next-revision",
+            data,
+            200,
+        )
+        self.assertEqual(result["next_revision"], 2)
+
+    def test_get_last_asset_asset_instance_outputs(self):
+        self.generate_fixture_asset_types()
+        self.generate_fixture_asset_character()
+        self.generate_fixture_asset_asset_instance()
+
+        self.task_type_id = self.task_type.id
+        asset_instance_id = self.asset_instance.id
+        asset_id = self.asset.id
+
+        data = {
+            "person_id": self.person_id,
+            "comment": "test working file publish",
+            "output_type_id": self.tx_type_id,
+            "task_type_id": self.task_type_id,
+            "working_file_id": self.working_file_id,
+        }
+        output_file = self.post(
+            f"data/asset-instances/{asset_instance_id}/entities/{asset_id}/output-files/new",
+            data,
+        )
+
+        result = self.get(
+            f"data/asset-instances/{asset_instance_id}/entities/{asset_id}/output-files/last-revisions"
+        )
+        assert output_file["id"] in [f["id"] for f in result]
+
+
+class OutputFileListingTestCase(OutputFileTestCase):
+    """
+    Reading back what was published, by production, by entity, by
+    output type and by instance.
+    """
+
+    def test_get_last_output_files(self):
+        self.generate_output_files()
+        output_files = self.get(
+            f"/data/entities/{self.asset.id}/output-files/last-revisions"
+        )
+
+        self.assertIn(self.output_file_geometry.serialize(), output_files)
+        self.assertIn(self.output_file_cache.serialize(), output_files)
+        self.assertIn(self.output_file_texture.serialize(), output_files)
+        self.assertIn(self.output_file_render_1.serialize(), output_files)
+        self.assertIn(self.output_file_render_2.serialize(), output_files)
+
+    def test_get_entity_output_types(self):
+        self.generate_output_files()
+        alembic = self.generate_fixture_output_type("Alembic", "ab")
+        self.generate_fixture_output_file(alembic, 1, task=self.shot_task)
+        output_types = self.get(f"/data/entities/{self.asset.id}/output-types")
+        self.assertEqual(len(output_types), 4)
+        self.assertEqual(output_types[0]["name"], "Cache")
+
+    def test_get_entity_output_type_output_files(self):
+        self.generate_output_files()
+        output_files = self.get(
+            f"/data/entities/{self.asset.id}/output-types/{self.cache_type_id}/output-files"
+        )
+        self.assertEqual(len(output_files), 3)
+        self.assertEqual(output_files[0]["output_type_id"], self.cache_type_id)
+
+    def test_get_output_types(self):
+        self.generate_fixture_scene()
+        self.generate_fixture_scene_asset_instance()
+        self.generate_fixture_shot_asset_instance(
+            self.shot, self.asset_instance
+        )
+        self.task_type_animation_id = str(self.task_type_animation.id)
+        asset_instance_id = str(self.asset_instance.id)
+        shot_id = str(self.shot.id)
+
+        data = {
+            "person_id": self.person_id,
+            "temporal_entity_id": self.shot.id,
+            "comment": "test working file publish",
+            "output_type_id": self.cache_type_id,
+            "task_type_id": self.task_type_animation.id,
+            "working_file_id": self.working_file_id,
+        }
+        self.post(
+            f"data/asset-instances/{asset_instance_id}/entities/{shot_id}/output-files/new",
+            data,
+        )
+
+        result = self.get(
+            f"data/asset-instances/{asset_instance_id}/entities/{shot_id}/output-types"
+        )
+        self.assertEqual(result[0]["id"], self.cache_type_id)
+
+    def test_get_output_files_for_project(self):
+        self.generate_fixture_output_type()
+        geometry = self.output_type
+
+        for revision in [1, 2, 3, 4]:
+            self.generate_fixture_output_file(
+                geometry, revision, representation="obj"
+            )
+
+        output_files = self.get(
+            f"data/projects/{self.project.id}/output-files"
+        )
+
+        # Most recently created first, the reverse of the order they were
+        # published in.
+        self.assertEqual(
+            [output_file["revision"] for output_file in output_files],
+            [4, 3, 2, 1],
+        )
+
+        self.generate_fixture_project("Sprite Fright")
+        self.generate_fixture_asset("Rabbit")
+        self.generate_fixture_output_file(geometry, 1, representation="max")
+        self.generate_fixture_output_file(geometry, 2, representation="max")
+        self.generate_fixture_output_file(geometry, 3, representation="max")
+
+        output_files = self.get(
+            f"data/projects/{self.project.id}/output-files"
+        )
+        self.assertEqual(len(output_files), 3)
+
+    def test_get_output_files_for_output_type_and_entity(self):
+        self.generate_fixture_output_type()
+        geometry = self.output_type
+        self.generate_fixture_output_file(geometry, 1, representation="obj")
+        self.generate_fixture_output_file(geometry, 2, representation="obj")
+        self.generate_fixture_output_file(geometry, 3, representation="obj")
+        self.generate_fixture_output_file(geometry, 4, representation="obj")
+
+        self.generate_fixture_output_file(geometry, 1, representation="max")
+        self.generate_fixture_output_file(geometry, 2, representation="max")
+        self.generate_fixture_output_file(geometry, 3, representation="max")
+
+        output_files = self.get(
+            f"data/entities/{self.asset.id}/output-types/{geometry.id}/output-files"
+        )
+        self.assertEqual(len(output_files), 7)
+
+        output_files = self.get(
+            f"data/entities/{self.asset.id}/output-types/{geometry.id}/output-files?representation=obj"
+        )
+        self.assertEqual(len(output_files), 4)
+
+        output_files = self.get(
+            f"data/entities/{self.asset.id}/output-types/{geometry.id}/output-files?representation=max"
+        )
+        self.assertEqual(len(output_files), 3)
+
+    def test_get_output_files_for_output_type_and_asset_instance(self):
+        self.generate_fixture_scene()
+        self.generate_fixture_scene_asset_instance()
+        self.generate_fixture_shot_asset_instance(
+            self.shot, self.asset_instance
+        )
+        self.generate_fixture_output_type()
+        geometry = self.output_type
+        self.generate_fixture_output_file(
+            geometry,
+            1,
+            representation="obj",
+            asset_instance=self.asset_instance,
+        )
+        self.generate_fixture_output_file(
+            geometry,
+            2,
+            representation="obj",
+            asset_instance=self.asset_instance,
+        )
+        self.generate_fixture_output_file(
+            geometry,
+            3,
+            representation="obj",
+            asset_instance=self.asset_instance,
+        )
+        self.generate_fixture_output_file(
+            geometry,
+            4,
+            representation="obj",
+            asset_instance=self.asset_instance,
+        )
+
+        self.generate_fixture_output_file(
+            geometry,
+            1,
+            representation="max",
+            asset_instance=self.asset_instance,
+        )
+        self.generate_fixture_output_file(
+            geometry,
+            2,
+            representation="max",
+            asset_instance=self.asset_instance,
+        )
+        self.generate_fixture_output_file(
+            geometry,
+            3,
+            representation="max",
+            asset_instance=self.asset_instance,
+        )
+
+        output_files = self.get(
+            f"data/asset-instances/{self.asset_instance.id}/entities/{self.scene.id}/output-types/{geometry.id}/output-files"
+        )
+        self.assertEqual(len(output_files), 7)
+
+        output_files = self.get(
+            f"data/asset-instances/{self.asset_instance.id}/entities/{self.scene.id}/output-types/{geometry.id}/output-files?representation=obj"
+        )
+        self.assertEqual(len(output_files), 4)
+
+        output_files = self.get(
+            f"data/asset-instances/{self.asset_instance.id}/entities/{self.scene.id}/output-types/{geometry.id}/output-files?representation=max"
+        )
+        self.assertEqual(len(output_files), 3)
+
+    def test_get_entity_output_files(self):
+        """
+        The listing of an entity's output files, next to the creation route
+        the rest of this file exercises. The optional filters narrow it, and
+        reading it takes access to the production.
+        """
+        self.generate_output_files()
+        path = f"data/entities/{self.asset_id}/output-files"
+
+        output_files = self.get(path)
+        self.assertGreater(len(output_files), 0)
+        self.assertTrue(
+            all(f["entity_id"] == self.asset_id for f in output_files)
+        )
+
+        by_type = self.get(f"{path}?output_type_id={self.geometry_id}")
+        self.assertTrue(
+            all(f["output_type_id"] == self.geometry_id for f in by_type)
+        )
+        self.assertLess(len(by_type), len(output_files))
+
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        self.get(path, 403)

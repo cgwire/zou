@@ -34,11 +34,15 @@ def get_client():
         raise IndexerNotInitializedError()
 
 
-def create_index(index_name, searchable_fields=[], filterable_fields=[]):
+def create_index(index_name, searchable_fields=None, filterable_fields=None):
     """
     Create a new index and configure it properly by setting searchable_fields
     and allowing to filter on project ids.
     """
+    if searchable_fields is None:
+        searchable_fields = []
+    if filterable_fields is None:
+        filterable_fields = []
     index = None
     try:
         index = get_index(index_name)
@@ -108,11 +112,13 @@ def index_documents(index, documents):
     return documents
 
 
-def search(ix, query, project_ids=[], limit=10, offset=0):
+def search(ix, query, project_ids=None, limit=10, offset=0):
     """
     Perform a search on given index and filter result based on project IDs.
     The number of results can be specified.
     """
+    if project_ids is None:
+        project_ids = []
     project_ids = ",".join(project_ids)
     search_options = {
         "limit": limit,

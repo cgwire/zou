@@ -28,6 +28,7 @@ from zou.app.services import (
     assets_service,
     tasks_service,
     entities_service,
+    permissions_service,
     user_service,
 )
 
@@ -99,7 +100,7 @@ class WorkingFileFileResource(MethodView):
 
     def check_access(self, working_file_id):
         working_file = files_service.get_working_file(working_file_id)
-        user_service.check_task_access(working_file["task_id"])
+        permissions_service.check_task_access(working_file["task_id"])
         return working_file
 
     def save_uploaded_file_in_temporary_folder(self, working_file_id):
@@ -335,8 +336,8 @@ class WorkingFilePathResource(MethodView, ArgsMixin):
 
         try:
             task = tasks_service.get_task(task_id)
-            user_service.check_project_access(task["project_id"])
-            user_service.check_entity_access(task["entity_id"])
+            permissions_service.check_project_access(task["project_id"])
+            permissions_service.check_entity_access(task["entity_id"])
 
             software = files_service.get_software(software_id)
             is_revision_set_by_user = revision != 0
@@ -474,8 +475,8 @@ class EntityOutputFilePathResource(MethodView, ArgsMixin):
         args = self.get_arguments()
         try:
             entity = entities_service.get_entity(entity_id)
-            user_service.check_project_access(entity["project_id"])
-            user_service.check_entity_access(entity_id)
+            permissions_service.check_project_access(entity["project_id"])
+            permissions_service.check_entity_access(entity_id)
             output_type = files_service.get_output_type(args["output_type_id"])
             task_type = tasks_service.get_task_type(args["task_type_id"])
             is_revision_set_by_user = args["revision"] != 0
@@ -623,8 +624,8 @@ class InstanceOutputFilePathResource(MethodView, ArgsMixin):
             asset = assets_service.get_asset(asset_instance["asset_id"])
             output_type = files_service.get_output_type(args["output_type_id"])
             task_type = tasks_service.get_task_type(args["task_type_id"])
-            user_service.check_project_access(asset["project_id"])
-            user_service.check_entity_access(asset["id"])
+            permissions_service.check_project_access(asset["project_id"])
+            permissions_service.check_entity_access(asset["id"])
 
             folder_path = file_tree_service.get_instance_folder_path(
                 asset_instance,
@@ -710,7 +711,7 @@ class LastWorkingFilesResource(MethodView):
                         example: "2023-01-01T12:00:00Z"
         """
         result = {}
-        user_service.check_task_access(task_id)
+        permissions_service.check_task_access(task_id)
         result = files_service.get_last_working_files_for_task(task_id)
 
         return result
@@ -771,7 +772,7 @@ class TaskWorkingFilesResource(MethodView):
                         example: c46c8gc6-eg97-6887-c292-79675204e47
         """
         result = {}
-        user_service.check_task_access(task_id)
+        permissions_service.check_task_access(task_id)
         result = files_service.get_working_files_for_task(task_id)
 
         return result
@@ -898,8 +899,8 @@ class NewWorkingFileResource(MethodView, ArgsMixin):
 
         try:
             task = tasks_service.get_task(task_id)
-            user_service.check_project_access(task["project_id"])
-            user_service.check_entity_access(task["entity_id"])
+            permissions_service.check_project_access(task["project_id"])
+            permissions_service.check_entity_access(task["entity_id"])
             software = files_service.get_software(software_id)
             tasks_service.assign_task(
                 task_id, persons_service.get_current_user()["id"]
@@ -999,7 +1000,7 @@ class ModifiedFileResource(MethodView):
                       example: "2023-01-01T12:30:00Z"
         """
         working_file = files_service.get_working_file(working_file_id)
-        user_service.check_task_action_access(working_file["task_id"])
+        permissions_service.check_task_action_access(working_file["task_id"])
         working_file = files_service.update_working_file(
             working_file_id,
             {"updated_at": date_helpers.get_utc_now_datetime()},
@@ -1066,7 +1067,7 @@ class CommentWorkingFileResource(MethodView, ArgsMixin):
         body = validation.validate_request_body(WorkingFileCommentSchema)
 
         working_file = files_service.get_working_file(working_file_id)
-        user_service.check_task_action_access(working_file["task_id"])
+        permissions_service.check_task_action_access(working_file["task_id"])
         working_file = self.update_comment(working_file_id, body.comment)
         return working_file
 
@@ -1227,7 +1228,7 @@ class NewEntityOutputFileResource(MethodView, ArgsMixin):
                 working_file_id = None
 
             entity = entities_service.get_entity(entity_id)
-            user_service.check_project_access(entity["project_id"])
+            permissions_service.check_project_access(entity["project_id"])
             output_type = files_service.get_output_type(args["output_type_id"])
             task_type = tasks_service.get_task_type(args["task_type_id"])
 
@@ -1492,7 +1493,7 @@ class NewInstanceOutputFileResource(MethodView, ArgsMixin):
             temporal_entity = entities_service.get_entity(temporal_entity_id)
 
             entity = assets_service.get_asset(asset_instance["asset_id"])
-            user_service.check_project_access(entity["project_id"])
+            permissions_service.check_project_access(entity["project_id"])
 
             output_type = files_service.get_output_type(args["output_type_id"])
             task_type = tasks_service.get_task_type(args["task_type_id"])
@@ -1654,7 +1655,7 @@ class GetNextEntityOutputFileRevisionResource(MethodView, ArgsMixin):
         entity = entities_service.get_entity(entity_id)
         output_type = files_service.get_output_type(body.output_type_id)
         task_type = tasks_service.get_task_type(body.task_type_id)
-        user_service.check_project_access(entity["project_id"])
+        permissions_service.check_project_access(entity["project_id"])
 
         next_revision_number = files_service.get_next_output_file_revision(
             entity["id"], output_type["id"], task_type["id"], body.name
@@ -1736,7 +1737,7 @@ class GetNextInstanceOutputFileRevisionResource(MethodView, ArgsMixin):
         asset = entities_service.get_entity(asset_instance["asset_id"])
         output_type = files_service.get_output_type(body.output_type_id)
         task_type = tasks_service.get_task_type(body.task_type_id)
-        user_service.check_project_access(asset["project_id"])
+        permissions_service.check_project_access(asset["project_id"])
 
         next_revision_number = files_service.get_next_output_file_revision(
             asset["id"],
@@ -1853,7 +1854,7 @@ class LastEntityOutputFilesResource(MethodView, ArgsMixin):
         )
 
         entity = entities_service.get_entity(entity_id)
-        user_service.check_project_access(entity["project_id"])
+        permissions_service.check_project_access(entity["project_id"])
 
         return files_service.get_last_output_files_for_entity(
             entity["id"],
@@ -1977,7 +1978,7 @@ class LastInstanceOutputFilesResource(MethodView, ArgsMixin):
 
         asset_instance = assets_service.get_asset_instance(asset_instance_id)
         entity = entities_service.get_entity(asset_instance["asset_id"])
-        user_service.check_project_access(entity["project_id"])
+        permissions_service.check_project_access(entity["project_id"])
 
         return files_service.get_last_output_files_for_instance(
             asset_instance["id"],
@@ -2046,7 +2047,7 @@ class EntityOutputTypesResource(MethodView):
                         example: "2023-01-01T12:30:00Z"
         """
         entity = entities_service.get_entity(entity_id)
-        user_service.check_project_access(entity["project_id"])
+        permissions_service.check_project_access(entity["project_id"])
         return files_service.get_output_types_for_entity(entity_id)
 
 
@@ -2115,7 +2116,7 @@ class InstanceOutputTypesResource(MethodView):
         """
         asset_instance = assets_service.get_asset_instance(asset_instance_id)
         entity = entities_service.get_entity(asset_instance["asset_id"])
-        user_service.check_project_access(entity["project_id"])
+        permissions_service.check_project_access(entity["project_id"])
         return files_service.get_output_types_for_instance(
             asset_instance_id, temporal_entity_id
         )
@@ -2198,7 +2199,7 @@ class EntityOutputTypeOutputFilesResource(MethodView, ArgsMixin):
 
         entity = entities_service.get_entity(entity_id)
         files_service.get_output_type(output_type_id)
-        user_service.check_project_access(entity["project_id"])
+        permissions_service.check_project_access(entity["project_id"])
         output_files = (
             files_service.get_output_files_for_output_type_and_entity(
                 entity_id, output_type_id, representation=representation
@@ -2299,7 +2300,7 @@ class InstanceOutputTypeOutputFilesResource(MethodView, ArgsMixin):
 
         asset_instance = assets_service.get_asset_instance(asset_instance_id)
         asset = assets_service.get_asset(asset_instance["asset_id"])
-        user_service.check_project_access(asset["project_id"])
+        permissions_service.check_project_access(asset["project_id"])
 
         files_service.get_output_type(output_type_id)
         return (
@@ -2418,7 +2419,7 @@ class ProjectOutputFilesResource(MethodView, ArgsMixin):
                 "name",
             ],
         )
-        user_service.check_manager_project_access(project_id)
+        permissions_service.check_manager_project_access(project_id)
 
         return files_service.get_output_files_for_project(
             project_id,
@@ -2538,7 +2539,7 @@ class EntityOutputFilesResource(MethodView, ArgsMixin):
         )
 
         entity = entities_service.get_entity(entity_id)
-        user_service.check_project_access(entity["project_id"])
+        permissions_service.check_project_access(entity["project_id"])
 
         return files_service.get_output_files_for_entity(
             entity["id"],
@@ -2673,7 +2674,7 @@ class InstanceOutputFilesResource(MethodView):
 
         asset_instance = assets_service.get_asset_instance(asset_instance_id)
         asset = assets_service.get_asset(asset_instance["asset_id"])
-        user_service.check_project_access(asset["project_id"])
+        permissions_service.check_project_access(asset["project_id"])
 
         return files_service.get_output_files_for_instance(
             asset_instance["id"],
@@ -2757,7 +2758,7 @@ class FileResource(MethodView):
             entity = entities_service.get_entity(file_dict["entity_id"])
             project_id = entity["project_id"]
 
-        user_service.check_project_access(project_id)
+        permissions_service.check_project_access(project_id)
         return file_dict
 
 
@@ -2825,7 +2826,7 @@ class SetTreeResource(MethodView, ArgsMixin):
         body = validation.validate_request_body(SetTreeSchema)
 
         try:
-            user_service.check_manager_project_access(project_id)
+            permissions_service.check_manager_project_access(project_id)
             tree = file_tree_service.get_tree_from_file(body.tree_name)
             project = projects_service.update_project(
                 project_id, {"file_tree": tree}
@@ -2925,7 +2926,7 @@ class EntityWorkingFilesResource(MethodView, ArgsMixin):
         relations = self.get_relations()
 
         entity = entities_service.get_entity(entity_id)
-        user_service.check_project_access(entity["project_id"])
+        permissions_service.check_project_access(entity["project_id"])
 
         return files_service.get_working_files_for_entity(
             entity_id,
@@ -3009,7 +3010,7 @@ class GuessFromPathResource(MethodView, ArgsMixin):
             description: Invalid project ID or file path
         """
         body = validation.validate_request_body(GuessFilePathSchema)
-        user_service.check_project_access(body.project_id)
+        permissions_service.check_project_access(body.project_id)
 
         return file_tree_service.guess_from_path(
             project_id=body.project_id,

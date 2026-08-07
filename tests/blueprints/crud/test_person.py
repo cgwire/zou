@@ -1,0 +1,669 @@
+# -*- coding: UTF-8 -*-
+import unittest
+
+from tests.base import ApiDBTestCase
+from zou.app.models.department import Department
+from zou.app.models.person import (
+    Person,
+    SENSITIVE_FIELDS,
+    normalize_country,
+    normalize_locale,
+)
+
+from zou.app.utils import fields
+
+from operator import itemgetter
+from urllib.parse import quote
+
+
+class NormalizeCountryTestCase(unittest.TestCase):
+    """
+    Unit coverage for normalize_country, the single source of truth shared
+    by the model validator, the API guard and the CSV import.
+    """
+
+    def test_valid_codes_are_trimmed_and_uppercased(self):
+        for value, expected in [("fr", "FR"), ("FR", "FR"), (" us ", "US")]:
+            self.assertEqual(normalize_country(value), (True, expected))
+
+    def test_empty_values_mean_no_country(self):
+        for value in [None, "", "   "]:
+            self.assertEqual(normalize_country(value), (True, None))
+
+    def test_malformed_values_are_rejected(self):
+        for value in ["France", "FRA", "f", "f1", "éé", 123, ["FR"], 1.5]:
+            self.assertEqual(normalize_country(value), (False, None))
+
+
+class NormalizeLocaleTestCase(unittest.TestCase):
+    """
+    Unit coverage for normalize_locale, the single source of truth shared by
+    the model validator and the API guard.
+    """
+
+    def test_valid_locales_are_trimmed_and_kept(self):
+        for value, expected in [
+            ("en_US", "en_US"),
+            ("fr_FR", "fr_FR"),
+            (" pt_BR ", "pt_BR"),
+            ("fr", "fr"),
+            ("en_us", "en_us"),  # Babel parses it back; casing is left as-is
+        ]:
+            self.assertEqual(normalize_locale(value), (True, expected))
+
+    def test_empty_values_mean_no_locale(self):
+        for value in [None, "", "   "]:
+            self.assertEqual(normalize_locale(value), (True, None))
+
+    def test_unparseable_values_are_rejected(self):
+        for value in [
+            "zz_ZZ",  # well-formed but unknown to Babel
+            "notlocale",
+            "en-US",  # wrong separator -> ValueError
+            "fr_FR_x",  # malformed identifier -> ValueError
+            "en_US_POSIX",  # valid Babel variant but too long for the column
+            123,
+            ["fr_FR"],
+            1.5,
+        ]:
+            self.assertEqual(normalize_locale(value), (False, None))
+
+
+class PersonFixtureTestCase(ApiDBTestCase):
+    """
+    Three people, one of them carrying non ascii names. Holds no test of
+    its own.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_person(
+            first_name="Ema",
+            last_name="Doe",
+            desktop_login="ema.doe",
+            email="ema.doe@gmail.com",
+        )
+        self.generate_fixture_person(
+            first_name="Jérémy",
+            last_name="Utêfœuit",
+            desktop_login="jeremy.utf8",
+            email="jeremy.utf8@gmail.com",
+        )
+        self.generate_fixture_person()
+
+
+class PersonTestCase(PersonFixtureTestCase):
+    def test_repr(self):
+        self.assertEqual(str(self.person), "<Person John Doe>")
+        self.person.first_name = "Léon"
+        self.assertEqual(str(self.person), "<Person Léon Doe>")
+
+    def test_get_persons(self):
+        persons = self.get("data/persons")
+        self.assertEqual(len(persons), 4)
+        self.assertEqual(persons[0]["type"], "Person")
+
+    def test_present(self):
+        person = self.get_first("data/persons")
+        person_model = Person.get(person["id"])
+        person_dict = person_model.present_minimal()
+        self.assertEqual(person_dict["departments"], [])
+        person_dict = person_model.present_minimal(relations=True)
+        self.assertEqual(person_dict["departments"], [])
+
+    def test_get_person(self):
+        person = self.get_first("data/persons")
+        person_again = self.get(f"data/persons/{person['id']}?relations=false")
+        self.assertEqual(person, person_again)
+        person_with_relations = self.get(
+            f"data/persons/{person['id']}?relations=true"
+        )
+        self.assertIn("departments", person_with_relations)
+        self.get_404(f"data/persons/{fields.gen_uuid()}")
+
+    def test_create_person(self):
+        data = {
+            "first_name": "John2",
+            "last_name": "Doe",
+            "email": "john3.doe@gmail.com",
+        }
+        self.person = self.post("data/persons", data)
+        self.assertIsNotNone(self.person["id"])
+
+        persons = self.get("data/persons")
+        self.assertEqual(len(persons), 5)
+
+    def test_create_too_much_person(self):
+        from zou.app import config
+
+        config.USER_LIMIT = 4
+        data = {
+            "first_name": "John3",
+            "last_name": "Doe",
+            "email": "john3.doe@gmail.com",
+        }
+        resp = self.post("data/persons", data, 400)
+        self.assertEqual(resp["data"]["limit"], 4)
+        config.USER_LIMIT = 100
+
+    def test_create_person_with_no_data(self):
+        data = {}
+        self.person = self.post("data/persons", data, 400)
+
+    def test_create_person_with_wrong_data(self):
+        data = {
+            "name": "John Doe",
+            "first_name": "John",
+            "last_name": "Doe",
+        }
+        self.person = self.post("data/persons", data, 400)
+
+    def test_create_person_with_departments(self):
+        self.generate_fixture_department()
+        departments = [
+            str(department.id) for department in Department.query.all()
+        ]
+        data = {
+            "first_name": "John2",
+            "last_name": "Doe",
+            "email": "john2.doe@gmail.com",
+            "departments": departments,
+        }
+
+        person = self.post("data/persons", data)
+        self.assertIsNotNone(person["id"])
+        self.assertEqual(
+            set(person["departments"]),
+            set(departments),
+        )
+
+        created_person = Person.get(person["id"])
+        self.assertEqual(
+            set(
+                str(department.id) for department in created_person.departments
+            ),
+            set(departments),
+        )
+
+    def test_create_person_with_duplicate_email(self):
+        data = {
+            "first_name": "John2",
+            "last_name": "Doe",
+            "email": "ema.doe@gmail.com",
+        }
+        response = self.post("data/persons", data, 400)
+        self.assertIn("Email already in use", response["message"])
+
+    def test_create_bot_can_share_email_with_person(self):
+        data = {
+            "first_name": "Bot",
+            "last_name": "Bot",
+            "email": "ema.doe@gmail.com",
+            "is_bot": True,
+        }
+        person = self.post("data/persons", data)
+        self.assertIsNotNone(person["id"])
+
+    def test_update_bot_can_keep_email_shared_with_person(self):
+        data = {
+            "first_name": "Bot",
+            "last_name": "Bot",
+            "email": "ema.doe@gmail.com",
+            "is_bot": True,
+        }
+        bot = self.post("data/persons", data)
+
+        self.put(
+            f"data/persons/{bot['id']}",
+            {"first_name": "Renamed Bot", "email": bot["email"]},
+        )
+        bot_again = self.get(f"data/persons/{bot['id']}")
+        self.assertEqual(bot_again["first_name"], "Renamed Bot")
+        self.assertEqual(bot_again["email"], "ema.doe@gmail.com")
+
+    def test_update_expired_person_keeps_its_own_expiration_date(self):
+        import datetime
+
+        yesterday = datetime.date.today() - datetime.timedelta(days=2)
+        bot = Person.create(
+            first_name="Expired",
+            last_name="Bot",
+            email="expired.bot@gmail.com",
+            is_bot=True,
+            expiration_date=yesterday,
+        )
+        bot_id = str(bot.id)
+
+        # Re-submitting the already-expired date (e.g. to disable the bot)
+        # must work: it is unchanged, not a new past date.
+        self.put(
+            f"data/persons/{bot_id}",
+            {"expiration_date": yesterday.isoformat(), "active": False},
+        )
+        bot_again = self.get(f"data/persons/{bot_id}")
+        self.assertFalse(bot_again["active"])
+
+        # Moving the expiration to a different past date is still rejected.
+        other_past = (yesterday - datetime.timedelta(days=1)).isoformat()
+        self.put(
+            f"data/persons/{bot_id}",
+            {"expiration_date": other_past},
+            400,
+        )
+
+        # Renewing to a future date still works and issues a fresh token.
+        future = (
+            datetime.date.today() + datetime.timedelta(days=30)
+        ).isoformat()
+        renewed = self.put(
+            f"data/persons/{bot_id}", {"expiration_date": future}
+        )
+        self.assertIn("access_token", renewed)
+
+    def test_update_person(self):
+        person = self.get_first("data/persons")
+        data = {
+            "first_name": "Johnny",
+        }
+        self.put(f"data/persons/{person['id']}", data)
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertEqual(data["first_name"], person_again["first_name"])
+        self.put_404(f"data/persons/{fields.gen_uuid()}", data)
+
+    def test_person_display_preferences_round_trip(self):
+        person = self.get_first("data/persons")
+        self.put(
+            f"data/persons/{person['id']}",
+            {"use_12_hour_clock": True, "display_date_format": "DD/MM/YYYY"},
+        )
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertTrue(person_again["use_12_hour_clock"])
+        self.assertEqual(person_again["display_date_format"], "DD/MM/YYYY")
+
+        self.put(f"data/persons/{person['id']}", {"display_date_format": None})
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertIsNone(person_again["display_date_format"])
+
+    def test_person_invalid_display_date_format(self):
+        person = self.get_first("data/persons")
+        self.put(
+            f"data/persons/{person['id']}",
+            {"display_date_format": "DD-MM-YYYY"},
+            400,
+        )
+        self.post(
+            "data/persons",
+            {
+                "first_name": "Bad",
+                "last_name": "Format",
+                "email": "bad.format@gmail.com",
+                "display_date_format": "MM-DD",
+            },
+            400,
+        )
+
+    def test_update_person_with_duplicate_email(self):
+        persons = sorted(self.get("data/persons"), key=itemgetter("email"))
+        target = persons[0]
+        other = next(p for p in persons if p["id"] != target["id"])
+        response = self.put(
+            f"data/persons/{target['id']}",
+            {"email": other["email"]},
+            400,
+        )
+        self.assertIn("Email already in use", response["message"])
+
+    def test_update_person_keep_own_email(self):
+        person = self.get_first("data/persons")
+        self.put(
+            f"data/persons/{person['id']}",
+            {"email": person["email"], "first_name": "Johnny"},
+        )
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertEqual(person_again["first_name"], "Johnny")
+        self.assertEqual(person_again["email"], person["email"])
+
+    def test_update_person_with_departments(self):
+        self.generate_fixture_department()
+        person = self.get_first("data/persons")
+        departments = [
+            str(department.id) for department in Department.query.all()
+        ]
+        data = {
+            "first_name": "Johnny",
+            "departments": departments,
+        }
+        self.put(f"data/persons/{person['id']}", data)
+        person_again = Person.get(person["id"])
+        self.assertEqual(
+            set(str(department.id) for department in person_again.departments),
+            set(departments),
+        )
+
+    def test_set_active_when_too_much_person(self):
+        from zou.app import config
+
+        config.USER_LIMIT = 3
+        persons = self.get("data/persons")
+        person = [
+            person for person in persons if person["id"] != self.user["id"]
+        ][0]
+        data = {"active": False}
+        self.put(f"data/persons/{person['id']}", data, 200)
+        data = {"active": True}
+        self.put(f"data/persons/{person['id']}", data, 400)
+        config.USER_LIMIT = 100
+        data = {"active": True}
+        self.put(f"data/persons/{person['id']}", data)
+
+    def test_delete_person(self):
+        persons = self.get("data/persons")
+        self.assertEqual(len(persons), 4)
+        persons = sorted(persons, key=itemgetter("email"))
+        person = persons[1]
+        self.delete(f"data/persons/{person['id']}")
+        persons = self.get("data/persons")
+        self.assertEqual(len(persons), 3)
+
+        self.delete_404(f"data/persons/{fields.gen_uuid()}")
+        persons = self.get("data/persons")
+        self.assertEqual(len(persons), 3)
+
+    def test_cant_delete(self):
+        self.generate_fixture_task_status_todo()
+        self.generate_shot_suite()
+        self.generate_assigned_task()
+        self.generate_fixture_comment()
+        self.person_id = str(self.person.id)
+        self.get(f"data/persons/{self.person_id}")
+        self.delete(f"data/persons/{self.person_id}", 400)
+
+    def test_force_delete(self):
+        self.generate_fixture_task_status_todo()
+        self.generate_shot_suite()
+        self.generate_assigned_task()
+        self.generate_fixture_comment()
+        self.person_id = str(self.person.id)
+        self.get(f"data/persons/{self.person_id}")
+        self.delete(f"data/persons/{self.person_id}?force=true")
+        self.get(f"data/persons/{self.person_id}", 404)
+
+
+class PersonCountryTestCase(PersonFixtureTestCase):
+    """
+    The country a person carries. Stored as an upper case two letter
+    code, refused rather than raised on a direct write, and kept out
+    of the minimal serialization.
+    """
+
+    def test_person_country_round_trip(self):
+        data = {
+            "first_name": "Country",
+            "last_name": "Tester",
+            "email": "country.tester@gmail.com",
+            "country": "fr",  # lower-case input is normalized to "FR"
+        }
+        person = self.post("data/persons", data)
+        self.assertEqual(person["country"], "FR")
+
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertEqual(person_again["country"], "FR")
+        person_with_relations = self.get(
+            f"data/persons/{person['id']}?relations=true"
+        )
+        self.assertEqual(person_with_relations["country"], "FR")
+        listed = next(
+            p for p in self.get("data/persons") if p["id"] == person["id"]
+        )
+        self.assertEqual(listed["country"], "FR")
+
+        self.put(f"data/persons/{person['id']}", {"country": "us"})
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertEqual(person_again["country"], "US")
+
+        # Whitespace is trimmed and the value upper-cased on update.
+        self.put(f"data/persons/{person['id']}", {"country": " fr "})
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertEqual(person_again["country"], "FR")
+
+        self.put(f"data/persons/{person['id']}", {"country": None})
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertIsNone(person_again["country"])
+
+        self.put(f"data/persons/{person['id']}", {"country": ""})
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertIsNone(person_again["country"])
+
+    def test_create_person_without_country(self):
+        data = {
+            "first_name": "NoCountry",
+            "last_name": "Doe",
+            "email": "no.country@gmail.com",
+        }
+        person = self.post("data/persons", data)
+        self.assertIsNone(person["country"])
+
+    def test_create_person_with_invalid_country(self):
+        data = {
+            "first_name": "Bad",
+            "last_name": "Country",
+            "email": "bad.country@gmail.com",
+            "country": "France",
+        }
+        self.post("data/persons", data, 400)
+
+    def test_update_person_with_invalid_country(self):
+        # The PUT guard rejects every malformed category with a clean 400
+        # (never a 500), including non-ASCII and non-string bodies such as an
+        # int or a single-element list from a SAML assertion.
+        person = self.get_first("data/persons")
+        for value in ["France", "f1", "éé", 123, ["FR"]]:
+            self.put(f"data/persons/{person['id']}", {"country": value}, 400)
+
+    def test_country_validator_never_raises_on_direct_write(self):
+        # Direct writes (SSO sign-in, imports, scripts) bypass the API guard,
+        # so the model validator must silently discard bad input instead of
+        # raising.
+        person = Person.get_by(email="ema.doe@gmail.com")
+        person.update({"country": ["FR"]})
+        self.assertIsNone(person.country)
+        person.update({"country": 123})
+        self.assertIsNone(person.country)
+        person.update({"country": "FRA"})
+        self.assertIsNone(person.country)
+        person.update({"country": " us "})
+        self.assertEqual(person.country, "US")
+
+    def test_country_not_exposed_in_present_minimal(self):
+        # The minimal representation is served to non-managers (including
+        # external client/vendor roles), so it must not leak the country.
+        person = Person.get_by(email="ema.doe@gmail.com")
+        person.update({"country": "FR"})
+        self.assertNotIn("country", person.present_minimal())
+        safe = person.serialize_safe()
+        self.assertEqual(safe["country"], "FR")
+
+
+class PersonLocaleTestCase(PersonFixtureTestCase):
+    """
+    The locale a person carries, same contract as the country.
+    """
+
+    def test_person_locale_round_trip(self):
+        data = {
+            "first_name": "Locale",
+            "last_name": "Tester",
+            "email": "locale.tester@gmail.com",
+            "locale": "fr_FR",
+        }
+        person = self.post("data/persons", data)
+        self.assertEqual(person["locale"], "fr_FR")
+
+        # The stored value survives every read path (single GET, relations,
+        # list) instead of breaking serialization.
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertEqual(person_again["locale"], "fr_FR")
+        person_with_relations = self.get(
+            f"data/persons/{person['id']}?relations=true"
+        )
+        self.assertEqual(person_with_relations["locale"], "fr_FR")
+        listed = next(
+            p for p in self.get("data/persons") if p["id"] == person["id"]
+        )
+        self.assertEqual(listed["locale"], "fr_FR")
+
+        self.put(f"data/persons/{person['id']}", {"locale": "pt_BR"})
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertEqual(person_again["locale"], "pt_BR")
+
+        # Whitespace is trimmed on update.
+        self.put(f"data/persons/{person['id']}", {"locale": " ja_JP "})
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertEqual(person_again["locale"], "ja_JP")
+
+    def test_create_person_with_invalid_locale(self):
+        data = {
+            "first_name": "Bad",
+            "last_name": "Locale",
+            "email": "bad.locale@gmail.com",
+            "locale": "zz_ZZ",
+        }
+        self.post("data/persons", data, 400)
+
+    def test_update_person_with_invalid_locale(self):
+        # The PUT guard rejects every unparseable category with a clean 400
+        # (never a 500 and never a poisoned entry): unknown locales, wrong
+        # separators, malformed identifiers and non-string bodies.
+        person = self.get_first("data/persons")
+        for value in [
+            "zz_ZZ",
+            "notlocale",
+            "en-US",
+            "fr_FR_x",
+            123,
+            ["fr_FR"],
+        ]:
+            self.put(f"data/persons/{person['id']}", {"locale": value}, 400)
+
+    def test_locale_validator_never_raises_on_direct_write(self):
+        # Direct writes (SSO sign-in, imports, scripts) bypass the API guard,
+        # so the model validator must silently discard bad input instead of
+        # persisting a value that would break later reads.
+        person = Person.get_by(email="ema.doe@gmail.com")
+        person.update({"locale": "zz_ZZ"})
+        self.assertIsNone(person.locale)
+        person.update({"locale": ["fr_FR"]})
+        self.assertIsNone(person.locale)
+        person.update({"locale": "en-US"})
+        self.assertIsNone(person.locale)
+        person.update({"locale": " fr_FR "})
+        self.assertEqual(str(person.locale), "fr_FR")
+
+
+class PersonColumnExposureTestCase(PersonFixtureTestCase):
+    """
+    What the routes let a caller read and filter on. Filters run
+    before serialization, so a column hidden from the response is
+    still queryable unless the filter list refuses it too.
+    """
+
+    def test_write_routes_never_return_secrets(self):
+        person = self.get_first("data/persons")
+        Person.get(person["id"]).update(
+            {
+                "password": b"$2b$12$notarealbcrypthashbutlongenough",
+                "totp_secret": "JBSWY3DPEHPK3PXP",
+                "email_otp_secret": "KRSXG5CTMVRXEZLU",
+                "otp_recovery_codes": [b"$2b$12$notarealrecoverycodehash"],
+            }
+        )
+
+        updated = self.put(
+            f"data/persons/{person['id']}", {"last_name": "Doe"}
+        )
+        for field in SENSITIVE_FIELDS:
+            self.assertNotIn(field, updated)
+
+        created = self.post(
+            "data/persons",
+            {
+                "first_name": "No",
+                "last_name": "Secret",
+                "email": "no.secret@gmail.com",
+            },
+        )
+        for field in SENSITIVE_FIELDS:
+            self.assertNotIn(field, created)
+
+        self.generate_fixture_department()
+        joined = self.post(
+            f"actions/persons/{person['id']}/departments/add",
+            {"department_id": str(self.department.id)},
+        )
+        for field in SENSITIVE_FIELDS:
+            self.assertNotIn(field, joined)
+
+    def test_hidden_columns_are_not_filterable(self):
+        # Filters run before serialization, so a column absent from
+        # present_minimal stays answerable by equality unless the filter
+        # keys are narrowed too: ?daily_salary=320 would walk the payroll.
+        # A refused filter must be an error, never a wider result set.
+        person = Person.get_by(email="ema.doe@gmail.com")
+        person.update({"daily_salary": 320, "phone": "0600000000"})
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+
+        for query in ["daily_salary=320", "phone=0600000000"]:
+            self.get(f"data/persons?{query}", 400)
+
+    def test_email_stays_filterable_for_non_admins(self):
+        # gazu.person.get_person_by_email() reads the first row of this
+        # route, so dropping the filter handed out an arbitrary person
+        # instead of no match.
+        person = Person.get_by(email="ema.doe@gmail.com")
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+
+        persons = self.get("data/persons?email=ema.doe@gmail.com")
+        self.assertEqual(len(persons), 1)
+        self.assertEqual(persons[0]["id"], str(person.id))
+
+        self.assertEqual(self.get("data/persons?email=nobody@gmail.com"), [])
+
+    def test_full_name_is_filterable(self):
+        # full_name is a hybrid whose SQL expression is a concat_ws inside
+        # a trim, two functions SQLAlchemy types as NullType: casting the
+        # value to it raised a CompileError, and the route answered
+        # gazu.person.get_person_by_full_name() with a 500.
+        person = Person.get_by(email="ema.doe@gmail.com")
+        path = f"data/persons?full_name={quote('Ema Doe')}"
+
+        persons = self.get(path)
+        self.assertEqual(len(persons), 1)
+        self.assertEqual(persons[0]["id"], str(person.id))
+
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        persons = self.get(path)
+        self.assertEqual(len(persons), 1)
+        self.assertEqual(persons[0]["id"], str(person.id))
+
+    def test_visible_columns_stay_filterable(self):
+        person = Person.get_by(email="ema.doe@gmail.com")
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        persons = self.get(f"data/persons?first_name={person.first_name}")
+        self.assertEqual(len(persons), 1)
+        self.assertEqual(persons[0]["id"], str(person.id))
+
+    def test_admin_still_filters_on_the_safe_columns(self):
+        person = Person.get_by(email="ema.doe@gmail.com")
+        person.update({"daily_salary": 320})
+        persons = self.get("data/persons?daily_salary=320")
+        self.assertEqual(len(persons), 1)
+        self.assertEqual(persons[0]["id"], str(person.id))
+
+    def test_secrets_are_never_filterable(self):
+        person = Person.get_by(email="ema.doe@gmail.com")
+        person.update({"totp_secret": "SECRETSEED"})
+        self.get("data/persons?totp_secret=SECRETSEED", 400)

@@ -22,8 +22,12 @@ class SearchFilterGroup(db.Model, BaseMixin, SerializerMixin):
         nullable=False,
     )
 
-    person_id = db.Column(UUIDType(binary=False), db.ForeignKey("person.id"))
-    project_id = db.Column(UUIDType(binary=False), db.ForeignKey("project.id"))
+    person_id = db.Column(
+        UUIDType(binary=False), db.ForeignKey("person.id"), index=True
+    )
+    project_id = db.Column(
+        UUIDType(binary=False), db.ForeignKey("project.id"), index=True
+    )
     department_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("department.id")
     )

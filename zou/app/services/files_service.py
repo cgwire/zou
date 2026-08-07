@@ -39,31 +39,74 @@ from sqlalchemy.sql.expression import and_
 
 
 def clear_preview_file_cache(preview_file_id):
+    """
+    Drop the memoized serializations of given preview file.
+    """
     cache.cache.delete_memoized(get_preview_file, preview_file_id)
     cache.cache.delete_memoized(get_preview_file_for_access, preview_file_id)
 
 
 def clear_output_file_cache(output_file_id):
+    """
+    Drop the memoized serialization of given output file.
+    """
     cache.cache.delete_memoized(get_output_file, output_file_id)
 
 
 def clear_working_file_cache(working_file_id):
+    """
+    Drop the memoized serialization of given working file.
+    """
     cache.cache.delete_memoized(get_working_file, working_file_id)
 
 
 def clear_output_type_cache(output_type_id):
+    """
+    Drop the memoized serialization of given output type.
+    """
     cache.cache.delete_memoized(get_output_type, output_type_id)
 
 
 def clear_software_cache(software_id):
+    """
+    Drop the memoized serialization of given software.
+    """
     cache.cache.delete_memoized(get_software, software_id)
 
 
 def clear_preview_background_file_cache(preview_background_file_id):
+    """
+    Drop the memoized serializations of given preview background file.
+    """
     cache.cache.delete_memoized(
         get_preview_background_file, preview_background_file_id
     )
     cache.cache.delete_memoized(get_preview_background_files)
+
+
+def _apply_output_file_filters(
+    query,
+    task_type_id=None,
+    output_type_id=None,
+    name=None,
+    representation=None,
+    file_status_id=None,
+):
+    """
+    Apply the optional filters shared by every output file listing. A falsy
+    value leaves the matching filter out.
+    """
+    if task_type_id:
+        query = query.filter(OutputFile.task_type_id == task_type_id)
+    if output_type_id:
+        query = query.filter(OutputFile.output_type_id == output_type_id)
+    if name:
+        query = query.filter(OutputFile.name == name)
+    if representation:
+        query = query.filter(OutputFile.representation == representation)
+    if file_status_id:
+        query = query.filter(OutputFile.file_status_id == file_status_id)
+    return query
 
 
 @cache.memoize_function(240)
@@ -147,12 +190,20 @@ def get_output_type(output_type_id):
 
 
 def get_or_create_output_type(name, short_name=""):
+    """
+    Return the output type matching given name, creating it when it does
+    not exist yet.
+    """
     return get_or_create_instance_by_name(
         OutputType, name=name, short_name=short_name
     )
 
 
 def get_or_create_software(name, short_name, file_extension):
+    """
+    Return the software matching given name, creating it when it does not
+    exist yet.
+    """
     return get_or_create_instance_by_name(
         Software,
         name=name,
@@ -473,16 +524,14 @@ def get_output_files_for_project(
     """
     query = OutputFile.query
 
-    if task_type_id:
-        query = query.filter(OutputFile.task_type_id == task_type_id)
-    if output_type_id:
-        query = query.filter(OutputFile.output_type_id == output_type_id)
-    if name:
-        query = query.filter(OutputFile.name == name)
-    if representation:
-        query = query.filter(OutputFile.representation == representation)
-    if file_status_id:
-        query = query.filter(OutputFile.file_status_id == file_status_id)
+    query = _apply_output_file_filters(
+        query,
+        task_type_id=task_type_id,
+        output_type_id=output_type_id,
+        name=name,
+        representation=representation,
+        file_status_id=file_status_id,
+    )
 
     output_files = (
         query.filter(OutputFile.asset_instance_id == None)
@@ -509,16 +558,14 @@ def get_output_files_for_entity(
     """
     query = OutputFile.query.filter_by(entity_id=entity_id)
 
-    if task_type_id:
-        query = query.filter(OutputFile.task_type_id == task_type_id)
-    if output_type_id:
-        query = query.filter(OutputFile.output_type_id == output_type_id)
-    if name:
-        query = query.filter(OutputFile.name == name)
-    if representation:
-        query = query.filter(OutputFile.representation == representation)
-    if file_status_id:
-        query = query.filter(OutputFile.file_status_id == file_status_id)
+    query = _apply_output_file_filters(
+        query,
+        task_type_id=task_type_id,
+        output_type_id=output_type_id,
+        name=name,
+        representation=representation,
+        file_status_id=file_status_id,
+    )
 
     query = query.filter(OutputFile.asset_instance_id == None).filter(
         OutputFile.temporal_entity_id == None
@@ -550,16 +597,14 @@ def get_output_files_for_instance(
         query = query.filter(
             OutputFile.temporal_entity_id == temporal_entity_id
         )
-    if task_type_id:
-        query = query.filter(OutputFile.task_type_id == task_type_id)
-    if output_type_id:
-        query = query.filter(OutputFile.output_type_id == output_type_id)
-    if name:
-        query = query.filter(OutputFile.name == name)
-    if representation:
-        query = query.filter(OutputFile.representation == representation)
-    if file_status_id:
-        query = query.filter(OutputFile.file_status_id == file_status_id)
+    query = _apply_output_file_filters(
+        query,
+        task_type_id=task_type_id,
+        output_type_id=output_type_id,
+        name=name,
+        representation=representation,
+        file_status_id=file_status_id,
+    )
 
     output_files = (
         query.filter(OutputFile.revision >= 0)
@@ -620,16 +665,14 @@ def get_last_output_files_for_entity(
     query = query.filter(OutputFile.entity_id == entity_id).filter(
         OutputFile.asset_instance_id == None
     )
-    if file_status_id:
-        query = query.filter(OutputFile.file_status_id == file_status_id)
-    if task_type_id:
-        query = query.filter(OutputFile.task_type_id == task_type_id)
-    if output_type_id:
-        query = query.filter(OutputFile.output_type_id == output_type_id)
-    if name:
-        query = query.filter(OutputFile.name == name)
-    if representation:
-        query = query.filter(OutputFile.representation == representation)
+    query = _apply_output_file_filters(
+        query,
+        task_type_id=task_type_id,
+        output_type_id=output_type_id,
+        name=name,
+        representation=representation,
+        file_status_id=file_status_id,
+    )
     statement = query.subquery()
 
     # Create a join query to retrieve maximum revision and filter by
@@ -707,16 +750,14 @@ def get_last_output_files_for_instance(
         )
     query = query.filter(OutputFile.asset_instance_id == asset_instance_id)
     query = query.filter(OutputFile.temporal_entity_id == temporal_entity_id)
-    if file_status_id:
-        query = query.filter(OutputFile.file_status_id == file_status_id)
-    if task_type_id:
-        query = query.filter(OutputFile.task_type_id == task_type_id)
-    if output_type_id:
-        query = query.filter(OutputFile.output_type_id == output_type_id)
-    if name:
-        query = query.filter(OutputFile.name == name)
-    if representation:
-        query = query.filter(OutputFile.representation == representation)
+    query = _apply_output_file_filters(
+        query,
+        task_type_id=task_type_id,
+        output_type_id=output_type_id,
+        name=name,
+        representation=representation,
+        file_status_id=file_status_id,
+    )
     statement = query.subquery()
 
     # Create a join query to retrieve maximum revision
@@ -812,6 +853,10 @@ def create_preview_file_raw(
     extension="mp4",
     position=1,
 ):
+    """
+    Insert a preview file row and return the active record. No event, no
+    task update: the callers own those.
+    """
     return PreviewFile.create(
         name=name,
         revision=revision,
@@ -833,12 +878,18 @@ def create_preview_file(
     extension="mp4",
     position=1,
 ):
+    """
+    Same as create_preview_file_raw, returning the serialized dict.
+    """
     return create_preview_file_raw(
         name, revision, task_id, person_id, source, extension, position
     ).serialize()
 
 
 def update_working_file(working_file_id, data):
+    """
+    Update given working file and drop its cache.
+    """
     working_file = get_working_file_raw(working_file_id)
     working_file.update(data)
     clear_working_file_cache(working_file_id)
@@ -846,6 +897,9 @@ def update_working_file(working_file_id, data):
 
 
 def update_output_file(output_file_id, data):
+    """
+    Update given output file and drop its cache.
+    """
     output_file = get_output_file_raw(output_file_id)
     output_file.update(data)
     clear_output_file_cache(output_file_id)
@@ -921,8 +975,13 @@ def get_output_files_for_output_type_and_asset_instance(
 
 
 def remove_preview_file(preview_file_id):
+    """
+    Delete a preview file row and tell the clients. The stored binaries
+    are the business of deletion_service.
+    """
     preview_file = get_preview_file_raw(preview_file_id)
     preview_file.delete()
+    clear_preview_file_cache(str(preview_file_id))
     task = Task.get(preview_file.task_id)
     events.emit(
         "preview-file:delete",
@@ -983,14 +1042,27 @@ def reset_default_preview_background_files(preview_background_file_id):
     """
     Set all preview background files as is_default=False except the one matching given id.
     """
-    PreviewBackgroundFile.query.filter(
+    query = PreviewBackgroundFile.query.filter(
         PreviewBackgroundFile.id != preview_background_file_id,
         PreviewBackgroundFile.is_default == True,
-    ).update({"is_default": False})
+    )
+    unseated = [
+        str(preview_background.id) for preview_background in query.all()
+    ]
+    query.update({"is_default": False})
     PreviewBackgroundFile.commit()
+    # The rows written here are the ones that just lost the title, and each
+    # is read on its own by the download routes: without this they keep
+    # announcing themselves as the default for the whole memoization
+    # window, which is twenty minutes.
+    for preview_background_id in unseated:
+        clear_preview_background_file_cache(preview_background_id)
 
 
 def update_preview_background_file(preview_background_file_id, data):
+    """
+    Update given preview background file and drop its cache.
+    """
     preview_background_file = get_preview_background_file_raw(
         preview_background_file_id
     )

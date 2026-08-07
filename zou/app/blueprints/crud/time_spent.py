@@ -5,7 +5,7 @@ from sqlalchemy import func
 from zou.app.utils import events
 
 from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
-from zou.app.services import user_service, tasks_service
+from zou.app.services import permissions_service, tasks_service, user_service
 
 from zou.app.models.time_spent import TimeSpent
 from zou.app.models.task import Task
@@ -221,7 +221,7 @@ class TimeSpentResource(BaseModelResource):
         BaseModelResource.__init__(self, TimeSpent)
 
     def check_delete_permissions(self, instance_dict):
-        return user_service.check_time_spent_access(
+        return permissions_service.check_time_spent_access(
             instance_dict["task_id"], instance_dict["person_id"]
         )
 

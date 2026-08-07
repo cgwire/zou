@@ -41,7 +41,9 @@ from zou.app.utils import events, fields, date_helpers
 from zou.app.stores import file_store
 from zou.app import config
 
+from zou.app.services import base_service
 from zou.app.services.exception import (
+    ProjectNotFoundException,
     AttachmentFileNotFoundException,
     CommentNotFoundException,
     EntityNotFoundException,
@@ -52,51 +54,73 @@ from zou.app.services.exception import (
 )
 
 
+def _remove_quietly(remove_from_store, prefix, file_id):
+    """
+    Remove a stored file, ignoring a failure: the database row is already
+    gone, a leftover object in the store must not fail the deletion.
+    """
+    try:
+        remove_from_store(prefix, file_id)
+    except Exception:
+        pass
+
+
+def _remove_older_than(model, date_column, days_old):
+    """
+    Delete every row of given model older than *days_old*.
+    """
+    limit_date = date_helpers.get_utc_now_datetime() - datetime.timedelta(
+        days=days_old
+    )
+    model.query.filter(date_column < limit_date).delete()
+    model.commit()
+
+
 def remove_comment(comment_id):
     """
     Remove a comment from database and everything related (notifs, news, and
     preview files)
     """
     comment = Comment.get(comment_id)
-    if comment is not None:
-        task = Task.get(comment.object_id)
-        notifications = Notification.query.filter_by(comment_id=comment.id)
-        for notification in notifications:
-            notification.delete()
-
-        news_list = News.query.filter_by(comment_id=comment.id)
-        for news in news_list:
-            news.delete()
-
-        if comment.preview_file_id is not None:
-            preview_file = PreviewFile.get(comment.preview_file_id)
-            comment.preview_file_id = None
-            comment.save()
-            remove_preview_file(preview_file)
-
-        previews = [preview for preview in comment.previews]
-        attachments = [attachment for attachment in comment.attachment_files]
-        comment.delete()
-
-        for preview in previews:
-            remove_preview_file(preview)
-
-        for attachment in attachments:
-            remove_attachment_file(attachment)
-
-        if task is not None:
-            events.emit(
-                "comment:delete",
-                {"comment_id": comment.id},
-                project_id=str(task.project_id),
-            )
-        else:
-            # The task may already be gone; still notify listeners so
-            # they drop the comment from their state.
-            events.emit("comment:delete", {"comment_id": comment.id})
-        return comment.serialize()
-    else:
+    if comment is None:
         raise CommentNotFoundException
+
+    task = Task.get(comment.object_id)
+    notifications = Notification.query.filter_by(comment_id=comment.id)
+    for notification in notifications:
+        notification.delete()
+
+    news_list = News.query.filter_by(comment_id=comment.id)
+    for news in news_list:
+        news.delete()
+
+    if comment.preview_file_id is not None:
+        preview_file = PreviewFile.get(comment.preview_file_id)
+        comment.preview_file_id = None
+        comment.save()
+        remove_preview_file(preview_file)
+
+    previews = [preview for preview in comment.previews]
+    attachments = [attachment for attachment in comment.attachment_files]
+    comment.delete()
+
+    for preview in previews:
+        remove_preview_file(preview)
+
+    for attachment in attachments:
+        remove_attachment_file(attachment)
+
+    if task is not None:
+        events.emit(
+            "comment:delete",
+            {"comment_id": comment.id},
+            project_id=str(task.project_id),
+        )
+    else:
+        # The task may already be gone; still notify listeners so
+        # they drop the comment from their state.
+        events.emit("comment:delete", {"comment_id": comment.id})
+    return comment.serialize()
 
 
 def remove_task(task_id, force=False):
@@ -132,10 +156,6 @@ def remove_task(task_id, force=False):
         subscriptions = Subscription.query.filter_by(task_id=task_id)
         for subscription in subscriptions:
             subscription.delete()
-
-        working_files = WorkingFile.query.filter_by(task_id=task_id)
-        for working_file in working_files:
-            working_file.delete()
 
         preview_files = PreviewFile.query.filter_by(task_id=task_id)
         for preview_file in preview_files:
@@ -200,6 +220,10 @@ def remove_output_files_for_project(project_id):
 
 
 def remove_preview_file_by_id(preview_file_id, force=False):
+    """
+    Remove all files related to the preview file matching given id, then
+    remove the preview file entry from the database.
+    """
     preview_file = PreviewFile.get(preview_file_id)
     if preview_file is None:
         raise PreviewFileNotFoundException
@@ -227,6 +251,12 @@ def remove_preview_file(preview_file, force=False):
     preview_file.comments = []
     preview_file.save()
     preview_file.delete()
+    # The download routes read their whole authorization off the memoized
+    # serialization: left in place, it keeps handing out the task the
+    # permission is checked against, and the file goes on being served.
+    from zou.app.services import files_service
+
+    files_service.clear_preview_file_cache(preview_file_id)
 
     # Remove the physical files only once the DB row is gone: if the
     # delete fails, the row must not end up pointing at missing files.
@@ -315,14 +345,10 @@ def clear_preview_background_files(preview_background_id, force=False):
     Remove all files related to given preview background file.
     """
     if config.REMOVE_FILES or force:
-        for image_type in [
-            "thumbnails",
-            "preview-backgrounds",
-        ]:
-            try:
-                file_store.remove_picture(image_type, preview_background_id)
-            except Exception:
-                pass
+        for image_type in ["thumbnails", "preview-backgrounds"]:
+            _remove_quietly(
+                file_store.remove_picture, image_type, preview_background_id
+            )
 
 
 def clear_picture_files(preview_file_id):
@@ -336,10 +362,7 @@ def clear_picture_files(preview_file_id):
         "thumbnails-square",
         "previews",
     ]:
-        try:
-            file_store.remove_picture(image_type, preview_file_id)
-        except Exception:
-            pass
+        _remove_quietly(file_store.remove_picture, image_type, preview_file_id)
 
 
 def clear_movie_files(preview_file_id):
@@ -348,15 +371,9 @@ def clear_movie_files(preview_file_id):
     was a movie.
     """
     for movie_type in ["previews", "lowdef", "source"]:
-        try:
-            file_store.remove_movie(movie_type, preview_file_id)
-        except Exception:
-            pass
+        _remove_quietly(file_store.remove_movie, movie_type, preview_file_id)
     for image_type in ["thumbnails", "thumbnails-square", "previews", "tiles"]:
-        try:
-            file_store.remove_picture(image_type, preview_file_id)
-        except Exception:
-            pass
+        _remove_quietly(file_store.remove_picture, image_type, preview_file_id)
 
 
 def clear_generic_files(preview_file_id):
@@ -364,10 +381,7 @@ def clear_generic_files(preview_file_id):
     Remove all files related to given preview file, supposing the original file
     was a generic file.
     """
-    try:
-        file_store.remove_file("previews", preview_file_id)
-    except Exception:
-        pass
+    _remove_quietly(file_store.remove_file, "previews", preview_file_id)
 
 
 def remove_tasks(project_id, task_ids):
@@ -451,6 +465,10 @@ def remove_tasks_for_project_and_task_type(project_id, task_type_id):
 
 
 def remove_project(project_id):
+    """
+    Remove a project and everything it owns: previews, tasks, budgets, entity
+    links, playlists, entities, metadata, schedule and news.
+    """
     from zou.app.services import playlists_service
 
     preview_files = (
@@ -511,7 +529,9 @@ def remove_project(project_id):
     News.query.filter(
         News.task_id == Task.id, Task.project_id == project_id
     ).delete()
-    project = Project.get(project_id)
+    project = base_service.get_instance(
+        Project, project_id, ProjectNotFoundException
+    )
     project.delete()
     events.emit("project:delete", {"project_id": project.id})
     return project_id
@@ -549,6 +569,11 @@ def remove_production_schedule_versions_for_project(project_id):
 
 
 def remove_person(person_id, force=True):
+    """
+    Remove a person. With force, everything they own is deleted or detached
+    first: comments, notifications, logs, subscriptions, time spents, team
+    memberships and task assignations.
+    """
     person = Person.get(person_id)
     if person.email in config.PROTECTED_ACCOUNTS:
         raise PersonInProtectedAccounts(
@@ -615,33 +640,21 @@ def remove_old_events(days_old=90):
     """
     Remove events older than *days_old*.
     """
-    limit_date = date_helpers.get_utc_now_datetime() - datetime.timedelta(
-        days=days_old
-    )
-    ApiEvent.query.filter(ApiEvent.created_at < limit_date).delete()
-    ApiEvent.commit()
+    _remove_older_than(ApiEvent, ApiEvent.created_at, days_old)
 
 
 def remove_old_login_logs(days_old=90):
     """
     Remove login logs older than *days_old*.
     """
-    limit_date = date_helpers.get_utc_now_datetime() - datetime.timedelta(
-        days=days_old
-    )
-    LoginLog.query.filter(LoginLog.created_at < limit_date).delete()
-    LoginLog.commit()
+    _remove_older_than(LoginLog, LoginLog.created_at, days_old)
 
 
 def remove_old_notifications(days_old=90):
     """
     Remove notifications older than *days_old*.
     """
-    limit_date = date_helpers.get_utc_now_datetime() - datetime.timedelta(
-        days=days_old
-    )
-    Notification.query.filter(Notification.created_at < limit_date).delete()
-    Notification.commit()
+    _remove_older_than(Notification, Notification.created_at, days_old)
 
 
 def remove_episode(episode_id, force=False):

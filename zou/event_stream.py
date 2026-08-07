@@ -31,7 +31,7 @@ from zou.app.utils.redis import get_redis_url
 app = create_app()
 
 from zou.app.services.playlists_service import get_playlist
-from zou.app.services.user_service import check_project_access
+from zou.app.services.permissions_service import check_project_access
 
 server_stats = {"nb_connections": 0}
 rooms_data = {}

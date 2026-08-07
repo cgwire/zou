@@ -5,42 +5,64 @@ from zou.app.services.exception import ConceptNotFoundException
 
 
 class ConceptsServiceTestCase(ApiDBTestCase):
+    """
+    Concepts are entities of their own type, so most of what is checked here
+    is that they are told apart from the assets and shots beside them.
+    """
 
     def setUp(self):
-        super(ConceptsServiceTestCase, self).setUp()
+        super().setUp()
 
-        self.generate_fixture_project_status()
         self.generate_fixture_project()
-        self.generate_fixture_asset_type()
+
+    def a_concept(self, name, project=None, **kwargs):
+        return concepts_service.create_concept(
+            str((project or self.project).id), name, **kwargs
+        )
+
+    def a_concept_with_a_task(self, name):
+        """
+        A concept and one task on it, with the whole chain a task needs.
+        """
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
+        self.generate_fixture_department()
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status()
+        concept = self.a_concept(name)
+        task = self.generate_fixture_task(
+            entity_id=concept["id"], task_type_id=self.task_type.id
+        )
+        return concept, task
 
     def test_create_concept(self):
-        concept = concepts_service.create_concept(
-            str(self.project.id), "Concept 1"
-        )
+        concept = self.a_concept("Concept 1", description="A cool concept")
+
         self.assertEqual(concept["name"], "Concept 1")
         self.assertEqual(concept["project_id"], str(self.project.id))
-
-    def test_create_concept_with_description(self):
-        concept = concepts_service.create_concept(
-            str(self.project.id),
-            "Concept 2",
-            description="A cool concept",
-        )
         self.assertEqual(concept["description"], "A cool concept")
+        self.assertEqual(
+            concept["entity_type_id"],
+            concepts_service.get_concept_type()["id"],
+        )
 
-    def test_create_concept_idempotent(self):
-        concept1 = concepts_service.create_concept(
-            str(self.project.id), "Same Name"
-        )
-        concept2 = concepts_service.create_concept(
-            str(self.project.id), "Same Name"
-        )
-        self.assertEqual(concept1["id"], concept2["id"])
+    def test_create_concept_reuses_the_name_within_a_production(self):
+        first = self.a_concept("Same Name")
+
+        again = self.a_concept("Same Name")
+
+        self.assertEqual(again["id"], first["id"])
+
+    def test_create_concept_is_free_to_repeat_a_name_elsewhere(self):
+        first = self.a_concept("Same Name")
+        elsewhere = self.generate_fixture_project_standard()
+
+        other = self.a_concept("Same Name", project=elsewhere)
+
+        self.assertNotEqual(other["id"], first["id"])
 
     def test_get_concept_raw(self):
-        concept = concepts_service.create_concept(
-            str(self.project.id), "Concept Raw"
-        )
+        concept = self.a_concept("Concept Raw")
         raw = concepts_service.get_concept_raw(concept["id"])
         self.assertEqual(str(raw.id), concept["id"])
 
@@ -49,40 +71,73 @@ class ConceptsServiceTestCase(ApiDBTestCase):
             concepts_service.get_concept_raw("wrong-id")
 
     def test_get_concept(self):
-        concept = concepts_service.create_concept(
-            str(self.project.id), "Concept Get"
-        )
+        concept = self.a_concept("Concept Get")
         result = concepts_service.get_concept(concept["id"])
         self.assertEqual(result["id"], concept["id"])
         self.assertEqual(result["name"], "Concept Get")
 
     def test_get_concepts(self):
-        concepts_service.create_concept(str(self.project.id), "Concept A")
-        concepts_service.create_concept(str(self.project.id), "Concept B")
+        """
+        Every concept of every production, by name, carrying the name of the
+        production it belongs to. An asset is not one of them.
+        """
+        self.a_concept("Concept B")
+        self.a_concept("Concept A")
+        self.generate_fixture_asset()
+
         concepts = concepts_service.get_concepts()
-        self.assertEqual(len(concepts), 2)
+
+        self.assertEqual(
+            [
+                (concept["name"], concept["project_name"])
+                for concept in concepts
+            ],
+            [
+                ("Concept A", self.project.name),
+                ("Concept B", self.project.name),
+            ],
+        )
+
+    def test_get_concepts_with_criterions(self):
+        here = self.a_concept("Here")
+        elsewhere = self.generate_fixture_project_standard()
+        self.a_concept("Elsewhere", project=elsewhere)
+
+        concepts = concepts_service.get_concepts(
+            {"project_id": str(self.project.id)}
+        )
+
+        self.assertEqual([concept["id"] for concept in concepts], [here["id"]])
 
     def test_get_concepts_for_project(self):
-        concepts_service.create_concept(str(self.project.id), "Concept P")
+        concept = self.a_concept("Concept P")
+        elsewhere = self.generate_fixture_project_standard()
+        self.a_concept("Elsewhere", project=elsewhere)
+        self.generate_fixture_asset()
+
         concepts = concepts_service.get_concepts_for_project(
             str(self.project.id)
         )
-        self.assertEqual(len(concepts), 1)
-        self.assertEqual(concepts[0]["name"], "Concept P")
+
+        self.assertEqual([held["id"] for held in concepts], [concept["id"]])
 
     def test_get_concepts_and_tasks(self):
-        concept = concepts_service.create_concept(
-            str(self.project.id), "Concept Tasks"
-        )
+        concept, task = self.a_concept_with_a_task("Concept Tasks")
+        bare = self.a_concept("Concept Bare")
+
         result = concepts_service.get_concepts_and_tasks()
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0]["name"], "Concept Tasks")
-        self.assertEqual(result[0]["tasks"], [])
+
+        tasks_by_concept = {
+            held["id"]: [entry["id"] for entry in held["tasks"]]
+            for held in result
+        }
+        self.assertEqual(
+            tasks_by_concept,
+            {concept["id"]: [str(task.id)], bare["id"]: []},
+        )
 
     def test_get_full_concept(self):
-        concept = concepts_service.create_concept(
-            str(self.project.id), "Concept Full"
-        )
+        concept = self.a_concept("Concept Full")
         result = concepts_service.get_full_concept(concept["id"])
         self.assertEqual(result["id"], concept["id"])
         self.assertEqual(result["name"], "Concept Full")
@@ -94,52 +149,30 @@ class ConceptsServiceTestCase(ApiDBTestCase):
             )
 
     def test_remove_concept(self):
-        concept = concepts_service.create_concept(
-            str(self.project.id), "To Remove"
-        )
+        concept = self.a_concept("To Remove")
         result = concepts_service.remove_concept(concept["id"])
         self.assertEqual(result["id"], concept["id"])
         with self.assertRaises(ConceptNotFoundException):
             concepts_service.get_concept_raw(concept["id"])
 
     def test_remove_concept_with_task_cancels(self):
-        self.generate_fixture_person()
-        self.generate_fixture_assigner()
-        self.generate_fixture_department()
-        self.generate_fixture_task_type()
-        self.generate_fixture_task_status()
-        concept = concepts_service.create_concept(
-            str(self.project.id), "With Task"
-        )
-        self.generate_fixture_task(
-            entity_id=concept["id"],
-            task_type_id=self.task_type.id,
-        )
+        # A concept someone has worked on is canceled rather than deleted.
+        concept, _ = self.a_concept_with_a_task("With Task")
+
         result = concepts_service.remove_concept(concept["id"])
+
         self.assertTrue(result["canceled"])
+        self.assertIsNotNone(concepts_service.get_concept_raw(concept["id"]))
 
     def test_remove_concept_with_task_force(self):
-        self.generate_fixture_person()
-        self.generate_fixture_assigner()
-        self.generate_fixture_department()
-        self.generate_fixture_task_type()
-        self.generate_fixture_task_status()
-        concept = concepts_service.create_concept(
-            str(self.project.id), "Force Remove"
-        )
-        self.generate_fixture_task(
-            entity_id=concept["id"],
-            task_type_id=self.task_type.id,
-        )
+        concept, _ = self.a_concept_with_a_task("Force Remove")
         result = concepts_service.remove_concept(concept["id"], force=True)
         self.assertEqual(result["id"], concept["id"])
         with self.assertRaises(ConceptNotFoundException):
             concepts_service.get_concept_raw(concept["id"])
 
     def test_is_concept(self):
-        concept = concepts_service.create_concept(
-            str(self.project.id), "Is Concept"
-        )
+        concept = self.a_concept("Is Concept")
         self.assertTrue(concepts_service.is_concept(concept))
 
         self.generate_fixture_asset()

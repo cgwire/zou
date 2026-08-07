@@ -11,6 +11,7 @@ from zou.app.services import (
     tasks_service,
     time_spents_service,
     shots_service,
+    permissions_service,
     user_service,
 )
 from zou.app.utils import (
@@ -310,7 +311,7 @@ class TimeSpentsResource(MethodView, ArgsMixin):
           400:
             description: Invalid date range parameters
         """
-        user_service.check_person_is_not_bot(person_id)
+        permissions_service.check_person_is_not_bot(person_id)
         permissions.check_admin_permissions()
         arguments = self.get_args(["start_date", "end_date"])
         start_date, end_date = arguments["start_date"], arguments["end_date"]
@@ -393,7 +394,7 @@ class DateTimeSpentsResource(MethodView):
           400:
             description: Wrong date format
         """
-        user_service.check_person_is_not_bot(person_id)
+        permissions_service.check_person_is_not_bot(person_id)
         project_ids, department_ids = (
             _get_project_department_ids_for_person_access(person_id)
         )
@@ -465,13 +466,13 @@ class DayOffResource(MethodView):
           400:
             description: Wrong date format
         """
-        user_service.check_person_is_not_bot(person_id)
+        permissions_service.check_person_is_not_bot(person_id)
         # Same policy as the year, month, week and day routes below and as
         # the day off CRUD: leave is between the person and the admins.
         # Seeing a team calendar goes through
         # /data/projects/<id>/day-offs, which scopes to the production and
         # hands the detail to its managers only.
-        user_service.check_person_access(person_id)
+        permissions_service.check_person_access(person_id)
         try:
             return time_spents_service.get_day_off(person_id, date)
         except WrongDateFormatException:
@@ -542,7 +543,7 @@ class PersonYearTimeSpentsResource(PersonDurationTimeSpentsResource):
           400:
             description: Wrong date format
         """
-        user_service.check_person_is_not_bot(person_id)
+        permissions_service.check_person_is_not_bot(person_id)
         try:
             return time_spents_service.get_year_time_spents(
                 person_id,
@@ -612,7 +613,7 @@ class PersonMonthTimeSpentsResource(PersonDurationTimeSpentsResource):
           400:
             description: Wrong date format
         """
-        user_service.check_person_is_not_bot(person_id)
+        permissions_service.check_person_is_not_bot(person_id)
         try:
             return time_spents_service.get_month_time_spents(
                 person_id,
@@ -669,8 +670,8 @@ class PersonMonthAllTimeSpentsResource(MethodView):
                   items:
                     type: object
         """
-        user_service.check_person_is_not_bot(person_id)
-        user_service.check_person_access(person_id)
+        permissions_service.check_person_is_not_bot(person_id)
+        permissions_service.check_person_access(person_id)
         try:
             timespents = time_spents_service.get_time_spents_for_month(
                 year, month, person_id=person_id
@@ -739,7 +740,7 @@ class PersonWeekTimeSpentsResource(PersonDurationTimeSpentsResource):
           400:
             description: Wrong date format
         """
-        user_service.check_person_is_not_bot(person_id)
+        permissions_service.check_person_is_not_bot(person_id)
         try:
             return time_spents_service.get_week_time_spents(
                 person_id,
@@ -823,7 +824,7 @@ class PersonDayTimeSpentsResource(PersonDurationTimeSpentsResource):
           400:
             description: Wrong date format
         """
-        user_service.check_person_is_not_bot(person_id)
+        permissions_service.check_person_is_not_bot(person_id)
         try:
             return time_spents_service.get_day_time_spents(
                 person_id,
@@ -853,18 +854,18 @@ class PersonQuotaMixin(ArgsMixin):
         return (project_id, task_type_id, feedback, weighted)
 
     def check_permissions(self, person_id, project_id=None):
-        user_service.resolve_project_role(project_id)
+        permissions_service.resolve_project_role(project_id)
         if permissions.has_manager_permissions():
-            user_service.check_manager_project_access(project_id)
+            permissions_service.check_manager_project_access(project_id)
         else:
-            user_service.check_person_access(person_id)
+            permissions_service.check_person_access(person_id)
 
     def get_person_quotas(self):
         pass
 
     @jwt_required()
     def get(self, person_id, *args, **kwargs):
-        user_service.check_person_is_not_bot(person_id)
+        permissions_service.check_person_is_not_bot(person_id)
         project_id, task_type_id, feedback, weighted = (
             self.get_quota_arguments()
         )
@@ -1299,7 +1300,7 @@ class InvitePersonResource(MethodView):
                       description: Success message
                       example: "Email sent"
         """
-        user_service.check_person_is_not_bot(person_id)
+        permissions_service.check_person_is_not_bot(person_id)
         permissions.check_admin_permissions()
         persons_service.invite_person(person_id)
         return {"success": True, "message": "Email sent"}
@@ -1343,7 +1344,7 @@ class ResetPasswordLinkResource(MethodView):
             description: User is a protected account or another admin who
               already has a password
         """
-        user_service.check_person_is_not_bot(person_id)
+        permissions_service.check_person_is_not_bot(person_id)
         permissions.check_admin_permissions()
         current_user = persons_service.get_current_user()
         try:
@@ -1452,8 +1453,8 @@ class PersonWeekDayOffResource(MethodView, ArgsMixin):
                   items:
                     type: object
         """
-        user_service.check_person_is_not_bot(person_id)
-        user_service.check_person_access(person_id)
+        permissions_service.check_person_is_not_bot(person_id)
+        permissions_service.check_person_access(person_id)
         return time_spents_service.get_person_day_offs_for_week(
             person_id, year, week
         )
@@ -1504,8 +1505,8 @@ class PersonMonthDayOffResource(MethodView, ArgsMixin):
                   items:
                     type: object
         """
-        user_service.check_person_is_not_bot(person_id)
-        user_service.check_person_access(person_id)
+        permissions_service.check_person_is_not_bot(person_id)
+        permissions_service.check_person_access(person_id)
         return time_spents_service.get_person_day_offs_for_month(
             person_id, year, month
         )
@@ -1547,8 +1548,8 @@ class PersonYearDayOffResource(MethodView, ArgsMixin):
                   items:
                     type: object
         """
-        user_service.check_person_is_not_bot(person_id)
-        user_service.check_person_access(person_id)
+        permissions_service.check_person_is_not_bot(person_id)
+        permissions_service.check_person_access(person_id)
         return time_spents_service.get_person_day_offs_for_year(
             person_id, year
         )
@@ -1583,8 +1584,8 @@ class PersonDayOffResource(MethodView, ArgsMixin):
                   items:
                     type: object
         """
-        user_service.check_person_is_not_bot(person_id)
-        user_service.check_person_access(person_id)
+        permissions_service.check_person_is_not_bot(person_id)
+        permissions_service.check_person_access(person_id)
         return time_spents_service.get_day_offs_between(
             person_id=person_id,
         )
@@ -1652,7 +1653,7 @@ class AddToDepartmentResource(MethodView, ArgsMixin):
             department = tasks_service.get_department(department_id)
         except DepartmentNotFoundException:
             raise WrongParameterException(
-                "Department ID matches no department"
+                "Department ID matches no department"
             )
         person = persons_service.add_to_department(department["id"], person_id)
         return person, 201
@@ -1694,7 +1695,7 @@ class RemoveFromDepartmentResource(MethodView, ArgsMixin):
             tasks_service.get_department(department_id)
         except DepartmentNotFoundException:
             raise WrongParameterException(
-                "Department ID matches no department"
+                "Department ID matches no department"
             )
         persons_service.remove_from_department(department_id, person_id)
         return "", 204
@@ -1771,7 +1772,7 @@ class ChangePasswordForPersonResource(MethodView, ArgsMixin):
                       description: Error message
                       example: "Password is too short."
         """
-        user_service.check_person_is_not_bot(person_id)
+        permissions_service.check_person_is_not_bot(person_id)
         permissions.check_admin_permissions()
         body = validation.validate_request_body(ChangePasswordSchema)
         password, password_2 = body.password, body.password_2
@@ -1867,7 +1868,7 @@ class DisableTwoFactorAuthenticationPersonResource(MethodView, ArgsMixin):
                       description: Error message
                       example: "User is unactive."
         """
-        user_service.check_person_is_not_bot(person_id)
+        permissions_service.check_person_is_not_bot(person_id)
         permissions.check_admin_permissions()
         current_user = persons_service.get_current_user()
         try:

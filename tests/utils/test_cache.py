@@ -7,7 +7,7 @@ class CacheTestCase(unittest.TestCase):
     __name__ = "test_handler"
 
     def setUp(self):
-        super(CacheTestCase, self).setUp()
+        super().setUp()
         global called
         self.called = 0
 

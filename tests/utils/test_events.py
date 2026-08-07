@@ -8,7 +8,7 @@ class EventsTestCase(ApiDBTestCase):
     __name__ = "test_handler"
 
     def setUp(self):
-        super(EventsTestCase, self).setUp()
+        super().setUp()
         self.counter = 1
         events.unregister_all()
 

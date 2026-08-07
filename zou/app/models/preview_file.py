@@ -59,7 +59,7 @@ class PreviewFile(db.Model, BaseMixin, SerializerMixin):
     )
     person_id = db.Column(UUIDType(binary=False), db.ForeignKey("person.id"))
     source_file_id = db.Column(
-        UUIDType(binary=False), db.ForeignKey("output_file.id")
+        UUIDType(binary=False), db.ForeignKey("output_file.id"), index=True
     )
 
     __table_args__ = (
