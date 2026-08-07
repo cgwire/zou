@@ -2,9 +2,10 @@ import os
 import shutil
 import math
 
+from io import BytesIO
 from pathlib import Path
 
-from PIL import Image, ImageFile
+from PIL import Image, ImageCms, ImageFile
 
 from zou.app import config
 from zou.app.utils import fs
@@ -17,6 +18,37 @@ SQUARE_SIZE = 100, 100
 PREVIEW_SIZE = 1200, 0
 BIG_SQUARE_SIZE = 400, 400
 BIG_RECTANGLE_SIZE = 300, 200
+SRGB_PROFILE = ImageCms.createProfile("sRGB")
+
+
+def to_srgb(im, mode="RGB"):
+    """
+    Convert given picture to sRGB, honouring its embedded ICC profile.
+
+    Image.convert() ignores that profile: it turns CMYK into RGB with a
+    plain arithmetic formula, which oversaturates pictures meant for print.
+    Wide gamut pictures (Adobe RGB, Display P3) suffer from the same problem
+    once a browser reads their pixels as sRGB.
+    """
+    if im.mode not in ("CMYK", "RGB", "RGBA"):
+        return im
+    if im.mode == "RGBA":
+        mode = "RGBA"
+    icc_profile = im.info.get("icc_profile")
+    if icc_profile:
+        try:
+            im = ImageCms.profileToProfile(
+                im,
+                ImageCms.ImageCmsProfile(BytesIO(icc_profile)),
+                SRGB_PROFILE,
+                # littleCMS fills the alpha channel with zeroes when the
+                # source has none, so never ask it for RGBA out of CMYK.
+                outputMode="RGBA" if im.mode == "RGBA" else "RGB",
+            )
+        except (ImageCms.PyCMSError, OSError):
+            # A broken or unreadable profile is not worth failing an upload.
+            pass
+    return im.convert(mode) if im.mode != mode else im
 
 
 def save_file(tmp_folder, instance_id, file_to_save):
@@ -28,9 +60,7 @@ def save_file(tmp_folder, instance_id, file_to_save):
     file_name = instance_id + extension.lower()
     file_path = os.path.join(tmp_folder, file_name)
     file_to_save.save(file_path)
-    im = Image.open(file_path)
-    if im.mode == "CMYK":
-        im = im.convert("RGB")
+    im = to_srgb(Image.open(file_path))
     im.save(file_path, "PNG")
     return file_path
 
@@ -41,9 +71,7 @@ def convert_jpg_to_png(file_source_path):
     """
     file_target_path = Path(file_source_path).with_suffix(".png")
 
-    im = Image.open(file_source_path)
-    if im.mode == "CMYK":
-        im = im.convert("RGB")
+    im = to_srgb(Image.open(file_source_path))
     im.save(file_target_path, "PNG")
     fs.rm_file(file_source_path)
     return file_target_path
@@ -106,7 +134,7 @@ def turn_into_thumbnail(file_path, size=None):
     """
     Turn given picture into a smaller version.
     """
-    im = Image.open(file_path)
+    im = to_srgb(Image.open(file_path), "RGBA")
 
     if size is not None:
         width, height = size
@@ -119,8 +147,6 @@ def turn_into_thumbnail(file_path, size=None):
     im = fit_to_target_size(im, size)
 
     im.thumbnail(size, Image.Resampling.LANCZOS)
-    if im.mode == "CMYK":
-        im = im.convert("RGBA")
     final = Image.new("RGBA", size, (0, 0, 0, 0))
     final.paste(
         im, (int((size[0] - im.size[0]) / 2), int((size[1] - im.size[1]) / 2))
@@ -133,12 +159,10 @@ def resize(file_path, size, crop=False):
     """
     Resize given picture
     """
-    im = Image.open(file_path)
+    im = to_srgb(Image.open(file_path))
     if crop:
         im = prepare_image_for_thumbnail(im, size)
     im = im.resize(size, Image.Resampling.LANCZOS)
-    if im.mode == "CMYK":
-        im = im.convert("RGB")
     im.save(file_path, "PNG")
     return file_path
 
