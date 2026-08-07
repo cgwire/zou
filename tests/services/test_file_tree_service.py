@@ -111,15 +111,16 @@ class TreeLookupTestCase(FileTreeTestCase):
         )
 
     def test_a_tree_that_cannot_serve_the_mode_is_malformed(self):
-        tree = copy.deepcopy(file_tree_service.get_tree_from_file("simple"))
-        del tree["working"]["mountpoint"]
-        for bad_tree, mode in [
-            (None, "working"),
-            ({}, "working"),
-            (tree, "unknown"),
-            (tree, "working"),
+        tree = file_tree_service.get_tree_from_file("simple")
+        without_mountpoint = copy.deepcopy(tree)
+        del without_mountpoint["working"]["mountpoint"]
+        for label, bad_tree, mode in [
+            ("no tree", None, "working"),
+            ("empty tree", {}, "working"),
+            ("unknown mode", tree, "unknown"),
+            ("no mountpoint", without_mountpoint, "working"),
         ]:
-            with self.subTest(mode=mode):
+            with self.subTest(label=label):
                 self.assertRaises(
                     MalformedFileTreeException,
                     file_tree_service.get_root_path,
@@ -344,6 +345,25 @@ class TokenTestCase(FileTreeTestCase):
                 {"number": 3, "name": "hero"}, "number"
             ),
             "0003",
+        )
+
+    def test_the_style_of_the_mode_is_applied_to_the_whole_name(self):
+        """
+        A tree asking for uppercase gets it: the style is applied after the
+        template is rendered, so it reaches the values as well as the text
+        around them.
+        """
+        tree = copy.deepcopy(file_tree_service.get_tree_from_file("simple"))
+        tree["working"]["file_name"]["style"] = "uppercase"
+        self.assertEqual(
+            file_tree_service.get_file_name_root(
+                tree,
+                "working",
+                entity=self.asset.serialize(),
+                task=self.task.serialize(),
+                name="main",
+            ),
+            "COSMOS_LANDROMAT_PROPS_TREE_SHADERS_MAIN_V001",
         )
 
     def test_a_token_is_replaced_by_its_styled_value(self):
@@ -590,6 +610,32 @@ class InstancePathTestCase(FileTreeTestCase):
             "cosmos_landromat_s01_sc01_animation_cache_main_tree_0001_v003",
         )
 
+    def test_an_instance_follows_the_tree_of_the_entity_it_sits_in(self):
+        """
+        An instance is a copy of an asset dropped into a shot or a scene,
+        and a shared asset comes from another production. The file tree
+        that applies is the one of the production the instance sits in, not
+        the one of the production the asset was borrowed from.
+        """
+        self.generate_fixture_project_standard()
+        borrowed = self.generate_fixture_asset(
+            name="Borrowed", project_id=self.project_standard.id
+        )
+        self.generate_fixture_scene_asset_instance(asset=borrowed)
+        tree = copy.deepcopy(self.project.file_tree)
+        tree["output"]["mountpoint"] = "/elsewhere"
+        self.project.update({"file_tree": tree})
+
+        path = file_tree_service.get_instance_folder_path(
+            self.asset_instance.serialize(),
+            self.scene.serialize(),
+            task_type=self.task_type_animation.serialize(),
+            output_type=self.output_type_cache,
+            representation="abc",
+        )
+
+        self.assertTrue(path.startswith("/elsewhere/"), path)
+
     def test_an_instance_in_an_asset(self):
         self.generate_fixture_asset_types()
         self.generate_fixture_asset_character()
@@ -633,11 +679,12 @@ class PathToTaskTestCase(FileTreeTestCase):
         )
         self.assertEqual(task["id"], str(self.task.id))
 
-    def test_a_shot_path_resolves_to_its_task(self):
-        # The tokens are matched against entity names as they are stored,
-        # not against the lowercase style the templates render paths with.
-        # The shot template carries no <Episode> token, so the sequence is
-        # looked up with no parent: only a flat production resolves.
+    def flat_shot_task(self):
+        """
+        A shot outside any episode. The shot template carries no <Episode>
+        token, so the sequence is looked up with no parent: only a flat
+        production resolves.
+        """
         sequence = Entity.create(
             name="Seq1",
             project_id=self.project.id,
@@ -649,9 +696,12 @@ class PathToTaskTestCase(FileTreeTestCase):
             entity_type_id=self.shot_type.id,
             parent_id=sequence.id,
         )
-        shot_task = self.generate_fixture_shot_task(
-            name="main", shot_id=shot.id
-        )
+        return self.generate_fixture_shot_task(name="main", shot_id=shot.id)
+
+    def test_a_shot_path_resolves_to_its_task(self):
+        # The tokens are matched against entity names as they are stored,
+        # not against the lowercase style the templates render paths with.
+        shot_task = self.flat_shot_task()
 
         task = file_tree_service.get_shot_task_from_path(
             "/simple/productions/cosmos_landromat/shots/Seq1/P002/Animation/"
@@ -661,17 +711,70 @@ class PathToTaskTestCase(FileTreeTestCase):
         self.assertEqual(task["id"], str(shot_task.id))
 
     def test_a_path_of_another_shape_is_refused(self):
-        for path in [
-            "/simple/productions/cosmos_landromat/shots/S01/P01",
-            "/simple/productions/cosmos_landromat/shots/S01/P01/A/B/C",
+        """
+        The path is matched element by element against the template, so it
+        has to hold exactly as many. The longer one is the case worth
+        naming: its head resolves, so read loosely it would answer with a
+        task for a path pointing somewhere else entirely.
+        """
+        self.flat_shot_task()
+        for label, path in [
+            (
+                "too short",
+                "/simple/productions/cosmos_landromat/shots/Seq1/P002",
+            ),
+            (
+                "too long",
+                "/simple/productions/cosmos_landromat/shots/Seq1/P002/"
+                "Animation/max/extra",
+            ),
         ]:
-            with self.subTest(path=path):
+            with self.subTest(label=label):
                 self.assertRaises(
                     WrongPathFormatException,
                     file_tree_service.get_shot_task_from_path,
                     path,
                     self.project.serialize(),
                 )
+
+    def test_a_path_naming_no_asset_is_refused(self):
+        self.assertRaises(
+            WrongPathFormatException,
+            file_tree_service.get_asset_task_from_path,
+            "/simple/productions/cosmos_landromat/assets/Props/Nowhere/"
+            "Shaders/blender",
+            self.project.serialize(),
+        )
+
+    def test_a_path_naming_no_shot_is_refused(self):
+        self.assertRaises(
+            WrongPathFormatException,
+            file_tree_service.guess_shot,
+            self.project.serialize(),
+            "",
+            "S01",
+            "",
+        )
+
+    def test_an_unknown_department_only_stops_narrowing(self):
+        """
+        The department disambiguates two task types sharing a name. A path
+        naming one this instance does not have still resolves, the way an
+        unknown asset type does.
+        """
+        tree = copy.deepcopy(self.project.file_tree)
+        tree["working"]["folder_path"][
+            "asset"
+        ] = "<Project>/assets/<AssetType>/<Asset>/<Department>/<TaskType>"
+        self.project.update({"file_tree": tree})
+
+        task = file_tree_service.get_asset_task_from_path(
+            "/simple/productions/cosmos_landromat/assets/Props/Tree/Nowhere/"
+            "Shaders",
+            self.project.serialize(),
+        )
+
+        self.assertEqual(task["id"], str(self.task.id))
 
     def test_a_path_naming_no_task_type_is_refused(self):
         """
@@ -715,6 +818,20 @@ class PathToTaskTestCase(FileTreeTestCase):
             file_tree_service.extract_variable_values_from_path,
             ["cosmos_landromat", "assets"],
             ["<Project>", "shots"],
+        )
+
+    def test_the_first_occurrence_of_a_token_wins(self):
+        """
+        A template may name the same token twice. The value read the first
+        time is the one every later lookup is narrowed by, so a second
+        reading must not overwrite it.
+        """
+        self.assertEqual(
+            file_tree_service.extract_variable_values_from_path(
+                ["s01", "p01", "s02"],
+                ["<Sequence>", "<Shot>", "<Sequence>"],
+            ),
+            {"Sequence": "s01", "Shot": "p01"},
         )
 
 
@@ -819,6 +936,39 @@ class GuessFromPathTestCase(FileTreeTestCase):
                 str(self.project.id), "/elsewhere/cosmos landromat/assets"
             ),
             [],
+        )
+
+    def test_the_path_is_read_in_the_style_of_the_mode(self):
+        """
+        A tree rendering its paths in lowercase is handed back paths in
+        lowercase, but the DCC may have kept the case of the disk.
+        """
+        matches = self.guess(
+            "/SIMPLE/PRODUCTIONS/COSMOS LANDROMAT/ASSETS/PROPS/TREE/SHADERS/"
+            "BLENDER"
+        )
+        self.assertEqual(matches["asset"]["Asset"], str(self.asset.id))
+
+    def test_a_token_that_resolves_to_nothing_stops_the_template(self):
+        """
+        Every lookup below is narrowed by what was read above it: going on
+        after a hole would answer with an entity found in the wrong place.
+        """
+        matches = self.guess(
+            "/simple/productions/cosmos landromat/shots/nowhere/p01/"
+            "animation/max"
+        )
+        self.assertEqual(
+            matches["shot"],
+            {"Template": "shot", "Project": str(self.project.id)},
+        )
+
+    def test_a_token_is_not_resolved_without_its_production(self):
+        self.assertIsNone(
+            file_tree_service.get_data_from_token("Sequence", "s01")
+        )
+        self.assertIsNone(
+            file_tree_service.get_data_from_token("Scene", "sc01")
         )
 
 
