@@ -38,6 +38,30 @@ class DateHelpersTestCase(unittest.TestCase):
         self.assertEqual(start.strftime("%Y-%m-%d"), "2021-02-10")
         self.assertEqual(end.strftime("%Y-%m-%d"), "2021-02-11")
 
+    def test_timezoned_interval_converts_local_time_to_utc(self):
+        """
+        The interval bounds come in as local wall-clock time and must come
+        out as the UTC instants they name: a Kuala Lumpur day starts at
+        16:00 UTC the day before, not at 08:00 UTC the same day.
+        """
+        start, end = date_helpers.get_timezoned_interval(
+            datetime.datetime(2024, 12, 17),
+            datetime.datetime(2024, 12, 18),
+            "Asia/Kuala_Lumpur",
+        )
+        self.assertEqual(start, datetime.datetime(2024, 12, 16, 16, 0))
+        self.assertEqual(end, datetime.datetime(2024, 12, 17, 16, 0))
+
+        # Plain dates (the week interval helper returns them) are taken as
+        # local midnight.
+        start, end = date_helpers.get_timezoned_interval(
+            datetime.date(2024, 12, 17),
+            datetime.date(2024, 12, 18),
+            "America/New_York",
+        )
+        self.assertEqual(start, datetime.datetime(2024, 12, 17, 5, 0))
+        self.assertEqual(end, datetime.datetime(2024, 12, 18, 5, 0))
+
     def test_interval_allows_future_years(self):
         next_year = date_helpers.get_utc_now_datetime().year + 1
         start, _ = date_helpers.get_month_interval(next_year, 1)

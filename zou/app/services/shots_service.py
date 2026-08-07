@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 from operator import itemgetter
 from sqlalchemy.orm import aliased
 from sqlalchemy.exc import IntegrityError, StatementError
@@ -1529,11 +1529,22 @@ def _add_quota_entry(
     the project fps.
     """
     nb_seconds = nb_frames / fps
-    date_str = date_helpers.get_simple_string_with_timezone_from_date(
-        date, timezone
-    )
+    # TimeSpent dates are plain calendar days, already the user's working
+    # day: converting them would shift them for users west of UTC. Only
+    # real datetimes (end / done dates, stored in UTC) need the user
+    # timezone applied to find the local day they belong to. The week
+    # bucket follows the same local day, or day and week totals disagree
+    # around midnight UTC.
+    if isinstance(date, datetime):
+        date_str = date_helpers.get_simple_string_with_timezone_from_date(
+            date, timezone
+        )
+        local_date = date_helpers.get_date_from_string(date_str)
+    else:
+        local_date = date
+        date_str = date.strftime("%Y-%m-%d")
     year = date_str[:4]
-    week = year + "-" + str(date.isocalendar()[1])
+    week = f"{year}-{local_date.isocalendar()[1]}"
     month = date_str[:7]
     if entry_id not in quotas:
         _init_quota_entry(quotas, entry_id)
@@ -1632,13 +1643,13 @@ def get_month_quota_shots(
     task_type_id=None,
     weighted=True,
     feedback=True,
+    timezone=None,
 ):
     """
     Return shots that are included in quota computation for given
     person and month.
     """
     start, end = date_helpers.get_month_interval(year, month)
-    start, end = _get_timezoned_interval(start, end)
     if weighted:
         return get_weighted_quota_shots_between(
             person_id,
@@ -1647,6 +1658,7 @@ def get_month_quota_shots(
             project_id=project_id,
             task_type_id=task_type_id,
             feedback=feedback,
+            timezone=timezone,
         )
     else:
         return get_raw_quota_shots_between(
@@ -1656,6 +1668,7 @@ def get_month_quota_shots(
             project_id=project_id,
             task_type_id=task_type_id,
             feedback=feedback,
+            timezone=timezone,
         )
 
 
@@ -1667,13 +1680,13 @@ def get_week_quota_shots(
     task_type_id=None,
     weighted=True,
     feedback=True,
+    timezone=None,
 ):
     """
     Return shots that are included in quota comptutation for given
     person and week.
     """
     start, end = date_helpers.get_week_interval(year, week)
-    start, end = _get_timezoned_interval(start, end)
     if weighted:
         return get_weighted_quota_shots_between(
             person_id,
@@ -1682,6 +1695,7 @@ def get_week_quota_shots(
             project_id=project_id,
             task_type_id=task_type_id,
             feedback=feedback,
+            timezone=timezone,
         )
     else:
         return get_raw_quota_shots_between(
@@ -1691,6 +1705,7 @@ def get_week_quota_shots(
             project_id=project_id,
             task_type_id=task_type_id,
             feedback=feedback,
+            timezone=timezone,
         )
 
 
@@ -1703,6 +1718,7 @@ def get_day_quota_shots(
     task_type_id=None,
     weighted=True,
     feedback=True,
+    timezone=None,
 ):
     """
     Return shots that are included in quota comptutation for given
@@ -1717,6 +1733,7 @@ def get_day_quota_shots(
             project_id=project_id,
             task_type_id=task_type_id,
             feedback=feedback,
+            timezone=timezone,
         )
     else:
         return get_raw_quota_shots_between(
@@ -1726,11 +1743,18 @@ def get_day_quota_shots(
             project_id=project_id,
             task_type_id=task_type_id,
             feedback=feedback,
+            timezone=timezone,
         )
 
 
 def get_weighted_quota_shots_between(
-    person_id, start, end, project_id=None, task_type_id=None, feedback=True
+    person_id,
+    start,
+    end,
+    project_id=None,
+    task_type_id=None,
+    feedback=True,
+    timezone=None,
 ):
     """
     Get all shots leading to a quota computation during the given period.
@@ -1740,11 +1764,22 @@ def get_weighted_quota_shots_between(
         * If there is no time spent, weight it by the number of business days
           in the time interval spent between WIP date (start) and
           feedback date (end).
+
+    The period bounds are expressed in the user's local time. TimeSpent
+    dates are plain calendar days, so the bounds apply to them as-is; task
+    end / done dates are UTC instants, so the bounds are converted to UTC
+    before comparing (a feedback given in the local evening east of UTC
+    belongs to the next local day).
     """
     shot_type = get_shot_type()
     person = persons_service.get_person_raw(person_id)
     shots = []
     already_listed = {}
+    if type(start) is str:
+        start = date_helpers.get_datetime_from_string(start)
+    if type(end) is str:
+        end = date_helpers.get_datetime_from_string(end)
+    utc_start, utc_end = _get_timezoned_interval(start, end, timezone)
 
     query = (
         Entity.query.filter(Entity.entity_type_id == shot_type["id"])
@@ -1780,10 +1815,6 @@ def get_weighted_quota_shots_between(
             shot = already_listed[shot["id"]]
             shot["weight"] += round(duration / task_duration, 2)
 
-    if type(start) is str:
-        start = date_helpers.get_datetime_from_string(start)
-    if type(end) is str:
-        end = date_helpers.get_datetime_from_string(end)
     query = (
         Entity.query.filter(Entity.entity_type_id == shot_type["id"])
         .filter(Task.project_id == project_id)
@@ -1799,13 +1830,19 @@ def get_weighted_quota_shots_between(
     if feedback:
         query = (
             query.filter(Task.end_date != None)
-            .filter((Task.real_start_date <= end) & (Task.end_date >= start))
+            .filter(
+                (Task.real_start_date <= utc_end)
+                & (Task.end_date >= utc_start)
+            )
             .add_columns(Task.real_start_date, Task.end_date)
         )
     else:
         query = (
             query.filter(Task.done_date != None)
-            .filter((Task.real_start_date <= end) & (Task.done_date >= start))
+            .filter(
+                (Task.real_start_date <= utc_end)
+                & (Task.done_date >= utc_start)
+            )
             .add_columns(Task.real_start_date, Task.done_date)
         )
 
@@ -1838,14 +1875,28 @@ def get_weighted_quota_shots_between(
 
 
 def get_raw_quota_shots_between(
-    person_id, start, end, project_id=None, task_type_id=None, feedback=True
+    person_id,
+    start,
+    end,
+    project_id=None,
+    task_type_id=None,
+    feedback=True,
+    timezone=None,
 ):
     """
     Get all shots leading to a quota computation during the given period.
+    The period bounds are expressed in the user's local time; end / done
+    dates are UTC instants, so the bounds are converted to UTC before
+    comparing.
     """
     shot_type = get_shot_type()
     person = persons_service.get_person_raw(person_id)
     shots = []
+    if type(start) is str:
+        start = date_helpers.get_datetime_from_string(start)
+    if type(end) is str:
+        end = date_helpers.get_datetime_from_string(end)
+    start, end = _get_timezoned_interval(start, end, timezone)
 
     query = (
         Entity.query.filter(Entity.entity_type_id == shot_type["id"])
@@ -1883,11 +1934,12 @@ def get_raw_quota_shots_between(
     return sorted(shots, key=itemgetter("full_name"))
 
 
-def _get_timezoned_interval(start, end):
+def _get_timezoned_interval(start, end, timezone=None):
     """
-    Get time intervals adapted to the user timezone.
+    Convert an interval expressed in the user's local time to naive UTC.
     """
-    timezone = user_service.get_timezone()
+    if timezone is None:
+        timezone = user_service.get_timezone()
     return date_helpers.get_timezoned_interval(start, end, timezone)
 
 

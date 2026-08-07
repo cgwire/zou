@@ -792,6 +792,82 @@ class QuotaTestCase(ShotsTestCase):
             },
         )
 
+    def test_a_time_spent_day_is_not_shifted_by_the_timezone(self):
+        """
+        A time spent is logged against a calendar day, not an instant:
+        west of UTC it must stay on the day the artist picked instead of
+        sliding to the previous one.
+        """
+        quotas = {}
+        shots_service._add_quota_entry(
+            quotas,
+            "person",
+            datetime.date(2024, 1, 8),
+            "America/New_York",
+            100,
+            2,
+            25,
+        )
+        self.assertEqual(
+            quotas["person"]["day"]["frames"], {"2024-01-08": 100}
+        )
+
+    def test_an_end_date_lands_on_the_local_day_and_week(self):
+        """
+        End dates are UTC instants: a feedback given Sunday evening UTC is
+        Monday in Kuala Lumpur, and the week bucket must follow that local
+        day or the day and week totals disagree.
+        """
+        quotas = {}
+        shots_service._add_quota_entry(
+            quotas,
+            "person",
+            datetime.datetime(2024, 12, 15, 18, 0),
+            "Asia/Kuala_Lumpur",
+            100,
+            2,
+            25,
+        )
+        entry = quotas["person"]
+        self.assertEqual(entry["day"]["frames"], {"2024-12-16": 100})
+        self.assertEqual(entry["week"]["frames"], {"2024-51": 100})
+
+    def test_the_day_list_agrees_with_the_day_the_shot_is_counted_on(self):
+        """
+        The issue 1612 symptom: the aggregate counted a shot on the right
+        local day but the day detail list queried the raw UTC day, so the
+        shot was missing from the list. A feedback at 18:00 UTC is the
+        17th in Kuala Lumpur: the 17th's list must hold it, the 16th's
+        must not.
+        """
+        self.generate_shot_task()
+        task = self.generate_fixture_shot_task(
+            name="quota", shot_id=self.shot.id
+        )
+        task.update(
+            {
+                "end_date": fields.get_date_object(
+                    "2024-12-16T18:00:00", "%Y-%m-%dT%H:%M:%S"
+                )
+            }
+        )
+        args = dict(
+            project_id=str(self.project.id),
+            task_type_id=str(self.task_type_animation.id),
+            weighted=False,
+            timezone="Asia/Kuala_Lumpur",
+        )
+
+        counted_day = shots_service.get_day_quota_shots(
+            str(self.person.id), 2024, 12, 17, **args
+        )
+        wrong_day = shots_service.get_day_quota_shots(
+            str(self.person.id), 2024, 12, 16, **args
+        )
+
+        self.assertEqual([shot["name"] for shot in counted_day], ["P01"])
+        self.assertEqual(wrong_day, [])
+
     def test_a_shot_is_weighted_by_the_share_of_the_task_it_took(self):
         """
         The shots a person worked on in the window, weighted by the share of

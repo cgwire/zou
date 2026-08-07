@@ -1,5 +1,6 @@
 import datetime
 
+import pytz
 from babel.dates import format_datetime
 from dateutil import relativedelta
 from zou.app.services.exception import WrongDateFormatException
@@ -126,12 +127,25 @@ def get_day_interval(year, month, day):
 
 def get_timezoned_interval(start, end, timezone):
     """
-    Get interval between two dates based on timezones.
+    Convert an interval expressed in the given timezone's local time into
+    its naive UTC equivalent, to compare against UTC-stored datetime
+    columns.
     """
     return (
-        get_string_with_timezone_from_date(start, timezone),
-        get_string_with_timezone_from_date(end, timezone),
+        get_utc_from_local_datetime(start, timezone),
+        get_utc_from_local_datetime(end, timezone),
     )
+
+
+def get_utc_from_local_datetime(date_obj, timezone):
+    """
+    Interpret a naive date or datetime as local time in the given timezone
+    and return the matching naive UTC datetime.
+    """
+    if not isinstance(date_obj, datetime.datetime):
+        date_obj = datetime.datetime.combine(date_obj, datetime.time.min)
+    localized = pytz.timezone(timezone).localize(date_obj)
+    return localized.astimezone(pytz.utc).replace(tzinfo=None)
 
 
 def get_business_days(start, end):
