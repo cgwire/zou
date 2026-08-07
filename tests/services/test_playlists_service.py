@@ -34,8 +34,9 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         self.generate_fixture_person()
         self.generate_fixture_assigner()
         self.task = self.generate_fixture_shot_task()
-        self.generate_fixture_preview_file(revision=1)
-        self.generate_fixture_preview_file(revision=2)
+        self.preview_file_1 = self.generate_fixture_preview_file(revision=1)
+        # The latest revision, and the one self.preview_file points at.
+        self.preview_file_2 = self.generate_fixture_preview_file(revision=2)
 
     def generate_fixture_playlists(self):
         Playlist.create(
@@ -376,6 +377,58 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
                 {
                     "entity_id": str(self.shot.id),
                     "preview_file_id": str(self.preview_file.id),
+                }
+            ],
+        )
+
+    def test_an_entity_is_added_again_under_another_preview(self):
+        """
+        A playlist entry is the couple (entity, preview): a reviewer lines
+        up two revisions of the same shot to compare them. Adding them one
+        at a time reads the same way as adding them together.
+        """
+        self.generate_fixture_preview_files()
+        first = str(self.preview_file_2.id)
+        second = str(self.preview_file_1.id)
+        playlist = Playlist.create(
+            name="Playlist", shots=[], project_id=self.project.id
+        )
+
+        playlists_service.add_entity_to_playlist(
+            str(playlist.id), str(self.shot.id), first
+        )
+        playlists_service.add_entity_to_playlist(
+            str(playlist.id), str(self.shot.id), second
+        )
+        # The same couple a second time stays one entry.
+        playlists_service.add_entity_to_playlist(
+            str(playlist.id), str(self.shot.id), first
+        )
+
+        self.assertEqual(
+            [
+                shot["preview_file_id"]
+                for shot in Playlist.get(playlist.id).shots
+            ],
+            [first, second],
+        )
+
+    def test_an_entity_added_alone_carries_its_latest_preview(self):
+        self.generate_fixture_preview_files()
+        playlist = Playlist.create(
+            name="Playlist", shots=[], project_id=self.project.id
+        )
+
+        playlists_service.add_entity_to_playlist(
+            str(playlist.id), str(self.shot.id)
+        )
+
+        self.assertEqual(
+            Playlist.get(playlist.id).shots,
+            [
+                {
+                    "entity_id": str(self.shot.id),
+                    "preview_file_id": str(self.preview_file_2.id),
                 }
             ],
         )

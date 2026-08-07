@@ -541,39 +541,15 @@ def get_playlist(playlist_id):
 
 def add_entity_to_playlist(playlist_id, entity_id, preview_file_id=None):
     """
-    Atomically append an entity to the playlist shots list.
-    This function is designed to be safe under concurrent access.
-
-    Uses a Redis-based distributed lock to prevent race conditions
-    when multiple processes try to add entities to the same playlist
-    concurrently. Falls back to database-level locking if Redis is
-    unavailable.
+    Append one entity to the playlist shots list. Same rules as
+    add_entities_to_playlist, which this runs: a playlist entry is the
+    couple (entity, preview), so the same entity can be added again under
+    another preview, and a call naming no preview gets the latest one.
     """
-    entity_id_str = str(entity_id)
-    with with_playlist_lock(
-        playlist_id, timeout=30, wait_timeout=35
-    ) as acquired:
-        if not acquired:
-            raise PlaylistLockTimeoutException(
-                "Could not acquire the lock of this playlist"
-            )
-        playlist_dict = _add_entity_to_playlist_db(
-            playlist_id, entity_id_str, preview_file_id
-        )
-
-    events.emit(
-        "playlist:add_entity",
-        {
-            "playlist_id": playlist_dict["id"],
-            "entity_id": entity_id_str,
-            "preview_file_id": (
-                str(preview_file_id) if preview_file_id is not None else None
-            ),
-        },
-        project_id=playlist_dict["project_id"],
+    return add_entities_to_playlist(
+        playlist_id,
+        [{"entity_id": entity_id, "preview_file_id": preview_file_id}],
     )
-
-    return playlist_dict
 
 
 def get_latest_preview_file_ids_for_entities(entity_ids, task_type_id=None):
@@ -633,7 +609,7 @@ def add_entities_to_playlist(playlist_id, entities):
             raise PlaylistLockTimeoutException(
                 "Could not acquire the lock of this playlist"
             )
-        playlist = Playlist.get(playlist_id)
+        playlist = get_playlist_raw(playlist_id)
         task_type_id = (
             str(playlist.task_type_id)
             if playlist.task_type_id is not None
@@ -683,29 +659,6 @@ def add_entities_to_playlist(playlist_id, entities):
             project_id=playlist_dict["project_id"],
         )
     return playlist_dict
-
-
-def _add_entity_to_playlist_db(playlist_id, entity_id_str, preview_file_id):
-    """
-    Internal helper function to add an entity to playlist in the database.
-    Assumes the caller has acquired appropriate locking (Redis).
-    """
-    playlist = base_service.get_instance(
-        Playlist, playlist_id, PlaylistNotFoundException
-    )
-    shots = list(playlist.shots or [])
-
-    if not any(shot.get("entity_id") == entity_id_str for shot in shots):
-        shot = {
-            "entity_id": entity_id_str,
-        }
-        if preview_file_id is not None:
-            shot["preview_file_id"] = str(preview_file_id)
-        shots.append(shot)
-        playlist.shots = shots
-        playlist.update({"shots": shots})
-
-    return playlist.serialize()
 
 
 def playlist_previews(shots, only_movies=False):
