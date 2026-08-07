@@ -133,7 +133,7 @@ def get_edits(criterions=None):
         edits.append(edit)
 
     return entities_service.remove_not_allowed_metadata_for_vendor(
-        "Edit", criterions, edits
+        "Edit", criterions.get("vendor_departments"), edits
     )
 
 

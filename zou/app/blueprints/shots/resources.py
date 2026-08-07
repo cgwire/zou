@@ -838,8 +838,11 @@ class EpisodeShotsResource(MethodView, ArgsMixin):
         permissions_service.check_project_access(episode["project_id"])
         permissions_service.check_entity_access(episode["id"])
         relations = self.get_relations()
-        return shots_service.get_shots_for_episode(
-            episode_id, relations=relations
+        return permissions_service.mask_metadata_for_vendor(
+            "Shot",
+            shots_service.get_shots_for_episode(
+                episode_id, relations=relations
+            ),
         )
 
 
@@ -1231,7 +1234,11 @@ class SequenceAndTasksResource(MethodView):
             criterions["assigned_to"] = persons_service.get_current_user()[
                 "id"
             ]
-        return entities_service.get_entities_and_tasks(criterions)
+        return permissions_service.mask_metadata_for_vendor(
+            "Sequence",
+            entities_service.get_entities_and_tasks(criterions),
+            criterions.get("project_id"),
+        )
 
 
 class EpisodeAndTasksResource(MethodView):
@@ -1303,7 +1310,11 @@ class EpisodeAndTasksResource(MethodView):
             criterions["assigned_to"] = persons_service.get_current_user()[
                 "id"
             ]
-        return entities_service.get_entities_and_tasks(criterions)
+        return permissions_service.mask_metadata_for_vendor(
+            "Episode",
+            entities_service.get_entities_and_tasks(criterions),
+            criterions.get("project_id"),
+        )
 
 
 class ProjectShotsResource(MethodView, ArgsMixin):
@@ -1351,8 +1362,12 @@ class ProjectShotsResource(MethodView, ArgsMixin):
         """
         projects_service.get_project(project_id)
         permissions_service.check_project_access(project_id)
-        return shots_service.get_shots_for_project(
-            project_id, only_assigned=permissions.has_vendor_permissions()
+        return permissions_service.mask_metadata_for_vendor(
+            "Shot",
+            shots_service.get_shots_for_project(
+                project_id, only_assigned=permissions.has_vendor_permissions()
+            ),
+            project_id,
         )
 
     @jwt_required()
@@ -1488,8 +1503,12 @@ class ProjectSequencesResource(MethodView, ArgsMixin):
         """
         projects_service.get_project(project_id)
         permissions_service.check_project_access(project_id)
-        return shots_service.get_sequences_for_project(
-            project_id, only_assigned=permissions.has_vendor_permissions()
+        return permissions_service.mask_metadata_for_vendor(
+            "Sequence",
+            shots_service.get_sequences_for_project(
+                project_id, only_assigned=permissions.has_vendor_permissions()
+            ),
+            project_id,
         )
 
     @jwt_required()
@@ -1614,8 +1633,12 @@ class ProjectEpisodesResource(MethodView, ArgsMixin):
         """
         projects_service.get_project(project_id)
         permissions_service.check_project_access(project_id)
-        return shots_service.get_episodes_for_project(
-            project_id, only_assigned=permissions.has_vendor_permissions()
+        return permissions_service.mask_metadata_for_vendor(
+            "Episode",
+            shots_service.get_episodes_for_project(
+                project_id, only_assigned=permissions.has_vendor_permissions()
+            ),
+            project_id,
         )
 
     @jwt_required()
@@ -2038,9 +2061,12 @@ class EpisodesResource(MethodView):
         if permissions.has_vendor_permissions():
             project_id = criterions.get("project_id", None)
             if project_id is not None:
-                return shots_service.get_episodes_for_project(
+                return permissions_service.mask_metadata_for_vendor(
+                    "Episode",
+                    shots_service.get_episodes_for_project(
+                        project_id, only_assigned=True
+                    ),
                     project_id,
-                    only_assigned=True,
                 )
             return []
         return shots_service.get_episodes(criterions)
@@ -2102,8 +2128,11 @@ class EpisodeSequencesResource(MethodView):
         criterions = query.get_query_criterions_from_request(request)
         criterions["parent_id"] = episode_id
         if permissions.has_vendor_permissions():
-            return shots_service.get_sequences_for_episode(
-                episode_id, only_assigned=True
+            return permissions_service.mask_metadata_for_vendor(
+                "Sequence",
+                shots_service.get_sequences_for_episode(
+                    episode_id, only_assigned=True
+                ),
             )
         else:
             return shots_service.get_sequences(criterions)
@@ -2343,9 +2372,12 @@ class SequencesResource(MethodView):
         if permissions.has_vendor_permissions():
             project_id = criterions.get("project_id", None)
             if project_id is not None:
-                return shots_service.get_sequences_for_project(
+                return permissions_service.mask_metadata_for_vendor(
+                    "Sequence",
+                    shots_service.get_sequences_for_project(
+                        project_id, only_assigned=True
+                    ),
                     project_id,
-                    only_assigned=True,
                 )
             return []
         return shots_service.get_sequences(criterions)
@@ -2453,8 +2485,12 @@ class ProjectScenesResource(MethodView, ArgsMixin):
         projects_service.get_project(project_id)
         permissions_service.check_project_access(project_id)
         only_assigned = permissions.has_vendor_permissions()
-        return shots_service.get_scenes_for_project(
-            project_id, only_assigned=only_assigned
+        return permissions_service.mask_metadata_for_vendor(
+            "Scene",
+            shots_service.get_scenes_for_project(
+                project_id, only_assigned=only_assigned
+            ),
+            project_id,
         )
 
     @jwt_required()
@@ -2573,7 +2609,9 @@ class SequenceScenesResource(MethodView):
         sequence = shots_service.get_sequence(sequence_id)
         permissions_service.check_project_access(sequence["project_id"])
         permissions_service.check_entity_access(sequence_id)
-        return shots_service.get_scenes_for_sequence(sequence_id)
+        return permissions_service.mask_metadata_for_vendor(
+            "Scene", shots_service.get_scenes_for_sequence(sequence_id)
+        )
 
 
 class SceneTaskTypesResource(MethodView):

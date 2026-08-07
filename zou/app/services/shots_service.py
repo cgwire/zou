@@ -191,7 +191,7 @@ def get_shots(criterions=None):
         shots.append(shot)
 
     return entities_service.remove_not_allowed_metadata_for_vendor(
-        "Shot", criterions, shots
+        "Shot", criterions.get("vendor_departments"), shots
     )
 
 

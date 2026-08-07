@@ -172,11 +172,35 @@ def scope_criterions_to_vendor(criterions):
     """
     if permissions.has_vendor_permissions():
         criterions["assigned_to"] = persons_service.get_current_user()["id"]
-        criterions["vendor_departments"] = [
-            str(department.id)
-            for department in persons_service.get_current_user_raw().departments
-        ]
+        criterions["vendor_departments"] = get_vendor_departments()
     return criterions
+
+
+def get_vendor_departments():
+    """
+    Return the departments the current user belongs to, or None when they are
+    not a vendor and nothing has to be narrowed down.
+    """
+    if not permissions.has_vendor_permissions():
+        return None
+    return [
+        str(department.id)
+        for department in persons_service.get_current_user_raw().departments
+    ]
+
+
+def mask_metadata_for_vendor(entity_type, entities, project_id=None):
+    """
+    Hide from a listing the metadata a vendor may not see, in place. Anyone
+    else is left untouched.
+
+    The listings built from criterions carry the departments along in them.
+    These take no criterions, so the scope is read here, in the layer that
+    still knows who is asking.
+    """
+    return entities_service.remove_not_allowed_metadata_for_vendor(
+        entity_type, get_vendor_departments(), entities, project_id
+    )
 
 
 def check_entity_access(entity_id):

@@ -811,8 +811,12 @@ class ProjectEditsResource(MethodView, ArgsMixin):
         """
         projects_service.get_project(project_id)
         permissions_service.check_project_access(project_id)
-        return edits_service.get_edits_for_project(
-            project_id, only_assigned=permissions.has_vendor_permissions()
+        return permissions_service.mask_metadata_for_vendor(
+            "Edit",
+            edits_service.get_edits_for_project(
+                project_id, only_assigned=permissions.has_vendor_permissions()
+            ),
+            project_id,
         )
 
     @jwt_required()

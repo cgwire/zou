@@ -160,7 +160,9 @@ def get_assets(criterions=None, only_user_projects=False):
     else:
         result = query.all()
     return entities_service.remove_not_allowed_metadata_for_vendor(
-        "Asset", criterions, Entity.serialize_list(result, obj_type="Asset")
+        "Asset",
+        criterions.get("vendor_departments"),
+        Entity.serialize_list(result, obj_type="Asset"),
     )
 
 
