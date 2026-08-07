@@ -15,8 +15,6 @@ KNOWN_BROKEN = {
         "departments_service",
         "get_softwares_for_department",
     ),
-    ("edits/resources.py", "edits_service", "get_episode"),
-    ("edits/resources.py", "tasks_service", "get_edit_tasks_for_episode"),
     ("projects/resources.py", "user_service", "get_project_by_name"),
     ("tasks/resources.py", "persons_service", "get"),
 }

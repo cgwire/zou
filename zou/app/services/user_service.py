@@ -1,5 +1,6 @@
 from sqlalchemy.orm import aliased
 from sqlalchemy import func, or_, and_
+from sqlalchemy.exc import DataError
 
 from zou.app.models.comment import Comment
 from zou.app.models.entity import Entity
@@ -789,15 +790,17 @@ def update_filter_group(search_filter_group_id, data):
 
     search_filter_group.update(data)
 
-    if (
-        data.get("is_shared", None) is not None
-        and data.get("project_id", None) is not None
-        and permissions_service.has_manager_project_access(data["project_id"])
-    ):
+    if data.get("is_shared", None) is not None:
+        # The group carries the authorized value by now, since
+        # _deny_sharing_without_manager_access turned down what the caller
+        # could not ask for. The filters have to follow it rather than the
+        # body: update_filter refuses any change to a filter whose is_shared
+        # differs from its group, so a group left out of step with them
+        # makes them unmodifiable for good.
         if (
             SearchFilter.query.filter_by(
                 search_filter_group_id=search_filter_group_id
-            ).update({"is_shared": data["is_shared"]})
+            ).update({"is_shared": search_filter_group.is_shared})
             > 0
         ):
             SearchFilter.query.session.commit()
@@ -903,6 +906,19 @@ def get_last_notifications(
     """
     Return last 100 user notifications.
     """
+    # These reach the query as raw values, so the driver is the one that
+    # rejects them: a malformed id raises a StatementError while binding,
+    # a malformed date a DataError on execution. Both surfaced as a 500.
+    for id_field, value in (
+        ("notification_id", notification_id),
+        ("task_type_id", task_type_id),
+        ("task_status_id", task_status_id),
+    ):
+        if value is not None and not fields.is_valid_id(value):
+            raise WrongParameterException(
+                f"Invalid UUID format for {id_field}: {value}"
+            )
+
     current_user = persons_service.get_current_user()
     Author = aliased(Person, name="author")
     is_current_user_artist = current_user["role"] == "user"
@@ -968,7 +984,12 @@ def get_last_notifications(
         else:
             query = query.filter(Subscription.id == None)
 
-    notifications = query.limit(100).all()
+    try:
+        # The query is lazy: a date the driver refuses raises here, not
+        # while the filters are being stacked above.
+        notifications = query.limit(100).all()
+    except DataError:
+        raise WrongParameterException("Wrong date format for after or before.")
 
     for (
         notification,

@@ -172,11 +172,35 @@ def scope_criterions_to_vendor(criterions):
     """
     if permissions.has_vendor_permissions():
         criterions["assigned_to"] = persons_service.get_current_user()["id"]
-        criterions["vendor_departments"] = [
-            str(department.id)
-            for department in persons_service.get_current_user_raw().departments
-        ]
+        criterions["vendor_departments"] = get_vendor_departments()
     return criterions
+
+
+def get_vendor_departments():
+    """
+    Return the departments the current user belongs to, or None when they are
+    not a vendor and nothing has to be narrowed down.
+    """
+    if not permissions.has_vendor_permissions():
+        return None
+    return [
+        str(department.id)
+        for department in persons_service.get_current_user_raw().departments
+    ]
+
+
+def mask_metadata_for_vendor(entity_type, entities, project_id=None):
+    """
+    Hide from a listing the metadata a vendor may not see, in place. Anyone
+    else is left untouched.
+
+    The listings built from criterions carry the departments along in them.
+    These take no criterions, so the scope is read here, in the layer that
+    still knows who is asking.
+    """
+    return entities_service.remove_not_allowed_metadata_for_vendor(
+        entity_type, get_vendor_departments(), entities, project_id
+    )
 
 
 def check_entity_access(entity_id):
@@ -195,6 +219,28 @@ def check_entity_access(entity_id):
             raise permissions.PermissionDenied
         is_allowed = True
     return is_allowed
+
+
+def keep_entities_a_vendor_reaches(entities):
+    """
+    Drop from a listing the entities a vendor holds no task on. Anyone else
+    keeps all of them.
+
+    This is check_entity_access applied to a whole answer at once, for the
+    paths that do not walk their rows one by one. A page can come back
+    shorter than it was asked for, which beats handing over a production a
+    vendor was never meant to read.
+    """
+    if not entities or not permissions.has_vendor_permissions():
+        return entities
+    assigned = {
+        str(entity_id)
+        for (entity_id,) in Task.query.with_entities(Task.entity_id)
+        .filter(Task.entity_id.in_([entity["id"] for entity in entities]))
+        .filter(user_service.build_assignee_filter())
+        .all()
+    }
+    return [entity for entity in entities if entity["id"] in assigned]
 
 
 def check_task_status_access(task_status_id):

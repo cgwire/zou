@@ -844,6 +844,14 @@ def _normalize_locale(locale):
 #  in a subject line instead of letting markup into a body.
 PLAIN_TEXT_KEY_SUFFIXES = ("_subject", "_title")
 
+#  Keys whose result its caller hands to another template, or to a chat
+#  channel, rather than to a mail body. Escaping here would reach the
+#  recipient twice over, or push &amp; into Slack: whoever interpolates the
+#  fragment is the one that escapes it. Named one by one on purpose, since
+#  share_invitation_message_segment is concatenated straight into the html
+#  and has to keep being escaped right here.
+PRE_RENDERED_KEYS = ("playlist_episode_segment",)
+
 
 def _escape_params(key, params):
     """
@@ -853,7 +861,7 @@ def _escape_params(key, params):
     anything, so they used to reach the recipient as markup in a mail the
     studio genuinely sends, SPF and DKIM included.
     """
-    if key.endswith(PLAIN_TEXT_KEY_SUFFIXES):
+    if key.endswith(PLAIN_TEXT_KEY_SUFFIXES) or key in PRE_RENDERED_KEYS:
         return params
     return {
         name: html.escape(value) if isinstance(value, str) else value

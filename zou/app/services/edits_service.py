@@ -132,7 +132,9 @@ def get_edits(criterions=None):
         edit["project_name"] = project_name
         edits.append(edit)
 
-    return edits
+    return entities_service.remove_not_allowed_metadata_for_vendor(
+        "Edit", criterions.get("vendor_departments"), edits
+    )
 
 
 def get_edits_and_tasks(criterions=None):

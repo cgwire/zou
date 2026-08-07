@@ -59,6 +59,13 @@ class EditTasksTestCase(BaseEditTestCase):
         edits = self.get(f"data/edits/with-tasks?project_id={project_id}")
         self.assertNotIn("contractor", edits[0]["data"])
 
+        # The listings without the tasks answer the same production, so they
+        # hide the same descriptor.
+        for path in ["data/edits", "data/edits/all"]:
+            with self.subTest(path=path):
+                edits = self.get(f"{path}?project_id={project_id}")
+                self.assertNotIn("contractor", edits[0]["data"])
+
     def test_get_task_types_for_edit(self):
         task_types = self.get(f"data/edits/{self.edit_id}/task-types")
         self.assertEqual(len(task_types), 1)

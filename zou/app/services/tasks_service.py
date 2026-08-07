@@ -368,6 +368,21 @@ def get_shot_tasks_for_episode(episode_id, relations=False):
     return _convert_rows_to_detailed_tasks(query.all(), relations)
 
 
+def get_edit_tasks_for_episode(episode_id, relations=False):
+    """
+    Get all edit tasks for given episode.
+    """
+    query = (
+        _get_entity_task_query(relations=relations)
+        # An edit hangs straight off its episode, where a shot goes through
+        # a sequence, so the entity type is what tells them apart here.
+        .filter(
+            Entity.entity_type_id == edits_service.get_edit_type()["id"]
+        ).filter(Entity.parent_id == episode_id)
+    )
+    return _convert_rows_to_detailed_tasks(query.all(), relations)
+
+
 def get_asset_tasks_for_episode(episode_id, relations=False):
     """
     Get all assets tasks for given episode.

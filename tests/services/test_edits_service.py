@@ -5,7 +5,11 @@ from tests.base import ApiDBTestCase
 from zou.app.models.entity import EntityVersion
 from zou.app.models.schedule_item import ScheduleItem
 from zou.app.services import edits_service
-from zou.app.services.exception import EditNotFoundException
+from zou.app.services.exception import (
+    EditNotFoundException,
+    WrongIdFormatException,
+    WrongParameterException,
+)
 
 
 class EditUtilsTestCase(ApiDBTestCase):
@@ -29,10 +33,22 @@ class EditUtilsTestCase(ApiDBTestCase):
         self.assertEqual(edit_type["name"], "Edit")
 
     def test_get_edits(self):
-        edits = edits_service.get_edits()
-        self.edit_dict = self.edit.serialize(obj_type="Edit")
-        self.edit_dict["project_name"] = self.project.name
-        self.assertDictEqual(edits[0], self.edit_dict)
+        edit_dict = self.edit.serialize(obj_type="Edit")
+        edit_dict["project_name"] = self.project.name
+
+        self.assertDictEqual(edits_service.get_edits()[0], edit_dict)
+
+    def test_get_edits_refuses_a_malformed_id(self):
+        # The uuid guard sits in query.cast_value, before the statement is
+        # even built.
+        with pytest.raises(WrongParameterException):
+            edits_service.get_edits({"id": "not-an-id"})
+
+    def test_get_edits_refuses_a_value_the_driver_turns_down(self):
+        # Any other column reaches the database as a cast, so the refusal
+        # only comes once the query runs.
+        with pytest.raises(WrongIdFormatException):
+            edits_service.get_edits({"nb_entities_out": "abc"})
 
     def test_get_edits_and_tasks(self):
         self.the_chain_a_task_needs()
@@ -57,6 +73,17 @@ class EditUtilsTestCase(ApiDBTestCase):
             edits[0]["tasks"][0]["task_type_id"],
             str(self.edit_task.task_type_id),
         )
+
+    def test_get_edits_and_tasks_for_one_episode(self):
+        first_episode = self.episode
+        elsewhere = self.generate_fixture_episode("E02")
+        self.generate_fixture_edit("Next", parent_id=elsewhere.id)
+
+        edits = edits_service.get_edits_and_tasks(
+            {"episode_id": str(first_episode.id)}
+        )
+
+        self.assertEqual([edit["name"] for edit in edits], ["Edit"])
 
     def test_get_edit(self):
         self.assertEqual(
@@ -85,6 +112,21 @@ class EditUtilsTestCase(ApiDBTestCase):
         )
         self.assertEqual(edit["name"], edit_name)
         self.assertEqual(edit["parent_id"], parent_id)
+
+    def test_create_edit_without_episode(self):
+        # The client sends an empty value rather than no value at all when
+        # the edit belongs to no episode.
+        edit = edits_service.create_edit(
+            self.project.id, "Standalone", parent_id=""
+        )
+
+        self.assertIsNone(edit["parent_id"])
+
+    def test_create_edit_twice_returns_the_first_one(self):
+        first = edits_service.create_edit(self.project.id, "Editor's Cut")
+        again = edits_service.create_edit(self.project.id, "Editor's Cut")
+
+        self.assertEqual(first["id"], again["id"])
 
     def test_get_edits_for_episode(self):
         """

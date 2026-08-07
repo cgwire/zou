@@ -6,7 +6,11 @@ from tests.base import ApiDBTestCase, indexer_is_up
 
 from zou.app.models.entity import Entity
 
-from zou.app.services import assets_service, index_service
+from zou.app.services import (
+    assets_service,
+    index_service,
+    projects_service,
+)
 from zou.app.services.exception import (
     EpisodeNotFoundException,
     SequenceNotFoundException,
@@ -32,6 +36,7 @@ class SearchTestCase(ApiDBTestCase):
         self.generate_fixture_project()
         self.generate_fixture_asset_type()
         self.generate_fixture_asset()
+        self.generate_fixture_episode()
         self.generate_fixture_sequence()
         self.generate_fixture_shot()
         self.generate_fixture_asset_character()
@@ -90,6 +95,33 @@ class SearchTestCase(ApiDBTestCase):
         assets_service.remove_asset(asset["id"])
 
         self.assertEqual(index_service.search_assets("girafe"), [])
+
+    def test_search_drops_a_hit_whose_row_is_gone(self):
+        """
+        The index and the database drift apart the moment a row leaves
+        without a reindex. The stale hit is dropped rather than answered as
+        a half built asset.
+        """
+        asset = assets_service.create_asset(
+            self.project_id, self.asset_type_id, "Girafe", "", {}
+        )
+        Entity.get(asset["id"]).delete()
+
+        self.assertEqual(index_service.search_assets("girafe"), [])
+
+    def test_search_shots_of_a_tv_show_carry_their_episode(self):
+        self.project.update({"production_type": "tvshow"})
+        projects_service.clear_project_cache(str(self.project.id))
+
+        shot = index_service.search_shots("P01", self.project_ids)[0]
+
+        self.assertEqual(shot["episode"], self.episode.name)
+        self.assertEqual(shot["episode_id"], str(self.episode.id))
+
+    def test_search_shots_of_a_film_carry_no_episode(self):
+        shot = index_service.search_shots("P01", self.project_ids)[0]
+
+        self.assertNotIn("episode", shot)
 
 
 class PrepareDocumentTestCase(ApiDBTestCase):
@@ -225,3 +257,30 @@ class WithoutIndexerTestCase(ApiDBTestCase):
         self.assertEqual(
             index_service.remove_person_index(str(self.person.id)), {}
         )
+
+    def test_an_indexer_that_stops_answering_is_swallowed_too(self):
+        """
+        A configured Meilisearch that goes down mid-run is the other half of
+        the same promise: an unreachable one is logged, never raised, so the
+        write that triggered the indexation still goes through.
+
+        The index handle is faked so that this holds whether or not the
+        machine running the tests has an indexer.
+        """
+        with patch.object(
+            index_service.indexing, "get_index", return_value=object()
+        ):
+            with patch.object(
+                index_service.indexing,
+                "index_document",
+                side_effect=ConnectionError("indexer is down"),
+            ):
+                self.assertEqual(index_service.index_asset(self.asset), {})
+            with patch.object(
+                index_service.indexing,
+                "remove_document",
+                side_effect=ConnectionError("indexer is down"),
+            ):
+                self.assertEqual(
+                    index_service.remove_asset_index(str(self.asset.id)), {}
+                )

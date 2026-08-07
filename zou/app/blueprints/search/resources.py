@@ -4,11 +4,29 @@ from flask_jwt_extended import jwt_required
 
 from zou.app.mixin import ArgsMixin
 from zou.app.utils import permissions, validation
-from zou.app.services import index_service, projects_service, user_service
+from zou.app.services import (
+    index_service,
+    permissions_service,
+    projects_service,
+    user_service,
+)
 from zou.app.blueprints.search.schemas import SearchSchema
 
 
 class SearchResource(MethodView, ArgsMixin):
+    def scope_to_vendor(self, entity_type, entities):
+        """
+        Narrow a search answer to what a vendor may read: the entities they
+        hold a task on, without the metadata reserved to other departments.
+
+        The listings apply both rules already. The index knows neither, so
+        it answers the whole production to whoever can reach the project.
+        """
+        return permissions_service.mask_metadata_for_vendor(
+            entity_type,
+            permissions_service.keep_entities_a_vendor_reaches(entities),
+        )
+
     @jwt_required()
     def post(self):
         """
@@ -127,8 +145,11 @@ class SearchResource(MethodView, ArgsMixin):
             ):
                 results["assets"] = []
             else:
-                results["assets"] = index_service.search_assets(
-                    query, project_ids, limit=limit, offset=offset
+                results["assets"] = self.scope_to_vendor(
+                    "Asset",
+                    index_service.search_assets(
+                        query, project_ids, limit=limit, offset=offset
+                    ),
                 )
         if "shots" in index_names:
             if (
@@ -137,8 +158,11 @@ class SearchResource(MethodView, ArgsMixin):
             ):
                 results["shots"] = []
             else:
-                results["shots"] = index_service.search_shots(
-                    query, project_ids, limit=limit, offset=offset
+                results["shots"] = self.scope_to_vendor(
+                    "Shot",
+                    index_service.search_shots(
+                        query, project_ids, limit=limit, offset=offset
+                    ),
                 )
 
         return results

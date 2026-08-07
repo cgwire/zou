@@ -190,7 +190,9 @@ def get_shots(criterions=None):
         shot["sequence_name"] = sequence_name
         shots.append(shot)
 
-    return shots
+    return entities_service.remove_not_allowed_metadata_for_vendor(
+        "Shot", criterions.get("vendor_departments"), shots
+    )
 
 
 def get_scenes(criterions=None):

@@ -10,6 +10,8 @@ from zou.app import app
 from zou.app.models.entity import Entity
 from zou.app.models.person import Person
 from zou.app.models.project import Project
+from zou.app.models.search_filter import SearchFilter
+from zou.app.models.search_filter_group import SearchFilterGroup
 from zou.app.models.task import Task
 from zou.app.services import (
     comments_service,
@@ -19,6 +21,7 @@ from zou.app.services import (
 )
 from zou.app.services.exception import (
     DepartmentNotFoundException,
+    NotificationNotFoundException,
     SearchFilterNotFoundException,
     SearchFilterGroupNotFoundException,
     WrongParameterException,
@@ -84,53 +87,217 @@ class RelatedProjectsTestCase(UserContextTestCase):
         with self.as_user():
             self.assertEqual(user_service.related_projects(), [])
 
-    def test_get_last_notifications(self):
-        """
-        What the artist sees in their bell: a comment on a task they hold.
-        A comment written by a client comes back with its text blanked,
-        since the artist may not read it.
-        """
-        self.generate_fixture_user_cg_artist()
-        artist = self.user_cg_artist
-        projects_service.add_team_member(self.project_id, artist["id"])
-        tasks_service.assign_task(self.task_id, artist["id"])
 
-        with self.as_user(artist):
-            self.assertEqual(user_service.get_last_notifications(), [])
-
-        comments_service.create_comment(
-            self.user["id"],
-            self.task_id,
-            str(self.task_status_to_review.id),
-            "Lets go",
-            [],
-            {},
-            None,
-        )
-        comments_service.create_comment(
-            self.user_client["id"],
-            self.task_id,
-            str(self.task_status_to_review.id),
-            "Wrong picture",
-            [],
-            {},
-            None,
-        )
-
-        with self.as_user(artist):
-            notifications = user_service.get_last_notifications()
-
-        self.assertEqual(len(notifications), 2)
-        self.assertEqual(notifications[0]["comment_text"], "")
-        self.assertEqual(notifications[1]["comment_text"], "Lets go")
-
-
-class SearchFilterTestCase(UserContextTestCase):
+class NotificationTestCase(UserContextTestCase):
     """
-    The saved searches of the side panel. A filter belongs to one person
-    unless a manager of the production shares it with the team, and the
-    listing is memoized per person, so who may see what and when the cache
-    is dropped are the same question.
+    The bell of one artist: what lands in it, what it can be narrowed on,
+    and what a filter the driver cannot read answers.
+    """
+
+    def setUp(self):
+        super().setUp()
+
+        self.generate_fixture_project()
+        self.generate_fixture_asset()
+        self.generate_fixture_task_status_to_review()
+        self.generate_fixture_task()
+        self.generate_fixture_user_cg_artist()
+        self.generate_fixture_user_client()
+        self.artist = self.user_cg_artist
+        self.task_id = str(self.task.id)
+        self.project_id = str(self.project.id)
+        projects_service.add_team_member(self.project_id, self.artist["id"])
+        tasks_service.assign_task(self.task_id, self.artist["id"])
+
+    def a_comment(self, author=None, text="A note"):
+        """
+        A comment on the task the artist holds, which rings their bell.
+        """
+        return comments_service.create_comment(
+            (author or self.user)["id"],
+            self.task_id,
+            str(self.task_status_to_review.id),
+            text,
+            [],
+            {},
+            None,
+        )
+
+    def bell(self, **kwargs):
+        with self.as_user(self.artist):
+            return user_service.get_last_notifications(**kwargs)
+
+    def texts(self, **kwargs):
+        return [
+            notification["comment_text"]
+            for notification in self.bell(**kwargs)
+        ]
+
+    def test_the_bell_is_empty_until_someone_writes(self):
+        self.assertEqual(self.bell(), [])
+
+    def test_a_comment_on_a_held_task_rings_newest_first(self):
+        self.a_comment(text="Lets go")
+        self.a_comment(text="And again")
+
+        self.assertEqual(self.texts(), ["And again", "Lets go"])
+
+    def test_a_client_comment_comes_back_without_its_text(self):
+        """
+        An artist may not read what a client wrote, so the text is blanked
+        rather than the notification hidden: the bell still rings.
+        """
+        self.a_comment(text="Lets go")
+        self.a_comment(self.user_client, text="Wrong picture")
+
+        self.assertEqual(self.texts(), ["", "Lets go"])
+
+    def test_the_bell_holds_one_notification(self):
+        self.a_comment(text="Lets go")
+        self.a_comment(text="And again")
+        first = self.bell()[1]
+
+        self.assertEqual(self.texts(notification_id=first["id"]), ["Lets go"])
+
+    def test_the_bell_is_bounded_by_dates(self):
+        self.a_comment(text="Lets go")
+
+        self.assertEqual(self.texts(after="2020-01-01"), ["Lets go"])
+        self.assertEqual(self.texts(before="2020-01-01"), [])
+        self.assertEqual(self.texts(after="2100-01-01"), [])
+        self.assertEqual(self.texts(before="2100-01-01"), ["Lets go"])
+
+    def test_the_bell_holds_one_task_type(self):
+        self.a_comment(text="Lets go")
+        task_type_id = str(self.task.task_type_id)
+
+        self.assertEqual(self.texts(task_type_id=task_type_id), ["Lets go"])
+        self.assertEqual(self.texts(task_type_id=UNKNOWN), [])
+
+    def test_the_bell_holds_one_task_status(self):
+        self.a_comment(text="Lets go")
+        status_id = str(self.task_status_to_review.id)
+
+        self.assertEqual(self.texts(task_status_id=status_id), ["Lets go"])
+        self.assertEqual(self.texts(task_status_id=UNKNOWN), [])
+
+    def test_the_bell_holds_one_kind(self):
+        self.a_comment(text="Lets go")
+
+        self.assertEqual(self.texts(notification_type="comment"), ["Lets go"])
+        self.assertEqual(self.texts(notification_type="mention"), [])
+
+    def test_the_bell_holds_what_has_been_read(self):
+        self.a_comment(text="Lets go")
+        notification = self.bell()[0]
+
+        self.assertEqual(self.texts(read=False), ["Lets go"])
+        self.assertEqual(self.texts(read=True), [])
+
+        with self.as_user(self.artist):
+            user_service.update_notification(notification["id"], True)
+
+        self.assertEqual(self.texts(read=False), [])
+        self.assertEqual(self.texts(read=True), ["Lets go"])
+
+    def test_the_bell_holds_what_is_being_watched(self):
+        self.a_comment(text="Lets go")
+
+        self.assertEqual(self.texts(watching=True), [])
+        self.assertEqual(self.texts(watching=False), ["Lets go"])
+
+        with self.as_user(self.artist):
+            user_service.subscribe_to_task(self.task_id)
+
+        self.assertEqual(self.texts(watching=True), ["Lets go"])
+        self.assertEqual(self.texts(watching=False), [])
+
+    def test_a_malformed_id_is_answered_as_a_wrong_parameter(self):
+        """
+        These reach the query as raw values, so the driver used to reject
+        them and the route answered 500 where the caller made the mistake.
+        """
+        for field in ["notification_id", "task_type_id", "task_status_id"]:
+            with self.subTest(field=field):
+                with self.assertRaises(WrongParameterException):
+                    self.bell(**{field: "notanid"})
+
+    def test_a_date_the_driver_refuses_is_a_wrong_parameter(self):
+        """
+        The bounds are cast in SQL, so the driver is what refuses them and
+        it only speaks when the query runs. One value per case: the failed
+        statement leaves a transaction to roll back, and the rollback takes
+        the fixtures this class logs in with.
+        """
+        with self.assertRaises(WrongParameterException):
+            self.bell(after="notadate")
+
+    def test_an_empty_date_bound_is_a_wrong_parameter(self):
+        # A screen that drops its filter tends to send it empty rather
+        # than leave it out, and empty is not a date either.
+        with self.assertRaises(WrongParameterException):
+            self.bell(before="")
+
+    def test_get_notification(self):
+        self.a_comment(text="Lets go")
+        notification = self.bell()[0]
+
+        with self.as_user(self.artist):
+            again = user_service.get_notification(notification["id"])
+        self.assertEqual(again, notification)
+
+    def test_get_notification_of_someone_else(self):
+        """
+        The listing it runs is already scoped to the caller, so a
+        notification of another person reads as missing rather than leaking.
+        """
+        self.a_comment(text="Lets go")
+        notification = self.bell()[0]
+
+        with self.as_user():
+            with self.assertRaises(NotificationNotFoundException):
+                user_service.get_notification(notification["id"])
+
+    def test_update_notification_announces_both_ways(self):
+        self.a_comment(text="Lets go")
+        notification = self.bell()[0]
+
+        events = self.capture_events("notification:read")
+        with self.as_user(self.artist):
+            read = user_service.update_notification(notification["id"], True)
+        self.assertTrue(read["read"])
+        self.assertEqual(len(events), 1)
+
+        events = self.capture_events("notification:unread")
+        with self.as_user(self.artist):
+            unread = user_service.update_notification(
+                notification["id"], False
+            )
+        self.assertFalse(unread["read"])
+        self.assertEqual(len(events), 1)
+
+    def test_update_notification_of_someone_else(self):
+        self.a_comment(text="Lets go")
+        notification = self.bell()[0]
+
+        with self.as_user():
+            with self.assertRaises(NotificationNotFoundException):
+                user_service.update_notification(notification["id"], True)
+
+    def test_the_unread_count_and_marking_them_all(self):
+        self.a_comment(text="Lets go")
+        self.a_comment(text="And again")
+
+        with self.as_user(self.artist):
+            self.assertEqual(user_service.get_unread_notifications_count(), 2)
+            user_service.mark_notifications_as_read()
+            self.assertEqual(user_service.get_unread_notifications_count(), 0)
+
+
+class SavedSearchTestCase(UserContextTestCase):
+    """
+    One production, one department and the people the saved searches are
+    read as. Holds no test of its own.
     """
 
     def setUp(self):
@@ -150,9 +317,24 @@ class SearchFilterTestCase(UserContextTestCase):
             "shot", name, '{"status": "wip"}', **kwargs
         )
 
+    def a_group(self, name="group", **kwargs):
+        kwargs.setdefault("project_id", self.project_id)
+        return user_service.create_filter_group(
+            "shot", name, "#000000", **kwargs
+        )
+
     def filters_of(self, user):
         with self.as_user(user):
             return user_service.get_filters()
+
+
+class SearchFilterTestCase(SavedSearchTestCase):
+    """
+    The saved searches of the side panel. A filter belongs to one person
+    unless a manager of the production shares it with the team, and the
+    listing is memoized per person, so who may see what and when the cache
+    is dropped are the same question.
+    """
 
     def test_get_filters_groups_by_list_type_and_production(self):
         with self.as_user():
@@ -353,6 +535,128 @@ class SearchFilterTestCase(UserContextTestCase):
             self.a_filter("shared", is_shared=True)
 
         self.assertIn("shot", self.filters_of(self.user_cg_artist))
+
+
+class SearchFilterGroupTestCase(SavedSearchTestCase):
+    """
+    A group of saved searches. update_filter refuses a filter whose
+    is_shared differs from its group's, so the two are one state: whatever
+    moves the group has to move the filters it holds, or they can never be
+    written to again.
+    """
+
+    def setUp(self):
+        super().setUp()
+        projects_service.add_team_member(
+            self.project_id, self.user_manager["id"]
+        )
+
+    def a_shared_group_holding_a_filter(self):
+        group = self.a_group(is_shared=True)
+        search_filter = self.a_filter(
+            is_shared=True, search_filter_group_id=group["id"]
+        )
+        return group, search_filter
+
+    def sharings(self, group, search_filter):
+        return (
+            SearchFilterGroup.get(group["id"]).is_shared,
+            SearchFilter.get(search_filter["id"]).is_shared,
+        )
+
+    def test_get_filter_group(self):
+        with self.as_user():
+            group = self.a_group()
+
+            self.assertEqual(user_service.get_filter_group(group["id"]), group)
+            with self.assertRaises(SearchFilterGroupNotFoundException):
+                user_service.get_filter_group(UNKNOWN)
+
+    def test_a_group_of_someone_else_is_out_of_reach(self):
+        with self.as_user():
+            group = self.a_group()
+
+        with self.as_user(self.user_cg_artist):
+            with self.assertRaises(SearchFilterGroupNotFoundException):
+                user_service.get_filter_group(group["id"])
+            with self.assertRaises(SearchFilterGroupNotFoundException):
+                user_service.update_filter_group(group["id"], {"name": "his"})
+            with self.assertRaises(SearchFilterGroupNotFoundException):
+                user_service.remove_filter_group(group["id"])
+
+    def test_an_admin_reaches_a_group_of_someone_else(self):
+        with self.as_user(self.user_cg_artist):
+            group = self.a_group()
+
+        with self.as_user():
+            self.assertEqual(
+                user_service.get_filter_group(group["id"])["id"], group["id"]
+            )
+
+    def test_update_filter_group(self):
+        with self.as_user():
+            group = self.a_group()
+
+            renamed = user_service.update_filter_group(
+                group["id"], {"name": "renamed", "color": "#FFFFFF"}
+            )
+        self.assertEqual(renamed["name"], "renamed")
+        self.assertEqual(renamed["color"], "#FFFFFF")
+
+    def test_update_filter_group_cannot_share_without_manager_access(self):
+        with self.as_user(self.user_cg_artist):
+            group = self.a_group()
+
+            shared = user_service.update_filter_group(
+                group["id"],
+                {"is_shared": True, "project_id": self.project_id},
+            )
+        self.assertFalse(shared["is_shared"])
+
+    def test_sharing_a_group_shares_the_filters_it_holds(self):
+        with self.as_user(self.user_manager):
+            group = self.a_group()
+            search_filter = self.a_filter(search_filter_group_id=group["id"])
+            self.assertEqual(
+                self.sharings(group, search_filter), (False, False)
+            )
+
+            user_service.update_filter_group(
+                group["id"],
+                {"is_shared": True, "project_id": self.project_id},
+            )
+        self.assertEqual(self.sharings(group, search_filter), (True, True))
+
+    def test_unsharing_a_group_unshares_them_too(self):
+        """
+        A client that only sends the field it changed leaves project_id out.
+        The cascade used to hang on it, so the group turned private while
+        its filters stayed shared: still visible to the whole team, and
+        refused by update_filter from then on, whatever the change.
+        """
+        with self.as_user(self.user_manager):
+            group, search_filter = self.a_shared_group_holding_a_filter()
+            self.assertEqual(self.sharings(group, search_filter), (True, True))
+
+            user_service.update_filter_group(group["id"], {"is_shared": False})
+
+            self.assertEqual(
+                self.sharings(group, search_filter), (False, False)
+            )
+            renamed = user_service.update_filter(
+                search_filter["id"], {"name": "renamed"}
+            )
+        self.assertEqual(renamed["name"], "renamed")
+
+    def test_remove_filter_group_takes_its_filters_with_it(self):
+        with self.as_user(self.user_manager):
+            group, search_filter = self.a_shared_group_holding_a_filter()
+
+            user_service.remove_filter_group(group["id"])
+
+            with self.assertRaises(SearchFilterGroupNotFoundException):
+                user_service.get_filter_group(group["id"])
+        self.assertIsNone(SearchFilter.get(search_filter["id"]))
 
 
 class UserVisibleEntitiesTestCase(UserContextTestCase):

@@ -184,3 +184,163 @@ class EmailsServiceTestCase(ApiDBTestCase):
                 "discord_message": "discord",
             },
         )
+
+
+class PlaylistMailTestCase(EmailsServiceTestCase):
+    """
+    The playlist mail is written in two passes: a fragment naming the
+    episode, then the body it sits in. Both used to escape it.
+    """
+
+    def a_playlist(self, name="Sunday & Monday"):
+        return {
+            "id": "00000000-0000-0000-0000-000000000001",
+            "project_id": str(self.project.id),
+            "episode_id": str(self.episode.id),
+            "name": name,
+            "for_entity": "shot",
+            "is_for_all": False,
+            "shots": [],
+        }
+
+    def playlist_mail(self, playlist):
+        with patch(
+            "zou.app.services.emails_service.emails.send_email"
+        ) as mock_send:
+            emails_service.send_playlist_ready_notification(
+                str(self.a_person("Jean", "en_US").id),
+                str(self.user["id"]),
+                playlist,
+            )
+            return mock_send.call_args[0][1]
+
+    def test_an_ampersand_is_escaped_once_wherever_it_sits(self):
+        """
+        The episode name went through two translations and came out
+        &amp;amp;, which the recipient reads as "Tom &amp; Jerry". The
+        playlist name, interpolated once, was already right: the two are
+        one sentence of one mail and have to agree.
+        """
+        self.episode.update({"name": "Tom & Jerry"})
+
+        html = self.playlist_mail(self.a_playlist())
+
+        self.assertIn("Tom &amp; Jerry", html)
+        self.assertIn("Sunday &amp; Monday", html)
+        self.assertNotIn("&amp;amp;", html)
+
+    def test_the_invitation_message_is_still_escaped(self):
+        """
+        Its segment is concatenated straight into the body rather than
+        handed to another template, so it is the one place a fragment must
+        keep being escaped where it is built.
+        """
+        with patch(
+            "zou.app.services.emails_service.emails.send_email"
+        ) as mock_send:
+            emails_service.send_share_invitation(
+                "guest@example.com",
+                {"full_name": "John Did"},
+                {"name": "Playlist"},
+                self.project.serialize(),
+                "https://localhost:8080/share/token",
+                message="<script>alert(1)</script>",
+                locale="en_US",
+            )
+            html = mock_send.call_args[0][1]
+
+        self.assertNotIn("<script>", html)
+        self.assertIn("&lt;script&gt;", html)
+
+
+class TaskUrlTestCase(EmailsServiceTestCase):
+    """
+    The link every notification mail carries. A tv show scopes it to an
+    episode, and an asset of one has none of its own.
+    """
+
+    def url_of(self, task):
+        return emails_service.get_task_descriptors(
+            self.person.id, task.serialize()
+        )[2]
+
+    def test_a_standard_production_names_no_episode(self):
+        self.assertIn("/assets/tasks/", self.url_of(self.task))
+        self.assertNotIn("/episodes/", self.url_of(self.task))
+
+    def test_a_tv_show_scopes_a_shot_task_to_its_episode(self):
+        self.project.update({"production_type": "tvshow"})
+        self.generate_fixture_shot_task()
+
+        self.assertIn(
+            f"/episodes/{self.episode.id}/shots/tasks/",
+            self.url_of(self.shot_task),
+        )
+
+    def test_a_tv_show_sends_an_asset_task_to_the_main_episode(self):
+        """
+        Assets of a tv show hang off no episode, so the link used to name
+        one called None and led nowhere. Kitsu reads main as the pseudo
+        episode holding them.
+        """
+        self.project.update({"production_type": "tvshow"})
+
+        url = self.url_of(self.task)
+
+        self.assertIn("/episodes/main/assets/tasks/", url)
+        self.assertNotIn("None", url)
+
+
+class SenderTestCase(EmailsServiceTestCase):
+    """
+    The four senders nothing held. Each writes to whoever it is given, and
+    stays quiet on a person who turned notifications off.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.comment = {"text": "Wrong picture"}
+        self.reply = {"text": "Fixed"}
+        self.task_dict = self.task.serialize()
+
+    def senders(self, person_id):
+        author_id = str(self.person.id)
+        return {
+            "mention": lambda: emails_service.send_mention_notification(
+                person_id, author_id, self.comment, self.task_dict
+            ),
+            "assignation": lambda: (
+                emails_service.send_assignation_notification(
+                    person_id, author_id, self.task_dict
+                )
+            ),
+            "reply": lambda: emails_service.send_reply_notification(
+                person_id, author_id, self.comment, self.task_dict, self.reply
+            ),
+            "comment": lambda: emails_service.send_comment_notification(
+                person_id, author_id, self.comment, self.task_dict
+            ),
+        }
+
+    def mail_of(self, send):
+        with patch(
+            "zou.app.services.emails_service.emails.send_email"
+        ) as mock_send:
+            send()
+            return mock_send.call_args[0][1] if mock_send.called else None
+
+    def test_each_sender_writes_the_task_it_is_given(self):
+        recipient = self.a_person("Jean", "en_US")
+
+        for name, send in self.senders(str(recipient.id)).items():
+            with self.subTest(sender=name):
+                html = self.mail_of(send)
+                self.assertIn("Shaders", html)
+                self.assertIn(str(self.task.id), html)
+
+    def test_no_sender_writes_to_someone_who_turned_them_off(self):
+        quiet = self.a_person("Muet", "en_US", notifications_enabled=False)
+
+        for name, send in self.senders(str(quiet.id)).items():
+            with self.subTest(sender=name):
+                self.assertIsNone(self.mail_of(send))
