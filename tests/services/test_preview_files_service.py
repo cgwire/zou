@@ -168,6 +168,40 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
         )
         self.assertEqual(preview_file["revision"], 3)
 
+    def test_update_preview_file_position(self):
+        """
+        Moving a preview within its revision renumbers the whole revision,
+        so the positions stay contiguous whichever way it is moved.
+        """
+        self.generate_fixture_preview_file(revision=1)
+        self.generate_fixture_preview_file(revision=2)
+        preview_file = self.generate_fixture_preview_file(
+            revision=2, name="second"
+        )
+        preview_file_id = str(preview_file.id)
+        self.generate_fixture_preview_file(revision=2, name="third")
+
+        def revision_two():
+            return (
+                PreviewFile.query.filter_by(task_id=self.task_id, revision=2)
+                .order_by(PreviewFile.position)
+                .all()
+            )
+
+        preview_files_service.update_preview_file_position(preview_file_id, 1)
+        preview_files = revision_two()
+        self.assertEqual(
+            [preview.position for preview in preview_files], [1, 2, 3]
+        )
+        self.assertEqual(str(preview_files[0].id), preview_file_id)
+
+        preview_files_service.update_preview_file_position(preview_file_id, 3)
+        preview_files = revision_two()
+        self.assertEqual(
+            [preview.position for preview in preview_files], [1, 2, 3]
+        )
+        self.assertEqual(str(preview_files[2].id), preview_file_id)
+
     @patch("zou.app.services.preview_files_service.movie.generate_tile")
     @patch("zou.app.services.preview_files_service.save_variants")
     @patch(

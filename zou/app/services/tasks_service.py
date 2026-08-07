@@ -1619,6 +1619,7 @@ def get_or_create_status(
             is_client_allowed=is_client_allowed,
             is_wip=is_wip,
         )
+        clear_task_status_cache(str(task_status.id))
         events.emit("task-status:new", {"task_status_id": task_status.id})
     return task_status.serialize()
 
@@ -1925,6 +1926,7 @@ def add_preview_file_to_comment(comment_id, person_id, task_id, revision=None):
     )
     comment.previews.append(preview_file)
     comment.save()
+    clear_comment_cache(comment_id)
     if news is not None:
         news.update({"preview_file_id": preview_file.id})
     events.emit(
