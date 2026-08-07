@@ -10,6 +10,8 @@ from zou.app import app
 from zou.app.models.entity import Entity
 from zou.app.models.person import Person
 from zou.app.models.project import Project
+from zou.app.models.search_filter import SearchFilter
+from zou.app.models.search_filter_group import SearchFilterGroup
 from zou.app.models.task import Task
 from zou.app.services import (
     comments_service,
@@ -292,12 +294,10 @@ class NotificationTestCase(UserContextTestCase):
             self.assertEqual(user_service.get_unread_notifications_count(), 0)
 
 
-class SearchFilterTestCase(UserContextTestCase):
+class SavedSearchTestCase(UserContextTestCase):
     """
-    The saved searches of the side panel. A filter belongs to one person
-    unless a manager of the production shares it with the team, and the
-    listing is memoized per person, so who may see what and when the cache
-    is dropped are the same question.
+    One production, one department and the people the saved searches are
+    read as. Holds no test of its own.
     """
 
     def setUp(self):
@@ -317,9 +317,24 @@ class SearchFilterTestCase(UserContextTestCase):
             "shot", name, '{"status": "wip"}', **kwargs
         )
 
+    def a_group(self, name="group", **kwargs):
+        kwargs.setdefault("project_id", self.project_id)
+        return user_service.create_filter_group(
+            "shot", name, "#000000", **kwargs
+        )
+
     def filters_of(self, user):
         with self.as_user(user):
             return user_service.get_filters()
+
+
+class SearchFilterTestCase(SavedSearchTestCase):
+    """
+    The saved searches of the side panel. A filter belongs to one person
+    unless a manager of the production shares it with the team, and the
+    listing is memoized per person, so who may see what and when the cache
+    is dropped are the same question.
+    """
 
     def test_get_filters_groups_by_list_type_and_production(self):
         with self.as_user():
@@ -520,6 +535,128 @@ class SearchFilterTestCase(UserContextTestCase):
             self.a_filter("shared", is_shared=True)
 
         self.assertIn("shot", self.filters_of(self.user_cg_artist))
+
+
+class SearchFilterGroupTestCase(SavedSearchTestCase):
+    """
+    A group of saved searches. update_filter refuses a filter whose
+    is_shared differs from its group's, so the two are one state: whatever
+    moves the group has to move the filters it holds, or they can never be
+    written to again.
+    """
+
+    def setUp(self):
+        super().setUp()
+        projects_service.add_team_member(
+            self.project_id, self.user_manager["id"]
+        )
+
+    def a_shared_group_holding_a_filter(self):
+        group = self.a_group(is_shared=True)
+        search_filter = self.a_filter(
+            is_shared=True, search_filter_group_id=group["id"]
+        )
+        return group, search_filter
+
+    def sharings(self, group, search_filter):
+        return (
+            SearchFilterGroup.get(group["id"]).is_shared,
+            SearchFilter.get(search_filter["id"]).is_shared,
+        )
+
+    def test_get_filter_group(self):
+        with self.as_user():
+            group = self.a_group()
+
+            self.assertEqual(user_service.get_filter_group(group["id"]), group)
+            with self.assertRaises(SearchFilterGroupNotFoundException):
+                user_service.get_filter_group(UNKNOWN)
+
+    def test_a_group_of_someone_else_is_out_of_reach(self):
+        with self.as_user():
+            group = self.a_group()
+
+        with self.as_user(self.user_cg_artist):
+            with self.assertRaises(SearchFilterGroupNotFoundException):
+                user_service.get_filter_group(group["id"])
+            with self.assertRaises(SearchFilterGroupNotFoundException):
+                user_service.update_filter_group(group["id"], {"name": "his"})
+            with self.assertRaises(SearchFilterGroupNotFoundException):
+                user_service.remove_filter_group(group["id"])
+
+    def test_an_admin_reaches_a_group_of_someone_else(self):
+        with self.as_user(self.user_cg_artist):
+            group = self.a_group()
+
+        with self.as_user():
+            self.assertEqual(
+                user_service.get_filter_group(group["id"])["id"], group["id"]
+            )
+
+    def test_update_filter_group(self):
+        with self.as_user():
+            group = self.a_group()
+
+            renamed = user_service.update_filter_group(
+                group["id"], {"name": "renamed", "color": "#FFFFFF"}
+            )
+        self.assertEqual(renamed["name"], "renamed")
+        self.assertEqual(renamed["color"], "#FFFFFF")
+
+    def test_update_filter_group_cannot_share_without_manager_access(self):
+        with self.as_user(self.user_cg_artist):
+            group = self.a_group()
+
+            shared = user_service.update_filter_group(
+                group["id"],
+                {"is_shared": True, "project_id": self.project_id},
+            )
+        self.assertFalse(shared["is_shared"])
+
+    def test_sharing_a_group_shares_the_filters_it_holds(self):
+        with self.as_user(self.user_manager):
+            group = self.a_group()
+            search_filter = self.a_filter(search_filter_group_id=group["id"])
+            self.assertEqual(
+                self.sharings(group, search_filter), (False, False)
+            )
+
+            user_service.update_filter_group(
+                group["id"],
+                {"is_shared": True, "project_id": self.project_id},
+            )
+        self.assertEqual(self.sharings(group, search_filter), (True, True))
+
+    def test_unsharing_a_group_unshares_them_too(self):
+        """
+        A client that only sends the field it changed leaves project_id out.
+        The cascade used to hang on it, so the group turned private while
+        its filters stayed shared: still visible to the whole team, and
+        refused by update_filter from then on, whatever the change.
+        """
+        with self.as_user(self.user_manager):
+            group, search_filter = self.a_shared_group_holding_a_filter()
+            self.assertEqual(self.sharings(group, search_filter), (True, True))
+
+            user_service.update_filter_group(group["id"], {"is_shared": False})
+
+            self.assertEqual(
+                self.sharings(group, search_filter), (False, False)
+            )
+            renamed = user_service.update_filter(
+                search_filter["id"], {"name": "renamed"}
+            )
+        self.assertEqual(renamed["name"], "renamed")
+
+    def test_remove_filter_group_takes_its_filters_with_it(self):
+        with self.as_user(self.user_manager):
+            group, search_filter = self.a_shared_group_holding_a_filter()
+
+            user_service.remove_filter_group(group["id"])
+
+            with self.assertRaises(SearchFilterGroupNotFoundException):
+                user_service.get_filter_group(group["id"])
+        self.assertIsNone(SearchFilter.get(search_filter["id"]))
 
 
 class UserVisibleEntitiesTestCase(UserContextTestCase):

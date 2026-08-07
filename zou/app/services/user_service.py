@@ -790,15 +790,17 @@ def update_filter_group(search_filter_group_id, data):
 
     search_filter_group.update(data)
 
-    if (
-        data.get("is_shared", None) is not None
-        and data.get("project_id", None) is not None
-        and permissions_service.has_manager_project_access(data["project_id"])
-    ):
+    if data.get("is_shared", None) is not None:
+        # The group carries the authorized value by now, since
+        # _deny_sharing_without_manager_access turned down what the caller
+        # could not ask for. The filters have to follow it rather than the
+        # body: update_filter refuses any change to a filter whose is_shared
+        # differs from its group, so a group left out of step with them
+        # makes them unmodifiable for good.
         if (
             SearchFilter.query.filter_by(
                 search_filter_group_id=search_filter_group_id
-            ).update({"is_shared": data["is_shared"]})
+            ).update({"is_shared": search_filter_group.is_shared})
             > 0
         ):
             SearchFilter.query.session.commit()
