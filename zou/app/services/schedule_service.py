@@ -596,6 +596,11 @@ def apply_production_schedule_version_to_production(
     db.session.commit()
 
     for task_id, project_id in updated_tasks:
+        # The dates and estimation are written by a bulk UPDATE that the ORM
+        # never sees, so the memoized tasks must be dropped by hand. The event
+        # below makes every client refetch at once: without this they would
+        # all cache the pre-schedule dates for the rest of the TTL.
+        tasks_service.clear_task_cache(str(task_id))
         events.emit(
             "task:update",
             {"task_id": str(task_id)},

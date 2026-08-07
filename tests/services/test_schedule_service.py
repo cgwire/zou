@@ -12,7 +12,8 @@ from zou.app.models.production_schedule_version import (
     ProductionScheduleVersionTaskLinkPersonLink,
 )
 from zou.app.models.task import Task
-from zou.app.services import projects_service, schedule_service
+from zou.app.models.task_type import TaskType
+from zou.app.services import projects_service, schedule_service, tasks_service
 from zou.app.services.exception import (
     ProductionScheduleVersionNotFoundException,
     WrongParameterException,
@@ -225,6 +226,48 @@ class ScheduleItemTestCase(ScheduleTestCase):
             [(self.asset_type_id, self.task_type_id, self.project_id)],
         )
 
+    def test_get_schedule_asset_type_items_drops_the_orphan_rows(self):
+        """
+        An asset type the production no longer uses keeps its row in the
+        table. The listing names each row after its object, so a row left
+        in would be named after an entry the listing does not hold.
+        """
+        self.generate_fixture_asset_types()
+        orphan = ScheduleItem.create(
+            project_id=self.project.id,
+            task_type_id=self.task_type.id,
+            object_id=self.asset_type_character.id,
+        )
+
+        items = schedule_service.get_asset_types_schedule_items(
+            self.project.id, self.task_type_id
+        )
+
+        self.assertNotIn(str(orphan.id), [item["id"] for item in items])
+        self.assertEqual(
+            [item["object_id"] for item in items], [self.asset_type_id]
+        )
+
+    def test_get_schedule_asset_type_items_are_sorted_by_name(self):
+        # The rows are gathered in a set, so without the sort the listing
+        # comes out in an order the client cannot draw a schedule from.
+        self.generate_fixture_asset_types()
+        self.generate_fixture_asset(
+            name="Rabbit", asset_type_id=self.asset_type_character.id
+        )
+        self.generate_fixture_asset(
+            name="Forest", asset_type_id=self.asset_type_environment.id
+        )
+
+        items = schedule_service.get_asset_types_schedule_items(
+            self.project.id, self.task_type_id
+        )
+
+        self.assertEqual(
+            [item["name"] for item in items],
+            ["Character", "Environment", "Props"],
+        )
+
     def test_get_schedule_asset_type_items_for_episode(self):
         self.generate_fixture_asset_types()
         episode_1 = self.episode
@@ -261,16 +304,78 @@ class ScheduleItemTestCase(ScheduleTestCase):
         object_ids = {item["object_id"] for item in items}
         self.assertEqual(object_ids, {asset_type_character_id})
 
+    def test_get_task_types_schedule_items_ignores_the_entity_rows(self):
+        """
+        A task type row is the one attached to no object. The rows of the
+        entity listings share the task type, so reading them here would
+        stand in for the row the production schedule is drawn from.
+        """
+        entity_item = ScheduleItem.create(
+            project_id=self.project.id,
+            task_type_id=self.task_type.id,
+            object_id=self.sequence.id,
+        )
+
+        items = schedule_service.get_task_types_schedule_items(self.project.id)
+
+        self.assertNotIn(str(entity_item.id), [item["id"] for item in items])
+        self.assertEqual([item["object_id"] for item in items], [None])
+        self.assertEqual(
+            [item["task_type_id"] for item in items], [self.task_type_id]
+        )
+
+    def test_get_task_types_schedule_items_ignores_concepts(self):
+        """
+        Only the task types of the entities a schedule lays out get a row.
+        A concept task type is scheduled with no one, so it gets none.
+        """
+        concept_type = TaskType.create(
+            name="Concept Art",
+            for_entity="Concept",
+            color="#8D6E63",
+            priority=1,
+        )
+        Task.create(
+            name="concept",
+            project_id=self.project.id,
+            task_type_id=concept_type.id,
+            task_status_id=self.task_status.id,
+            entity_id=self.asset.id,
+            assigner_id=self.assigner.id,
+        )
+
+        items = schedule_service.get_task_types_schedule_items(self.project.id)
+
+        self.assertEqual(
+            [item["task_type_id"] for item in items], [self.task_type_id]
+        )
+
     def test_get_all_schedule_items(self):
-        schedule_service.get_task_types_schedule_items(self.project.id)
+        """
+        The sync listing returns the stored rows of one production only.
+        """
+        self.generate_fixture_project_standard()
+        elsewhere = ScheduleItem.create(
+            project_id=self.project_standard.id,
+            task_type_id=self.task_type.id,
+        )
+        created = schedule_service.get_task_types_schedule_items(
+            self.project.id
+        )
+
         items = schedule_service.get_schedule_items(self.project.id)
-        self.assertGreater(len(items), 0)
+
+        self.assertEqual(
+            {item["id"] for item in items},
+            {item["id"] for item in created},
+        )
+        self.assertNotIn(str(elsewhere.id), [item["id"] for item in items])
 
     def test_get_milestones_for_project(self):
-        milestones = schedule_service.get_milestones_for_project(
-            self.project_id
+        self.generate_fixture_project_standard()
+        self.assertEqual(
+            schedule_service.get_milestones_for_project(self.project_id), []
         )
-        self.assertEqual(milestones, [])
 
         Milestone.create(
             name="Alpha",
@@ -282,10 +387,19 @@ class ScheduleItemTestCase(ScheduleTestCase):
             project_id=self.project.id,
             date="2024-09-01",
         )
+        Milestone.create(
+            name="Elsewhere",
+            project_id=self.project_standard.id,
+            date="2024-09-01",
+        )
+
         milestones = schedule_service.get_milestones_for_project(
             self.project_id
         )
-        self.assertEqual(len(milestones), 2)
+        self.assertEqual(
+            sorted(milestone["name"] for milestone in milestones),
+            ["Alpha", "Beta"],
+        )
 
     def test_schedule_items_route_blocks_vendors(self):
         """
@@ -384,10 +498,19 @@ class ProductionScheduleVersionTestCase(ScheduleTestCase):
         psv = ProductionScheduleVersion.create(
             name="v1", project_id=self.project.id
         )
+        psv_id = str(psv.id)
+        schedule_service.get_production_schedule_version(psv_id)
+
         result = schedule_service.update_production_schedule_version(
-            str(psv.id), {"name": "v2"}
+            psv_id, {"name": "v2"}
         )
+
         self.assertEqual(result["name"], "v2")
+        # The read is memoized, so the update has to drop it.
+        self.assertEqual(
+            schedule_service.get_production_schedule_version(psv_id)["name"],
+            "v2",
+        )
 
     def test_get_production_schedule_version_task_links(self):
         psv = ProductionScheduleVersion.create(
@@ -705,6 +828,49 @@ class ProductionScheduleVersionTestCase(ScheduleTestCase):
         db.session.refresh(self.project)
         self.assertEqual(
             str(self.project.from_schedule_version_id), str(psv.id)
+        )
+
+    def test_apply_production_schedule_version_drops_the_task_cache(self):
+        # The dates are written by a bulk UPDATE the ORM never sees, and the
+        # task:update event makes every client refetch straight away. A task
+        # left in the cache is served with its pre-schedule dates to all of
+        # them, for the rest of the TTL.
+        psv = ProductionScheduleVersion.create(
+            name="v1", project_id=self.project.id
+        )
+        schedule_service.set_production_schedule_version_task_links_from_production(
+            str(psv.id)
+        )
+        link = ProductionScheduleVersionTaskLink.get_by(
+            production_schedule_version_id=psv.id, task_id=self.task.id
+        )
+        link.update({"estimation": 321, "due_date": datetime(2022, 5, 20)})
+        task_id = str(self.task.id)
+        tasks_service.get_task(task_id)
+
+        schedule_service.apply_production_schedule_version_to_production(
+            str(psv.id)
+        )
+
+        task = tasks_service.get_task(task_id)
+        self.assertEqual(task["estimation"], 321)
+        self.assertEqual(task["due_date"], "2022-05-20T00:00:00")
+
+    def test_apply_production_schedule_version_warns_the_clients(self):
+        psv = ProductionScheduleVersion.create(
+            name="v1", project_id=self.project.id
+        )
+        schedule_service.set_production_schedule_version_task_links_from_production(
+            str(psv.id)
+        )
+        events = self.capture_events("task:update")
+
+        schedule_service.apply_production_schedule_version_to_production(
+            str(psv.id)
+        )
+
+        self.assertEqual(
+            [event["task_id"] for event in events], [str(self.task.id)]
         )
 
     def test_get_production_schedule_version_task_links_route(self):
