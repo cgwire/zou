@@ -13,6 +13,7 @@ from zou.app.services import (
     persons_service,
 )
 from zou.app.services.tasks_service import (
+    assign_task,
     create_task,
     create_tasks,
     get_tasks_for_shot,
@@ -129,16 +130,19 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                     )
 
             task_comment_text = row.get(f"{task_type.name} comment", None)
+            task_assignees = self.get_assignation_ids(row, task_type.name)
 
-            if task_status_id is not None or task_comment_text not in [
-                None,
-                "",
-            ]:
+            if (
+                task_status_id is not None
+                or task_comment_text not in [None, ""]
+                or task_assignees
+            ):
                 tasks_update.append(
                     {
                         "task_type_id": str(task_type.id),
                         "task_status_id": task_status_id,
                         "comment": task_comment_text,
+                        "assignees": task_assignees,
                     }
                 )
 
@@ -168,9 +172,18 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                         entity.serialize(),
                     )
                 task = tasks_map[task_update["task_type_id"]]
-                if (
-                    task_update["comment"] is not None
-                    or task_update["task_status_id"] != task["task_status_id"]
+                already_assigned = set(task.get("assignees") or [])
+                for person_id in task_update["assignees"]:
+                    if person_id not in already_assigned:
+                        assign_task(
+                            task["id"], person_id, self.current_user_id
+                        )
+                # The status guard needs the explicit None check: an entry
+                # created for its assignations alone must not post an
+                # empty comment at the default status.
+                if task_update["comment"] is not None or (
+                    task_update["task_status_id"] is not None
+                    and task_update["task_status_id"] != task["task_status_id"]
                 ):
                     try:
                         create_comment(

@@ -210,3 +210,19 @@ class BaseCsvProjectImportResource(BaseCsvImportResource, ArgsMixin):
         if person_id is None:
             raise RowException(f"Person not found for {value}")
         return person_id
+
+    def get_assignation_ids(self, row, task_type_name):
+        """
+        Resolve the "<task type> assignations" cell into person ids. The
+        cell holds comma-separated full names, emails or ids (the export
+        writes full names); an empty or absent cell means no assignation
+        change.
+        """
+        value = row.get(f"{task_type_name} assignations", None)
+        if value in (None, ""):
+            return []
+        return [
+            self.get_person_id(name)
+            for name in value.split(",")
+            if name.strip() != ""
+        ]

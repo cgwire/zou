@@ -3,6 +3,7 @@ import os
 from tests.base import ApiDBTestCase
 from zou.app import db
 
+from zou.app.models.comment import Comment
 from zou.app.models.entity_type import EntityType
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.project import ProjectTaskTypeLink
@@ -125,6 +126,54 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
 
         shot = shots[0]
         self.assertEqual(shot["data"].get("contractor", None), "contractor 1")
+
+    def test_import_shots_assignations(self):
+        db.session.add(
+            ProjectTaskTypeLink(
+                project_id=self.project_id,
+                task_type_id=self.task_type_animation.id,
+            )
+        )
+        self.generate_fixture_person()
+        path = f"/import/csv/projects/{self.project.id}/shots"
+        self.project.update({"production_type": "tvshow"})
+
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "shots_assignations.csv")
+        )
+        self.upload_file(path, file_path_fixture)
+
+        tasks = {
+            shots_service.get_shot(str(task.entity_id))["name"]: task
+            for task in Task.query.all()
+        }
+        self.assertEqual(
+            sorted(str(person.id) for person in tasks["S01"].assignees),
+            sorted([str(self.person.id), self.user["id"]]),
+        )
+        self.assertEqual(tasks["S02"].assignees, [])
+        # Assignations alone must not post a comment at the default status.
+        self.assertEqual(Comment.query.all(), [])
+
+        # Re-importing the same file must not duplicate the assignations.
+        self.upload_file(f"{path}?update=true", file_path_fixture)
+        task = Task.get(tasks["S01"].id)
+        self.assertEqual(len(task.assignees), 2)
+
+    def test_import_shots_unknown_assignation_fails(self):
+        db.session.add(
+            ProjectTaskTypeLink(
+                project_id=self.project_id,
+                task_type_id=self.task_type_animation.id,
+            )
+        )
+        path = f"/import/csv/projects/{self.project.id}/shots"
+        self.project.update({"production_type": "tvshow"})
+
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "shots_assignations_unknown.csv")
+        )
+        self.upload_file(path, file_path_fixture, 400)
 
     def test_import_shots_empty_boolean_descriptor(self):
         MetadataDescriptor.create(
