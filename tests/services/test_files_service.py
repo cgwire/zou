@@ -1,9 +1,13 @@
 import pytest
 
+from sqlalchemy import event
+
 from tests.base import ApiDBTestCase
 
-from zou.app import app
+from zou.app import app, db
+from zou.app.models.file_status import FileStatus
 from zou.app.models.software import Software
+from zou.app.models.working_file import WorkingFile
 from zou.app.services import deletion_service, files_service
 from zou.app.services.exception import (
     EntryAlreadyExistsException,
@@ -14,7 +18,29 @@ from zou.app.services.exception import (
     SoftwareNotFoundException,
     WorkingFileNotFoundException,
 )
-from zou.app.utils import fields
+from zou.app.utils import cache, fields
+
+
+class DefaultFileStatusTestCase(ApiDBTestCase):
+    """
+    A fresh instance holds no file status at all, and every output file
+    needs one. It is created on the first read, and only once.
+    """
+
+    def setUp(self):
+        super().setUp()
+        cache.cache.delete_memoized(files_service.get_default_status)
+
+    def test_the_default_status_is_created_on_first_read(self):
+        self.assertEqual(FileStatus.query.count(), 0)
+
+        file_status = files_service.get_default_status()
+
+        self.assertEqual(
+            file_status["name"], app.config["DEFAULT_FILE_STATUS"]
+        )
+        self.assertEqual(FileStatus.query.count(), 1)
+        self.assertEqual(files_service.get_default_status(), file_status)
 
 
 class FilesTestCase(ApiDBTestCase):
@@ -129,13 +155,6 @@ class LookupTestCase(FilesTestCase):
                 self.assertRaises(exception, get, "unknown")
                 self.assertRaises(exception, get, fields.gen_uuid())
 
-    def test_the_default_file_status_is_created_on_first_read(self):
-        file_status = files_service.get_default_status()
-        self.assertEqual(
-            file_status["name"], app.config["DEFAULT_FILE_STATUS"]
-        )
-        self.assertEqual(files_service.get_default_status(), file_status)
-
     def test_a_software_is_created_only_once(self):
         self.assertIsNone(Software.get_by(name="Maya"))
         software = files_service.get_or_create_software("Maya", "may", ".ma")
@@ -157,17 +176,32 @@ class LookupTestCase(FilesTestCase):
         """
         The download routes only need the task to check the permission and
         the date for the Last-Modified header. The annotations and the data
-        of a long shot weigh several MB and would be read for nothing.
+        of a long shot weigh several MB, so the point of this lookup is the
+        columns it does not read: watch the statement, not the result.
         """
         self.generate_fixture_preview_file()
-        result = files_service.get_preview_file_for_access(
-            self.preview_file.id
-        )
+        # Read out of the fixture first: touching it under the recorder
+        # would log the lazy load of the whole row, which is not the
+        # statement under test.
+        preview_file_id = str(self.preview_file.id)
+        task_id = str(self.preview_file.task_id)
+        statements = []
+
+        def record(conn, cursor, statement, *args):
+            statements.append(statement)
+
+        event.listen(db.engine, "before_cursor_execute", record)
+        try:
+            result = files_service.get_preview_file_for_access(preview_file_id)
+        finally:
+            event.remove(db.engine, "before_cursor_execute", record)
+
         self.assertEqual(
             set(result.keys()), {"id", "task_id", "updated_at", "extension"}
         )
-        self.assertEqual(result["id"], str(self.preview_file.id))
-        self.assertEqual(result["task_id"], str(self.preview_file.task_id))
+        self.assertEqual(result["id"], preview_file_id)
+        self.assertEqual(result["task_id"], task_id)
+        self.assertNotIn("annotations", " ".join(statements))
 
 
 class WorkingFileTestCase(FilesTestCase):
@@ -184,18 +218,30 @@ class WorkingFileTestCase(FilesTestCase):
             [5, 4, 3, 2, 1],
         )
 
-    def test_the_last_revision_is_read_per_name(self):
+    def test_the_last_revision_is_read_per_name_and_per_task(self):
         for revision in [2, 3, 4, 5]:
             self.generate_fixture_working_file(name="main", revision=revision)
         for revision in [1, 2, 3]:
             self.generate_fixture_working_file(
                 name="hotfix", revision=revision
             )
+        # Same name, another task, and further along: the two revision
+        # lines are separate even though they share a name.
+        self.generate_fixture_shot_working_file()
+        WorkingFile.get(self.working_file.id).update({"revision": 9})
+
         working_files = files_service.get_last_working_files_for_task(
             self.task.id
         )
+
         self.assertEqual(working_files["main"]["revision"], 5)
         self.assertEqual(working_files["hotfix"]["revision"], 3)
+        self.assertEqual(
+            files_service.get_last_working_files_for_task(self.shot_task.id)[
+                "main"
+            ]["revision"],
+            9,
+        )
 
     def test_the_next_revision_follows_the_last_one_of_the_name(self):
         self.generate_fixture_working_file(name="hotfix", revision=7)
@@ -390,13 +436,21 @@ class OutputFileTestCase(FilesTestCase):
 
     def test_the_last_revision_is_read_per_output_type(self):
         geometry = self.output_type
-        cache = self.generate_fixture_output_type(
+        cache_type = self.generate_fixture_output_type(
             name="Cache", short_name="cch"
         )
         for revision in [2, 3, 4, 5]:
             self.generate_fixture_output_file(geometry, revision)
         for revision in [1, 2, 3]:
-            self.generate_fixture_output_file(cache, revision)
+            self.generate_fixture_output_file(cache_type, revision)
+        # An instance of the asset, further along than the asset itself.
+        self.generate_fixture_scene()
+        self.generate_fixture_output_file(
+            geometry,
+            9,
+            asset_instance=self.generate_fixture_scene_asset_instance(),
+            temporal_entity_id=str(self.scene.id),
+        )
 
         last_output_files = files_service.get_last_output_files_for_entity(
             self.asset.id
@@ -407,7 +461,7 @@ class OutputFileTestCase(FilesTestCase):
                 output_file["output_type_id"]: output_file["revision"]
                 for output_file in last_output_files
             },
-            {str(geometry.id): 5, str(cache.id): 3},
+            {str(geometry.id): 5, str(cache_type.id): 3},
         )
 
     def test_a_listing_is_narrowed_by_output_type_and_representation(self):
@@ -420,6 +474,16 @@ class OutputFileTestCase(FilesTestCase):
             self.generate_fixture_output_file(
                 geometry, revision, representation="max"
             )
+
+        # An instance of the asset publishes under the same output type:
+        # its files belong to the instance, not to the asset.
+        self.generate_fixture_scene()
+        self.generate_fixture_output_file(
+            geometry,
+            9,
+            asset_instance=self.generate_fixture_scene_asset_instance(),
+            temporal_entity_id=str(self.scene.id),
+        )
 
         get_files = files_service.get_output_files_for_output_type_and_entity
         # Newest revision first, both representations interleaved.
@@ -448,11 +512,17 @@ class OutputFileTestCase(FilesTestCase):
         )
 
     def test_the_output_types_of_an_entity_are_listed_once_each(self):
-        cache = self.generate_fixture_output_type(
+        cache_type = self.generate_fixture_output_type(
             name="Cache", short_name="cch"
         )
-        self.generate_fixture_output_file(cache, 1)
+        self.generate_fixture_output_file(cache_type, 1)
         self.generate_fixture_output_file(self.output_type, 2)
+        # Another entity publishes a type this asset never used.
+        rig_type = self.generate_fixture_output_type(
+            name="Rig", short_name="rig"
+        )
+        self.generate_fixture_output_file(rig_type, 1, task=self.shot_task)
+
         self.assertEqual(
             [
                 output_type["name"]
@@ -461,6 +531,15 @@ class OutputFileTestCase(FilesTestCase):
                 )
             ],
             ["Cache", "Geometry"],
+        )
+        self.assertEqual(
+            [
+                output_type["name"]
+                for output_type in files_service.get_output_types_for_entity(
+                    self.shot.id
+                )
+            ],
+            ["Rig"],
         )
 
     def test_an_updated_output_file_is_read_back_updated(self):
@@ -547,8 +626,10 @@ class AssetInstanceOutputFileTestCase(FilesTestCase):
         )
 
     def test_every_revision_of_an_instance_is_listed_newest_first(self):
-        for revision in [1, 2]:
-            self.publish(self.geometry, revision)
+        for revision, representation in [(1, "obj"), (2, "obj"), (1, "max")]:
+            self.publish(
+                self.geometry, revision, representation=representation
+            )
         self.publish(self.cache, 1)
         self.publish(self.geometry, 1, temporal_entity_id=self.shot_id)
 
@@ -557,7 +638,7 @@ class AssetInstanceOutputFileTestCase(FilesTestCase):
         )
         self.assertEqual(
             [output_file["revision"] for output_file in output_files],
-            [2, 1, 1],
+            [2, 1, 1, 1],
         )
         self.assertEqual(
             {output_file["output_type_id"] for output_file in output_files},
@@ -573,26 +654,43 @@ class AssetInstanceOutputFileTestCase(FilesTestCase):
             ),
             1,
         )
+        self.assertEqual(
+            len(
+                files_service.get_output_files_for_instance(
+                    self.asset_instance.id,
+                    self.scene_id,
+                    representation="obj",
+                )
+            ),
+            2,
+        )
 
     def test_the_last_revision_is_read_per_output_type(self):
-        for revision in [1, 2, 3]:
+        for revision in [1, 2]:
             self.publish(self.geometry, revision)
-        self.publish(self.cache, 1)
+        last_geometry = self.publish(self.geometry, 3)
+        last_cache = self.publish(self.cache, 1)
+        # The same instance under another temporal entity: its own line,
+        # and its own last revision.
+        self.publish(self.geometry, 9, temporal_entity_id=self.shot_id)
 
         last_output_files = files_service.get_last_output_files_for_instance(
             self.asset_instance.id, self.scene_id
         )
+
         self.assertEqual(
-            {
-                output_file["output_type_id"]: output_file["revision"]
-                for output_file in last_output_files
-            },
-            {str(self.geometry.id): 3, str(self.cache.id): 1},
+            {output_file["id"] for output_file in last_output_files},
+            {str(last_geometry.id), str(last_cache.id)},
         )
 
     def test_the_output_types_of_an_instance_are_listed_once_each(self):
         self.publish(self.geometry, 1)
         self.publish(self.cache, 1)
+        rig_type = self.generate_fixture_output_type(
+            name="Rig", short_name="rig"
+        )
+        self.publish(rig_type, 1, temporal_entity_id=self.shot_id)
+
         self.assertEqual(
             [
                 output_type["name"]
@@ -602,6 +700,15 @@ class AssetInstanceOutputFileTestCase(FilesTestCase):
             ],
             ["Cache", "Geometry"],
         )
+        self.assertEqual(
+            [
+                output_type["name"]
+                for output_type in files_service.get_output_types_for_instance(
+                    self.asset_instance.id, self.shot_id
+                )
+            ],
+            ["Rig"],
+        )
 
 
 class PreviewFileTestCase(FilesTestCase):
@@ -610,10 +717,17 @@ class PreviewFileTestCase(FilesTestCase):
     picture or a movie.
     """
 
-    def test_the_previews_of_a_task_are_listed(self):
-        self.generate_fixture_preview_file()
+    def test_the_previews_of_a_task_come_newest_first(self):
+        for revision in [1, 2, 3]:
+            self.generate_fixture_preview_file(revision=revision)
         self.assertEqual(
-            len(files_service.get_preview_files_for_task(self.task.id)), 1
+            [
+                preview["revision"]
+                for preview in files_service.get_preview_files_for_task(
+                    self.task.id
+                )
+            ],
+            [3, 2, 1],
         )
 
     def test_a_new_preview_starts_as_processing(self):
@@ -648,13 +762,20 @@ class PreviewFileTestCase(FilesTestCase):
 
     def test_a_removed_preview_is_no_longer_read(self):
         self.generate_fixture_preview_file()
-        preview_file_id = self.preview_file.id
+        preview_file_id = str(self.preview_file.id)
+        files_service.get_preview_file(preview_file_id)
+        files_service.get_preview_file_for_access(preview_file_id)
+
         files_service.remove_preview_file(preview_file_id)
-        self.assertRaises(
-            PreviewFileNotFoundException,
+
+        for get in [
             files_service.get_preview_file,
-            preview_file_id,
-        )
+            files_service.get_preview_file_for_access,
+        ]:
+            with self.subTest(get=get.__name__):
+                self.assertRaises(
+                    PreviewFileNotFoundException, get, preview_file_id
+                )
 
     def test_a_removed_preview_is_announced(self):
         self.generate_fixture_preview_file()
@@ -738,6 +859,11 @@ class PreviewBackgroundFileTestCase(FilesTestCase):
 
         self.assertFalse(
             files_service.get_preview_background_file(str(previous.id))[
+                "is_default"
+            ]
+        )
+        self.assertTrue(
+            files_service.get_preview_background_file(str(new_default.id))[
                 "is_default"
             ]
         )
