@@ -6,6 +6,7 @@ from zou.app.services import (
     breakdown_service,
     entities_service,
     projects_service,
+    shots_service,
     tasks_service,
 )
 
@@ -111,6 +112,35 @@ class CastingTestCase(BreakdownTestCase):
                 self.shot_id, self.asset_character_id
             )
         )
+
+    def test_casting_an_asset_already_cast_updates_the_link(self):
+        """
+        update_casting wipes the links before writing the new ones, so this
+        is the path of a caller adding one asset to a casting: the CSV
+        import, and the plugins.
+        """
+        breakdown_service.create_casting_link(
+            self.shot_id, self.asset_id, nb_occurences=1, label="fixed"
+        )
+
+        breakdown_service.create_casting_link(
+            self.shot_id, self.asset_id, nb_occurences=5, label="moving"
+        )
+
+        link = breakdown_service.get_entity_link(self.shot_id, self.asset_id)
+        self.assertEqual(link["nb_occurences"], 5)
+        self.assertEqual(link["label"], "moving")
+
+    def test_a_cast_entry_missing_its_count_is_left_out(self):
+        breakdown_service.update_casting(
+            self.shot_id,
+            [
+                {"asset_id": self.asset_id, "nb_occurences": 1},
+                {"asset_id": self.asset_character_id},
+            ],
+        )
+
+        self.assertEqual(self.cast_asset_ids(self.shot_id), [self.asset_id])
 
     def test_a_casting_change_says_what_changed(self):
         """
@@ -221,6 +251,11 @@ class EpisodeCastingTestCase(BreakdownTestCase):
         other_shot_id = str(self.generate_fixture_shot("SH02").id)
         self.cast(first_shot_id, self.asset_id)
         self.cast(other_shot_id, self.asset_id)
+        # Read before the change, so the count below comes from a cache
+        # that has something to invalidate.
+        self.assertEqual(
+            entities_service.get_entity(self.episode_id)["nb_entities_out"], 1
+        )
 
         self.cast(first_shot_id)
 
@@ -257,10 +292,18 @@ class EpisodeCastingTestCase(BreakdownTestCase):
         shot that used it.
         """
         self.cast(self.shot_id, self.asset_id)
+        # Read before the change, so the count below comes from a cache
+        # that has something to invalidate.
+        self.assertEqual(
+            shots_service.get_shot(self.shot_id)["nb_entities_out"], 1
+        )
 
         self.cast(self.episode_id)
 
         self.assertEqual(self.cast_asset_ids(self.shot_id), [])
+        self.assertEqual(
+            shots_service.get_shot(self.shot_id)["nb_entities_out"], 0
+        )
         self.assertEqual(
             entities_service.get_entity(self.shot_id)["nb_entities_out"], 0
         )

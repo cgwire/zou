@@ -533,6 +533,16 @@ def _create_episode_casting_link(entity, asset_id, nb_occurences=1, label=""):
                     nb_occurences=nb_occurences,
                     label=label,
                 )
+                # The count is what the breakdown of the episode is drawn
+                # from, and the detach path below decrements it: without
+                # this, an episode cast through its shots reported none.
+                episode = entities_service.get_entity_raw(
+                    sequence["parent_id"]
+                )
+                episode.update(
+                    {"nb_entities_out": (episode.nb_entities_out or 0) + 1}
+                )
+                entities_service.clear_entity_cache(sequence["parent_id"])
                 events.emit(
                     "asset:update",
                     {"asset_id": asset_id},
