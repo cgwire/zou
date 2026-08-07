@@ -184,3 +184,70 @@ class EmailsServiceTestCase(ApiDBTestCase):
                 "discord_message": "discord",
             },
         )
+
+
+class PlaylistMailTestCase(EmailsServiceTestCase):
+    """
+    The playlist mail is written in two passes: a fragment naming the
+    episode, then the body it sits in. Both used to escape it.
+    """
+
+    def a_playlist(self, name="Sunday & Monday"):
+        return {
+            "id": "00000000-0000-0000-0000-000000000001",
+            "project_id": str(self.project.id),
+            "episode_id": str(self.episode.id),
+            "name": name,
+            "for_entity": "shot",
+            "is_for_all": False,
+            "shots": [],
+        }
+
+    def playlist_mail(self, playlist):
+        with patch(
+            "zou.app.services.emails_service.emails.send_email"
+        ) as mock_send:
+            emails_service.send_playlist_ready_notification(
+                str(self.a_person("Jean", "en_US").id),
+                str(self.user["id"]),
+                playlist,
+            )
+            return mock_send.call_args[0][1]
+
+    def test_an_ampersand_is_escaped_once_wherever_it_sits(self):
+        """
+        The episode name went through two translations and came out
+        &amp;amp;, which the recipient reads as "Tom &amp; Jerry". The
+        playlist name, interpolated once, was already right: the two are
+        one sentence of one mail and have to agree.
+        """
+        self.episode.update({"name": "Tom & Jerry"})
+
+        html = self.playlist_mail(self.a_playlist())
+
+        self.assertIn("Tom &amp; Jerry", html)
+        self.assertIn("Sunday &amp; Monday", html)
+        self.assertNotIn("&amp;amp;", html)
+
+    def test_the_invitation_message_is_still_escaped(self):
+        """
+        Its segment is concatenated straight into the body rather than
+        handed to another template, so it is the one place a fragment must
+        keep being escaped where it is built.
+        """
+        with patch(
+            "zou.app.services.emails_service.emails.send_email"
+        ) as mock_send:
+            emails_service.send_share_invitation(
+                "guest@example.com",
+                {"full_name": "John Did"},
+                {"name": "Playlist"},
+                self.project.serialize(),
+                "https://localhost:8080/share/token",
+                message="<script>alert(1)</script>",
+                locale="en_US",
+            )
+            html = mock_send.call_args[0][1]
+
+        self.assertNotIn("<script>", html)
+        self.assertIn("&lt;script&gt;", html)
