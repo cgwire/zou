@@ -42,6 +42,27 @@ class EditRoutesTestCase(BaseEditTestCase):
         )
         self.assertEqual(task["data"], {"render_layer": "bg"})
 
+    def test_get_edits_for_episode(self):
+        edits = self.get(f"/data/episodes/{self.episode_id}/edits")
+
+        self.assertEqual([edit["id"] for edit in edits], [str(self.edit_id)])
+
+    def test_get_edit_tasks_for_episode(self):
+        """
+        The tasks of the edits an episode holds. A shot of that episode hangs
+        one level deeper, under a sequence, and none of its tasks belong here.
+        """
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+        self.generate_fixture_shot_task()
+
+        tasks = self.get(f"/data/episodes/{self.episode_id}/edit-tasks")
+
+        self.assertEqual(
+            sorted(task["entity_id"] for task in tasks),
+            sorted([str(self.edit_id)] * 2),
+        )
+
     def test_get_edits_with_tasks_wrong_id_format(self):
         self.get("/data/edits/with-tasks?project_id=not-a-uuid", 400)
         self.get("/data/edits/with-tasks?episode_id=not-a-uuid", 400)

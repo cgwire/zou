@@ -7,6 +7,7 @@ from zou.app.services import (
     projects_service,
     playlists_service,
     edits_service,
+    shots_service,
     tasks_service,
     permissions_service,
 )
@@ -490,7 +491,7 @@ class EpisodeEditTasksResource(MethodView, ArgsMixin):
                         description: Last update timestamp
                         example: "2023-01-01T12:30:00Z"
         """
-        episode = edits_service.get_episode(episode_id)
+        episode = shots_service.get_episode(episode_id)
         permissions_service.check_project_access(episode["project_id"])
         permissions_service.check_entity_access(episode["id"])
         if permissions.has_vendor_permissions():
@@ -568,12 +569,15 @@ class EpisodeEditsResource(MethodView, ArgsMixin):
                         description: Last update timestamp
                         example: "2023-01-01T12:30:00Z"
         """
-        episode = edits_service.get_episode(episode_id)
+        episode = shots_service.get_episode(episode_id)
         permissions_service.check_project_access(episode["project_id"])
         permissions_service.check_entity_access(episode["id"])
         relations = self.get_relations()
-        return edits_service.get_edits_for_episode(
-            episode_id, relations=relations
+        return permissions_service.mask_metadata_for_vendor(
+            "Edit",
+            edits_service.get_edits_for_episode(
+                episode_id, relations=relations
+            ),
         )
 
 

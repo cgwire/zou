@@ -102,6 +102,7 @@ class VendorMetadataMaskingTestCase(ApiDBTestCase):
             "data/edits/all",
             "data/edits/with-tasks",
             f"data/projects/{project_id}/edits",
+            f"data/episodes/{episode_id}/edits",
             "data/episodes",
             "data/episodes/with-tasks",
             f"data/projects/{project_id}/episodes",
