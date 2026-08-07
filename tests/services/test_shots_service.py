@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 
 from tests.base import ApiDBTestCase
 
-from zou.app.models.entity import Entity
+from zou.app.models.entity import Entity, EntityLink
 from zou.app.models.task import Task
 from zou.app.services import (
     breakdown_service,
@@ -18,6 +18,7 @@ from zou.app.services import (
 from zou.app.utils import fields
 from zou.app.services.exception import (
     EpisodeNotFoundException,
+    ModelWithRelationsDeletionException,
     SceneNotFoundException,
     ShotNotFoundException,
     SequenceNotFoundException,
@@ -639,6 +640,11 @@ class RemovalTestCase(ShotsTestCase):
     """
 
     def test_a_shot_with_no_task_is_deleted(self):
+        """
+        The casting of a shot points at it from a link table: leaving the
+        links behind would keep the asset cast in a shot that no longer
+        exists, and the delete would fail on the foreign key anyway.
+        """
         shot_id = str(self.shot.id)
         breakdown_service.create_casting_link(shot_id, str(self.asset.id))
 
@@ -646,6 +652,9 @@ class RemovalTestCase(ShotsTestCase):
 
         with pytest.raises(ShotNotFoundException):
             shots_service.get_shot(shot_id)
+        self.assertEqual(
+            EntityLink.query.filter_by(entity_in_id=shot_id).count(), 0
+        )
 
     def test_a_shot_with_tasks_is_canceled(self):
         self.generate_shot_task()
@@ -670,6 +679,20 @@ class RemovalTestCase(ShotsTestCase):
         shots_service.remove_scene(scene_id)
         with pytest.raises(SceneNotFoundException):
             shots_service.get_scene(scene_id)
+
+    def test_a_sequence_still_holding_shots_is_not_removed(self):
+        """
+        Without force the caller is told, rather than left with a branch of
+        the production hanging from nothing.
+
+        Nothing is read back afterwards: the rolled back delete takes the
+        fixtures of this test with it, since they were never committed.
+        """
+        self.assertRaises(
+            ModelWithRelationsDeletionException,
+            shots_service.remove_sequence,
+            str(self.sequence.id),
+        )
 
     def test_a_forced_sequence_removal_takes_its_children_with_it(self):
         """
@@ -776,10 +799,10 @@ class QuotaTestCase(ShotsTestCase):
         """
         self.generate_shot_task()
 
-        # Named to come last while created first, so the sort has work to
+        # Named to come first while created last, so the sort has work to
         # do. generate_fixture_shot repoints self.shot, hence the local.
         first_shot = self.shot
-        shots = [self.generate_fixture_shot("Z01"), first_shot]
+        shots = [first_shot, self.generate_fixture_shot("A01")]
         tasks = {}
         for shot in shots:
             task = self.generate_fixture_shot_task(
@@ -801,7 +824,7 @@ class QuotaTestCase(ShotsTestCase):
         # winning, and the rows must stay apart even though everything the
         # query selects of them is equal.
         tasks_service.create_or_update_time_spent(
-            str(tasks["Z01"].id), str(self.person.id), "2018-06-05", 250
+            str(tasks["A01"].id), str(self.person.id), "2018-06-05", 250
         )
 
         quota_shots = shots_service.get_weighted_quota_shots_between(
@@ -814,7 +837,7 @@ class QuotaTestCase(ShotsTestCase):
 
         self.assertEqual(
             [(shot["name"], shot["weight"]) for shot in quota_shots],
-            [("P01", 0.25), ("Z01", 0.4)],
+            [("A01", 0.4), ("P01", 0.25)],
         )
 
     def test_a_shot_outside_the_window_is_not_counted(self):
