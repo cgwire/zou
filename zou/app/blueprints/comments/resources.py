@@ -268,7 +268,17 @@ class CommentTaskResource(MethodView):
             for_client,
         ) = self.get_arguments()
 
-        permissions_service.check_task_action_access(task_id)
+        try:
+            permissions_service.check_task_action_access(task_id)
+        except permissions.PermissionDenied:
+            # Being mentioned pulls someone into the conversation, so let
+            # them answer in it. Nothing else: the status has to stay as it
+            # is, and previews keep going through the preview routes, which
+            # still require the full task action access.
+            permissions_service.check_task_mention_access(task_id)
+            task = tasks_service.get_task(task_id)
+            if str(task_status_id) != str(task["task_status_id"]):
+                raise
         permissions_service.check_task_status_access(task_status_id)
         files = request.files
 
@@ -695,7 +705,12 @@ class ReplyCommentResource(MethodView, ArgsMixin):
             raise permissions.PermissionDenied()
         current_user = persons_service.get_current_user()
         if comment["person_id"] != current_user["id"]:
-            permissions_service.check_task_action_access(task_id)
+            try:
+                permissions_service.check_task_action_access(task_id)
+            except permissions.PermissionDenied:
+                # A reply carries no status and no preview, so answering is
+                # all a mention has to grant here.
+                permissions_service.check_task_mention_access(task_id)
             if permissions.has_client_permissions():
                 author = persons_service.get_person(comment["person_id"])
                 task = tasks_service.get_task(task_id)

@@ -13,7 +13,13 @@ called before one of those silently reads the global role.
 """
 
 from flask import g
+from sqlalchemy import or_
 
+from zou.app.models.comment import (
+    Comment,
+    department_mentions_table,
+    mentions_table,
+)
 from zou.app.models.project import Project, ProjectPersonLink
 from zou.app.models.task import Task
 
@@ -231,6 +237,68 @@ def check_task_action_access(task_id):
     if not is_allowed:
         raise permissions.PermissionDenied
     return is_allowed
+
+
+def is_person_mentioned_on_task(person_id, task_id):
+    """
+    Return true if given person was mentioned anywhere in the conversation
+    of given task, either by name or through one of the departments they
+    belong to.
+
+    Comments and replies store their mentions differently: a comment links
+    them through comment_mentions and comment_department_mentions, while a
+    reply keeps them inside the replies JSONB. Both count: someone named
+    in a reply was pulled into the conversation just the same.
+    """
+    person = persons_service.get_person(person_id, relations=True)
+    department_ids = person.get("departments") or []
+
+    query = Comment.query.filter(Comment.object_id == task_id).outerjoin(
+        mentions_table, mentions_table.c.comment == Comment.id
+    )
+    conditions = [
+        mentions_table.c.person == person_id,
+        # Containment on a JSONB array is subset semantics, so this matches
+        # any reply whose mentions include the person.
+        Comment.replies.contains([{"mentions": [str(person_id)]}]),
+    ]
+    if department_ids:
+        query = query.outerjoin(
+            department_mentions_table,
+            department_mentions_table.c.comment == Comment.id,
+        )
+        conditions.append(
+            department_mentions_table.c.department.in_(department_ids)
+        )
+        conditions.extend(
+            Comment.replies.contains(
+                [{"department_mentions": [str(department_id)]}]
+            )
+            for department_id in department_ids
+        )
+    return query.filter(or_(*conditions)).first() is not None
+
+
+def check_task_mention_access(task_id):
+    """
+    Return true if current user was mentioned in a comment of given task.
+
+    A mention pulls someone into a conversation, so it grants the right to
+    answer in it and nothing else. Callers must keep every other task
+    action behind check_task_action_access: this check knows nothing about
+    statuses, previews or assignments.
+    """
+    task = tasks_service.get_task(task_id)
+    # Team membership first: it resolves the project role, so the vendor
+    # test below reads the role for this production and not the global one.
+    if not check_belong_to_project(task["project_id"]):
+        raise permissions.PermissionDenied
+    if permissions.has_vendor_permissions():
+        raise permissions.PermissionDenied
+    person_id = persons_service.get_current_user()["id"]
+    if not is_person_mentioned_on_task(person_id, task_id):
+        raise permissions.PermissionDenied
+    return True
 
 
 def check_supervisor_project_task_type_access(project_id, task_type_id):
