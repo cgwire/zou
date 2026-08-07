@@ -84,11 +84,14 @@ class EntityTypeTestCase(ApiDBTestCase):
 
     def test_get_temporal_entity_type_by_name(self):
         """
-        The by-name lookup can have cached a None from before the type
-        existed. This one drops that entry and looks again.
+        Meant to drop a cached None left by an older lookup and try again.
+        The retry is unreachable today, since get_entity_type_by_name
+        creates the row it cannot find and so never answers None: only the
+        first half is pinned here.
         """
-        self.assertIsNotNone(
-            entities_service.get_temporal_entity_type_by_name("Edit")
+        self.assertEqual(
+            entities_service.get_temporal_entity_type_by_name("Edit")["name"],
+            "Edit",
         )
 
     def test_is_edit(self):
