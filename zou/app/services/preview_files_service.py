@@ -380,21 +380,36 @@ def prepare_and_store_movie(
             and len(config_store.get_nomad_normalize_job()) > 0
         )
 
+        # SKIP_NORMALIZATION_FULL turns every upload into a raw store, as if
+        # the client had asked for normalize=false. SKIP_NORMALIZATION_HIGHDEF
+        # only drops the 28M encoding: the low def version is still built and
+        # becomes the only movie stored.
+        if config.SKIP_NORMALIZATION_FULL:
+            normalize = False
+        skip_high_def = config.SKIP_NORMALIZATION_HIGHDEF
+
         if normalize:
             current_app.logger.info("start normalization")
             try:
                 if is_remote:
                     result = _run_remote_normalize_movie(
-                        current_app, preview_file_id, fps, width, height
+                        current_app,
+                        preview_file_id,
+                        fps,
+                        width,
+                        height,
+                        skip_high_def,
                     )
                     if result is not True:
                         raise PreviewProcessingFailedException(result)
 
+                    # Without the high def version, the low def one is the
+                    # only movie the remote job uploaded.
                     normalized_movie_path = fs.get_file_path_and_file(
                         config,
                         file_store.get_local_movie_path,
                         file_store.open_movie,
-                        "previews",
+                        "lowdef" if skip_high_def else "previews",
                         preview_file_id,
                         ".mp4",
                     )
@@ -408,17 +423,23 @@ def prepare_and_store_movie(
                         fps=fps,
                         width=width,
                         height=height,
+                        skip_high_def=skip_high_def,
                     )
                     if err:
                         # The normalized files were never produced: fail
                         # before storing anything.
                         raise PreviewProcessingFailedException(err)
-                    file_store.add_movie(
-                        "previews", preview_file_id, normalized_movie_path
-                    )
+                    if normalized_movie_path is not None:
+                        file_store.add_movie(
+                            "previews", preview_file_id, normalized_movie_path
+                        )
                     file_store.add_movie(
                         "lowdef", preview_file_id, normalized_movie_low_path
                     )
+                    if normalized_movie_path is None:
+                        # Everything below (metadata, thumbnails, tile) works
+                        # on the movie that was actually produced.
+                        normalized_movie_path = normalized_movie_low_path
 
                 current_app.logger.info(
                     f"file normalized {normalized_movie_path}"
@@ -436,12 +457,11 @@ def prepare_and_store_movie(
                 )
                 return preview_file
         else:
+            # A single copy: the low def route falls back on the full quality
+            # one, so storing the same bytes twice buys nothing.
             try:
                 file_store.add_movie(
                     "previews", preview_file_id, uploaded_movie_path
-                )
-                file_store.add_movie(
-                    "lowdef", preview_file_id, uploaded_movie_path
                 )
             except Exception as exc:
                 _remove_temp_files(uploaded_movie_path)
@@ -551,7 +571,9 @@ def prepare_and_store_movie(
             return {"id": preview_file_id, "status": "broken"}
 
 
-def _run_remote_normalize_movie(app, preview_file_id, fps, width, height):
+def _run_remote_normalize_movie(
+    app, preview_file_id, fps, width, height, skip_high_def=False
+):
     """
     Hand the movie normalization over to a remote worker and wait for it.
     """
@@ -561,6 +583,9 @@ def _run_remote_normalize_movie(app, preview_file_id, fps, width, height):
         "width": width,
         "height": height,
         "fps": fps,
+        # Optional field: a runner that predates it simply builds the high
+        # def version as before.
+        "skip_high_def": skip_high_def,
     }
     nomad_job = config_store.get_nomad_normalize_job()
     result = remote_job.run_job(app, config, nomad_job, params)

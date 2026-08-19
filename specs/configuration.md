@@ -64,6 +64,16 @@ All configuration is in `zou/app/config.py`, read from environment variables.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PREVIEW_SAVE_SOURCE_FILE` | false | Keep the uploaded source movie alongside the normalized preview |
+| `SKIP_NORMALIZATION_FULL` | false | Skip the movie normalization: the uploaded movie is stored as is, once, as the full quality preview |
+| `SKIP_NORMALIZATION_HIGHDEF` | false | Skip only the high def (28M) encoding: the low def version is built and is the only movie stored |
+
+The movie routes serve whichever version exists: `/movies/originals/` tries
+`previews`, `lowdef` then `source`, and `/movies/low/` tries `lowdef`,
+`previews` then `source`. So a setup skipping part of the normalization keeps
+working without any client change. The `source` fallback needs
+`PREVIEW_SAVE_SOURCE_FILE=true`, and the source is served as `video/mp4`
+whatever its real container, without the `+faststart` flag: browsers only
+play it back when the upload is already a web-ready h264 mp4.
 
 ## LDAP / SAML
 

@@ -255,15 +255,21 @@ def normalize_encoding(
         raise (e)
 
 
-def normalize_movie(movie_path, fps, width, height):
+def normalize_movie(movie_path, fps, width, height, skip_high_def=False):
     """
     Normalize movie using resolution, width and height given in parameter.
-    Generates a high def movie and a low def movie.
+    Generates a high def movie and a low def movie. When skip_high_def is
+    True, only the low def movie is generated and the returned high def path
+    is None.
     """
     file_source_name = os.path.basename(movie_path)
     unique_suffix = uuid.uuid4().hex
     file_target_name = f"{file_source_name[:-8]}_{unique_suffix}.mp4"
-    file_target_path = os.path.join(tempfile.gettempdir(), file_target_name)
+    file_target_path = (
+        None
+        if skip_high_def
+        else os.path.join(tempfile.gettempdir(), file_target_name)
+    )
     low_file_target_name = f"{file_source_name[:-8]}_{unique_suffix}_low.mp4"
     low_file_target_path = os.path.join(
         tempfile.gettempdir(), low_file_target_name
@@ -290,16 +296,19 @@ def normalize_movie(movie_path, fps, width, height):
             err = None
 
     # High def version
-    normalize_encoding(
-        movie_path,
-        "Compute high def version",
-        file_target_path,
-        fps,
-        "28M",
-        width,
-        height,
-        keyframes=2,
-    )
+    if skip_high_def:
+        logger.info("Skip high def version")
+    else:
+        normalize_encoding(
+            movie_path,
+            "Compute high def version",
+            file_target_path,
+            fps,
+            "28M",
+            width,
+            height,
+            keyframes=2,
+        )
 
     # Low def version
     low_width = 1280

@@ -373,6 +373,127 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
             if os.path.exists(p):
                 os.remove(p)
 
+    @patch("zou.app.services.preview_files_service.movie.generate_tile")
+    @patch("zou.app.services.preview_files_service.save_variants")
+    @patch(
+        "zou.app.services.preview_files_service.thumbnail_utils"
+        ".turn_into_thumbnail"
+    )
+    @patch("zou.app.services.preview_files_service.movie.generate_thumbnail")
+    @patch("zou.app.services.preview_files_service.movie.get_movie_duration")
+    @patch("zou.app.services.preview_files_service.movie.get_movie_size")
+    @patch("zou.app.services.preview_files_service.movie.normalize_movie")
+    @patch("zou.app.services.preview_files_service.file_store.add_movie")
+    def test_prepare_and_store_movie_skip_normalization_full(
+        self,
+        mock_add_movie,
+        mock_normalize,
+        mock_size,
+        mock_duration,
+        mock_gen_thumbnail,
+        mock_turn_thumbnail,
+        mock_save_variants,
+        mock_gen_tile,
+    ):
+        preview_file = self.generate_fixture_preview_file(status="processing")
+        preview_file_id = str(preview_file.id)
+        uploaded_path = self._write_temp_movie()
+        mock_size.return_value = (1920, 1080)
+        mock_duration.return_value = 10.0
+        mock_gen_thumbnail.return_value = uploaded_path
+        mock_gen_tile.return_value = uploaded_path
+
+        with patch.object(
+            preview_files_service.config, "SKIP_NORMALIZATION_FULL", True
+        ):
+            preview_files_service.prepare_and_store_movie(
+                preview_file_id,
+                uploaded_path,
+                normalize=True,
+                add_source_to_file_store=False,
+            )
+
+        mock_normalize.assert_not_called()
+        # Stored once: the low def route falls back on the full quality one.
+        self.assertEqual(
+            [
+                (call.args[0], call.args[2])
+                for call in mock_add_movie.mock_calls
+            ],
+            [("previews", uploaded_path)],
+        )
+        persisted = files_service.get_preview_file(preview_file_id)
+        self.assertEqual(persisted["status"], "ready")
+
+    @patch("zou.app.services.preview_files_service.movie.generate_tile")
+    @patch("zou.app.services.preview_files_service.save_variants")
+    @patch(
+        "zou.app.services.preview_files_service.thumbnail_utils"
+        ".turn_into_thumbnail"
+    )
+    @patch("zou.app.services.preview_files_service.movie.generate_thumbnail")
+    @patch("zou.app.services.preview_files_service.movie.get_movie_duration")
+    @patch("zou.app.services.preview_files_service.movie.get_movie_size")
+    @patch("zou.app.services.preview_files_service.movie.normalize_movie")
+    @patch("zou.app.services.preview_files_service.file_store.add_movie")
+    def test_prepare_and_store_movie_skip_normalization_highdef(
+        self,
+        mock_add_movie,
+        mock_normalize,
+        mock_size,
+        mock_duration,
+        mock_gen_thumbnail,
+        mock_turn_thumbnail,
+        mock_save_variants,
+        mock_gen_tile,
+    ):
+        preview_file = self.generate_fixture_preview_file(status="processing")
+        preview_file_id = str(preview_file.id)
+        uploaded_path = self._write_temp_movie()
+        norm_low_path = self._write_temp_movie()
+
+        mock_normalize.return_value = None, norm_low_path, None
+        mock_size.return_value = (1280, 720)
+        mock_duration.return_value = 10.0
+        mock_gen_thumbnail.return_value = norm_low_path
+        mock_gen_tile.return_value = norm_low_path
+
+        with patch.object(
+            preview_files_service.config, "SKIP_NORMALIZATION_HIGHDEF", True
+        ):
+            preview_files_service.prepare_and_store_movie(
+                preview_file_id,
+                uploaded_path,
+                normalize=True,
+                add_source_to_file_store=False,
+            )
+
+        self.assertTrue(mock_normalize.call_args.kwargs["skip_high_def"])
+        # Only the low def movie is stored, the thumbnails are built from it.
+        self.assertEqual(
+            [
+                (call.args[0], call.args[2])
+                for call in mock_add_movie.mock_calls
+            ],
+            [("lowdef", norm_low_path)],
+        )
+        mock_gen_thumbnail.assert_called_once_with(norm_low_path)
+        persisted = files_service.get_preview_file(preview_file_id)
+        self.assertEqual(persisted["status"], "ready")
+        self.assertEqual(persisted["width"], 1280)
+
+    def _write_temp_movie(self, size=1024):
+        """
+        Create a non-empty temp file standing in for a movie.
+        """
+        tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+        tmp.write(b"\x00" * size)
+        tmp.close()
+        self.addCleanup(
+            lambda: os.path.exists(tmp.name) and os.remove(tmp.name)
+        )
+        return tmp.name
+
     @patch("zou.app.services.preview_files_service.movie.generate_thumbnail")
     @patch("zou.app.services.preview_files_service.movie.get_movie_duration")
     @patch("zou.app.services.preview_files_service.movie.get_movie_size")

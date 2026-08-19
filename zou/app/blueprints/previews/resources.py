@@ -30,7 +30,6 @@ from zou.app.services import (
     preview_files_service,
     tasks_service,
     permissions_service,
-    user_service,
 )
 from zou.app.stores import queue_store
 from zou.utils import movie
@@ -121,19 +120,32 @@ def send_standard_file(
 def send_movie_file(
     preview_file_id, as_attachment=False, lowdef=False, last_modified=None
 ):
-    folder = "previews"
+    """
+    Send the requested movie version, falling back on the other stored ones.
+    A setup skipping part of the normalization (SKIP_NORMALIZATION_FULL,
+    SKIP_NORMALIZATION_HIGHDEF) stores a single version, and the uploaded
+    source is the last resort. Note that the source is served as video/mp4
+    whatever its real container, and carries no faststart flag.
+    """
     if lowdef:
-        folder = "lowdef"
-    return send_storage_file(
-        file_store.get_local_movie_path,
-        file_store.open_movie,
-        folder,
-        preview_file_id,
-        "mp4",
-        mimetype="video/mp4",
-        as_attachment=as_attachment,
-        last_modified=last_modified,
-    )
+        prefixes = ["lowdef", "previews", "source"]
+    else:
+        prefixes = ["previews", "lowdef", "source"]
+    for prefix in prefixes:
+        try:
+            return send_storage_file(
+                file_store.get_local_movie_path,
+                file_store.open_movie,
+                prefix,
+                preview_file_id,
+                "mp4",
+                mimetype="video/mp4",
+                as_attachment=as_attachment,
+                last_modified=last_modified,
+            )
+        except FileNotFound:
+            if prefix == prefixes[-1]:
+                raise
 
 
 def send_picture_file(
@@ -756,7 +768,9 @@ class PreviewFileMovieResource(BasePreviewFileResource):
         """
         Get preview movie
         ---
-        description: Download a movie preview file.
+        description: Download a movie preview file. Falls back to the low
+          definition version then to the uploaded source when the full
+          quality one was not produced.
         tags:
           - Previews
         parameters:
@@ -801,8 +815,9 @@ class PreviewFileLowMovieResource(BasePreviewFileResource):
         """
         Get preview lowdef movie
         ---
-        description: Download a low definition movie preview file. Falls back to
-          full quality if lowdef version is not available.
+        description: Download a low definition movie preview file. Falls back
+          to full quality then to the uploaded source if the low definition
+          version is not available.
         tags:
           - Previews
         parameters:
@@ -826,20 +841,17 @@ class PreviewFileLowMovieResource(BasePreviewFileResource):
         self.is_allowed(instance_id)
 
         try:
+            # send_movie_file already falls back on the full quality version
+            # then on the source.
             return send_movie_file(
                 instance_id, lowdef=True, last_modified=self.last_modified
             )
         except FileNotFound:
-            try:
-                return send_movie_file(
-                    instance_id, last_modified=self.last_modified
+            if config.LOG_FILE_NOT_FOUND:
+                current_app.logger.error(
+                    f"Movie file was not found for: {instance_id}"
                 )
-            except FileNotFound:
-                if config.LOG_FILE_NOT_FOUND:
-                    current_app.logger.error(
-                        f"Movie file was not found for: {instance_id}"
-                    )
-                raise PreviewFileNotFoundException
+            raise PreviewFileNotFoundException
 
 
 class PreviewFileMovieDownloadResource(BasePreviewFileResource):

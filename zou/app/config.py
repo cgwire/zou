@@ -109,6 +109,13 @@ PREVIEW_FOLDER = os.getenv(
     os.getenv("THUMBNAIL_FOLDER", os.path.join(os.getcwd(), "previews")),
 )
 PREVIEW_SAVE_SOURCE_FILE = envtobool("PREVIEW_SAVE_SOURCE_FILE", False)
+# Skip the movie normalization entirely: the uploaded movie is stored as is,
+# both as the full quality and the low definition preview.
+SKIP_NORMALIZATION_FULL = envtobool("SKIP_NORMALIZATION_FULL", False)
+# Skip only the high definition encoding: the low definition version is still
+# produced and is the only movie stored. The full quality preview route then
+# has nothing to serve.
+SKIP_NORMALIZATION_HIGHDEF = envtobool("SKIP_NORMALIZATION_HIGHDEF", False)
 MAX_IMAGE_PIXELS = int(os.getenv("MAX_IMAGE_PIXELS", 20000 * 20000))
 # Cap on any request body size (Flask MAX_CONTENT_LENGTH). Generous by
 # default so multi-GB movie uploads keep working while unbounded bodies

@@ -46,28 +46,32 @@ def main():
         )
 
         if err is None:
-            put_file_to_storage(
-                storage,
-                high_def_path,
-                make_key("previews", preview_file_id),
-            )
+            if high_def_path is not None:
+                put_file_to_storage(
+                    storage,
+                    high_def_path,
+                    make_key("previews", preview_file_id),
+                )
             put_file_to_storage(
                 storage,
                 low_def_path,
                 make_key("lowdef", preview_file_id),
             )
-            logger.info(f"Normalization succeeded {high_def_path}")
+            # Thumbnails and tile are built from the movie that was actually
+            # produced: the low def one when the high def is skipped.
+            movie_path = high_def_path or low_def_path
+            logger.info(f"Normalization succeeded {movie_path}")
 
             if version >= 2:
                 pictures_storage = get_storage(config, "pictures")
                 _generate_and_upload_thumbnails(
                     pictures_storage,
-                    high_def_path,
+                    movie_path,
                     preview_file_id,
                 )
                 _generate_and_upload_tile(
                     pictures_storage,
-                    high_def_path,
+                    movie_path,
                     preview_file_id,
                 )
         else:
@@ -89,7 +93,11 @@ def _fetch_movie_file(storage, outdir, preview_file_id):
 
 def _run_normalize_movie(config, movie_path):
     return normalize_movie(
-        movie_path, config["fps"], config["width"], config["height"]
+        movie_path,
+        config["fps"],
+        config["width"],
+        config["height"],
+        skip_high_def=config.get("skip_high_def", False),
     )
 
 

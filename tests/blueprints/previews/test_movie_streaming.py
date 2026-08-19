@@ -1,6 +1,10 @@
 import os
 
+from unittest.mock import patch
+
 from tests.base import ApiDBTestCase
+from zou.app.blueprints.previews import resources as preview_resources
+from zou.app.stores import file_store
 
 
 class MovieStreamingRoutesTestCase(ApiDBTestCase):
@@ -21,7 +25,7 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
             os.path.join("videos", "test_preview_tiles.mp4")
         )
 
-    def upload_movie_preview(self):
+    def upload_movie_preview(self, save_source_file=False):
         comment = self.post(
             f"/actions/tasks/{self.task_id}/comment/",
             {"task_status_id": self.wip_status_id, "comment": "c"},
@@ -31,10 +35,15 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
             f"/comments/{comment['id']}/add-preview",
             {},
         )
-        self.upload_file(
-            f"/pictures/preview-files/{preview_file['id']}?normalize=false",
-            self.movie_path,
-        )
+        with patch.object(
+            preview_resources.config,
+            "PREVIEW_SAVE_SOURCE_FILE",
+            save_source_file,
+        ):
+            self.upload_file(
+                f"/pictures/preview-files/{preview_file['id']}?normalize=false",
+                self.movie_path,
+            )
         return preview_file["id"]
 
     def test_stream_original_and_low_movie(self):
@@ -67,6 +76,25 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
         self.assertIn(
             "attachment", response.headers.get("Content-Disposition", "")
         )
+
+    def test_stream_falls_back_on_the_source_movie(self):
+        """
+        Skipping the normalization can leave the source as the only stored
+        movie: both routes must serve it instead of answering a 404.
+        """
+        preview_file_id = self.upload_movie_preview(save_source_file=True)
+        with open(self.movie_path, "rb") as movie_file:
+            movie_content = movie_file.read()
+
+        os.remove(file_store.get_local_movie_path("previews", preview_file_id))
+
+        for url in [
+            f"/movies/originals/preview-files/{preview_file_id}.mp4",
+            f"/movies/low/preview-files/{preview_file_id}.mp4",
+        ]:
+            response = self.app.get(url, headers=self.base_headers)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.data, movie_content)
 
     def test_stream_unknown_movie_returns_404(self):
         self.upload_movie_preview()
