@@ -436,6 +436,62 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
     @patch("zou.app.services.preview_files_service.movie.get_movie_size")
     @patch("zou.app.services.preview_files_service.movie.normalize_movie")
     @patch("zou.app.services.preview_files_service.file_store.add_movie")
+    def test_prepare_and_store_movie_skip_full_keeps_a_single_copy(
+        self,
+        mock_add_movie,
+        mock_normalize,
+        mock_size,
+        mock_duration,
+        mock_gen_thumbnail,
+        mock_turn_thumbnail,
+        mock_save_variants,
+        mock_gen_tile,
+    ):
+        """
+        The uploaded movie already went to the storage as the source, and
+        the movie routes fall back on it: a copy under `previews` would be
+        the same bytes twice.
+        """
+        preview_file = self.generate_fixture_preview_file(status="processing")
+        preview_file_id = str(preview_file.id)
+        uploaded_path = self._write_temp_movie()
+        mock_size.return_value = (1920, 1080)
+        mock_duration.return_value = 10.0
+        mock_gen_thumbnail.return_value = uploaded_path
+        mock_gen_tile.return_value = uploaded_path
+
+        with patch.object(
+            preview_files_service.config, "SKIP_NORMALIZATION_FULL", True
+        ):
+            preview_files_service.prepare_and_store_movie(
+                preview_file_id,
+                uploaded_path,
+                normalize=True,
+                add_source_to_file_store=True,
+            )
+
+        mock_normalize.assert_not_called()
+        self.assertEqual(
+            [
+                (call.args[0], call.args[2])
+                for call in mock_add_movie.mock_calls
+            ],
+            [("source", uploaded_path)],
+        )
+        persisted = files_service.get_preview_file(preview_file_id)
+        self.assertEqual(persisted["status"], "ready")
+
+    @patch("zou.app.services.preview_files_service.movie.generate_tile")
+    @patch("zou.app.services.preview_files_service.save_variants")
+    @patch(
+        "zou.app.services.preview_files_service.thumbnail_utils"
+        ".turn_into_thumbnail"
+    )
+    @patch("zou.app.services.preview_files_service.movie.generate_thumbnail")
+    @patch("zou.app.services.preview_files_service.movie.get_movie_duration")
+    @patch("zou.app.services.preview_files_service.movie.get_movie_size")
+    @patch("zou.app.services.preview_files_service.movie.normalize_movie")
+    @patch("zou.app.services.preview_files_service.file_store.add_movie")
     def test_prepare_and_store_movie_skip_normalization_highdef(
         self,
         mock_add_movie,

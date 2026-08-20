@@ -473,12 +473,15 @@ def prepare_and_store_movie(
                 )
                 return preview_file
         else:
-            # A single copy: the low def route falls back on the full quality
-            # one, so storing the same bytes twice buys nothing.
+            # The uploaded movie is the preview. It only goes under the
+            # `previews` prefix when it was not already stored as the
+            # source: the movie routes fall back from one to the other, so
+            # a second copy of the same bytes buys nothing.
             try:
-                file_store.add_movie(
-                    "previews", preview_file_id, uploaded_movie_path
-                )
+                if not add_source_to_file_store:
+                    file_store.add_movie(
+                        "previews", preview_file_id, uploaded_movie_path
+                    )
             except Exception as exc:
                 _remove_temp_files(uploaded_movie_path)
                 return _abort_on_storage_failure(

@@ -120,19 +120,6 @@ SKIP_NORMALIZATION_HIGHDEF = envtobool("SKIP_NORMALIZATION_HIGHDEF", False)
 # when the other instance skips the normalization, since the source is then
 # the movie its preview routes serve.
 SYNC_SOURCE_MOVIE_FILES = envtobool("SYNC_SOURCE_MOVIE_FILES", False)
-if PREVIEW_SAVE_SOURCE_FILE and (
-    SKIP_NORMALIZATION_FULL or SKIP_NORMALIZATION_HIGHDEF
-):
-    # Skipping the normalization already makes the source the movie that is
-    # kept and served. Asking on top of that to save it "alongside the
-    # normalized preview" describes a preview that is never produced, and
-    # the two settings then fight over the same bytes.
-    raise RuntimeError(
-        "PREVIEW_SAVE_SOURCE_FILE cannot be combined with "
-        "SKIP_NORMALIZATION_FULL or SKIP_NORMALIZATION_HIGHDEF: skipping "
-        "the normalization already keeps the source movie as the preview. "
-        "Unset PREVIEW_SAVE_SOURCE_FILE."
-    )
 MAX_IMAGE_PIXELS = int(os.getenv("MAX_IMAGE_PIXELS", 20000 * 20000))
 # Cap on any request body size (Flask MAX_CONTENT_LENGTH). Generous by
 # default so multi-GB movie uploads keep working while unbounded bodies
