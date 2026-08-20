@@ -109,13 +109,30 @@ PREVIEW_FOLDER = os.getenv(
     os.getenv("THUMBNAIL_FOLDER", os.path.join(os.getcwd(), "previews")),
 )
 PREVIEW_SAVE_SOURCE_FILE = envtobool("PREVIEW_SAVE_SOURCE_FILE", False)
-# Skip the movie normalization entirely: the uploaded movie is stored as is,
-# both as the full quality and the low definition preview.
+# Skip the movie normalization entirely: the uploaded movie is stored as is
+# and serves as the preview.
 SKIP_NORMALIZATION_FULL = envtobool("SKIP_NORMALIZATION_FULL", False)
 # Skip only the high definition encoding: the low definition version is still
 # produced and is the only movie stored. The full quality preview route then
-# has nothing to serve.
+# falls back on it.
 SKIP_NORMALIZATION_HIGHDEF = envtobool("SKIP_NORMALIZATION_HIGHDEF", False)
+# Replicate the source movies when syncing from another instance. Required
+# when the other instance skips the normalization, since the source is then
+# the movie its preview routes serve.
+SYNC_SOURCE_MOVIE_FILES = envtobool("SYNC_SOURCE_MOVIE_FILES", False)
+if PREVIEW_SAVE_SOURCE_FILE and (
+    SKIP_NORMALIZATION_FULL or SKIP_NORMALIZATION_HIGHDEF
+):
+    # Skipping the normalization already makes the source the movie that is
+    # kept and served. Asking on top of that to save it "alongside the
+    # normalized preview" describes a preview that is never produced, and
+    # the two settings then fight over the same bytes.
+    raise RuntimeError(
+        "PREVIEW_SAVE_SOURCE_FILE cannot be combined with "
+        "SKIP_NORMALIZATION_FULL or SKIP_NORMALIZATION_HIGHDEF: skipping "
+        "the normalization already keeps the source movie as the preview. "
+        "Unset PREVIEW_SAVE_SOURCE_FILE."
+    )
 MAX_IMAGE_PIXELS = int(os.getenv("MAX_IMAGE_PIXELS", 20000 * 20000))
 # Cap on any request body size (Flask MAX_CONTENT_LENGTH). Generous by
 # default so multi-GB movie uploads keep working while unbounded bodies

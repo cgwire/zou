@@ -375,10 +375,7 @@ def prepare_and_store_movie(
         fps = get_preview_file_fps(project, entity)
         width, height = get_preview_file_dimensions(project, entity)
 
-        is_remote = (
-            config.ENABLE_JOB_QUEUE_REMOTE
-            and len(config_store.get_nomad_normalize_job()) > 0
-        )
+        is_remote = is_remote_normalization_enabled()
 
         # SKIP_NORMALIZATION_FULL turns every upload into a raw store, as if
         # the client had asked for normalize=false. SKIP_NORMALIZATION_HIGHDEF
@@ -388,8 +385,15 @@ def prepare_and_store_movie(
             normalize = False
         skip_high_def = config.SKIP_NORMALIZATION_HIGHDEF
 
-        if normalize:
-            current_app.logger.info("start normalization")
+        # The remote job is also what builds the thumbnails and the tile, so
+        # it must run even when nothing has to be encoded.
+        if normalize or is_remote:
+            if normalize:
+                current_app.logger.info("start normalization")
+            else:
+                current_app.logger.info(
+                    "start remote preview processing without normalization"
+                )
             try:
                 if is_remote:
                     result = _run_remote_normalize_movie(
@@ -398,21 +402,27 @@ def prepare_and_store_movie(
                         fps,
                         width,
                         height,
-                        skip_high_def,
+                        skip_high_def=skip_high_def,
+                        skip_normalization=not normalize,
                     )
                     if result is not True:
                         raise PreviewProcessingFailedException(result)
 
-                    # Without the high def version, the low def one is the
-                    # only movie the remote job uploaded.
-                    normalized_movie_path = fs.get_file_path_and_file(
-                        config,
-                        file_store.get_local_movie_path,
-                        file_store.open_movie,
-                        "lowdef" if skip_high_def else "previews",
-                        preview_file_id,
-                        ".mp4",
-                    )
+                    if normalize:
+                        # Without the high def version, the low def one is
+                        # the only movie the remote job uploaded.
+                        normalized_movie_path = fs.get_file_path_and_file(
+                            config,
+                            file_store.get_local_movie_path,
+                            file_store.open_movie,
+                            "lowdef" if skip_high_def else "previews",
+                            preview_file_id,
+                            ".mp4",
+                        )
+                    else:
+                        # Nothing was encoded: the source uploaded for the
+                        # job stays the only movie, and it is still here.
+                        normalized_movie_path = uploaded_movie_path
                 else:
                     (
                         normalized_movie_path,
@@ -441,10 +451,16 @@ def prepare_and_store_movie(
                         # on the movie that was actually produced.
                         normalized_movie_path = normalized_movie_low_path
 
-                current_app.logger.info(
-                    f"file normalized {normalized_movie_path}"
-                )
-                current_app.logger.info("file stored")
+                if normalize:
+                    current_app.logger.info(
+                        f"file normalized {normalized_movie_path}"
+                    )
+                    current_app.logger.info("file stored")
+                else:
+                    current_app.logger.info(
+                        f"remote processing done, movie left as uploaded "
+                        f"{normalized_movie_path}"
+                    )
             except Exception as exc:
                 if isinstance(exc, ffmpeg.Error):
                     current_app.logger.error(exc.stderr)
@@ -571,11 +587,30 @@ def prepare_and_store_movie(
             return {"id": preview_file_id, "status": "broken"}
 
 
+def is_remote_normalization_enabled():
+    """
+    Movie processing runs on a remote worker when the job queue is set to
+    remote and a Nomad job name is configured.
+    """
+    return (
+        config.ENABLE_JOB_QUEUE_REMOTE
+        and len(config_store.get_nomad_normalize_job()) > 0
+    )
+
+
 def _run_remote_normalize_movie(
-    app, preview_file_id, fps, width, height, skip_high_def=False
+    app,
+    preview_file_id,
+    fps,
+    width,
+    height,
+    skip_high_def=False,
+    skip_normalization=False,
 ):
     """
-    Hand the movie normalization over to a remote worker and wait for it.
+    Hand the movie processing over to a remote worker and wait for it. The
+    worker also builds the thumbnails and the tile, so it is dispatched even
+    when no encoding is wanted.
     """
     params = {
         "version": str(REMOTE_NORMALIZE_VERSION),
@@ -583,9 +618,10 @@ def _run_remote_normalize_movie(
         "width": width,
         "height": height,
         "fps": fps,
-        # Optional field: a runner that predates it simply builds the high
-        # def version as before.
+        # Optional fields: a runner that predates them keeps building both
+        # encoded versions as before.
         "skip_high_def": skip_high_def,
+        "skip_normalization": skip_normalization,
     }
     nomad_job = config_store.get_nomad_normalize_job()
     result = remote_job.run_job(app, config, nomad_job, params)
@@ -1780,7 +1816,9 @@ def copy_preview_file_in_another_one(
     is_picture = original_preview_file["extension"] == "png"
 
     if is_movie:
-        prefixes = ["previews", "lowdef"]
+        # The source is copied too: when the normalization is skipped it is
+        # the only stored movie, and the preview routes serve it.
+        prefixes = ["previews", "lowdef", "source"]
         for prefix in prefixes:
             copy_preview_file_on_storage(
                 file_store.get_local_movie_path,

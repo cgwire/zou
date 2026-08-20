@@ -482,6 +482,82 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
         self.assertEqual(persisted["status"], "ready")
         self.assertEqual(persisted["width"], 1280)
 
+    @patch("zou.app.services.preview_files_service.movie.generate_thumbnail")
+    @patch("zou.app.services.preview_files_service.movie.get_movie_duration")
+    @patch("zou.app.services.preview_files_service.movie.get_movie_size")
+    @patch(
+        "zou.app.services.preview_files_service._run_remote_normalize_movie"
+    )
+    @patch(
+        "zou.app.services.preview_files_service"
+        ".is_remote_normalization_enabled"
+    )
+    @patch("zou.app.services.preview_files_service.file_store.add_movie")
+    def test_prepare_and_store_movie_remote_job_runs_without_normalization(
+        self,
+        mock_add_movie,
+        mock_is_remote,
+        mock_run_remote,
+        mock_size,
+        mock_duration,
+        mock_gen_thumbnail,
+    ):
+        """
+        The remote job builds the thumbnails and the tile, so it has to be
+        dispatched even when nothing is normalized.
+        """
+        preview_file = self.generate_fixture_preview_file(status="processing")
+        preview_file_id = str(preview_file.id)
+        uploaded_path = self._write_temp_movie()
+        mock_is_remote.return_value = True
+        mock_run_remote.return_value = True
+        mock_size.return_value = (1920, 1080)
+        mock_duration.return_value = 10.0
+
+        with patch.object(
+            preview_files_service.config, "SKIP_NORMALIZATION_FULL", True
+        ):
+            preview_files_service.prepare_and_store_movie(
+                preview_file_id,
+                uploaded_path,
+                normalize=True,
+                add_source_to_file_store=False,
+            )
+
+        self.assertTrue(mock_run_remote.call_args.kwargs["skip_normalization"])
+        # No movie stored: the source uploaded for the job is the only one,
+        # and the thumbnails are the remote job's business.
+        mock_add_movie.assert_not_called()
+        mock_gen_thumbnail.assert_not_called()
+        persisted = files_service.get_preview_file(preview_file_id)
+        self.assertEqual(persisted["status"], "ready")
+        self.assertEqual(persisted["width"], 1920)
+        self.assertEqual(persisted["file_size"], 1024)
+
+    def test_copying_a_movie_preview_carries_the_source_along(self):
+        """
+        A preview file whose normalization was skipped only holds a source
+        movie: leaving that prefix out would copy a preview with no movie.
+        """
+        original = self.generate_fixture_preview_file(name="original")
+        target = self.generate_fixture_preview_file(name="target")
+        original_id = str(original.id)
+        target_id = str(target.id)
+        source_path = file_store.get_local_movie_path("source", original_id)
+        os.makedirs(os.path.dirname(source_path), exist_ok=True)
+        with open(source_path, "wb") as movie_file:
+            movie_file.write(b"\x00" * 512)
+
+        preview_files_service.copy_preview_file_in_another_one(
+            original_id, target_id
+        )
+
+        self.assertTrue(
+            os.path.exists(
+                file_store.get_local_movie_path("source", target_id)
+            )
+        )
+
     def _write_temp_movie(self, size=1024):
         """
         Create a non-empty temp file standing in for a movie.

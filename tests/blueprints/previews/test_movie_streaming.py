@@ -96,6 +96,38 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.data, movie_content)
 
+    def test_source_route_serves_the_source_only(self):
+        """
+        The sync between two instances needs the source told apart from the
+        encoded versions, so this route has no fallback.
+        """
+        preview_file_id = self.upload_movie_preview(save_source_file=True)
+        with open(self.movie_path, "rb") as movie_file:
+            movie_content = movie_file.read()
+
+        response = self.app.get(
+            f"/movies/source/preview-files/{preview_file_id}.mp4",
+            headers=self.base_headers,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "video/mp4")
+        self.assertEqual(response.data, movie_content)
+
+        os.remove(file_store.get_local_movie_path("source", preview_file_id))
+
+        # The full quality movie is still there, but this route does not
+        # fall back on it.
+        response = self.app.get(
+            f"/movies/source/preview-files/{preview_file_id}.mp4",
+            headers=self.base_headers,
+        )
+        self.assertEqual(response.status_code, 404)
+        response = self.app.get(
+            f"/movies/originals/preview-files/{preview_file_id}.mp4",
+            headers=self.base_headers,
+        )
+        self.assertEqual(response.status_code, 200)
+
     def test_stream_unknown_movie_returns_404(self):
         self.upload_movie_preview()
         from zou.app.utils import fields

@@ -9,6 +9,7 @@ from zou.app.blueprints.previews.resources import (
     PreviewFileLowMovieResource,
     PreviewFileMovieResource,
     PreviewFileMovieDownloadResource,
+    PreviewFileSourceMovieResource,
     PreviewFileThumbnailResource,
     PreviewFileResource,
     PreviewFileDownloadResource,
@@ -61,6 +62,10 @@ routes = [
     (
         "/movies/low/preview-files/<instance_id>.mp4",
         PreviewFileLowMovieResource,
+    ),
+    (
+        "/movies/source/preview-files/<instance_id>.mp4",
+        PreviewFileSourceMovieResource,
     ),
     (
         "/pictures/thumbnails/preview-files/<instance_id>.png",

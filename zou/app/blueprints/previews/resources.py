@@ -148,6 +148,22 @@ def send_movie_file(
                 raise
 
 
+def send_source_movie_file(preview_file_id, last_modified=None):
+    """
+    Send the uploaded source movie, and only that one: the sync between two
+    instances has to tell it apart from the encoded versions.
+    """
+    return send_storage_file(
+        file_store.get_local_movie_path,
+        file_store.open_movie,
+        "source",
+        preview_file_id,
+        "mp4",
+        mimetype="video/mp4",
+        last_modified=last_modified,
+    )
+
+
 def send_picture_file(
     prefix,
     preview_file_id,
@@ -313,14 +329,22 @@ class BaseNewPreviewFilePicture:
                 f"storage ({written_size}/{expected_size} bytes); the "
                 f"temporary disk may be full."
             )
-        save_source_file = config.PREVIEW_SAVE_SOURCE_FILE
-        if normalize and config.ENABLE_JOB_QUEUE and not no_job:
+        is_remote = preview_files_service.is_remote_normalization_enabled()
+        # The remote worker reads the movie from the object storage, and
+        # without normalization that source is the only movie stored: it has
+        # to be uploaded whatever PREVIEW_SAVE_SOURCE_FILE says.
+        save_source_file = config.PREVIEW_SAVE_SOURCE_FILE or is_remote
+        # Even with normalization turned off, the remote worker is what
+        # builds the thumbnails and the tile, and dispatching it blocks until
+        # Nomad is done: keep it out of the request thread.
+        needs_job = normalize or is_remote
+        if needs_job and config.ENABLE_JOB_QUEUE and not no_job:
             queue_store.job_queue.enqueue(
                 preview_files_service.prepare_and_store_movie,
                 args=(
                     preview_file_id,
                     uploaded_movie_path,
-                    True,
+                    normalize,
                     save_source_file,
                 ),
                 job_timeout=int(config.JOB_QUEUE_TIMEOUT),
@@ -850,6 +874,53 @@ class PreviewFileLowMovieResource(BasePreviewFileResource):
             if config.LOG_FILE_NOT_FOUND:
                 current_app.logger.error(
                     f"Movie file was not found for: {instance_id}"
+                )
+            raise PreviewFileNotFoundException
+
+
+class PreviewFileSourceMovieResource(BasePreviewFileResource):
+    """
+    Allow to download the source movie of a preview.
+    """
+
+    @jwt_required()
+    def get(self, instance_id):
+        """
+        Get preview source movie
+        ---
+        description: Download the movie as it was uploaded, without any
+          normalization. Answers a 404 when the source was not kept. Mainly
+          meant for the synchronisation between two instances.
+        tags:
+          - Previews
+        parameters:
+          - in: path
+            name: instance_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            description: Preview file unique identifier
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+          200:
+            description: Source movie preview downloaded
+            content:
+              video/mp4:
+                schema:
+                  type: string
+                  format: binary
+        """
+        self.is_allowed(instance_id)
+
+        try:
+            return send_source_movie_file(
+                instance_id, last_modified=self.last_modified
+            )
+        except FileNotFound:
+            if config.LOG_FILE_NOT_FOUND:
+                current_app.logger.error(
+                    f"Source movie file was not found for: {instance_id}"
                 )
             raise PreviewFileNotFoundException
 

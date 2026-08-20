@@ -349,8 +349,30 @@ def create_app(config_object=config):
     file_store.configure_storages(app)
     config_store.sync_config()
     load_api(app)
+    warn_about_overridden_settings(app, config_object)
 
     return app
+
+
+def warn_about_overridden_settings(app, config_object):
+    """
+    Report the settings the runtime silently overrides, so they are not read
+    as being in effect.
+    """
+    from zou.app.services import preview_files_service
+
+    try:
+        is_remote = preview_files_service.is_remote_normalization_enabled()
+    except Exception:
+        # The Nomad job name is read from Redis, which may not answer yet.
+        # Never turn a warning into a failed boot.
+        return
+    if is_remote and not config_object.PREVIEW_SAVE_SOURCE_FILE:
+        app.logger.warning(
+            "PREVIEW_SAVE_SOURCE_FILE is off, but the movie normalization "
+            "runs on a remote worker which reads the source movie from the "
+            "object storage: source movies are uploaded there anyway."
+        )
 
 
 def __getattr__(name):

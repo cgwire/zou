@@ -1469,6 +1469,17 @@ def download_preview_from_another_instance(
             "exist_func": file_store.exists_movie,
             "save_func": file_store.add_movie,
         }
+        if config.SYNC_SOURCE_MOVIE_FILES:
+            # An instance that skips the normalization stores the source
+            # only, and its preview routes fall back on it. Replicating
+            # `previews` alone would leave nothing to serve here.
+            file_tree[
+                f"/movies/source/preview-files/{preview_file_id}.mp4"
+            ] = {
+                "prefix": "source",
+                "exist_func": file_store.exists_movie,
+                "save_func": file_store.add_movie,
+            }
         file_tree[f"/movies/tiles/preview-files/{preview_file_id}.png"] = {
             "prefix": "tiles",
             "exist_func": file_store.exists_picture,

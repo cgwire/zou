@@ -63,17 +63,64 @@ All configuration is in `zou/app/config.py`, read from environment variables.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PREVIEW_SAVE_SOURCE_FILE` | false | Keep the uploaded source movie alongside the normalized preview |
+| `PREVIEW_SAVE_SOURCE_FILE` | false | Keep the uploaded source movie alongside the normalized preview. Ignored when the normalization runs on a remote worker: it reads the source from the object storage, so the source is uploaded there whatever this says (a warning is logged at startup) |
 | `SKIP_NORMALIZATION_FULL` | false | Skip the movie normalization: the uploaded movie is stored as is, once, as the full quality preview |
 | `SKIP_NORMALIZATION_HIGHDEF` | false | Skip only the high def (28M) encoding: the low def version is built and is the only movie stored |
+| `SYNC_SOURCE_MOVIE_FILES` | false | Replicate the source movies when syncing from another instance |
+
+`PREVIEW_SAVE_SOURCE_FILE` and the `SKIP_NORMALIZATION_*` settings are mutually
+exclusive, and Zou refuses to boot with both: skipping the normalization
+already keeps the source as the movie that is stored and served, so asking to
+save it "alongside the normalized preview" describes a preview that is never
+produced.
+
+With a Nomad setup (`ENABLE_JOB_QUEUE_REMOTE` + `JOB_QUEUE_NOMAD_NORMALIZE_JOB`),
+the remote job is dispatched even when nothing has to be encoded
+(`SKIP_NORMALIZATION_FULL`, or `?normalize=false` on the upload): it is what
+builds the thumbnails and the tile, and Zou has no ffmpeg to fall back on.
+The job then encodes and uploads nothing, and the uploaded source stays the
+only movie — so the source is pushed to the object storage whatever
+`PREVIEW_SAVE_SOURCE_FILE` says, since the job reads it from there.
 
 The movie routes serve whichever version exists: `/movies/originals/` tries
 `previews`, `lowdef` then `source`, and `/movies/low/` tries `lowdef`,
 `previews` then `source`. So a setup skipping part of the normalization keeps
-working without any client change. The `source` fallback needs
-`PREVIEW_SAVE_SOURCE_FILE=true`, and the source is served as `video/mp4`
+working without any client change. The source is served as `video/mp4`
 whatever its real container, without the `+faststart` flag: browsers only
 play it back when the upload is already a web-ready h264 mp4.
+`/movies/source/preview-files/<id>.mp4` serves the source and only the source,
+without that fallback.
+
+### Skipping the normalization means syncing the sources
+
+Where the movie lands depends on both the skip settings and the setup:
+
+| | `source-<id>` | `previews-<id>` | `lowdef-<id>` |
+|---|---|---|---|
+| normalization on | only with `PREVIEW_SAVE_SOURCE_FILE` | encoded 28M | encoded 6M |
+| `SKIP_NORMALIZATION_HIGHDEF` | no | no | encoded 6M |
+| `SKIP_NORMALIZATION_FULL`, local | no | the uploaded movie, copied as is | no |
+| `SKIP_NORMALIZATION_FULL`, remote | the uploaded movie | no | no |
+
+A remote (Nomad) setup always pushes the source to the object storage, since
+that is where the worker reads it from — so with `SKIP_NORMALIZATION_FULL`
+there is no point writing the same bytes twice and `previews-<id>` stays
+empty. A local setup has no such guarantee, so the uploaded movie is stored
+under `previews-<id>`, which is also the prefix every other piece of code
+looks up first.
+
+Anything replicating a preview file has to carry the `source` prefix along,
+or a remote setup's copy ends up with no movie at all:
+
+- **Between two instances**: set `SYNC_SOURCE_MOVIE_FILES=true` on the
+  instance that pulls, when the other one runs `SKIP_NORMALIZATION_FULL` on a
+  remote setup. It adds `/movies/source/preview-files/<id>.mp4` to the files
+  fetched by `zou sync-full-files` and friends; without it the sync only asks
+  for `previews` and `lowdef`, which that instance does not have. Leave it off
+  otherwise: every missing source costs three retries and an error line in
+  the logs (the 404 is not counted as a sync failure).
+- **Inside one instance**: `copy_preview_file_in_another_one` (used by the
+  comment automations) copies the `source` prefix too, unconditionally.
 
 ## LDAP / SAML
 
