@@ -79,7 +79,7 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
     def test_get_persons_task_dates_manager_scoped_to_own_projects(self):
         # A manager who belongs to no project gets no task dates: other
         # productions only show as anonymous busy periods, without any
-        # production or task detail (kitsu#1579).
+        # production or task detail.
         self.generate_fixture_user_manager()
         self.log_in_manager()
         result = self.get("/data/persons/task-dates")
@@ -119,7 +119,7 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
         )
 
     def test_get_persons_task_dates_as_supervisor(self):
-        # A supervisor reaches the team schedule too (kitsu#1579), scoped
+        # A supervisor reaches the team schedule too, scoped
         # to their own projects like a manager.
         self.generate_fixture_user_supervisor()
         projects_service.add_team_member(
@@ -158,7 +158,7 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
     def test_get_persons_task_dates_foreign_work_is_anonymous(self):
         # A person whose tasks live solely in a project the manager is not a
         # member of appears with anonymous busy periods only: merged date
-        # pairs, no task dates, no production or task detail (kitsu#1579).
+        # pairs, no task dates, no production or task detail.
         person_id = str(self.person.id)
         self.generate_fixture_user_manager()
         projects_service.add_team_member(
@@ -274,7 +274,7 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
         self.assertIn(str(closed_person.id), person_ids)
 
     def test_get_persons_task_dates_supervisor_scoped_to_own_projects(self):
-        # The gate is supervisor-or-above (kitsu#1579): a supervisor who
+        # The gate is supervisor-or-above: a supervisor who
         # belongs to no project gets anonymous busy periods only, not a 403.
         self.generate_fixture_user_supervisor()
         self.log_in_supervisor()
