@@ -41,7 +41,9 @@ class PreviewFileTestCase(ApiDBTestCase):
             name="PROJ1_TASK1_PF1"
         )
         self.task1_2 = self.generate_fixture_task(name="PROJ1_TASK2")
-        self.generate_fixture_preview_file(name="PROJ1_TASK2_PF1")
+        self.preview_file1_2 = self.generate_fixture_preview_file(
+            name="PROJ1_TASK2_PF1"
+        )
 
         self.project2 = self.generate_fixture_project("test")
         self.task2_1 = self.generate_fixture_task(name="PROJ2_TASK1")
@@ -179,6 +181,33 @@ class PreviewFileTestCase(ApiDBTestCase):
         )
         self.assertEqual(data["name"], preview_file_again["name"])
         self.put_404(f"data/preview-files/{fields.gen_uuid()}", data)
+
+    def test_update_preview_file_for_artist(self):
+        """
+        Test route PUT data/preview-files/<preview_file_id> for artist.
+        The artist can update the previews of the tasks he is assigned
+        to, and nothing else.
+        """
+        route1_1 = f"data/preview-files/{self.preview_file1_1.id!s}"
+        route1_2 = f"data/preview-files/{self.preview_file1_2.id!s}"
+
+        self.log_in_cg_artist()
+        self.put(route1_1, {"name": "PROJ1_TASK1_PF1_EDIT"})
+        preview_file = self.get(route1_1)
+        self.assertEqual(preview_file["name"], "PROJ1_TASK1_PF1_EDIT")
+        self.put(route1_2, {"name": "PROJ1_TASK2_PF1_EDIT"}, code=403)
+
+    def test_update_preview_file_for_vendor(self):
+        """
+        Test route PUT data/preview-files/<preview_file_id> for vendor.
+        Same rule as the artist: only the previews of assigned tasks.
+        """
+        route2_1 = f"data/preview-files/{self.preview_file2_1.id!s}"
+        route2_2 = f"data/preview-files/{self.preview_file2_2.id!s}"
+
+        self.log_in_vendor()
+        self.put(route2_2, {"name": "PROJ2_TASK2_PF1_EDIT"}, code=200)
+        self.put(route2_1, {"name": "PROJ2_TASK1_PF1_EDIT"}, code=403)
 
     def test_delete_preview_file(self):
         preview_files = self.get("data/preview-files")

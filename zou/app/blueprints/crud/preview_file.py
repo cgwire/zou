@@ -329,7 +329,7 @@ class PreviewFileResource(BaseModelResource):
         task = tasks_service.get_task(preview_file["task_id"])
         permissions_service.check_project_access(task["project_id"])
         if not permissions.has_manager_permissions():
-            permissions_service.check_working_on_task(task["entity_id"])
+            permissions_service.check_working_on_task(preview_file["task_id"])
         return True
 
     def pre_update(self, instance_dict, data):
