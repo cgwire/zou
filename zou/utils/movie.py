@@ -488,12 +488,26 @@ def concat_demuxer(in_files, output_path, *args):
     with any container formats.
     """
 
+    first_layout = None
     for input_path in in_files:
         try:
             info = ffmpeg.probe(input_path)
         except ffmpeg._run.Error as e:
             log_ffmpeg_error(e, "concat_demuxer")
             raise (e)
+        # The concat demuxer matches streams across files by index, so
+        # every file must share the stream layout of the first one.
+        codec_types = [stream["codec_type"] for stream in info["streams"]]
+        if first_layout is None:
+            first_layout = codec_types
+        elif codec_types != first_layout:
+            return {
+                "success": False,
+                "message": (
+                    f"{input_path} has a stream layout ({codec_types}) "
+                    f"different from the first file's ({first_layout})"
+                ),
+            }
         # NLE exports often carry a timecode (tmcd) or other data stream
         # next to video and audio. The output only maps video and audio,
         # so ignore anything else instead of rejecting the file.
@@ -518,12 +532,6 @@ def concat_demuxer(in_files, output_path, *args):
                 "message": (
                     f"{input_path} has unexpected stream type ({stream_infos})"
                 ),
-            }
-
-        if streams[0]["codec_type"] != "video":
-            return {
-                "success": False,
-                "message": f"{input_path} has an unexpected stream order",
             }
 
     with tempfile.NamedTemporaryFile(mode="w") as temp:
