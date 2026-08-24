@@ -174,6 +174,45 @@ class MovieTestCase(unittest.TestCase):
         test_name = "test_concate_demuxer"
         self.concat_testing(movie.concat_demuxer, test_name)
 
+    def test_concat_demuxer_ignores_timecode_stream(self):
+        # Previews exported from DaVinci Resolve carry a tmcd data stream
+        # next to video and audio. The demuxer path must ignore it instead
+        # of silently falling back to the re-encoding concat filter, which
+        # drifts (cgwire/kitsu#2184).
+        videos = []
+        for i in range(0, 2):
+            video = str(Path(self.tmpdir) / f"{i}-tmcd.mp4")
+            video_in = ffmpeg.input(
+                "testsrc=size=320x240:rate=25:duration=1", f="lavfi"
+            )
+            audio_in = ffmpeg.input(
+                "anullsrc=r=48000:cl=stereo:d=1", f="lavfi"
+            )
+            ffmpeg.output(
+                video_in,
+                audio_in,
+                video,
+                vcodec="libx264",
+                pix_fmt="yuv420p",
+                acodec="aac",
+                shortest=None,
+                timecode="01:00:00:00",
+            ).overwrite_output().run(quiet=True)
+            codec_types = [
+                stream["codec_type"]
+                for stream in ffmpeg.probe(video)["streams"]
+            ]
+            self.assertEqual(codec_types, ["video", "audio", "data"])
+            videos.append((video, None))
+
+        out = str(Path(self.tmpdir) / "out-tmcd.mp4")
+        result = movie.build_playlist_movie(
+            movie.concat_demuxer, videos, out, 320, 240, fps=25
+        )
+        self.assertTrue(result.get("success"))
+        self.assertFalse(result.get("message"))
+        self.assertEqual(movie.get_movie_size(out), (320, 240))
+
     def test_concat_filter_testing(self):
         test_name = "test_concate_filter"
         self.concat_testing(movie.concat_filter, test_name)

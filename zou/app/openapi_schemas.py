@@ -118,6 +118,10 @@ BuildJobSchema = {
             "description": "Type of build job (archive, movie)",
         },
         "ended_at": {"type": "string", "format": "date-time"},
+        "message": {
+            "type": "string",
+            "description": "Explains a degraded or failed build",
+        },
         "playlist_id": {
             "type": "string",
             "format": "UUID",

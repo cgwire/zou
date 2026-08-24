@@ -57,6 +57,12 @@ def _run_build_playlist(input_paths, output_movie_path, enc_params, full):
             )
             if result["success"] and os.path.exists(output_movie_path):
                 is_build_successful = True
+            elif result.get("message"):
+                logger.warning(
+                    "concat_demuxer rejected the previews (%s), falling "
+                    "back to the re-encoding concat_filter",
+                    result["message"],
+                )
         except Exception:
             logger.warning(
                 "concat_demuxer failed, falling back to concat_filter",

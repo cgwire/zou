@@ -494,13 +494,20 @@ def concat_demuxer(in_files, output_path, *args):
         except ffmpeg._run.Error as e:
             log_ffmpeg_error(e, "concat_demuxer")
             raise (e)
-        streams = info["streams"]
+        # NLE exports often carry a timecode (tmcd) or other data stream
+        # next to video and audio. The output only maps video and audio,
+        # so ignore anything else instead of rejecting the file.
+        streams = [
+            stream
+            for stream in info["streams"]
+            if stream["codec_type"] in ("video", "audio")
+        ]
         if len(streams) != 2:
             return {
                 "success": False,
                 "message": (
-                    f"{input_path} has an unexpected stream number "
-                    f"({len(streams)})"
+                    f"{input_path} has an unexpected video/audio stream "
+                    f"number ({len(streams)})"
                 ),
             }
 
@@ -513,10 +520,7 @@ def concat_demuxer(in_files, output_path, *args):
                 ),
             }
 
-        video_index = [
-            x["index"] for x in streams if x["codec_type"] == "video"
-        ][0]
-        if video_index != 0:
+        if streams[0]["codec_type"] != "video":
             return {
                 "success": False,
                 "message": f"{input_path} has an unexpected stream order",
