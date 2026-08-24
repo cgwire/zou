@@ -23,6 +23,8 @@ class BuildJob(db.Model, BaseMixin, SerializerMixin):
     status = db.Column(ChoiceType(STATUSES), default="running", nullable=False)
     job_type = db.Column(ChoiceType(TYPES), default="movie", nullable=False)
     ended_at = db.Column(db.DateTime)
+    # Explains a degraded or failed build, e.g. a re-encoding fallback.
+    message = db.Column(db.Text())
 
     playlist_id = db.Column(
         UUIDType(binary=False),
@@ -31,11 +33,12 @@ class BuildJob(db.Model, BaseMixin, SerializerMixin):
         index=True,
     )
 
-    def end(self, status):
+    def end(self, status, message=None):
         self.update(
             {
                 "status": status,
                 "ended_at": date_helpers.get_utc_now_datetime(),
+                "message": message,
             }
         )
 
@@ -45,5 +48,6 @@ class BuildJob(db.Model, BaseMixin, SerializerMixin):
                 "id": self.id,
                 "status": self.status,
                 "created_at": self.created_at,
+                "message": self.message,
             }
         )

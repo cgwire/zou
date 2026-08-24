@@ -488,19 +488,40 @@ def concat_demuxer(in_files, output_path, *args):
     with any container formats.
     """
 
+    first_layout = None
     for input_path in in_files:
         try:
             info = ffmpeg.probe(input_path)
         except ffmpeg._run.Error as e:
             log_ffmpeg_error(e, "concat_demuxer")
             raise (e)
-        streams = info["streams"]
+        # The concat demuxer matches streams across files by index, so
+        # every file must share the stream layout of the first one.
+        codec_types = [stream["codec_type"] for stream in info["streams"]]
+        if first_layout is None:
+            first_layout = codec_types
+        elif codec_types != first_layout:
+            return {
+                "success": False,
+                "message": (
+                    f"{input_path} has a stream layout ({codec_types}) "
+                    f"different from the first file's ({first_layout})"
+                ),
+            }
+        # NLE exports often carry a timecode (tmcd) or other data stream
+        # next to video and audio. The output only maps video and audio,
+        # so ignore anything else instead of rejecting the file.
+        streams = [
+            stream
+            for stream in info["streams"]
+            if stream["codec_type"] in ("video", "audio")
+        ]
         if len(streams) != 2:
             return {
                 "success": False,
                 "message": (
-                    f"{input_path} has an unexpected stream number "
-                    f"({len(streams)})"
+                    f"{input_path} has an unexpected video/audio stream "
+                    f"number ({len(streams)})"
                 ),
             }
 
@@ -511,15 +532,6 @@ def concat_demuxer(in_files, output_path, *args):
                 "message": (
                     f"{input_path} has unexpected stream type ({stream_infos})"
                 ),
-            }
-
-        video_index = [
-            x["index"] for x in streams if x["codec_type"] == "video"
-        ][0]
-        if video_index != 0:
-            return {
-                "success": False,
-                "message": f"{input_path} has an unexpected stream order",
             }
 
     with tempfile.NamedTemporaryFile(mode="w") as temp:

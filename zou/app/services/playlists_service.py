@@ -791,6 +791,7 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
     Build a movie for all files for a given playlist into the temporary folder.
     """
     success = False
+    message = None
     from zou.app import app
 
     with app.app_context():
@@ -802,8 +803,9 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
             if tmp_file_paths:
                 if not remote:
                     success = False
+                    demuxer_message = None
                     if not full:
-                        success = _run_concatenation(
+                        success, demuxer_message = _run_concatenation(
                             playlist,
                             job,
                             tmp_file_paths,
@@ -814,7 +816,7 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
 
                     # Try again using concat filter
                     if not success:
-                        success = _run_concatenation(
+                        success, _ = _run_concatenation(
                             playlist,
                             job,
                             tmp_file_paths,
@@ -822,6 +824,15 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
                             params,
                             movie.concat_filter,
                         )
+                        if success and demuxer_message is not None:
+                            message = (
+                                "The exact concat demuxer rejected the "
+                                f"previews ({demuxer_message}). The movie "
+                                "was built by the re-encoding concat "
+                                "filter instead, its timing can drift "
+                                "from the source previews."
+                            )
+                            app.logger.warning(message)
                 else:
                     try:
                         _run_remote_job_build_playlist(
@@ -838,7 +849,7 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
 
         # exception will be logged by rq
         finally:
-            job = end_build_job(playlist, job, success)
+            job = end_build_job(playlist, job, success, message)
 
     if not success:
         raise Exception(f"Failure while building playlist {playlist['id']!r}")
@@ -851,21 +862,24 @@ def _run_concatenation(
 ):
     """
     Concatenate the downloaded previews into the playlist movie, then
-    store it and clean the temporary files up.
+    store it and clean the temporary files up. Return whether it
+    succeeded, along with the concatenation message, if any.
     """
     success = False
+    message = None
     try:
         result = movie.build_playlist_movie(
             mode, tmp_file_paths, movie_file_path, **params._asdict()
         )
+        message = result.get("message")
         if result["success"] and os.path.exists(movie_file_path):
             file_store.add_movie("playlists", job["id"], movie_file_path)
             success = True
-        if result.get("message"):
+        if message:
             from zou.app import app
 
             with app.app_context():
-                app.logger.error(result["message"])
+                app.logger.error(message)
     except Exception:
         from zou.app import app
 
@@ -875,7 +889,7 @@ def _run_concatenation(
                 (playlist["id"], mode.__qualname__),
                 exc_info=1,
             )
-    return success
+    return success, message
 
 
 def _run_remote_job_build_playlist(
@@ -930,10 +944,11 @@ def start_build_job(playlist):
     return job.serialize()
 
 
-def end_build_job(playlist, job, success):
+def end_build_job(playlist, job, success, message=None):
     """
     Register in database that a build is finished. Emits an event to notify
-    clients that the build is done.
+    clients that the build is done. The optional message explains a
+    degraded or failed build.
     """
     if success:
         status = "succeeded"
@@ -942,13 +957,14 @@ def end_build_job(playlist, job, success):
 
     build_job = BuildJob.get(job["id"])
     if build_job is not None:
-        build_job.end(status=status)
+        build_job.end(status=status, message=message)
     events.emit(
         "build-job:update",
         {
             "build_job_id": job["id"],
             "playlist_id": playlist["id"],
             "status": status,
+            "message": message,
         },
         project_id=playlist["project_id"],
     )

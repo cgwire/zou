@@ -12,6 +12,8 @@ from zou.app.services import (
     projects_service,
 )
 from zou.app.services.exception import PlaylistLockTimeoutException
+from zou.utils import movie
+from zou.utils.movie import EncodingParameters
 
 
 class PlaylistsServiceTestCase(ApiDBTestCase):
@@ -360,6 +362,59 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         job = playlists_service.end_build_job(playlist, job, False)
         self.assertEqual(job["status"], "failed")
         self.assertIsNotNone(job["ended_at"])
+
+    def test_end_build_job_message(self):
+        """
+        The optional message explains a degraded build to whoever looks
+        at the job afterwards.
+        """
+        playlist = self.generate_fixture_playlists()
+        job = playlists_service.start_build_job(playlist)
+        job = playlists_service.end_build_job(
+            playlist, job, True, message="built by the concat filter"
+        )
+        self.assertEqual(job["status"], "succeeded")
+        self.assertEqual(job["message"], "built by the concat filter")
+
+    def test_build_playlist_movie_file_reports_the_fallback(self):
+        """
+        When the concat demuxer rejects the previews and the re-encoding
+        concat filter builds the movie instead, the job says so rather
+        than reporting a plain success (cgwire/kitsu#2184).
+        """
+        playlist = self.generate_fixture_playlists()
+        job = playlists_service.start_build_job(playlist)
+        params = EncodingParameters(width=1920, height=1080, fps="25.00")
+
+        def fake_build(mode, tmp_file_paths, movie_file_path, **kwargs):
+            if mode is movie.concat_demuxer:
+                return {
+                    "success": False,
+                    "message": "a.mp4 has an unexpected video/audio "
+                    "stream number (3)",
+                }
+            open(movie_file_path, "w").close()
+            return {"success": True}
+
+        with (
+            patch.object(
+                playlists_service, "playlist_previews", return_value=[]
+            ),
+            patch.object(
+                playlists_service,
+                "retrieve_playlist_tmp_files",
+                return_value=[("/tmp/a.mp4", "a.mp4")],
+            ),
+            patch.object(movie, "build_playlist_movie", fake_build),
+            patch.object(playlists_service.file_store, "add_movie"),
+        ):
+            job = playlists_service.build_playlist_movie_file(
+                playlist, job, [], params, False, False
+            )
+
+        self.assertEqual(job["status"], "succeeded")
+        self.assertIn("concat filter", job["message"])
+        self.assertIn("stream number", job["message"])
 
     def test_an_entity_is_added_with_the_preview_it_names(self):
         self.generate_fixture_preview_files()
