@@ -4,9 +4,25 @@ from werkzeug.utils import cached_property
 from flask.json.provider import JSONProvider
 from flask import Response, request, abort
 
+import json
 import orjson
 
 orjson_options = orjson.OPT_NON_STR_KEYS
+
+
+def dumps_bytes(obj):
+    """
+    Serialize a response payload to JSON bytes.
+
+    orjson refuses integers outside the 64-bit range, which JSONB columns
+    can legitimately hold (a metadata value written as a huge number reads
+    back from PostgreSQL as an arbitrary-precision int). Fall back to the
+    stdlib for those payloads instead of turning them into a 500.
+    """
+    try:
+        return orjson.dumps(obj, option=orjson_options)
+    except TypeError:
+        return json.dumps(obj, default=str).encode("utf-8")
 
 
 class ORJSONProvider(JSONProvider):
@@ -18,7 +34,7 @@ class ORJSONProvider(JSONProvider):
         return orjson.loads(s)
 
     def dumps(self, obj, **kwargs):
-        return orjson.dumps(obj, option=orjson_options).decode("utf-8")
+        return dumps_bytes(obj).decode("utf-8")
 
 
 class ParsedUserAgent(UserAgent):
@@ -72,9 +88,9 @@ def rows_response(header, rows, stream=False):
         return {**header, "rows": list(rows)}
 
     def generate():
-        yield orjson.dumps(header) + b"\n"
+        yield dumps_bytes(header) + b"\n"
         for row in rows:
-            yield orjson.dumps(row) + b"\n"
+            yield dumps_bytes(row) + b"\n"
 
     return Response(generate(), mimetype="application/x-ndjson")
 

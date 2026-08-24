@@ -1,6 +1,12 @@
+import json
 import unittest
 
-from zou.app.utils.flask_utils import ParsedUserAgent, is_from_browser
+from zou.app.utils.flask_utils import (
+    ParsedUserAgent,
+    dumps_bytes,
+    is_from_browser,
+    rows_response,
+)
 
 
 class FlaskUtilsTestCase(unittest.TestCase):
@@ -33,6 +39,17 @@ class FlaskUtilsTestCase(unittest.TestCase):
     def test_is_not_from_browser_curl(self):
         ua = ParsedUserAgent("curl/7.68.0")
         self.assertFalse(is_from_browser(ua))
+
+    def test_dumps_bytes_big_int(self):
+        payload = {"frame": 2**70}
+        self.assertEqual(json.loads(dumps_bytes(payload)), payload)
+
+    def test_rows_response_stream_big_int(self):
+        response = rows_response(
+            {"compact": False}, iter([{"frame": 2**70}]), stream=True
+        )
+        lines = list(response.response)
+        self.assertEqual(json.loads(lines[1]), {"frame": 2**70})
 
     def test_parsed_user_agent_properties(self):
         ua = ParsedUserAgent(
