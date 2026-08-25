@@ -349,6 +349,20 @@ class TaskReaderTestCase(TaskTestCase):
         self.assertEqual(tasks[0]["name"], "Première Tâche")
         self.assertEqual(tasks[0]["task_type_name"], "Modélisation")
 
+    def test_get_task_dicts_for_entity_is_sorted_by_name(self):
+        """
+        The detailed task listings promise a name-ordered output, wherever
+        the sort happens.
+        """
+        self.generate_fixture_task(name="B task")
+        self.generate_fixture_task(name="A task")
+
+        tasks = tasks_service.get_task_dicts_for_entity(self.asset.id)
+
+        names = [task["name"] for task in tasks]
+        self.assertEqual(names, sorted(names, key=str.casefold))
+        self.assertLess(names.index("A task"), names.index("B task"))
+
     def test_get_task_dicts_for_entity_with_relations_attaches_assignees(self):
         self.generate_fixture_task(name="Secondary")
 

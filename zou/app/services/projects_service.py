@@ -37,7 +37,7 @@ from zou.app.utils import fields, events, cache
 from zou.app import db
 
 from sqlalchemy.exc import StatementError
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.orm.exc import ObjectDeletedError
 from sqlalchemy import or_
 
@@ -525,6 +525,20 @@ def update_team_member_role(project_id, person_id, role):
             else None
         ),
     }
+
+
+def get_team_raw(project_id):
+    """
+    Return the team members of given project as active records, with
+    their departments eager-loaded: serializing them person by person
+    lazy-loads one departments query per member otherwise.
+    """
+    project = get_project_raw(project_id)
+    return (
+        Person.query.options(selectinload(Person.departments))
+        .filter(Person.id.in_([person.id for person in project.team]))
+        .all()
+    )
 
 
 def get_team_roles(project_id):

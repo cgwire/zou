@@ -218,10 +218,9 @@ class ProductionTeamResource(MethodView, ArgsMixin):
                         example: "supervisor"
         """
         permissions_service.check_project_access(project_id)
-        project = projects_service.get_project_raw(project_id)
         role_map = projects_service.get_team_roles(project_id)
         persons = []
-        for person in project.team:
+        for person in projects_service.get_team_raw(project_id):
             if permissions.has_manager_permissions():
                 data = person.serialize_safe(relations=True)
             else:
