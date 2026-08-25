@@ -196,6 +196,20 @@ class PersonReadTestCase(PersonsTestCase):
             },
         )
 
+    def test_get_short_person_is_cached(self):
+        """
+        Comment feeds read the same authors over and over: the short dict
+        stays cached until the person caches are dropped.
+        """
+        short = persons_service.get_short_person(self.person_id)
+        person = Person.get(self.person_id)
+        person.update({"first_name": "Updated"})
+        cached = persons_service.get_short_person(self.person_id)
+        self.assertEqual(cached["first_name"], short["first_name"])
+        persons_service.clear_person_cache()
+        fresh = persons_service.get_short_person(self.person_id)
+        self.assertEqual(fresh["first_name"], "Updated")
+
     def test_get_short_persons_map(self):
         self.assertEqual(persons_service.get_short_persons_map([]), {})
         short_map = persons_service.get_short_persons_map([self.person_id])

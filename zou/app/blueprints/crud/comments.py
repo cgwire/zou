@@ -422,7 +422,9 @@ class CommentResource(BaseModelResource):
         return comment
 
     def check_read_permissions(self, instance):
-        return permissions_service.check_comment_access(instance["id"])
+        return permissions_service.check_comment_access(
+            instance["id"], comment=instance
+        )
 
     def check_update_permissions(self, instance, data):
         if permissions.has_admin_permissions():

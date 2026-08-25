@@ -735,3 +735,22 @@ class CommentAttachmentTestCase(CommentTestCase):
             403,
         )
         self.assertIsNotNone(AttachmentFile.get(attachment.id))
+
+
+class TaskCommentRouteTestCase(CommentTestCase):
+    """
+    The task scoped comment read, exercised by a non admin who goes
+    through the full comment access check.
+    """
+
+    def test_get_task_comment_as_artist(self):
+        self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            str(self.project.id), self.user_cg_artist["id"]
+        )
+        path = f"data/tasks/{self.task.id}/comments/{self.comment['id']}"
+
+        self.log_in_cg_artist()
+        comment = self.get(path)
+        self.assertEqual(comment["id"], self.comment["id"])
+        self.assertEqual(comment["text"], "first comment")
