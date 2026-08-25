@@ -56,6 +56,26 @@ class OpenProjectRouteTestCase(ApiDBTestCase):
 
         self.assertEqual(self.first_episode_id(), str(episodes["E01"].id))
 
+    def test_get_team(self):
+        """
+        A manager reads the team with each member's departments and
+        per-project role embedded.
+        """
+        person = self.generate_fixture_person()
+        self.generate_fixture_department()
+        person.departments.append(self.department)
+        person.save()
+        projects_service.add_team_member(self.project_id, str(person.id))
+
+        team = self.get(f"data/projects/{self.project_id}/team")
+
+        self.assertEqual(len(team), 1)
+        member = team[0]
+        self.assertEqual(member["id"], str(person.id))
+        self.assertEqual(member["departments"], [str(self.department.id)])
+        self.assertIsNone(member["project_role"])
+        self.assertNotIn("password", member)
+
     def test_add_team_member(self):
         self.person_id = str(self.generate_fixture_person().id)
         self.post(
