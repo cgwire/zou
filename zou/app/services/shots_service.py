@@ -171,7 +171,6 @@ def get_shots(criterions=None):
         .join(Sequence, Sequence.id == Entity.parent_id)
         .add_columns(Project.name)
         .add_columns(Sequence.name)
-        .order_by(Entity.name)
     )
 
     if is_only_assignation:
@@ -189,6 +188,11 @@ def get_shots(criterions=None):
         shot["project_name"] = project_name
         shot["sequence_name"] = sequence_name
         shots.append(shot)
+
+    # Sort the dicts rather than the SQL rows: ordering thousands of
+    # wide rows (data JSONB included) in PostgreSQL makes it materialize
+    # the whole join before returning anything.
+    shots.sort(key=lambda shot: shot["name"].casefold())
 
     return entities_service.remove_not_allowed_metadata_for_vendor(
         "Shot", criterions.get("vendor_departments"), shots
