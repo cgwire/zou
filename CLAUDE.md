@@ -196,7 +196,7 @@ No dedicated refactor pass, but when you edit a schema or add one, use the Pydan
 
 ## Services
 
-Services are stateless modules in `zou/app/services/`. Key patterns:
+Services are stateless modules in `zou/app/services/`. **All database access lives here**: a resource never builds an ORM query or calls a model directly, it checks permissions, validates input and calls service functions. Caller-dependent shaping (role-based serialization, vendor filtering) stays in the resource. Key patterns:
 
 ```python
 # Caching

@@ -40,10 +40,7 @@ from zou.app.services.exception import (
     WrongDateFormatException,
     WrongParameterException,
 )
-from sqlalchemy.orm import selectinload
-
 from zou.app.models.metadata_descriptor import METADATA_DESCRIPTOR_TYPES
-from zou.app.models.person import Person
 
 
 class OpenProjectsResource(MethodView, ArgsMixin):
@@ -221,17 +218,9 @@ class ProductionTeamResource(MethodView, ArgsMixin):
                         example: "supervisor"
         """
         permissions_service.check_project_access(project_id)
-        project = projects_service.get_project_raw(project_id)
         role_map = projects_service.get_team_roles(project_id)
-        # Load the departments of the whole team in one go: serializing
-        # them person by person was an N+1 on every team read.
-        team = (
-            Person.query.options(selectinload(Person.departments))
-            .filter(Person.id.in_([person.id for person in project.team]))
-            .all()
-        )
         persons = []
-        for person in team:
+        for person in projects_service.get_team_raw(project_id):
             if permissions.has_manager_permissions():
                 data = person.serialize_safe(relations=True)
             else:
