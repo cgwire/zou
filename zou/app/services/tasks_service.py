@@ -408,11 +408,13 @@ def get_task_dicts_for_entity(entity_id, relations=True):
 def _get_entity_task_query(relations=False):
     """
     Base query joining a task to everything the detailed task view needs:
-    project, task type, task status, entity and assignees.
+    project, task type, task status, entity and assignees. No SQL
+    ordering: sorting thousands of wide task rows (JSONB data included)
+    made PostgreSQL materialize the whole join, the caller sorts the
+    serialized dicts instead.
     """
     return (
-        Task.query.order_by(Task.name)
-        .join(Project, Task.project_id == Project.id)
+        Task.query.join(Project, Task.project_id == Project.id)
         .join(TaskType, Task.task_type_id == TaskType.id)
         .join(TaskStatus, TaskStatus.id == Task.task_status_id)
         .join(Entity, Task.entity_id == Entity.id)
@@ -422,7 +424,6 @@ def _get_entity_task_query(relations=False):
         .add_columns(TaskStatus.name)
         .add_columns(EntityType.name)
         .add_columns(Entity.name)
-        .order_by(Project.name, TaskType.name, EntityType.name, Entity.name)
     )
 
 
@@ -442,6 +443,15 @@ def _convert_rows_to_detailed_tasks(rows, relations=False):
         }
         for task_object, project_name, task_type_name, task_status_name, entity_type_name, entity_name in rows
     ]
+    task_dicts.sort(
+        key=lambda task: (
+            task["name"].casefold(),
+            task["project_name"].casefold(),
+            task["task_type_name"].casefold(),
+            task["entity_type_name"].casefold(),
+            task["entity_name"].casefold(),
+        )
+    )
     if relations and task_dicts:
         _attach_assignee_ids(task_dicts)
     return task_dicts
