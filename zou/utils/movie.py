@@ -1,13 +1,14 @@
-from collections import namedtuple
 import contextlib
-from fractions import Fraction
 import logging
-import os
 import math
+import os
 import shutil
 import subprocess
 import tempfile
 import uuid
+
+from collections import namedtuple
+from fractions import Fraction
 
 import ffmpeg
 
