@@ -186,6 +186,14 @@ class CreateThingSchema(BaseSchema):
 
 Query parameters (page, limit, filters) are still read via `ArgsMixin` methods: `get_text_parameter()`, `get_bool_parameter()`, etc. Only request **bodies** use Pydantic.
 
+### Style: push validation into the schema you touch
+
+No dedicated refactor pass, but when you edit a schema or add one, use the Pydantic features instead of service-side checks:
+
+- `@model_validator(mode="after")` for cross-field invariants (e.g. "if `is_for_all` then no `episode_id`") instead of a `WrongParameterException` raise in the service
+- shared `Annotated` types for recurring fields (UUID strings, hex colors) instead of repeating the same `Field` constraints
+- `TypeAdapter` to validate ad-hoc payloads (a list of ids) without declaring a full schema
+
 ## Services
 
 Services are stateless modules in `zou/app/services/`. Key patterns:
