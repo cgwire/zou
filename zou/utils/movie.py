@@ -180,7 +180,10 @@ def get_movie_fps(movie_path=None, video_track=None):
         video_track = get_video_track(movie_path, "get_movie_fps")
     fps = 25
     if video_track is not None:
-        fps = float(video_track["r_frame_rate"].split("/")[0])
+        numerator, denominator = [
+            float(number) for number in video_track["r_frame_rate"].split("/")
+        ]
+        fps = numerator / denominator
     return fps
 
 
