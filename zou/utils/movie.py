@@ -1,5 +1,6 @@
 from collections import namedtuple
 import contextlib
+from fractions import Fraction
 import logging
 import os
 import math
@@ -180,10 +181,12 @@ def get_movie_fps(movie_path=None, video_track=None):
         video_track = get_video_track(movie_path, "get_movie_fps")
     fps = 25
     if video_track is not None:
-        numerator, denominator = [
-            float(number) for number in video_track["r_frame_rate"].split("/")
-        ]
-        fps = numerator / denominator
+        # ffprobe reports "0/0" for streams without reliable timing
+        # (attached cover art for instance): keep the default then.
+        try:
+            fps = float(Fraction(video_track["r_frame_rate"]))
+        except (ValueError, ZeroDivisionError):
+            pass
     return fps
 
 

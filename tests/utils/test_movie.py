@@ -338,3 +338,17 @@ class MovieTestCase(unittest.TestCase):
 
         self.assertEqual(img_width, target_width * 8)
         self.assertEqual(img_height, 100 * rows)
+
+    def test_get_movie_fps(self):
+        for r_frame_rate, expected in [
+            ("25/1", 25),
+            ("25/2", 12.5),
+            ("30000/1001", 29.97),
+            ("24", 24),
+            ("0/0", 25),
+            ("garbage", 25),
+        ]:
+            fps = movie.get_movie_fps(
+                video_track={"r_frame_rate": r_frame_rate}
+            )
+            self.assertAlmostEqual(fps, expected, places=2, msg=r_frame_rate)
