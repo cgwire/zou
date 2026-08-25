@@ -1,5 +1,6 @@
 import datetime
 import io
+import json as stdlib_json
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
@@ -12,6 +13,7 @@ from zou.app.services import preview_files_service
 from zou.app.stores import auth_tokens_store, file_store
 from zou.app.utils import commands
 from zou.app.models.entity_type import EntityType
+from zou.app.models.plugin import Plugin
 from zou.app.models.task_type import TaskType
 from zou.cli import cli
 
@@ -401,3 +403,28 @@ class CreateBotCommandTestCase(ApiDBTestCase):
         # The token is the deliverable of the command, not a log line.
         token = result.output.strip().splitlines()[-1]
         self.assertGreater(len(token), 20)
+
+
+class ListPluginsCommandTestCase(ApiDBTestCase):
+    """
+    The JSON output is meant to be piped into another tool, so it has to
+    be parseable, not just printed.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.runner = CliRunner()
+
+    def test_json_output_is_valid_json(self):
+        Plugin.create(
+            plugin_id="studio-tools",
+            name="Studio Tools",
+            version="1.0.0",
+            maintainer_name="Ellen Ripley",
+            license="MIT",
+        )
+        result = self.runner.invoke(cli, ["list-plugins", "--format", "json"])
+        self.assertEqual(result.exit_code, 0, result.output)
+        plugins = stdlib_json.loads(result.output)
+        self.assertEqual(plugins[0]["Plugin ID"], "studio-tools")
+        self.assertEqual(plugins[0]["Name"], "Studio Tools")

@@ -1239,4 +1239,8 @@ def list_plugins(output_format, verbose, filter_field, filter_value):
             rows = [p.values() for p in plugin_list]
             click.echo(tabulate(rows, headers, tablefmt="fancy_grid"))
         elif output_format == "json":
-            click.echo(json.dumps(plugin_list, indent=2, ensure_ascii=False))
+            click.echo(
+                json.dumps(plugin_list, option=json.OPT_INDENT_2).decode(
+                    "utf-8"
+                )
+            )
