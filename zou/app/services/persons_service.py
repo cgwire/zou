@@ -48,6 +48,7 @@ def clear_person_cache():
     cache.cache.delete_memoized(get_person_by_email_desktop_login)
     cache.cache.delete_memoized(get_active_persons)
     cache.cache.delete_memoized(get_persons)
+    cache.cache.delete_memoized(get_short_person)
 
 
 def clear_organisation_cache():
@@ -193,25 +194,52 @@ def get_persons_by_ids(person_ids):
     return [person.serialize_safe() for person in persons]
 
 
+_SHORT_PERSON_COLUMNS = (
+    Person.id,
+    Person.first_name,
+    Person.last_name,
+    Person.has_avatar,
+    Person.role,
+)
+
+
 def build_short_person(person):
     """
-    Return minimal author data to embed a comment or news author, including guests.
+    Return minimal author data to embed a comment or news author, including
+    guests. Accepts a full person row or a row limited to the short
+    columns, hence the inlined full name.
     """
+    if person.first_name and person.last_name:
+        full_name = f"{person.first_name} {person.last_name}"
+    else:
+        full_name = f"{person.first_name}{person.last_name}"
     return {
         "id": str(person.id),
         "first_name": person.first_name,
         "last_name": person.last_name,
-        "full_name": person.full_name,
+        "full_name": full_name,
         "has_avatar": person.has_avatar,
         "role": getattr(person.role, "code", person.role),
     }
 
 
+@cache.memoize_function(240)
 def get_short_person(person_id):
     """
-    Return the minimal author dict for the person matching given id.
+    Return the minimal author dict for the person matching given id. Loads
+    only the columns it embeds instead of the full person row.
     """
-    return build_short_person(get_person_raw(person_id))
+    try:
+        row = (
+            Person.query.with_entities(*_SHORT_PERSON_COLUMNS)
+            .filter_by(id=person_id)
+            .first()
+        )
+    except StatementError:
+        raise PersonNotFoundException()
+    if row is None:
+        raise PersonNotFoundException()
+    return build_short_person(row)
 
 
 def get_short_persons_map(person_ids):
@@ -220,8 +248,10 @@ def get_short_persons_map(person_ids):
     """
     if not person_ids:
         return {}
-    persons = Person.query.filter(Person.id.in_(person_ids)).all()
-    return {str(person.id): build_short_person(person) for person in persons}
+    rows = Person.query.with_entities(*_SHORT_PERSON_COLUMNS).filter(
+        Person.id.in_(person_ids)
+    )
+    return {str(row.id): build_short_person(row) for row in rows}
 
 
 def get_person_by_email_raw(email):

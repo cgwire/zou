@@ -449,7 +449,9 @@ class TaskCommentResource(MethodView):
         comment = tasks_service.get_comment(comment_id)
         if comment["object_id"] != task_id:
             raise CommentNotFoundException
-        permissions_service.check_comment_access(comment)
+        permissions_service.check_comment_access(
+            comment["id"], comment=comment
+        )
         return comment
 
     def pre_delete(self, comment):

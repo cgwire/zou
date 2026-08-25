@@ -396,14 +396,17 @@ def check_supervisor_project_task_type_access(project_id, task_type_id):
     return is_allowed
 
 
-def check_comment_access(comment_id):
+def check_comment_access(comment_id, comment=None):
     """
-    Return true if current user can have access to a comment.
+    Return true if current user can have access to a comment. The comment
+    dict can be passed in to spare a reload when the caller already holds
+    it.
     """
     if permissions.has_admin_permissions():
         return True
     else:
-        comment = tasks_service.get_comment(comment_id)
+        if comment is None:
+            comment = tasks_service.get_comment(comment_id)
         person_id = comment["person_id"]
         task_id = comment["object_id"]
         task = tasks_service.get_task(task_id)
