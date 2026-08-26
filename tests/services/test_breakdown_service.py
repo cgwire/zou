@@ -268,6 +268,34 @@ class EpisodeCastingTestCase(BreakdownTestCase):
             entities_service.get_entity(self.episode_id)["nb_entities_out"], 0
         )
 
+    def test_the_episode_keeps_an_asset_it_was_given_by_hand(self):
+        """
+        Only the episode links derived from a shot casting follow the shots.
+        One a manager set from the episode breakdown is a decision of its
+        own: dropping the asset from its last shot must not undo it.
+        """
+        self.cast(self.episode_id, self.asset_id)
+        self.cast(self.shot_id, self.asset_id)
+
+        self.cast(self.shot_id)
+
+        self.assertEqual(self.cast_asset_ids(self.episode_id), [self.asset_id])
+        self.assertEqual(
+            entities_service.get_entity(self.episode_id)["nb_entities_out"], 1
+        )
+
+    def test_saving_the_episode_casting_makes_its_assets_its_own(self):
+        """
+        An asset that reached the episode through a shot becomes a decision
+        of the episode once its casting is saved from the episode side.
+        """
+        self.cast(self.shot_id, self.asset_id)
+        self.cast(self.episode_id, self.asset_id)
+
+        self.cast(self.shot_id)
+
+        self.assertEqual(self.cast_asset_ids(self.episode_id), [self.asset_id])
+
     def test_the_episode_losing_an_asset_is_announced(self):
         """
         The same way casting it in a shot emits an asset:update event, so

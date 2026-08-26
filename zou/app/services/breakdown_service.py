@@ -485,7 +485,9 @@ def _detach_asset_from_episode_if_unused(asset_id, episode_id):
         return
 
     link = EntityLink.get_by(entity_in_id=episode_id, entity_out_id=asset_id)
-    if link is None:
+    # A link the manager set from the episode breakdown carries no flag:
+    # it is a decision of its own, not a mirror of the shots.
+    if link is None or not (link.data or {}).get("auto"):
         return
 
     episode = entities_service.get_entity_raw(episode_id)
@@ -532,6 +534,7 @@ def _create_episode_casting_link(entity, asset_id, nb_occurences=1, label=""):
                     entity_out_id=asset_id,
                     nb_occurences=nb_occurences,
                     label=label,
+                    data={"auto": True},
                 )
                 # The count is what the breakdown of the episode is drawn
                 # from, and the detach path below decrements it: without
