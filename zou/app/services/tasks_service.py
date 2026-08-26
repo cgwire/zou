@@ -2002,6 +2002,22 @@ def get_time_spents_for_project(project_id, page=0):
     return query_utils.get_paginated_results(query, page)
 
 
+def get_project_tasks_fingerprint(project_id):
+    """
+    Return a cheap change signal for the tasks of given project: the
+    latest update date and the row count. Any create, update, delete or
+    assignation (assigning saves the task) moves at least one of them.
+    """
+    max_updated_at, task_count = (
+        Task.query.with_entities(
+            func.max(Task.updated_at), func.count(Task.id)
+        )
+        .filter(Task.project_id == project_id)
+        .one()
+    )
+    return f"{max_updated_at}:{task_count}"
+
+
 def get_tasks_for_project(
     project_id, page=0, task_type_id=None, episode_id=None
 ):
