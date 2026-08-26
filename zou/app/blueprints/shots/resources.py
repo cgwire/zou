@@ -21,6 +21,7 @@ from zou.app.mixin import ArgsMixin
 from zou.app.utils import (
     fields,
     flask_utils,
+    http_cache,
     permissions,
     query,
     validation,
@@ -1082,8 +1083,14 @@ class ShotsAndTasksResource(MethodView):
             criterions.get("project_id", None)
         )
         permissions_service.scope_criterions_to_vendor(criterions)
+        etag = entities_service.get_project_board_etag(criterions)
+        if etag is not None and http_cache.is_fresh(etag):
+            return http_cache.not_modified(etag)
         if not stream and not compact:
-            return shots_service.get_shots_and_tasks(criterions)
+            body = shots_service.get_shots_and_tasks(criterions)
+            if etag is None:
+                return body
+            return http_cache.json_response(body, etag)
 
         rows = shots_service.prepare_shots_and_tasks(
             criterions, compact=compact
@@ -1092,7 +1099,14 @@ class ShotsAndTasksResource(MethodView):
         if compact:
             header["shot_fields"] = shots_service.SHOTS_AND_TASKS_SHOT_FIELDS
             header["task_fields"] = shots_service.SHOTS_AND_TASKS_TASK_FIELDS
-        return flask_utils.rows_response(header, rows, stream)
+        response = flask_utils.rows_response(header, rows, stream)
+        if etag is not None:
+            # rows_response returns a plain dict when not streaming.
+            if stream:
+                http_cache.mark(response, etag)
+            else:
+                response = http_cache.json_response(response, etag)
+        return response
 
 
 class SceneAndTasksResource(MethodView):

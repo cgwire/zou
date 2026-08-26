@@ -1,9 +1,10 @@
-from sqlalchemy import cast, Text
+from sqlalchemy import cast, func, Text
 from sqlalchemy.exc import IntegrityError
 
 from zou.app.services import (
     assets_service,
     base_service,
+    persons_service,
     projects_service,
     notifications_service,
     shots_service,
@@ -15,6 +16,8 @@ from zou.app.utils import (
     cache,
     events,
     fields,
+    http_cache,
+    permissions,
     query as query_utils,
 )
 
@@ -22,6 +25,7 @@ from zou.app.models.entity import Entity, EntityLink, EntityConceptLink
 from zou.app.models.entity_type import EntityType
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
+from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task, TaskPersonLink
 
 from zou.app import db
@@ -425,6 +429,65 @@ def fetch_entity_task_map(
         return task
 
     return tasks_by_entity, build_task
+
+
+def get_project_board_fingerprint(project_id, user_id):
+    """
+    Cheap change signal for the with-tasks boards of given project. It
+    covers everything those payloads embed: the entities of the project
+    (parents' names included, a sequence is an entity too), the tasks
+    (assigning saves the task), the project row and the entity type
+    names, plus the caller's subscriptions. Five scalar reads, orders of
+    magnitude cheaper than the boards they guard.
+    """
+    signals = [
+        Entity.query.with_entities(
+            func.max(Entity.updated_at), func.count(Entity.id)
+        )
+        .filter(Entity.project_id == project_id)
+        .one(),
+        Task.query.with_entities(
+            func.max(Task.updated_at), func.count(Task.id)
+        )
+        .filter(Task.project_id == project_id)
+        .one(),
+        EntityType.query.with_entities(
+            func.max(EntityType.updated_at), func.count(EntityType.id)
+        ).one(),
+        Subscription.query.with_entities(
+            func.max(Subscription.updated_at), func.count(Subscription.id)
+        )
+        .filter(Subscription.person_id == user_id)
+        .one(),
+    ]
+    project_updated_at = (
+        Project.query.with_entities(Project.updated_at)
+        .filter(Project.id == project_id)
+        .scalar()
+    )
+    parts = [f"{updated_at}:{count}" for updated_at, count in signals]
+    parts.append(str(project_updated_at))
+    return "|".join(parts)
+
+
+def get_project_board_etag(criterions):
+    """
+    Build the conditional GET validator for a with-tasks board, or None
+    when the request is not scoped to one project. Hashes the board
+    fingerprint with the caller, its effective role and the resolved
+    criterions (vendor scoping included). Call it after the permission
+    checks: the effective role needs the project resolved.
+    """
+    project_id = criterions.get("project_id")
+    if project_id is None:
+        return None
+    user_id = persons_service.get_current_user()["id"]
+    return http_cache.build_etag(
+        get_project_board_fingerprint(project_id, user_id),
+        user_id,
+        permissions.get_effective_role(),
+        str(sorted(criterions.items())),
+    )
 
 
 def get_entities_and_tasks(criterions=None):

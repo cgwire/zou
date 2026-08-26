@@ -2,11 +2,18 @@ from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
-from zou.app.utils import flask_utils, permissions, query, validation
+from zou.app.utils import (
+    flask_utils,
+    http_cache,
+    permissions,
+    query,
+    validation,
+)
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
     assets_service,
     breakdown_service,
+    entities_service,
     persons_service,
     shots_service,
     tasks_service,
@@ -324,10 +331,16 @@ class AssetsAndTasksResource(MethodView, ArgsMixin):
         check_criterion_access(criterions)
         permissions_service.scope_criterions_to_vendor(criterions)
         only_user_projects = not permissions.has_admin_permissions()
+        etag = entities_service.get_project_board_etag(criterions)
+        if etag is not None and http_cache.is_fresh(etag):
+            return http_cache.not_modified(etag)
         if not stream and not compact:
-            return assets_service.get_assets_and_tasks(
+            body = assets_service.get_assets_and_tasks(
                 criterions, only_user_projects=only_user_projects
             )
+            if etag is None:
+                return body
+            return http_cache.json_response(body, etag)
 
         rows = assets_service.prepare_assets_and_tasks(
             criterions,
@@ -340,7 +353,14 @@ class AssetsAndTasksResource(MethodView, ArgsMixin):
                 assets_service.ASSETS_AND_TASKS_ASSET_FIELDS
             )
             header["task_fields"] = assets_service.ASSETS_AND_TASKS_TASK_FIELDS
-        return flask_utils.rows_response(header, rows, stream)
+        response = flask_utils.rows_response(header, rows, stream)
+        if etag is not None:
+            # rows_response returns a plain dict when not streaming.
+            if stream:
+                http_cache.mark(response, etag)
+            else:
+                response = http_cache.json_response(response, etag)
+        return response
 
 
 class AssetTypeResource(MethodView):
