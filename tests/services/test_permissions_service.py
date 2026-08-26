@@ -7,6 +7,7 @@ from flask_jwt_extended import verify_jwt_in_request
 from tests.base import ApiDBTestCase
 
 from zou.app import app
+from zou.app.models.entity import Entity
 from zou.app.services import (
     comments_service,
     permissions_service,
@@ -1079,3 +1080,42 @@ class CommentAccessTestCase(PermissionsTestCase):
         with self.as_role("client"):
             with self.denied():
                 permissions_service.check_comment_access(comment_id)
+
+
+class EntitiesBelongToProjectTestCase(ApiDBTestCase):
+    """
+    The routes taking a project and entity ids refuse an entity of another
+    project, before touching anything.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project_status()
+        self.generate_fixture_project()
+        self.generate_fixture_asset_type()
+        self.generate_fixture_episode()
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+        self.generate_fixture_asset()
+        self.project_id = str(self.project.id)
+
+    def test_the_entities_of_the_project_come_back(self):
+        entities = permissions_service.check_entities_belong_to_project(
+            [str(self.shot.id), str(self.asset.id)], self.project_id
+        )
+        self.assertEqual(
+            [entity["id"] for entity in entities],
+            [str(self.shot.id), str(self.asset.id)],
+        )
+
+    def test_an_entity_of_another_project_is_refused(self):
+        other_project = self.generate_fixture_project("Other")
+        stranger = Entity.create(
+            name="STRANGER",
+            project_id=other_project.id,
+            entity_type_id=self.shot_type.id,
+        )
+        with self.assertRaises(permissions.PermissionDenied):
+            permissions_service.check_entities_belong_to_project(
+                [str(self.shot.id), str(stranger.id)], self.project_id
+            )

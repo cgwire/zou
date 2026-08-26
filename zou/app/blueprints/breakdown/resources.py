@@ -80,9 +80,9 @@ class CastingResource(MethodView):
         permissions_service.check_project_access(project_id)
         if permissions.has_vendor_permissions():
             raise permissions.PermissionDenied
-        entity = entities_service.get_entity(entity_id)
-        if entity["project_id"] != project_id:
-            raise permissions.PermissionDenied
+        permissions_service.check_entities_belong_to_project(
+            [entity_id], project_id
+        )
         return breakdown_service.get_casting(entity_id)
 
     @jwt_required()
@@ -170,9 +170,9 @@ class CastingResource(MethodView):
                 "message": "Request body must be a JSON array",
             }, 400
         permissions_service.check_manager_project_access(project_id)
-        entity = entities_service.get_entity(entity_id)
-        if entity["project_id"] != project_id:
-            raise permissions.PermissionDenied
+        permissions_service.check_entities_belong_to_project(
+            [entity_id], project_id
+        )
         return breakdown_service.update_casting(entity_id, casting)
 
 
@@ -233,11 +233,9 @@ class EntitiesCastingResource(MethodView):
                 "entity ids to casting arrays",
             }, 400
         permissions_service.check_manager_project_access(project_id)
-        # Validate every entity before updating anything.
-        for entity_id in castings.keys():
-            entity = entities_service.get_entity(entity_id)
-            if entity["project_id"] != project_id:
-                raise permissions.PermissionDenied
+        permissions_service.check_entities_belong_to_project(
+            castings.keys(), project_id
+        )
         return {
             entity_id: breakdown_service.update_casting(entity_id, casting)
             for entity_id, casting in castings.items()
@@ -1045,7 +1043,7 @@ class ProjectEntityLinkResource(MethodView):
         """
         permissions_service.check_manager_project_access(project_id)
         link = entities_service.get_entity_link(entity_link_id)
-        entity = entities_service.get_entity(link["entity_in_id"])
-        if entity["project_id"] != project_id:
-            raise permissions.PermissionDenied
+        permissions_service.check_entities_belong_to_project(
+            [link["entity_in_id"]], project_id
+        )
         return entities_service.remove_entity_link(entity_link_id)

@@ -452,6 +452,20 @@ def has_manager_project_access(project_id):
     )
 
 
+def check_entities_belong_to_project(entity_ids, project_id):
+    """
+    Return given entities, or raise a PermissionDenied exception if one of
+    them is not part of given project. Meant to run before a route touches
+    anything, so a mixed request changes nothing.
+    """
+    entities = [
+        entities_service.get_entity(str(entity_id)) for entity_id in entity_ids
+    ]
+    if any(entity["project_id"] != project_id for entity in entities):
+        raise permissions.PermissionDenied
+    return entities
+
+
 def check_manager_project_access(project_id):
     """
     Return true if current user is a manager and has a task assigned for this
