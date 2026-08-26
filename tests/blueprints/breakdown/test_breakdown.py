@@ -86,6 +86,50 @@ class BreakdownRoutesTestCase(ApiDBTestCase):
             403,
         )
 
+    def test_cast_asset_in_entities(self):
+        self._set_shot_casting()
+        result = self.put(
+            f"/data/projects/{self.project_id}"
+            f"/entities/casting/assets/{self.asset_character_id}",
+            {
+                "entity_ids": [self.shot_id, self.asset_id],
+                "nb_occurences": 3,
+                "label": "fixed",
+            },
+        )
+        self.assertEqual(set(result.keys()), {self.shot_id, self.asset_id})
+        shot_casting = self.get(
+            f"/data/projects/{self.project_id}"
+            f"/entities/{self.shot_id}/casting"
+        )
+        self.assertEqual(
+            {(c["asset_id"], c["nb_occurences"]) for c in shot_casting},
+            {(self.asset_id, 1), (self.asset_character_id, 3)},
+        )
+        asset_casting = self.get(
+            f"/data/projects/{self.project_id}"
+            f"/entities/{self.asset_id}/casting"
+        )
+        self.assertEqual(asset_casting[0]["label"], "fixed")
+
+    def test_cast_asset_in_entities_rejects_an_empty_selection(self):
+        self.put(
+            f"/data/projects/{self.project_id}"
+            f"/entities/casting/assets/{self.asset_id}",
+            {"entity_ids": []},
+            400,
+        )
+
+    def test_cast_asset_in_entities_as_artist_is_forbidden(self):
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        self.put(
+            f"/data/projects/{self.project_id}"
+            f"/entities/casting/assets/{self.asset_id}",
+            {"entity_ids": [self.shot_id]},
+            403,
+        )
+
     def test_get_episodes_casting(self):
         self._set_shot_casting()
         result = self.get(f"/data/projects/{self.project_id}/episodes/casting")

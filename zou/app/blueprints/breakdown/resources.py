@@ -17,6 +17,7 @@ from zou.app.utils import permissions, validation
 from zou.app.blueprints.breakdown.schemas import (
     AddAssetInstanceSchema,
     AddSceneAssetInstanceSchema,
+    CastAssetSchema,
 )
 
 
@@ -239,6 +240,92 @@ class EntitiesCastingResource(MethodView):
         return {
             entity_id: breakdown_service.update_casting(entity_id, casting)
             for entity_id, casting in castings.items()
+        }
+
+
+class EntitiesAssetCastingResource(MethodView):
+    @jwt_required()
+    def put(self, project_id, asset_id):
+        """
+        Cast one asset in several entities
+        ---
+        description: Set how given asset is cast in each given entity
+          (shots, assets or episodes of the project). Unlike the full
+          casting update, the other assets of each entity are left
+          untouched, so concurrent editors cannot erase each other's
+          work. A nb_occurences of 0 removes the asset from the casting.
+        tags:
+          - Breakdown
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            type: string
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Unique identifier of the project
+          - in: path
+            name: asset_id
+            required: true
+            type: string
+            format: uuid
+            example: c46c8gc6-eg97-6887-c292-79675204e47
+            description: Unique identifier of the asset to cast
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - entity_ids
+                properties:
+                  entity_ids:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+                    description: Entities to cast the asset in
+                  nb_occurences:
+                    type: integer
+                    description: Number of occurences, 0 removes the
+                      asset from the casting, omit to keep the current
+                      one (1 on a new link)
+                  label:
+                    type: string
+                    description: Casting label, omit to keep the
+                      current one
+        responses:
+          200:
+            description: Map of entity ids to their updated casting
+            content:
+              application/json:
+                schema:
+                  type: object
+          400:
+            description: Empty selection or negative number of occurences
+          403:
+            description: Not a manager of the project
+          404:
+            description: Unknown asset or entity
+        """
+        args = validation.validate_request_body(CastAssetSchema)
+        permissions_service.check_manager_project_access(project_id)
+        assets_service.get_asset(asset_id)
+        entity_ids = [str(entity_id) for entity_id in args.entity_ids]
+        permissions_service.check_entities_belong_to_project(
+            entity_ids, project_id
+        )
+        if args.nb_occurences == 0:
+            return {
+                entity_id: breakdown_service.uncast_asset(entity_id, asset_id)
+                for entity_id in entity_ids
+            }
+        return {
+            entity_id: breakdown_service.cast_asset(
+                entity_id, asset_id, args.nb_occurences, args.label
+            )
+            for entity_id in entity_ids
         }
 
 

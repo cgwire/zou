@@ -337,6 +337,85 @@ class EpisodeCastingTestCase(BreakdownTestCase):
         )
 
 
+class AssetCastingTestCase(BreakdownTestCase):
+    """
+    Casting one asset at a time, the way the breakdown page works: the
+    other assets of the entity are left as they are, whatever the caller
+    believes the casting to be.
+    """
+
+    def test_casting_one_more_asset_leaves_the_others_alone(self):
+        self.cast(self.shot_id, self.asset_id)
+
+        breakdown_service.cast_asset(self.shot_id, self.asset_character_id)
+
+        self.assertEqual(
+            sorted(self.cast_asset_ids(self.shot_id)),
+            sorted([self.asset_id, self.asset_character_id]),
+        )
+        self.assertEqual(
+            entities_service.get_entity(self.shot_id)["nb_entities_out"], 2
+        )
+
+    def test_uncasting_an_asset_drops_it_alone(self):
+        self.cast(self.shot_id, self.asset_id, self.asset_character_id)
+        # Read before the change, so the count below comes from a cache
+        # that has something to invalidate.
+        self.assertEqual(
+            entities_service.get_entity(self.shot_id)["nb_entities_out"], 2
+        )
+
+        breakdown_service.uncast_asset(self.shot_id, self.asset_id)
+
+        self.assertEqual(
+            self.cast_asset_ids(self.shot_id), [self.asset_character_id]
+        )
+        self.assertEqual(
+            entities_service.get_entity(self.shot_id)["nb_entities_out"], 1
+        )
+
+    def test_casting_an_asset_again_sets_its_count_and_keeps_its_label(self):
+        breakdown_service.cast_asset(
+            self.shot_id, self.asset_id, 1, label="animate"
+        )
+
+        breakdown_service.cast_asset(self.shot_id, self.asset_id, 3)
+
+        link = breakdown_service.get_entity_link(self.shot_id, self.asset_id)
+        self.assertEqual(link["nb_occurences"], 3)
+        self.assertEqual(link["label"], "animate")
+
+        breakdown_service.cast_asset(
+            self.shot_id, self.asset_id, label="fixed"
+        )
+
+        link = breakdown_service.get_entity_link(self.shot_id, self.asset_id)
+        self.assertEqual(link["nb_occurences"], 3)
+        self.assertEqual(link["label"], "fixed")
+
+    def test_dropping_an_asset_from_an_episode_leaves_the_others_as_they_were(
+        self,
+    ):
+        """
+        The assets the episode got through its shots keep following the
+        shots after one of them is dropped from the episode side.
+        """
+        other_shot_id = str(self.generate_fixture_shot("SH02").id)
+        self.cast(self.shot_id, self.asset_id)
+        self.cast(other_shot_id, self.asset_character_id)
+
+        breakdown_service.uncast_asset(
+            self.episode_id, self.asset_character_id
+        )
+
+        self.assertEqual(self.cast_asset_ids(other_shot_id), [])
+        self.assertEqual(self.cast_asset_ids(self.episode_id), [self.asset_id])
+
+        self.cast(self.shot_id)
+
+        self.assertEqual(self.cast_asset_ids(self.episode_id), [])
+
+
 class CastingListingTestCase(BreakdownTestCase):
     """
     The casting of a whole branch of the production, keyed by the entity it

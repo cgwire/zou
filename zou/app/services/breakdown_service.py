@@ -311,13 +311,24 @@ def update_casting(entity_id, casting):
                     project_id=str(entity.project_id),
                 )
 
+    _announce_casting_change(entity, added_asset_ids, removed_asset_ids)
+    return casting
+
+
+def _announce_casting_change(entity, added_asset_ids, removed_asset_ids):
+    """
+    Refresh what hangs from the casting of given entity once its links
+    changed: its link count, the cached serializations, the shot stats, the
+    episode links derived from the shots, and the listeners through a
+    casting-update event carrying the diff.
+    """
     entity_id = str(entity.id)
-    nb_entities_out = len(casting)
-    entity.update({"nb_entities_out": nb_entities_out})
+    nb_links = EntityLink.query.filter_by(entity_in_id=entity.id).count()
+    entity.update({"nb_entities_out": nb_links})
     _clear_casting_cache(entity_id)
     entity_dict = entity.serialize()
     casting_diff = {
-        "nb_entities_out": nb_entities_out,
+        "nb_entities_out": entity.nb_entities_out,
         "added_asset_ids": added_asset_ids,
         "removed_asset_ids": removed_asset_ids,
     }
@@ -345,7 +356,50 @@ def update_casting(entity_id, casting):
             {"asset_id": entity_id, **casting_diff},
             project_id=str(entity.project_id),
         )
-    return casting
+
+
+def cast_asset(entity_id, asset_id, nb_occurences=None, label=None):
+    """
+    Cast given asset in given entity, leaving the other assets of its
+    casting untouched: a caller working from a stale view of the casting
+    cannot erase them. A count or label of None keeps the current one (one
+    occurrence and no label on a new link).
+    """
+    entity = entities_service.get_entity_raw(entity_id)
+    link = get_entity_link_raw(entity_id, asset_id)
+    if nb_occurences is None:
+        nb_occurences = link.nb_occurences if link else 1
+    if label is None:
+        label = link.label if link else ""
+    create_casting_link(entity.id, asset_id, nb_occurences, label)
+    # The asset list of an episode is drawn from its casting: the asset
+    # just joined the episode, and only asset:update makes the clients
+    # reload it (same as update_casting on an episode).
+    if shots_service.is_episode(entity.serialize()):
+        events.emit(
+            "asset:update",
+            {"asset_id": str(asset_id)},
+            project_id=str(entity.project_id),
+        )
+    added_asset_ids = [] if link else [str(asset_id)]
+    _announce_casting_change(entity, added_asset_ids, [])
+    return get_casting(entity_id)
+
+
+def uncast_asset(entity_id, asset_id):
+    """
+    Remove given asset from the casting of given entity, leaving the other
+    assets untouched. Nothing happens when the asset was not cast.
+    """
+    link = get_entity_link_raw(entity_id, asset_id)
+    if link is None:
+        return get_casting(entity_id)
+    entity = entities_service.get_entity_raw(entity_id)
+    if shots_service.is_episode(entity.serialize()):
+        _remove_asset_from_episode_shots(asset_id, entity_id)
+    link.delete()
+    _announce_casting_change(entity, [], [str(asset_id)])
+    return get_casting(entity_id)
 
 
 def _clear_casting_cache(entity_id):
