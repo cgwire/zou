@@ -32,6 +32,7 @@ from zou.app.services import (
 )
 from zou.app.utils import (
     events,
+    http_cache,
     query,
     permissions,
     date_helpers,
@@ -2528,11 +2529,29 @@ class ProjectTasksResource(MethodView, ArgsMixin):
         """
         projects_service.get_project(project_id)
         permissions_service.check_project_access(project_id)
+        # The validator hashes everything that shapes the response: the
+        # tasks freshness signal, plus the caller and its effective role
+        # so a role change or an account switch on the same browser
+        # never validates a payload shaped for someone else.
+        current_user = persons_service.get_current_user()
+        etag = http_cache.build_etag(
+            tasks_service.get_project_tasks_fingerprint(project_id),
+            current_user["id"],
+            permissions.get_effective_role(),
+        )
+        if http_cache.is_fresh(etag):
+            return http_cache.not_modified(etag)
         page = self.get_page()
         task_type_id = self.get_task_type_id()
         episode_id = self.get_episode_id()
-        return tasks_service.get_tasks_for_project(
-            project_id, page, task_type_id=task_type_id, episode_id=episode_id
+        return http_cache.json_response(
+            tasks_service.get_tasks_for_project(
+                project_id,
+                page,
+                task_type_id=task_type_id,
+                episode_id=episode_id,
+            ),
+            etag,
         )
 
 

@@ -56,6 +56,15 @@ def _effective_role():
     return role if role not in (None, "admin") else _global_role()
 
 
+def get_effective_role():
+    """
+    Public read of the effective role, for callers that must key a
+    response on it (e.g. an ETag). Resolve the project first, as for any
+    permission check.
+    """
+    return _effective_role()
+
+
 def has_manager_permissions():
     """
     Return True if user is an admin or a manager, using the project role
