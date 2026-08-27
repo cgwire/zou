@@ -497,8 +497,6 @@ def get_entities_and_tasks(criterions=None):
     """
     if criterions is None:
         criterions = {}
-    if "episode_id" in criterions and criterions["episode_id"] == "all":
-        return []
 
     subscription_map = notifications_service.get_subscriptions_for_user(
         criterions.get("project_id", None),
@@ -512,7 +510,9 @@ def get_entities_and_tasks(criterions=None):
             )
         if "project_id" in criterions:
             query = query.filter(Entity.project_id == criterions["project_id"])
-        if "episode_id" in criterions:
+        # "all" is the cross-episode pseudo-episode Kitsu uses for its
+        # production-wide views: no episode filter, like shots_service.
+        if "episode_id" in criterions and criterions["episode_id"] != "all":
             query = query.filter(Entity.parent_id == criterions["episode_id"])
         if "entity_ids" in criterions:
             query = query.filter(Entity.id.in_(criterions["entity_ids"]))

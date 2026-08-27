@@ -40,3 +40,11 @@ class SequenceTasksTestCase(ApiDBTestCase):
         self.assertDictEqual(
             task_types[0], self.task_type_animation.serialize()
         )
+
+    def test_get_sequences_and_tasks_all_episodes(self):
+        project_id = str(self.sequence.project_id)
+        sequences = self.get(
+            f"data/sequences/with-tasks?project_id={project_id}&episode_id=all"
+        )
+        self.assertEqual(len(sequences), 1)
+        self.assertEqual(sequences[0]["name"], "S01")

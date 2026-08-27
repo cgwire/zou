@@ -1234,7 +1234,7 @@ class SequenceAndTasksResource(MethodView):
         if permissions.has_vendor_permissions():
             # Vendors only see sequences holding a shot with a task assigned
             # to them, and only their own tasks on those sequences.
-            if criterions.get("episode_id"):
+            if criterions.get("episode_id") not in (None, "all"):
                 sequences = shots_service.get_sequences_for_episode(
                     criterions["episode_id"], only_assigned=True
                 )
