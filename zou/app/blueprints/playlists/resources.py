@@ -153,6 +153,14 @@ class EpisodePlaylistsResource(MethodView, ArgsMixin):
               format: uuid
             description: Episode unique identifier or special value (main, all)
             example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: for_entity
+            required: false
+            schema:
+              type: string
+            description: Only list playlists of this entity type (asset,
+              shot, sequence, edit, episode)
+            example: shot
         responses:
           200:
             description: All playlists related to given episode
@@ -183,6 +191,7 @@ class EpisodePlaylistsResource(MethodView, ArgsMixin):
         page = self.get_page()
         sort_by = self.get_sort_by()
         task_type_id = self.get_text_parameter("task_type_id")
+        for_entity = self.get_text_parameter("for_entity")
         if episode_id not in ["main", "all"]:
             shots_service.get_episode(episode_id)
         return playlists_service.all_playlists_for_episode(
@@ -192,6 +201,7 @@ class EpisodePlaylistsResource(MethodView, ArgsMixin):
             page=page,
             sort_by=sort_by,
             task_type_id=task_type_id,
+            for_entity=for_entity,
         )
 
 
