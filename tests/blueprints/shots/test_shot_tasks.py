@@ -127,3 +127,24 @@ class ShotTasksTestCase(ApiDBTestCase):
         self.assertDictEqual(
             task_types[0], self.task_type_animation.serialize()
         )
+
+    def test_get_shots_and_tasks_all_episodes(self):
+        project_id = str(self.project.id)
+        shots = self.get(
+            f"data/shots/with-tasks?project_id={project_id}&episode_id=all"
+        )
+        self.assertEqual(len(shots), 1)
+        self.assertEqual(shots[0]["episode_name"], "E01")
+
+    def test_get_sequences_and_tasks_all_episodes_as_vendor(self):
+        project_id = str(self.project.id)
+        self.generate_fixture_user_vendor()
+        vendor_id = self.user_vendor["id"]
+        projects_service.add_team_member(project_id, vendor_id)
+        tasks_service.assign_task(str(self.shot_task.id), vendor_id)
+        self.log_in_vendor()
+        sequences = self.get(
+            f"data/sequences/with-tasks?project_id={project_id}&episode_id=all"
+        )
+        self.assertEqual(len(sequences), 1)
+        self.assertEqual(sequences[0]["name"], "S01")

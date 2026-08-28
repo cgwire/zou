@@ -138,14 +138,20 @@ def all_playlists_for_episode(
     page=1,
     sort_by="updated_at",
     task_type_id=None,
+    for_entity=None,
 ):
     """
-    Return all playlists created for given episode.
+    Return all playlists created for given episode. The "all" pseudo-episode
+    lists the production-wide playlists of every entity type unless
+    `for_entity` narrows them (Kitsu splits them into All assets / All shots).
     """
     result = []
     query = Playlist.query
     if for_client:
         query = query.filter(Playlist.for_client)
+
+    if for_entity:
+        query = query.filter(Playlist.for_entity == for_entity)
 
     if task_type_id is not None and len(task_type_id) > 0:
         query = query.filter(Playlist.task_type_id == task_type_id)
@@ -1016,7 +1022,11 @@ def get_playlist_download_context_name(project, playlist):
             episode = shots_service.get_episode(episode_id)
             episode_name = episode["name"]
         elif playlist.get("is_for_all"):
-            episode_name = "all assets"
+            episode_name = (
+                "all assets"
+                if playlist.get("for_entity") == "asset"
+                else "all shots"
+            )
         else:
             episode_name = "main pack"
         context_name += f"_{slugify(episode_name, separator='_')}"
