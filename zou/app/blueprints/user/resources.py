@@ -1152,7 +1152,7 @@ class TodosResource(MethodView):
         return user_service.get_todos()
 
 
-class ToChecksResource(MethodView):
+class ToChecksResource(MethodView, ArgsMixin):
 
     def get(self):
         """
@@ -1160,9 +1160,86 @@ class ToChecksResource(MethodView):
         ---
         description: Retrieve tasks requiring feedback for departments where the
           current user is a supervisor. Returns empty list if user is not a
-          supervisor.
+          supervisor. When a page parameter is given, the response is a
+          pagination envelope ({data, stats, page, limit, is_more}) instead of
+          a bare array.
         tags:
         - User
+        parameters:
+          - in: query
+            name: project_id
+            required: false
+            schema:
+              type: string
+              format: uuid
+            description: Filter tasks on given project ID
+          - in: query
+            name: task_type_id
+            required: false
+            schema:
+              type: string
+              format: uuid
+            description: Filter tasks on given task type ID
+          - in: query
+            name: task_status_id
+            required: false
+            schema:
+              type: string
+              format: uuid
+            description: Filter tasks on given task status ID
+          - in: query
+            name: person_id
+            required: false
+            schema:
+              type: string
+              format: uuid
+            description: Filter tasks assigned to given person ID (comma
+              separated list allowed)
+          - in: query
+            name: episode_id
+            required: false
+            schema:
+              type: string
+              format: uuid
+            description: Filter tasks on given episode ID
+          - in: query
+            name: due_date_since
+            required: false
+            schema:
+              type: string
+              format: date
+            example: "2022-07-12"
+            description: Filter tasks with a due date posterior to given date
+          - in: query
+            name: due_date_until
+            required: false
+            schema:
+              type: string
+              format: date
+            example: "2022-07-12"
+            description: Filter tasks with a due date anterior to given date
+          - in: query
+            name: order_by
+            required: false
+            schema:
+              type: string
+              enum: [priority, due_date, entity_name, estimation]
+            description: Sort tasks on given criterion
+          - in: query
+            name: page
+            required: false
+            schema:
+              type: integer
+            example: 1
+            description: Page number. Enables the pagination envelope response
+          - in: query
+            name: limit
+            required: false
+            schema:
+              type: integer
+              default: 100
+            example: 100
+            description: Number of tasks per page
         responses:
             200:
               description: Tasks requiring feedback in current user departments
@@ -1215,7 +1292,70 @@ class ToChecksResource(MethodView):
                           description: Last update timestamp
                           example: "2023-01-01T12:30:00Z"
         """
-        return user_service.get_tasks_to_check()
+        args = self.get_args(
+            [
+                ("project_id", None, False, str),
+                ("task_type_id", None, False, str),
+                ("task_status_id", None, False, str),
+                ("person_id", None, False, str),
+                ("episode_id", None, False, str),
+                ("due_date_since", None, False, str),
+                ("due_date_until", None, False, str),
+                ("order_by", None, False, str),
+                ("page", None, False, int),
+                ("limit", 100, False, int),
+            ]
+        )
+        return user_service.get_tasks_to_check(**args)
+
+
+class ToChecksFilterValuesResource(MethodView):
+
+    def get(self):
+        """
+        Get filter values for tasks requiring feedback
+        ---
+        description: Return the distinct project, task type, task status,
+          episode and assignee ids present in the tasks requiring feedback
+          for the current user. Aimed at filling filter combo boxes without
+          loading the full task list.
+        tags:
+        - User
+        responses:
+            200:
+              description: Distinct filter values for tasks requiring feedback
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      project_ids:
+                        type: array
+                        items:
+                          type: string
+                          format: uuid
+                      task_type_ids:
+                        type: array
+                        items:
+                          type: string
+                          format: uuid
+                      task_status_ids:
+                        type: array
+                        items:
+                          type: string
+                          format: uuid
+                      episode_ids:
+                        type: array
+                        items:
+                          type: string
+                          format: uuid
+                      person_ids:
+                        type: array
+                        items:
+                          type: string
+                          format: uuid
+        """
+        return user_service.get_tasks_to_check_filter_values()
 
 
 class DoneResource(MethodView):

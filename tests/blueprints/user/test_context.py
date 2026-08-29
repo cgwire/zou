@@ -355,6 +355,90 @@ class UserWorkloadTestCase(UserContextTestCase):
         self.assertEqual(len(tasks), 1)
         self.assertEqual(tasks[0]["id"], str(self.task_id))
 
+    def test_get_tasks_to_check_paginated(self):
+        feedback_status = tasks_service.get_or_create_status(
+            "Waiting For Approval", "wfa", is_feedback_request=True
+        )
+        for task_id in [self.task_id, self.shot_task.id]:
+            tasks_service.update_task(
+                task_id, {"task_status_id": feedback_status["id"]}
+            )
+
+        result = self.get("data/user/tasks-to-check?page=1")
+        self.assertEqual(len(result["data"]), 2)
+        self.assertEqual(result["stats"]["total"], 2)
+        self.assertIn("total_duration", result["stats"])
+        self.assertIn("total_estimation", result["stats"])
+        self.assertFalse(result["is_more"])
+
+        result = self.get("data/user/tasks-to-check?page=1&limit=1")
+        self.assertEqual(len(result["data"]), 1)
+        self.assertEqual(result["stats"]["total"], 2)
+        self.assertTrue(result["is_more"])
+        first_id = result["data"][0]["id"]
+
+        result = self.get("data/user/tasks-to-check?page=2&limit=1")
+        self.assertEqual(len(result["data"]), 1)
+        self.assertFalse(result["is_more"])
+        self.assertNotEqual(result["data"][0]["id"], first_id)
+
+        result = self.get(
+            f"data/user/tasks-to-check?page=1&task_type_id={self.task_type.id}"
+        )
+        self.assertEqual(result["stats"]["total"], 1)
+        self.assertEqual(result["data"][0]["id"], str(self.task_id))
+
+        result = self.get(
+            "data/user/tasks-to-check"
+            "?page=1&project_id=00000000-0000-0000-0000-000000000000"
+        )
+        self.assertEqual(result["data"], [])
+        self.assertEqual(result["stats"]["total"], 0)
+
+        tasks_service.update_task(self.task_id, {"due_date": "2026-09-10"})
+        tasks_service.update_task(
+            self.shot_task.id, {"due_date": "2026-09-02"}
+        )
+        result = self.get("data/user/tasks-to-check?page=1&order_by=due_date")
+        self.assertEqual(result["data"][0]["id"], str(self.shot_task.id))
+
+        result = self.get(
+            "data/user/tasks-to-check?page=1&due_date_since=2026-09-05"
+        )
+        self.assertEqual(result["stats"]["total"], 1)
+        self.assertEqual(result["data"][0]["id"], str(self.task_id))
+
+    def test_get_tasks_to_check_filter_values(self):
+        path = "data/user/tasks-to-check/filter-values"
+        result = self.get(path)
+        self.assertEqual(result["project_ids"], [])
+        self.assertEqual(result["person_ids"], [])
+
+        feedback_status = tasks_service.get_or_create_status(
+            "Waiting For Approval", "wfa", is_feedback_request=True
+        )
+        for task_id in [self.task_id, self.shot_task.id]:
+            tasks_service.update_task(
+                task_id, {"task_status_id": feedback_status["id"]}
+            )
+        self.assign_user(self.task_id)
+
+        result = self.get(path)
+        self.assertEqual(result["project_ids"], [str(self.project_id)])
+        self.assertEqual(
+            result["task_type_ids"],
+            sorted([str(self.task_type.id), str(self.task_type_animation.id)]),
+        )
+        self.assertEqual(
+            result["task_status_ids"], [str(feedback_status["id"])]
+        )
+        self.assertEqual(result["episode_ids"], [str(self.episode.id)])
+        # the shot task fixture is already assigned to self.person
+        self.assertEqual(
+            result["person_ids"],
+            sorted([str(self.person.id), str(self.user_id)]),
+        )
+
     def test_get_day_off(self):
         path = "data/user/day-offs/2026-08-05"
         self.assertEqual(self.get(path), {})

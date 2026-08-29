@@ -26,6 +26,7 @@ from zou.app.blueprints.user.resources import (
     ShotTasksResource,
     ShotTaskTypesResource,
     ToChecksResource,
+    ToChecksFilterValuesResource,
     TodosResource,
     DoneResource,
     FilterResource,
@@ -77,6 +78,10 @@ routes = [
     ("/data/user/sequences/<sequence_id>/scenes", SequenceScenesResource),
     ("/data/user/tasks", TodosResource),
     ("/data/user/tasks-to-check", ToChecksResource),
+    (
+        "/data/user/tasks-to-check/filter-values",
+        ToChecksFilterValuesResource,
+    ),
     ("/data/user/done-tasks", DoneResource),
     ("/data/user/filters", FiltersResource),
     ("/data/user/filters/<filter_id>", FilterResource),

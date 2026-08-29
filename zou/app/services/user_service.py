@@ -215,23 +215,88 @@ def get_done_tasks():
     return tasks_service.get_person_done_tasks(current_user["id"], projects)
 
 
-def get_tasks_to_check():
+def _get_tasks_to_check_scope():
     """
-    Get all tasks waiting for feedback in the user department.
+    Return (allowed, project_ids, department_ids) used to scope the
+    tasks-to-check queries depending on the current user role.
     """
-    departments_ids = None
     if permissions.has_admin_permissions():
-        project_ids = None
-    elif permissions.has_manager_permissions():
-        project_ids = [project["id"] for project in related_projects()]
-    elif permissions.has_supervisor_permissions():
+        return True, None, None
+    if permissions.has_manager_permissions():
+        return True, [project["id"] for project in related_projects()], None
+    if permissions.has_supervisor_permissions():
         current_user = persons_service.get_current_user(relations=True)
-        departments_ids = current_user["departments"]
-        project_ids = [project["id"] for project in related_projects()]
-    else:
-        return []
+        return (
+            True,
+            [project["id"] for project in related_projects()],
+            current_user["departments"],
+        )
+    return False, None, None
+
+
+def get_tasks_to_check(
+    project_id=None,
+    task_type_id=None,
+    task_status_id=None,
+    person_id=None,
+    episode_id=None,
+    due_date_since=None,
+    due_date_until=None,
+    order_by=None,
+    page=None,
+    limit=100,
+):
+    """
+    Get all tasks waiting for feedback in the user department. When a page
+    number is given, return a pagination envelope instead of a bare list.
+    """
+    allowed, project_ids, departments_ids = _get_tasks_to_check_scope()
+    if not allowed:
+        if page is None:
+            return []
+        return {
+            "data": [],
+            "stats": {
+                "total": 0,
+                "total_duration": 0,
+                "total_estimation": 0,
+            },
+            "page": page,
+            "limit": limit,
+            "is_more": False,
+        }
 
     return tasks_service.get_person_tasks_to_check(
+        project_ids,
+        departments_ids,
+        project_id=project_id,
+        task_type_id=task_type_id,
+        task_status_id=task_status_id,
+        person_id=person_id,
+        episode_id=episode_id,
+        due_date_since=due_date_since,
+        due_date_until=due_date_until,
+        order_by=order_by,
+        page=page,
+        limit=limit,
+    )
+
+
+def get_tasks_to_check_filter_values():
+    """
+    Return the distinct filter values available for the tasks waiting for
+    feedback in the user department.
+    """
+    allowed, project_ids, departments_ids = _get_tasks_to_check_scope()
+    if not allowed:
+        return {
+            "project_ids": [],
+            "task_type_ids": [],
+            "task_status_ids": [],
+            "episode_ids": [],
+            "person_ids": [],
+        }
+    return tasks_service.get_person_tasks_to_check_filter_values(
         project_ids, departments_ids
     )
 

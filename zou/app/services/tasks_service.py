@@ -1231,9 +1231,24 @@ def get_person_tasks(person_id, projects, is_done=None):
     return tasks
 
 
-def get_person_tasks_to_check(project_ids=None, department_ids=None):
+def get_person_tasks_to_check(
+    project_ids=None,
+    department_ids=None,
+    project_id=None,
+    task_type_id=None,
+    task_status_id=None,
+    person_id=None,
+    episode_id=None,
+    due_date_since=None,
+    due_date_until=None,
+    order_by=None,
+    page=None,
+    limit=100,
+):
     """
     Retrieve all tasks requiring a feedback for given departments and projects.
+    When a page number is given, return a pagination envelope instead of a
+    bare list.
     """
     Sequence = aliased(Entity, name="sequence")
     Episode = aliased(Entity, name="episode")
@@ -1278,6 +1293,75 @@ def get_person_tasks_to_check(project_ids=None, department_ids=None):
 
     if department_ids:
         query = query.filter(TaskType.department_id.in_(department_ids))
+
+    if project_id is not None:
+        query = query.filter(Project.id == project_id)
+
+    if task_type_id is not None:
+        query = query.filter(TaskType.id == task_type_id)
+
+    if task_status_id is not None:
+        query = query.filter(TaskStatus.id == task_status_id)
+
+    if person_id is not None:
+        query = query.filter(
+            Task.assignees.any(Person.id.in_(person_id.split(",")))
+        )
+
+    if episode_id is not None:
+        query = query.filter(Episode.id == episode_id)
+
+    if due_date_since is not None:
+        due_date_since = func.cast(due_date_since, Task.due_date.type)
+        query = query.filter(Task.due_date >= due_date_since)
+
+    if due_date_until is not None:
+        due_date_until = func.cast(due_date_until, Task.due_date.type)
+        query = query.filter(Task.due_date <= due_date_until)
+
+    stats = None
+    if page is not None:
+        page = max(page, 1)
+        total, total_duration, total_estimation = query.with_entities(
+            func.count(Task.id),
+            func.sum(Task.duration),
+            func.sum(Task.estimation),
+        ).one()
+        stats = {
+            "total": total,
+            "total_duration": total_duration or 0,
+            "total_estimation": total_estimation or 0,
+        }
+
+    name_order = [
+        Project.name,
+        Episode.name,
+        Sequence.name,
+        EntityType.name,
+        Entity.name,
+        TaskType.name,
+    ]
+    order_columns = {
+        "priority": [
+            Task.priority.desc().nullslast(),
+            Task.due_date.asc().nullslast(),
+        ]
+        + name_order,
+        "due_date": [Task.due_date.asc().nullslast()] + name_order,
+        "estimation": [Task.estimation.desc().nullslast()] + name_order,
+        "entity_name": [
+            Project.name,
+            TaskType.name,
+            Episode.name,
+            Sequence.name,
+            Entity.name,
+        ],
+    }
+    query = query.order_by(*order_columns.get(order_by, name_order), Task.id)
+
+    if page is not None:
+        query = query.offset((page - 1) * limit).limit(limit)
+
     tasks = []
     for row in query.all():
         (
@@ -1307,7 +1391,82 @@ def get_person_tasks_to_check(project_ids=None, department_ids=None):
     if tasks:
         _attach_assignee_ids(tasks)
     _add_last_comments_to_tasks(tasks)
-    return tasks
+
+    if page is None:
+        return tasks
+
+    return {
+        "data": tasks,
+        "stats": stats,
+        "page": page,
+        "limit": limit,
+        "is_more": page * limit < stats["total"],
+    }
+
+
+def get_person_tasks_to_check_filter_values(
+    project_ids=None, department_ids=None
+):
+    """
+    Return the distinct project, task type, task status, episode and
+    assignee ids present in the tasks requiring a feedback for given
+    departments and projects.
+    """
+    Sequence = aliased(Entity, name="sequence")
+    Episode = aliased(Entity, name="episode")
+
+    def scope_query(query):
+        query = (
+            query.join(Project, Project.id == Task.project_id)
+            .join(TaskType, TaskType.id == Task.task_type_id)
+            .join(TaskStatus, TaskStatus.id == Task.task_status_id)
+            .filter(TaskStatus.is_feedback_request)
+        )
+        if project_ids is not None:
+            query = query.filter(Project.id.in_(project_ids))
+        else:
+            query = query.filter(user_service.build_open_project_filter())
+        if department_ids:
+            query = query.filter(TaskType.department_id.in_(department_ids))
+        return query
+
+    rows = scope_query(
+        db.session.query(
+            Task.project_id,
+            Task.task_type_id,
+            Task.task_status_id,
+            Episode.id,
+        )
+        .select_from(Task)
+        .join(Entity, Entity.id == Task.entity_id)
+        .outerjoin(Sequence, Sequence.id == Entity.parent_id)
+        .outerjoin(Episode, Episode.id == Sequence.parent_id)
+    ).distinct()
+
+    persons = scope_query(
+        db.session.query(TaskPersonLink.person_id)
+        .select_from(Task)
+        .join(TaskPersonLink, TaskPersonLink.task_id == Task.id)
+    ).distinct()
+
+    values = {
+        "project_ids": set(),
+        "task_type_ids": set(),
+        "task_status_ids": set(),
+        "episode_ids": set(),
+    }
+    for project_id, task_type_id, task_status_id, episode_id in rows.all():
+        values["project_ids"].add(project_id)
+        values["task_type_ids"].add(task_type_id)
+        values["task_status_ids"].add(task_status_id)
+        if episode_id is not None:
+            values["episode_ids"].add(episode_id)
+    values["person_ids"] = {row[0] for row in persons.all()}
+
+    return {
+        key: sorted(str(value_id) for value_id in ids)
+        for key, ids in values.items()
+    }
 
 
 def get_last_comment_map(task_ids):
