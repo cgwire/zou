@@ -2683,8 +2683,8 @@ def get_open_tasks_burndown(
     """
     Return burndown aggregates for tasks matching given filters from open
     projects: totals, schedule bounds and the amount of tasks done per day.
-    Schedule bounds prefer the project dates, the production deadline
-    being the burndown target, and fall back to the task dates.
+    Schedule bounds come from the task dates and fall back to the
+    project dates when the tasks carry none.
     """
     query = (
         db.session.query(
@@ -2777,9 +2777,9 @@ def get_open_tasks_burndown(
         "total": total,
         "total_estimation": total_estimation or 0,
         "start_date": fields.serialize_value(
-            first_project_start or first_start_date
+            first_start_date or first_project_start
         ),
-        "end_date": fields.serialize_value(last_project_end or last_due_date),
+        "end_date": fields.serialize_value(last_due_date or last_project_end),
         "done_by_day": [
             {
                 "date": fields.serialize_value(day),

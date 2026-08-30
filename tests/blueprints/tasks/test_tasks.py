@@ -901,11 +901,17 @@ class TaskListingTestCase(TaskTestCase):
         )
         self.assertEqual(burndown["total"], 2)
 
-        # the production schedule is the burndown target: project dates
-        # take over the task dates as soon as they are set
+        # the task dates stay the bounds when present; the project dates
+        # only step in for tasks that carry none
         self.project.update(
             {"start_date": "2026-08-01", "end_date": "2026-12-31"}
         )
+        burndown = self.get("/data/tasks/open-tasks/burndown")
+        self.assertEqual(burndown["start_date"], "2026-08-03")
+        self.assertEqual(burndown["end_date"], "2026-08-21")
+
+        task.update({"start_date": None, "due_date": None})
+        self.shot_task.update({"start_date": None, "due_date": None})
         burndown = self.get("/data/tasks/open-tasks/burndown")
         self.assertEqual(burndown["start_date"], "2026-08-01")
         self.assertEqual(burndown["end_date"], "2026-12-31")
