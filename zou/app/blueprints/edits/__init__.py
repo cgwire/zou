@@ -3,7 +3,6 @@ from zou.app.utils.api import configure_api_from_blueprint
 
 from zou.app.blueprints.edits.resources import (
     EditResource,
-    EditsResource,
     AllEditsResource,
     EditsAndTasksResource,
     EditPreviewsResource,
@@ -17,7 +16,8 @@ from zou.app.blueprints.edits.resources import (
 
 routes = [
     ("/data/edits", AllEditsResource),
-    ("/data/edits/all", EditsResource),
+    # Same listing, second path kept because gazu queries edits/all.
+    ("/data/edits/all", AllEditsResource),
     ("/data/edits/with-tasks", EditsAndTasksResource),
     ("/data/edits/<edit_id>", EditResource),
     ("/data/edits/<edit_id>/task-types", EditTaskTypesResource),

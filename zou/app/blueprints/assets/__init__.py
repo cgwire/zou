@@ -15,7 +15,6 @@ from zou.app.blueprints.assets.resources import (
     AssetTasksResource,
     AssetTaskTypesResource,
     AllAssetsResource,
-    AllAssetsAliasResource,
     NewAssetResource,
     ProjectAssetsResource,
     ProjectAssetTypeAssetsResource,
@@ -31,7 +30,8 @@ from zou.app.blueprints.assets.resources import (
 routes = [
     ("/data/asset-types", AssetTypesResource),
     ("/data/asset-types/<asset_type_id>", AssetTypeResource),
-    ("/data/assets", AllAssetsAliasResource),
+    ("/data/assets", AllAssetsResource),
+    # Same listing, second path kept because gazu queries assets/all.
     ("/data/assets/all", AllAssetsResource),
     ("/data/assets/with-tasks", AssetsAndTasksResource),
     ("/data/assets/<asset_id>", AssetResource),

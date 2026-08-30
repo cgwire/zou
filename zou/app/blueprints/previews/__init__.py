@@ -18,11 +18,9 @@ from zou.app.blueprints.previews.resources import (
     PreviewFileOriginalResource,
     PreviewFileTileResource,
     OrganisationThumbnailResource,
-    CreateOrganisationThumbnailResource,
     ProjectThumbnailResource,
     CreateProjectThumbnailResource,
     PersonThumbnailResource,
-    CreatePersonThumbnailResource,
     RunningPreviewFiles,
     SetMainPreviewResource,
     UpdateAnnotationsResource,
@@ -101,7 +99,7 @@ routes = [
     ),
     (
         "/pictures/thumbnails/organisations/<instance_id>",
-        CreateOrganisationThumbnailResource,
+        OrganisationThumbnailResource,
     ),
     (
         "/pictures/thumbnails/organisations/<instance_id>.png",
@@ -109,7 +107,7 @@ routes = [
     ),
     (
         "/pictures/thumbnails/persons/<instance_id>",
-        CreatePersonThumbnailResource,
+        PersonThumbnailResource,
     ),
     (
         "/pictures/thumbnails/persons/<instance_id>.png",

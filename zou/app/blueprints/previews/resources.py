@@ -1472,10 +1472,6 @@ class PersonThumbnailResource(BaseThumbnailResource):
         )
 
 
-class CreatePersonThumbnailResource(PersonThumbnailResource):
-    pass
-
-
 class OrganisationThumbnailResource(BaseThumbnailResource):
 
     def __init__(self):
@@ -1489,10 +1485,6 @@ class OrganisationThumbnailResource(BaseThumbnailResource):
 
     def is_exist(self, organisation_id):
         self.model = persons_service.get_organisation()
-
-
-class CreateOrganisationThumbnailResource(OrganisationThumbnailResource):
-    pass
 
 
 class ProjectThumbnailResource(BaseThumbnailResource):
