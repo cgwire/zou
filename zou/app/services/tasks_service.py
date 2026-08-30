@@ -2683,6 +2683,8 @@ def get_open_tasks_burndown(
     """
     Return burndown aggregates for tasks matching given filters from open
     projects: totals, schedule bounds and the amount of tasks done per day.
+    Schedule bounds prefer the project dates, the production deadline
+    being the burndown target, and fall back to the task dates.
     """
     query = (
         db.session.query(
@@ -2691,6 +2693,8 @@ def get_open_tasks_burndown(
             Task.start_date,
             Task.due_date,
             Task.done_date,
+            Project.start_date.label("project_start_date"),
+            Project.end_date.label("project_end_date"),
         )
         .join(TaskType, Task.task_type_id == TaskType.id)
         .join(TaskStatus, Task.task_status_id == TaskStatus.id)
@@ -2744,14 +2748,21 @@ def get_open_tasks_burndown(
 
     tasks = query.subquery()
 
-    total, total_estimation, first_start_date, last_due_date = (
-        db.session.query(
-            func.count(),
-            func.sum(tasks.c.estimation),
-            func.cast(func.min(tasks.c.start_date), db.Date),
-            func.cast(func.max(tasks.c.due_date), db.Date),
-        ).one()
-    )
+    (
+        total,
+        total_estimation,
+        first_start_date,
+        last_due_date,
+        first_project_start,
+        last_project_end,
+    ) = db.session.query(
+        func.count(),
+        func.sum(tasks.c.estimation),
+        func.cast(func.min(tasks.c.start_date), db.Date),
+        func.cast(func.max(tasks.c.due_date), db.Date),
+        func.min(tasks.c.project_start_date),
+        func.max(tasks.c.project_end_date),
+    ).one()
 
     done_day = func.cast(tasks.c.done_date, db.Date)
     done_rows = (
@@ -2765,8 +2776,10 @@ def get_open_tasks_burndown(
     return {
         "total": total,
         "total_estimation": total_estimation or 0,
-        "start_date": fields.serialize_value(first_start_date),
-        "end_date": fields.serialize_value(last_due_date),
+        "start_date": fields.serialize_value(
+            first_project_start or first_start_date
+        ),
+        "end_date": fields.serialize_value(last_project_end or last_due_date),
         "done_by_day": [
             {
                 "date": fields.serialize_value(day),

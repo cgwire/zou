@@ -901,6 +901,15 @@ class TaskListingTestCase(TaskTestCase):
         )
         self.assertEqual(burndown["total"], 2)
 
+        # the production schedule is the burndown target: project dates
+        # take over the task dates as soon as they are set
+        self.project.update(
+            {"start_date": "2026-08-01", "end_date": "2026-12-31"}
+        )
+        burndown = self.get("/data/tasks/open-tasks/burndown")
+        self.assertEqual(burndown["start_date"], "2026-08-01")
+        self.assertEqual(burndown["end_date"], "2026-12-31")
+
     def test_get_project_tasks(self):
         """
         The paginated listing of a production's tasks. It is the route a

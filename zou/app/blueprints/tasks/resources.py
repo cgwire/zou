@@ -3134,8 +3134,9 @@ class OpenTasksBurndownResource(MethodView, ArgsMixin):
         - Tasks
         description: Return burndown aggregates for tasks from open projects
           matching the same filters as the open tasks route. It includes the
-          total amount and estimation, the schedule bounds (first start date
-          and last due date) and the amount of tasks done per day.
+          total amount and estimation, the schedule bounds (project dates
+          first, task start and due dates as fallback) and the amount of
+          tasks done per day.
         parameters:
           - in: query
             name: project_id
