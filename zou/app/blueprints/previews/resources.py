@@ -1502,11 +1502,18 @@ class ProjectThumbnailResource(BaseThumbnailResource):
         if not permissions.has_manager_permissions():
             permissions_service.check_project_access(instance_id)
 
-
-class CreateProjectThumbnailResource(ProjectThumbnailResource):
-
     def check_allowed_to_post(self, instance_id):
         return permissions_service.check_manager_project_access(instance_id)
+
+
+class ReadOnlyProjectThumbnailResource(ProjectThumbnailResource):
+    """
+    Display url of the project thumbnail. Uploads go to the path without
+    extension, so this one answers GET only and the upload permission is
+    described in a single place.
+    """
+
+    methods = ["GET"]
 
 
 class SetMainPreviewResource(MethodView, ArgsMixin):
