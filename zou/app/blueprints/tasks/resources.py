@@ -3121,3 +3121,132 @@ class OpenTasksStatsResource(MethodView, ArgsMixin):
               description: Bad request
         """
         return tasks_service.get_open_tasks_stats()
+
+
+class OpenTasksBurndownResource(MethodView, ArgsMixin):
+
+    @jwt_required()
+    def get(self):
+        """
+        Get open tasks burndown
+        ---
+        tags:
+        - Tasks
+        description: Return burndown aggregates for tasks from open projects
+          matching the same filters as the open tasks route. It includes the
+          total amount and estimation, the schedule bounds (first start date
+          and last due date) and the amount of tasks done per day.
+        parameters:
+          - in: query
+            name: project_id
+            required: false
+            schema:
+              type: string
+              format: uuid
+            description: Filter tasks on given project ID
+          - in: query
+            name: task_status_id
+            required: false
+            schema:
+              type: string
+              format: uuid
+            description: Filter tasks on given task status ID
+          - in: query
+            name: task_type_id
+            required: false
+            schema:
+              type: string
+              format: uuid
+            description: Filter tasks on given task type ID
+          - in: query
+            name: person_id
+            required: false
+            schema:
+              type: string
+              format: uuid
+            description: Filter tasks on given person ID
+          - in: query
+            name: studio_id
+            required: false
+            schema:
+              type: string
+              format: uuid
+            description: Filter tasks on given studio ID
+          - in: query
+            name: department_id
+            required: false
+            schema:
+              type: string
+              format: uuid
+            description: Filter tasks on given department ID
+          - in: query
+            name: start_date
+            required: false
+            schema:
+              type: string
+              format: date
+            description: Filter tasks posterior to given start date
+          - in: query
+            name: due_date
+            required: false
+            schema:
+              type: string
+              format: date
+            description: Filter tasks anterior to given due date
+          - in: query
+            name: priority
+            required: false
+            schema:
+              type: integer
+            description: Filter tasks on given priority
+        responses:
+            200:
+              description: Burndown aggregates for the filtered tasks
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        description: Total number of tasks
+                      total_estimation:
+                        type: number
+                        description: Total estimation of tasks in minutes
+                      start_date:
+                        type: string
+                        format: date
+                        description: First task start date
+                      end_date:
+                        type: string
+                        format: date
+                        description: Last task due date
+                      done_by_day:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            date:
+                              type: string
+                              format: date
+                            done:
+                              type: integer
+                            done_estimation:
+                              type: number
+            400:
+              description: Bad request
+        """
+        args = self.get_args(
+            [
+                ("task_type_id", None, False, str),
+                ("project_id", None, False, str),
+                ("person_id", None, False, str),
+                ("task_status_id", None, False, str),
+                ("studio_id", None, False, str),
+                ("department_id", None, False, str),
+                ("start_date", None, False, str),
+                ("due_date", None, False, str),
+                ("priority", None, False, str),
+            ]
+        )
+        return tasks_service.get_open_tasks_burndown(**args)

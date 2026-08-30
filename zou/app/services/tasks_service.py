@@ -2669,6 +2669,115 @@ def get_open_tasks(
     return result
 
 
+def get_open_tasks_burndown(
+    task_type_id=None,
+    task_status_id=None,
+    project_id=None,
+    person_id=None,
+    studio_id=None,
+    department_id=None,
+    start_date=None,
+    due_date=None,
+    priority=None,
+):
+    """
+    Return burndown aggregates for tasks matching given filters from open
+    projects: totals, schedule bounds and the amount of tasks done per day.
+    """
+    query = (
+        db.session.query(
+            Task.id,
+            Task.estimation,
+            Task.start_date,
+            Task.due_date,
+            Task.done_date,
+        )
+        .join(TaskType, Task.task_type_id == TaskType.id)
+        .join(TaskStatus, Task.task_status_id == TaskStatus.id)
+        .join(Project, Project.id == Task.project_id)
+        .join(ProjectStatus, ProjectStatus.id == Project.project_status_id)
+    )
+
+    if project_id is not None and permissions_service.check_project_access(
+        project_id
+    ):
+        query = query.filter(Project.id == project_id)
+    elif permissions.has_admin_permissions():
+        query = query.filter(ProjectStatus.name == "Open")
+    else:
+        query = query.filter(user_service.build_related_projects_filter())
+
+    if task_type_id is not None:
+        query = query.filter(TaskType.id == task_type_id)
+    else:
+        query = query.filter(TaskType.for_entity != "Concept")
+
+    if task_status_id is not None:
+        query = query.filter(TaskStatus.id == task_status_id)
+
+    if person_id is not None:
+        if person_id == "unassigned":
+            query = query.filter(Task.assignees == None)
+        else:
+            query = query.filter(
+                Task.assignees.any(Person.id.in_(person_id.split(",")))
+            )
+
+    if studio_id is not None:
+        query = query.filter(Task.assignees.any(studio_id=studio_id))
+
+    if department_id is not None:
+        query = query.filter(
+            Task.assignees.any(Person.departments.any(id=department_id))
+        )
+
+    if start_date is not None:
+        start_date = func.cast(start_date, Task.start_date.type)
+        query = query.filter(Task.start_date >= start_date)
+
+    if due_date is not None:
+        due_date = func.cast(due_date, Task.due_date.type)
+        query = query.filter(Task.due_date <= due_date)
+
+    if priority is not None:
+        query = query.filter(TaskType.priority == priority)
+
+    tasks = query.subquery()
+
+    total, total_estimation, first_start_date, last_due_date = (
+        db.session.query(
+            func.count(),
+            func.sum(tasks.c.estimation),
+            func.cast(func.min(tasks.c.start_date), db.Date),
+            func.cast(func.max(tasks.c.due_date), db.Date),
+        ).one()
+    )
+
+    done_day = func.cast(tasks.c.done_date, db.Date)
+    done_rows = (
+        db.session.query(done_day, func.count(), func.sum(tasks.c.estimation))
+        .filter(tasks.c.done_date != None)
+        .group_by(done_day)
+        .order_by(done_day)
+        .all()
+    )
+
+    return {
+        "total": total,
+        "total_estimation": total_estimation or 0,
+        "start_date": fields.serialize_value(first_start_date),
+        "end_date": fields.serialize_value(last_due_date),
+        "done_by_day": [
+            {
+                "date": fields.serialize_value(day),
+                "done": done,
+                "done_estimation": done_estimation or 0,
+            }
+            for day, done, done_estimation in done_rows
+        ],
+    }
+
+
 def get_open_tasks_stats():
     """
     Return the amount of tasks, done tasks, estimation, and duration for each

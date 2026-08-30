@@ -859,6 +859,48 @@ class TaskListingTestCase(TaskTestCase):
         tasks = self.get(f"/data/tasks/open-tasks?person_id={jane.id}")
         self.assertEqual(len(tasks["data"]), 2)
 
+    def test_open_tasks_burndown(self):
+        task = self.generate_fixture_task()
+        task.update(
+            {
+                "start_date": "2026-08-03",
+                "due_date": "2026-08-14",
+                "estimation": 480,
+                "done_date": "2026-08-05T10:00:00",
+            }
+        )
+        self.generate_fixture_shot_task()
+        self.shot_task.update(
+            {
+                "start_date": "2026-08-05",
+                "due_date": "2026-08-21",
+                "estimation": 960,
+            }
+        )
+
+        burndown = self.get("/data/tasks/open-tasks/burndown")
+        self.assertEqual(burndown["total"], 2)
+        self.assertEqual(burndown["total_estimation"], 1440)
+        self.assertEqual(burndown["start_date"], "2026-08-03")
+        self.assertEqual(burndown["end_date"], "2026-08-21")
+        self.assertEqual(
+            burndown["done_by_day"],
+            [{"date": "2026-08-05", "done": 1, "done_estimation": 480}],
+        )
+
+        animation_id = str(self.task_type_animation.id)
+        burndown = self.get(
+            f"/data/tasks/open-tasks/burndown?task_type_id={animation_id}"
+        )
+        self.assertEqual(burndown["total"], 1)
+        self.assertEqual(burndown["total_estimation"], 960)
+        self.assertEqual(burndown["done_by_day"], [])
+
+        burndown = self.get(
+            f"/data/tasks/open-tasks/burndown?project_id={self.project.id}"
+        )
+        self.assertEqual(burndown["total"], 2)
+
     def test_get_project_tasks(self):
         """
         The paginated listing of a production's tasks. It is the route a
