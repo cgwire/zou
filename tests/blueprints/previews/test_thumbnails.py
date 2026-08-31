@@ -176,15 +176,15 @@ class RouteThumbnailTestCase(ApiDBTestCase):
         """
         The .png url is the display one: it used to accept uploads too, with
         the admin check inherited from the base resource instead of the
-        manager check of the upload route. It now answers GET only, and the
-        post falls back to the route without extension, which rejects an id
-        carrying the extension: 404 rather than 405.
+        manager check of the upload route. A post on it now answers 405 with
+        a message pointing at the upload url without extension.
         """
-        self.upload_file(
+        result = self.upload_file(
             f"/pictures/thumbnails/projects/{self.project.id}.png",
             self.get_fixture_file_path(os.path.join("thumbnails", "th01.png")),
-            code=404,
+            code=405,
         )
+        self.assertIn("without extension", result["message"])
         self.assertFalse(
             projects_service.get_project(str(self.project.id))["has_avatar"]
         )

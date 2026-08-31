@@ -1509,12 +1509,24 @@ class ProjectThumbnailResource(BaseThumbnailResource):
 class ReadOnlyProjectThumbnailResource(ProjectThumbnailResource):
     """
     Display url of the project thumbnail. Uploads go to the path without
-    extension, so this one answers GET only and the upload permission is
-    described in a single place.
+    extension, so this one serves reads only and the upload permission is
+    described in a single place. A post answers 405 with a pointer instead
+    of falling through the routing to a misleading 404.
     """
 
     # flasgger only accepts a set here, a list makes /openapi.json crash
-    methods = {"GET"}
+    methods = {"GET", "POST"}
+
+    @jwt_required()
+    def post(self, instance_id):
+        """
+        Uploads are not allowed on the display url.
+        """
+        return {
+            "error": True,
+            "message": "Upload project thumbnails on the url without "
+            "extension: /pictures/thumbnails/projects/<project_id>.",
+        }, 405
 
 
 class SetMainPreviewResource(MethodView, ArgsMixin):
