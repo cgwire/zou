@@ -1513,7 +1513,8 @@ class ReadOnlyProjectThumbnailResource(ProjectThumbnailResource):
     described in a single place.
     """
 
-    methods = ["GET"]
+    # flasgger only accepts a set here, a list makes /openapi.json crash
+    methods = {"GET"}
 
 
 class SetMainPreviewResource(MethodView, ArgsMixin):
