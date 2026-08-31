@@ -207,14 +207,16 @@ class PersonsCsvImportResource(BaseCsvImportResource):
     def map_choice(self, label, value, choice_map):
         """
         Accept either a human label ("Lead") or a stored code ("lead") for a
-        ChoiceType column and return the code. Raise ValueError (400) on an
-        unknown value, like the other typed columns.
+        ChoiceType column, case-insensitively, and return the code. Raise
+        ValueError (400) naming the accepted values on an unknown one.
         """
-        if value in choice_map:
-            return choice_map[value]
-        if value not in choice_map.values():
-            raise ValueError(f"{label}: {value}")
-        return value
+        folded = value.casefold()
+        for choice_label, code in choice_map.items():
+            if folded in (choice_label.casefold(), code.casefold()):
+                return code
+        raise ValueError(
+            f"{label}: {value} (accepted values: {', '.join(choice_map)})"
+        )
 
     def resolve_departments(self, departments_value):
         """

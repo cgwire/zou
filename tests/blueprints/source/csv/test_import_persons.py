@@ -153,7 +153,16 @@ class ImportCsvPersonsTestCase(ApiDBTestCase):
         self._upload_csv(self._csv(Country="France"), code=400)
 
     def test_import_persons_invalid_position(self):
-        self._upload_csv(self._csv(Position="Boss"), code=400)
+        error = self._upload_csv(self._csv(Position="Boss"), code=400)
+        self.assertIn("accepted values", error["message"])
+
+    def test_import_persons_choice_columns_are_case_insensitive(self):
+        # "artist" is the lowercase label of role code "user": labels and
+        # codes both resolve regardless of casing.
+        self._upload_csv(self._csv(Role="artist", Seniority="SENIOR"))
+        person = Person.get_by(email="test.user@gmail.com")
+        self.assertEqual(person.role.code, "user")
+        self.assertEqual(person.seniority.code, "senior")
 
     def test_import_persons_invalid_daily_salary(self):
         self._upload_csv(self._csv(**{"Daily Salary": "lots"}), code=400)
