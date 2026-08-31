@@ -1,4 +1,4 @@
-from flask import abort, jsonify, request
+from flask import jsonify, request
 from flask.views import MethodView
 
 from zou.app.mixin import ArgsMixin
@@ -1242,55 +1242,88 @@ class ToChecksResource(MethodView, ArgsMixin):
             description: Number of tasks per page
         responses:
             200:
-              description: Tasks requiring feedback in current user departments
+              description: Tasks requiring feedback in current user
+                departments, as a bare array without the page parameter and
+                as a pagination envelope with it
               content:
                 application/json:
                   schema:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          description: Task unique identifier
-                          example: b35b7fb5-df86-5776-b181-68564193d36
-                        name:
-                          type: string
-                          description: Task name
-                          example: "Review"
-                        task_type_id:
-                          type: string
-                          format: uuid
-                          description: Task type identifier
-                          example: c46c8gc6-eg97-6887-c292-79675204e47
-                        task_status_id:
-                          type: string
-                          format: uuid
-                          description: Task status identifier
-                          example: d57d9hd7-fh08-7998-d403-80786315f58
-                        assigner_id:
-                          type: string
-                          format: uuid
-                          description: Person who assigned the task
-                          example: e68e0ie8-gi19-8009-e514-91897426g69
-                        assignees:
-                          type: array
-                          items:
-                            type: string
-                            format: uuid
-                          description: List of assigned person identifiers
-                          example: ["f79f1jf9-hj20-9010-f625-a09008537h80"]
-                        created_at:
-                          type: string
-                          format: date-time
-                          description: Creation timestamp
-                          example: "2023-01-01T12:00:00Z"
-                        updated_at:
-                          type: string
-                          format: date-time
-                          description: Last update timestamp
-                          example: "2023-01-01T12:30:00Z"
+                    oneOf:
+                      - type: array
+                        description: Bare task list, when no page is given
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                              description: Task unique identifier
+                              example: b35b7fb5-df86-5776-b181-68564193d36
+                            name:
+                              type: string
+                              description: Task name
+                              example: "Review"
+                            task_type_id:
+                              type: string
+                              format: uuid
+                              description: Task type identifier
+                              example: c46c8gc6-eg97-6887-c292-79675204e47
+                            task_status_id:
+                              type: string
+                              format: uuid
+                              description: Task status identifier
+                              example: d57d9hd7-fh08-7998-d403-80786315f58
+                            assigner_id:
+                              type: string
+                              format: uuid
+                              description: Person who assigned the task
+                              example: e68e0ie8-gi19-8009-e514-91897426g69
+                            assignees:
+                              type: array
+                              items:
+                                type: string
+                                format: uuid
+                              description: List of assigned person identifiers
+                              example: ["f79f1jf9-hj20-9010-f625-a09008537h80"]
+                            created_at:
+                              type: string
+                              format: date-time
+                              description: Creation timestamp
+                              example: "2023-01-01T12:00:00Z"
+                            updated_at:
+                              type: string
+                              format: date-time
+                              description: Last update timestamp
+                              example: "2023-01-01T12:30:00Z"
+                      - type: object
+                        description: Pagination envelope, when a page is given
+                        properties:
+                          data:
+                            type: array
+                            items:
+                              type: object
+                            description: Tasks of the requested page
+                          stats:
+                            type: object
+                            properties:
+                              total:
+                                type: integer
+                                description: Total number of matching tasks
+                              total_duration:
+                                type: integer
+                                description: Total duration in minutes
+                              total_estimation:
+                                type: integer
+                                description: Total estimation in minutes
+                          page:
+                            type: integer
+                            description: Page number, clamped to 1
+                          limit:
+                            type: integer
+                            description: Number of tasks per page
+                          is_more:
+                            type: boolean
+                            description: True if a later page holds more tasks
         """
         args = self.get_args(
             [
@@ -1306,6 +1339,19 @@ class ToChecksResource(MethodView, ArgsMixin):
                 ("limit", 100, False, int),
             ]
         )
+        for field in (
+            "project_id",
+            "task_type_id",
+            "task_status_id",
+            "episode_id",
+        ):
+            if args[field] is not None:
+                self.check_id_parameter(args[field])
+        if args["person_id"] not in (None, "unassigned"):
+            for person_id in args["person_id"].split(","):
+                self.check_id_parameter(person_id)
+        self.parse_date_parameter(args["due_date_since"])
+        self.parse_date_parameter(args["due_date_until"])
         return user_service.get_tasks_to_check(**args)
 
 

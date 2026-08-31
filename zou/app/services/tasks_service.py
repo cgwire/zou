@@ -14,7 +14,7 @@ Two conventions matter when editing this module:
 import collections
 import uuid
 
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
 from sqlalchemy.exc import StatementError, IntegrityError, DataError
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import case
@@ -1304,12 +1304,24 @@ def get_person_tasks_to_check(
         query = query.filter(TaskStatus.id == task_status_id)
 
     if person_id is not None:
-        query = query.filter(
-            Task.assignees.any(Person.id.in_(person_id.split(",")))
-        )
+        if person_id == "unassigned":
+            query = query.filter(Task.assignees == None)
+        else:
+            query = query.filter(
+                Task.assignees.any(Person.id.in_(person_id.split(",")))
+            )
 
     if episode_id is not None:
-        query = query.filter(Episode.id == episode_id)
+        # match every way a row resolves its episode: the sequence chain,
+        # an episode scoped entity (source_id) and a sequence level task
+        # (parent_id)
+        query = query.filter(
+            or_(
+                Episode.id == episode_id,
+                Entity.source_id == episode_id,
+                Entity.parent_id == episode_id,
+            )
+        )
 
     if due_date_since is not None:
         due_date_since = func.cast(due_date_since, Task.due_date.type)
@@ -1322,6 +1334,7 @@ def get_person_tasks_to_check(
     stats = None
     if page is not None:
         page = max(page, 1)
+        limit = max(limit, 1)
         total, total_duration, total_estimation = query.with_entities(
             func.count(Task.id),
             func.sum(Task.duration),
@@ -1357,7 +1370,12 @@ def get_person_tasks_to_check(
             Entity.name,
         ],
     }
-    query = query.order_by(*order_columns.get(order_by, name_order), Task.id)
+    # the unpaginated legacy path never had an ordering: do not tax it
+    # with a six column sort its callers do not need
+    if page is not None or order_by is not None:
+        query = query.order_by(
+            *order_columns.get(order_by, name_order), Task.id
+        )
 
     if page is not None:
         query = query.offset((page - 1) * limit).limit(limit)
@@ -1436,9 +1454,13 @@ def get_person_tasks_to_check_filter_values(
             Task.task_type_id,
             Task.task_status_id,
             Episode.id,
+            Entity.source_id,
+            Entity.parent_id,
+            EntityType.name,
         )
         .select_from(Task)
         .join(Entity, Entity.id == Task.entity_id)
+        .join(EntityType, EntityType.id == Entity.entity_type_id)
         .outerjoin(Sequence, Sequence.id == Entity.parent_id)
         .outerjoin(Episode, Episode.id == Sequence.parent_id)
     ).distinct()
@@ -1446,6 +1468,7 @@ def get_person_tasks_to_check_filter_values(
     persons = scope_query(
         db.session.query(TaskPersonLink.person_id)
         .select_from(Task)
+        .join(Entity, Entity.id == Task.entity_id)
         .join(TaskPersonLink, TaskPersonLink.task_id == Task.id)
     ).distinct()
 
@@ -1455,10 +1478,25 @@ def get_person_tasks_to_check_filter_values(
         "task_status_ids": set(),
         "episode_ids": set(),
     }
-    for project_id, task_type_id, task_status_id, episode_id in rows.all():
+    for (
+        project_id,
+        task_type_id,
+        task_status_id,
+        episode_id,
+        source_id,
+        parent_id,
+        entity_type_name,
+    ) in rows.all():
         values["project_ids"].add(project_id)
         values["task_type_ids"].add(task_type_id)
         values["task_status_ids"].add(task_status_id)
+        # resolve the episode the way the rows display it: the sequence
+        # chain, then the entity source id, then the parent of a
+        # sequence level task
+        if episode_id is None:
+            episode_id = source_id
+        if entity_type_name == "Sequence" and parent_id is not None:
+            episode_id = parent_id
         if episode_id is not None:
             values["episode_ids"].add(episode_id)
     values["person_ids"] = {row[0] for row in persons.all()}

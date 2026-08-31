@@ -252,19 +252,9 @@ def get_tasks_to_check(
     """
     allowed, project_ids, departments_ids = _get_tasks_to_check_scope()
     if not allowed:
-        if page is None:
-            return []
-        return {
-            "data": [],
-            "stats": {
-                "total": 0,
-                "total_duration": 0,
-                "total_estimation": 0,
-            },
-            "page": page,
-            "limit": limit,
-            "is_more": False,
-        }
+        # an empty project scope yields the same empty list or envelope
+        # shape as the allowed path, clamping included
+        project_ids, departments_ids = [], None
 
     return tasks_service.get_person_tasks_to_check(
         project_ids,
