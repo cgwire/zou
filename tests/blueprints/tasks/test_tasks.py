@@ -1,6 +1,7 @@
 from tests.base import ApiDBTestCase
 from zou.app.models.entity import Entity
 from zou.app.models.project import Project, ProjectTaskTypeLink
+from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 
 from zou.app.services import (
@@ -915,6 +916,119 @@ class TaskListingTestCase(TaskTestCase):
         burndown = self.get("/data/tasks/open-tasks/burndown")
         self.assertEqual(burndown["start_date"], "2026-08-01")
         self.assertEqual(burndown["end_date"], "2026-12-31")
+
+    def test_open_tasks_burndown_bounds_stay_ordered(self):
+        """
+        Each bound falls back to the project dates independently, so the
+        raw values can come out inverted. The announced window must stay
+        ordered and contain every done day.
+        """
+        task = self.generate_fixture_task()
+        task.update({"start_date": "2026-09-01", "due_date": None})
+        self.project.update({"end_date": "2026-08-15"})
+
+        burndown = self.get("/data/tasks/open-tasks/burndown")
+        self.assertEqual(burndown["start_date"], "2026-08-15")
+        self.assertEqual(burndown["end_date"], "2026-09-01")
+
+        task.update({"done_date": "2026-07-20T10:00:00"})
+        burndown = self.get("/data/tasks/open-tasks/burndown")
+        self.assertEqual(burndown["start_date"], "2026-07-20")
+        self.assertEqual(burndown["end_date"], "2026-09-01")
+
+    def test_open_tasks_priority_filter(self):
+        """
+        The priority filter used to bind its value as a string against the
+        integer TaskType.priority column and crash. It must filter as an
+        integer on the listing and the burndown, and reject non-integer
+        values with a 400.
+        """
+        self.generate_fixture_task()
+        self.generate_fixture_shot_task()
+        self.task_type_animation.update({"priority": 3})
+
+        tasks = self.get("/data/tasks/open-tasks?priority=3")
+        self.assertEqual(len(tasks["data"]), 1)
+
+        burndown = self.get("/data/tasks/open-tasks/burndown?priority=3")
+        self.assertEqual(burndown["total"], 1)
+
+        self.get("/data/tasks/open-tasks?priority=high", 400)
+        self.get("/data/tasks/open-tasks/burndown?priority=high", 400)
+
+    def test_open_tasks_filter_validation(self):
+        """
+        Malformed id and date filter values must answer 400, not surface a
+        database error as a 500.
+        """
+        for path in (
+            "/data/tasks/open-tasks?task_type_id=abc",
+            "/data/tasks/open-tasks?person_id=abc",
+            "/data/tasks/open-tasks?start_date=not-a-date",
+            "/data/tasks/open-tasks/burndown?project_id=abc",
+            "/data/tasks/open-tasks/burndown?due_date=not-a-date",
+        ):
+            self.get(path, 400)
+
+    def test_open_tasks_stats_exclude_concepts(self):
+        """
+        Concept tasks are excluded from the listing, so the stats must
+        leave them out too or the totals disagree with the rows.
+        """
+        self.generate_fixture_task()
+        self.task.update({"estimation": 480})
+        concept_type = TaskType.create(
+            name="Concept sketch",
+            color="#FFFFFF",
+            for_entity="Concept",
+            department_id=self.department.id,
+        )
+        concept_task = self.generate_fixture_task(
+            name="concept", task_type_id=concept_type.id
+        )
+        concept_task.update({"estimation": 960})
+
+        result = self.get("/data/tasks/open-tasks")
+        self.assertEqual(result["stats"]["total"], 1)
+        self.assertEqual(result["stats"]["total_estimation"], 480)
+
+        burndown = self.get("/data/tasks/open-tasks/burndown")
+        self.assertEqual(burndown["total"], 1)
+        self.assertEqual(burndown["total_estimation"], 480)
+
+    def test_open_tasks_entity_less_tasks_stay_out(self):
+        """
+        A task without an entity can never appear in the listing, so the
+        burndown must not count it either.
+        """
+        self.generate_fixture_task()
+        Task.create(
+            name="no entity",
+            project_id=self.project.id,
+            task_type_id=self.task_type.id,
+            task_status_id=self.task_status.id,
+        )
+        result = self.get("/data/tasks/open-tasks")
+        self.assertEqual(result["stats"]["total"], 1)
+
+        burndown = self.get("/data/tasks/open-tasks/burndown")
+        self.assertEqual(burndown["total"], 1)
+
+    def test_open_tasks_is_more_on_exact_last_page(self):
+        """
+        A total that is an exact multiple of the limit used to announce a
+        spurious extra page.
+        """
+        self.generate_fixture_task()
+        self.generate_fixture_shot_task()
+
+        result = self.get("/data/tasks/open-tasks?limit=1&page=1")
+        self.assertEqual(len(result["data"]), 1)
+        self.assertTrue(result["is_more"])
+
+        result = self.get("/data/tasks/open-tasks?limit=1&page=2")
+        self.assertEqual(len(result["data"]), 1)
+        self.assertFalse(result["is_more"])
 
     def test_get_project_tasks(self):
         """

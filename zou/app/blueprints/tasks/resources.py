@@ -2932,6 +2932,27 @@ class PersonsTasksDatesResource(MethodView, ArgsMixin):
         )
 
 
+def check_open_tasks_filter_args(resource, args):
+    """
+    Reject malformed open tasks filter values with a 400 before they
+    reach the SQL layer as invalid UUID or date binds.
+    """
+    for field in (
+        "project_id",
+        "task_type_id",
+        "task_status_id",
+        "studio_id",
+        "department_id",
+    ):
+        if args[field] is not None:
+            resource.check_id_parameter(args[field])
+    if args["person_id"] not in (None, "unassigned"):
+        for person_id in args["person_id"].split(","):
+            resource.check_id_parameter(person_id)
+    resource.parse_date_parameter(args["start_date"])
+    resource.parse_date_parameter(args["due_date"])
+
+
 class OpenTasksResource(MethodView, ArgsMixin):
 
     @jwt_required()
@@ -3066,12 +3087,13 @@ class OpenTasksResource(MethodView, ArgsMixin):
                 ("department_id", None, False, str),
                 ("start_date", None, False, str),
                 ("due_date", None, False, str),
-                ("priority", None, False, str),
+                ("priority", None, False, int),
                 ("group_by", None, False, str),
                 ("page", None, False, int),
                 ("limit", 100, False, int),
             ]
         )
+        check_open_tasks_filter_args(self, args)
         return tasks_service.get_open_tasks(
             task_type_id=args["task_type_id"],
             project_id=args["project_id"],
@@ -3247,7 +3269,8 @@ class OpenTasksBurndownResource(MethodView, ArgsMixin):
                 ("department_id", None, False, str),
                 ("start_date", None, False, str),
                 ("due_date", None, False, str),
-                ("priority", None, False, str),
+                ("priority", None, False, int),
             ]
         )
+        check_open_tasks_filter_args(self, args)
         return tasks_service.get_open_tasks_burndown(**args)

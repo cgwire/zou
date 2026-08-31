@@ -2449,6 +2449,72 @@ def _merge_date_intervals(intervals):
     return [(start, end) for start, end in merged]
 
 
+def _apply_open_tasks_filters(
+    query,
+    task_type_id=None,
+    task_status_id=None,
+    project_id=None,
+    person_id=None,
+    studio_id=None,
+    department_id=None,
+    start_date=None,
+    due_date=None,
+    priority=None,
+):
+    """
+    Apply the open tasks pool scoping and filters. Shared by the listing,
+    its stats and the burndown aggregates so the three queries always
+    agree on which tasks are in the pool.
+    """
+    if project_id is not None and permissions_service.check_project_access(
+        project_id
+    ):
+        query = query.filter(Project.id == project_id)
+    elif permissions.has_admin_permissions():
+        query = query.filter(ProjectStatus.name == "Open")
+    else:
+        query = query.filter(user_service.build_related_projects_filter())
+
+    if task_type_id is not None:
+        query = query.filter(TaskType.id == task_type_id)
+    else:
+        query = query.filter(TaskType.for_entity != "Concept")
+
+    if task_status_id is not None:
+        query = query.filter(TaskStatus.id == task_status_id)
+
+    if person_id is not None:
+        if person_id == "unassigned":
+            query = query.filter(Task.assignees == None)
+        else:
+            query = query.filter(
+                Task.assignees.any(Person.id.in_(person_id.split(",")))
+            )
+
+    if studio_id is not None:
+        query = query.filter(Task.assignees.any(studio_id=studio_id))
+
+    if department_id is not None:
+        query = query.filter(
+            Task.assignees.any(Person.departments.any(id=department_id))
+        )
+
+    if start_date is not None:
+        query = query.filter(
+            Task.start_date >= func.cast(start_date, Task.start_date.type)
+        )
+
+    if due_date is not None:
+        query = query.filter(
+            Task.due_date <= func.cast(due_date, Task.due_date.type)
+        )
+
+    if priority is not None:
+        query = query.filter(TaskType.priority == priority)
+
+    return query
+
+
 def get_open_tasks(
     task_type_id=None,
     task_status_id=None,
@@ -2526,71 +2592,21 @@ def get_open_tasks(
         TaskType.name,
     )
 
-    if project_id is not None and permissions_service.check_project_access(
-        project_id
-    ):
-        query = query.filter(Project.id == project_id)
-        query_stats = query_stats.filter(Project.id == project_id)
-    else:
-        if permissions.has_admin_permissions():
-            query = query.filter(ProjectStatus.name == "Open")
-            query_stats = query_stats.filter(ProjectStatus.name == "Open")
-        else:
-            query = query.filter(user_service.build_related_projects_filter())
-            query_stats = query_stats.filter(
-                user_service.build_related_projects_filter()
-            )
+    filters = {
+        "task_type_id": task_type_id,
+        "task_status_id": task_status_id,
+        "project_id": project_id,
+        "person_id": person_id,
+        "studio_id": studio_id,
+        "department_id": department_id,
+        "start_date": start_date,
+        "due_date": due_date,
+        "priority": priority,
+    }
+    query = _apply_open_tasks_filters(query, **filters)
+    query_stats = _apply_open_tasks_filters(query_stats, **filters)
 
-    if task_type_id is not None:
-        query = query.filter(TaskType.id == task_type_id)
-        query_stats = query_stats.filter(TaskType.id == task_type_id)
-    else:
-        query = query.filter(TaskType.for_entity != "Concept")
-
-    if task_status_id is not None:
-        query = query.filter(TaskStatus.id == task_status_id)
-        query_stats = query_stats.filter(TaskStatus.id == task_status_id)
-
-    if person_id is not None:
-        if person_id == "unassigned":
-            query = query.filter(Task.assignees == None)
-            query_stats = query_stats.filter(Task.assignees == None)
-        else:
-            query = query.filter(
-                Task.assignees.any(Person.id.in_(person_id.split(",")))
-            )
-            query_stats = query_stats.filter(
-                Task.assignees.any(Person.id.in_(person_id.split(",")))
-            )
-
-    if studio_id is not None:
-        query = query.filter(Task.assignees.any(studio_id=studio_id))
-        query_stats = query_stats.filter(
-            Task.assignees.any(studio_id=studio_id)
-        )
-
-    if department_id is not None:
-        query = query.filter(
-            Task.assignees.any(Person.departments.any(id=department_id))
-        )
-        query_stats = query_stats.filter(
-            Task.assignees.any(Person.departments.any(id=department_id))
-        )
-
-    if start_date is not None:
-        start_date = func.cast(start_date, Task.start_date.type)
-        query = query.filter(Task.start_date >= start_date)
-        query_stats = query_stats.filter(Task.start_date >= start_date)
-
-    if due_date is not None:
-        due_date = func.cast(due_date, Task.due_date.type)
-        query = query.filter(Task.due_date <= due_date)
-        query_stats = query_stats.filter(Task.due_date <= due_date)
-
-    if priority is not None:
-        query = query.filter(TaskType.priority == priority)
-        query_stats = query_stats.filter(TaskType.priority == priority)
-
+    limit = max(limit, 1)
     if page is not None and int(page) > 0:
         query = query.offset((page - 1) * limit)
 
@@ -2663,7 +2679,7 @@ def get_open_tasks(
                 "status": statuses_stats,
             },
             "limit": limit,
-            "is_more": len(tasks) == limit,
+            "is_more": (page or 1) * limit < count,
             "page": page or 1,
         }
     return result
@@ -2698,53 +2714,23 @@ def get_open_tasks_burndown(
         )
         .join(TaskType, Task.task_type_id == TaskType.id)
         .join(TaskStatus, Task.task_status_id == TaskStatus.id)
+        .join(Entity, Entity.id == Task.entity_id)
         .join(Project, Project.id == Task.project_id)
         .join(ProjectStatus, ProjectStatus.id == Project.project_status_id)
     )
 
-    if project_id is not None and permissions_service.check_project_access(
-        project_id
-    ):
-        query = query.filter(Project.id == project_id)
-    elif permissions.has_admin_permissions():
-        query = query.filter(ProjectStatus.name == "Open")
-    else:
-        query = query.filter(user_service.build_related_projects_filter())
-
-    if task_type_id is not None:
-        query = query.filter(TaskType.id == task_type_id)
-    else:
-        query = query.filter(TaskType.for_entity != "Concept")
-
-    if task_status_id is not None:
-        query = query.filter(TaskStatus.id == task_status_id)
-
-    if person_id is not None:
-        if person_id == "unassigned":
-            query = query.filter(Task.assignees == None)
-        else:
-            query = query.filter(
-                Task.assignees.any(Person.id.in_(person_id.split(",")))
-            )
-
-    if studio_id is not None:
-        query = query.filter(Task.assignees.any(studio_id=studio_id))
-
-    if department_id is not None:
-        query = query.filter(
-            Task.assignees.any(Person.departments.any(id=department_id))
-        )
-
-    if start_date is not None:
-        start_date = func.cast(start_date, Task.start_date.type)
-        query = query.filter(Task.start_date >= start_date)
-
-    if due_date is not None:
-        due_date = func.cast(due_date, Task.due_date.type)
-        query = query.filter(Task.due_date <= due_date)
-
-    if priority is not None:
-        query = query.filter(TaskType.priority == priority)
+    query = _apply_open_tasks_filters(
+        query,
+        task_type_id=task_type_id,
+        task_status_id=task_status_id,
+        project_id=project_id,
+        person_id=person_id,
+        studio_id=studio_id,
+        department_id=department_id,
+        start_date=start_date,
+        due_date=due_date,
+        priority=priority,
+    )
 
     tasks = query.subquery()
 
@@ -2773,13 +2759,25 @@ def get_open_tasks_burndown(
         .all()
     )
 
+    # each bound falls back to the project dates independently, so the
+    # two raw values can come out inverted: announce the ordered window
+    # containing both of them and every done day
+    bounds = [
+        date
+        for date in (
+            first_start_date or first_project_start,
+            last_due_date or last_project_end,
+        )
+        if date is not None
+    ]
+    if done_rows:
+        bounds += [done_rows[0][0], done_rows[-1][0]]
+
     return {
         "total": total,
         "total_estimation": total_estimation or 0,
-        "start_date": fields.serialize_value(
-            first_start_date or first_project_start
-        ),
-        "end_date": fields.serialize_value(last_due_date or last_project_end),
+        "start_date": fields.serialize_value(min(bounds) if bounds else None),
+        "end_date": fields.serialize_value(max(bounds) if bounds else None),
         "done_by_day": [
             {
                 "date": fields.serialize_value(day),
