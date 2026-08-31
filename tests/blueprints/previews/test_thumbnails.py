@@ -172,6 +172,23 @@ class RouteThumbnailTestCase(ApiDBTestCase):
             projects_service.get_project(str(self.project.id))["has_avatar"]
         )
 
+    def test_project_thumbnail_png_is_read_only(self):
+        """
+        The .png url is the display one: it used to accept uploads too, with
+        the admin check inherited from the base resource instead of the
+        manager check of the upload route. A post on it now answers 405 with
+        a message pointing at the upload url without extension.
+        """
+        result = self.upload_file(
+            f"/pictures/thumbnails/projects/{self.project.id}.png",
+            self.get_fixture_file_path(os.path.join("thumbnails", "th01.png")),
+            code=405,
+        )
+        self.assertIn("without extension", result["message"])
+        self.assertFalse(
+            projects_service.get_project(str(self.project.id))["has_avatar"]
+        )
+
     def test_project_thumbnail_needs_project_access(self):
         """
         A project avatar is only readable by a manager or by someone on the

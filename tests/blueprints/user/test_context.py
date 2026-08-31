@@ -11,6 +11,7 @@ from zou.app.services import (
 
 from zou.app.models.project import Project
 from zou.app.models.person import Person
+from zou.app.models.task import Task
 
 
 class UserContextTestCase(ApiDBTestCase):
@@ -354,6 +355,236 @@ class UserWorkloadTestCase(UserContextTestCase):
         tasks = self.get("data/user/tasks-to-check")
         self.assertEqual(len(tasks), 1)
         self.assertEqual(tasks[0]["id"], str(self.task_id))
+
+    def test_get_tasks_to_check_paginated(self):
+        feedback_status = tasks_service.get_or_create_status(
+            "Waiting For Approval", "wfa", is_feedback_request=True
+        )
+        for task_id in [self.task_id, self.shot_task.id]:
+            tasks_service.update_task(
+                task_id, {"task_status_id": feedback_status["id"]}
+            )
+
+        result = self.get("data/user/tasks-to-check?page=1")
+        self.assertEqual(len(result["data"]), 2)
+        self.assertEqual(result["stats"]["total"], 2)
+        self.assertIn("total_duration", result["stats"])
+        self.assertIn("total_estimation", result["stats"])
+        self.assertFalse(result["is_more"])
+
+        result = self.get("data/user/tasks-to-check?page=1&limit=1")
+        self.assertEqual(len(result["data"]), 1)
+        self.assertEqual(result["stats"]["total"], 2)
+        self.assertTrue(result["is_more"])
+        first_id = result["data"][0]["id"]
+
+        result = self.get("data/user/tasks-to-check?page=2&limit=1")
+        self.assertEqual(len(result["data"]), 1)
+        self.assertFalse(result["is_more"])
+        self.assertNotEqual(result["data"][0]["id"], first_id)
+
+        result = self.get(
+            f"data/user/tasks-to-check?page=1&task_type_id={self.task_type.id}"
+        )
+        self.assertEqual(result["stats"]["total"], 1)
+        self.assertEqual(result["data"][0]["id"], str(self.task_id))
+
+        result = self.get(
+            "data/user/tasks-to-check"
+            "?page=1&project_id=00000000-0000-0000-0000-000000000000"
+        )
+        self.assertEqual(result["data"], [])
+        self.assertEqual(result["stats"]["total"], 0)
+
+        tasks_service.update_task(self.task_id, {"due_date": "2026-09-10"})
+        tasks_service.update_task(
+            self.shot_task.id, {"due_date": "2026-09-02"}
+        )
+        result = self.get("data/user/tasks-to-check?page=1&order_by=due_date")
+        self.assertEqual(result["data"][0]["id"], str(self.shot_task.id))
+
+        result = self.get(
+            "data/user/tasks-to-check?page=1&due_date_since=2026-09-05"
+        )
+        self.assertEqual(result["stats"]["total"], 1)
+        self.assertEqual(result["data"][0]["id"], str(self.task_id))
+
+    def feedback_task_ids(self, *task_ids):
+        """
+        Switch given tasks (all of them when none is given) to a feedback
+        status and return it.
+        """
+        feedback_status = tasks_service.get_or_create_status(
+            "Waiting For Approval", "wfa", is_feedback_request=True
+        )
+        if not task_ids:
+            task_ids = [self.task_id, self.shot_task.id]
+        for task_id in task_ids:
+            tasks_service.update_task(
+                task_id, {"task_status_id": feedback_status["id"]}
+            )
+        return feedback_status
+
+    def test_get_tasks_to_check_unassigned_person_filter(self):
+        self.feedback_task_ids()
+        self.task.assignees = []
+        self.task.save()
+
+        result = self.get(
+            "data/user/tasks-to-check?page=1&person_id=unassigned"
+        )
+        self.assertEqual(result["stats"]["total"], 1)
+        self.assertEqual(result["data"][0]["id"], str(self.task_id))
+
+    def test_get_tasks_to_check_param_validation(self):
+        """
+        Malformed id and date filter values must answer 400, not surface a
+        database error as a 500.
+        """
+        for path in (
+            "data/user/tasks-to-check?page=1&project_id=abc",
+            "data/user/tasks-to-check?page=1&task_type_id=abc",
+            "data/user/tasks-to-check?page=1&task_status_id=abc",
+            "data/user/tasks-to-check?page=1&episode_id=abc",
+            "data/user/tasks-to-check?page=1&person_id=abc",
+            "data/user/tasks-to-check?page=1&due_date_since=not-a-date",
+            "data/user/tasks-to-check?page=1&due_date_until=not-a-date",
+        ):
+            self.get(path, 400)
+
+    def test_get_tasks_to_check_limit_clamped(self):
+        self.feedback_task_ids()
+
+        result = self.get("data/user/tasks-to-check?page=1&limit=0")
+        self.assertEqual(result["limit"], 1)
+        self.assertEqual(len(result["data"]), 1)
+        self.assertTrue(result["is_more"])
+
+        result = self.get("data/user/tasks-to-check?page=2&limit=-3")
+        self.assertEqual(result["limit"], 1)
+        self.assertEqual(len(result["data"]), 1)
+        self.assertFalse(result["is_more"])
+
+    def test_get_tasks_to_check_episode_filter_matches_display(self):
+        """
+        The rows resolve their episode from the sequence chain, from the
+        entity source id (episode scoped assets) and from the entity parent
+        (sequence level tasks). The episode filter and the filter values
+        must resolve the same way.
+        """
+        episode_id = str(self.episode.id)
+        path = f"data/user/tasks-to-check?page=1&episode_id={episode_id}"
+
+        # generate_fixture_task resets self.task_id: keep the asset task id
+        asset_task_id = self.task_id
+        sequence_task = self.generate_fixture_task(
+            "seq task", self.sequence.id
+        )
+        self.asset.update({"source_id": self.episode.id})
+        self.feedback_task_ids(sequence_task.id, asset_task_id)
+
+        result = self.get(path)
+        self.assertEqual(result["stats"]["total"], 2)
+
+        values = self.get("data/user/tasks-to-check/filter-values")
+        self.assertEqual(values["episode_ids"], [episode_id])
+
+        self.feedback_task_ids(self.shot_task.id)
+        result = self.get(path)
+        self.assertEqual(result["stats"]["total"], 3)
+
+    def test_get_tasks_to_check_as_artist(self):
+        self.feedback_task_ids()
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+
+        self.assertEqual(self.get("data/user/tasks-to-check"), [])
+
+        result = self.get("data/user/tasks-to-check?page=0")
+        self.assertEqual(result["page"], 1)
+        self.assertEqual(result["data"], [])
+        self.assertEqual(result["stats"]["total"], 0)
+        self.assertFalse(result["is_more"])
+
+        values = self.get("data/user/tasks-to-check/filter-values")
+        self.assertEqual(values["person_ids"], [])
+
+    def test_get_tasks_to_check_as_manager(self):
+        self.feedback_task_ids()
+        self.generate_fixture_user_manager()
+        self.log_in_manager()
+
+        result = self.get("data/user/tasks-to-check?page=1")
+        self.assertEqual(result["stats"]["total"], 0)
+        self.assertEqual(self.get("data/user/tasks-to-check"), [])
+
+        projects_service.add_team_member(
+            self.project_id, self.user_manager["id"]
+        )
+        result = self.get("data/user/tasks-to-check?page=1")
+        self.assertEqual(result["stats"]["total"], 2)
+
+    def test_get_tasks_to_check_as_supervisor(self):
+        self.feedback_task_ids()
+        self.generate_fixture_user_supervisor()
+        supervisor = Person.get(self.user_supervisor["id"])
+        supervisor.departments = [self.department]
+        supervisor.save()
+        projects_service.add_team_member(
+            self.project_id, self.user_supervisor["id"]
+        )
+        self.log_in_supervisor()
+
+        # the asset task belongs to the supervisor department, the shot
+        # task belongs to the animation department
+        result = self.get("data/user/tasks-to-check?page=1")
+        self.assertEqual(result["stats"]["total"], 1)
+        self.assertEqual(result["data"][0]["id"], str(self.task_id))
+
+    def test_get_tasks_to_check_filter_values_skips_entity_less_tasks(self):
+        feedback_status = self.feedback_task_ids()
+        task = Task.create(
+            name="no entity",
+            project_id=self.project_id,
+            task_type_id=self.task_type.id,
+            task_status_id=feedback_status["id"],
+        )
+        self.generate_fixture_user_cg_artist()
+        tasks_service.assign_task(task.id, self.user_cg_artist["id"])
+
+        values = self.get("data/user/tasks-to-check/filter-values")
+        self.assertNotIn(self.user_cg_artist["id"], values["person_ids"])
+
+    def test_get_tasks_to_check_filter_values(self):
+        path = "data/user/tasks-to-check/filter-values"
+        result = self.get(path)
+        self.assertEqual(result["project_ids"], [])
+        self.assertEqual(result["person_ids"], [])
+
+        feedback_status = tasks_service.get_or_create_status(
+            "Waiting For Approval", "wfa", is_feedback_request=True
+        )
+        for task_id in [self.task_id, self.shot_task.id]:
+            tasks_service.update_task(
+                task_id, {"task_status_id": feedback_status["id"]}
+            )
+        self.assign_user(self.task_id)
+
+        result = self.get(path)
+        self.assertEqual(result["project_ids"], [str(self.project_id)])
+        self.assertEqual(
+            result["task_type_ids"],
+            sorted([str(self.task_type.id), str(self.task_type_animation.id)]),
+        )
+        self.assertEqual(
+            result["task_status_ids"], [str(feedback_status["id"])]
+        )
+        self.assertEqual(result["episode_ids"], [str(self.episode.id)])
+        # the shot task fixture is already assigned to self.person
+        self.assertEqual(
+            result["person_ids"],
+            sorted([str(self.person.id), str(self.user_id)]),
+        )
 
     def test_get_day_off(self):
         path = "data/user/day-offs/2026-08-05"

@@ -3,7 +3,6 @@ from zou.app.utils.api import configure_api_from_blueprint
 
 from zou.app.blueprints.shots.resources import (
     ShotResource,
-    ShotsResource,
     AllShotsResource,
     ShotsAndTasksResource,
     ShotAssetsResource,
@@ -48,7 +47,8 @@ from zou.app.blueprints.shots.resources import (
 
 routes = [
     ("/data/shots", AllShotsResource),
-    ("/data/shots/all", ShotsResource),
+    # Same listing, second path kept because gazu queries shots/all.
+    ("/data/shots/all", AllShotsResource),
     ("/data/shots/with-tasks", ShotsAndTasksResource),
     ("/data/shots/<shot_id>", ShotResource),
     ("/data/shots/<shot_id>/assets", ShotAssetsResource),

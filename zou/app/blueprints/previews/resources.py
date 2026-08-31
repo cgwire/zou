@@ -1472,10 +1472,6 @@ class PersonThumbnailResource(BaseThumbnailResource):
         )
 
 
-class CreatePersonThumbnailResource(PersonThumbnailResource):
-    pass
-
-
 class OrganisationThumbnailResource(BaseThumbnailResource):
 
     def __init__(self):
@@ -1489,10 +1485,6 @@ class OrganisationThumbnailResource(BaseThumbnailResource):
 
     def is_exist(self, organisation_id):
         self.model = persons_service.get_organisation()
-
-
-class CreateOrganisationThumbnailResource(OrganisationThumbnailResource):
-    pass
 
 
 class ProjectThumbnailResource(BaseThumbnailResource):
@@ -1510,11 +1502,31 @@ class ProjectThumbnailResource(BaseThumbnailResource):
         if not permissions.has_manager_permissions():
             permissions_service.check_project_access(instance_id)
 
-
-class CreateProjectThumbnailResource(ProjectThumbnailResource):
-
     def check_allowed_to_post(self, instance_id):
         return permissions_service.check_manager_project_access(instance_id)
+
+
+class ReadOnlyProjectThumbnailResource(ProjectThumbnailResource):
+    """
+    Display url of the project thumbnail. Uploads go to the path without
+    extension, so this one serves reads only and the upload permission is
+    described in a single place. A post answers 405 with a pointer instead
+    of falling through the routing to a misleading 404.
+    """
+
+    # flasgger only accepts a set here, a list makes /openapi.json crash
+    methods = {"GET", "POST"}
+
+    @jwt_required()
+    def post(self, instance_id):
+        """
+        Uploads are not allowed on the display url.
+        """
+        return {
+            "error": True,
+            "message": "Upload project thumbnails on the url without "
+            "extension: /pictures/thumbnails/projects/<project_id>.",
+        }, 405
 
 
 class SetMainPreviewResource(MethodView, ArgsMixin):

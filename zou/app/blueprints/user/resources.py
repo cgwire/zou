@@ -1,4 +1,4 @@
-from flask import abort, jsonify, request
+from flask import jsonify, request
 from flask.views import MethodView
 
 from zou.app.mixin import ArgsMixin
@@ -1152,7 +1152,7 @@ class TodosResource(MethodView):
         return user_service.get_todos()
 
 
-class ToChecksResource(MethodView):
+class ToChecksResource(MethodView, ArgsMixin):
 
     def get(self):
         """
@@ -1160,62 +1160,248 @@ class ToChecksResource(MethodView):
         ---
         description: Retrieve tasks requiring feedback for departments where the
           current user is a supervisor. Returns empty list if user is not a
-          supervisor.
+          supervisor. When a page parameter is given, the response is a
+          pagination envelope ({data, stats, page, limit, is_more}) instead of
+          a bare array.
+        tags:
+        - User
+        parameters:
+          - in: query
+            name: project_id
+            required: false
+            schema:
+              type: string
+              format: uuid
+            description: Filter tasks on given project ID
+          - in: query
+            name: task_type_id
+            required: false
+            schema:
+              type: string
+              format: uuid
+            description: Filter tasks on given task type ID
+          - in: query
+            name: task_status_id
+            required: false
+            schema:
+              type: string
+              format: uuid
+            description: Filter tasks on given task status ID
+          - in: query
+            name: person_id
+            required: false
+            schema:
+              type: string
+              format: uuid
+            description: Filter tasks assigned to given person ID (comma
+              separated list allowed)
+          - in: query
+            name: episode_id
+            required: false
+            schema:
+              type: string
+              format: uuid
+            description: Filter tasks on given episode ID
+          - in: query
+            name: due_date_since
+            required: false
+            schema:
+              type: string
+              format: date
+            example: "2022-07-12"
+            description: Filter tasks with a due date posterior to given date
+          - in: query
+            name: due_date_until
+            required: false
+            schema:
+              type: string
+              format: date
+            example: "2022-07-12"
+            description: Filter tasks with a due date anterior to given date
+          - in: query
+            name: order_by
+            required: false
+            schema:
+              type: string
+              enum: [priority, due_date, entity_name, estimation]
+            description: Sort tasks on given criterion
+          - in: query
+            name: page
+            required: false
+            schema:
+              type: integer
+            example: 1
+            description: Page number. Enables the pagination envelope response
+          - in: query
+            name: limit
+            required: false
+            schema:
+              type: integer
+              default: 100
+            example: 100
+            description: Number of tasks per page
+        responses:
+            200:
+              description: Tasks requiring feedback in current user
+                departments, as a bare array without the page parameter and
+                as a pagination envelope with it
+              content:
+                application/json:
+                  schema:
+                    oneOf:
+                      - type: array
+                        description: Bare task list, when no page is given
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                              description: Task unique identifier
+                              example: b35b7fb5-df86-5776-b181-68564193d36
+                            name:
+                              type: string
+                              description: Task name
+                              example: "Review"
+                            task_type_id:
+                              type: string
+                              format: uuid
+                              description: Task type identifier
+                              example: c46c8gc6-eg97-6887-c292-79675204e47
+                            task_status_id:
+                              type: string
+                              format: uuid
+                              description: Task status identifier
+                              example: d57d9hd7-fh08-7998-d403-80786315f58
+                            assigner_id:
+                              type: string
+                              format: uuid
+                              description: Person who assigned the task
+                              example: e68e0ie8-gi19-8009-e514-91897426g69
+                            assignees:
+                              type: array
+                              items:
+                                type: string
+                                format: uuid
+                              description: List of assigned person identifiers
+                              example: ["f79f1jf9-hj20-9010-f625-a09008537h80"]
+                            created_at:
+                              type: string
+                              format: date-time
+                              description: Creation timestamp
+                              example: "2023-01-01T12:00:00Z"
+                            updated_at:
+                              type: string
+                              format: date-time
+                              description: Last update timestamp
+                              example: "2023-01-01T12:30:00Z"
+                      - type: object
+                        description: Pagination envelope, when a page is given
+                        properties:
+                          data:
+                            type: array
+                            items:
+                              type: object
+                            description: Tasks of the requested page
+                          stats:
+                            type: object
+                            properties:
+                              total:
+                                type: integer
+                                description: Total number of matching tasks
+                              total_duration:
+                                type: integer
+                                description: Total duration in minutes
+                              total_estimation:
+                                type: integer
+                                description: Total estimation in minutes
+                          page:
+                            type: integer
+                            description: Page number, clamped to 1
+                          limit:
+                            type: integer
+                            description: Number of tasks per page
+                          is_more:
+                            type: boolean
+                            description: True if a later page holds more tasks
+        """
+        args = self.get_args(
+            [
+                ("project_id", None, False, str),
+                ("task_type_id", None, False, str),
+                ("task_status_id", None, False, str),
+                ("person_id", None, False, str),
+                ("episode_id", None, False, str),
+                ("due_date_since", None, False, str),
+                ("due_date_until", None, False, str),
+                ("order_by", None, False, str),
+                ("page", None, False, int),
+                ("limit", 100, False, int),
+            ]
+        )
+        for field in (
+            "project_id",
+            "task_type_id",
+            "task_status_id",
+            "episode_id",
+        ):
+            if args[field] is not None:
+                self.check_id_parameter(args[field])
+        if args["person_id"] not in (None, "unassigned"):
+            for person_id in args["person_id"].split(","):
+                self.check_id_parameter(person_id)
+        self.parse_date_parameter(args["due_date_since"])
+        self.parse_date_parameter(args["due_date_until"])
+        return user_service.get_tasks_to_check(**args)
+
+
+class ToChecksFilterValuesResource(MethodView):
+
+    def get(self):
+        """
+        Get filter values for tasks requiring feedback
+        ---
+        description: Return the distinct project, task type, task status,
+          episode and assignee ids present in the tasks requiring feedback
+          for the current user. Aimed at filling filter combo boxes without
+          loading the full task list.
         tags:
         - User
         responses:
             200:
-              description: Tasks requiring feedback in current user departments
+              description: Distinct filter values for tasks requiring feedback
               content:
                 application/json:
                   schema:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
+                    type: object
+                    properties:
+                      project_ids:
+                        type: array
+                        items:
                           type: string
                           format: uuid
-                          description: Task unique identifier
-                          example: b35b7fb5-df86-5776-b181-68564193d36
-                        name:
-                          type: string
-                          description: Task name
-                          example: "Review"
-                        task_type_id:
+                      task_type_ids:
+                        type: array
+                        items:
                           type: string
                           format: uuid
-                          description: Task type identifier
-                          example: c46c8gc6-eg97-6887-c292-79675204e47
-                        task_status_id:
+                      task_status_ids:
+                        type: array
+                        items:
                           type: string
                           format: uuid
-                          description: Task status identifier
-                          example: d57d9hd7-fh08-7998-d403-80786315f58
-                        assigner_id:
+                      episode_ids:
+                        type: array
+                        items:
                           type: string
                           format: uuid
-                          description: Person who assigned the task
-                          example: e68e0ie8-gi19-8009-e514-91897426g69
-                        assignees:
-                          type: array
-                          items:
-                            type: string
-                            format: uuid
-                          description: List of assigned person identifiers
-                          example: ["f79f1jf9-hj20-9010-f625-a09008537h80"]
-                        created_at:
+                      person_ids:
+                        type: array
+                        items:
                           type: string
-                          format: date-time
-                          description: Creation timestamp
-                          example: "2023-01-01T12:00:00Z"
-                        updated_at:
-                          type: string
-                          format: date-time
-                          description: Last update timestamp
-                          example: "2023-01-01T12:30:00Z"
+                          format: uuid
         """
-        return user_service.get_tasks_to_check()
+        return user_service.get_tasks_to_check_filter_values()
 
 
 class DoneResource(MethodView):

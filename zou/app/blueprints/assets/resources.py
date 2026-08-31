@@ -228,10 +228,6 @@ class AllAssetsResource(MethodView):
         )
 
 
-class AllAssetsAliasResource(AllAssetsResource):
-    pass
-
-
 class AssetsAndTasksResource(MethodView, ArgsMixin):
 
     @jwt_required()

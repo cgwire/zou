@@ -14,7 +14,7 @@ Two conventions matter when editing this module:
 import collections
 import uuid
 
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
 from sqlalchemy.exc import StatementError, IntegrityError, DataError
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import case
@@ -1231,9 +1231,24 @@ def get_person_tasks(person_id, projects, is_done=None):
     return tasks
 
 
-def get_person_tasks_to_check(project_ids=None, department_ids=None):
+def get_person_tasks_to_check(
+    project_ids=None,
+    department_ids=None,
+    project_id=None,
+    task_type_id=None,
+    task_status_id=None,
+    person_id=None,
+    episode_id=None,
+    due_date_since=None,
+    due_date_until=None,
+    order_by=None,
+    page=None,
+    limit=100,
+):
     """
     Retrieve all tasks requiring a feedback for given departments and projects.
+    When a page number is given, return a pagination envelope instead of a
+    bare list.
     """
     Sequence = aliased(Entity, name="sequence")
     Episode = aliased(Entity, name="episode")
@@ -1278,6 +1293,93 @@ def get_person_tasks_to_check(project_ids=None, department_ids=None):
 
     if department_ids:
         query = query.filter(TaskType.department_id.in_(department_ids))
+
+    if project_id is not None:
+        query = query.filter(Project.id == project_id)
+
+    if task_type_id is not None:
+        query = query.filter(TaskType.id == task_type_id)
+
+    if task_status_id is not None:
+        query = query.filter(TaskStatus.id == task_status_id)
+
+    if person_id is not None:
+        if person_id == "unassigned":
+            query = query.filter(Task.assignees == None)
+        else:
+            query = query.filter(
+                Task.assignees.any(Person.id.in_(person_id.split(",")))
+            )
+
+    if episode_id is not None:
+        # match every way a row resolves its episode: the sequence chain,
+        # an episode scoped entity (source_id) and a sequence level task
+        # (parent_id)
+        query = query.filter(
+            or_(
+                Episode.id == episode_id,
+                Entity.source_id == episode_id,
+                Entity.parent_id == episode_id,
+            )
+        )
+
+    if due_date_since is not None:
+        due_date_since = func.cast(due_date_since, Task.due_date.type)
+        query = query.filter(Task.due_date >= due_date_since)
+
+    if due_date_until is not None:
+        due_date_until = func.cast(due_date_until, Task.due_date.type)
+        query = query.filter(Task.due_date <= due_date_until)
+
+    stats = None
+    if page is not None:
+        page = max(page, 1)
+        limit = max(limit, 1)
+        total, total_duration, total_estimation = query.with_entities(
+            func.count(Task.id),
+            func.sum(Task.duration),
+            func.sum(Task.estimation),
+        ).one()
+        stats = {
+            "total": total,
+            "total_duration": total_duration or 0,
+            "total_estimation": total_estimation or 0,
+        }
+
+    name_order = [
+        Project.name,
+        Episode.name,
+        Sequence.name,
+        EntityType.name,
+        Entity.name,
+        TaskType.name,
+    ]
+    order_columns = {
+        "priority": [
+            Task.priority.desc().nullslast(),
+            Task.due_date.asc().nullslast(),
+        ]
+        + name_order,
+        "due_date": [Task.due_date.asc().nullslast()] + name_order,
+        "estimation": [Task.estimation.desc().nullslast()] + name_order,
+        "entity_name": [
+            Project.name,
+            TaskType.name,
+            Episode.name,
+            Sequence.name,
+            Entity.name,
+        ],
+    }
+    # the unpaginated legacy path never had an ordering: do not tax it
+    # with a six column sort its callers do not need
+    if page is not None or order_by is not None:
+        query = query.order_by(
+            *order_columns.get(order_by, name_order), Task.id
+        )
+
+    if page is not None:
+        query = query.offset((page - 1) * limit).limit(limit)
+
     tasks = []
     for row in query.all():
         (
@@ -1307,7 +1409,102 @@ def get_person_tasks_to_check(project_ids=None, department_ids=None):
     if tasks:
         _attach_assignee_ids(tasks)
     _add_last_comments_to_tasks(tasks)
-    return tasks
+
+    if page is None:
+        return tasks
+
+    return {
+        "data": tasks,
+        "stats": stats,
+        "page": page,
+        "limit": limit,
+        "is_more": page * limit < stats["total"],
+    }
+
+
+def get_person_tasks_to_check_filter_values(
+    project_ids=None, department_ids=None
+):
+    """
+    Return the distinct project, task type, task status, episode and
+    assignee ids present in the tasks requiring a feedback for given
+    departments and projects.
+    """
+    Sequence = aliased(Entity, name="sequence")
+    Episode = aliased(Entity, name="episode")
+
+    def scope_query(query):
+        query = (
+            query.join(Project, Project.id == Task.project_id)
+            .join(TaskType, TaskType.id == Task.task_type_id)
+            .join(TaskStatus, TaskStatus.id == Task.task_status_id)
+            .filter(TaskStatus.is_feedback_request)
+        )
+        if project_ids is not None:
+            query = query.filter(Project.id.in_(project_ids))
+        else:
+            query = query.filter(user_service.build_open_project_filter())
+        if department_ids:
+            query = query.filter(TaskType.department_id.in_(department_ids))
+        return query
+
+    rows = scope_query(
+        db.session.query(
+            Task.project_id,
+            Task.task_type_id,
+            Task.task_status_id,
+            Episode.id,
+            Entity.source_id,
+            Entity.parent_id,
+            EntityType.name,
+        )
+        .select_from(Task)
+        .join(Entity, Entity.id == Task.entity_id)
+        .join(EntityType, EntityType.id == Entity.entity_type_id)
+        .outerjoin(Sequence, Sequence.id == Entity.parent_id)
+        .outerjoin(Episode, Episode.id == Sequence.parent_id)
+    ).distinct()
+
+    persons = scope_query(
+        db.session.query(TaskPersonLink.person_id)
+        .select_from(Task)
+        .join(Entity, Entity.id == Task.entity_id)
+        .join(TaskPersonLink, TaskPersonLink.task_id == Task.id)
+    ).distinct()
+
+    values = {
+        "project_ids": set(),
+        "task_type_ids": set(),
+        "task_status_ids": set(),
+        "episode_ids": set(),
+    }
+    for (
+        project_id,
+        task_type_id,
+        task_status_id,
+        episode_id,
+        source_id,
+        parent_id,
+        entity_type_name,
+    ) in rows.all():
+        values["project_ids"].add(project_id)
+        values["task_type_ids"].add(task_type_id)
+        values["task_status_ids"].add(task_status_id)
+        # resolve the episode the way the rows display it: the sequence
+        # chain, then the entity source id, then the parent of a
+        # sequence level task
+        if episode_id is None:
+            episode_id = source_id
+        if entity_type_name == "Sequence" and parent_id is not None:
+            episode_id = parent_id
+        if episode_id is not None:
+            values["episode_ids"].add(episode_id)
+    values["person_ids"] = {row[0] for row in persons.all()}
+
+    return {
+        key: sorted(str(value_id) for value_id in ids)
+        for key, ids in values.items()
+    }
 
 
 def get_last_comment_map(task_ids):
@@ -2290,6 +2487,72 @@ def _merge_date_intervals(intervals):
     return [(start, end) for start, end in merged]
 
 
+def _apply_open_tasks_filters(
+    query,
+    task_type_id=None,
+    task_status_id=None,
+    project_id=None,
+    person_id=None,
+    studio_id=None,
+    department_id=None,
+    start_date=None,
+    due_date=None,
+    priority=None,
+):
+    """
+    Apply the open tasks pool scoping and filters. Shared by the listing,
+    its stats and the burndown aggregates so the three queries always
+    agree on which tasks are in the pool.
+    """
+    if project_id is not None and permissions_service.check_project_access(
+        project_id
+    ):
+        query = query.filter(Project.id == project_id)
+    elif permissions.has_admin_permissions():
+        query = query.filter(ProjectStatus.name == "Open")
+    else:
+        query = query.filter(user_service.build_related_projects_filter())
+
+    if task_type_id is not None:
+        query = query.filter(TaskType.id == task_type_id)
+    else:
+        query = query.filter(TaskType.for_entity != "Concept")
+
+    if task_status_id is not None:
+        query = query.filter(TaskStatus.id == task_status_id)
+
+    if person_id is not None:
+        if person_id == "unassigned":
+            query = query.filter(Task.assignees == None)
+        else:
+            query = query.filter(
+                Task.assignees.any(Person.id.in_(person_id.split(",")))
+            )
+
+    if studio_id is not None:
+        query = query.filter(Task.assignees.any(studio_id=studio_id))
+
+    if department_id is not None:
+        query = query.filter(
+            Task.assignees.any(Person.departments.any(id=department_id))
+        )
+
+    if start_date is not None:
+        query = query.filter(
+            Task.start_date >= func.cast(start_date, Task.start_date.type)
+        )
+
+    if due_date is not None:
+        query = query.filter(
+            Task.due_date <= func.cast(due_date, Task.due_date.type)
+        )
+
+    if priority is not None:
+        query = query.filter(TaskType.priority == priority)
+
+    return query
+
+
 def get_open_tasks(
     task_type_id=None,
     task_status_id=None,
@@ -2367,71 +2630,21 @@ def get_open_tasks(
         TaskType.name,
     )
 
-    if project_id is not None and permissions_service.check_project_access(
-        project_id
-    ):
-        query = query.filter(Project.id == project_id)
-        query_stats = query_stats.filter(Project.id == project_id)
-    else:
-        if permissions.has_admin_permissions():
-            query = query.filter(ProjectStatus.name == "Open")
-            query_stats = query_stats.filter(ProjectStatus.name == "Open")
-        else:
-            query = query.filter(user_service.build_related_projects_filter())
-            query_stats = query_stats.filter(
-                user_service.build_related_projects_filter()
-            )
+    filters = {
+        "task_type_id": task_type_id,
+        "task_status_id": task_status_id,
+        "project_id": project_id,
+        "person_id": person_id,
+        "studio_id": studio_id,
+        "department_id": department_id,
+        "start_date": start_date,
+        "due_date": due_date,
+        "priority": priority,
+    }
+    query = _apply_open_tasks_filters(query, **filters)
+    query_stats = _apply_open_tasks_filters(query_stats, **filters)
 
-    if task_type_id is not None:
-        query = query.filter(TaskType.id == task_type_id)
-        query_stats = query_stats.filter(TaskType.id == task_type_id)
-    else:
-        query = query.filter(TaskType.for_entity != "Concept")
-
-    if task_status_id is not None:
-        query = query.filter(TaskStatus.id == task_status_id)
-        query_stats = query_stats.filter(TaskStatus.id == task_status_id)
-
-    if person_id is not None:
-        if person_id == "unassigned":
-            query = query.filter(Task.assignees == None)
-            query_stats = query_stats.filter(Task.assignees == None)
-        else:
-            query = query.filter(
-                Task.assignees.any(Person.id.in_(person_id.split(",")))
-            )
-            query_stats = query_stats.filter(
-                Task.assignees.any(Person.id.in_(person_id.split(",")))
-            )
-
-    if studio_id is not None:
-        query = query.filter(Task.assignees.any(studio_id=studio_id))
-        query_stats = query_stats.filter(
-            Task.assignees.any(studio_id=studio_id)
-        )
-
-    if department_id is not None:
-        query = query.filter(
-            Task.assignees.any(Person.departments.any(id=department_id))
-        )
-        query_stats = query_stats.filter(
-            Task.assignees.any(Person.departments.any(id=department_id))
-        )
-
-    if start_date is not None:
-        start_date = func.cast(start_date, Task.start_date.type)
-        query = query.filter(Task.start_date >= start_date)
-        query_stats = query_stats.filter(Task.start_date >= start_date)
-
-    if due_date is not None:
-        due_date = func.cast(due_date, Task.due_date.type)
-        query = query.filter(Task.due_date <= due_date)
-        query_stats = query_stats.filter(Task.due_date <= due_date)
-
-    if priority is not None:
-        query = query.filter(TaskType.priority == priority)
-        query_stats = query_stats.filter(TaskType.priority == priority)
-
+    limit = max(limit, 1)
     if page is not None and int(page) > 0:
         query = query.offset((page - 1) * limit)
 
@@ -2504,10 +2717,114 @@ def get_open_tasks(
                 "status": statuses_stats,
             },
             "limit": limit,
-            "is_more": len(tasks) == limit,
+            "is_more": (page or 1) * limit < count,
             "page": page or 1,
         }
     return result
+
+
+def get_open_tasks_burndown(
+    task_type_id=None,
+    task_status_id=None,
+    project_id=None,
+    person_id=None,
+    studio_id=None,
+    department_id=None,
+    start_date=None,
+    due_date=None,
+    priority=None,
+):
+    """
+    Return burndown aggregates for tasks matching given filters from open
+    projects: totals, schedule bounds and the amount of tasks done per day.
+    Schedule bounds come from the task dates and fall back to the
+    project dates when the tasks carry none.
+    """
+    query = (
+        db.session.query(
+            Task.id,
+            Task.estimation,
+            Task.start_date,
+            Task.due_date,
+            Task.done_date,
+            Project.start_date.label("project_start_date"),
+            Project.end_date.label("project_end_date"),
+        )
+        .join(TaskType, Task.task_type_id == TaskType.id)
+        .join(TaskStatus, Task.task_status_id == TaskStatus.id)
+        .join(Entity, Entity.id == Task.entity_id)
+        .join(Project, Project.id == Task.project_id)
+        .join(ProjectStatus, ProjectStatus.id == Project.project_status_id)
+    )
+
+    query = _apply_open_tasks_filters(
+        query,
+        task_type_id=task_type_id,
+        task_status_id=task_status_id,
+        project_id=project_id,
+        person_id=person_id,
+        studio_id=studio_id,
+        department_id=department_id,
+        start_date=start_date,
+        due_date=due_date,
+        priority=priority,
+    )
+
+    tasks = query.subquery()
+
+    (
+        total,
+        total_estimation,
+        first_start_date,
+        last_due_date,
+        first_project_start,
+        last_project_end,
+    ) = db.session.query(
+        func.count(),
+        func.sum(tasks.c.estimation),
+        func.cast(func.min(tasks.c.start_date), db.Date),
+        func.cast(func.max(tasks.c.due_date), db.Date),
+        func.min(tasks.c.project_start_date),
+        func.max(tasks.c.project_end_date),
+    ).one()
+
+    done_day = func.cast(tasks.c.done_date, db.Date)
+    done_rows = (
+        db.session.query(done_day, func.count(), func.sum(tasks.c.estimation))
+        .filter(tasks.c.done_date != None)
+        .group_by(done_day)
+        .order_by(done_day)
+        .all()
+    )
+
+    # each bound falls back to the project dates independently, so the
+    # two raw values can come out inverted: announce the ordered window
+    # containing both of them and every done day
+    bounds = [
+        date
+        for date in (
+            first_start_date or first_project_start,
+            last_due_date or last_project_end,
+        )
+        if date is not None
+    ]
+    if done_rows:
+        bounds += [done_rows[0][0], done_rows[-1][0]]
+
+    return {
+        "total": total,
+        "total_estimation": total_estimation or 0,
+        "start_date": fields.serialize_value(min(bounds) if bounds else None),
+        "end_date": fields.serialize_value(max(bounds) if bounds else None),
+        "done_by_day": [
+            {
+                "date": fields.serialize_value(day),
+                "done": done,
+                "done_estimation": done_estimation or 0,
+            }
+            for day, done, done_estimation in done_rows
+        ],
+    }
 
 
 def get_open_tasks_stats():
