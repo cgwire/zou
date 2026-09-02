@@ -225,8 +225,10 @@ def upgrade_db(no_telemetry=False):
             current_rev = None
     engine.dispose()
 
+    script = ScriptDirectory.from_config(cfg)
+    head_rev = script.get_current_head()
+
     if current_rev is not None:
-        script = ScriptDirectory.from_config(cfg)
         known = {r.revision for r in script.walk_revisions()}
         if current_rev not in known:
             print(
@@ -245,7 +247,11 @@ def upgrade_db(no_telemetry=False):
         "on",
         "1",
     )
-    if not no_telemetry and is_self_hosted:
+    # Deployments run upgrade-db on every boot (Docker entrypoint, k8s init
+    # container, systemd unit), so sending on every invocation turned each
+    # restart into a telemetry POST. Only an actual schema move is a new
+    # install or a version upgrade worth counting.
+    if not no_telemetry and is_self_hosted and current_rev != head_rev:
         with _get_app().app_context():
             from zou.app.services import telemetry_service
 
