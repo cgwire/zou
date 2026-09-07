@@ -32,6 +32,12 @@ def to_srgb(im, mode="RGB"):
     """
     if im.mode not in ("CMYK", "RGB", "RGBA"):
         return im
+    if im.mode == "RGB" and im.info.get("transparency") is not None:
+        # A tRNS colour key lives in im.info only, and littleCMS hands back
+        # a brand new picture whose info does not carry it over. Turn the
+        # key into a real alpha channel first, otherwise the colour it keys
+        # out (black, most of the time) comes back as an opaque background.
+        im = im.convert("RGBA")
     if im.mode == "RGBA":
         mode = "RGBA"
     icc_profile = im.info.get("icc_profile")

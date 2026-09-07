@@ -164,6 +164,50 @@ class ThumbnailTestCase(unittest.TestCase):
         im = Image.new("L", (4, 4))
         self.assertEqual(thumbnail.to_srgb(im).mode, "L")
 
+        im = Image.new("RGB", (4, 4), (0, 0, 0))
+        im.info["transparency"] = (0, 0, 0)
+        im.info["icc_profile"] = profile
+        converted = thumbnail.to_srgb(im)
+        self.assertEqual(converted.mode, "RGBA")
+        self.assertEqual(converted.getpixel((0, 0))[3], 0)
+
+    def test_thumbnail_keeps_transparency(self):
+        profile = ImageCms.ImageCmsProfile(
+            ImageCms.createProfile("sRGB")
+        ).tobytes()
+
+        rgba = Image.new("RGBA", (600, 300), (0, 0, 0, 0))
+        rgba.paste((30, 120, 200, 255), (100, 100, 500, 200))
+        rgb = Image.new("RGB", (600, 300), (0, 0, 0))
+        rgb.paste((30, 120, 200), (100, 100, 500, 200))
+
+        # A PNG carries its transparency either as an alpha channel or, once
+        # it went through a converter such as ImageMagick, as a tRNS colour
+        # key on a truecolour picture. Both must survive the upload, with or
+        # without an embedded ICC profile.
+        sources = [
+            (rgba, {}),
+            (rgba, {"icc_profile": profile}),
+            (rgb, {"transparency": (0, 0, 0)}),
+            (rgb, {"transparency": (0, 0, 0), "icc_profile": profile}),
+        ]
+
+        for index, (im, params) in enumerate(sources):
+            source_path = os.path.join(TEST_FOLDER, f"logo-{index}.png")
+            im.save(source_path, **params)
+            with open(source_path, "rb") as stream:
+                logo_file = FileStorage(stream=stream, filename="logo.png")
+                file_path = thumbnail.save_file(
+                    TEST_FOLDER, f"instance-id-{index}", logo_file
+                )
+            thumbnail.turn_into_thumbnail(file_path, thumbnail.BIG_SQUARE_SIZE)
+
+            # The source is letterboxed to 400x200 pasted at y=100, so both
+            # pixels sit inside the picture and not in the empty bands.
+            result = Image.open(file_path).convert("RGBA")
+            self.assertEqual(result.getpixel((5, 200))[3], 0, params)
+            self.assertEqual(result.getpixel((200, 200))[3], 255, params)
+
     def test_turn_hdr_into_thumbnail(self):
         file_path_fixture = self.get_fixture_file_path("thumbnails/sample.hdr")
         full_path = os.path.join(TEST_FOLDER, "sample.hdr")
