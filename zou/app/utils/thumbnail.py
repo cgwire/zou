@@ -101,10 +101,25 @@ def get_full_size_from_width(im, width):
 
 
 def make_im_bigger_if_needed(im, size):
+    """
+    Scale a picture smaller than the target box up to it, keeping its ratio.
+
+    Resizing straight to the target size stretches the picture: a 300x100
+    logo would come back square. Scale by the smaller of the two factors
+    instead, so the result fits in the box and fit_to_target_size has
+    nothing left to shorten.
+    """
     im_width, im_height = im.size
     width, height = size
     if im_width < width and im_height < height:
-        im = im.resize(size, Image.Resampling.LANCZOS)
+        ratio = min(width / im_width, height / im_height)
+        im = im.resize(
+            (
+                max(1, round(im_width * ratio)),
+                max(1, round(im_height * ratio)),
+            ),
+            Image.Resampling.LANCZOS,
+        )
     return im
 
 
@@ -124,7 +139,8 @@ def fit_to_target_size(im, size, crop=False):
         if w > width:
             w = width
             h = int(math.ceil(float(width) / original_ratio))
-        im = im.resize((w, h), Image.Resampling.LANCZOS)
+        if (w, h) != (im_width, im_height):
+            im = im.resize((w, h), Image.Resampling.LANCZOS)
     return im
 
 
