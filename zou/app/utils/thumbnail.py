@@ -1,14 +1,18 @@
 import os
 import shutil
 import math
+import logging
 
 from io import BytesIO
 from pathlib import Path
 
-from PIL import Image, ImageCms, ImageFile
+from PIL import Image, ImageCms, ImageFile, UnidentifiedImageError
 
 from zou.app import config
+from zou.app.services.exception import WrongParameterException
 from zou.app.utils import fs
+
+logger = logging.getLogger(__name__)
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -65,9 +69,44 @@ def save_file(tmp_folder, instance_id, file_to_save):
     extension = "." + file_to_save.filename.split(".")[-1].lower()
     file_name = instance_id + extension.lower()
     file_path = os.path.join(tmp_folder, file_name)
-    file_to_save.save(file_path)
-    im = to_srgb(Image.open(file_path))
-    im.save(file_path, "PNG")
+    try:
+        file_to_save.save(file_path)
+        try:
+            im = Image.open(file_path)
+            # Image.open() only reads the header: decode the pixels now,
+            # so a broken picture fails here rather than at save() below.
+            im.load()
+            im = to_srgb(im)
+        except (
+            UnidentifiedImageError,
+            Image.DecompressionBombError,
+            OSError,
+            ValueError,
+            SyntaxError,
+        ) as exception:
+            # The upload is not a picture we can read (a SVG or a PDF
+            # renamed .png), is broken past what LOAD_TRUNCATED_IMAGES
+            # rescues, or is far past MAX_IMAGE_PIXELS. Pillow reports
+            # those as anything from OSError to SyntaxError, depending on
+            # the plugin that claimed the header. The file is the problem,
+            # not the server, so answer 400 instead of letting it bubble
+            # up as a 500. The Pillow message carries the temporary path:
+            # it goes to the log, where support can read it, and stays
+            # out of the response.
+            logger.warning(
+                f"Refusing upload {file_path}, not a readable picture: "
+                f"{type(exception).__name__}: {exception}"
+            )
+            raise WrongParameterException(
+                "Uploaded file is not a readable picture."
+            )
+        im.save(file_path, "PNG")
+    except Exception:
+        # Writing the upload and writing the converted picture back stay
+        # server side failures and keep their 500, but no path leaves a
+        # temporary file behind.
+        fs.rm_file(file_path)
+        raise
     return file_path
 
 

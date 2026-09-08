@@ -5,6 +5,7 @@ from PIL import Image, ImageCms
 
 from werkzeug.datastructures import FileStorage
 
+from zou.app.services.exception import WrongParameterException
 from zou.app.utils import thumbnail, fs
 
 TEST_FOLDER = os.path.join("tests", "tmp")
@@ -75,6 +76,27 @@ class ThumbnailTestCase(unittest.TestCase):
         width, height = im.size
         self.assertEqual(width, 150)
         self.assertEqual(height, 100)
+
+    def test_save_file_rejects_a_file_that_is_not_a_picture(self):
+        source_path = os.path.join(TEST_FOLDER, "not-a-picture.png")
+        with open(source_path, "w") as source:
+            source.write("<svg xmlns='http://www.w3.org/2000/svg'/>")
+
+        with open(source_path, "rb") as stream:
+            th_file = FileStorage(stream=stream, filename="logo.png")
+            with self.assertLogs(thumbnail.logger, "WARNING") as logs:
+                with self.assertRaises(WrongParameterException) as refusal:
+                    thumbnail.save_file(TEST_FOLDER, "instance-id", th_file)
+
+        # The Pillow error and the temporary path go to the log, the
+        # response only says the file is not a picture.
+        self.assertIn("instance-id.png", logs.output[0])
+        self.assertNotIn("instance-id", str(refusal.exception))
+
+        # The temporary file must not survive the failure.
+        self.assertFalse(
+            os.path.exists(os.path.join(TEST_FOLDER, "instance-id.png"))
+        )
 
     def test_url_path(self):
         url_path = thumbnail.url_path("shots", "instance-id")
