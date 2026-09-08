@@ -921,7 +921,7 @@ class TaskListingTestCase(TaskTestCase):
         """
         Each bound falls back to the project dates independently, so the
         raw values can come out inverted. The announced window must stay
-        ordered and contain every done day.
+        ordered, and a done day preceding it lands on its first day.
         """
         task = self.generate_fixture_task()
         task.update({"start_date": "2026-09-01", "due_date": None})
@@ -933,8 +933,80 @@ class TaskListingTestCase(TaskTestCase):
 
         task.update({"done_date": "2026-07-20T10:00:00"})
         burndown = self.get("/data/tasks/open-tasks/burndown")
-        self.assertEqual(burndown["start_date"], "2026-07-20")
+        self.assertEqual(burndown["start_date"], "2026-08-15")
         self.assertEqual(burndown["end_date"], "2026-09-01")
+        self.assertEqual(burndown["done_by_day"][0]["date"], "2026-08-15")
+
+    def test_open_tasks_burndown_folds_early_done_days(self):
+        """
+        An imported done date can predate the schedule by decades and used
+        to drag the whole window back to 1899. Such a day is folded onto
+        the first day of the window, where its amounts stay counted: they
+        belong to the total, and dropping them would leave the curve above
+        zero.
+        """
+        task = self.generate_fixture_task()
+        task.update(
+            {
+                "start_date": "2026-08-03",
+                "due_date": "2026-08-21",
+                "estimation": 480,
+                "done_date": "1899-12-31T00:00:00",
+            }
+        )
+        self.generate_fixture_shot_task()
+        self.shot_task.update(
+            {
+                "start_date": "2026-08-05",
+                "due_date": "2026-08-14",
+                "estimation": 960,
+                "done_date": "2026-08-10T10:00:00",
+            }
+        )
+
+        burndown = self.get("/data/tasks/open-tasks/burndown")
+        self.assertEqual(burndown["start_date"], "2026-08-03")
+        self.assertEqual(burndown["end_date"], "2026-08-21")
+        self.assertEqual(
+            burndown["done_by_day"],
+            [
+                {"date": "2026-08-03", "done": 1, "done_estimation": 480},
+                {"date": "2026-08-10", "done": 1, "done_estimation": 960},
+            ],
+        )
+
+        # a folded day merges into the activity already recorded there
+        self.shot_task.update({"done_date": "2026-08-03T09:00:00"})
+        burndown = self.get("/data/tasks/open-tasks/burndown")
+        self.assertEqual(
+            burndown["done_by_day"],
+            [{"date": "2026-08-03", "done": 2, "done_estimation": 1440}],
+        )
+
+    def test_open_tasks_burndown_keeps_early_done_days_without_start(self):
+        """
+        The fold needs a start date to anchor on. A pool carrying due
+        dates alone, with no project start date to fall back on, keeps
+        its activity where it happened: folded onto the due date, every
+        day would collapse into one point.
+        """
+        task = self.generate_fixture_task()
+        task.update(
+            {
+                "start_date": None,
+                "due_date": "2026-08-21",
+                "estimation": 480,
+                "done_date": "2026-08-10T10:00:00",
+            }
+        )
+
+        burndown = self.get("/data/tasks/open-tasks/burndown")
+        self.assertEqual(burndown["start_date"], "2026-08-10")
+        self.assertEqual(burndown["end_date"], "2026-08-21")
+        self.assertEqual(
+            burndown["done_by_day"],
+            [{"date": "2026-08-10", "done": 1, "done_estimation": 480}],
+        )
 
     def test_open_tasks_priority_filter(self):
         """
