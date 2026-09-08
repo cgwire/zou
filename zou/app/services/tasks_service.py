@@ -266,6 +266,27 @@ def get_task_type(task_type_id):
     return get_task_type_raw(task_type_id).serialize()
 
 
+def check_task_type_name_is_unique(name, exclude_task_type_id=None):
+    """
+    Check that no task type carries given name, compared regardless of
+    case: clients resolve a task type from its name and lower-case it on
+    the way, so a twin differing only by case collapses onto the same
+    entry. Raises WrongParameterException when one exists.
+
+    The task type being renamed is excluded in the query rather than by
+    comparing ids afterwards: a database can already hold such twins, and
+    a lookup free to return any of them could hand back the renamed row
+    and hide the conflict with the other.
+    """
+    criterions = []
+    if exclude_task_type_id is not None:
+        criterions.append(TaskType.id != exclude_task_type_id)
+    if TaskType.get_by_case_insensitive(*criterions, name=name) is not None:
+        raise WrongParameterException(
+            "A task type with similar name already exists"
+        )
+
+
 def get_task_raw(task_id):
     """
     Get task matching given id as an active record.
@@ -1871,9 +1892,13 @@ def get_or_create_task_type(
 ):
     """
     Create a new task type if it doesn't exist. If it exists, it returns the
-    type from database.
+    type from database. The name is matched regardless of case, so a
+    bootstrap or an import never creates a twin the clients cannot tell
+    apart (see check_task_type_name_is_unique).
     """
-    task_type = TaskType.get_by(name=name, for_entity=for_entity)
+    task_type = TaskType.get_by_case_insensitive(
+        name=name, for_entity=for_entity
+    )
     if task_type is None:
         task_type = TaskType.create(
             name=name,

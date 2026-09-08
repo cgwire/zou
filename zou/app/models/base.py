@@ -68,10 +68,14 @@ class BaseMixin(object):
         return cls.query.filter(*criterions).filter_by(**kw).first()
 
     @classmethod
-    def get_by_case_insensitive(cls, **kw):
+    def get_by_case_insensitive(cls, *criterions, **kw):
         """
-        Shorthand to retrieve data by using filters. It returns the first
-        element of the returned data without checking case for any String type value.
+        Shorthand to retrieve data by using filters, without checking case
+        for any String type value. Extra criterions narrow the lookup, as
+        in get_by. It returns one of the matching rows with no ordering
+        guarantee, so it only tells whether a match exists. A caller
+        needing the row itself must disambiguate, for instance by
+        excluding in the query the rows it already knows about.
         """
         filters = []
         for key, value in kw.items():
@@ -81,7 +85,7 @@ class BaseMixin(object):
             else:
                 filters.append(column == value)
 
-        return cls.query.filter(*filters).first()
+        return cls.query.filter(*criterions).filter(*filters).first()
 
     @classmethod
     def get_all(cls):
