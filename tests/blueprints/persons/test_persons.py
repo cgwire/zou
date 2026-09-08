@@ -7,7 +7,7 @@ from tests.base import ApiDBTestCase
 from zou.app.models.day_off import DayOff
 from zou.app.models.person import Person
 from zou.app.stores import auth_tokens_store
-from zou.app.services import tasks_service
+from zou.app.services import projects_service, tasks_service
 from zou.app.utils import auth, fields
 
 
@@ -113,24 +113,117 @@ class PersonRoutesTestCase(ApiDBTestCase):
         )
         self.assertIsNotNone(result)
 
-    def test_get_person_day_off_for_date_is_admin_or_self(self):
-        # Leave is between the person and the admins, like the week, month
-        # and year routes and like the day off CRUD. A team calendar goes
-        # through /data/projects/<id>/day-offs, which scopes to the
-        # production and hands the detail to its managers only.
+    def test_reading_the_day_offs_of_somebody_else(self):
+        """
+        Leave is read by the person, the admins, the managers of a
+        production they are part of and, dates only, the supervisors of
+        that production supervising their department. Anybody else is
+        turned away, on the day, week, month and year routes alike.
+        """
         DayOff.create(
             date="2024-06-10",
             end_date="2024-06-10",
             person_id=self.person.id,
+            description="Dentist",
         )
-        path = f"/data/persons/{self.person_id}/day-offs/2024-06-10"
+        base = f"/data/persons/{self.person_id}/day-offs"
+        paths = [
+            f"{base}/2024-06-10",
+            f"{base}/week/2024/24",
+            f"{base}/month/2024/06",
+            f"{base}/year/2024",
+            base,
+        ]
 
-        self.generate_fixture_user_supervisor()
+        def read_it_through_each_route(expected_status=200):
+            day_offs = []
+            for path in paths:
+                with self.subTest(path=path):
+                    result = self.get(path, expected_status)
+                    if expected_status == 200:
+                        day_offs.append(
+                            result if isinstance(result, dict) else result[0]
+                        )
+            return day_offs
+
+        manager = self.generate_fixture_user_manager()
+        supervisor = self.generate_fixture_user_supervisor()
+        artist = self.generate_fixture_user_cg_artist()
+        animation = [str(self.department_animation.id)]
+
+        # A manager of no production of theirs.
+        self.log_in_manager()
+        read_it_through_each_route(403)
+
+        projects_service.add_team_member(self.project.id, manager["id"])
+        for day_off in read_it_through_each_route():
+            self.assertEqual(day_off["description"], "Dentist")
+
+        # A supervisor of the production, but of another department.
+        projects_service.add_team_member(self.project.id, supervisor["id"])
+        Person.get(supervisor["id"]).set_departments(animation)
         self.log_in_supervisor()
-        self.get(path, 403)
+        read_it_through_each_route(403)
 
-        self.log_in_admin()
-        self.assertIsNotNone(self.get(path))
+        Person.get(self.person_id).set_departments(animation)
+        for day_off in read_it_through_each_route():
+            self.assertEqual(day_off["date"], "2024-06-10")
+            self.assertNotIn("description", day_off)
+
+        # A teammate.
+        projects_service.add_team_member(self.project.id, artist["id"])
+        self.log_in_cg_artist()
+        read_it_through_each_route(403)
+
+    def test_the_studio_wide_month_lists_what_the_caller_may_read(self):
+        """
+        /data/persons/day-offs/<year>/<month> holds the leave of everybody
+        for an admin, of oneself for an artist, of the team of one's
+        productions for a manager, and of the supervised part of it, dates
+        only, for a supervisor.
+        """
+        DayOff.create(
+            date="2024-06-10",
+            end_date="2024-06-10",
+            person_id=self.person.id,
+            description="Dentist",
+        )
+        manager = self.generate_fixture_user_manager()
+        DayOff.create(
+            date="2024-06-12",
+            end_date="2024-06-12",
+            person_id=manager["id"],
+            description="Moving",
+        )
+        path = "/data/persons/day-offs/2024/06"
+
+        def what_each_person_shows():
+            return {
+                day_off["person_id"]: day_off.get("description", "dates only")
+                for day_off in self.get(path)
+            }
+
+        self.assertEqual(
+            what_each_person_shows(),
+            {self.person_id: "Dentist", manager["id"]: "Moving"},
+        )
+
+        self.log_in_manager()
+        self.assertEqual(what_each_person_shows(), {manager["id"]: "Moving"})
+
+        projects_service.add_team_member(self.project.id, manager["id"])
+        self.assertEqual(
+            what_each_person_shows(),
+            {self.person_id: "Dentist", manager["id"]: "Moving"},
+        )
+
+        supervisor = self.generate_fixture_user_supervisor()
+        projects_service.add_team_member(self.project.id, supervisor["id"])
+        self.log_in_supervisor()
+        self.assertEqual(
+            what_each_person_shows(),
+            {self.person_id: "dates only", manager["id"]: "dates only"},
+        )
 
     def test_the_day_off_listings_each_hold_their_own_period(self):
         """

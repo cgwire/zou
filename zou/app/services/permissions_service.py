@@ -20,6 +20,7 @@ from zou.app.models.comment import (
     department_mentions_table,
     mentions_table,
 )
+from zou.app.models.person import DepartmentLink
 from zou.app.models.project import Project, ProjectPersonLink
 from zou.app.models.task import Task
 
@@ -807,3 +808,95 @@ def check_day_off_access(day_off):
     if not (is_admin or is_same_person):
         raise permissions.PermissionDenied
     return True
+
+
+def _day_off_read_scopes(person):
+    """
+    Map the productions given person is on the team of onto the role they
+    hold there, keeping the ones where that role reads the leave of the
+    team: manager or supervisor. The role set on the team link wins over
+    the global one, the way it does once a project is resolved.
+    """
+    scopes = {}
+    for link in ProjectPersonLink.query.filter_by(person_id=person["id"]):
+        role = getattr(link.role, "code", link.role) or person["role"]
+        if role in ("manager", "supervisor"):
+            scopes[str(link.project_id)] = role
+    return scopes
+
+
+def _supervised_person_ids(supervisor, person_ids):
+    """
+    Restrict given person ids to the ones given supervisor supervises: a
+    supervisor attached to no department supervises everybody, the others
+    the persons sharing at least one of their departments.
+    """
+    person_ids = set(person_ids)
+    if not supervisor["departments"] or not person_ids:
+        return person_ids
+    links = DepartmentLink.query.filter(
+        DepartmentLink.person_id.in_(list(person_ids)),
+        DepartmentLink.department_id.in_(supervisor["departments"]),
+    )
+    return {str(link.person_id) for link in links}
+
+
+def check_day_off_read_access(person_id):
+    """
+    Return True when the current user reads the day offs of given person
+    along with their description: an admin, the person, or a manager of a
+    production the person is part of. Return False when they read the
+    dates only: a supervisor of such a production, supervising the
+    person's department. Raise PermissionDenied otherwise. Writing a day
+    off stays between the person and the admins, see check_day_off_access.
+    """
+    person_id = str(person_id)
+    current_user = persons_service.get_current_user(relations=True)
+    if permissions.has_admin_permissions() or current_user["id"] == person_id:
+        return True
+
+    scopes = _day_off_read_scopes(current_user)
+    roles = set()
+    if scopes:
+        links = ProjectPersonLink.query.filter(
+            ProjectPersonLink.project_id.in_(list(scopes.keys())),
+            ProjectPersonLink.person_id == person_id,
+        )
+        roles = {scopes[str(link.project_id)] for link in links}
+    if "manager" in roles:
+        return True
+    if "supervisor" in roles and _supervised_person_ids(
+        current_user, [person_id]
+    ):
+        return False
+    raise permissions.PermissionDenied
+
+
+def get_day_off_readable_person_ids():
+    """
+    Return the persons whose day offs the current user reads, under the
+    rule of check_day_off_read_access, as a dict mapping each person id to
+    True when the description comes along and False when the dates only.
+    None stands for everybody, with description: the admins.
+    """
+    if permissions.has_admin_permissions():
+        return None
+    current_user = persons_service.get_current_user(relations=True)
+    readable = {current_user["id"]: True}
+    scopes = _day_off_read_scopes(current_user)
+    if not scopes:
+        return readable
+
+    supervised_ids = set()
+    links = ProjectPersonLink.query.filter(
+        ProjectPersonLink.project_id.in_(list(scopes.keys()))
+    )
+    for link in links:
+        person_id = str(link.person_id)
+        if scopes[str(link.project_id)] == "manager":
+            readable[person_id] = True
+        else:
+            supervised_ids.add(person_id)
+    for person_id in _supervised_person_ids(current_user, supervised_ids):
+        readable.setdefault(person_id, False)
+    return readable
