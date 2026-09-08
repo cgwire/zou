@@ -23,6 +23,10 @@ PREVIEW_SIZE = 1200, 0
 BIG_SQUARE_SIZE = 400, 400
 BIG_RECTANGLE_SIZE = 300, 200
 SRGB_PROFILE = ImageCms.createProfile("sRGB")
+# Image.point() only scales I, I;16 and F: the byte order variants
+# (I;16B and friends) make it raise instead, and turning a colour problem
+# into a refused upload would be worse than leaving them as they were.
+HIGH_DEPTH_GREY_MODES = "I", "I;16"
 
 
 def to_srgb(im, mode="RGB"):
@@ -34,6 +38,12 @@ def to_srgb(im, mode="RGB"):
     Wide gamut pictures (Adobe RGB, Display P3) suffer from the same problem
     once a browser reads their pixels as sRGB.
     """
+    if im.mode in HIGH_DEPTH_GREY_MODES:
+        # A greyscale picture deeper than 8 bits (PNG colour type 0 at
+        # depth 16). Image.convert() clamps those samples at 255 instead of
+        # scaling them, so everything brighter than 1/256th of the range
+        # comes back solid white. Scale them down explicitly instead.
+        im = im.point(lambda value: value / 256).convert("L")
     if im.mode not in ("CMYK", "RGB", "RGBA"):
         return im
     if im.mode == "RGB" and im.info.get("transparency") is not None:

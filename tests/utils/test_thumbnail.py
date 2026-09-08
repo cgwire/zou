@@ -193,6 +193,11 @@ class ThumbnailTestCase(unittest.TestCase):
         self.assertEqual(converted.mode, "RGBA")
         self.assertEqual(converted.getpixel((0, 0))[3], 0)
 
+        im = Image.new("I;16", (4, 4), 32768)
+        converted = thumbnail.to_srgb(im)
+        self.assertEqual(converted.mode, "L")
+        self.assertEqual(converted.getpixel((0, 0)), 128)
+
     def test_thumbnail_keeps_transparency(self):
         profile = ImageCms.ImageCmsProfile(
             ImageCms.createProfile("sRGB")
@@ -249,6 +254,17 @@ class ThumbnailTestCase(unittest.TestCase):
             self.assertEqual(
                 result.getchannel("A").getbbox(), expected_box, source_size
             )
+
+    def test_thumbnail_scales_a_16_bit_greyscale_picture(self):
+        # A greyscale PNG at depth 16 reads as mode I;16, which
+        # Image.convert() clamps at 255 instead of scaling: the picture used
+        # to come back solid white.
+        file_path = os.path.join(TEST_FOLDER, "grey-16-bit.png")
+        Image.new("I;16", (200, 100), 32768).save(file_path)
+        thumbnail.turn_into_thumbnail(file_path, thumbnail.BIG_SQUARE_SIZE)
+
+        result = Image.open(file_path).convert("RGBA")
+        self.assertEqual(result.getpixel((200, 200)), (128, 128, 128, 255))
 
     def test_turn_hdr_into_thumbnail(self):
         file_path_fixture = self.get_fixture_file_path("thumbnails/sample.hdr")
