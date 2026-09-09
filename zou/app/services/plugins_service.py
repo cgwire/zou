@@ -193,7 +193,7 @@ def print_added_routes(plugin_id, plugin_path):
     plugin_module = _import_plugin_module(plugin_id, plugin_path)
     if plugin_module is not None and hasattr(plugin_module, "routes"):
         for route in plugin_module.routes:
-            print(f"  - /plugins/{plugin_id}{route[0]}")
+            print(f"  - /api/plugins/{plugin_id}{route[0]}")
     else:
         print("  (No routes variable found in plugin)")
 
