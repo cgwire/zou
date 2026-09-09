@@ -4,6 +4,7 @@ from zou.app.utils import fields
 from zou.app.models.task import Task
 from zou.app.services import (
     tasks_service,
+    persons_service,
     projects_service,
 )
 
@@ -208,6 +209,30 @@ class PreviewFileTestCase(ApiDBTestCase):
         self.log_in_vendor()
         self.put(route2_2, {"name": "PROJ2_TASK2_PF1_EDIT"}, code=200)
         self.put(route2_1, {"name": "PROJ2_TASK1_PF1_EDIT"}, code=403)
+
+    def test_update_preview_file_for_supervisor(self):
+        """
+        A supervisor validates the previews of the tasks of their
+        departments, even when not assigned to them.
+        """
+        route1_1 = f"data/preview-files/{self.preview_file1_1.id!s}"
+        data = {"validation_status": "validated"}
+        self.generate_fixture_user_supervisor()
+        projects_service.add_team_member(
+            self.project1.id, self.user_supervisor["id"]
+        )
+        persons_service.add_to_department(
+            str(self.department_animation.id), self.user_supervisor["id"]
+        )
+
+        self.log_in_supervisor()
+        self.put(route1_1, data, code=403)
+
+        persons_service.add_to_department(
+            str(self.department.id), self.user_supervisor["id"]
+        )
+        self.put(route1_1, data)
+        self.assertEqual(self.get(route1_1)["validation_status"], "validated")
 
     def test_delete_preview_file(self):
         preview_files = self.get("data/preview-files")
