@@ -34,6 +34,7 @@ MINIMAL_PERSON_FILTER_FIELDS = [
     "desktop_login",
     "email",
     "is_bot",
+    "is_guest",
 ]
 from zou.app.services import (
     deletion_service,
