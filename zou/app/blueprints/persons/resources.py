@@ -66,6 +66,35 @@ def _get_project_department_ids_for_person_access(person_id):
     return (project_ids, department_ids)
 
 
+def _check_day_off_read_access(person_id):
+    """
+    Guard a day off read of given person, the rule being
+    permissions_service.check_day_off_read_access: return whether the
+    description is part of what the caller gets.
+    """
+    permissions_service.check_person_is_not_bot(person_id)
+    return permissions_service.check_day_off_read_access(person_id)
+
+
+def _dates_only(day_off):
+    """
+    Given serialized day off without its description, what a supervisor
+    gets to see of it.
+    """
+    return {
+        key: value for key, value in day_off.items() if key != "description"
+    }
+
+
+def _shape_day_offs(day_offs, with_description):
+    """
+    Serialized day offs as the caller gets them: whole, or the dates only.
+    """
+    if with_description:
+        return day_offs
+    return [_dates_only(day_off) for day_off in day_offs]
+
+
 class DesktopLoginsResource(MethodView, ArgsMixin):
 
     @jwt_required()
@@ -466,17 +495,12 @@ class DayOffResource(MethodView):
           400:
             description: Wrong date format
         """
-        permissions_service.check_person_is_not_bot(person_id)
-        # Same policy as the year, month, week and day routes below and as
-        # the day off CRUD: leave is between the person and the admins.
-        # Seeing a team calendar goes through
-        # /data/projects/<id>/day-offs, which scopes to the production and
-        # hands the detail to its managers only.
-        permissions_service.check_person_access(person_id)
+        with_description = _check_day_off_read_access(person_id)
         try:
-            return time_spents_service.get_day_off(person_id, date)
+            day_off = time_spents_service.get_day_off(person_id, date)
         except WrongDateFormatException:
             raise WrongParameterException("Invalid date format.")
+        return day_off if with_description else _dates_only(day_off)
 
 
 class PersonDurationTimeSpentsResource(MethodView, ArgsMixin):
@@ -1368,8 +1392,10 @@ class DayOffForMonthResource(MethodView, ArgsMixin):
         """
         Get day offs for month
         ---
-        description: Return all day off recorded for given month. Admins get all
-          day offs, regular users get only their own.
+        description: Return all day off recorded for given month, for
+          everybody the caller may read. Admins get them all, managers and
+          supervisors get the ones of the team of their productions, the
+          latter without description, everybody else gets their own only.
         tags:
           - Persons
         parameters:
@@ -1399,13 +1425,20 @@ class DayOffForMonthResource(MethodView, ArgsMixin):
                   items:
                     type: object
         """
-        if permissions.has_admin_permissions():
+        readable = permissions_service.get_day_off_readable_person_ids()
+        if readable is None:
             return time_spents_service.get_day_offs_for_month(year, month)
-        else:
-            person_id = persons_service.get_current_user()["id"]
-            return time_spents_service.get_person_day_offs_for_month(
-                person_id, year, month
+        day_offs = time_spents_service.get_day_offs_for_month(
+            year, month, person_ids=list(readable.keys())
+        )
+        return [
+            (
+                day_off
+                if readable[day_off["person_id"]]
+                else _dates_only(day_off)
             )
+            for day_off in day_offs
+        ]
 
 
 class PersonWeekDayOffResource(MethodView, ArgsMixin):
@@ -1453,10 +1486,12 @@ class PersonWeekDayOffResource(MethodView, ArgsMixin):
                   items:
                     type: object
         """
-        permissions_service.check_person_is_not_bot(person_id)
-        permissions_service.check_person_access(person_id)
-        return time_spents_service.get_person_day_offs_for_week(
-            person_id, year, week
+        with_description = _check_day_off_read_access(person_id)
+        return _shape_day_offs(
+            time_spents_service.get_person_day_offs_for_week(
+                person_id, year, week
+            ),
+            with_description,
         )
 
 
@@ -1505,10 +1540,12 @@ class PersonMonthDayOffResource(MethodView, ArgsMixin):
                   items:
                     type: object
         """
-        permissions_service.check_person_is_not_bot(person_id)
-        permissions_service.check_person_access(person_id)
-        return time_spents_service.get_person_day_offs_for_month(
-            person_id, year, month
+        with_description = _check_day_off_read_access(person_id)
+        return _shape_day_offs(
+            time_spents_service.get_person_day_offs_for_month(
+                person_id, year, month
+            ),
+            with_description,
         )
 
 
@@ -1548,10 +1585,10 @@ class PersonYearDayOffResource(MethodView, ArgsMixin):
                   items:
                     type: object
         """
-        permissions_service.check_person_is_not_bot(person_id)
-        permissions_service.check_person_access(person_id)
-        return time_spents_service.get_person_day_offs_for_year(
-            person_id, year
+        with_description = _check_day_off_read_access(person_id)
+        return _shape_day_offs(
+            time_spents_service.get_person_day_offs_for_year(person_id, year),
+            with_description,
         )
 
 
@@ -1584,10 +1621,10 @@ class PersonDayOffResource(MethodView, ArgsMixin):
                   items:
                     type: object
         """
-        permissions_service.check_person_is_not_bot(person_id)
-        permissions_service.check_person_access(person_id)
-        return time_spents_service.get_day_offs_between(
-            person_id=person_id,
+        with_description = _check_day_off_read_access(person_id)
+        return _shape_day_offs(
+            time_spents_service.get_day_offs_between(person_id=person_id),
+            with_description,
         )
 
 

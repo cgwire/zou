@@ -5,6 +5,7 @@ from PIL import Image, ImageCms
 
 from werkzeug.datastructures import FileStorage
 
+from zou.app.services.exception import WrongParameterException
 from zou.app.utils import thumbnail, fs
 
 TEST_FOLDER = os.path.join("tests", "tmp")
@@ -75,6 +76,27 @@ class ThumbnailTestCase(unittest.TestCase):
         width, height = im.size
         self.assertEqual(width, 150)
         self.assertEqual(height, 100)
+
+    def test_save_file_rejects_a_file_that_is_not_a_picture(self):
+        source_path = os.path.join(TEST_FOLDER, "not-a-picture.png")
+        with open(source_path, "w") as source:
+            source.write("<svg xmlns='http://www.w3.org/2000/svg'/>")
+
+        with open(source_path, "rb") as stream:
+            th_file = FileStorage(stream=stream, filename="logo.png")
+            with self.assertLogs(thumbnail.logger, "WARNING") as logs:
+                with self.assertRaises(WrongParameterException) as refusal:
+                    thumbnail.save_file(TEST_FOLDER, "instance-id", th_file)
+
+        # The Pillow error and the temporary path go to the log, the
+        # response only says the file is not a picture.
+        self.assertIn("instance-id.png", logs.output[0])
+        self.assertNotIn("instance-id", str(refusal.exception))
+
+        # The temporary file must not survive the failure.
+        self.assertFalse(
+            os.path.exists(os.path.join(TEST_FOLDER, "instance-id.png"))
+        )
 
     def test_url_path(self):
         url_path = thumbnail.url_path("shots", "instance-id")
@@ -163,6 +185,86 @@ class ThumbnailTestCase(unittest.TestCase):
 
         im = Image.new("L", (4, 4))
         self.assertEqual(thumbnail.to_srgb(im).mode, "L")
+
+        im = Image.new("RGB", (4, 4), (0, 0, 0))
+        im.info["transparency"] = (0, 0, 0)
+        im.info["icc_profile"] = profile
+        converted = thumbnail.to_srgb(im)
+        self.assertEqual(converted.mode, "RGBA")
+        self.assertEqual(converted.getpixel((0, 0))[3], 0)
+
+        im = Image.new("I;16", (4, 4), 32768)
+        converted = thumbnail.to_srgb(im)
+        self.assertEqual(converted.mode, "L")
+        self.assertEqual(converted.getpixel((0, 0)), 128)
+
+    def test_thumbnail_keeps_transparency(self):
+        profile = ImageCms.ImageCmsProfile(
+            ImageCms.createProfile("sRGB")
+        ).tobytes()
+
+        rgba = Image.new("RGBA", (600, 300), (0, 0, 0, 0))
+        rgba.paste((30, 120, 200, 255), (100, 100, 500, 200))
+        rgb = Image.new("RGB", (600, 300), (0, 0, 0))
+        rgb.paste((30, 120, 200), (100, 100, 500, 200))
+
+        # A PNG carries its transparency either as an alpha channel or, once
+        # it went through a converter such as ImageMagick, as a tRNS colour
+        # key on a truecolour picture. Both must survive the upload, with or
+        # without an embedded ICC profile.
+        sources = [
+            (rgba, {}),
+            (rgba, {"icc_profile": profile}),
+            (rgb, {"transparency": (0, 0, 0)}),
+            (rgb, {"transparency": (0, 0, 0), "icc_profile": profile}),
+        ]
+
+        for index, (im, params) in enumerate(sources):
+            source_path = os.path.join(TEST_FOLDER, f"logo-{index}.png")
+            im.save(source_path, **params)
+            with open(source_path, "rb") as stream:
+                logo_file = FileStorage(stream=stream, filename="logo.png")
+                file_path = thumbnail.save_file(
+                    TEST_FOLDER, f"instance-id-{index}", logo_file
+                )
+            thumbnail.turn_into_thumbnail(file_path, thumbnail.BIG_SQUARE_SIZE)
+
+            # The source is letterboxed to 400x200 pasted at y=100, so both
+            # pixels sit inside the picture and not in the empty bands.
+            result = Image.open(file_path).convert("RGBA")
+            self.assertEqual(result.getpixel((5, 200))[3], 0, params)
+            self.assertEqual(result.getpixel((200, 200))[3], 255, params)
+
+    def test_thumbnail_keeps_ratio_when_scaling_up(self):
+        # A picture smaller than the target box in both dimensions is
+        # scaled up to it. Doing that without keeping the ratio squashed
+        # every logo under 400x400.
+        cases = [
+            ((200, 100), (0, 100, 400, 300)),
+            ((100, 200), (100, 0, 300, 400)),
+            ((100, 100), (0, 0, 400, 400)),
+        ]
+        for index, (source_size, expected_box) in enumerate(cases):
+            file_path = os.path.join(TEST_FOLDER, f"small-{index}.png")
+            Image.new("RGBA", source_size, (30, 120, 200, 255)).save(file_path)
+            thumbnail.turn_into_thumbnail(file_path, thumbnail.BIG_SQUARE_SIZE)
+
+            result = Image.open(file_path)
+            self.assertEqual(result.size, thumbnail.BIG_SQUARE_SIZE)
+            self.assertEqual(
+                result.getchannel("A").getbbox(), expected_box, source_size
+            )
+
+    def test_thumbnail_scales_a_16_bit_greyscale_picture(self):
+        # A greyscale PNG at depth 16 reads as mode I;16, which
+        # Image.convert() clamps at 255 instead of scaling: the picture used
+        # to come back solid white.
+        file_path = os.path.join(TEST_FOLDER, "grey-16-bit.png")
+        Image.new("I;16", (200, 100), 32768).save(file_path)
+        thumbnail.turn_into_thumbnail(file_path, thumbnail.BIG_SQUARE_SIZE)
+
+        result = Image.open(file_path).convert("RGBA")
+        self.assertEqual(result.getpixel((200, 200)), (128, 128, 128, 255))
 
     def test_turn_hdr_into_thumbnail(self):
         file_path_fixture = self.get_fixture_file_path("thumbnails/sample.hdr")

@@ -1,7 +1,7 @@
 from tests.base import ApiDBTestCase
 
 from zou.app.models.time_spent import TimeSpent
-from zou.app.services import tasks_service
+from zou.app.services import projects_service, tasks_service
 from zou.app.utils import fields
 
 
@@ -32,6 +32,34 @@ class DayOffTestCase(ApiDBTestCase):
         day_off_again = self.get(f"data/day-offs/{day_off['id']}")
         self.assertEqual(day_off["id"], day_off_again["id"])
         self.get_404(f"data/day-offs/{fields.gen_uuid()}")
+
+    def test_get_day_off_as_a_manager_or_a_supervisor_of_the_person(self):
+        """
+        Reading a single day off follows the person routes: the managers
+        of a production the person is part of get it whole, its
+        supervisors get it without its description. The listing stays
+        with the admins, and so does writing.
+        """
+        self.generate_fixture_project()
+        day_off = self.day_off("2024-01-15", description="Vacation")
+        path = f"data/day-offs/{day_off['id']}"
+        manager = self.generate_fixture_user_manager()
+        supervisor = self.generate_fixture_user_supervisor()
+
+        self.log_in_manager()
+        self.get(path, 403)
+
+        for person_id in (self.person_id, manager["id"], supervisor["id"]):
+            projects_service.add_team_member(self.project.id, person_id)
+
+        self.assertEqual(self.get(path)["description"], "Vacation")
+        self.get("data/day-offs", 403)
+        self.put(path, {"description": "Sick leave"}, 403)
+        self.delete(path, 403)
+
+        self.log_in_supervisor()
+        self.assertNotIn("description", self.get(path))
+        self.get("data/day-offs", 403)
 
     def test_create_day_off(self):
         day_off = self.day_off("2024-01-15", "2024-01-16")

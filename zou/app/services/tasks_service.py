@@ -266,6 +266,27 @@ def get_task_type(task_type_id):
     return get_task_type_raw(task_type_id).serialize()
 
 
+def check_task_type_name_is_unique(name, exclude_task_type_id=None):
+    """
+    Check that no task type carries given name, compared regardless of
+    case: clients resolve a task type from its name and lower-case it on
+    the way, so a twin differing only by case collapses onto the same
+    entry. Raises WrongParameterException when one exists.
+
+    The task type being renamed is excluded in the query rather than by
+    comparing ids afterwards: a database can already hold such twins, and
+    a lookup free to return any of them could hand back the renamed row
+    and hide the conflict with the other.
+    """
+    criterions = []
+    if exclude_task_type_id is not None:
+        criterions.append(TaskType.id != exclude_task_type_id)
+    if TaskType.get_by_case_insensitive(*criterions, name=name) is not None:
+        raise WrongParameterException(
+            "A task type with similar name already exists"
+        )
+
+
 def get_task_raw(task_id):
     """
     Get task matching given id as an active record.
@@ -1871,9 +1892,13 @@ def get_or_create_task_type(
 ):
     """
     Create a new task type if it doesn't exist. If it exists, it returns the
-    type from database.
+    type from database. The name is matched regardless of case, so a
+    bootstrap or an import never creates a twin the clients cannot tell
+    apart (see check_task_type_name_is_unique).
     """
-    task_type = TaskType.get_by(name=name, for_entity=for_entity)
+    task_type = TaskType.get_by_case_insensitive(
+        name=name, for_entity=for_entity
+    )
     if task_type is None:
         task_type = TaskType.create(
             name=name,
@@ -2723,6 +2748,31 @@ def get_open_tasks(
     return result
 
 
+def _fold_done_rows_before(done_rows, window_start):
+    """
+    Fold the activity days preceding the schedule window onto its first
+    day. A task carrying an imported done date (1899-12-31 and the like)
+    would otherwise drag the whole burndown window back to that date.
+    Folding rather than dropping them: those tasks count in the total, so
+    losing their done amount would keep the curve above zero.
+    """
+    if window_start is None:
+        return done_rows
+
+    early = [row for row in done_rows if row[0] < window_start]
+    if not early:
+        return done_rows
+
+    folded = early + [row for row in done_rows if row[0] == window_start]
+    return [
+        (
+            window_start,
+            sum(row[1] for row in folded),
+            sum(row[2] or 0 for row in folded),
+        )
+    ] + [row for row in done_rows if row[0] > window_start]
+
+
 def get_open_tasks_burndown(
     task_type_id=None,
     task_status_id=None,
@@ -2738,7 +2788,9 @@ def get_open_tasks_burndown(
     Return burndown aggregates for tasks matching given filters from open
     projects: totals, schedule bounds and the amount of tasks done per day.
     Schedule bounds come from the task dates and fall back to the
-    project dates when the tasks carry none.
+    project dates when the tasks carry none. Activity days preceding that
+    window are folded onto its first day, as long as a start date exists
+    to anchor them, late ones extend it.
     """
     query = (
         db.session.query(
@@ -2798,16 +2850,22 @@ def get_open_tasks_burndown(
     )
 
     # each bound falls back to the project dates independently, so the
-    # two raw values can come out inverted: announce the ordered window
-    # containing both of them and every done day
-    bounds = [
+    # two raw values can come out inverted: order them before anything
+    # reads them as a window
+    schedule_start = first_start_date or first_project_start
+    planning_dates = [
         date
-        for date in (
-            first_start_date or first_project_start,
-            last_due_date or last_project_end,
-        )
+        for date in (schedule_start, last_due_date or last_project_end)
         if date is not None
     ]
+    # the fold needs a start date to anchor on: a pool carrying due dates
+    # alone would otherwise see every day of its activity collapse onto
+    # the due date
+    window_start = min(planning_dates) if schedule_start is not None else None
+
+    done_rows = _fold_done_rows_before(done_rows, window_start)
+
+    bounds = list(planning_dates)
     if done_rows:
         bounds += [done_rows[0][0], done_rows[-1][0]]
 

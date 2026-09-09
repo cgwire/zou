@@ -35,6 +35,91 @@ class TaskTypeTestCase(ApiDBTestCase):
         task_types = self.get("data/task-types")
         self.assertEqual(len(task_types), 4)
 
+    def test_create_task_type_with_a_name_differing_only_by_case(self):
+        """
+        A case differing twin makes the task type unresolvable by name in the
+        clients, which filter on names, so it is refused like an exact one.
+        """
+        self.post(
+            "data/task-types",
+            {
+                "name": "compositing",
+                "color": "#000000",
+                "department_id": self.department_id,
+            },
+        )
+        self.post(
+            "data/task-types",
+            {
+                "name": "COMPOSITING",
+                "color": "#000000",
+                "department_id": self.department_id,
+            },
+            400,
+        )
+        self.assertEqual(len(self.get("data/task-types")), 4)
+
+    def test_rename_task_type_onto_a_name_differing_only_by_case(self):
+        self.post(
+            "data/task-types",
+            {
+                "name": "compositing",
+                "color": "#000000",
+                "department_id": self.department_id,
+            },
+        )
+        other = self.post(
+            "data/task-types",
+            {
+                "name": "layout",
+                "color": "#000000",
+                "department_id": self.department_id,
+            },
+        )
+        self.put(
+            f"data/task-types/{other['id']}", {"name": "COMPOSITING"}, 400
+        )
+
+    def test_rename_task_type_keeping_its_own_name_case(self):
+        task_type = self.post(
+            "data/task-types",
+            {
+                "name": "compositing",
+                "color": "#000000",
+                "department_id": self.department_id,
+            },
+        )
+        self.put(f"data/task-types/{task_type['id']}", {"name": "COMPOSITING"})
+        self.assertEqual(
+            self.get(f"data/task-types/{task_type['id']}")["name"],
+            "COMPOSITING",
+        )
+
+    def test_rename_task_type_with_a_legacy_case_twin(self):
+        """
+        Rows predating the guard can already differ only by case. Renaming
+        one of them must still see the other, whichever of the two the
+        lookup happens to return first, while an update carrying the row's
+        own name must go through: the clients send the whole form on a
+        colour change.
+        """
+        first = TaskType.create(
+            name="compositing", department_id=self.department_id
+        )
+        second = TaskType.create(
+            name="Compositing", department_id=self.department_id
+        )
+        self.put(f"data/task-types/{second.id}", {"name": "COMPOSITING"}, 400)
+        self.put(f"data/task-types/{first.id}", {"name": "COMPOSITING"}, 400)
+
+        self.put(
+            f"data/task-types/{second.id}",
+            {"name": "Compositing", "color": "#FFFFFF"},
+        )
+        self.assertEqual(
+            self.get(f"data/task-types/{second.id}")["color"], "#FFFFFF"
+        )
+
     def test_update_task_type(self):
         task_type = self.get_first("data/task-types")
         data = {"color": "#FFFFFF"}

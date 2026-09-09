@@ -149,17 +149,23 @@ class ImportShotgunStepsResource(BaseImportShotgunResource):
     def save_task_type(self, department, data):
         task_type = TaskType.get_by(shotgun_id=data["shotgun_id"])
         data["department_id"] = department.id
+        matched_by_name = False
         if task_type is None:
-            task_type = TaskType.get_by(
+            # matched regardless of case: a step named after an existing
+            # task type must update it rather than create a twin the
+            # clients cannot tell apart, since they resolve them by name
+            # and lower-case it on the way
+            task_type = TaskType.get_by_case_insensitive(
                 name=data["name"], for_entity=data["for_entity"]
             )
+            matched_by_name = task_type is not None
 
         if task_type is None:
             task_type = TaskType(**data)
             task_type.save()
             current_app.logger.info(f"Task Type created: {task_type}")
         else:
-            existing_task_type = TaskType.get_by(
+            existing_task_type = TaskType.get_by_case_insensitive(
                 name=data["name"],
                 for_entity=data["for_entity"],
                 department_id=data["department_id"],
@@ -168,6 +174,10 @@ class ImportShotgunStepsResource(BaseImportShotgunResource):
                 data.pop("name", None)
                 data.pop("for_entity", None)
                 data.pop("department_id", None)
+            elif matched_by_name:
+                # a task type matched in another case keeps its name, even
+                # when the step moves it to another department
+                data.pop("name", None)
             task_type.update(data)
             tasks_service.clear_task_type_cache(str(task_type.id))
             current_app.logger.info(f"Task Type updated: {task_type}")

@@ -504,12 +504,13 @@ def _last_day_of(interval):
     return start, end - datetime.timedelta(days=1)
 
 
-def get_day_offs_for_month(year, month):
+def get_day_offs_for_month(year, month, person_ids=None):
     """
-    Get all day off entries for given year and month.
+    Get all day off entries for given year and month, restricted to given
+    persons when some are given.
     """
     start, end = _last_day_of(date_helpers.get_month_interval(year, month))
-    return get_day_offs_between(start, end)
+    return get_day_offs_between(start, end, person_ids=person_ids)
 
 
 def get_person_day_offs_for_week(person_id, year, week):
@@ -537,14 +538,17 @@ def get_person_day_offs_for_year(person_id, year):
 
 
 def get_day_offs_between(
-    start=None, end=None, person_id=None, exclude_id=None
+    start=None, end=None, person_id=None, exclude_id=None, person_ids=None
 ):
     """
-    Get all day off entries for given person, start and end date.
+    Get all day off entries for given person, or given persons, start and
+    end date.
     """
     query = DayOff.query
     if person_id is not None:
         query = query.filter(DayOff.person_id == person_id)
+    if person_ids is not None:
+        query = query.filter(DayOff.person_id.in_(person_ids))
 
     if start is not None:
         query = query.filter(

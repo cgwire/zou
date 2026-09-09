@@ -1,14 +1,18 @@
 import os
 import shutil
 import math
+import logging
 
 from io import BytesIO
 from pathlib import Path
 
-from PIL import Image, ImageCms, ImageFile
+from PIL import Image, ImageCms, ImageFile, UnidentifiedImageError
 
 from zou.app import config
+from zou.app.services.exception import WrongParameterException
 from zou.app.utils import fs
+
+logger = logging.getLogger(__name__)
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -19,6 +23,10 @@ PREVIEW_SIZE = 1200, 0
 BIG_SQUARE_SIZE = 400, 400
 BIG_RECTANGLE_SIZE = 300, 200
 SRGB_PROFILE = ImageCms.createProfile("sRGB")
+# Image.point() only scales I, I;16 and F: the byte order variants
+# (I;16B and friends) make it raise instead, and turning a colour problem
+# into a refused upload would be worse than leaving them as they were.
+HIGH_DEPTH_GREY_MODES = "I", "I;16"
 
 
 def to_srgb(im, mode="RGB"):
@@ -30,8 +38,20 @@ def to_srgb(im, mode="RGB"):
     Wide gamut pictures (Adobe RGB, Display P3) suffer from the same problem
     once a browser reads their pixels as sRGB.
     """
+    if im.mode in HIGH_DEPTH_GREY_MODES:
+        # A greyscale picture deeper than 8 bits (PNG colour type 0 at
+        # depth 16). Image.convert() clamps those samples at 255 instead of
+        # scaling them, so everything brighter than 1/256th of the range
+        # comes back solid white. Scale them down explicitly instead.
+        im = im.point(lambda value: value / 256).convert("L")
     if im.mode not in ("CMYK", "RGB", "RGBA"):
         return im
+    if im.mode == "RGB" and im.info.get("transparency") is not None:
+        # A tRNS colour key lives in im.info only, and littleCMS hands back
+        # a brand new picture whose info does not carry it over. Turn the
+        # key into a real alpha channel first, otherwise the colour it keys
+        # out (black, most of the time) comes back as an opaque background.
+        im = im.convert("RGBA")
     if im.mode == "RGBA":
         mode = "RGBA"
     icc_profile = im.info.get("icc_profile")
@@ -59,9 +79,44 @@ def save_file(tmp_folder, instance_id, file_to_save):
     extension = "." + file_to_save.filename.split(".")[-1].lower()
     file_name = instance_id + extension.lower()
     file_path = os.path.join(tmp_folder, file_name)
-    file_to_save.save(file_path)
-    im = to_srgb(Image.open(file_path))
-    im.save(file_path, "PNG")
+    try:
+        file_to_save.save(file_path)
+        try:
+            im = Image.open(file_path)
+            # Image.open() only reads the header: decode the pixels now,
+            # so a broken picture fails here rather than at save() below.
+            im.load()
+            im = to_srgb(im)
+        except (
+            UnidentifiedImageError,
+            Image.DecompressionBombError,
+            OSError,
+            ValueError,
+            SyntaxError,
+        ) as exception:
+            # The upload is not a picture we can read (a SVG or a PDF
+            # renamed .png), is broken past what LOAD_TRUNCATED_IMAGES
+            # rescues, or is far past MAX_IMAGE_PIXELS. Pillow reports
+            # those as anything from OSError to SyntaxError, depending on
+            # the plugin that claimed the header. The file is the problem,
+            # not the server, so answer 400 instead of letting it bubble
+            # up as a 500. The Pillow message carries the temporary path:
+            # it goes to the log, where support can read it, and stays
+            # out of the response.
+            logger.warning(
+                f"Refusing upload {file_path}, not a readable picture: "
+                f"{type(exception).__name__}: {exception}"
+            )
+            raise WrongParameterException(
+                "Uploaded file is not a readable picture."
+            )
+        im.save(file_path, "PNG")
+    except Exception:
+        # Writing the upload and writing the converted picture back stay
+        # server side failures and keep their 500, but no path leaves a
+        # temporary file behind.
+        fs.rm_file(file_path)
+        raise
     return file_path
 
 
@@ -95,10 +150,25 @@ def get_full_size_from_width(im, width):
 
 
 def make_im_bigger_if_needed(im, size):
+    """
+    Scale a picture smaller than the target box up to it, keeping its ratio.
+
+    Resizing straight to the target size stretches the picture: a 300x100
+    logo would come back square. Scale by the smaller of the two factors
+    instead, so the result fits in the box and fit_to_target_size has
+    nothing left to shorten.
+    """
     im_width, im_height = im.size
     width, height = size
     if im_width < width and im_height < height:
-        im = im.resize(size, Image.Resampling.LANCZOS)
+        ratio = min(width / im_width, height / im_height)
+        im = im.resize(
+            (
+                max(1, round(im_width * ratio)),
+                max(1, round(im_height * ratio)),
+            ),
+            Image.Resampling.LANCZOS,
+        )
     return im
 
 
@@ -118,7 +188,8 @@ def fit_to_target_size(im, size, crop=False):
         if w > width:
             w = width
             h = int(math.ceil(float(width) / original_ratio))
-        im = im.resize((w, h), Image.Resampling.LANCZOS)
+        if (w, h) != (im_width, im_height):
+            im = im.resize((w, h), Image.Resampling.LANCZOS)
     return im
 
 

@@ -194,6 +194,7 @@ class DayOffsResource(BaseModelsResource):
 class DayOffResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, DayOff)
+        self.with_description = True
 
     @jwt_required()
     def get(self, instance_id):
@@ -356,7 +357,19 @@ class DayOffResource(BaseModelResource):
         return permissions_service.check_day_off_access(instance_dict)
 
     def check_read_permissions(self, instance_dict):
-        return permissions_service.check_day_off_access(instance_dict)
+        # Reading follows the person routes: admins, the person and the
+        # managers of a production they are part of get the whole record,
+        # the supervisors of such a production the dates only. Writing
+        # stays between the person and the admins.
+        self.with_description = permissions_service.check_day_off_read_access(
+            instance_dict["person_id"]
+        )
+        return True
+
+    def clean_get_result(self, data):
+        if not self.with_description:
+            data.pop("description", None)
+        return data
 
     def check_update_permissions(self, instance_dict, data):
         if (

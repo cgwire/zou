@@ -783,6 +783,22 @@ class GetOrCreateTaskTypeTestCase(ApiDBTestCase):
         self.assertEqual(first["id"], second["id"])
         self.assertEqual(len(TaskType.get_all_by(name="Concept")), 1)
 
+    def test_return_existing_with_a_name_differing_only_by_case(self):
+        """
+        The bootstrap follows the same rule as the API: a name differing
+        only by case is the same task type, and the existing row keeps
+        its name.
+        """
+        first = tasks_service.get_or_create_task_type(
+            self.department, "Concept", "#8D6E63", 1
+        )
+        second = tasks_service.get_or_create_task_type(
+            self.department, "CONCEPT", "#8D6E63", 1
+        )
+        self.assertEqual(first["id"], second["id"])
+        self.assertEqual(second["name"], "Concept")
+        self.assertEqual(TaskType.get_all_by(name="CONCEPT"), [])
+
     def test_same_name_different_for_entity_coexist(self):
         asset_type = tasks_service.get_or_create_task_type(
             self.department, "Concept", "#8D6E63", 1

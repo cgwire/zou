@@ -153,12 +153,7 @@ class TaskTypesResource(BaseModelsResource):
 
     def update_data(self, data):
         data = super().update_data(data)
-        name = data.get("name", None)
-        task_type = TaskType.get_by(name=name)
-        if task_type is not None:
-            raise WrongParameterException(
-                "A task type with similar name already exists"
-            )
+        tasks_service.check_task_type_name_is_unique(data.get("name"))
         return data
 
     def post_creation(self, instance):
@@ -353,13 +348,14 @@ class TaskTypeResource(BaseModelResource):
 
     def update_data(self, data, instance_id):
         data = super().update_data(data, instance_id)
+        # only a change of name is checked: the clients send the whole
+        # form on every update, so a row already carrying a case twin
+        # must stay editable (colour, department) without renaming it
         name = data.get("name", None)
-        if name is not None:
-            task_type = TaskType.get_by(name=name)
-            if task_type is not None and instance_id != str(task_type.id):
-                raise WrongParameterException(
-                    "A task type with similar name already exists"
-                )
+        if name is not None and name != self.instance.name:
+            tasks_service.check_task_type_name_is_unique(
+                name, exclude_task_type_id=instance_id
+            )
         return data
 
     def post_update(self, instance_dict, data):

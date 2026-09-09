@@ -75,6 +75,66 @@ class ImportShotgunStepTestCase(ShotgunTestCase):
         task_type = task_types[0]
         self.assertEqual(task_type["name"], "Modeling Shaders")
 
+    def test_import_step_with_a_name_differing_only_by_case(self):
+        """
+        A step named after an existing task type in another case updates
+        that task type, which keeps its name, instead of creating a twin
+        the clients cannot tell apart.
+        """
+        api_path = "/import/shotgun/steps"
+        sg_step = {
+            "code": "Modeling Shaders",
+            "color": "50,149,253",
+            "id": 14,
+            "type": "Step",
+        }
+        self.post(api_path, [sg_step], 200)
+        sg_step = {
+            "code": "Modeling SHADERS",
+            "color": "0,0,0",
+            "id": 15,
+            "type": "Step",
+        }
+        self.post(api_path, [sg_step], 200)
+
+        task_types = self.get("/data/task-types")
+        self.assertEqual(len(task_types), 1)
+        self.assertEqual(task_types[0]["name"], "Modeling Shaders")
+        self.assertEqual(task_types[0]["shotgun_id"], 15)
+
+    def test_import_step_keeps_its_name_across_departments(self):
+        """
+        The first word of a step names its department, so a step differing
+        only by case can land in another department. The task type follows
+        the step there, as before, but still keeps its name.
+        """
+        api_path = "/import/shotgun/steps"
+        sg_step = {
+            "code": "Modeling Shaders",
+            "color": "50,149,253",
+            "id": 14,
+            "type": "Step",
+        }
+        self.post(api_path, [sg_step], 200)
+        sg_step = {
+            "code": "MODELING Shaders",
+            "color": "0,0,0",
+            "id": 15,
+            "type": "Step",
+        }
+        self.post(api_path, [sg_step], 200)
+
+        departments = {
+            department["name"]: department["id"]
+            for department in self.get("/data/departments")
+        }
+        task_types = self.get("/data/task-types")
+        self.assertEqual(len(task_types), 1)
+        self.assertEqual(task_types[0]["name"], "Modeling Shaders")
+        self.assertEqual(
+            task_types[0]["department_id"], departments["MODELING"]
+        )
+
     def test_import_step_twice(self):
         sg_step_animation = {
             "code": "Animation",
