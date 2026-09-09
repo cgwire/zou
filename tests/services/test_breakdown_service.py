@@ -815,6 +815,18 @@ class CastingReadyStatsTestCase(ApiDBTestCase):
         ]
         self.assertEqual(counts, [layout, animation, compositing])
 
+    def assert_casting_size(self, expected):
+        """
+        The shots page draws its "ready / total" ratio from the shot
+        counter, the casting page from the links: both must agree.
+        """
+        self.assertEqual(
+            shots_service.get_shot(self.shot_id)["nb_entities_out"], expected
+        )
+        self.assertEqual(
+            len(breakdown_service.get_casting(self.shot_id)), expected
+        )
+
     def cast_in_the_shot(self, *asset_ids):
         breakdown_service.update_casting(
             self.shot_id,
@@ -914,6 +926,7 @@ class CastingReadyStatsTestCase(ApiDBTestCase):
         assets_service.remove_asset(self.asset_id, force=False)
 
         self.assert_ready_counts(1, 1, 1)
+        self.assert_casting_size(1)
 
     def test_a_deleted_asset_stops_counting(self):
         temp_asset = self.generate_fixture_asset("TempAsset")
@@ -929,3 +942,4 @@ class CastingReadyStatsTestCase(ApiDBTestCase):
         assets_service.remove_asset(temp_asset_id)
 
         self.assert_ready_counts(1, 1, 1)
+        self.assert_casting_size(1)
