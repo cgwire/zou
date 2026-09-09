@@ -940,8 +940,6 @@ class TempPlaylistResource(MethodView, ArgsMixin):
             application/json:
               schema:
                 type: object
-                required:
-                  - task_ids
                 properties:
                   task_ids:
                     type: array
@@ -949,6 +947,16 @@ class TempPlaylistResource(MethodView, ArgsMixin):
                       type: string
                       format: uuid
                     description: List of task unique identifiers
+                    example: ["a24a6ea4-ce75-4665-a070-57453082c25"]
+                  entity_ids:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+                    description: >
+                      List of entity unique identifiers, each contributing
+                      the task holding its current preview (or its first
+                      task with a preview)
                     example: ["a24a6ea4-ce75-4665-a070-57453082c25"]
         responses:
           200:
@@ -974,7 +982,14 @@ class TempPlaylistResource(MethodView, ArgsMixin):
         """
         permissions_service.check_project_access(project_id)
         body = validation.validate_request_body(TempPlaylistCreateSchema)
-        task_ids = [str(t) for t in body.task_ids]
+        task_ids = [str(t) for t in body.task_ids] + [
+            task_id
+            for task_id in map(
+                playlists_service.get_playlist_task_id_for_entity,
+                map(str, body.entity_ids),
+            )
+            if task_id
+        ]
         for task_id in task_ids:
             permissions_service.check_task_access(task_id)
         sort = self.get_bool_parameter("sort")

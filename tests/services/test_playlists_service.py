@@ -219,6 +219,47 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
             ],
         )
 
+    def test_get_playlist_task_id_for_entity(self):
+        """
+        An entity contributes the task holding the preview it currently
+        shows. An entity without a task contributes nothing.
+        """
+        self.generate_fixture_preview_files()
+        self.generate_fixture_shot_task(
+            "Layout", task_type_id=self.task_type_layout.id
+        )
+        self.shot.update({"preview_file_id": self.preview_file_2.id})
+
+        self.assertEqual(
+            playlists_service.get_playlist_task_id_for_entity(
+                str(self.shot.id)
+            ),
+            str(self.task.id),
+        )
+        self.assertIsNone(
+            playlists_service.get_playlist_task_id_for_entity(
+                str(self.asset.id)
+            )
+        )
+
+    def test_get_playlist_task_id_for_entity_without_preview(self):
+        """
+        An entity showing no preview lands on its first task that has one,
+        skipping the ones that come first but hold none.
+        """
+        self.generate_fixture_preview_files()
+        self.generate_fixture_shot_task(
+            "Layout", task_type_id=self.task_type_layout.id
+        )
+        self.task_type_layout.update({"priority": 0})
+
+        self.assertEqual(
+            playlists_service.get_playlist_task_id_for_entity(
+                str(self.shot.id)
+            ),
+            str(self.task.id),
+        )
+
     def test_generate_temp_playlist_with_edit_task(self):
         self.generate_fixture_edit_task()
         entities = playlists_service.generate_temp_playlist(
