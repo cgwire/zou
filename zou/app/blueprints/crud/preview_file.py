@@ -329,7 +329,15 @@ class PreviewFileResource(BaseModelResource):
         task = tasks_service.get_task(preview_file["task_id"])
         permissions_service.check_project_access(task["project_id"])
         if not permissions.has_manager_permissions():
-            permissions_service.check_working_on_task(preview_file["task_id"])
+            try:
+                permissions_service.check_working_on_task(
+                    preview_file["task_id"]
+                )
+            except permissions.PermissionDenied:
+                # Supervisors validate the previews of their department.
+                permissions_service.check_supervisor_project_task_type_access(
+                    task["project_id"], task["task_type_id"]
+                )
         return True
 
     def pre_update(self, instance_dict, data):
