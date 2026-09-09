@@ -323,8 +323,7 @@ def _announce_casting_change(entity, added_asset_ids, removed_asset_ids):
     casting-update event carrying the diff.
     """
     entity_id = str(entity.id)
-    nb_links = EntityLink.query.filter_by(entity_in_id=entity.id).count()
-    entity.update({"nb_entities_out": nb_links})
+    entity.update({"nb_entities_out": _count_live_links(entity.id)})
     _clear_casting_cache(entity_id)
     entity_dict = entity.serialize()
     casting_diff = {
@@ -491,10 +490,10 @@ def _remove_asset_from_episode_shots(asset_id, episode_id):
     ).filter(EntityLink.entity_out_id == asset_id)
     for link in links:
         shot = shots_service.get_shot_raw(str(link.entity_in_id))
-        shot.update({"nb_entities_out": shot.nb_entities_out - 1})
-        shots_service.clear_shot_cache(str(shot.id))
-        refresh_shot_casting_stats(shot.serialize())
         link.delete()
+        shots_service.clear_shot_cache(str(shot.id))
+        # Counts the links, so it runs once the link is gone.
+        refresh_shot_casting_stats(shot.serialize())
         events.emit(
             "shot:casting-update",
             {
@@ -942,6 +941,24 @@ def refresh_shot_casting_stats(shot, priority_map=None):
     """
     if priority_map is None:
         priority_map = _get_task_type_priority_map(shot["project_id"])
+    # The shots page divides the ready count by this counter, the casting
+    # page lists the live links: archiving an asset keeps its links and
+    # deleting one drops them, and neither path touched the counter.
+    shot_raw = Entity.get(shot["id"])
+    nb_live = _count_live_links(shot["id"])
+    if shot_raw.nb_entities_out != nb_live:
+        shot_raw.update({"nb_entities_out": nb_live})
+        shots_service.clear_shot_cache(shot["id"])
+        events.emit(
+            "shot:casting-update",
+            {
+                "shot_id": shot["id"],
+                "nb_entities_out": nb_live,
+                "added_asset_ids": [],
+                "removed_asset_ids": [],
+            },
+            project_id=shot["project_id"],
+        )
     casting = get_entity_casting(shot["id"])
     tasks = Task.get_all_by(entity_id=shot["id"])
     for task in tasks:
@@ -968,6 +985,19 @@ def refresh_all_shot_casting_stats():
         priority_map = _get_task_type_priority_map(project["id"])
         for shot in shots_service.get_shots_for_project(project["id"]):
             refresh_shot_casting_stats(shot, priority_map)
+
+
+def _count_live_links(entity_id):
+    """
+    Count the assets cast in given entity that are not canceled, which is
+    what get_casting lists.
+    """
+    return (
+        EntityLink.query.filter_by(entity_in_id=entity_id)
+        .join(Entity, EntityLink.entity_out_id == Entity.id)
+        .filter(Entity.canceled != True)
+        .count()
+    )
 
 
 def _get_task_type_priority_map(project_id):
