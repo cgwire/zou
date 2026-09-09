@@ -630,6 +630,28 @@ class PersonColumnExposureTestCase(PersonFixtureTestCase):
 
         self.assertEqual(self.get("data/persons?email=nobody@gmail.com"), [])
 
+    def test_guest_flag_stays_filterable_for_non_admins(self):
+        # Kitsu loads the studio people with ?is_guest=false: refusing the
+        # filter left every non-admin with the people of the login context.
+        person = Person.get_by(email="ema.doe@gmail.com")
+        guest = Person.create(
+            first_name="Guest",
+            last_name="Doe",
+            email="guest.doe@gmail.com",
+            is_guest=True,
+        )
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+
+        ids = [
+            entry["id"] for entry in self.get("data/persons?is_guest=false")
+        ]
+        self.assertIn(str(person.id), ids)
+        self.assertNotIn(str(guest.id), ids)
+
+        guests = self.get("data/persons?is_guest=true")
+        self.assertEqual([entry["id"] for entry in guests], [str(guest.id)])
+
     def test_full_name_is_filterable(self):
         # full_name is a hybrid whose SQL expression is a concat_ws inside
         # a trim, two functions SQLAlchemy types as NullType: casting the
