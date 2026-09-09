@@ -7,7 +7,11 @@ from tests.base import ApiDBTestCase
 from zou.app.models.day_off import DayOff
 from zou.app.models.person import Person
 from zou.app.stores import auth_tokens_store
-from zou.app.services import projects_service, tasks_service
+from zou.app.services import (
+    persons_service,
+    projects_service,
+    tasks_service,
+)
 from zou.app.utils import auth, fields
 
 
@@ -149,7 +153,7 @@ class PersonRoutesTestCase(ApiDBTestCase):
         manager = self.generate_fixture_user_manager()
         supervisor = self.generate_fixture_user_supervisor()
         artist = self.generate_fixture_user_cg_artist()
-        animation = [str(self.department_animation.id)]
+        animation = str(self.department_animation.id)
 
         # A manager of no production of theirs.
         self.log_in_manager()
@@ -161,11 +165,11 @@ class PersonRoutesTestCase(ApiDBTestCase):
 
         # A supervisor of the production, but of another department.
         projects_service.add_team_member(self.project.id, supervisor["id"])
-        Person.get(supervisor["id"]).set_departments(animation)
+        persons_service.add_to_department(animation, supervisor["id"])
         self.log_in_supervisor()
         read_it_through_each_route(403)
 
-        Person.get(self.person_id).set_departments(animation)
+        persons_service.add_to_department(animation, self.person_id)
         for day_off in read_it_through_each_route():
             self.assertEqual(day_off["date"], "2024-06-10")
             self.assertNotIn("description", day_off)

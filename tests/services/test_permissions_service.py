@@ -8,7 +8,6 @@ from tests.base import ApiDBTestCase
 
 from zou.app import app
 from zou.app.models.entity import Entity
-from zou.app.models.person import Person
 from zou.app.services import (
     comments_service,
     permissions_service,
@@ -380,20 +379,20 @@ class PersonAccessTestCase(PermissionsTestCase):
         """
         artist = self.join_team(self.a_user("artist"))
         supervisor = self.join_team(self.a_user("supervisor"))
-        animation = [str(self.department_animation.id)]
+        animation = str(self.department_animation.id)
 
         with self.as_role("supervisor"):
             self.assertFalse(
                 permissions_service.check_day_off_read_access(artist["id"])
             )
 
-        Person.get(supervisor["id"]).set_departments(animation)
+        persons_service.add_to_department(animation, supervisor["id"])
 
         with self.as_role("supervisor"):
             with self.denied():
                 permissions_service.check_day_off_read_access(artist["id"])
 
-        Person.get(artist["id"]).set_departments(animation)
+        persons_service.add_to_department(animation, artist["id"])
 
         with self.as_role("supervisor"):
             self.assertFalse(
@@ -428,10 +427,12 @@ class PersonAccessTestCase(PermissionsTestCase):
         manager = self.join_team(self.a_user("manager"))
         supervisor = self.join_team(self.a_user("supervisor"))
         self.a_user("client")
-        animation = [str(self.department_animation.id)]
-        Person.get(artist["id"]).set_departments(animation)
-        Person.get(supervisor["id"]).set_departments(animation)
-        Person.get(manager["id"]).set_departments([str(self.department.id)])
+        animation = str(self.department_animation.id)
+        persons_service.add_to_department(animation, artist["id"])
+        persons_service.add_to_department(animation, supervisor["id"])
+        persons_service.add_to_department(
+            str(self.department.id), manager["id"]
+        )
 
         with self.as_role("admin"):
             self.assertIsNone(
