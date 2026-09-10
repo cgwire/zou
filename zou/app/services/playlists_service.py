@@ -1176,26 +1176,18 @@ def generate_temp_playlist(task_ids, sort=True):
     for task_id in task_ids:
         entity = generate_playlisted_entity_from_task(task_id, task_type_links)
         entities.append(entity)
-    if len(entities) > 0:
-        if not sort:
-            return entities
-        try:
-            if "episode_name" in entities[0]:
-                return sorted(entities, key=itemgetter("episode_name", "name"))
-            elif "sequence_name" in entities[0]:
-                return sorted(
-                    entities, key=itemgetter("sequence_name", "name")
-                )
-            elif "asset_type_name" in entities[0]:
-                return sorted(
-                    entities, key=itemgetter("asset_type_name", "name")
-                )
-            else:
-                return entities
-        except Exception:
-            return entities
-    else:
-        return []
+    if not sort:
+        return entities
+    # Every entry carries the whole key set (empty when not applicable), so
+    # a single composite key sorts shots by sequence, edits by episode and
+    # assets by type. Probing one key at a time picked episode_name for
+    # shots and lost the sequence order.
+    return sorted(
+        entities,
+        key=itemgetter(
+            "episode_name", "sequence_name", "asset_type_name", "name"
+        ),
+    )
 
 
 def generate_playlisted_entity_from_task(task_id, task_type_links):
