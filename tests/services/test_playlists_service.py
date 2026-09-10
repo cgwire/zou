@@ -187,6 +187,38 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         self.assertEqual(str(self.shot.id), shots[0]["id"])
         self.assertEqual(len(shots[0]["preview_files"][task_type_id]), 2)
 
+    def test_generate_temp_playlist_sorted_by_sequence(self):
+        """
+        Shots of several sequences sort by sequence first, then by name:
+        never all the SH010 of every sequence in a row.
+        """
+        self.generate_fixture_preview_files()
+        sequence_1 = self.sequence
+        sequence_2 = self.generate_fixture_sequence("S02")
+        shot_ids = [
+            str(self.generate_fixture_shot(name, sequence_id=sequence_id).id)
+            for sequence_id, name in [
+                (sequence_2.id, "SH010"),
+                (sequence_1.id, "SH020"),
+                (sequence_2.id, "SH020"),
+                (sequence_1.id, "SH010"),
+            ]
+        ]
+        task_ids = [
+            self.generate_fixture_shot_task("Master", shot_id=shot_id).id
+            for shot_id in shot_ids
+        ]
+        entities = playlists_service.generate_temp_playlist(task_ids)
+        self.assertEqual(
+            [(e["sequence_name"], e["name"]) for e in entities],
+            [
+                ("S01", "SH010"),
+                ("S01", "SH020"),
+                ("S02", "SH010"),
+                ("S02", "SH020"),
+            ],
+        )
+
     def test_generate_temp_playlist_with_edit_task(self):
         self.generate_fixture_edit_task()
         entities = playlists_service.generate_temp_playlist(
