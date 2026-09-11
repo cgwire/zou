@@ -162,11 +162,55 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
             ["previews"],
         )
 
+    def recorded_prefixes(self, preview_file_id):
+        return files_service.get_preview_file_for_access(preview_file_id)[
+            "movie_prefixes"
+        ]
+
+    def record_prefixes(self, preview_file_id, prefixes):
+        preview_file = files_service.get_preview_file_raw(preview_file_id)
+        preview_file.update(
+            {"data": {files_service.MOVIE_PREFIXES_KEY: prefixes}}
+        )
+        files_service.clear_preview_file_cache(preview_file_id)
+
+    def get_movie(self, preview_file_id):
+        return self.app.get(
+            f"/movies/originals/preview-files/{preview_file_id}.mp4",
+            headers=self.base_headers,
+        )
+
     def test_recorded_prefixes_spare_the_storage_probe(self):
         preview_file_id = self.upload_movie_preview(save_source_file=True)
         with patch.object(file_store, "exists_movie") as exists_movie:
-            self.assertEqual(
-                files_service.get_movie_prefixes(preview_file_id, lowdef=True),
-                ["source", "lowdef", "previews"],
-            )
+            self.assertEqual(self.get_movie(preview_file_id).status_code, 200)
             exists_movie.assert_not_called()
+
+    def test_missing_record_is_probed_once_then_written_back(self):
+        # A preview file stored before the record existed.
+        preview_file_id = self.upload_movie_preview(save_source_file=True)
+        preview_file = files_service.get_preview_file_raw(preview_file_id)
+        preview_file.update({"data": {"original_width": 1}})
+        files_service.clear_preview_file_cache(preview_file_id)
+
+        with patch.object(
+            file_store, "exists_movie", wraps=file_store.exists_movie
+        ) as exists_movie:
+            self.assertEqual(self.get_movie(preview_file_id).status_code, 200)
+            self.assertEqual(exists_movie.call_count, 3)
+            self.assertEqual(self.get_movie(preview_file_id).status_code, 200)
+            self.assertEqual(exists_movie.call_count, 3)
+        self.assertEqual(
+            files_service.get_preview_file(preview_file_id)["data"],
+            {
+                "original_width": 1,
+                files_service.MOVIE_PREFIXES_KEY: ["source"],
+            },
+        )
+
+    def test_stale_record_is_fixed_on_fallback(self):
+        preview_file_id = self.upload_movie_preview(save_source_file=True)
+        self.record_prefixes(preview_file_id, ["previews"])
+
+        self.assertEqual(self.get_movie(preview_file_id).status_code, 200)
+        self.assertEqual(self.recorded_prefixes(preview_file_id), ["source"])

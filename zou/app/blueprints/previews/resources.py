@@ -118,7 +118,11 @@ def send_standard_file(
 
 
 def send_movie_file(
-    preview_file_id, as_attachment=False, lowdef=False, last_modified=None
+    preview_file_id,
+    as_attachment=False,
+    lowdef=False,
+    last_modified=None,
+    preview_file=None,
 ):
     """
     Send the requested movie version, falling back on the other stored ones.
@@ -127,14 +131,24 @@ def send_movie_file(
     source is the last resort. Note that the source is served as video/mp4
     whatever its real container, and carries no faststart flag.
 
-    The prefix order is resolved beforehand so that the version actually
-    stored comes first: a missing object costs a round trip on the object
-    storage, and a movie player asks for the same file once per range.
+    The versions actually stored come first: a missing object costs a
+    round trip on the object storage, and a movie player asks for the same
+    file once per range. They are read from the access lookup the route
+    already did (`preview_file`), probed on the storage for a preview file
+    that predates the record, and written back when missing or stale.
     """
-    prefixes = files_service.get_movie_prefixes(preview_file_id, lowdef=lowdef)
+    if preview_file is None:
+        preview_file = files_service.get_preview_file_for_access(
+            preview_file_id
+        )
+    recorded_prefixes = preview_file["movie_prefixes"]
+    stored_prefixes = recorded_prefixes
+    if stored_prefixes is None:
+        stored_prefixes = files_service.probe_movie_prefixes(preview_file_id)
+    prefixes = files_service.get_movie_prefixes(stored_prefixes, lowdef)
     for prefix in prefixes:
         try:
-            return send_storage_file(
+            response = send_storage_file(
                 file_store.get_local_movie_path,
                 file_store.open_movie,
                 prefix,
@@ -147,6 +161,22 @@ def send_movie_file(
         except FileNotFound:
             if prefix == prefixes[-1]:
                 raise
+            continue
+        if prefix != prefixes[0]:
+            # The record lags behind the storage (a version removed, a
+            # row imported from another instance): ask the storage again.
+            stored_prefixes = files_service.probe_movie_prefixes(
+                preview_file_id
+            )
+        # A probe that misses the movie just served failed itself: it is
+        # not worth recording.
+        if prefix in stored_prefixes and set(stored_prefixes) != set(
+            recorded_prefixes or []
+        ):
+            files_service.record_movie_prefixes(
+                preview_file_id, stored_prefixes
+            )
+        return response
 
 
 def send_source_movie_file(preview_file_id, last_modified=None):
@@ -820,7 +850,9 @@ class PreviewFileMovieResource(BasePreviewFileResource):
 
         try:
             return send_movie_file(
-                instance_id, last_modified=self.last_modified
+                instance_id,
+                last_modified=self.last_modified,
+                preview_file=self.preview_file,
             )
         except FileNotFound:
             if config.LOG_FILE_NOT_FOUND:
@@ -869,7 +901,10 @@ class PreviewFileLowMovieResource(BasePreviewFileResource):
             # send_movie_file already falls back on the full quality version
             # then on the source.
             return send_movie_file(
-                instance_id, lowdef=True, last_modified=self.last_modified
+                instance_id,
+                lowdef=True,
+                last_modified=self.last_modified,
+                preview_file=self.preview_file,
             )
         except FileNotFound:
             if config.LOG_FILE_NOT_FOUND:
@@ -964,6 +999,7 @@ class PreviewFileMovieDownloadResource(BasePreviewFileResource):
                 instance_id,
                 as_attachment=True,
                 last_modified=self.last_modified,
+                preview_file=self.preview_file,
             )
         except FileNotFound:
             if config.LOG_FILE_NOT_FOUND:
@@ -1104,6 +1140,7 @@ class PreviewFileDownloadResource(BasePreviewFileResource):
                     instance_id,
                     as_attachment=True,
                     last_modified=self.last_modified,
+                    preview_file=self.preview_file,
                 )
             else:
                 return send_standard_file(

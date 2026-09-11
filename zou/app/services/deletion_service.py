@@ -41,7 +41,7 @@ from zou.app.utils import events, fields, date_helpers
 from zou.app.stores import file_store
 from zou.app import config
 
-from zou.app.services import base_service
+from zou.app.services import base_service, files_service
 from zou.app.services.exception import (
     ProjectNotFoundException,
     AttachmentFileNotFoundException,
@@ -370,7 +370,7 @@ def clear_movie_files(preview_file_id):
     Remove all files related to given preview file, supposing the original file
     was a movie.
     """
-    for movie_type in ["previews", "lowdef", "source"]:
+    for movie_type in files_service.MOVIE_PREFIXES:
         _remove_quietly(file_store.remove_movie, movie_type, preview_file_id)
     for image_type in ["thumbnails", "thumbnails-square", "previews", "tiles"]:
         _remove_quietly(file_store.remove_picture, image_type, preview_file_id)

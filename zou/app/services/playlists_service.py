@@ -11,7 +11,6 @@ from pathlib import Path
 from shutil import copyfile
 from zipfile import ZipFile
 
-from flask_fs.errors import FileNotFound
 from slugify import slugify
 from sqlalchemy import or_
 from sqlalchemy.orm import defer, joinedload
@@ -28,7 +27,7 @@ from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 
 from zou.utils import movie
-from zou.app.utils import fields, events, remote_job, emails
+from zou.app.utils import fields, events, fs, remote_job, emails
 from zou.app.utils import query as query_utils
 from zou.app.stores.redis_lock import with_playlist_lock
 
@@ -742,34 +741,27 @@ def retrieve_playlist_tmp_file(preview_file):
     if preview_file["extension"] == "mp4":
         get_path_func = file_store.get_local_movie_path
         open_func = file_store.open_movie
-        exists_func = file_store.exists_movie
         prefix = "previews"
     elif preview_file["extension"] == "png":
         get_path_func = file_store.get_local_picture_path
         open_func = file_store.open_picture
-        exists_func = file_store.exists_picture
         prefix = "original"
     else:
         get_path_func = file_store.get_local_file_path
         open_func = file_store.open_file
-        exists_func = file_store.exists_file
         prefix = "previews"
 
-    if config.FS_BACKEND == "local":
-        file_path = get_path_func(prefix, preview_file["id"])
-    else:
-        file_path = os.path.join(
-            config.TMP_DIR,
-            f"cache-previews-{preview_file['id']}.{preview_file['extension']}",
-        )
-        if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
-            if exists_func(prefix, preview_file["id"]):
-                with open(file_path, "wb") as tmp_file:
-                    try:
-                        for chunk in open_func(prefix, preview_file["id"]):
-                            tmp_file.write(chunk)
-                    except FileNotFound:
-                        pass
+    # Same cache entry as the preview routes, written the same way: a
+    # download interrupted halfway must not leave a truncated file that
+    # the next build would concatenate as is.
+    file_path = fs.get_file_path_and_file(
+        config,
+        get_path_func,
+        open_func,
+        prefix,
+        preview_file["id"],
+        preview_file["extension"],
+    )
     file_name = names_service.get_preview_file_name(preview_file["id"])
     tmp_file_path = os.path.join(config.TMP_DIR, file_name)
     copyfile(file_path, tmp_file_path)

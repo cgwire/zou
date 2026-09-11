@@ -1,6 +1,10 @@
 import unittest
 import os
 
+from unittest.mock import Mock
+
+import pytest
+from flask_fs.errors import FileNotFound
 
 from zou.app import app
 from zou.app.stores import file_store
@@ -60,3 +64,35 @@ class FileStoreTestCase(unittest.TestCase):
         file_name = "thumbnails-63e453f1-9655-49ad-acba-ff7f27c49e9d"
         result_path = file_store.path(file_store.pictures, file_name)
         self.assertTrue(os.path.exists(result_path))
+
+
+class ReadGeneratorTestCase(unittest.TestCase):
+    """
+    flask_fs turns every backend error into FileNotFound because its
+    existence check swallows them. The read generator has to keep a
+    missing object and a transient failure apart: only the former is
+    worth skipping the download retry for.
+    """
+
+    def make_bucket(self, error):
+        bucket = Mock()
+        bucket.backend.encryptor = None
+        bucket.backend.read_chunks.side_effect = error
+        return bucket
+
+    def test_missing_object_is_a_file_not_found(self):
+        error = Exception("Object GET failed")
+        error.http_status = 404
+        with pytest.raises(FileNotFound):
+            file_store.make_read_generator(self.make_bucket(error), "key")
+
+    def test_transient_failure_is_left_alone(self):
+        error = Exception("Service Unavailable")
+        error.http_status = 503
+        with pytest.raises(Exception, match="Service Unavailable"):
+            file_store.make_read_generator(self.make_bucket(error), "key")
+
+    def test_missing_local_file_is_a_file_not_found(self):
+        app.app_context().push()
+        with pytest.raises(FileNotFound):
+            list(file_store.open_picture("thumbnails", "does-not-exist"))

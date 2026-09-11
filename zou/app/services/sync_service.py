@@ -69,7 +69,7 @@ from zou.app.models.working_file import WorkingFile
 
 from zou.app.services import deletion_service, tasks_service, projects_service
 from zou.app.stores import file_store
-from zou.app.utils import events, date_helpers
+from zou.app.utils import events, date_helpers, fs
 from zou.app import config
 
 logger = logging.getLogger()
@@ -1144,21 +1144,20 @@ def download_file(file_path, prefix, dl_func, preview_file_id):
     Download preview file for given preview from object storage and store it
     locally.
     """
-    dirname = os.path.dirname(file_path)
-    if not os.path.exists(dirname):
-        os.makedirs(dirname)
-    try:
-        with open(file_path, "wb") as tmp_file:
-            for chunk in dl_func(prefix, preview_file_id):
-                tmp_file.write(chunk)
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    # Written through a temporary file: a partial download would be
+    # mistaken for a valid one on the next sync run. Logged rather than
+    # raised, one file must not fail the whole sync.
+    exception = fs.download_to_file(
+        file_path, dl_func, prefix, preview_file_id
+    )
+    if exception is None:
         logger.info(f"{file_path} downloaded")
-    except Exception:
-        # A partial file would be mistaken for a valid download on the
-        # next sync run: remove it and log instead of failing the whole
-        # sync for one file.
-        logger.exception(f"Failed to download {prefix} {preview_file_id}")
-        if os.path.exists(file_path):
-            os.remove(file_path)
+    else:
+        logger.error(
+            f"Failed to download {prefix} {preview_file_id}",
+            exc_info=exception,
+        )
 
 
 def download_preview(preview_file):

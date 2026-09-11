@@ -590,6 +590,59 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
         self.assertEqual(persisted["width"], 1920)
         self.assertEqual(persisted["file_size"], 1024)
 
+    @patch("zou.app.services.preview_files_service.movie.get_movie_duration")
+    @patch("zou.app.services.preview_files_service.movie.get_movie_size")
+    @patch("zou.app.services.preview_files_service.fs.get_file_path_and_file")
+    @patch(
+        "zou.app.services.preview_files_service._run_remote_normalize_movie"
+    )
+    @patch(
+        "zou.app.services.preview_files_service"
+        ".is_remote_normalization_enabled"
+    )
+    def test_prepare_and_store_movie_remote_job_records_what_it_stored(
+        self,
+        mock_is_remote,
+        mock_run_remote,
+        mock_get_file,
+        mock_size,
+        mock_duration,
+    ):
+        """
+        A runner that predates skip_high_def uploads both encoded versions
+        whatever the flag: the record comes from the storage, not from
+        the flags.
+        """
+        preview_file = self.generate_fixture_preview_file(status="processing")
+        preview_file_id = str(preview_file.id)
+        uploaded_path = self._write_temp_movie()
+        mock_is_remote.return_value = True
+        mock_run_remote.return_value = True
+        mock_get_file.return_value = self._write_temp_movie()
+        mock_size.return_value = (1280, 720)
+        mock_duration.return_value = 10.0
+
+        with patch.object(
+            preview_files_service.config, "SKIP_NORMALIZATION_HIGHDEF", True
+        ), patch.object(
+            preview_files_service.file_store,
+            "exists_movie",
+            side_effect=lambda prefix, _id: prefix in ("previews", "lowdef"),
+        ):
+            preview_files_service.prepare_and_store_movie(
+                preview_file_id,
+                uploaded_path,
+                normalize=True,
+                add_source_to_file_store=False,
+            )
+
+        persisted = files_service.get_preview_file(preview_file_id)
+        self.assertEqual(persisted["status"], "ready")
+        self.assertEqual(
+            persisted["data"][files_service.MOVIE_PREFIXES_KEY],
+            ["previews", "lowdef"],
+        )
+
     def test_copying_a_movie_preview_carries_the_source_along(self):
         """
         A preview file whose normalization was skipped only holds a source
