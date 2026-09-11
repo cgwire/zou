@@ -6,6 +6,9 @@ from flask import current_app
 from werkzeug.utils import cached_property
 from zou.app import config
 from flask_fs.backends.local import LocalBackend
+from flask_fs.errors import FileNotFound
+
+from zou.app.utils import fs
 
 # ----------------------------------------------------------------------
 # Module state
@@ -310,6 +313,25 @@ def _copy(bucket, key, target, bucket_name):
         return bucket.copy(key, target)
 
 
+def _read_chunks(bucket, key):
+    """
+    flask_fs checks that the object exists before reading it, and the S3
+    and Swift backends answer False to any error, a 503 included: every
+    failure would reach the caller as FileNotFound. Read straight from
+    the backend so that only a genuine 404 becomes one.
+    """
+    backend = bucket.backend
+    try:
+        generator = backend.read_chunks(key)
+    except Exception as exc:
+        if fs.is_missing_file_error(exc):
+            raise FileNotFound(key) from exc
+        raise
+    if backend.encryptor is not None:
+        generator = backend.encryptor.decrypt_file_from_generator(generator)
+    return generator
+
+
 def make_read_generator(bucket, key, bucket_name=None):
     """
     Create a generator that yields chunks from the storage bucket.
@@ -319,7 +341,7 @@ def make_read_generator(bucket, key, bucket_name=None):
     When ``bucket_name`` is provided and Prometheus is enabled, the generator
     records a ``download`` operation with cumulative byte count.
     """
-    read_stream = bucket.read_chunks(key)
+    read_stream = _read_chunks(bucket, key)
 
     def read_generator(read_stream):
         tracker = _ByteTracker()
@@ -333,6 +355,9 @@ def make_read_generator(bucket, key, bucket_name=None):
                 for chunk in read_stream:
                     tracker.add(len(chunk))
                     yield chunk
+        except FileNotFoundError as exc:
+            # The local backend only opens the file on the first read.
+            raise FileNotFound(key) from exc
         finally:
             if hasattr(read_stream, "close"):
                 try:

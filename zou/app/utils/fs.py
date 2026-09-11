@@ -1,3 +1,4 @@
+import glob
 import os
 import shutil
 import time
@@ -35,14 +36,15 @@ def is_missing_file_error(exception):
     """
     Tell a missing object apart from a transient storage failure.
 
-    Only the local backend raises FileNotFound: Swift surfaces its own
-    ClientException and S3 a botocore ClientError, both carrying a 404.
-    Retrying those is pointless, and the sleep it comes with is paid on
-    every request that falls back from one prefix to another.
+    The file store raises FileNotFound for a missing object whatever the
+    backend, and lets the other failures through as they are: a Swift
+    ClientException, a botocore ClientError. Retrying a missing object is
+    pointless, and the sleep it comes with is paid on every request that
+    falls back from one prefix to another.
     """
     if exception is None:
         return False
-    if isinstance(exception, FileNotFound):
+    if isinstance(exception, (FileNotFound, FileNotFoundError)):
         return True
     for attribute in ("http_status", "status", "status_code"):
         if getattr(exception, attribute, None) == 404:
@@ -68,9 +70,27 @@ def get_cache_file_path(config, prefix, instance_id, extension):
     )
 
 
+STALE_PART_AGE = 3600
+
+
+def _remove_stale_parts(file_path):
+    """
+    A download killed with its process (OOM, SIGKILL, job timeout) never
+    reaches its cleanup and leaves its .part behind. A live download
+    keeps the mtime of its .part fresh, so an old one is safe to drop.
+    """
+    for part_path in glob.glob(f"{glob.escape(file_path)}.*.part"):
+        try:
+            if time.time() - os.path.getmtime(part_path) > STALE_PART_AGE:
+                os.remove(part_path)
+        except OSError:
+            pass
+
+
 def _download_to_file(file_path, open_file, prefix, instance_id):
     """
-    Download a stored file to the local cache.
+    Download a stored file to the local cache. Return the exception that
+    interrupted it, or None.
 
     The bytes land in a private temporary file that is renamed over the
     cache entry once complete. Writing straight into it would truncate
@@ -79,7 +99,7 @@ def _download_to_file(file_path, open_file, prefix, instance_id):
     the cache accepts a truncated file as valid, so it would be served
     as is.
     """
-    download_failed = False
+    _remove_stale_parts(file_path)
     exception = None
     tmp_path = f"{file_path}.{uuid.uuid4().hex}.part"
     try:
@@ -95,11 +115,10 @@ def _download_to_file(file_path, open_file, prefix, instance_id):
                     pass
         os.replace(tmp_path, file_path)
     except Exception as e:
-        download_failed = True
         exception = e
     finally:
         rm_file(tmp_path)
-    return download_failed, exception
+    return exception
 
 
 def get_file_path_and_file(
@@ -119,48 +138,46 @@ def get_file_path_and_file(
         file_path = get_cache_file_path(config, prefix, instance_id, extension)
 
         if is_invalid_file(file_path, file_size):
-            download_failed, exception = _download_to_file(
+            exception = _download_to_file(
                 file_path, open_file, prefix, instance_id
             )
+            # The cache entry is only ever replaced as a whole, so a
+            # concurrent request may well have completed it while this
+            # one was failing: the disk is checked before paying for a
+            # retry. An object that is not there will not be there three
+            # seconds later either, only a transient failure deserves the
+            # retry: the movie routes probe up to three prefixes and
+            # would otherwise sleep on each missing one.
+            if is_invalid_file(
+                file_path, file_size
+            ) and not is_missing_file_error(exception):
+                time.sleep(3)
+                exception = _download_to_file(
+                    file_path, open_file, prefix, instance_id
+                )
 
-            if is_invalid_file(file_path, file_size, download_failed):
-                # An object that is not there will not be there three
-                # seconds later. Only a transient failure deserves the
-                # retry: the movie routes probe up to three prefixes and
-                # would otherwise sleep on each missing one.
-                if not is_missing_file_error(exception):
-                    time.sleep(3)
-                    download_failed, exception = _download_to_file(
-                        file_path, open_file, prefix, instance_id
-                    )
-
-                if is_invalid_file(file_path, file_size, download_failed):
-                    # The cache entry is only ever replaced as a whole, so
-                    # a concurrent request may well have completed it while
-                    # this one was failing.
-                    if not is_invalid_file(file_path, file_size):
-                        return file_path
-                    rm_file(file_path)
-                    if exception is not None:
-                        if isinstance(exception, FileNotFound):
-                            raise exception
-                        raise FileNotFound(
-                            f"{prefix}-{instance_id}"
-                        ) from exception
-                    else:
-                        # The download reported success but the file is still
-                        # missing or empty: treat it as absent (404) like the
-                        # local backend does, not an unhandled 500.
-                        raise FileNotFound(f"{prefix}-{instance_id}")
+            if is_invalid_file(file_path, file_size):
+                rm_file(file_path)
+                if exception is not None:
+                    if isinstance(exception, FileNotFound):
+                        raise exception
+                    raise FileNotFound(
+                        f"{prefix}-{instance_id}"
+                    ) from exception
+                else:
+                    # The download reported success but the file is still
+                    # missing or empty: treat it as absent (404) like the
+                    # local backend does, not an unhandled 500.
+                    raise FileNotFound(f"{prefix}-{instance_id}")
 
     return file_path
 
 
-def is_invalid_file(file_path, file_size=None, download_failed=False):
+def is_invalid_file(file_path, file_size=None):
     """
     Check if file is absent, is empty or does match given size.
     """
-    if download_failed or not os.path.exists(file_path):
+    if not os.path.exists(file_path):
         return True
     elif file_size is None:
         return get_file_size(file_path) == 0
