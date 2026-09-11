@@ -431,7 +431,7 @@ class BaseModelsResource(MethodView, ArgsMixin):
             StatementError,
             KeyError,
         ) as exception:
-            current_app.logger.error(str(exception), exc_info=1)
+            current_app.logger.warning(str(exception), exc_info=1)
             return {"message": build_db_error_message(exception)}, 400
 
     def emit_create_event(self, instance_dict):
@@ -587,7 +587,7 @@ class BaseModelResource(MethodView, ArgsMixin):
             result = self.clean_get_result(result)
 
         except StatementError as exception:
-            current_app.logger.error(str(exception), exc_info=1)
+            current_app.logger.warning(str(exception), exc_info=1)
             return {"message": str(exception)}, 400
 
         except ValueError:
@@ -684,7 +684,7 @@ class BaseModelResource(MethodView, ArgsMixin):
             IntegrityError,
             StatementError,
         ) as exception:
-            current_app.logger.error(str(exception), exc_info=1)
+            current_app.logger.warning(str(exception), exc_info=1)
             return {"message": build_db_error_message(exception)}, 400
 
     @jwt_required()
