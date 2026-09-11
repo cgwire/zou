@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
 from zou.app.blueprints.previews import resources as preview_resources
+from zou.app.services import files_service
 from zou.app.stores import file_store
 
 
@@ -141,3 +142,31 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
             headers=self.base_headers,
         )
         self.assertEqual(response.status_code, 404)
+
+    def test_stored_movie_prefixes_are_recorded(self):
+        """
+        Which prefix holds the movie is known when it is stored: recording
+        it spares the movie routes from probing the storage on every read.
+        """
+        with_source = self.upload_movie_preview(save_source_file=True)
+        preview_file = files_service.get_preview_file(with_source)
+        self.assertEqual(
+            preview_file["data"][files_service.MOVIE_PREFIXES_KEY],
+            ["source"],
+        )
+
+        without_source = self.upload_movie_preview(save_source_file=False)
+        preview_file = files_service.get_preview_file(without_source)
+        self.assertEqual(
+            preview_file["data"][files_service.MOVIE_PREFIXES_KEY],
+            ["previews"],
+        )
+
+    def test_recorded_prefixes_spare_the_storage_probe(self):
+        preview_file_id = self.upload_movie_preview(save_source_file=True)
+        with patch.object(file_store, "exists_movie") as exists_movie:
+            self.assertEqual(
+                files_service.get_movie_prefixes(preview_file_id, lowdef=True),
+                ["source", "lowdef", "previews"],
+            )
+            exists_movie.assert_not_called()
