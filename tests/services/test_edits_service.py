@@ -85,6 +85,15 @@ class EditUtilsTestCase(ApiDBTestCase):
 
         self.assertEqual([edit["name"] for edit in edits], ["Edit"])
 
+    def test_get_edits_and_tasks_for_main_and_all_episodes(self):
+        self.generate_fixture_edit("Orphan", parent_id=None)
+
+        main = edits_service.get_edits_and_tasks({"episode_id": "main"})
+        self.assertEqual([edit["name"] for edit in main], ["Orphan"])
+
+        everything = edits_service.get_edits_and_tasks({"episode_id": "all"})
+        self.assertEqual(len(everything), 2)
+
     def test_get_edit(self):
         self.assertEqual(
             str(self.edit.id), edits_service.get_edit(self.edit.id)["id"]
