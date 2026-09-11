@@ -87,7 +87,7 @@ def _remove_stale_parts(file_path):
             pass
 
 
-def _download_to_file(file_path, open_file, prefix, instance_id):
+def download_to_file(file_path, open_file, prefix, instance_id):
     """
     Download a stored file to the local cache. Return the exception that
     interrupted it, or None.
@@ -138,7 +138,7 @@ def get_file_path_and_file(
         file_path = get_cache_file_path(config, prefix, instance_id, extension)
 
         if is_invalid_file(file_path, file_size):
-            exception = _download_to_file(
+            exception = download_to_file(
                 file_path, open_file, prefix, instance_id
             )
             # The cache entry is only ever replaced as a whole, so a
@@ -152,7 +152,7 @@ def get_file_path_and_file(
                 file_path, file_size
             ) and not is_missing_file_error(exception):
                 time.sleep(3)
-                exception = _download_to_file(
+                exception = download_to_file(
                     file_path, open_file, prefix, instance_id
                 )
 

@@ -704,10 +704,16 @@ class DownloadFileTestCase(unittest.TestCase):
             yield b"partial content"
             raise RuntimeError("stream interrupted")
 
+        with open(self.file_path, "wb") as previous:
+            previous.write(b"previous complete content")
+
         sync_service.download_file(
             self.file_path, "previews", failing_dl_func, "preview-id"
         )
-        self.assertFalse(os.path.exists(self.file_path))
+        # The previous download is not truncated either.
+        with open(self.file_path, "rb") as downloaded:
+            self.assertEqual(downloaded.read(), b"previous complete content")
+        self.assertEqual(os.listdir(self.folder), ["preview.mp4"])
 
     def test_successful_download_keeps_file(self):
         def dl_func(prefix, preview_file_id):

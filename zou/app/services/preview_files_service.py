@@ -568,21 +568,27 @@ def prepare_and_store_movie(
                 except FileNotFoundError:
                     pass
 
-        # Which storage prefixes hold the movie follows from the flags
+        # Which storage prefixes hold the movie is recorded on the preview
+        # file so that the movie routes do not have to rediscover it by
+        # probing the object storage. Locally it follows from the flags
         # above: the encoded versions when normalizing, the upload itself
         # under `previews` when it was stored raw and not already kept as
-        # the source (a remote job stores nothing in that case). It is
-        # recorded on the preview file so that the movie routes do not
-        # have to rediscover it by probing the object storage.
-        if normalize:
+        # the source. A remote job is asked nothing: a runner that
+        # predates skip_high_def still uploads both encoded versions, so
+        # the storage is probed once instead.
+        if is_remote:
+            stored_movie_prefixes = files_service.probe_movie_prefixes(
+                preview_file_id
+            )
+        elif normalize:
             stored_movie_prefixes = (
                 ["lowdef"] if skip_high_def else ["previews", "lowdef"]
             )
-        elif add_source_to_file_store or is_remote:
+        elif add_source_to_file_store:
             stored_movie_prefixes = []
         else:
             stored_movie_prefixes = ["previews"]
-        if add_source_to_file_store:
+        if add_source_to_file_store and "source" not in stored_movie_prefixes:
             stored_movie_prefixes.insert(0, "source")
 
         # Re-fetch preview file before updating (it may have been deleted during processing)
@@ -683,12 +689,9 @@ def clear_variant_from_cache(preview_file_id, prefix, extension="png"):
     Clear a variant from the cache to force to redownload from object storage.
     """
     if config.FS_BACKEND != "local":
-        file_path = os.path.join(
-            config.TMP_DIR,
-            f"cache-{prefix}-{preview_file_id}.{extension}",
+        fs.rm_file(
+            fs.get_cache_file_path(config, prefix, preview_file_id, extension)
         )
-        if os.path.exists(file_path):
-            os.remove(file_path)
     return preview_file_id
 
 

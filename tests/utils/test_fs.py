@@ -142,7 +142,7 @@ class DownloadToFileTestCase(unittest.TestCase):
             yield b"movie"
             yield b"-bytes"
 
-        exception = fs._download_to_file(
+        exception = fs.download_to_file(
             self.file_path, open_file, "previews", "id"
         )
 
@@ -159,7 +159,7 @@ class DownloadToFileTestCase(unittest.TestCase):
             yield b"trunc"
             raise IOError("connection reset")
 
-        exception = fs._download_to_file(
+        exception = fs.download_to_file(
             self.file_path, open_file, "previews", "id"
         )
 
@@ -173,7 +173,7 @@ class DownloadToFileTestCase(unittest.TestCase):
             raise IOError("connection reset")
             yield b""
 
-        fs._download_to_file(self.file_path, open_file, "previews", "id")
+        fs.download_to_file(self.file_path, open_file, "previews", "id")
 
         self.assertFalse(os.path.exists(self.file_path))
         self.assertEqual(self.cache_files(), [])
@@ -191,7 +191,7 @@ class DownloadToFileTestCase(unittest.TestCase):
         def open_file(prefix, instance_id):
             yield b"movie"
 
-        fs._download_to_file(self.file_path, open_file, "previews", "id")
+        fs.download_to_file(self.file_path, open_file, "previews", "id")
 
         self.assertEqual(
             self.cache_files(),
