@@ -303,11 +303,17 @@ def prepare_and_store_movie(
     from zou.app import app as current_app
 
     with current_app.app_context():
+        # Which storage prefixes end up holding the movie depends on the
+        # normalization settings. It is recorded on the preview file so
+        # that the movie routes do not have to rediscover it by probing
+        # the object storage on every read.
+        stored_movie_prefixes = []
         if add_source_to_file_store:
             try:
                 file_store.add_movie(
                     "source", preview_file_id, uploaded_movie_path
                 )
+                stored_movie_prefixes.append("source")
             except Exception as exc:
                 _remove_temp_files(uploaded_movie_path)
                 return _abort_on_storage_failure(
@@ -411,6 +417,10 @@ def prepare_and_store_movie(
                     if normalize:
                         # Without the high def version, the low def one is
                         # the only movie the remote job uploaded.
+                        if skip_high_def:
+                            stored_movie_prefixes.append("lowdef")
+                        else:
+                            stored_movie_prefixes += ["previews", "lowdef"]
                         normalized_movie_path = fs.get_file_path_and_file(
                             config,
                             file_store.get_local_movie_path,
@@ -443,9 +453,11 @@ def prepare_and_store_movie(
                         file_store.add_movie(
                             "previews", preview_file_id, normalized_movie_path
                         )
+                        stored_movie_prefixes.append("previews")
                     file_store.add_movie(
                         "lowdef", preview_file_id, normalized_movie_low_path
                     )
+                    stored_movie_prefixes.append("lowdef")
                     if normalized_movie_path is None:
                         # Everything below (metadata, thumbnails, tile) works
                         # on the movie that was actually produced.
@@ -482,6 +494,7 @@ def prepare_and_store_movie(
                     file_store.add_movie(
                         "previews", preview_file_id, uploaded_movie_path
                     )
+                    stored_movie_prefixes.append("previews")
             except Exception as exc:
                 _remove_temp_files(uploaded_movie_path)
                 return _abort_on_storage_failure(
@@ -579,6 +592,12 @@ def prepare_and_store_movie(
                     "width": width,
                     "height": height,
                     "duration": duration,
+                    "data": {
+                        **(preview_file_raw.data or {}),
+                        files_service.MOVIE_PREFIXES_KEY: (
+                            stored_movie_prefixes
+                        ),
+                    },
                 },
             )
             tasks_service.update_preview_file_info(preview_file)
@@ -1792,7 +1811,7 @@ def copy_preview_file_on_storage(
 ):
     """
     Copy one stored preview to another prefix, skipping the copy when the
-    target already holds it.
+    target already holds it. Return True when a file was actually copied.
     """
     if config.FS_BACKEND == "local":
         file_path = get_path_func(prefix, original_preview_file_id)
@@ -1800,10 +1819,13 @@ def copy_preview_file_on_storage(
         if os.path.exists(file_path):
             os.makedirs(os.path.dirname(other_file_path), exist_ok=True)
             shutil.copyfile(file_path, other_file_path)
+            return True
     elif exists_func(prefix, original_preview_file_id):
         copy_func(
             prefix, original_preview_file_id, prefix, preview_file_to_update_id
         )
+        return True
+    return False
 
 
 def copy_preview_file_in_another_one(
@@ -1818,12 +1840,12 @@ def copy_preview_file_in_another_one(
     is_movie = original_preview_file["extension"] == "mp4"
     is_picture = original_preview_file["extension"] == "png"
 
+    stored_movie_prefixes = []
     if is_movie:
         # The source is copied too: when the normalization is skipped it is
         # the only stored movie, and the preview routes serve it.
-        prefixes = ["previews", "lowdef", "source"]
-        for prefix in prefixes:
-            copy_preview_file_on_storage(
+        for prefix in files_service.MOVIE_PREFIXES:
+            copied = copy_preview_file_on_storage(
                 file_store.get_local_movie_path,
                 file_store.exists_movie,
                 file_store.copy_movie,
@@ -1831,6 +1853,8 @@ def copy_preview_file_in_another_one(
                 original_preview_file_id,
                 preview_file_to_update_id,
             )
+            if copied:
+                stored_movie_prefixes.append(prefix)
 
     if is_movie or is_picture:
         prefixes = [
@@ -1861,17 +1885,27 @@ def copy_preview_file_in_another_one(
             preview_file_to_update_id,
         )
 
+    data = {
+        "extension": original_preview_file["extension"],
+        "original_name": original_preview_file["original_name"],
+        "status": original_preview_file["status"],
+        "file_size": original_preview_file["file_size"],
+        "width": original_preview_file["width"],
+        "height": original_preview_file["height"],
+        "duration": original_preview_file["duration"],
+    }
+    if is_movie:
+        # The copy knows which movie versions it found: record them so
+        # that the movie routes do not probe the storage again.
+        target_preview_file = files_service.get_preview_file(
+            preview_file_to_update_id
+        )
+        data["data"] = {
+            **(target_preview_file.get("data") or {}),
+            files_service.MOVIE_PREFIXES_KEY: stored_movie_prefixes,
+        }
     preview_file_to_update = update_preview_file(
-        preview_file_to_update_id,
-        {
-            "extension": original_preview_file["extension"],
-            "original_name": original_preview_file["original_name"],
-            "status": original_preview_file["status"],
-            "file_size": original_preview_file["file_size"],
-            "width": original_preview_file["width"],
-            "height": original_preview_file["height"],
-            "duration": original_preview_file["duration"],
-        },
+        preview_file_to_update_id, data
     )
     tasks_service.update_preview_file_info(preview_file_to_update)
     comment = tasks_service.get_comment_by_preview_file_id(

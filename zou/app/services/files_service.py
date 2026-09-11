@@ -31,11 +31,17 @@ from zou.app.services.exception import (
     PreviewBackgroundFileNotFoundException,
 )
 
-from zou.app.utils import cache, fields, events, query as query_utils
+from zou.app.stores import file_store
+
+from zou.app.utils import cache, fields, fs, events, query as query_utils
 
 from sqlalchemy import desc, func
 from sqlalchemy.exc import StatementError, IntegrityError
 from sqlalchemy.sql.expression import and_
+
+MOVIE_PREFIXES = ["previews", "lowdef", "source"]
+LOWDEF_MOVIE_PREFIXES = ["lowdef", "previews", "source"]
+MOVIE_PREFIXES_KEY = "movie_prefixes"
 
 
 def clear_preview_file_cache(preview_file_id):
@@ -44,6 +50,8 @@ def clear_preview_file_cache(preview_file_id):
     """
     cache.cache.delete_memoized(get_preview_file, preview_file_id)
     cache.cache.delete_memoized(get_preview_file_for_access, preview_file_id)
+    cache.cache.delete_memoized(get_movie_prefixes, preview_file_id, False)
+    cache.cache.delete_memoized(get_movie_prefixes, preview_file_id, True)
 
 
 def clear_output_file_cache(output_file_id):
@@ -832,6 +840,74 @@ def get_preview_file_for_access(preview_file_id):
         "updated_at": fields.serialize_value(row.updated_at),
         "extension": row.extension,
     }
+
+
+def _is_movie_stored(prefix, preview_file_id):
+    """
+    Tell whether the movie of given preview file sits under given prefix.
+    The local download cache is looked at first: a warm cache means the
+    movie routes will not hit the object storage at all.
+    """
+    if config.FS_BACKEND != "local":
+        file_path = fs.get_cache_file_path(
+            config, prefix, preview_file_id, "mp4"
+        )
+        if not fs.is_invalid_file(file_path):
+            return True
+    try:
+        return file_store.exists_movie(prefix, preview_file_id)
+    except Exception:
+        return False
+
+
+def get_stored_movie_prefixes(preview_file_id):
+    """
+    Return the storage prefixes the movie was written to, as recorded
+    when it was stored, or None for a preview file that predates that
+    record. Only the `data` column is read: the annotations sitting next
+    to it weigh several MB on a long shot.
+    """
+    try:
+        row = (
+            PreviewFile.query.with_entities(PreviewFile.data)
+            .filter_by(id=preview_file_id)
+            .first()
+        )
+    except StatementError:
+        return None
+    if row is None or not row.data:
+        return None
+    prefixes = row.data.get(MOVIE_PREFIXES_KEY)
+    if not isinstance(prefixes, list):
+        return None
+    return [prefix for prefix in prefixes if prefix in MOVIE_PREFIXES]
+
+
+@cache.memoize_function(600)
+def get_movie_prefixes(preview_file_id, lowdef=False):
+    """
+    Return the storage prefixes to try for given movie, best first.
+
+    A normalized movie is stored under `previews` and `lowdef`, a movie
+    uploaded with normalize=false under `source` only. Knowing which one
+    holds it spares the routes from downloading missing objects before
+    falling back on the right one, on every range a player asks for.
+
+    The prefixes are read from the preview file when they were recorded
+    at storage time, and probed on the storage otherwise. The ones that
+    are not expected to hold anything are kept as a tail: a record can
+    lag behind a movie that was re-encoded or copied over.
+    """
+    prefixes = LOWDEF_MOVIE_PREFIXES if lowdef else MOVIE_PREFIXES
+    stored = get_stored_movie_prefixes(preview_file_id)
+    if stored:
+        return [prefix for prefix in prefixes if prefix in stored] + [
+            prefix for prefix in prefixes if prefix not in stored
+        ]
+    for index, prefix in enumerate(prefixes):
+        if _is_movie_stored(prefix, preview_file_id):
+            return [prefix] + prefixes[:index] + prefixes[index + 1 :]
+    return list(prefixes)
 
 
 def get_preview_files_for_task(task_id):

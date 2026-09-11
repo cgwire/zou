@@ -126,11 +126,12 @@ def send_movie_file(
     SKIP_NORMALIZATION_HIGHDEF) stores a single version, and the uploaded
     source is the last resort. Note that the source is served as video/mp4
     whatever its real container, and carries no faststart flag.
+
+    The prefix order is resolved beforehand so that the version actually
+    stored comes first: a missing object costs a round trip on the object
+    storage, and a movie player asks for the same file once per range.
     """
-    if lowdef:
-        prefixes = ["lowdef", "previews", "source"]
-    else:
-        prefixes = ["previews", "lowdef", "source"]
+    prefixes = files_service.get_movie_prefixes(preview_file_id, lowdef=lowdef)
     for prefix in prefixes:
         try:
             return send_storage_file(
