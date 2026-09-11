@@ -31,7 +31,6 @@ from zou.app.services import (
     tasks_service,
     permissions_service,
 )
-from zou.app.stores import queue_store
 from zou.utils import movie
 from zou.app.utils import (
     fields,
@@ -360,34 +359,20 @@ class BaseNewPreviewFilePicture:
                 f"storage ({written_size}/{expected_size} bytes); the "
                 f"temporary disk may be full."
             )
-        is_remote = preview_files_service.is_remote_normalization_enabled()
         # The remote worker reads the movie from the object storage, and
         # without normalization that source is the only movie stored: it has
         # to be uploaded whatever PREVIEW_SAVE_SOURCE_FILE says.
-        save_source_file = config.PREVIEW_SAVE_SOURCE_FILE or is_remote
-        # Even with normalization turned off, the remote worker is what
-        # builds the thumbnails and the tile, and dispatching it blocks until
-        # Nomad is done: keep it out of the request thread.
-        needs_job = normalize or is_remote
-        if needs_job and config.ENABLE_JOB_QUEUE and not no_job:
-            queue_store.job_queue.enqueue(
-                preview_files_service.prepare_and_store_movie,
-                args=(
-                    preview_file_id,
-                    uploaded_movie_path,
-                    normalize,
-                    save_source_file,
-                ),
-                job_timeout=int(config.JOB_QUEUE_TIMEOUT),
-                on_failure=preview_files_service.mark_broken_on_job_failure,
-            )
-        else:
-            preview_files_service.prepare_and_store_movie(
-                preview_file_id,
-                uploaded_movie_path,
-                normalize=normalize,
-                add_source_to_file_store=save_source_file,
-            )
+        save_source_file = (
+            config.PREVIEW_SAVE_SOURCE_FILE
+            or preview_files_service.is_remote_normalization_enabled()
+        )
+        preview_files_service.dispatch_movie_processing(
+            preview_file_id,
+            uploaded_movie_path,
+            normalize=normalize,
+            add_source_to_file_store=save_source_file,
+            no_job=no_job,
+        )
         return preview_file_id
 
     def save_file_preview(self, instance_id, uploaded_file, extension):

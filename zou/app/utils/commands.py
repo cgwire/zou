@@ -11,7 +11,7 @@ import orjson as json
 from tabulate import tabulate
 from ldap3 import Server, Connection, ALL, NTLM, SIMPLE
 from zou.app.utils import thumbnail as thumbnail_utils, auth
-from zou.app.stores import auth_tokens_store, file_store, queue_store
+from zou.app.stores import auth_tokens_store, file_store
 from zou.app.services import (
     assets_service,
     backup_service,
@@ -1089,24 +1089,12 @@ def renormalize_movie_preview_files(
                             f"empty at {uploaded_movie_path}; skipping "
                             f"renormalization of {preview_file_id}."
                         )
-                    if config.ENABLE_JOB_QUEUE:
-                        queue_store.job_queue.enqueue(
-                            preview_files_service.prepare_and_store_movie,
-                            args=(
-                                preview_file_id,
-                                uploaded_movie_path,
-                                True,
-                                False,
-                            ),
-                            job_timeout=int(config.JOB_QUEUE_TIMEOUT),
-                        )
-                    else:
-                        preview_files_service.prepare_and_store_movie(
-                            preview_file_id,
-                            uploaded_movie_path,
-                            normalize=True,
-                            add_source_to_file_store=False,
-                        )
+                    preview_files_service.dispatch_movie_processing(
+                        preview_file_id,
+                        uploaded_movie_path,
+                        normalize=True,
+                        add_source_to_file_store=False,
+                    )
                 except _SourceMovieMissing as e:
                     print(
                         f"Renormalization of preview file {preview_file_id} failed: {e}"

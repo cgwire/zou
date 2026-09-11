@@ -58,7 +58,9 @@ class MovieUploadDispatchTestCase(ApiDBTestCase):
         ), patch.object(
             preview_resources.config, "PREVIEW_SAVE_SOURCE_FILE", False
         ), patch.object(
-            preview_resources.queue_store, "job_queue", job_queue
+            preview_resources.preview_files_service.queue_store,
+            "job_queue",
+            job_queue,
         ):
             self.upload_file(
                 f"/pictures/preview-files/{preview_file_id}?normalize=false",
@@ -85,7 +87,9 @@ class MovieUploadDispatchTestCase(ApiDBTestCase):
         ), patch.object(
             preview_resources.config, "ENABLE_JOB_QUEUE", True
         ), patch.object(
-            preview_resources.queue_store, "job_queue", job_queue
+            preview_resources.preview_files_service.queue_store,
+            "job_queue",
+            job_queue,
         ):
             self.upload_file(
                 f"/pictures/preview-files/{preview_file_id}?normalize=false",
