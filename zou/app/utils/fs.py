@@ -1,11 +1,14 @@
 import fcntl
 import glob
+import logging
 import os
 import shutil
 import threading
 import time
 import uuid
 from flask_fs.errors import FileNotFound
+
+logger = logging.getLogger(__name__)
 
 
 def mkdir_p(path):
@@ -149,7 +152,12 @@ def fill_cache_in_background(file_path, open_file, prefix, instance_id):
     download was started. The lock file is left behind: removing it would
     race with the next locker.
     """
-    lock_file = open(f"{file_path}.lock", "a")
+    try:
+        lock_file = open(f"{file_path}.lock", "a")
+    except OSError:
+        # A full or read-only cache directory only means no fill: the
+        # request is streamed from the storage either way.
+        return False
     try:
         fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
@@ -158,7 +166,14 @@ def fill_cache_in_background(file_path, open_file, prefix, instance_id):
 
     def run():
         try:
-            download_to_file(file_path, open_file, prefix, instance_id)
+            exception = download_to_file(
+                file_path, open_file, prefix, instance_id
+            )
+            if exception is not None and not is_missing_file_error(exception):
+                logger.error(
+                    f"Cache fill failed for {prefix}-{instance_id}: "
+                    f"{exception!r}"
+                )
         finally:
             lock_file.close()
 

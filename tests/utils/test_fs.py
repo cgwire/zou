@@ -1,4 +1,5 @@
 import os
+import time
 import tempfile
 import unittest
 from unittest import mock
@@ -234,6 +235,36 @@ class FillCacheInBackgroundTestCase(unittest.TestCase):
                 return
             time.sleep(0.05)
         self.fail(f"{path} never appeared")
+
+    def test_unwritable_cache_dir_does_not_fail_the_request(self):
+        # The request can be streamed from the storage without any disk:
+        # a full or read-only TMP_DIR only means no cache fill.
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            file_path = os.path.join(tmp_dir, "missing", "cache-lowdef-1.mp4")
+            self.assertFalse(
+                fs.fill_cache_in_background(file_path, None, "lowdef", "1")
+            )
+
+    def test_failed_fill_is_logged(self):
+        def open_file(prefix, instance_id):
+            raise RuntimeError("credentials rotated")
+            yield
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            file_path = os.path.join(tmp_dir, "cache-lowdef-1.mp4")
+            with self.assertLogs("zou.app.utils.fs", level="ERROR") as logs:
+                self.assertTrue(
+                    fs.fill_cache_in_background(
+                        file_path, open_file, "lowdef", "1"
+                    )
+                )
+                self.wait_for(f"{file_path}.lock")
+                for _ in range(100):
+                    if logs.output:
+                        break
+                    time.sleep(0.05)
+        self.assertIn("credentials rotated", logs.output[0])
+        self.assertIn("lowdef-1", logs.output[0])
 
     def test_downloads_once_under_the_lock(self):
         import fcntl
