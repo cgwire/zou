@@ -239,6 +239,167 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
         self.assertEqual(response.status_code, 206)
         self.assertEqual(response.data, expected)
 
+    def test_full_file_response_still_fits_gunicorn_sendfile(self):
+        # gunicorn hands a response that is an instance of the environ's
+        # wsgi.file_wrapper to its sendfile path, which reads `.filelike`
+        # on it: the seekable wrapper the route installs must carry it, or
+        # every full-file response answers 500 in production.
+        preview_file_id = self.upload_movie_preview()
+        flask_app = self.app.application
+        wsgi_app = flask_app.wsgi_app
+        dispatched = []
+
+        def capture_dispatch(environ, start_response):
+            respiter = wsgi_app(environ, start_response)
+            dispatched.append((environ, respiter))
+            return respiter
+
+        with patch.object(flask_app, "wsgi_app", capture_dispatch):
+            response = self.app.get(
+                f"/movies/originals/preview-files/{preview_file_id}.mp4",
+                headers=self.base_headers,
+            )
+        self.assertEqual(response.status_code, 200)
+        environ, respiter = dispatched[0]
+        self.assertIsInstance(respiter, environ["wsgi.file_wrapper"])
+        self.assertIsInstance(respiter.filelike.fileno(), int)
+        response.close()
+
+    def test_cold_cache_download_folds_the_file_name_like_send_file(self):
+        # The warm path goes through send_file, which folds a non-ASCII
+        # download name to ASCII and adds an RFC 2231 filename*. A raw
+        # name on the cold path is an invalid header value for gunicorn.
+        preview_file_id = self.upload_movie_preview()
+        url = f"/movies/originals/preview-files/{preview_file_id}/download"
+        with patch.object(
+            preview_resources.names_service,
+            "get_preview_file_name",
+            return_value="カット 01.mp4",
+        ):
+            warm = self.app.get(url, headers=self.base_headers)
+            with (
+                patch.object(
+                    preview_resources.file_store,
+                    "can_stream_movie_ranges",
+                    return_value=True,
+                ),
+                patch.object(
+                    preview_resources.file_store,
+                    "read_movie_range",
+                    return_value=(2, "bytes 0-1/2", iter([b"ab"])),
+                ),
+                patch.object(preview_resources.fs, "fill_cache_in_background"),
+            ):
+                cold = self.app.get(
+                    url, headers={**self.base_headers, "Range": "bytes=0-1"}
+                )
+        self.assertEqual(cold.status_code, 206)
+        self.assertIn("filename*=UTF-8''", warm.headers["Content-Disposition"])
+        self.assertEqual(
+            cold.headers["Content-Disposition"],
+            warm.headers["Content-Disposition"],
+        )
+
+    def test_cold_cache_without_a_range_fills_then_sends(self):
+        # A player asks by range; a whole-file request (download button,
+        # gazu, curl) gets one storage read and the validators send_file
+        # computes, not two concurrent full GETs and no ETag.
+        preview_file_id = self.upload_movie_preview()
+        with open(self.movie_path, "rb") as movie_file:
+            movie_content = movie_file.read()
+        with (
+            patch.object(
+                preview_resources.file_store,
+                "can_stream_movie_ranges",
+                return_value=True,
+            ),
+            patch.object(
+                preview_resources.file_store,
+                "read_movie_range",
+                side_effect=AssertionError("streamed"),
+            ),
+            patch.object(
+                preview_resources.fs,
+                "fill_cache_in_background",
+                side_effect=AssertionError("filled in background"),
+            ),
+        ):
+            response = self.app.get(
+                f"/movies/originals/preview-files/{preview_file_id}.mp4",
+                headers=self.base_headers,
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, movie_content)
+        self.assertIn("ETag", response.headers)
+
+    def test_cold_cache_fills_only_a_prefix_the_storage_holds(self):
+        # The prefix fallback tries prefixes the storage may not hold: a
+        # fill started before the range read proved the object exists is
+        # a doomed download and a lock file left behind for every miss.
+        from flask_fs.errors import FileNotFound
+
+        preview_file_id = self.upload_movie_preview(save_source_file=True)
+        self.record_prefixes(preview_file_id, ["previews"])
+        fills = []
+
+        def read_movie_range(prefix, id, range_header=None):
+            if prefix != "source":
+                raise FileNotFound(f"{prefix}-{id}")
+            return 2, "bytes 0-1/2", iter([b"ab"])
+
+        with (
+            patch.object(
+                preview_resources.file_store,
+                "can_stream_movie_ranges",
+                return_value=True,
+            ),
+            patch.object(
+                preview_resources.file_store,
+                "read_movie_range",
+                side_effect=read_movie_range,
+            ),
+            patch.object(
+                preview_resources.fs,
+                "fill_cache_in_background",
+                side_effect=lambda *args: fills.append(args[2]),
+            ),
+        ):
+            response = self.app.get(
+                f"/movies/originals/preview-files/{preview_file_id}.mp4",
+                headers={**self.base_headers, "Range": "bytes=0-1"},
+            )
+        self.assertEqual(response.status_code, 206)
+        self.assertEqual(fills, ["source"])
+
+    def test_head_on_a_cold_cache_opens_no_storage_stream(self):
+        # Werkzeug never starts the body generator of a HEAD response, so
+        # a storage read opened for it is torn down by refcount only, its
+        # `finally: close()` never run. HEAD takes the warm path.
+        preview_file_id = self.upload_movie_preview()
+        with (
+            patch.object(
+                preview_resources.file_store,
+                "can_stream_movie_ranges",
+                return_value=True,
+            ),
+            patch.object(
+                preview_resources.file_store,
+                "read_movie_range",
+                side_effect=AssertionError("storage stream opened"),
+            ),
+            patch.object(
+                preview_resources.fs,
+                "fill_cache_in_background",
+                side_effect=AssertionError("filled in background"),
+            ),
+        ):
+            response = self.app.head(
+                f"/movies/originals/preview-files/{preview_file_id}.mp4",
+                headers={**self.base_headers, "Range": "bytes=0-1"},
+            )
+        self.assertEqual(response.status_code, 206)
+        self.assertEqual(response.data, b"")
+
     def test_cold_cache_streams_the_range_from_the_storage(self):
         # Remote backend, movie not in the local cache yet: the range is
         # served from the storage right away and one background download

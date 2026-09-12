@@ -643,6 +643,110 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
             ["previews", "lowdef"],
         )
 
+    @patch(
+        "zou.app.services.preview_files_service._run_remote_normalize_movie"
+    )
+    def test_remote_encode_does_not_read_a_stale_cache_entry(
+        self, mock_run_remote
+    ):
+        """
+        The encoded movie is fetched back through the movie routes' cache
+        path. A copy of a previous encoding sitting there (the movie was
+        played on this host, then renormalized) must not short-circuit
+        the download: the metadata would describe the old file.
+        """
+        from zou.app import config
+        from zou.app.utils import fs
+
+        preview_file = self.generate_fixture_preview_file(status="processing")
+        preview_file_id = str(preview_file.id)
+        mock_run_remote.return_value = True
+        cache_path = fs.get_cache_file_path(
+            config, "previews", preview_file_id, "mp4"
+        )
+        with open(cache_path, "wb") as cache_file:
+            cache_file.write(b"old encoding")
+        self.addCleanup(fs.rm_file, cache_path)
+
+        with patch.object(config, "FS_BACKEND", "s3"), patch.object(
+            file_store,
+            "open_movie",
+            side_effect=lambda prefix, _id: iter([b"new encoding"]),
+        ):
+            temp_files = []
+            movie_path = preview_files_service._encode_on_remote_worker(
+                preview_file_id,
+                "/tmp/upload.mp4",
+                25,
+                0,
+                0,
+                True,
+                False,
+                temp_files,
+            )
+
+        with open(movie_path, "rb") as movie_file:
+            self.assertEqual(movie_file.read(), b"new encoding")
+        # The worker may not be a web host: the copy goes with the other
+        # temporary files instead of piling up in its TMP_DIR.
+        self.assertEqual(temp_files, [movie_path])
+
+    @patch("zou.app.services.preview_files_service._process_movie")
+    def test_prepare_and_store_movie_lets_the_job_timeout_through(
+        self, mock_process
+    ):
+        """
+        rq raises its timeout inside the job: swallowed, the job counts as
+        successful, never reaches the failed registry, and the failure
+        callback that marks the preview file as broken never runs.
+        """
+        from rq.timeouts import JobTimeoutException
+
+        preview_file = self.generate_fixture_preview_file(status="processing")
+        uploaded_path = self._write_temp_movie()
+        mock_process.side_effect = JobTimeoutException()
+
+        with self.assertRaises(JobTimeoutException):
+            preview_files_service.prepare_and_store_movie(
+                str(preview_file.id), uploaded_path, normalize=True
+            )
+        self.assertFalse(os.path.exists(uploaded_path))
+
+    @patch(
+        "zou.app.services.preview_files_service._run_remote_normalize_movie"
+    )
+    def test_remote_encode_keeps_the_stored_movie_on_a_local_backend(
+        self, mock_run_remote
+    ):
+        """
+        On a local backend the path fetched back is the stored movie
+        itself, not a copy: it must not go with the temporary files.
+        """
+        preview_file = self.generate_fixture_preview_file(status="processing")
+        preview_file_id = str(preview_file.id)
+        mock_run_remote.return_value = True
+        stored_path = file_store.get_local_movie_path(
+            "previews", preview_file_id
+        )
+        os.makedirs(os.path.dirname(stored_path), exist_ok=True)
+        with open(stored_path, "wb") as stored:
+            stored.write(b"encoded")
+
+        temp_files = []
+        movie_path = preview_files_service._encode_on_remote_worker(
+            preview_file_id,
+            "/tmp/upload.mp4",
+            25,
+            0,
+            0,
+            True,
+            False,
+            temp_files,
+        )
+
+        self.assertEqual(movie_path, stored_path)
+        self.assertEqual(temp_files, [])
+
     def test_copying_a_movie_preview_carries_the_source_along(self):
         """
         A preview file whose normalization was skipped only holds a source

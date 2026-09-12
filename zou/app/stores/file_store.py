@@ -1,4 +1,5 @@
 import os
+import threading
 import time
 import flask_fs
 from contextlib import contextmanager
@@ -18,6 +19,9 @@ from zou.app.utils import fs
 pictures = None
 movies = None
 files = None
+
+RANGE_CHUNK_SIZE = 1024 * 1024
+_swift_connections = threading.local()
 
 
 # ----------------------------------------------------------------------
@@ -314,6 +318,30 @@ def _copy(bucket, key, target, bucket_name):
         return bucket.copy(key, target)
 
 
+def _swift_connection(backend):
+    """
+    A swiftclient.Connection per thread, cloned from the backend's one.
+    swiftclient parks the in-flight response on the connection between
+    request() and getresponse(): the background cache fill and the
+    request thread reading through the same one cross their responses.
+    """
+    conn = getattr(_swift_connections, "conn", None)
+    if conn is None:
+        import swiftclient
+
+        template = backend.conn
+        conn = swiftclient.Connection(
+            authurl=template.authurl,
+            user=template.user,
+            key=template.key,
+            auth_version=template.auth_version,
+            os_options=template.os_options,
+            retries=template.retries,
+        )
+        _swift_connections.conn = conn
+    return conn
+
+
 def _read_chunks(bucket, key):
     """
     flask_fs checks that the object exists before reading it, and the S3
@@ -323,7 +351,12 @@ def _read_chunks(bucket, key):
     """
     backend = bucket.backend
     try:
-        generator = backend.read_chunks(key)
+        if config.FS_BACKEND == "swift":
+            _, generator = _swift_connection(backend).get_object(
+                backend.name, key, resp_chunk_size=RANGE_CHUNK_SIZE
+            )
+        else:
+            generator = backend.read_chunks(key)
     except Exception as exc:
         if fs.is_missing_file_error(exc):
             raise FileNotFound(key) from exc
@@ -371,9 +404,6 @@ def _measured_read(read_stream, key, bucket_name=None):
     return read_generator(read_stream)
 
 
-RANGE_CHUNK_SIZE = 1024 * 1024
-
-
 def can_stream_movie_ranges():
     """
     Tell whether a movie can be served straight from the object storage by
@@ -412,7 +442,7 @@ def read_movie_range(prefix, id, range_header=None):
             generator = read_stream()
         else:
             headers = {"Range": range_header} if range_header else None
-            resp_headers, generator = backend.conn.get_object(
+            resp_headers, generator = _swift_connection(backend).get_object(
                 backend.name,
                 key,
                 resp_chunk_size=RANGE_CHUNK_SIZE,

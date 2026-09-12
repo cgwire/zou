@@ -8,6 +8,7 @@ import time
 import zipfile
 
 import ffmpeg
+from rq.timeouts import BaseTimeoutException
 from PIL import Image
 
 from sqlalchemy.orm import aliased
@@ -318,7 +319,8 @@ def prepare_and_store_movie(
     Turn an uploaded movie into a ready preview file: keep the source when
     asked, encode the preview versions (here or on the remote worker),
     build the thumbnails and the tile, then record the metadata and which
-    versions are stored. Any failure marks the preview file as broken, and
+    versions are stored. Any failure marks the preview file as broken
+    (the job timeout goes through, so that rq records the failure), and
     the temporary files are removed whatever happens.
     """
     from zou.app import app as current_app
@@ -338,6 +340,11 @@ def prepare_and_store_movie(
                 f"Preview file {preview_file_id} was deleted during processing"
             )
             return {"id": preview_file_id, "status": "broken"}
+        except BaseTimeoutException:
+            # rq raises its timeout inside the job: swallowed, the job
+            # would count as successful and mark_broken_on_job_failure
+            # would never run.
+            raise
         except Exception as exc:
             if isinstance(exc, ffmpeg.Error):
                 current_app.logger.error(exc.stderr)
@@ -386,6 +393,7 @@ def _process_movie(
             height,
             encode,
             skip_high_def,
+            temp_files,
         )
     elif encode:
         movie_path = _encode_locally(
@@ -541,6 +549,7 @@ def _encode_on_remote_worker(
     height,
     encode,
     skip_high_def,
+    temp_files,
 ):
     """
     Hand the movie over to the remote worker, which reads the source from
@@ -564,15 +573,24 @@ def _encode_on_remote_worker(
         raise PreviewProcessingFailedException(result)
     if not encode:
         return uploaded_movie_path
-    # The copy fetched here is the movie routes' cache entry: it stays.
-    return fs.get_file_path_and_file(
+    prefix = "lowdef" if skip_high_def else "previews"
+    # The fetch lands on the movie routes' cache path. A copy of a
+    # previous encoding may already sit there (the movie was played on
+    # this host, then renormalized) and would be read instead of the
+    # fresh one: evict it first. The copy does not stay either: the
+    # worker may not be a web host, and nothing evicts that cache.
+    fs.rm_file(fs.get_cache_file_path(config, prefix, preview_file_id, "mp4"))
+    movie_path = fs.get_file_path_and_file(
         config,
         file_store.get_local_movie_path,
         file_store.open_movie,
-        "lowdef" if skip_high_def else "previews",
+        prefix,
         preview_file_id,
         "mp4",
     )
+    if config.FS_BACKEND != "local":
+        temp_files.append(movie_path)
+    return movie_path
 
 
 def _read_movie_metadata(movie_path):

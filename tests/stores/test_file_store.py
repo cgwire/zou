@@ -98,6 +98,54 @@ class ReadGeneratorTestCase(unittest.TestCase):
             list(file_store.open_picture("thumbnails", "does-not-exist"))
 
 
+class SwiftConnectionPerThreadTestCase(unittest.TestCase):
+    def test_swift_reads_never_share_the_backend_connection(self):
+        # swiftclient.Connection is not thread-safe: the request thread
+        # (range read) and the cache fill thread (chunked read) must each
+        # use their own, never the one flask_fs holds on the backend.
+        import threading
+        from unittest.mock import patch
+
+        connections = []
+
+        class FakeConnection:
+            def __init__(self, **kwargs):
+                self.kwargs = kwargs
+                connections.append(self)
+
+            def get_object(self, container, key, **kwargs):
+                return {"content-length": "2"}, iter([b"ab"])
+
+        shared = Mock()
+        shared.get_object.side_effect = AssertionError("shared connection")
+        shared.authurl, shared.user, shared.key = "url", "user", "key"
+        shared.auth_version, shared.os_options, shared.retries = "3", {}, 5
+        movies = Mock()
+        movies.backend.encryptor = None
+        movies.backend.name = "movies"
+        movies.backend.conn = shared
+        results = []
+
+        with (
+            patch.object(file_store, "movies", movies),
+            patch.object(file_store.config, "FS_BACKEND", "swift"),
+            patch("swiftclient.Connection", FakeConnection),
+        ):
+            _, _, generator = file_store.read_movie_range("lowdef", "1")
+            results.append(b"".join(generator))
+            thread = threading.Thread(
+                target=lambda: results.append(
+                    b"".join(file_store.open_movie("lowdef", "1"))
+                )
+            )
+            thread.start()
+            thread.join()
+
+        self.assertEqual(results, [b"ab", b"ab"])
+        self.assertEqual(len(connections), 2)
+        self.assertEqual(connections[0].kwargs["authurl"], "url")
+
+
 class ReadMovieRangeTestCase(unittest.TestCase):
     def test_s3_range_is_forwarded_and_the_body_closed(self):
         from unittest.mock import patch

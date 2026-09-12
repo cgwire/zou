@@ -1,4 +1,6 @@
 import os
+import unicodedata
+from urllib.parse import quote
 import orjson as json
 
 from flask import request, current_app, Response
@@ -7,7 +9,7 @@ from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 from flask_fs.errors import FileNotFound
 from werkzeug.exceptions import NotFound
-from werkzeug.wsgi import FileWrapper
+from werkzeug.wsgi import FileWrapper as WerkzeugFileWrapper
 
 from zou.app import config
 from zou.app.mixin import ArgsMixin
@@ -117,23 +119,48 @@ def send_standard_file(
     )
 
 
-def stream_movie_from_storage(
-    prefix, preview_file_id, mimetype, as_attachment, download_name, max_age
-):
+class SeekableFileWrapper(WerkzeugFileWrapper):
     """
-    Serve a movie that is not in the local cache yet straight from the
-    object storage, so the first play does not wait for the whole file to
-    land on the disk. Only a single byte range is forwarded; a multipart
-    range gets the whole file, like no range at all.
+    Werkzeug's file wrapper (it seeks, gunicorn's does not) with the
+    attribute gunicorn's sendfile path reads on a response that is an
+    instance of the wrapper found in wsgi.file_wrapper.
     """
-    range_header = None
+
+    @property
+    def filelike(self):
+        return self.file
+
+
+def get_single_byte_range():
+    """
+    The request's Range header when it asks for one byte range, the way
+    a movie player does. None otherwise: a multipart range gets the whole
+    file, like no range at all.
+    """
     byte_range = request.range
     if (
         byte_range is not None
         and byte_range.units == "bytes"
         and len(byte_range.ranges) == 1
     ):
-        range_header = byte_range.to_header()
+        return byte_range.to_header()
+    return None
+
+
+def stream_movie_from_storage(
+    prefix,
+    preview_file_id,
+    range_header,
+    mimetype,
+    as_attachment,
+    download_name,
+    max_age,
+):
+    """
+    Serve a movie that is not in the local cache yet straight from the
+    object storage, so the first play does not wait for the whole file to
+    land on the disk.
+    """
     content_length, content_range, generator = file_store.read_movie_range(
         prefix, preview_file_id, range_header
     )
@@ -148,9 +175,19 @@ def stream_movie_from_storage(
     if content_range:
         response.headers["Content-Range"] = content_range
     if as_attachment:
-        response.headers.set(
-            "Content-Disposition", "attachment", filename=download_name
-        )
+        # Same folding as werkzeug's send_file on the warm path: a raw
+        # non-ASCII name is an invalid header value for gunicorn.
+        try:
+            download_name.encode("ascii")
+            names = {"filename": download_name}
+        except UnicodeEncodeError:
+            simple = unicodedata.normalize("NFKD", download_name)
+            names = {
+                "filename": simple.encode("ascii", "ignore").decode("ascii"),
+                "filename*": "UTF-8''"
+                + quote(download_name, safe="!#$&+-.^_`|~"),
+            }
+        response.headers.set("Content-Disposition", "attachment", **names)
     response.cache_control.private = True
     response.cache_control.max_age = max_age
     return response
@@ -281,6 +318,8 @@ def send_storage_file(
 
     With ``stream_cold``, a movie missing from that cache is streamed from
     the storage right away while a background download fills the cache.
+    Only a ranged request (a player) is served that way: a whole-file
+    request would cost two full storage reads and lose the validators.
     """
     file_size = None
     try:
@@ -302,26 +341,38 @@ def send_storage_file(
     if as_attachment:
         download_name = names_service.get_preview_file_name(preview_file_id)
 
-    if stream_cold and file_store.can_stream_movie_ranges():
+    # Werkzeug never starts the body generator of a HEAD response: a
+    # storage stream opened for it would only be closed by refcount.
+    range_header = (
+        get_single_byte_range()
+        if stream_cold and request.method != "HEAD"
+        else None
+    )
+    if range_header and file_store.can_stream_movie_ranges():
         cache_path = fs.get_cache_file_path(
             config, prefix, preview_file_id, extension
         )
         if fs.is_invalid_file(cache_path, file_size):
-            fs.fill_cache_in_background(
-                cache_path, open_file, prefix, preview_file_id
-            )
             # No ETag or Last-Modified on purpose: a browser that got one
             # here would send it back as If-Range once the cache is warm,
             # where send_file computes a different validator and would
             # answer the whole file. The bytes are the same either way.
-            return stream_movie_from_storage(
+            response = stream_movie_from_storage(
                 prefix,
                 preview_file_id,
+                range_header,
                 mimetype,
                 as_attachment,
                 download_name,
                 max_age,
             )
+            # Only once the range read proved the storage holds this
+            # prefix: the fallback tries prefixes it may not, and a fill
+            # started for a missing one is a wasted download.
+            fs.fill_cache_in_background(
+                cache_path, open_file, prefix, preview_file_id
+            )
+            return response
 
     file_path = fs.get_file_path_and_file(
         config,
@@ -338,9 +389,9 @@ def send_storage_file(
     # wrapper has a seekable() method. gunicorn's FileWrapper has none, so
     # every Range request read and discarded the file from byte 0 up to the
     # range: linear in the offset, seconds per request at the end of a long
-    # movie, blocking the worker. Werkzeug's own FileWrapper (same name,
-    # different class) is seekable: swap it in for this response.
-    request.environ["wsgi.file_wrapper"] = FileWrapper
+    # movie, blocking the worker. Swap in a seekable wrapper for this
+    # response.
+    request.environ["wsgi.file_wrapper"] = SeekableFileWrapper
     try:
         response = flask_send_file(
             file_path,
