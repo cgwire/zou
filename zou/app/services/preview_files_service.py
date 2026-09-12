@@ -564,12 +564,17 @@ def _encode_on_remote_worker(
         raise PreviewProcessingFailedException(result)
     if not encode:
         return uploaded_movie_path
+    prefix = "lowdef" if skip_high_def else "previews"
     # The copy fetched here is the movie routes' cache entry: it stays.
+    # A copy of a previous encoding may already sit there (the movie was
+    # played on this host, then renormalized) and would be read instead
+    # of the fresh one: evict it first.
+    fs.rm_file(fs.get_cache_file_path(config, prefix, preview_file_id, "mp4"))
     return fs.get_file_path_and_file(
         config,
         file_store.get_local_movie_path,
         file_store.open_movie,
-        "lowdef" if skip_high_def else "previews",
+        prefix,
         preview_file_id,
         "mp4",
     )
