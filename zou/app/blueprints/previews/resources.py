@@ -1,4 +1,6 @@
 import os
+import unicodedata
+from urllib.parse import quote
 import orjson as json
 
 from flask import request, current_app, Response
@@ -160,9 +162,19 @@ def stream_movie_from_storage(
     if content_range:
         response.headers["Content-Range"] = content_range
     if as_attachment:
-        response.headers.set(
-            "Content-Disposition", "attachment", filename=download_name
-        )
+        # Same folding as werkzeug's send_file on the warm path: a raw
+        # non-ASCII name is an invalid header value for gunicorn.
+        try:
+            download_name.encode("ascii")
+            names = {"filename": download_name}
+        except UnicodeEncodeError:
+            simple = unicodedata.normalize("NFKD", download_name)
+            names = {
+                "filename": simple.encode("ascii", "ignore").decode("ascii"),
+                "filename*": "UTF-8''"
+                + quote(download_name, safe="!#$&+-.^_`|~"),
+            }
+        response.headers.set("Content-Disposition", "attachment", **names)
     response.cache_control.private = True
     response.cache_control.max_age = max_age
     return response

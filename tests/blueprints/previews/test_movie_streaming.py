@@ -265,6 +265,39 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
         self.assertIsInstance(respiter.filelike.fileno(), int)
         response.close()
 
+    def test_cold_cache_download_folds_the_file_name_like_send_file(self):
+        # The warm path goes through send_file, which folds a non-ASCII
+        # download name to ASCII and adds an RFC 2231 filename*. A raw
+        # name on the cold path is an invalid header value for gunicorn.
+        preview_file_id = self.upload_movie_preview()
+        url = f"/movies/originals/preview-files/{preview_file_id}/download"
+        with patch.object(
+            preview_resources.names_service,
+            "get_preview_file_name",
+            return_value="カット 01.mp4",
+        ):
+            warm = self.app.get(url, headers=self.base_headers)
+            with (
+                patch.object(
+                    preview_resources.file_store,
+                    "can_stream_movie_ranges",
+                    return_value=True,
+                ),
+                patch.object(
+                    preview_resources.file_store,
+                    "read_movie_range",
+                    return_value=(2, None, iter([b"ab"])),
+                ),
+                patch.object(preview_resources.fs, "fill_cache_in_background"),
+            ):
+                cold = self.app.get(url, headers=self.base_headers)
+        self.assertEqual(cold.status_code, 200)
+        self.assertIn("filename*=UTF-8''", warm.headers["Content-Disposition"])
+        self.assertEqual(
+            cold.headers["Content-Disposition"],
+            warm.headers["Content-Disposition"],
+        )
+
     def test_cold_cache_streams_the_range_from_the_storage(self):
         # Remote backend, movie not in the local cache yet: the range is
         # served from the storage right away and one background download
