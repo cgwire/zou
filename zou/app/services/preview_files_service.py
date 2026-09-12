@@ -8,6 +8,7 @@ import time
 import zipfile
 
 import ffmpeg
+from rq.timeouts import BaseTimeoutException
 from PIL import Image
 
 from sqlalchemy.orm import aliased
@@ -318,7 +319,8 @@ def prepare_and_store_movie(
     Turn an uploaded movie into a ready preview file: keep the source when
     asked, encode the preview versions (here or on the remote worker),
     build the thumbnails and the tile, then record the metadata and which
-    versions are stored. Any failure marks the preview file as broken, and
+    versions are stored. Any failure marks the preview file as broken
+    (the job timeout goes through, so that rq records the failure), and
     the temporary files are removed whatever happens.
     """
     from zou.app import app as current_app
@@ -338,6 +340,11 @@ def prepare_and_store_movie(
                 f"Preview file {preview_file_id} was deleted during processing"
             )
             return {"id": preview_file_id, "status": "broken"}
+        except BaseTimeoutException:
+            # rq raises its timeout inside the job: swallowed, the job
+            # would count as successful and mark_broken_on_job_failure
+            # would never run.
+            raise
         except Exception as exc:
             if isinstance(exc, ffmpeg.Error):
                 current_app.logger.error(exc.stderr)

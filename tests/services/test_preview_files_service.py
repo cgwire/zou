@@ -680,6 +680,27 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
         with open(movie_path, "rb") as movie_file:
             self.assertEqual(movie_file.read(), b"new encoding")
 
+    @patch("zou.app.services.preview_files_service._process_movie")
+    def test_prepare_and_store_movie_lets_the_job_timeout_through(
+        self, mock_process
+    ):
+        """
+        rq raises its timeout inside the job: swallowed, the job counts as
+        successful, never reaches the failed registry, and the failure
+        callback that marks the preview file as broken never runs.
+        """
+        from rq.timeouts import JobTimeoutException
+
+        preview_file = self.generate_fixture_preview_file(status="processing")
+        uploaded_path = self._write_temp_movie()
+        mock_process.side_effect = JobTimeoutException()
+
+        with self.assertRaises(JobTimeoutException):
+            preview_files_service.prepare_and_store_movie(
+                str(preview_file.id), uploaded_path, normalize=True
+            )
+        self.assertFalse(os.path.exists(uploaded_path))
+
     def test_copying_a_movie_preview_carries_the_source_along(self):
         """
         A preview file whose normalization was skipped only holds a source
