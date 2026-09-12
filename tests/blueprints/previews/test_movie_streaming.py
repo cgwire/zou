@@ -371,6 +371,35 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
         self.assertEqual(response.status_code, 206)
         self.assertEqual(fills, ["source"])
 
+    def test_head_on_a_cold_cache_opens_no_storage_stream(self):
+        # Werkzeug never starts the body generator of a HEAD response, so
+        # a storage read opened for it is torn down by refcount only, its
+        # `finally: close()` never run. HEAD takes the warm path.
+        preview_file_id = self.upload_movie_preview()
+        with (
+            patch.object(
+                preview_resources.file_store,
+                "can_stream_movie_ranges",
+                return_value=True,
+            ),
+            patch.object(
+                preview_resources.file_store,
+                "read_movie_range",
+                side_effect=AssertionError("storage stream opened"),
+            ),
+            patch.object(
+                preview_resources.fs,
+                "fill_cache_in_background",
+                side_effect=AssertionError("filled in background"),
+            ),
+        ):
+            response = self.app.head(
+                f"/movies/originals/preview-files/{preview_file_id}.mp4",
+                headers={**self.base_headers, "Range": "bytes=0-1"},
+            )
+        self.assertEqual(response.status_code, 206)
+        self.assertEqual(response.data, b"")
+
     def test_cold_cache_streams_the_range_from_the_storage(self):
         # Remote backend, movie not in the local cache yet: the range is
         # served from the storage right away and one background download

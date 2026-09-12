@@ -341,7 +341,13 @@ def send_storage_file(
     if as_attachment:
         download_name = names_service.get_preview_file_name(preview_file_id)
 
-    range_header = get_single_byte_range() if stream_cold else None
+    # Werkzeug never starts the body generator of a HEAD response: a
+    # storage stream opened for it would only be closed by refcount.
+    range_header = (
+        get_single_byte_range()
+        if stream_cold and request.method != "HEAD"
+        else None
+    )
     if range_header and file_store.can_stream_movie_ranges():
         cache_path = fs.get_cache_file_path(
             config, prefix, preview_file_id, extension
