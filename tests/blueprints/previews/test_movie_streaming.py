@@ -214,3 +214,27 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
 
         self.assertEqual(self.get_movie(preview_file_id).status_code, 200)
         self.assertEqual(self.recorded_prefixes(preview_file_id), ["source"])
+
+    def test_range_request_uses_a_seekable_file_wrapper(self):
+        # gunicorn's wsgi.file_wrapper is not seekable, so Werkzeug used to
+        # read the file from the start for every Range request. Hand the
+        # route a wrapper that cannot be iterated: the response only works
+        # if the route swapped it for Werkzeug's seekable one.
+        class NotSeekable:
+            def __init__(self, file, *args):
+                self.file = file
+
+            def __iter__(self):
+                raise AssertionError("range served without seeking")
+
+        preview_file_id = self.upload_movie_preview()
+        with open(self.movie_path, "rb") as movie_file:
+            movie_file.seek(1000)
+            expected = movie_file.read(500)
+        response = self.app.get(
+            f"/movies/originals/preview-files/{preview_file_id}.mp4",
+            headers={**self.base_headers, "Range": "bytes=1000-1499"},
+            environ_overrides={"wsgi.file_wrapper": NotSeekable},
+        )
+        self.assertEqual(response.status_code, 206)
+        self.assertEqual(response.data, expected)

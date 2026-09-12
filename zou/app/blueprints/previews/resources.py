@@ -7,6 +7,7 @@ from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 from flask_fs.errors import FileNotFound
 from werkzeug.exceptions import NotFound
+from werkzeug.wsgi import FileWrapper
 
 from zou.app import config
 from zou.app.mixin import ArgsMixin
@@ -267,6 +268,14 @@ def send_storage_file(
     if as_attachment:
         download_name = names_service.get_preview_file_name(preview_file_id)
 
+    # send_file wraps the file in whatever the WSGI server put in
+    # wsgi.file_wrapper, and Werkzeug's range wrapper only seeks when that
+    # wrapper has a seekable() method. gunicorn's FileWrapper has none, so
+    # every Range request read and discarded the file from byte 0 up to the
+    # range: linear in the offset, seconds per request at the end of a long
+    # movie, blocking the worker. Werkzeug's own FileWrapper (same name,
+    # different class) is seekable: swap it in for this response.
+    request.environ["wsgi.file_wrapper"] = FileWrapper
     try:
         response = flask_send_file(
             file_path,
