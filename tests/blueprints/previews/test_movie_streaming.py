@@ -332,6 +332,45 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
         self.assertEqual(response.data, movie_content)
         self.assertIn("ETag", response.headers)
 
+    def test_cold_cache_fills_only_a_prefix_the_storage_holds(self):
+        # The prefix fallback tries prefixes the storage may not hold: a
+        # fill started before the range read proved the object exists is
+        # a doomed download and a lock file left behind for every miss.
+        from flask_fs.errors import FileNotFound
+
+        preview_file_id = self.upload_movie_preview(save_source_file=True)
+        self.record_prefixes(preview_file_id, ["previews"])
+        fills = []
+
+        def read_movie_range(prefix, id, range_header=None):
+            if prefix != "source":
+                raise FileNotFound(f"{prefix}-{id}")
+            return 2, "bytes 0-1/2", iter([b"ab"])
+
+        with (
+            patch.object(
+                preview_resources.file_store,
+                "can_stream_movie_ranges",
+                return_value=True,
+            ),
+            patch.object(
+                preview_resources.file_store,
+                "read_movie_range",
+                side_effect=read_movie_range,
+            ),
+            patch.object(
+                preview_resources.fs,
+                "fill_cache_in_background",
+                side_effect=lambda *args: fills.append(args[2]),
+            ),
+        ):
+            response = self.app.get(
+                f"/movies/originals/preview-files/{preview_file_id}.mp4",
+                headers={**self.base_headers, "Range": "bytes=0-1"},
+            )
+        self.assertEqual(response.status_code, 206)
+        self.assertEqual(fills, ["source"])
+
     def test_cold_cache_streams_the_range_from_the_storage(self):
         # Remote backend, movie not in the local cache yet: the range is
         # served from the storage right away and one background download

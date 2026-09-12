@@ -347,14 +347,11 @@ def send_storage_file(
             config, prefix, preview_file_id, extension
         )
         if fs.is_invalid_file(cache_path, file_size):
-            fs.fill_cache_in_background(
-                cache_path, open_file, prefix, preview_file_id
-            )
             # No ETag or Last-Modified on purpose: a browser that got one
             # here would send it back as If-Range once the cache is warm,
             # where send_file computes a different validator and would
             # answer the whole file. The bytes are the same either way.
-            return stream_movie_from_storage(
+            response = stream_movie_from_storage(
                 prefix,
                 preview_file_id,
                 range_header,
@@ -363,6 +360,13 @@ def send_storage_file(
                 download_name,
                 max_age,
             )
+            # Only once the range read proved the storage holds this
+            # prefix: the fallback tries prefixes it may not, and a fill
+            # started for a missing one is a wasted download.
+            fs.fill_cache_in_background(
+                cache_path, open_file, prefix, preview_file_id
+            )
+            return response
 
     file_path = fs.get_file_path_and_file(
         config,
