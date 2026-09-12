@@ -238,3 +238,54 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
         )
         self.assertEqual(response.status_code, 206)
         self.assertEqual(response.data, expected)
+
+    def test_cold_cache_streams_the_range_from_the_storage(self):
+        # Remote backend, movie not in the local cache yet: the range is
+        # served from the storage right away and one background download
+        # fills the cache, instead of the request waiting for the whole
+        # file to land on the disk.
+        preview_file_id = self.upload_movie_preview()
+        with open(self.movie_path, "rb") as movie_file:
+            movie_content = movie_file.read()
+        fills = []
+
+        def read_movie_range(prefix, id, range_header=None):
+            self.assertEqual(range_header, "bytes=1000-1499")
+            total = len(movie_content)
+            return (
+                500,
+                f"bytes 1000-1499/{total}",
+                iter([movie_content[1000:1500]]),
+            )
+
+        with (
+            patch.object(
+                preview_resources.file_store,
+                "can_stream_movie_ranges",
+                return_value=True,
+            ),
+            patch.object(
+                preview_resources.file_store,
+                "read_movie_range",
+                side_effect=read_movie_range,
+            ),
+            patch.object(
+                preview_resources.fs,
+                "fill_cache_in_background",
+                side_effect=lambda *args: fills.append(args),
+            ),
+        ):
+            response = self.app.get(
+                f"/movies/originals/preview-files/{preview_file_id}.mp4",
+                headers={**self.base_headers, "Range": "bytes=1000-1499"},
+            )
+        self.assertEqual(response.status_code, 206)
+        self.assertEqual(
+            response.headers["Content-Range"],
+            f"bytes 1000-1499/{len(movie_content)}",
+        )
+        self.assertEqual(response.headers["Content-Length"], "500")
+        self.assertEqual(response.data, movie_content[1000:1500])
+        self.assertNotIn("ETag", response.headers)
+        self.assertEqual(len(fills), 1)
+        self.assertTrue(fills[0][0].endswith(f"-{preview_file_id}.mp4"))

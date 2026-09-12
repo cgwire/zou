@@ -223,3 +223,46 @@ class DownloadToFileTestCase(unittest.TestCase):
         with open(file_path, "rb") as cached:
             self.assertEqual(cached.read(), b"complete-movie")
         sleep.assert_not_called()
+
+
+class FillCacheInBackgroundTestCase(unittest.TestCase):
+    def wait_for(self, path):
+        import time
+
+        for _ in range(100):
+            if os.path.exists(path):
+                return
+            time.sleep(0.05)
+        self.fail(f"{path} never appeared")
+
+    def test_downloads_once_under_the_lock(self):
+        import fcntl
+
+        calls = []
+
+        def open_file(prefix, instance_id):
+            calls.append(instance_id)
+            yield b"movie"
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            file_path = os.path.join(tmp_dir, "cache-lowdef-1.mp4")
+            lock_file = open(f"{file_path}.lock", "a")
+            fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            # Another worker is downloading: do not start a second one.
+            self.assertFalse(
+                fs.fill_cache_in_background(
+                    file_path, open_file, "lowdef", "1"
+                )
+            )
+            self.assertEqual(calls, [])
+            lock_file.close()
+
+            self.assertTrue(
+                fs.fill_cache_in_background(
+                    file_path, open_file, "lowdef", "1"
+                )
+            )
+            self.wait_for(file_path)
+            with open(file_path, "rb") as cached:
+                self.assertEqual(cached.read(), b"movie")
+            self.assertEqual(calls, ["1"])

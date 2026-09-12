@@ -7,6 +7,7 @@ from werkzeug.utils import cached_property
 from zou.app import config
 from flask_fs.backends.local import LocalBackend
 from flask_fs.errors import FileNotFound
+from werkzeug.exceptions import RequestedRangeNotSatisfiable
 
 from zou.app.utils import fs
 
@@ -341,8 +342,10 @@ def make_read_generator(bucket, key, bucket_name=None):
     When ``bucket_name`` is provided and Prometheus is enabled, the generator
     records a ``download`` operation with cumulative byte count.
     """
-    read_stream = _read_chunks(bucket, key)
+    return _measured_read(_read_chunks(bucket, key), key, bucket_name)
 
+
+def _measured_read(read_stream, key, bucket_name=None):
     def read_generator(read_stream):
         tracker = _ByteTracker()
         measured = (
@@ -366,6 +369,68 @@ def make_read_generator(bucket, key, bucket_name=None):
                     pass
 
     return read_generator(read_stream)
+
+
+RANGE_CHUNK_SIZE = 1024 * 1024
+
+
+def can_stream_movie_ranges():
+    """
+    Tell whether a movie can be served straight from the object storage by
+    byte range. Encrypted Swift objects cannot: the cipher stream has to be
+    read from its start.
+    """
+    return (
+        config.FS_BACKEND in ("s3", "swift")
+        and movies.backend.encryptor is None
+    )
+
+
+def read_movie_range(prefix, id, range_header=None):
+    """
+    Stream a movie from the object storage without caching it locally,
+    the given ``Range`` header value (``bytes=start-end``) applied by the
+    storage itself. Return ``(content_length, content_range, generator)``:
+    ``content_range`` is None when no range was asked.
+    """
+    key = make_key(prefix, id)
+    backend = movies.backend
+    try:
+        if config.FS_BACKEND == "s3":
+            kwargs = {"Range": range_header} if range_header else {}
+            obj = backend.bucket.Object(key).get(**kwargs)
+            body = obj["Body"]
+
+            def read_stream(body=body):
+                try:
+                    yield from body.iter_chunks(RANGE_CHUNK_SIZE)
+                finally:
+                    body.close()
+
+            content_length = obj["ContentLength"]
+            content_range = obj.get("ContentRange")
+            generator = read_stream()
+        else:
+            headers = {"Range": range_header} if range_header else None
+            resp_headers, generator = backend.conn.get_object(
+                backend.name,
+                key,
+                resp_chunk_size=RANGE_CHUNK_SIZE,
+                headers=headers,
+            )
+            content_length = int(resp_headers["content-length"])
+            content_range = resp_headers.get("content-range")
+    except Exception as exc:
+        if fs.is_missing_file_error(exc):
+            raise FileNotFound(key) from exc
+        if fs.is_range_error(exc):
+            raise RequestedRangeNotSatisfiable() from exc
+        raise
+    return (
+        content_length,
+        content_range,
+        _measured_read(generator, key, bucket_name="movies"),
+    )
 
 
 # ----------------------------------------------------------------------

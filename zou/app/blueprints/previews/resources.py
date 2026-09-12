@@ -1,7 +1,7 @@
 import os
 import orjson as json
 
-from flask import request, current_app
+from flask import request, current_app, Response
 from flask import send_file as flask_send_file
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -117,6 +117,45 @@ def send_standard_file(
     )
 
 
+def stream_movie_from_storage(
+    prefix, preview_file_id, mimetype, as_attachment, download_name, max_age
+):
+    """
+    Serve a movie that is not in the local cache yet straight from the
+    object storage, so the first play does not wait for the whole file to
+    land on the disk. Only a single byte range is forwarded; a multipart
+    range gets the whole file, like no range at all.
+    """
+    range_header = None
+    byte_range = request.range
+    if (
+        byte_range is not None
+        and byte_range.units == "bytes"
+        and len(byte_range.ranges) == 1
+    ):
+        range_header = byte_range.to_header()
+    content_length, content_range, generator = file_store.read_movie_range(
+        prefix, preview_file_id, range_header
+    )
+    response = Response(
+        generator,
+        status=206 if content_range else 200,
+        mimetype=mimetype,
+        direct_passthrough=True,
+    )
+    response.headers["Accept-Ranges"] = "bytes"
+    response.headers["Content-Length"] = content_length
+    if content_range:
+        response.headers["Content-Range"] = content_range
+    if as_attachment:
+        response.headers.set(
+            "Content-Disposition", "attachment", filename=download_name
+        )
+    response.cache_control.private = True
+    response.cache_control.max_age = max_age
+    return response
+
+
 def send_movie_file(
     preview_file_id,
     as_attachment=False,
@@ -157,6 +196,7 @@ def send_movie_file(
                 mimetype="video/mp4",
                 as_attachment=as_attachment,
                 last_modified=last_modified,
+                stream_cold=True,
             )
         except FileNotFound:
             if prefix == prefixes[-1]:
@@ -233,10 +273,14 @@ def send_storage_file(
     max_age=config.CLIENT_CACHE_MAX_AGE,
     download_name="",
     last_modified=None,
+    stream_cold=False,
 ):
     """
     Send file from storage. If it's not a local storage, cache the file in
     a temporary folder before sending it. It accepts conditional headers.
+
+    With ``stream_cold``, a movie missing from that cache is streamed from
+    the storage right away while a background download fills the cache.
     """
     file_size = None
     try:
@@ -255,6 +299,30 @@ def send_storage_file(
                 file_size = preview_file["file_size"]
     except NotFound:
         pass
+    if as_attachment:
+        download_name = names_service.get_preview_file_name(preview_file_id)
+
+    if stream_cold and file_store.can_stream_movie_ranges():
+        cache_path = fs.get_cache_file_path(
+            config, prefix, preview_file_id, extension
+        )
+        if fs.is_invalid_file(cache_path, file_size):
+            fs.fill_cache_in_background(
+                cache_path, open_file, prefix, preview_file_id
+            )
+            # No ETag or Last-Modified on purpose: a browser that got one
+            # here would send it back as If-Range once the cache is warm,
+            # where send_file computes a different validator and would
+            # answer the whole file. The bytes are the same either way.
+            return stream_movie_from_storage(
+                prefix,
+                preview_file_id,
+                mimetype,
+                as_attachment,
+                download_name,
+                max_age,
+            )
+
     file_path = fs.get_file_path_and_file(
         config,
         get_local_path,
@@ -264,9 +332,6 @@ def send_storage_file(
         extension,
         file_size=file_size,
     )
-
-    if as_attachment:
-        download_name = names_service.get_preview_file_name(preview_file_id)
 
     # send_file wraps the file in whatever the WSGI server put in
     # wsgi.file_wrapper, and Werkzeug's range wrapper only seeks when that
