@@ -14,7 +14,7 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
 
 from zou.app import config
-from zou.app.stores import config_store, file_store
+from zou.app.stores import config_store, file_store, queue_store
 from zou.app.stores.redis_lock import with_preview_file_lock
 
 from zou.app.models.entity import Entity
@@ -243,24 +243,6 @@ def _remove_temp_files(*paths):
                 pass
 
 
-def _abort_on_storage_failure(preview_file_id, operation, exc):
-    """
-    Log a file store backend failure (Swift 401, S3 timeout, network error,
-    etc.) and mark the preview file as broken so the worker does not crash on
-    transient or auth issues.
-    """
-    from zou.app import app as current_app
-
-    current_app.logger.error(
-        "Storage failure for preview %s during %s: %s",
-        preview_file_id,
-        operation,
-        exc,
-        exc_info=1,
-    )
-    return set_preview_file_as_broken(preview_file_id)
-
-
 def mark_broken_on_job_failure(
     job, connection, exc_type, exc_value, traceback
 ):
@@ -290,6 +272,42 @@ def mark_broken_on_job_failure(
             )
 
 
+def dispatch_movie_processing(
+    preview_file_id,
+    uploaded_movie_path,
+    normalize=True,
+    add_source_to_file_store=True,
+    no_job=False,
+):
+    """
+    Run prepare_and_store_movie on the job queue when one is enabled, in
+    the calling thread otherwise. A raw store is cheap enough to stay
+    synchronous, but the remote worker blocks until Nomad is done and is
+    what builds the thumbnails even without normalization: it never runs
+    in a request thread.
+    """
+    needs_job = normalize or is_remote_normalization_enabled()
+    if needs_job and config.ENABLE_JOB_QUEUE and not no_job:
+        queue_store.job_queue.enqueue(
+            prepare_and_store_movie,
+            args=(
+                preview_file_id,
+                uploaded_movie_path,
+                normalize,
+                add_source_to_file_store,
+            ),
+            job_timeout=int(config.JOB_QUEUE_TIMEOUT),
+            on_failure=mark_broken_on_job_failure,
+        )
+    else:
+        prepare_and_store_movie(
+            preview_file_id,
+            uploaded_movie_path,
+            normalize=normalize,
+            add_source_to_file_store=add_source_to_file_store,
+        )
+
+
 def prepare_and_store_movie(
     preview_file_id,
     uploaded_movie_path,
@@ -297,330 +315,324 @@ def prepare_and_store_movie(
     add_source_to_file_store=True,
 ):
     """
-    Prepare movie preview, normalize the movie as a .mp4, build the thumbnails
-    and store the files.
+    Turn an uploaded movie into a ready preview file: keep the source when
+    asked, encode the preview versions (here or on the remote worker),
+    build the thumbnails and the tile, then record the metadata and which
+    versions are stored. Any failure marks the preview file as broken, and
+    the temporary files are removed whatever happens.
     """
     from zou.app import app as current_app
 
+    temp_files = [uploaded_movie_path]
     with current_app.app_context():
-        if add_source_to_file_store:
-            try:
-                file_store.add_movie(
-                    "source", preview_file_id, uploaded_movie_path
-                )
-            except Exception as exc:
-                _remove_temp_files(uploaded_movie_path)
-                return _abort_on_storage_failure(
-                    preview_file_id, "source movie upload", exc
-                )
-        preview_file_raw = files_service.get_preview_file_raw(preview_file_id)
-
-        # Capture original metadata before normalization. This is a
-        # nice-to-have, so any failure here must not block the main pipeline.
-        # silent=True avoids emitting a second preview-file:update event
-        # alongside the final "ready" update at the end of this function.
         try:
-            original_width, original_height = movie.get_movie_size(
-                uploaded_movie_path
-            )
-            original_duration = movie.get_movie_duration(uploaded_movie_path)
-            original_file_size = os.path.getsize(uploaded_movie_path)
-            update_preview_file_raw(
-                preview_file_raw,
-                {
-                    "data": {
-                        **files_service.get_preview_file_data(
-                            preview_file_raw
-                        ),
-                        "original_width": original_width,
-                        "original_height": original_height,
-                        "original_duration": original_duration,
-                        "original_file_size": original_file_size,
-                    }
-                },
-                silent=True,
-            )
-        except PreviewFileNotFoundException:
-            current_app.logger.warning(
-                "Preview file %s was deleted while capturing original "
-                "video metadata; skipping metadata capture",
+            return _process_movie(
                 preview_file_id,
-            )
-        except Exception:
-            current_app.logger.warning(
-                "Failed to capture original video metadata for %s; "
-                "continuing without it",
                 uploaded_movie_path,
-                exc_info=1,
+                normalize,
+                add_source_to_file_store,
+                temp_files,
             )
-
-        normalized_movie_path = None
-        normalized_movie_low_path = None
-        original_picture_path = None
-        try:
-            project = get_project_from_preview_file(preview_file_id)
-            entity = get_entity_from_preview_file(preview_file_id)
-        except PreviewFileNotFoundException:
-            time.sleep(2)
-            try:
-                project = get_project_from_preview_file(preview_file_id)
-                entity = get_entity_from_preview_file(preview_file_id)
-            except PreviewFileNotFoundException:
-                current_app.logger.error(
-                    "Data is missing from database", exc_info=1
-                )
-                time.sleep(2)
-                preview_file = set_preview_file_as_broken(preview_file_id)
-                _remove_temp_files(uploaded_movie_path)
-                return preview_file
-
-        fps = get_preview_file_fps(project, entity)
-        width, height = get_preview_file_dimensions(project, entity)
-
-        is_remote = is_remote_normalization_enabled()
-
-        # SKIP_NORMALIZATION_FULL turns every upload into a raw store, as if
-        # the client had asked for normalize=false. SKIP_NORMALIZATION_HIGHDEF
-        # only drops the 28M encoding: the low def version is still built and
-        # becomes the only movie stored.
-        if config.SKIP_NORMALIZATION_FULL:
-            normalize = False
-        skip_high_def = config.SKIP_NORMALIZATION_HIGHDEF
-
-        # The remote job is also what builds the thumbnails and the tile, so
-        # it must run even when nothing has to be encoded.
-        if normalize or is_remote:
-            if normalize:
-                current_app.logger.info("start normalization")
-            else:
-                current_app.logger.info(
-                    "start remote preview processing without normalization"
-                )
-            try:
-                if is_remote:
-                    result = _run_remote_normalize_movie(
-                        current_app,
-                        preview_file_id,
-                        fps,
-                        width,
-                        height,
-                        skip_high_def=skip_high_def,
-                        skip_normalization=not normalize,
-                    )
-                    if result is not True:
-                        raise PreviewProcessingFailedException(result)
-
-                    if normalize:
-                        # Without the high def version, the low def one is
-                        # the only movie the remote job uploaded.
-                        normalized_movie_path = fs.get_file_path_and_file(
-                            config,
-                            file_store.get_local_movie_path,
-                            file_store.open_movie,
-                            "lowdef" if skip_high_def else "previews",
-                            preview_file_id,
-                            ".mp4",
-                        )
-                    else:
-                        # Nothing was encoded: the source uploaded for the
-                        # job stays the only movie, and it is still here.
-                        normalized_movie_path = uploaded_movie_path
-                else:
-                    (
-                        normalized_movie_path,
-                        normalized_movie_low_path,
-                        err,
-                    ) = movie.normalize_movie(
-                        uploaded_movie_path,
-                        fps=fps,
-                        width=width,
-                        height=height,
-                        skip_high_def=skip_high_def,
-                    )
-                    if err:
-                        # The normalized files were never produced: fail
-                        # before storing anything.
-                        raise PreviewProcessingFailedException(err)
-                    if normalized_movie_path is not None:
-                        file_store.add_movie(
-                            "previews", preview_file_id, normalized_movie_path
-                        )
-                    file_store.add_movie(
-                        "lowdef", preview_file_id, normalized_movie_low_path
-                    )
-                    if normalized_movie_path is None:
-                        # Everything below (metadata, thumbnails, tile) works
-                        # on the movie that was actually produced.
-                        normalized_movie_path = normalized_movie_low_path
-
-                if normalize:
-                    current_app.logger.info(
-                        f"file normalized {normalized_movie_path}"
-                    )
-                    current_app.logger.info("file stored")
-                else:
-                    current_app.logger.info(
-                        f"remote processing done, movie left as uploaded "
-                        f"{normalized_movie_path}"
-                    )
-            except Exception as exc:
-                if isinstance(exc, ffmpeg.Error):
-                    current_app.logger.error(exc.stderr)
-                current_app.logger.error("failed", exc_info=1)
-                preview_file = set_preview_file_as_broken(preview_file_id)
-                _remove_temp_files(
-                    uploaded_movie_path,
-                    normalized_movie_path,
-                    normalized_movie_low_path,
-                )
-                return preview_file
-        else:
-            # The uploaded movie is the preview. It only goes under the
-            # `previews` prefix when it was not already stored as the
-            # source: the movie routes fall back from one to the other, so
-            # a second copy of the same bytes buys nothing.
-            try:
-                if not add_source_to_file_store:
-                    file_store.add_movie(
-                        "previews", preview_file_id, uploaded_movie_path
-                    )
-            except Exception as exc:
-                _remove_temp_files(uploaded_movie_path)
-                return _abort_on_storage_failure(
-                    preview_file_id, "movie upload", exc
-                )
-            normalized_movie_path = uploaded_movie_path
-
-        # Build thumbnails (skipped when remote v2+, done by Nomad job).
-        # Any failure here must mark the preview file as broken: an
-        # uncaught exception would kill the job and leave the status
-        # stuck on "processing" forever.
-        try:
-            size = movie.get_movie_size(normalized_movie_path)
-            width, height = size
-            file_size = os.path.getsize(normalized_movie_path)
-            duration = movie.get_movie_duration(normalized_movie_path)
-
-            remote_handles_thumbnails = (
-                is_remote and REMOTE_NORMALIZE_VERSION >= 2
-            )
-            if not remote_handles_thumbnails:
-                original_picture_path = movie.generate_thumbnail(
-                    normalized_movie_path
-                )
-                thumbnail_utils.turn_into_thumbnail(
-                    original_picture_path, size
-                )
-                try:
-                    save_variants(preview_file_id, original_picture_path)
-                except Exception as exc:
-                    _remove_temp_files(
-                        uploaded_movie_path,
-                        normalized_movie_path,
-                        normalized_movie_low_path,
-                        original_picture_path,
-                    )
-                    return _abort_on_storage_failure(
-                        preview_file_id, "thumbnail variants upload", exc
-                    )
-                current_app.logger.info(
-                    f"thumbnail created {original_picture_path}"
-                )
-
-                # Build tiles
-                try:
-                    tile_path = movie.generate_tile(normalized_movie_path)
-                    file_store.add_picture("tiles", preview_file_id, tile_path)
-                    os.remove(tile_path)
-                    current_app.logger.info(f"tile created {tile_path}")
-                except Exception:
-                    current_app.logger.error(
-                        "Failed to create tile", exc_info=1
-                    )
-        except Exception:
-            current_app.logger.error(
-                f"Failed to build thumbnails for preview file "
-                f"{preview_file_id}",
-                exc_info=1,
-            )
-            preview_file = set_preview_file_as_broken(preview_file_id)
-            _remove_temp_files(
-                uploaded_movie_path,
-                normalized_movie_path,
-                normalized_movie_low_path,
-                original_picture_path,
-            )
-            return preview_file
-
-        # Remove files and update status
-        try:
-            os.remove(uploaded_movie_path)
-        except FileNotFoundError:
-            pass
-        if normalize:
-            try:
-                os.remove(normalized_movie_path)
-            except FileNotFoundError:
-                pass
-            if normalized_movie_low_path:
-                try:
-                    os.remove(normalized_movie_low_path)
-                except FileNotFoundError:
-                    pass
-
-        # Which storage prefixes hold the movie is recorded on the preview
-        # file so that the movie routes do not have to rediscover it by
-        # probing the object storage. Locally it follows from the flags
-        # above: the encoded versions when normalizing, the upload itself
-        # under `previews` when it was stored raw and not already kept as
-        # the source. A remote job is asked nothing: a runner that
-        # predates skip_high_def still uploads both encoded versions, so
-        # the storage is probed once instead.
-        if is_remote:
-            stored_movie_prefixes = files_service.probe_movie_prefixes(
-                preview_file_id
-            )
-        elif normalize:
-            stored_movie_prefixes = (
-                ["lowdef"] if skip_high_def else ["previews", "lowdef"]
-            )
-        elif add_source_to_file_store:
-            stored_movie_prefixes = []
-        else:
-            stored_movie_prefixes = ["previews"]
-        if add_source_to_file_store and "source" not in stored_movie_prefixes:
-            stored_movie_prefixes.insert(0, "source")
-
-        # Re-fetch preview file before updating (it may have been deleted during processing)
-        try:
-            preview_file_raw = files_service.get_preview_file_raw(
-                preview_file_id
-            )
-            preview_file = update_preview_file_raw(
-                preview_file_raw,
-                {
-                    "status": "ready",
-                    "file_size": file_size,
-                    "width": width,
-                    "height": height,
-                    "duration": duration,
-                    "data": {
-                        **files_service.get_preview_file_data(
-                            preview_file_raw
-                        ),
-                        files_service.MOVIE_PREFIXES_KEY: (
-                            stored_movie_prefixes
-                        ),
-                    },
-                },
-            )
-            tasks_service.update_preview_file_info(preview_file)
-            return preview_file
         except PreviewFileNotFoundException:
             current_app.logger.warning(
                 f"Preview file {preview_file_id} was deleted during processing"
             )
             return {"id": preview_file_id, "status": "broken"}
+        except Exception as exc:
+            if isinstance(exc, ffmpeg.Error):
+                current_app.logger.error(exc.stderr)
+            current_app.logger.error(
+                f"Movie processing failed for preview file {preview_file_id}",
+                exc_info=1,
+            )
+            try:
+                return set_preview_file_as_broken(preview_file_id)
+            except PreviewFileNotFoundException:
+                return {"id": preview_file_id, "status": "broken"}
+        finally:
+            _remove_temp_files(*temp_files)
+
+
+def _process_movie(
+    preview_file_id,
+    uploaded_movie_path,
+    normalize,
+    add_source_to_file_store,
+    temp_files,
+):
+    """
+    The movie pipeline itself, one step after the other. Every temporary
+    file it produces goes into temp_files, removed by the caller.
+    """
+    if add_source_to_file_store:
+        file_store.add_movie("source", preview_file_id, uploaded_movie_path)
+    _record_original_metadata(preview_file_id, uploaded_movie_path)
+    fps, width, height = _get_encoding_parameters(preview_file_id)
+
+    # SKIP_NORMALIZATION_FULL turns every upload into a raw store, as if
+    # the client had asked for normalize=false. SKIP_NORMALIZATION_HIGHDEF
+    # only drops the 28M encoding: the low def version is still built and
+    # becomes the only encoded movie.
+    is_remote = is_remote_normalization_enabled()
+    encode = normalize and not config.SKIP_NORMALIZATION_FULL
+    skip_high_def = config.SKIP_NORMALIZATION_HIGHDEF
+
+    if is_remote:
+        movie_path = _encode_on_remote_worker(
+            preview_file_id,
+            uploaded_movie_path,
+            fps,
+            width,
+            height,
+            encode,
+            skip_high_def,
+        )
+    elif encode:
+        movie_path = _encode_locally(
+            preview_file_id,
+            uploaded_movie_path,
+            fps,
+            width,
+            height,
+            skip_high_def,
+            temp_files,
+        )
+    else:
+        # The upload is the preview. It only goes under `previews` when it
+        # was not already stored as the source: the movie routes fall back
+        # from one to the other, so a second copy buys nothing.
+        if not add_source_to_file_store:
+            file_store.add_movie(
+                "previews", preview_file_id, uploaded_movie_path
+            )
+        movie_path = uploaded_movie_path
+
+    metadata = _read_movie_metadata(movie_path)
+    remote_handles_thumbnails = is_remote and REMOTE_NORMALIZE_VERSION >= 2
+    if not remote_handles_thumbnails:
+        _build_thumbnails_and_tile(
+            preview_file_id,
+            movie_path,
+            (metadata["width"], metadata["height"]),
+            temp_files,
+        )
+
+    stored_movie_prefixes = _get_stored_movie_prefixes(
+        preview_file_id,
+        is_remote,
+        encode,
+        skip_high_def,
+        add_source_to_file_store,
+    )
+    preview_file_raw = files_service.get_preview_file_raw(preview_file_id)
+    preview_file = update_preview_file_raw(
+        preview_file_raw,
+        {
+            "status": "ready",
+            **metadata,
+            "data": {
+                **files_service.get_preview_file_data(preview_file_raw),
+                files_service.MOVIE_PREFIXES_KEY: stored_movie_prefixes,
+            },
+        },
+    )
+    tasks_service.update_preview_file_info(preview_file)
+    return preview_file
+
+
+def _record_original_metadata(preview_file_id, uploaded_movie_path):
+    """
+    Keep the size and duration of the upload before it is encoded. A
+    nice-to-have: a failure here must not block the pipeline, and the
+    update is silent so the clients only hear about the final "ready" one.
+    """
+    from zou.app import app as current_app
+
+    try:
+        original_width, original_height = movie.get_movie_size(
+            uploaded_movie_path
+        )
+        preview_file_raw = files_service.get_preview_file_raw(preview_file_id)
+        update_preview_file_raw(
+            preview_file_raw,
+            {
+                "data": {
+                    **files_service.get_preview_file_data(preview_file_raw),
+                    "original_width": original_width,
+                    "original_height": original_height,
+                    "original_duration": movie.get_movie_duration(
+                        uploaded_movie_path
+                    ),
+                    "original_file_size": os.path.getsize(uploaded_movie_path),
+                }
+            },
+            silent=True,
+        )
+    except PreviewFileNotFoundException:
+        current_app.logger.warning(
+            f"Preview file {preview_file_id} was deleted while capturing "
+            f"original video metadata; skipping metadata capture"
+        )
+    except Exception:
+        current_app.logger.warning(
+            f"Failed to capture original video metadata for "
+            f"{uploaded_movie_path}; continuing without it",
+            exc_info=1,
+        )
+
+
+def _get_encoding_parameters(preview_file_id):
+    """
+    The fps and the resolution the previews are encoded at, from the
+    project or the entity overriding them. The job can start before the
+    upload's transaction is visible to it: one retry covers that.
+    """
+    for attempt in range(2):
+        try:
+            project = get_project_from_preview_file(preview_file_id)
+            entity = get_entity_from_preview_file(preview_file_id)
+            break
+        except PreviewFileNotFoundException:
+            if attempt == 1:
+                raise PreviewProcessingFailedException(
+                    "Data is missing from database"
+                )
+            time.sleep(2)
+    fps = get_preview_file_fps(project, entity)
+    width, height = get_preview_file_dimensions(project, entity)
+    return fps, width, height
+
+
+def _encode_locally(
+    preview_file_id,
+    uploaded_movie_path,
+    fps,
+    width,
+    height,
+    skip_high_def,
+    temp_files,
+):
+    """
+    Encode the preview versions with ffmpeg and store them. Return the
+    movie the metadata and the thumbnails are read from: the high def
+    one, or the low def one when the high def is skipped.
+    """
+    high_def_path, low_def_path, err = movie.normalize_movie(
+        uploaded_movie_path,
+        fps=fps,
+        width=width,
+        height=height,
+        skip_high_def=skip_high_def,
+    )
+    temp_files.extend(path for path in (high_def_path, low_def_path) if path)
+    if err:
+        raise PreviewProcessingFailedException(err)
+    if high_def_path is not None:
+        file_store.add_movie("previews", preview_file_id, high_def_path)
+    file_store.add_movie("lowdef", preview_file_id, low_def_path)
+    return high_def_path or low_def_path
+
+
+def _encode_on_remote_worker(
+    preview_file_id,
+    uploaded_movie_path,
+    fps,
+    width,
+    height,
+    encode,
+    skip_high_def,
+):
+    """
+    Hand the movie over to the remote worker, which reads the source from
+    the storage, encodes it and builds the thumbnails and the tile. It
+    runs even when nothing has to be encoded. Return the movie the
+    metadata is read from: the encoded version fetched back from the
+    storage, or the upload itself when nothing was encoded.
+    """
+    from zou.app import app as current_app
+
+    result = _run_remote_normalize_movie(
+        current_app,
+        preview_file_id,
+        fps,
+        width,
+        height,
+        skip_high_def=skip_high_def,
+        skip_normalization=not encode,
+    )
+    if result is not True:
+        raise PreviewProcessingFailedException(result)
+    if not encode:
+        return uploaded_movie_path
+    # The copy fetched here is the movie routes' cache entry: it stays.
+    return fs.get_file_path_and_file(
+        config,
+        file_store.get_local_movie_path,
+        file_store.open_movie,
+        "lowdef" if skip_high_def else "previews",
+        preview_file_id,
+        "mp4",
+    )
+
+
+def _read_movie_metadata(movie_path):
+    """
+    The fields recorded on the preview file once it is ready.
+    """
+    width, height = movie.get_movie_size(movie_path)
+    return {
+        "width": width,
+        "height": height,
+        "file_size": os.path.getsize(movie_path),
+        "duration": movie.get_movie_duration(movie_path),
+    }
+
+
+def _build_thumbnails_and_tile(preview_file_id, movie_path, size, temp_files):
+    """
+    Build the picture variants and the tile mosaic from the movie and
+    store them. A missing tile is logged, not fatal.
+    """
+    from zou.app import app as current_app
+
+    original_picture_path = movie.generate_thumbnail(movie_path)
+    temp_files.append(original_picture_path)
+    thumbnail_utils.turn_into_thumbnail(original_picture_path, size)
+    save_variants(preview_file_id, original_picture_path)
+    current_app.logger.info(f"thumbnail created {original_picture_path}")
+
+    try:
+        tile_path = movie.generate_tile(movie_path)
+        file_store.add_picture("tiles", preview_file_id, tile_path)
+        os.remove(tile_path)
+        current_app.logger.info(f"tile created {tile_path}")
+    except Exception:
+        current_app.logger.error("Failed to create tile", exc_info=1)
+
+
+def _get_stored_movie_prefixes(
+    preview_file_id, is_remote, encode, skip_high_def, add_source_to_file_store
+):
+    """
+    Which storage prefixes hold the movie, recorded on the preview file so
+    that the movie routes do not have to rediscover it by probing the
+    storage. Locally it follows from the flags: the encoded versions, or
+    the upload itself under `previews` when it was stored raw and not
+    already kept as the source. A remote job is asked nothing: a runner
+    that predates skip_high_def still uploads both encoded versions, so
+    the storage is probed once instead.
+    """
+    if is_remote:
+        prefixes = files_service.probe_movie_prefixes(preview_file_id)
+    elif encode:
+        prefixes = ["lowdef"] if skip_high_def else ["previews", "lowdef"]
+    elif add_source_to_file_store:
+        prefixes = []
+    else:
+        prefixes = ["previews"]
+    if add_source_to_file_store and "source" not in prefixes:
+        prefixes.insert(0, "source")
+    return prefixes
 
 
 def is_remote_normalization_enabled():

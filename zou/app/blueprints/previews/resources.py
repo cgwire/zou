@@ -1,12 +1,13 @@
 import os
 import orjson as json
 
-from flask import request, current_app
+from flask import request, current_app, Response
 from flask import send_file as flask_send_file
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 from flask_fs.errors import FileNotFound
 from werkzeug.exceptions import NotFound
+from werkzeug.wsgi import FileWrapper
 
 from zou.app import config
 from zou.app.mixin import ArgsMixin
@@ -31,7 +32,6 @@ from zou.app.services import (
     tasks_service,
     permissions_service,
 )
-from zou.app.stores import queue_store
 from zou.utils import movie
 from zou.app.utils import (
     fields,
@@ -117,6 +117,45 @@ def send_standard_file(
     )
 
 
+def stream_movie_from_storage(
+    prefix, preview_file_id, mimetype, as_attachment, download_name, max_age
+):
+    """
+    Serve a movie that is not in the local cache yet straight from the
+    object storage, so the first play does not wait for the whole file to
+    land on the disk. Only a single byte range is forwarded; a multipart
+    range gets the whole file, like no range at all.
+    """
+    range_header = None
+    byte_range = request.range
+    if (
+        byte_range is not None
+        and byte_range.units == "bytes"
+        and len(byte_range.ranges) == 1
+    ):
+        range_header = byte_range.to_header()
+    content_length, content_range, generator = file_store.read_movie_range(
+        prefix, preview_file_id, range_header
+    )
+    response = Response(
+        generator,
+        status=206 if content_range else 200,
+        mimetype=mimetype,
+        direct_passthrough=True,
+    )
+    response.headers["Accept-Ranges"] = "bytes"
+    response.headers["Content-Length"] = content_length
+    if content_range:
+        response.headers["Content-Range"] = content_range
+    if as_attachment:
+        response.headers.set(
+            "Content-Disposition", "attachment", filename=download_name
+        )
+    response.cache_control.private = True
+    response.cache_control.max_age = max_age
+    return response
+
+
 def send_movie_file(
     preview_file_id,
     as_attachment=False,
@@ -157,6 +196,7 @@ def send_movie_file(
                 mimetype="video/mp4",
                 as_attachment=as_attachment,
                 last_modified=last_modified,
+                stream_cold=True,
             )
         except FileNotFound:
             if prefix == prefixes[-1]:
@@ -233,10 +273,14 @@ def send_storage_file(
     max_age=config.CLIENT_CACHE_MAX_AGE,
     download_name="",
     last_modified=None,
+    stream_cold=False,
 ):
     """
     Send file from storage. If it's not a local storage, cache the file in
     a temporary folder before sending it. It accepts conditional headers.
+
+    With ``stream_cold``, a movie missing from that cache is streamed from
+    the storage right away while a background download fills the cache.
     """
     file_size = None
     try:
@@ -255,6 +299,30 @@ def send_storage_file(
                 file_size = preview_file["file_size"]
     except NotFound:
         pass
+    if as_attachment:
+        download_name = names_service.get_preview_file_name(preview_file_id)
+
+    if stream_cold and file_store.can_stream_movie_ranges():
+        cache_path = fs.get_cache_file_path(
+            config, prefix, preview_file_id, extension
+        )
+        if fs.is_invalid_file(cache_path, file_size):
+            fs.fill_cache_in_background(
+                cache_path, open_file, prefix, preview_file_id
+            )
+            # No ETag or Last-Modified on purpose: a browser that got one
+            # here would send it back as If-Range once the cache is warm,
+            # where send_file computes a different validator and would
+            # answer the whole file. The bytes are the same either way.
+            return stream_movie_from_storage(
+                prefix,
+                preview_file_id,
+                mimetype,
+                as_attachment,
+                download_name,
+                max_age,
+            )
+
     file_path = fs.get_file_path_and_file(
         config,
         get_local_path,
@@ -265,9 +333,14 @@ def send_storage_file(
         file_size=file_size,
     )
 
-    if as_attachment:
-        download_name = names_service.get_preview_file_name(preview_file_id)
-
+    # send_file wraps the file in whatever the WSGI server put in
+    # wsgi.file_wrapper, and Werkzeug's range wrapper only seeks when that
+    # wrapper has a seekable() method. gunicorn's FileWrapper has none, so
+    # every Range request read and discarded the file from byte 0 up to the
+    # range: linear in the offset, seconds per request at the end of a long
+    # movie, blocking the worker. Werkzeug's own FileWrapper (same name,
+    # different class) is seekable: swap it in for this response.
+    request.environ["wsgi.file_wrapper"] = FileWrapper
     try:
         response = flask_send_file(
             file_path,
@@ -360,34 +433,20 @@ class BaseNewPreviewFilePicture:
                 f"storage ({written_size}/{expected_size} bytes); the "
                 f"temporary disk may be full."
             )
-        is_remote = preview_files_service.is_remote_normalization_enabled()
         # The remote worker reads the movie from the object storage, and
         # without normalization that source is the only movie stored: it has
         # to be uploaded whatever PREVIEW_SAVE_SOURCE_FILE says.
-        save_source_file = config.PREVIEW_SAVE_SOURCE_FILE or is_remote
-        # Even with normalization turned off, the remote worker is what
-        # builds the thumbnails and the tile, and dispatching it blocks until
-        # Nomad is done: keep it out of the request thread.
-        needs_job = normalize or is_remote
-        if needs_job and config.ENABLE_JOB_QUEUE and not no_job:
-            queue_store.job_queue.enqueue(
-                preview_files_service.prepare_and_store_movie,
-                args=(
-                    preview_file_id,
-                    uploaded_movie_path,
-                    normalize,
-                    save_source_file,
-                ),
-                job_timeout=int(config.JOB_QUEUE_TIMEOUT),
-                on_failure=preview_files_service.mark_broken_on_job_failure,
-            )
-        else:
-            preview_files_service.prepare_and_store_movie(
-                preview_file_id,
-                uploaded_movie_path,
-                normalize=normalize,
-                add_source_to_file_store=save_source_file,
-            )
+        save_source_file = (
+            config.PREVIEW_SAVE_SOURCE_FILE
+            or preview_files_service.is_remote_normalization_enabled()
+        )
+        preview_files_service.dispatch_movie_processing(
+            preview_file_id,
+            uploaded_movie_path,
+            normalize=normalize,
+            add_source_to_file_store=save_source_file,
+            no_job=no_job,
+        )
         return preview_file_id
 
     def save_file_preview(self, instance_id, uploaded_file, extension):

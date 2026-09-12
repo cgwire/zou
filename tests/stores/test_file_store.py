@@ -96,3 +96,70 @@ class ReadGeneratorTestCase(unittest.TestCase):
         app.app_context().push()
         with pytest.raises(FileNotFound):
             list(file_store.open_picture("thumbnails", "does-not-exist"))
+
+
+class ReadMovieRangeTestCase(unittest.TestCase):
+    def test_s3_range_is_forwarded_and_the_body_closed(self):
+        from unittest.mock import patch
+
+        body = Mock()
+        body.iter_chunks.return_value = iter([b"ab", b"cd"])
+        s3_object = Mock()
+        s3_object.get.return_value = {
+            "Body": body,
+            "ContentLength": 4,
+            "ContentRange": "bytes 10-13/100",
+        }
+        movies = Mock()
+        movies.backend.encryptor = None
+        movies.backend.bucket.Object.return_value = s3_object
+
+        with (
+            patch.object(file_store, "movies", movies),
+            patch.object(file_store.config, "FS_BACKEND", "s3"),
+        ):
+            self.assertTrue(file_store.can_stream_movie_ranges())
+            length, content_range, generator = file_store.read_movie_range(
+                "lowdef", "1", "bytes=10-13"
+            )
+            self.assertEqual(b"".join(generator), b"abcd")
+
+        movies.backend.bucket.Object.assert_called_once_with("lowdef-1")
+        s3_object.get.assert_called_once_with(Range="bytes=10-13")
+        self.assertEqual((length, content_range), (4, "bytes 10-13/100"))
+        body.close.assert_called_once()
+
+    def test_missing_object_is_file_not_found(self):
+        from unittest.mock import patch
+
+        class ClientError(Exception):
+            response = {"Error": {"Code": "NoSuchKey"}}
+
+        movies = Mock()
+        movies.backend.bucket.Object.return_value.get.side_effect = (
+            ClientError()
+        )
+        with (
+            patch.object(file_store, "movies", movies),
+            patch.object(file_store.config, "FS_BACKEND", "s3"),
+        ):
+            with pytest.raises(FileNotFound):
+                file_store.read_movie_range("lowdef", "1", "bytes=0-1")
+
+    def test_refused_range_is_a_416(self):
+        from unittest.mock import patch
+        from werkzeug.exceptions import RequestedRangeNotSatisfiable
+
+        class ClientError(Exception):
+            response = {"Error": {"Code": "InvalidRange"}}
+
+        movies = Mock()
+        movies.backend.bucket.Object.return_value.get.side_effect = (
+            ClientError()
+        )
+        with (
+            patch.object(file_store, "movies", movies),
+            patch.object(file_store.config, "FS_BACKEND", "s3"),
+        ):
+            with pytest.raises(RequestedRangeNotSatisfiable):
+                file_store.read_movie_range("lowdef", "1", "bytes=999-")

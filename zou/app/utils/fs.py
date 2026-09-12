@@ -1,6 +1,8 @@
+import fcntl
 import glob
 import os
 import shutil
+import threading
 import time
 import uuid
 from flask_fs.errors import FileNotFound
@@ -57,6 +59,24 @@ def is_missing_file_error(exception):
         error = response.get("Error") or {}
         if error.get("Code") in MISSING_OBJECT_ERROR_CODES:
             return True
+    return False
+
+
+def is_range_error(exception):
+    """
+    Tell a byte range the object storage refused (416) from other failures.
+    """
+    for attribute in ("http_status", "status", "status_code"):
+        if getattr(exception, attribute, None) == 416:
+            return True
+    response = getattr(exception, "response", None)
+    if isinstance(response, dict):
+        metadata = response.get("ResponseMetadata") or {}
+        error = response.get("Error") or {}
+        return (
+            metadata.get("HTTPStatusCode") == 416
+            or error.get("Code") == "InvalidRange"
+        )
     return False
 
 
@@ -119,6 +139,31 @@ def download_to_file(file_path, open_file, prefix, instance_id):
     finally:
         rm_file(tmp_path)
     return exception
+
+
+def fill_cache_in_background(file_path, open_file, prefix, instance_id):
+    """
+    Download a file to the local cache from a background thread, unless
+    another thread or worker process already is: the downloader holds a
+    flock on a sidecar lock file for the duration. Return whether a
+    download was started. The lock file is left behind: removing it would
+    race with the next locker.
+    """
+    lock_file = open(f"{file_path}.lock", "a")
+    try:
+        fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        lock_file.close()
+        return False
+
+    def run():
+        try:
+            download_to_file(file_path, open_file, prefix, instance_id)
+        finally:
+            lock_file.close()
+
+    threading.Thread(target=run, daemon=True).start()
+    return True
 
 
 def get_file_path_and_file(

@@ -214,3 +214,78 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
 
         self.assertEqual(self.get_movie(preview_file_id).status_code, 200)
         self.assertEqual(self.recorded_prefixes(preview_file_id), ["source"])
+
+    def test_range_request_uses_a_seekable_file_wrapper(self):
+        # gunicorn's wsgi.file_wrapper is not seekable, so Werkzeug used to
+        # read the file from the start for every Range request. Hand the
+        # route a wrapper that cannot be iterated: the response only works
+        # if the route swapped it for Werkzeug's seekable one.
+        class NotSeekable:
+            def __init__(self, file, *args):
+                self.file = file
+
+            def __iter__(self):
+                raise AssertionError("range served without seeking")
+
+        preview_file_id = self.upload_movie_preview()
+        with open(self.movie_path, "rb") as movie_file:
+            movie_file.seek(1000)
+            expected = movie_file.read(500)
+        response = self.app.get(
+            f"/movies/originals/preview-files/{preview_file_id}.mp4",
+            headers={**self.base_headers, "Range": "bytes=1000-1499"},
+            environ_overrides={"wsgi.file_wrapper": NotSeekable},
+        )
+        self.assertEqual(response.status_code, 206)
+        self.assertEqual(response.data, expected)
+
+    def test_cold_cache_streams_the_range_from_the_storage(self):
+        # Remote backend, movie not in the local cache yet: the range is
+        # served from the storage right away and one background download
+        # fills the cache, instead of the request waiting for the whole
+        # file to land on the disk.
+        preview_file_id = self.upload_movie_preview()
+        with open(self.movie_path, "rb") as movie_file:
+            movie_content = movie_file.read()
+        fills = []
+
+        def read_movie_range(prefix, id, range_header=None):
+            self.assertEqual(range_header, "bytes=1000-1499")
+            total = len(movie_content)
+            return (
+                500,
+                f"bytes 1000-1499/{total}",
+                iter([movie_content[1000:1500]]),
+            )
+
+        with (
+            patch.object(
+                preview_resources.file_store,
+                "can_stream_movie_ranges",
+                return_value=True,
+            ),
+            patch.object(
+                preview_resources.file_store,
+                "read_movie_range",
+                side_effect=read_movie_range,
+            ),
+            patch.object(
+                preview_resources.fs,
+                "fill_cache_in_background",
+                side_effect=lambda *args: fills.append(args),
+            ),
+        ):
+            response = self.app.get(
+                f"/movies/originals/preview-files/{preview_file_id}.mp4",
+                headers={**self.base_headers, "Range": "bytes=1000-1499"},
+            )
+        self.assertEqual(response.status_code, 206)
+        self.assertEqual(
+            response.headers["Content-Range"],
+            f"bytes 1000-1499/{len(movie_content)}",
+        )
+        self.assertEqual(response.headers["Content-Length"], "500")
+        self.assertEqual(response.data, movie_content[1000:1500])
+        self.assertNotIn("ETag", response.headers)
+        self.assertEqual(len(fills), 1)
+        self.assertTrue(fills[0][0].endswith(f"-{preview_file_id}.mp4"))
