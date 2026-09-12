@@ -673,12 +673,23 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
             "open_movie",
             side_effect=lambda prefix, _id: iter([b"new encoding"]),
         ):
+            temp_files = []
             movie_path = preview_files_service._encode_on_remote_worker(
-                preview_file_id, "/tmp/upload.mp4", 25, 0, 0, True, False
+                preview_file_id,
+                "/tmp/upload.mp4",
+                25,
+                0,
+                0,
+                True,
+                False,
+                temp_files,
             )
 
         with open(movie_path, "rb") as movie_file:
             self.assertEqual(movie_file.read(), b"new encoding")
+        # The worker may not be a web host: the copy goes with the other
+        # temporary files instead of piling up in its TMP_DIR.
+        self.assertEqual(temp_files, [movie_path])
 
     @patch("zou.app.services.preview_files_service._process_movie")
     def test_prepare_and_store_movie_lets_the_job_timeout_through(
@@ -700,6 +711,41 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
                 str(preview_file.id), uploaded_path, normalize=True
             )
         self.assertFalse(os.path.exists(uploaded_path))
+
+    @patch(
+        "zou.app.services.preview_files_service._run_remote_normalize_movie"
+    )
+    def test_remote_encode_keeps_the_stored_movie_on_a_local_backend(
+        self, mock_run_remote
+    ):
+        """
+        On a local backend the path fetched back is the stored movie
+        itself, not a copy: it must not go with the temporary files.
+        """
+        preview_file = self.generate_fixture_preview_file(status="processing")
+        preview_file_id = str(preview_file.id)
+        mock_run_remote.return_value = True
+        stored_path = file_store.get_local_movie_path(
+            "previews", preview_file_id
+        )
+        os.makedirs(os.path.dirname(stored_path), exist_ok=True)
+        with open(stored_path, "wb") as stored:
+            stored.write(b"encoded")
+
+        temp_files = []
+        movie_path = preview_files_service._encode_on_remote_worker(
+            preview_file_id,
+            "/tmp/upload.mp4",
+            25,
+            0,
+            0,
+            True,
+            False,
+            temp_files,
+        )
+
+        self.assertEqual(movie_path, stored_path)
+        self.assertEqual(temp_files, [])
 
     def test_copying_a_movie_preview_carries_the_source_along(self):
         """

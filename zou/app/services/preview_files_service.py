@@ -393,6 +393,7 @@ def _process_movie(
             height,
             encode,
             skip_high_def,
+            temp_files,
         )
     elif encode:
         movie_path = _encode_locally(
@@ -548,6 +549,7 @@ def _encode_on_remote_worker(
     height,
     encode,
     skip_high_def,
+    temp_files,
 ):
     """
     Hand the movie over to the remote worker, which reads the source from
@@ -572,12 +574,13 @@ def _encode_on_remote_worker(
     if not encode:
         return uploaded_movie_path
     prefix = "lowdef" if skip_high_def else "previews"
-    # The copy fetched here is the movie routes' cache entry: it stays.
-    # A copy of a previous encoding may already sit there (the movie was
-    # played on this host, then renormalized) and would be read instead
-    # of the fresh one: evict it first.
+    # The fetch lands on the movie routes' cache path. A copy of a
+    # previous encoding may already sit there (the movie was played on
+    # this host, then renormalized) and would be read instead of the
+    # fresh one: evict it first. The copy does not stay either: the
+    # worker may not be a web host, and nothing evicts that cache.
     fs.rm_file(fs.get_cache_file_path(config, prefix, preview_file_id, "mp4"))
-    return fs.get_file_path_and_file(
+    movie_path = fs.get_file_path_and_file(
         config,
         file_store.get_local_movie_path,
         file_store.open_movie,
@@ -585,6 +588,9 @@ def _encode_on_remote_worker(
         preview_file_id,
         "mp4",
     )
+    if config.FS_BACKEND != "local":
+        temp_files.append(movie_path)
+    return movie_path
 
 
 def _read_movie_metadata(movie_path):
