@@ -239,6 +239,32 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
         self.assertEqual(response.status_code, 206)
         self.assertEqual(response.data, expected)
 
+    def test_full_file_response_still_fits_gunicorn_sendfile(self):
+        # gunicorn hands a response that is an instance of the environ's
+        # wsgi.file_wrapper to its sendfile path, which reads `.filelike`
+        # on it: the seekable wrapper the route installs must carry it, or
+        # every full-file response answers 500 in production.
+        preview_file_id = self.upload_movie_preview()
+        flask_app = self.app.application
+        wsgi_app = flask_app.wsgi_app
+        dispatched = []
+
+        def capture_dispatch(environ, start_response):
+            respiter = wsgi_app(environ, start_response)
+            dispatched.append((environ, respiter))
+            return respiter
+
+        with patch.object(flask_app, "wsgi_app", capture_dispatch):
+            response = self.app.get(
+                f"/movies/originals/preview-files/{preview_file_id}.mp4",
+                headers=self.base_headers,
+            )
+        self.assertEqual(response.status_code, 200)
+        environ, respiter = dispatched[0]
+        self.assertIsInstance(respiter, environ["wsgi.file_wrapper"])
+        self.assertIsInstance(respiter.filelike.fileno(), int)
+        response.close()
+
     def test_cold_cache_streams_the_range_from_the_storage(self):
         # Remote backend, movie not in the local cache yet: the range is
         # served from the storage right away and one background download

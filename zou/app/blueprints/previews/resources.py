@@ -7,7 +7,7 @@ from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 from flask_fs.errors import FileNotFound
 from werkzeug.exceptions import NotFound
-from werkzeug.wsgi import FileWrapper
+from werkzeug.wsgi import FileWrapper as WerkzeugFileWrapper
 
 from zou.app import config
 from zou.app.mixin import ArgsMixin
@@ -115,6 +115,18 @@ def send_standard_file(
         as_attachment=as_attachment,
         last_modified=last_modified,
     )
+
+
+class SeekableFileWrapper(WerkzeugFileWrapper):
+    """
+    Werkzeug's file wrapper (it seeks, gunicorn's does not) with the
+    attribute gunicorn's sendfile path reads on a response that is an
+    instance of the wrapper found in wsgi.file_wrapper.
+    """
+
+    @property
+    def filelike(self):
+        return self.file
 
 
 def stream_movie_from_storage(
@@ -338,9 +350,9 @@ def send_storage_file(
     # wrapper has a seekable() method. gunicorn's FileWrapper has none, so
     # every Range request read and discarded the file from byte 0 up to the
     # range: linear in the offset, seconds per request at the end of a long
-    # movie, blocking the worker. Werkzeug's own FileWrapper (same name,
-    # different class) is seekable: swap it in for this response.
-    request.environ["wsgi.file_wrapper"] = FileWrapper
+    # movie, blocking the worker. Swap in a seekable wrapper for this
+    # response.
+    request.environ["wsgi.file_wrapper"] = SeekableFileWrapper
     try:
         response = flask_send_file(
             file_path,
