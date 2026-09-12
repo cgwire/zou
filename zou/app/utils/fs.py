@@ -10,6 +10,9 @@ from flask_fs.errors import FileNotFound
 
 logger = logging.getLogger(__name__)
 
+MAX_CONCURRENT_CACHE_FILLS = 4
+_cache_fill_slots = threading.BoundedSemaphore(MAX_CONCURRENT_CACHE_FILLS)
+
 
 def mkdir_p(path):
     os.makedirs(path, exist_ok=True)
@@ -151,17 +154,21 @@ def fill_cache_in_background(file_path, open_file, prefix, instance_id):
     flock on a sidecar lock file for the duration. Return whether a
     download was started. The lock file is left behind: removing it would
     race with the next locker.
+
+    A worker runs at most MAX_CONCURRENT_CACHE_FILLS fills at once: a
+    playlist prefetching every cold movie would otherwise start one
+    thread per movie. The request is streamed from the storage either
+    way, a refused fill only means the next request tries again.
     """
-    try:
-        lock_file = open(f"{file_path}.lock", "a")
-    except OSError:
-        # A full or read-only cache directory only means no fill: the
-        # request is streamed from the storage either way.
+    if not _cache_fill_slots.acquire(blocking=False):
         return False
     try:
+        lock_file = open(f"{file_path}.lock", "a")
         fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
-        lock_file.close()
+        # Another downloader holds the lock, or the cache directory is
+        # full or read-only: no fill.
+        _cache_fill_slots.release()
         return False
 
     def run():
@@ -176,6 +183,7 @@ def fill_cache_in_background(file_path, open_file, prefix, instance_id):
                 )
         finally:
             lock_file.close()
+            _cache_fill_slots.release()
 
     threading.Thread(target=run, daemon=True).start()
     return True

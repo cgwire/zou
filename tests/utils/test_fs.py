@@ -266,6 +266,38 @@ class FillCacheInBackgroundTestCase(unittest.TestCase):
         self.assertIn("credentials rotated", logs.output[0])
         self.assertIn("lowdef-1", logs.output[0])
 
+    def test_concurrent_fills_are_capped(self):
+        import threading
+
+        release = threading.Event()
+
+        def open_file(prefix, instance_id):
+            release.wait(5)
+            yield b"movie"
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            paths = [
+                os.path.join(tmp_dir, f"cache-lowdef-{i}.mp4")
+                for i in range(fs.MAX_CONCURRENT_CACHE_FILLS + 1)
+            ]
+            started = [
+                fs.fill_cache_in_background(path, open_file, "lowdef", str(i))
+                for i, path in enumerate(paths)
+            ]
+            self.assertEqual(
+                started, [True] * fs.MAX_CONCURRENT_CACHE_FILLS + [False]
+            )
+            release.set()
+            for path in paths[:-1]:
+                self.wait_for(path)
+            # A finished fill gives its slot back.
+            self.assertTrue(
+                fs.fill_cache_in_background(
+                    paths[-1], open_file, "lowdef", "x"
+                )
+            )
+            self.wait_for(paths[-1])
+
     def test_downloads_once_under_the_lock(self):
         import fcntl
 

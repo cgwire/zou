@@ -286,17 +286,51 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
                 patch.object(
                     preview_resources.file_store,
                     "read_movie_range",
-                    return_value=(2, None, iter([b"ab"])),
+                    return_value=(2, "bytes 0-1/2", iter([b"ab"])),
                 ),
                 patch.object(preview_resources.fs, "fill_cache_in_background"),
             ):
-                cold = self.app.get(url, headers=self.base_headers)
-        self.assertEqual(cold.status_code, 200)
+                cold = self.app.get(
+                    url, headers={**self.base_headers, "Range": "bytes=0-1"}
+                )
+        self.assertEqual(cold.status_code, 206)
         self.assertIn("filename*=UTF-8''", warm.headers["Content-Disposition"])
         self.assertEqual(
             cold.headers["Content-Disposition"],
             warm.headers["Content-Disposition"],
         )
+
+    def test_cold_cache_without_a_range_fills_then_sends(self):
+        # A player asks by range; a whole-file request (download button,
+        # gazu, curl) gets one storage read and the validators send_file
+        # computes, not two concurrent full GETs and no ETag.
+        preview_file_id = self.upload_movie_preview()
+        with open(self.movie_path, "rb") as movie_file:
+            movie_content = movie_file.read()
+        with (
+            patch.object(
+                preview_resources.file_store,
+                "can_stream_movie_ranges",
+                return_value=True,
+            ),
+            patch.object(
+                preview_resources.file_store,
+                "read_movie_range",
+                side_effect=AssertionError("streamed"),
+            ),
+            patch.object(
+                preview_resources.fs,
+                "fill_cache_in_background",
+                side_effect=AssertionError("filled in background"),
+            ),
+        ):
+            response = self.app.get(
+                f"/movies/originals/preview-files/{preview_file_id}.mp4",
+                headers=self.base_headers,
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, movie_content)
+        self.assertIn("ETag", response.headers)
 
     def test_cold_cache_streams_the_range_from_the_storage(self):
         # Remote backend, movie not in the local cache yet: the range is

@@ -131,23 +131,36 @@ class SeekableFileWrapper(WerkzeugFileWrapper):
         return self.file
 
 
-def stream_movie_from_storage(
-    prefix, preview_file_id, mimetype, as_attachment, download_name, max_age
-):
+def get_single_byte_range():
     """
-    Serve a movie that is not in the local cache yet straight from the
-    object storage, so the first play does not wait for the whole file to
-    land on the disk. Only a single byte range is forwarded; a multipart
-    range gets the whole file, like no range at all.
+    The request's Range header when it asks for one byte range, the way
+    a movie player does. None otherwise: a multipart range gets the whole
+    file, like no range at all.
     """
-    range_header = None
     byte_range = request.range
     if (
         byte_range is not None
         and byte_range.units == "bytes"
         and len(byte_range.ranges) == 1
     ):
-        range_header = byte_range.to_header()
+        return byte_range.to_header()
+    return None
+
+
+def stream_movie_from_storage(
+    prefix,
+    preview_file_id,
+    range_header,
+    mimetype,
+    as_attachment,
+    download_name,
+    max_age,
+):
+    """
+    Serve a movie that is not in the local cache yet straight from the
+    object storage, so the first play does not wait for the whole file to
+    land on the disk.
+    """
     content_length, content_range, generator = file_store.read_movie_range(
         prefix, preview_file_id, range_header
     )
@@ -305,6 +318,8 @@ def send_storage_file(
 
     With ``stream_cold``, a movie missing from that cache is streamed from
     the storage right away while a background download fills the cache.
+    Only a ranged request (a player) is served that way: a whole-file
+    request would cost two full storage reads and lose the validators.
     """
     file_size = None
     try:
@@ -326,7 +341,8 @@ def send_storage_file(
     if as_attachment:
         download_name = names_service.get_preview_file_name(preview_file_id)
 
-    if stream_cold and file_store.can_stream_movie_ranges():
+    range_header = get_single_byte_range() if stream_cold else None
+    if range_header and file_store.can_stream_movie_ranges():
         cache_path = fs.get_cache_file_path(
             config, prefix, preview_file_id, extension
         )
@@ -341,6 +357,7 @@ def send_storage_file(
             return stream_movie_from_storage(
                 prefix,
                 preview_file_id,
+                range_header,
                 mimetype,
                 as_attachment,
                 download_name,
