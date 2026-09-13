@@ -139,7 +139,12 @@ class SwiftPooledReadTestCase(unittest.TestCase):
             def close(self):
                 pass
 
-        self.enterContext(patch("swiftclient.Connection", FakeConnection))
+        def start(patcher):
+            # TestCase.enterContext only exists from Python 3.11.
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+        start(patch("swiftclient.Connection", FakeConnection))
         backend = SwiftBackend(
             "movies",
             SimpleNamespace(
@@ -150,14 +155,12 @@ class SwiftPooledReadTestCase(unittest.TestCase):
                 pool_timeout=0.1,
             ),
         )
-        self.enterContext(
+        start(
             patch.object(
                 file_store, "movies", SimpleNamespace(backend=backend)
             )
         )
-        self.enterContext(
-            patch.object(file_store.config, "FS_BACKEND", "swift")
-        )
+        start(patch.object(file_store.config, "FS_BACKEND", "swift"))
 
     def test_range_read_goes_through_the_pool(self):
         length, content_range, generator = file_store.read_movie_range(
