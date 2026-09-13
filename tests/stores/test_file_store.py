@@ -98,52 +98,88 @@ class ReadGeneratorTestCase(unittest.TestCase):
             list(file_store.open_picture("thumbnails", "does-not-exist"))
 
 
-class SwiftConnectionPerThreadTestCase(unittest.TestCase):
-    def test_swift_reads_never_share_the_backend_connection(self):
-        # swiftclient.Connection is not thread-safe: the request thread
-        # (range read) and the cache fill thread (chunked read) must each
-        # use their own, never the one flask_fs holds on the backend.
-        import threading
+class SwiftPooledReadTestCase(unittest.TestCase):
+    """
+    Against flask_fs's real SwiftBackend: a Mock backend grows whatever
+    attribute it is asked for, which is how a read through a `conn`
+    attribute the pinned flask-fs2 no longer has reached production.
+    The pool holds one connection, so a slot that is not handed back
+    fails the next read.
+    """
+
+    def setUp(self):
+        from types import SimpleNamespace
         from unittest.mock import patch
 
-        connections = []
+        import swiftclient
+        from flask_fs.backends.swift import SwiftBackend
+
+        self.calls = []
+        self.missing = False
+        test = self
 
         class FakeConnection:
             def __init__(self, **kwargs):
-                self.kwargs = kwargs
-                connections.append(self)
+                pass
 
             def get_object(self, container, key, **kwargs):
-                return {"content-length": "2"}, iter([b"ab"])
-
-        shared = Mock()
-        shared.get_object.side_effect = AssertionError("shared connection")
-        shared.authurl, shared.user, shared.key = "url", "user", "key"
-        shared.auth_version, shared.os_options, shared.retries = "3", {}, 5
-        movies = Mock()
-        movies.backend.encryptor = None
-        movies.backend.name = "movies"
-        movies.backend.conn = shared
-        results = []
-
-        with (
-            patch.object(file_store, "movies", movies),
-            patch.object(file_store.config, "FS_BACKEND", "swift"),
-            patch("swiftclient.Connection", FakeConnection),
-        ):
-            _, _, generator = file_store.read_movie_range("lowdef", "1")
-            results.append(b"".join(generator))
-            thread = threading.Thread(
-                target=lambda: results.append(
-                    b"".join(file_store.open_movie("lowdef", "1"))
+                test.calls.append((container, key, kwargs))
+                if test.missing:
+                    raise swiftclient.ClientException(
+                        "not found", http_status=404
+                    )
+                return (
+                    {
+                        "content-length": "4",
+                        "content-range": "bytes 10-13/100",
+                    },
+                    iter([b"ab", b"cd"]),
                 )
-            )
-            thread.start()
-            thread.join()
 
-        self.assertEqual(results, [b"ab", b"ab"])
-        self.assertEqual(len(connections), 2)
-        self.assertEqual(connections[0].kwargs["authurl"], "url")
+            def close(self):
+                pass
+
+        self.enterContext(patch("swiftclient.Connection", FakeConnection))
+        backend = SwiftBackend(
+            "movies",
+            SimpleNamespace(
+                user="user",
+                key="key",
+                authurl="url",
+                pool_size=1,
+                pool_timeout=0.1,
+            ),
+        )
+        self.enterContext(
+            patch.object(
+                file_store, "movies", SimpleNamespace(backend=backend)
+            )
+        )
+        self.enterContext(
+            patch.object(file_store.config, "FS_BACKEND", "swift")
+        )
+
+    def test_range_read_goes_through_the_pool(self):
+        length, content_range, generator = file_store.read_movie_range(
+            "lowdef", "1", "bytes=10-13"
+        )
+        self.assertEqual(b"".join(generator), b"abcd")
+        self.assertEqual((length, content_range), (4, "bytes 10-13/100"))
+        self.assertEqual(self.calls[0][2]["headers"], {"Range": "bytes=10-13"})
+        # The slot came back: the cache fill reads through the same pool.
+        self.assertEqual(
+            b"".join(file_store.open_movie("lowdef", "1")), b"abcd"
+        )
+
+    def test_missing_movie_hands_the_slot_back(self):
+        self.missing = True
+        with pytest.raises(FileNotFound):
+            file_store.read_movie_range("lowdef", "1", "bytes=0-1")
+        self.missing = False
+        _, _, generator = file_store.read_movie_range(
+            "lowdef", "1", "bytes=10-13"
+        )
+        self.assertEqual(b"".join(generator), b"abcd")
 
 
 class ReadMovieRangeTestCase(unittest.TestCase):
