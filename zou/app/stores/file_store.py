@@ -1,5 +1,4 @@
 import os
-import threading
 import time
 import flask_fs
 from contextlib import contextmanager
@@ -21,7 +20,6 @@ movies = None
 files = None
 
 RANGE_CHUNK_SIZE = 1024 * 1024
-_swift_connections = threading.local()
 
 
 # ----------------------------------------------------------------------
@@ -318,30 +316,6 @@ def _copy(bucket, key, target, bucket_name):
         return bucket.copy(key, target)
 
 
-def _swift_connection(backend):
-    """
-    A swiftclient.Connection per thread, cloned from the backend's one.
-    swiftclient parks the in-flight response on the connection between
-    request() and getresponse(): the background cache fill and the
-    request thread reading through the same one cross their responses.
-    """
-    conn = getattr(_swift_connections, "conn", None)
-    if conn is None:
-        import swiftclient
-
-        template = backend.conn
-        conn = swiftclient.Connection(
-            authurl=template.authurl,
-            user=template.user,
-            key=template.key,
-            auth_version=template.auth_version,
-            os_options=template.os_options,
-            retries=template.retries,
-        )
-        _swift_connections.conn = conn
-    return conn
-
-
 def _read_chunks(bucket, key):
     """
     flask_fs checks that the object exists before reading it, and the S3
@@ -351,12 +325,7 @@ def _read_chunks(bucket, key):
     """
     backend = bucket.backend
     try:
-        if config.FS_BACKEND == "swift":
-            _, generator = _swift_connection(backend).get_object(
-                backend.name, key, resp_chunk_size=RANGE_CHUNK_SIZE
-            )
-        else:
-            generator = backend.read_chunks(key)
+        generator = backend.read_chunks(key)
     except Exception as exc:
         if fs.is_missing_file_error(exc):
             raise FileNotFound(key) from exc
@@ -416,6 +385,33 @@ def can_stream_movie_ranges():
     )
 
 
+def _read_swift_range(backend, key, range_header):
+    """
+    SwiftBackend.read_chunks does not take a Range header: borrow a
+    connection from the backend's pool the same way it does, and hand it
+    back once the stream is closed or dropped. A swiftclient.Connection
+    is not thread-safe, the pool is what keeps the request thread and the
+    cache fill thread apart. Private flask_fs members: moving the Range
+    support into read_chunks would drop them.
+    """
+    from flask_fs.backends.swift import _PoolReleasingStream
+
+    slot = backend._acquire_slot()
+    conn = slot if slot is not None else backend._new_connection()
+    headers = {"Range": range_header} if range_header else None
+    try:
+        resp_headers, chunks = conn.get_object(
+            backend.name,
+            key,
+            resp_chunk_size=RANGE_CHUNK_SIZE,
+            headers=headers,
+        )
+    except Exception:
+        backend._release(conn, healthy=False)
+        raise
+    return resp_headers, _PoolReleasingStream(chunks, backend._pool, conn)
+
+
 def read_movie_range(prefix, id, range_header=None):
     """
     Stream a movie from the object storage without caching it locally,
@@ -441,12 +437,8 @@ def read_movie_range(prefix, id, range_header=None):
             content_range = obj.get("ContentRange")
             generator = read_stream()
         else:
-            headers = {"Range": range_header} if range_header else None
-            resp_headers, generator = _swift_connection(backend).get_object(
-                backend.name,
-                key,
-                resp_chunk_size=RANGE_CHUNK_SIZE,
-                headers=headers,
+            resp_headers, generator = _read_swift_range(
+                backend, key, range_header
             )
             content_length = int(resp_headers["content-length"])
             content_range = resp_headers.get("content-range")
