@@ -52,6 +52,8 @@ from zou.app.services.exception import (
 from zou.app.utils import fs
 
 REMOTE_NORMALIZE_VERSION = 2
+# Seconds before a missing tile sheet is built again for the same movie.
+TILE_RETRY_DELAY = 3600
 
 
 def get_preview_file_dimensions(project, entity=None):
@@ -1734,6 +1736,76 @@ def generate_preview_extra(
 
     print("Extra information generated.")
     return total
+
+
+def generate_tile_later(preview_file_id):
+    """
+    Build the missing tile sheet of a movie on the job queue. Without a
+    queue nothing happens: the web process runs no ffmpeg of its own. An
+    attempt younger than an hour, running or failed, is not repeated: a
+    sidecar file in TMP_DIR remembers it, so a movie ffmpeg cannot tile
+    does not cost a job per hover on the progress bar.
+    """
+    if not config.ENABLE_JOB_QUEUE:
+        return False
+    mark_path = os.path.join(config.TMP_DIR, f"tile-{preview_file_id}.mark")
+    try:
+        if time.time() - os.path.getmtime(mark_path) < TILE_RETRY_DELAY:
+            return False
+    except OSError:
+        pass
+    fs.mkdir_p(config.TMP_DIR)
+    with open(mark_path, "a"):
+        pass
+    os.utime(mark_path, None)
+    queue_store.job_queue.enqueue(
+        generate_missing_tile,
+        args=(preview_file_id,),
+        job_timeout=int(config.JOB_QUEUE_TIMEOUT),
+    )
+    return True
+
+
+def generate_missing_tile(preview_file_id):
+    """
+    Build and store the tile sheet of a ready movie that has none, from
+    the first stored version of the movie. Runs under its own app
+    context: it is a job.
+    """
+    from zou.app import app
+
+    with app.app_context():
+        preview_file = files_service.get_preview_file(preview_file_id)
+        if (
+            preview_file["extension"] != "mp4"
+            or preview_file["status"] != "ready"
+        ):
+            return False
+        preview_file_raw = files_service.get_preview_file_raw(preview_file_id)
+        movie_path = _retrieve_stored_movie(preview_file_raw)
+        if movie_path is None:
+            return False
+        _generate_tiles(file_store, preview_file_raw, movie_path, 1, 1)
+        return True
+
+
+def _retrieve_stored_movie(preview_file):
+    """
+    Local path of the best stored version of a movie, HD first, or None
+    when the storage holds none of them.
+    """
+    recorded_prefixes = files_service.get_preview_file_data(preview_file).get(
+        files_service.MOVIE_PREFIXES_KEY
+    )
+    for prefix in files_service.get_movie_prefixes(
+        recorded_prefixes or [], False
+    ):
+        movie_path = _retrieve_preview_file(
+            config, file_store, prefix, preview_file
+        )
+        if movie_path is not None:
+            return movie_path
+    return None
 
 
 def _retrieve_preview_file(config, file_store, prefix, preview_file):

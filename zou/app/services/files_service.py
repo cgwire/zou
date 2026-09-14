@@ -31,7 +31,7 @@ from zou.app.services.exception import (
     PreviewBackgroundFileNotFoundException,
 )
 
-from zou.app.stores import file_store
+from zou.app.stores import file_store, queue_store
 
 from zou.app.utils import cache, fields, fs, events, query as query_utils
 
@@ -899,6 +899,52 @@ def get_movie_prefixes(stored_prefixes, lowdef):
     return [prefix for prefix in prefixes if prefix in stored_prefixes] + [
         prefix for prefix in prefixes if prefix not in stored_prefixes
     ]
+
+
+def record_movie_prefixes_later(
+    preview_file_id, served_prefix, recorded_prefixes
+):
+    """
+    Probe the storage for the versions of a movie and write them on the
+    preview file, on the job queue when there is one: the probe costs one
+    round trip per version, which the first byte of a cold movie should
+    not wait for. Without a queue it runs inline, as it always did.
+    """
+    if config.ENABLE_JOB_QUEUE:
+        queue_store.job_queue.enqueue(
+            probe_and_record_movie_prefixes,
+            args=(preview_file_id, served_prefix, recorded_prefixes),
+            job_timeout=60,
+        )
+    else:
+        probe_and_record_movie_prefixes(
+            preview_file_id, served_prefix, recorded_prefixes
+        )
+
+
+def probe_and_record_movie_prefixes(
+    preview_file_id, served_prefix, recorded_prefixes
+):
+    """
+    A probe that misses the version just served failed itself and is not
+    recorded. Runs from a job as well as from a request: it brings its
+    own app context when there is none.
+    """
+    from flask import has_app_context
+    from zou.app import app
+
+    def run():
+        stored_prefixes = probe_movie_prefixes(preview_file_id)
+        if served_prefix in stored_prefixes and set(stored_prefixes) != set(
+            recorded_prefixes or []
+        ):
+            record_movie_prefixes(preview_file_id, stored_prefixes)
+
+    if has_app_context():
+        run()
+    else:
+        with app.app_context():
+            run()
 
 
 def record_movie_prefixes(preview_file_id, prefixes):

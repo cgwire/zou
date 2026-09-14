@@ -1,11 +1,11 @@
 import os
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from tests.base import ApiDBTestCase
 from zou.app.blueprints.previews import resources as preview_resources
-from zou.app.services import files_service
-from zou.app.stores import file_store
+from zou.app.services import files_service, preview_files_service
+from zou.app.stores import file_store, queue_store
 
 
 class MovieStreamingRoutesTestCase(ApiDBTestCase):
@@ -187,7 +187,8 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
             exists_movie.assert_not_called()
 
     def test_missing_record_is_probed_once_then_written_back(self):
-        # A preview file stored before the record existed.
+        # A preview file stored before the record existed: served in the
+        # default order, then probed once and written back.
         preview_file_id = self.upload_movie_preview(save_source_file=True)
         preview_file = files_service.get_preview_file_raw(preview_file_id)
         preview_file.update({"data": {"original_width": 1}})
@@ -450,3 +451,58 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
         self.assertNotIn("ETag", response.headers)
         self.assertEqual(len(fills), 1)
         self.assertTrue(fills[0][0].endswith(f"-{preview_file_id}.mp4"))
+
+    def get_tile(self, preview_file_id):
+        return self.app.get(
+            f"/movies/tiles/preview-files/{preview_file_id}.png",
+            headers=self.base_headers,
+        )
+
+    def test_missing_tile_is_built_once_on_the_job_queue(self):
+        preview_file_id = self.upload_movie_preview()
+        self.assertEqual(self.get_tile(preview_file_id).status_code, 200)
+
+        # A movie stored before tiles existed, or whose tile failed. The
+        # web process runs no ffmpeg of its own: without a queue, 404.
+        file_store.remove_picture("tiles", preview_file_id)
+        self.assertEqual(self.get_tile(preview_file_id).status_code, 404)
+        self.assertEqual(self.get_tile(preview_file_id).status_code, 404)
+
+        job_queue = MagicMock()
+        job_queue.enqueue.side_effect = lambda func, args=(), **kw: func(*args)
+        with (
+            patch.object(
+                preview_files_service.config, "ENABLE_JOB_QUEUE", True
+            ),
+            patch.object(queue_store, "job_queue", job_queue),
+        ):
+            self.assertEqual(self.get_tile(preview_file_id).status_code, 404)
+            self.assertEqual(self.get_tile(preview_file_id).status_code, 200)
+
+            # The attempt is remembered: a tile ffmpeg cannot build is not
+            # queued again on every request.
+            file_store.remove_picture("tiles", preview_file_id)
+            self.assertEqual(self.get_tile(preview_file_id).status_code, 404)
+            self.assertEqual(job_queue.enqueue.call_count, 1)
+
+    def test_missing_record_is_probed_on_the_job_queue(self):
+        preview_file_id = self.upload_movie_preview(save_source_file=True)
+        preview_file = files_service.get_preview_file_raw(preview_file_id)
+        preview_file.update({"data": {}})
+        files_service.clear_preview_file_cache(preview_file_id)
+
+        job_queue = MagicMock()
+        with (
+            patch.object(files_service.config, "ENABLE_JOB_QUEUE", True),
+            patch.object(queue_store, "job_queue", job_queue),
+            patch.object(
+                file_store, "exists_movie", wraps=file_store.exists_movie
+            ) as exists_movie,
+        ):
+            self.assertEqual(self.get_movie(preview_file_id).status_code, 200)
+            # Nothing probed on the request: the job does it.
+            exists_movie.assert_not_called()
+            job_queue.enqueue.assert_called_once()
+            (func,) = job_queue.enqueue.call_args.args
+            func(*job_queue.enqueue.call_args.kwargs["args"])
+        self.assertEqual(self.recorded_prefixes(preview_file_id), ["source"])
