@@ -1782,19 +1782,30 @@ def generate_missing_tile(preview_file_id):
         ):
             return False
         preview_file_raw = files_service.get_preview_file_raw(preview_file_id)
-        recorded_prefixes = files_service.get_preview_file_data(
-            preview_file_raw
-        ).get(files_service.MOVIE_PREFIXES_KEY)
-        for prefix in files_service.get_movie_prefixes(
-            recorded_prefixes or [], False
-        ):
-            movie_path = _retrieve_preview_file(
-                config, file_store, prefix, preview_file_raw
-            )
-            if movie_path is not None:
-                _generate_tiles(file_store, preview_file_raw, movie_path, 1, 1)
-                return True
-        return False
+        movie_path = _retrieve_stored_movie(preview_file_raw)
+        if movie_path is None:
+            return False
+        _generate_tiles(file_store, preview_file_raw, movie_path, 1, 1)
+        return True
+
+
+def _retrieve_stored_movie(preview_file):
+    """
+    Local path of the best stored version of a movie, HD first, or None
+    when the storage holds none of them.
+    """
+    recorded_prefixes = files_service.get_preview_file_data(preview_file).get(
+        files_service.MOVIE_PREFIXES_KEY
+    )
+    for prefix in files_service.get_movie_prefixes(
+        recorded_prefixes or [], False
+    ):
+        movie_path = _retrieve_preview_file(
+            config, file_store, prefix, preview_file
+        )
+        if movie_path is not None:
+            return movie_path
+    return None
 
 
 def _retrieve_preview_file(config, file_store, prefix, preview_file):
