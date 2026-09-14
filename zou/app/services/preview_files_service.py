@@ -52,6 +52,8 @@ from zou.app.services.exception import (
 from zou.app.utils import fs
 
 REMOTE_NORMALIZE_VERSION = 2
+# Seconds before a missing tile sheet is built again for the same movie.
+TILE_RETRY_DELAY = 3600
 
 
 def get_preview_file_dimensions(project, entity=None):
@@ -1734,9 +1736,6 @@ def generate_preview_extra(
 
     print("Extra information generated.")
     return total
-
-
-TILE_RETRY_DELAY = 3600
 
 
 def generate_tile_later(preview_file_id):
