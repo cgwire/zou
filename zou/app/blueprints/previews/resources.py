@@ -244,10 +244,7 @@ def send_movie_file(
             # No record yet, or one lagging behind the storage (a version
             # removed, a row imported from another instance).
             files_service.record_movie_prefixes_later(
-                current_app._get_current_object(),
-                preview_file_id,
-                prefix,
-                recorded_prefixes,
+                preview_file_id, prefix, recorded_prefixes
             )
         return response
 
