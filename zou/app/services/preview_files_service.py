@@ -1736,6 +1736,71 @@ def generate_preview_extra(
     return total
 
 
+TILE_RETRY_DELAY = 3600
+
+
+def generate_tile_later(preview_file_id):
+    """
+    Build the missing tile sheet of a movie in the background, on the job
+    queue when there is one and in a thread otherwise. An attempt younger
+    than an hour, running or failed, is not repeated: a sidecar file in
+    TMP_DIR remembers it, so a movie ffmpeg cannot tile does not cost a
+    run per hover on the progress bar.
+    """
+    mark_path = os.path.join(config.TMP_DIR, f"tile-{preview_file_id}.mark")
+    try:
+        if time.time() - os.path.getmtime(mark_path) < TILE_RETRY_DELAY:
+            return False
+    except OSError:
+        pass
+    fs.mkdir_p(config.TMP_DIR)
+    with open(mark_path, "a"):
+        pass
+    os.utime(mark_path, None)
+    if config.ENABLE_JOB_QUEUE:
+        queue_store.job_queue.enqueue(
+            generate_missing_tile,
+            args=(preview_file_id,),
+            job_timeout=int(config.JOB_QUEUE_TIMEOUT),
+        )
+    else:
+        files_service._run_in_background(
+            lambda: generate_missing_tile(preview_file_id)
+        )
+    return True
+
+
+def generate_missing_tile(preview_file_id):
+    """
+    Build and store the tile sheet of a ready movie that has none, from
+    the first stored version of the movie. Runs under its own app
+    context: it is called from a job or a thread.
+    """
+    from zou.app import app
+
+    with app.app_context():
+        preview_file = files_service.get_preview_file(preview_file_id)
+        if (
+            preview_file["extension"] != "mp4"
+            or preview_file["status"] != "ready"
+        ):
+            return False
+        preview_file_raw = files_service.get_preview_file_raw(preview_file_id)
+        recorded_prefixes = files_service.get_preview_file_data(
+            preview_file_raw
+        ).get(files_service.MOVIE_PREFIXES_KEY)
+        for prefix in files_service.get_movie_prefixes(
+            recorded_prefixes or [], False
+        ):
+            movie_path = _retrieve_preview_file(
+                config, file_store, prefix, preview_file_raw
+            )
+            if movie_path is not None:
+                _generate_tiles(file_store, preview_file_raw, movie_path, 1, 1)
+                return True
+        return False
+
+
 def _retrieve_preview_file(config, file_store, prefix, preview_file):
     """
     Fetch a preview binary from the store to a local path, whichever

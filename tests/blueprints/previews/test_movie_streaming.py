@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
 from zou.app.blueprints.previews import resources as preview_resources
-from zou.app.services import files_service
+from zou.app.services import files_service, preview_files_service
 from zou.app.stores import file_store
 
 
@@ -458,3 +458,27 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
         self.assertNotIn("ETag", response.headers)
         self.assertEqual(len(fills), 1)
         self.assertTrue(fills[0][0].endswith(f"-{preview_file_id}.mp4"))
+
+    def get_tile(self, preview_file_id):
+        return self.app.get(
+            f"/movies/tiles/preview-files/{preview_file_id}.png",
+            headers=self.base_headers,
+        )
+
+    def test_missing_tile_is_built_once_in_the_background(self):
+        preview_file_id = self.upload_movie_preview()
+        self.assertEqual(self.get_tile(preview_file_id).status_code, 200)
+
+        # A movie stored before tiles existed, or whose tile failed.
+        file_store.remove_picture("tiles", preview_file_id)
+        self.assertEqual(self.get_tile(preview_file_id).status_code, 404)
+        self.assertEqual(self.get_tile(preview_file_id).status_code, 200)
+
+        # The attempt is remembered: a tile ffmpeg cannot build is not
+        # retried on every request.
+        file_store.remove_picture("tiles", preview_file_id)
+        with patch.object(
+            preview_files_service, "generate_missing_tile"
+        ) as generate:
+            self.assertEqual(self.get_tile(preview_file_id).status_code, 404)
+            generate.assert_not_called()

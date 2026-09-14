@@ -1419,6 +1419,41 @@ class PreviewFileTileResource(BasePreviewPictureResource):
     def __init__(self):
         BasePreviewPictureResource.__init__(self, "tiles")
 
+    @jwt_required()
+    def get(self, instance_id):
+        """
+        Get the tile sheet of a movie preview
+        ---
+        description: Download the tile sheet of a movie preview file. A
+                     ready movie without one gets it built in the
+                     background for the next request.
+        tags:
+          - Previews
+        parameters:
+          - in: path
+            name: instance_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            description: Preview file unique identifier
+        responses:
+          200:
+            description: Tile sheet downloaded
+            content:
+              image/png:
+                schema:
+                  type: string
+                  format: binary
+          404:
+            description: No tile sheet stored for this preview file
+        """
+        try:
+            return super().get(instance_id)
+        except PreviewFileNotFoundException:
+            preview_files_service.generate_tile_later(instance_id)
+            raise
+
 
 class PreviewFilePreviewResource(BasePreviewPictureResource):
     """
