@@ -1,4 +1,5 @@
 import itertools
+import threading
 from operator import itemgetter
 
 from zou.app.models.file_status import FileStatus
@@ -899,6 +900,39 @@ def get_movie_prefixes(stored_prefixes, lowdef):
     return [prefix for prefix in prefixes if prefix in stored_prefixes] + [
         prefix for prefix in prefixes if prefix not in stored_prefixes
     ]
+
+
+def _run_in_background(function):
+    threading.Thread(target=function, daemon=True).start()
+
+
+def record_movie_prefixes_later(
+    app, preview_file_id, served_prefix, recorded_prefixes
+):
+    """
+    Probe the storage for the versions of a movie and write them on the
+    preview file, off the request path: the probe costs one round trip
+    per version, which the first byte of a cold movie no longer waits
+    for. A probe that misses the version just served failed itself and
+    is not recorded.
+    """
+
+    def run():
+        with app.app_context():
+            try:
+                stored_prefixes = probe_movie_prefixes(preview_file_id)
+                if served_prefix in stored_prefixes and set(
+                    stored_prefixes
+                ) != set(recorded_prefixes or []):
+                    record_movie_prefixes(preview_file_id, stored_prefixes)
+            except Exception:
+                app.logger.warning(
+                    "Could not record the stored versions of movie %s",
+                    preview_file_id,
+                    exc_info=True,
+                )
+
+    _run_in_background(run)
 
 
 def record_movie_prefixes(preview_file_id, prefixes):

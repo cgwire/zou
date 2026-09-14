@@ -16,6 +16,13 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
 
     def setUp(self):
         super().setUp()
+        # The route records the stored movie versions from a background
+        # thread: run it inline so the assertions see the record.
+        patcher = patch.object(
+            files_service, "_run_in_background", lambda function: function()
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
         self.generate_fixture_task_status_wip()
         self.generate_fixture_task()
@@ -187,7 +194,8 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
             exists_movie.assert_not_called()
 
     def test_missing_record_is_probed_once_then_written_back(self):
-        # A preview file stored before the record existed.
+        # A preview file stored before the record existed: served in the
+        # default order, then probed once and written back.
         preview_file_id = self.upload_movie_preview(save_source_file=True)
         preview_file = files_service.get_preview_file_raw(preview_file_id)
         preview_file.update({"data": {"original_width": 1}})
