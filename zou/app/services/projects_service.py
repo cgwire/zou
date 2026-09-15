@@ -581,12 +581,11 @@ def add_task_type_setting(
     project_id,
     task_type_id,
     priority=None,
-    hd_bitrate_compression=None,
-    ld_bitrate_compression=None,
+    bitrates=None,
 ):
     """
     Add a task type listed in database to the the project task types. An
-    existing link keeps its priority and gets the given bitrates.
+    existing link keeps its priority and gets the bitrates when given.
     """
     project_id = str(project_id)
     task_type_id = str(task_type_id)
@@ -595,10 +594,6 @@ def add_task_type_setting(
             "task_type_id is required and must be a valid UUID"
         )
 
-    bitrates = {
-        "hd_bitrate_compression": hd_bitrate_compression,
-        "ld_bitrate_compression": ld_bitrate_compression,
-    }
     link = ProjectTaskTypeLink.get_by(
         task_type_id=task_type_id, project_id=project_id
     )
@@ -607,9 +602,9 @@ def add_task_type_setting(
             task_type_id=task_type_id,
             project_id=project_id,
             priority=priority,
-            **bitrates,
+            **(bitrates or {}),
         )
-    else:
+    elif bitrates is not None:
         link.update(bitrates)
     return _save_project(get_project_raw(project_id))
 

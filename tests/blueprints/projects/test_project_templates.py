@@ -93,6 +93,37 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
             expected={"priority": 3},
         )
 
+    def test_task_type_link_bitrates_route(self):
+        template = self._create_template()
+        base = f"/data/project-templates/{template['id']}/task-types"
+        task_type_id = str(self.task_type_modeling.id)
+        self.post(
+            base,
+            {
+                "task_type_id": task_type_id,
+                "priority": 1,
+                "hd_bitrate_compression": 20,
+                "ld_bitrate_compression": 4,
+            },
+        )
+        # A priority-only call, as the reorder does, keeps the bitrates.
+        link = self.post(base, {"task_type_id": task_type_id, "priority": 2})
+        self.assertEqual(
+            (
+                link["priority"],
+                link["hd_bitrate_compression"],
+                link["ld_bitrate_compression"],
+            ),
+            (2, 20, 4),
+        )
+        listed = self.get(base)[0]
+        self.assertEqual(listed["hd_bitrate_compression"], 20)
+        self.post(
+            base,
+            {"task_type_id": task_type_id, "hd_bitrate_compression": 0},
+            400,
+        )
+
     def test_task_type_reorder_route(self):
         template = self._create_template()
         tt1 = str(self.task_type_modeling.id)

@@ -220,15 +220,20 @@ def get_template_task_types(template_id):
         link = link_map.get(str(task_type.id))
         if link:
             data["priority"] = link.priority
+            data["hd_bitrate_compression"] = link.hd_bitrate_compression
+            data["ld_bitrate_compression"] = link.ld_bitrate_compression
         result.append(data)
     result.sort(key=lambda t: (t.get("priority") or 0, t.get("name", "")))
     return result
 
 
-def add_task_type_to_template(template_id, task_type_id, priority=None):
+def add_task_type_to_template(
+    template_id, task_type_id, priority=None, bitrates=None
+):
     """
-    Link a task type to given template, or update its priority when the
-    link already exists.
+    Link a task type to given template, or update its priority and its
+    movie bitrates when the link already exists. Bitrates left to None are
+    not touched, so a reorder keeps them.
     """
     _check_required_id(TaskType, task_type_id, "task_type_id", "Task type")
     _ensure_template_exists(template_id)
@@ -242,9 +247,14 @@ def add_task_type_to_template(template_id, task_type_id, priority=None):
             project_template_id=template_id,
             task_type_id=task_type_id,
             priority=priority,
+            **(bitrates or {}),
         )
-    elif priority is not None:
-        link.update({"priority": priority})
+    else:
+        update_data = dict(bitrates or {})
+        if priority is not None:
+            update_data["priority"] = priority
+        if update_data:
+            link.update(update_data)
     _notify_template_change(template_id)
     return link.serialize()
 

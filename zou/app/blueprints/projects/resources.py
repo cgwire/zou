@@ -592,8 +592,7 @@ class ProductionTaskTypeResource(MethodView, ArgsMixin):
             project_id,
             body.task_type_id,
             body.priority,
-            hd_bitrate_compression=body.hd_bitrate_compression,
-            ld_bitrate_compression=body.ld_bitrate_compression,
+            bitrates=body.bitrates(),
         )
         return project, 201
 

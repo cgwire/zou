@@ -57,6 +57,7 @@ class ProjectTemplateTaskTypesResource(MethodView):
                 project_template_id,
                 data.task_type_id,
                 data.priority,
+                bitrates=data.bitrates(),
             )
         except ProjectTemplateNotFoundException:
             return {"message": "Project template not found"}, 404

@@ -85,6 +85,12 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
             },
         )
         self.assertEqual(project["task_types_priority"][task_type_id], 3)
+        # A call without bitrates leaves them alone.
+        self.post(path, {"task_type_id": task_type_id, "priority": 4})
+        link = ProjectTaskTypeLink.get_by(
+            project_id=self.project_id, task_type_id=task_type_id
+        )
+        self.assertEqual(link.hd_bitrate_compression, 20)
         self.post(
             path,
             {"task_type_id": task_type_id, "ld_bitrate_compression": 0},
