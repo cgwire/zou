@@ -555,6 +555,16 @@ class ProductionTaskTypeResource(MethodView, ArgsMixin):
                     type: string
                     description: Task type priority
                     example: "None"
+                  hd_bitrate_compression:
+                    type: integer
+                    description: High definition movie bitrate in Mbit/s
+                      for this task type, null inherits the project's
+                    example: 20
+                  ld_bitrate_compression:
+                    type: integer
+                    description: Low definition movie bitrate in Mbit/s
+                      for this task type, null inherits the project's
+                    example: 4
         responses:
           201:
             description: Task type added to production
@@ -579,7 +589,11 @@ class ProductionTaskTypeResource(MethodView, ArgsMixin):
 
         permissions_service.check_manager_project_access(project_id)
         project = projects_service.add_task_type_setting(
-            project_id, body.task_type_id, body.priority
+            project_id,
+            body.task_type_id,
+            body.priority,
+            hd_bitrate_compression=body.hd_bitrate_compression,
+            ld_bitrate_compression=body.ld_bitrate_compression,
         )
         return project, 201
 

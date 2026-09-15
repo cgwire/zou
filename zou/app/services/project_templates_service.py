@@ -622,6 +622,8 @@ def create_template_from_project(project_id, name, description=None):
             project_template_id=template.id,
             task_type_id=link.task_type_id,
             priority=link.priority,
+            hd_bitrate_compression=link.hd_bitrate_compression,
+            ld_bitrate_compression=link.ld_bitrate_compression,
         )
 
     task_status_links = ProjectTaskStatusLink.get_all_by(project_id=project_id)
@@ -759,6 +761,8 @@ def apply_template_to_project(project_id, template_id, override_settings=None):
                 project_id=project.id,
                 task_type_id=link.task_type_id,
                 priority=link.priority,
+                hd_bitrate_compression=link.hd_bitrate_compression,
+                ld_bitrate_compression=link.ld_bitrate_compression,
             )
 
     for link in ProjectTemplateTaskStatusLink.get_all_by(

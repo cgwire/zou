@@ -211,6 +211,8 @@ class ProjectsResource(BaseModelsResource):
                 raise WrongParameterException("Invalid production_style")
         if "resolution" in data:
             preview_files_service.validate_resolution(data["resolution"])
+        for key in ("hd_bitrate_compression", "ld_bitrate_compression"):
+            preview_files_service.validate_movie_bitrate(data.get(key))
         return True
 
     def update_data(self, data):
@@ -436,6 +438,8 @@ class ProjectResource(BaseModelResource, ArgsMixin):
     def pre_update(self, project_dict, data):
         if "resolution" in data:
             preview_files_service.validate_resolution(data["resolution"])
+        for key in ("hd_bitrate_compression", "ld_bitrate_compression"):
+            preview_files_service.validate_movie_bitrate(data.get(key))
 
         if "preview_background_files" in data:
             data["preview_background_files"] = [

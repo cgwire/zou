@@ -46,6 +46,19 @@ class ProjectTestCase(ApiDBTestCase):
         self.assertEqual(data["name"], project_again["name"])
         self.put_404(f"data/projects/{fields.gen_uuid()}", data)
 
+    def test_update_project_bitrates(self):
+        project = self.get_first("data/projects")
+        path = f"data/projects/{project['id']}"
+        self.put(
+            path,
+            {"hd_bitrate_compression": 20, "ld_bitrate_compression": None},
+        )
+        project_again = self.get(path)
+        self.assertEqual(project_again["hd_bitrate_compression"], 20)
+        self.assertIsNone(project_again["ld_bitrate_compression"])
+        self.put(path, {"hd_bitrate_compression": "fast"}, 400)
+        self.put(path, {"ld_bitrate_compression": 0}, 400)
+
     def test_delete_project(self):
         projects = self.get("data/projects")
         self.assertEqual(len(projects), 3)

@@ -12,6 +12,7 @@ from tests.base import ApiDBTestCase
 
 
 from zou.app.models.preview_file import PreviewFile
+from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.services import files_service, preview_files_service
 from zou.app.stores import file_store
 from zou.app.utils import thumbnail as thumbnail_utils
@@ -161,6 +162,53 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
         self.assertEqual(fps, "25.000")
         fps = get_preview_file_fps({"fps": None})
         self.assertEqual(fps, "25.000")
+
+    def test_movie_bitrates_cascade_from_link_to_project_to_config(self):
+        with patch.object(
+            preview_files_service.config, "MOVIE_HIGHDEF_BITRATE", 28
+        ), patch.object(
+            preview_files_service.config, "MOVIE_LOWDEF_BITRATE", 6
+        ):
+            project = {
+                "hd_bitrate_compression": None,
+                "ld_bitrate_compression": None,
+            }
+            self.assertEqual(
+                preview_files_service.get_movie_bitrates(project), (28, 6)
+            )
+            project["hd_bitrate_compression"] = 20
+            self.assertEqual(
+                preview_files_service.get_movie_bitrates(project), (20, 6)
+            )
+            # Each version resolves on its own.
+            link = {
+                "hd_bitrate_compression": None,
+                "ld_bitrate_compression": 4,
+            }
+            self.assertEqual(
+                preview_files_service.get_movie_bitrates(project, link),
+                (20, 4),
+            )
+
+    def test_encoding_parameters_read_the_task_type_link(self):
+        preview_file = self.generate_fixture_preview_file()
+        self.project.update({"hd_bitrate_compression": 20})
+        ProjectTaskTypeLink.create(
+            project_id=self.project.id,
+            task_type_id=self.task_type.id,
+            ld_bitrate_compression=4,
+        )
+        fps, width, height, bitrates = (
+            preview_files_service._get_encoding_parameters(preview_file.id)
+        )
+        self.assertEqual(bitrates, (20, 4))
+
+    def test_movie_bitrate_validation(self):
+        preview_files_service.validate_movie_bitrate(None)
+        preview_files_service.validate_movie_bitrate(20)
+        for bitrate in ("20", 20.5, True, 0, 10**4):
+            with self.assertRaises(WrongParameterException):
+                preview_files_service.validate_movie_bitrate(bitrate)
 
     def test_get_project_from_preview_file(self):
         preview_file = self.generate_fixture_preview_file()
@@ -680,6 +728,7 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
                 25,
                 0,
                 0,
+                (28, 6),
                 True,
                 False,
                 temp_files,
@@ -739,6 +788,7 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
             25,
             0,
             0,
+            (28, 6),
             True,
             False,
             temp_files,
