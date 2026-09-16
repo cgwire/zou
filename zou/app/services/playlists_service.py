@@ -1184,35 +1184,17 @@ def generate_temp_playlist(task_ids, sort=True):
 
 def get_playlist_task_id_for_entity(entity_id):
     """
-    Return the task a playlist entry is built from for given entity: the one
-    holding the preview the entity currently shows, else its first task by
-    task type priority that has a preview, else its first task. None when the
-    entity has no task.
+    Return the task a playlist entry is built from for given entity: the most
+    recently reviewed one among the tasks holding a preview. None when no task
+    of the entity has one.
     """
-    tasks = (
-        Task.query.join(TaskType)
-        .filter(Task.entity_id == entity_id)
-        .order_by(TaskType.priority, TaskType.name)
-        .all()
+    task = (
+        Task.query.filter(Task.entity_id == entity_id)
+        .filter(Task.last_preview_file_id.isnot(None))
+        .order_by(Task.last_comment_date.desc())
+        .first()
     )
-    if len(tasks) == 0:
-        return None
-    entity = entities_service.get_entity_raw(entity_id)
-    if entity.preview_file_id is not None:
-        preview_file = PreviewFile.get(entity.preview_file_id)
-        if preview_file is not None and preview_file.task_id in [
-            task.id for task in tasks
-        ]:
-            return str(preview_file.task_id)
-    task_with_preview = next(
-        (
-            task
-            for task in tasks
-            if PreviewFile.query.filter_by(task_id=task.id).count() > 0
-        ),
-        tasks[0],
-    )
-    return str(task_with_preview.id)
+    return str(task.id) if task is not None else None
 
 
 def generate_playlisted_entity_from_task(task_id, task_type_links):
