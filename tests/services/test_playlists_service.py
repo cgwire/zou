@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from datetime import datetime
 from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
@@ -217,6 +218,54 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
                 ("S02", "SH010"),
                 ("S02", "SH020"),
             ],
+        )
+
+    def test_get_playlist_task_id_for_entity(self):
+        """
+        An entity contributes its most recently reviewed task, among the ones
+        holding a preview.
+        """
+        self.generate_fixture_preview_files()
+        layout_task = self.generate_fixture_shot_task(
+            "Layout", task_type_id=self.task_type_layout.id
+        )
+        layout_preview = self.generate_fixture_preview_file(
+            task_id=layout_task.id
+        )
+        self.task.update(
+            {
+                "last_preview_file_id": self.preview_file_2.id,
+                "last_comment_date": datetime(2026, 1, 1),
+            }
+        )
+        layout_task.update(
+            {
+                "last_preview_file_id": layout_preview.id,
+                "last_comment_date": datetime(2026, 2, 1),
+            }
+        )
+        # More recent, but nothing to show.
+        self.generate_fixture_shot_task(
+            "Animation", task_type_id=self.task_type_animation.id
+        ).update({"last_comment_date": datetime(2026, 3, 1)})
+
+        self.assertEqual(
+            playlists_service.get_playlist_task_id_for_entity(
+                str(self.shot.id)
+            ),
+            str(layout_task.id),
+        )
+
+    def test_get_playlist_task_id_for_entity_without_preview(self):
+        """
+        An entity no task of which holds a preview contributes nothing.
+        """
+        self.generate_fixture_preview_files()
+
+        self.assertIsNone(
+            playlists_service.get_playlist_task_id_for_entity(
+                str(self.shot.id)
+            )
         )
 
     def test_generate_temp_playlist_with_edit_task(self):

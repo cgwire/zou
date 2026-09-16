@@ -1182,6 +1182,21 @@ def generate_temp_playlist(task_ids, sort=True):
     )
 
 
+def get_playlist_task_id_for_entity(entity_id):
+    """
+    Return the task a playlist entry is built from for given entity: the most
+    recently reviewed one among the tasks holding a preview. None when no task
+    of the entity has one.
+    """
+    task = (
+        Task.query.filter(Task.entity_id == entity_id)
+        .filter(Task.last_preview_file_id.isnot(None))
+        .order_by(Task.last_comment_date.desc())
+        .first()
+    )
+    return str(task.id) if task is not None else None
+
+
 def generate_playlisted_entity_from_task(task_id, task_type_links):
     """
     Generate the data structure of a playlisted shot for a given task. It

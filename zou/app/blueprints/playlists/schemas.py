@@ -69,13 +69,17 @@ class AddEntitiesToPlaylistSchema(BaseSchema):
 
 class TempPlaylistCreateSchema(BaseSchema):
     """
-    Body for generating a temporary playlist from task IDs.
+    Body for generating a temporary playlist from task IDs, or from entity
+    IDs, each entity contributing one of its tasks.
     """
 
     task_ids: List[UUID] = Field(
-        ...,
-        min_length=0,
+        [],
         description="List of task unique identifiers",
+    )
+    entity_ids: List[UUID] = Field(
+        [],
+        description="List of entity unique identifiers",
     )
 
 

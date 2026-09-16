@@ -147,6 +147,26 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
             [entity["id"] for entity in result], [str(self.shot.id)]
         )
 
+    def test_create_temp_playlist_from_entities(self):
+        """
+        The same playlist built from entities: one entry per entity, on the
+        task holding the preview it was last reviewed on.
+        """
+        preview_file = self.generate_fixture_preview_file(
+            task_id=self.shot_task.id
+        )
+        self.shot_task.update({"last_preview_file_id": preview_file.id})
+
+        result = self.post(
+            f"/data/projects/{self.project_id}/playlists/temp",
+            {"entity_ids": [str(self.shot.id)]},
+            200,
+        )
+
+        self.assertEqual(
+            [entity["id"] for entity in result], [str(self.shot.id)]
+        )
+
     def test_create_temp_playlist_vendor_assigned(self):
         self.generate_fixture_user_vendor()
         self.log_in_vendor()
