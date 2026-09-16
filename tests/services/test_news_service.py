@@ -243,6 +243,24 @@ class NewsListingTestCase(ApiDBTestCase):
             [entry["id"] for entry in news[:4]],
         )
 
+    def test_the_pages_neither_repeat_nor_skip_news_of_one_second(self):
+        # News take the created_at of their comment, serialized to the
+        # second, so many share it. Past two pages of ties, Postgres returned
+        # one of them twice and skipped another without the id in the sort.
+        created_at = self.days_ago(0)
+        news_ids = [
+            self.a_news(f"comment {index}", created_at=created_at)["id"]
+            for index in range(10)
+        ]
+
+        paged_ids = [
+            news_id
+            for page in range(1, 6)
+            for news_id in self.ids(limit=2, page=page)
+        ]
+
+        self.assertEqual(paged_ids, sorted(news_ids, reverse=True))
+
     def test_the_listing_holds_one_named_news(self):
         news = self.a_news("wanted")
         self.a_news("other")
