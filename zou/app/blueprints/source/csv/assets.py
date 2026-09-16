@@ -93,13 +93,19 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         self.descriptor_fields = self.get_descriptor_field_map(
             project_id, "Asset"
         )
-        project = projects_service.get_project(project_id)
+        project = projects_service.get_project(project_id, relations=True)
         self.is_tv_show = projects_service.is_tv_show(project)
         if self.is_tv_show:
             episodes = shots_service.get_episodes_for_project(project_id)
             self.episodes = {
                 episode["name"]: episode["id"] for episode in episodes
             }
+        asset_type_ids_in_project = set(project["asset_types"])
+        self.asset_types_in_project = {
+            asset_type["name"].lower(): asset_type["id"]
+            for asset_type in assets_service.get_asset_types()
+            if asset_type["id"] in asset_type_ids_in_project
+        }
         self.task_types_in_project_for_assets = (
             TaskType.query.join(ProjectTaskTypeLink)
             .filter(ProjectTaskTypeLink.project_id == project_id)
@@ -246,9 +252,8 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         asset_name = row["Name"]
         entity_type_name = row["Type"]
         if entity_type_name is None or not entity_type_name.strip():
-            # get_or_create_asset_type matches names exactly, so an empty
-            # cell used to create an asset type named "" that every later
-            # empty row then reused.
+            # An empty cell used to create an asset type named "" that
+            # every later empty row then reused.
             raise RowException("An asset type is required in the Type column")
         episode_name = row.get("Episode", None)
         episode_id = None
@@ -264,14 +269,42 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                 "An episode column is present for a production that isn't a TV Show"
             )
 
-        self.add_to_cache_if_absent(
-            self.entity_types,
-            assets_service.get_or_create_asset_type,
-            entity_type_name,
-        )
-        entity_type_id = self.get_id_from_cache(
-            self.entity_types, entity_type_name
-        )
+        if self.asset_types_in_project:
+            # An empty project asset type list means every type is allowed,
+            # which is how Kitsu reads it too. A non-empty one is a closed
+            # list, so the import never creates a type here: an unknown
+            # name is a typo, not a new type. A type that exists but is
+            # missing from the list is added to it, otherwise the imported
+            # assets would be absent from the production filters and from
+            # the schedule.
+            entity_type_id = self.asset_types_in_project.get(
+                entity_type_name.lower()
+            )
+            if entity_type_id is None:
+                asset_type = assets_service.find_asset_type_by_name(
+                    entity_type_name
+                )
+                if asset_type is None:
+                    raise RowException(
+                        f"Asset type {entity_type_name} is not configured "
+                        "for this project"
+                    )
+                entity_type_id = str(asset_type.id)
+                projects_service.add_asset_type_setting(
+                    project_id, entity_type_id
+                )
+                self.asset_types_in_project[entity_type_name.lower()] = (
+                    entity_type_id
+                )
+        else:
+            self.add_to_cache_if_absent(
+                self.entity_types,
+                assets_service.get_or_create_asset_type,
+                entity_type_name,
+            )
+            entity_type_id = self.get_id_from_cache(
+                self.entity_types, entity_type_name
+            )
 
         asset_values = {
             "name": asset_name,

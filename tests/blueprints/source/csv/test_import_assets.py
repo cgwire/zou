@@ -6,11 +6,14 @@ from zou.app import db
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.metadata_descriptor import MetadataDescriptor
-from zou.app.models.project import ProjectTaskTypeLink
+from zou.app.models.project import (
+    ProjectAssetTypeLink,
+    ProjectTaskTypeLink,
+)
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 
-from zou.app.services import assets_service, tasks_service
+from zou.app.services import assets_service, projects_service, tasks_service
 
 
 class ImportCsvAssetsTestCase(ApiDBTestCase):
@@ -332,3 +335,69 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         self.assertEqual(error["line_number"], 3)
         self.assertEqual(error["imported_rows"], 1)
         self.assertIsNone(EntityType.get_by(name=""))
+
+    def test_import_assets_type_not_configured_for_project(self):
+        # A project with a configured asset type list never gets a new
+        # type from an import: an unknown name is a typo, not a type.
+        self.generate_fixture_asset_types()
+        projects_service.add_asset_type_setting(
+            self.project_id, self.asset_type_character.id
+        )
+        path = f"/import/csv/projects/{self.project.id}/assets"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets.csv")
+        )
+        error = self.upload_file(path, file_path_fixture, 400)
+        self.assertIn("not configured for this project", error["message"])
+        self.assertEqual(error["line_number"], 2)
+        self.assertEqual(error["imported_rows"], 0)
+        self.assertIsNone(EntityType.get_by(name="Prop"))
+        self.assertEqual(Entity.query.all(), [])
+
+    def test_import_assets_type_case_insensitive(self):
+        # The asset type creation route refuses a name already taken in
+        # another case, so the import must reuse Prop for a prop cell
+        # instead of creating a duplicate the UI could never create.
+        asset_type = EntityType.create(name="Prop")
+        path = f"/import/csv/projects/{self.project.id}/assets"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets_lowercase_type.csv")
+        )
+        self.upload_file(path, file_path_fixture)
+        self.assertIsNone(EntityType.query.filter_by(name="prop").first())
+        asset = Entity.query.one()
+        self.assertEqual(asset.entity_type_id, asset_type.id)
+
+    def test_import_assets_temporal_type(self):
+        # Shots and sequences share the entity type table with asset
+        # types: a row typed Shot used to create an entity that no asset
+        # list would ever show.
+        self.generate_fixture_asset_type()
+        path = f"/import/csv/projects/{self.project.id}/assets"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets_shot_type.csv")
+        )
+        error = self.upload_file(path, file_path_fixture, 400)
+        self.assertIn("not an asset type", error["message"])
+        self.assertEqual(Entity.query.all(), [])
+
+    def test_import_assets_type_added_to_project(self):
+        # A type that exists but is missing from the project list is added
+        # to it: the imported assets would otherwise be absent from the
+        # production filters and from the schedule.
+        self.generate_fixture_asset_types()
+        projects_service.add_asset_type_setting(
+            self.project_id, self.asset_type_character.id
+        )
+        asset_type = EntityType.create(name="Prop")
+        path = f"/import/csv/projects/{self.project.id}/assets"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets.csv")
+        )
+        self.upload_file(path, file_path_fixture)
+        self.assertEqual(len(Entity.query.all()), 3)
+        self.assertIsNotNone(
+            ProjectAssetTypeLink.query.filter_by(
+                project_id=self.project_id, asset_type_id=asset_type.id
+            ).first()
+        )
