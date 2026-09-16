@@ -43,7 +43,21 @@ class CommandsTestCase(ApiDBTestCase):
         task_types = TaskType.get_all()
         entity_types = EntityType.get_all()
         self.assertEqual(len(task_types), 13)
-        self.assertEqual(len(entity_types), 8)
+        self.assertEqual(
+            sorted(entity_type.name for entity_type in entity_types),
+            [
+                "Character",
+                "Concept",
+                "Edit",
+                "Environment",
+                "Episode",
+                "FX",
+                "Prop",
+                "Scene",
+                "Sequence",
+                "Shot",
+            ],
+        )
 
     def test_init_data_creates_concept_task_type(self):
         commands.init_data()
