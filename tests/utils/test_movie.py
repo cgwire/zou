@@ -291,6 +291,38 @@ class MovieTestCase(unittest.TestCase):
         self.assertFalse(result.get("success"))
         self.assertIn("layout", result.get("message"))
 
+    def test_concat_demuxer_keeps_frame_count(self):
+        # AAC audio never ends exactly on a video frame boundary. The
+        # playlist movie must still hold the exact sum of the shot frames.
+        lengths = [37, 50, 61, 48, 73, 29]
+        videos = []
+        for i, length in enumerate(lengths):
+            source = str(Path(self.tmpdir) / f"{i}-frame_count.mov")
+            ffmpeg.output(
+                ffmpeg.input("testsrc=size=320x240:rate=24", f="lavfi"),
+                ffmpeg.input(
+                    "sine=frequency=440:sample_rate=48000", f="lavfi"
+                ),
+                source,
+                vframes=length,
+                t=length / 24,
+                pix_fmt="yuv420p",
+            ).overwrite_output().run(quiet=True)
+            _, normalized, _ = movie.normalize_movie(
+                source, 24, 320, 240, skip_high_def=True
+            )
+            videos.append((normalized, None))
+
+        out = str(Path(self.tmpdir) / "out-frame_count.mp4")
+        result = movie.build_playlist_movie(
+            movie.concat_demuxer, videos, out, 320, 240, fps=24
+        )
+        self.assertTrue(result.get("success"))
+        probe = ffmpeg.probe(out, select_streams="v", count_frames=None)
+        self.assertEqual(
+            int(probe["streams"][0]["nb_read_frames"]), sum(lengths)
+        )
+
     def test_concat_filter_testing(self):
         test_name = "test_concate_filter"
         self.concat_testing(movie.concat_filter, test_name)
