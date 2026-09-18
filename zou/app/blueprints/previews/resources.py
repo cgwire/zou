@@ -219,7 +219,8 @@ def send_movie_file(
         preview_file = files_service.get_preview_file_for_access(
             preview_file_id
         )
-    recorded_prefixes = preview_file["movie_prefixes"]
+    # .get: a dict memoized by the previous release has no such key.
+    recorded_prefixes = preview_file.get("movie_prefixes")
     prefixes = files_service.get_movie_prefixes(
         recorded_prefixes or [], lowdef
     )
