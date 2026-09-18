@@ -17,8 +17,8 @@ class AddTaskTypeSchema(BaseSchema):
 
     task_type_id: str = Field(..., min_length=1, description="Task type UUID")
     priority: Optional[int] = None
-    hd_bitrate_compression: Optional[int] = Field(None, ge=1, le=200)
-    ld_bitrate_compression: Optional[int] = Field(None, ge=1, le=200)
+    hd_bitrate_compression: Optional[int] = Field(None, ge=1)
+    ld_bitrate_compression: Optional[int] = Field(None, ge=1)
 
     def bitrates(self):
         """

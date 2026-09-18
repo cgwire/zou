@@ -96,6 +96,23 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
             {"task_type_id": task_type_id, "ld_bitrate_compression": 0},
             400,
         )
+        # A link low def above the project high def is refused.
+        self.put(
+            f"/data/projects/{self.project_id}", {"hd_bitrate_compression": 10}
+        )
+        self.post(
+            path,
+            {"task_type_id": task_type_id, "ld_bitrate_compression": 12},
+            400,
+        )
+        self.post(
+            path,
+            {
+                "task_type_id": task_type_id,
+                "hd_bitrate_compression": 14,
+                "ld_bitrate_compression": 12,
+            },
+        )
 
     def test_delete_project_task_type(self):
         self.post(

@@ -24,6 +24,7 @@ from zou.app.services import (
     assets_service,
     base_service,
     edits_service,
+    preview_files_service,
     shots_service,
 )
 from zou.app.services.exception import (
@@ -594,6 +595,11 @@ def add_task_type_setting(
             "task_type_id is required and must be a valid UUID"
         )
 
+    project = get_project_raw(project_id)
+    if bitrates is not None:
+        preview_files_service.validate_movie_bitrates(
+            bitrates, inherited=project.serialize()
+        )
     link = ProjectTaskTypeLink.get_by(
         task_type_id=task_type_id, project_id=project_id
     )
@@ -606,7 +612,7 @@ def add_task_type_setting(
         )
     elif bitrates is not None:
         link.update(bitrates)
-    return _save_project(get_project_raw(project_id))
+    return _save_project(project)
 
 
 def remove_task_type_setting(project_id, task_type_id):

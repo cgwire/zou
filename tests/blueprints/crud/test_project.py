@@ -58,6 +58,11 @@ class ProjectTestCase(ApiDBTestCase):
         self.assertIsNone(project_again["ld_bitrate_compression"])
         self.put(path, {"hd_bitrate_compression": "fast"}, 400)
         self.put(path, {"ld_bitrate_compression": 0}, 400)
+        self.put(path, {"hd_bitrate_compression": 29}, 400)
+        # The low def bitrate is checked against the stored high def one.
+        self.put(path, {"ld_bitrate_compression": 21}, 400)
+        self.put(path, {"ld_bitrate_compression": 20})
+        self.put(path, {"hd_bitrate_compression": 19}, 400)
 
     def test_delete_project(self):
         projects = self.get("data/projects")

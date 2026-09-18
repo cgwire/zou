@@ -206,9 +206,56 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
     def test_movie_bitrate_validation(self):
         preview_files_service.validate_movie_bitrate(None)
         preview_files_service.validate_movie_bitrate(20)
-        for bitrate in ("20", 20.5, True, 0, 10**4):
+        preview_files_service.validate_movie_bitrate(28)
+        for bitrate in ("20", 20.5, True, 0, 29):
             with self.assertRaises(WrongParameterException):
                 preview_files_service.validate_movie_bitrate(bitrate)
+
+    def test_low_def_bitrate_stays_below_high_def(self):
+        validate = preview_files_service.validate_movie_bitrates
+        validate({"hd_bitrate_compression": 20, "ld_bitrate_compression": 20})
+        # Against the instance default when the high def is not set.
+        validate({"ld_bitrate_compression": 28})
+        # Against the object's own high def when only the low def changes.
+        validate(
+            {"ld_bitrate_compression": 10},
+            current={"hd_bitrate_compression": 10},
+        )
+        # A link leaving its high def unset is checked against the level
+        # it inherits from.
+        validate(
+            {"hd_bitrate_compression": None, "ld_bitrate_compression": 10},
+            inherited={"hd_bitrate_compression": 10},
+        )
+        # Clearing the low def while lowering the high def is fine.
+        validate(
+            {"hd_bitrate_compression": 4, "ld_bitrate_compression": None},
+            current={"ld_bitrate_compression": 6},
+        )
+        for data, kwargs in (
+            ({"hd_bitrate_compression": 10, "ld_bitrate_compression": 12}, {}),
+            (
+                {"ld_bitrate_compression": 12},
+                {"current": {"hd_bitrate_compression": 10}},
+            ),
+            (
+                {"hd_bitrate_compression": None, "ld_bitrate_compression": 12},
+                {"inherited": {"hd_bitrate_compression": 10}},
+            ),
+            (
+                {"hd_bitrate_compression": 4},
+                {"current": {"ld_bitrate_compression": 6}},
+            ),
+        ):
+            with self.assertRaises(WrongParameterException):
+                validate(data, **kwargs)
+
+    def test_encoding_bitrates_never_exceed_the_ceilings(self):
+        project = {"hd_bitrate_compression": 8, "ld_bitrate_compression": None}
+        link = {"hd_bitrate_compression": None, "ld_bitrate_compression": 12}
+        self.assertEqual(
+            preview_files_service.get_movie_bitrates(project, link), (8, 8)
+        )
 
     def test_get_project_from_preview_file(self):
         preview_file = self.generate_fixture_preview_file()

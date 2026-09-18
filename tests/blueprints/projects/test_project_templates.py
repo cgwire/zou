@@ -123,6 +123,15 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
             {"task_type_id": task_type_id, "hd_bitrate_compression": 0},
             400,
         )
+        self.post(
+            base,
+            {
+                "task_type_id": task_type_id,
+                "hd_bitrate_compression": 10,
+                "ld_bitrate_compression": 12,
+            },
+            400,
+        )
 
     def test_task_type_reorder_route(self):
         template = self._create_template()

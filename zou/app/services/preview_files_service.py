@@ -54,9 +54,9 @@ from zou.app.utils import fs
 REMOTE_NORMALIZE_VERSION = 2
 # Seconds before a missing tile sheet is built again for the same movie.
 TILE_RETRY_DELAY = 3600
-# Bounds of a project movie bitrate in Mbit/s.
+# Lower bound of a project movie bitrate in Mbit/s. The upper bound is the
+# instance high definition bitrate, MOVIE_HIGHDEF_BITRATE.
 MIN_MOVIE_BITRATE = 1
-MAX_MOVIE_BITRATE = 200
 
 
 def get_preview_file_dimensions(project, entity=None):
@@ -138,19 +138,47 @@ def validate_resolution(resolution):
 
 def validate_movie_bitrate(bitrate):
     """
-    Raise WrongParameterException when a project movie bitrate is set but
-    is not an integer number of Mbit/s in a sensible range.
+    Raise WrongParameterException when a movie bitrate is set but is not
+    an integer number of Mbit/s between 1 and the instance high definition
+    bitrate.
     """
     if bitrate is None:
         return
     if (
         not isinstance(bitrate, int)
         or isinstance(bitrate, bool)
-        or not MIN_MOVIE_BITRATE <= bitrate <= MAX_MOVIE_BITRATE
+        or not MIN_MOVIE_BITRATE <= bitrate <= config.MOVIE_HIGHDEF_BITRATE
     ):
         raise WrongParameterException(
             f"Invalid bitrate {bitrate}. Expected an integer number of "
-            f"Mbit/s between {MIN_MOVIE_BITRATE} and {MAX_MOVIE_BITRATE}."
+            f"Mbit/s between {MIN_MOVIE_BITRATE} and "
+            f"{config.MOVIE_HIGHDEF_BITRATE}."
+        )
+
+
+def validate_movie_bitrates(data, current=None, inherited=None):
+    """
+    Check the hd_bitrate_compression and ld_bitrate_compression of a
+    settings change: each within bounds, and the low definition one never
+    above the high definition one it goes with. A bitrate absent from data
+    keeps its value in current, the object being changed; a bitrate left
+    to None comes from inherited, the level the object falls back on.
+    """
+    current = current or {}
+    inherited = inherited or {}
+    resolved = {}
+    for key in ("hd_bitrate_compression", "ld_bitrate_compression"):
+        value = data[key] if key in data else current.get(key)
+        if value is None:
+            value = inherited.get(key)
+        validate_movie_bitrate(value)
+        resolved[key] = value
+    hd = resolved["hd_bitrate_compression"] or config.MOVIE_HIGHDEF_BITRATE
+    ld = resolved["ld_bitrate_compression"]
+    if ld is not None and ld > hd:
+        raise WrongParameterException(
+            f"The low definition bitrate ({ld}) cannot exceed the high "
+            f"definition one ({hd})."
         )
 
 
@@ -167,7 +195,11 @@ def get_movie_bitrates(project, task_type_link=None):
     ):
         value = (task_type_link or {}).get(key) or project.get(key)
         bitrates.append(value or default)
-    return tuple(bitrates)
+    # Settings are validated on write, but a project bitrate lowered later
+    # can leave a link above it: the encoder never exceeds the ceilings.
+    highdef = min(bitrates[0], config.MOVIE_HIGHDEF_BITRATE)
+    lowdef = min(bitrates[1], highdef)
+    return highdef, lowdef
 
 
 def get_preview_file_fps(project, entity=None):
