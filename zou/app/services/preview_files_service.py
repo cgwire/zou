@@ -20,7 +20,7 @@ from zou.app.stores.redis_lock import with_preview_file_lock
 
 from zou.app.models.entity import Entity
 from zou.app.models.preview_file import PreviewFile
-from zou.app.models.project import Project
+from zou.app.models.project import Project, ProjectTaskTypeLink
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
@@ -54,6 +54,9 @@ from zou.app.utils import fs
 REMOTE_NORMALIZE_VERSION = 2
 # Seconds before a missing tile sheet is built again for the same movie.
 TILE_RETRY_DELAY = 3600
+# Lower bound of a project movie bitrate in Mbit/s. The upper bound is the
+# instance high definition bitrate, MOVIE_HIGHDEF_BITRATE.
+MIN_MOVIE_BITRATE = 1
 
 
 def get_preview_file_dimensions(project, entity=None):
@@ -133,6 +136,72 @@ def validate_resolution(resolution):
         )
 
 
+def validate_movie_bitrate(bitrate):
+    """
+    Raise WrongParameterException when a movie bitrate is set but is not
+    an integer number of Mbit/s between 1 and the instance high definition
+    bitrate.
+    """
+    if bitrate is None:
+        return
+    if (
+        not isinstance(bitrate, int)
+        or isinstance(bitrate, bool)
+        or not MIN_MOVIE_BITRATE <= bitrate <= config.MOVIE_HIGHDEF_BITRATE
+    ):
+        raise WrongParameterException(
+            f"Invalid bitrate {bitrate}. Expected an integer number of "
+            f"Mbit/s between {MIN_MOVIE_BITRATE} and "
+            f"{config.MOVIE_HIGHDEF_BITRATE}."
+        )
+
+
+def validate_movie_bitrates(data, current=None, inherited=None):
+    """
+    Check the hd_bitrate_compression and ld_bitrate_compression of a
+    settings change: each within bounds, and the low definition one never
+    above the high definition one it goes with. A bitrate absent from data
+    keeps its value in current, the object being changed; a bitrate left
+    to None comes from inherited, the level the object falls back on.
+    """
+    current = current or {}
+    inherited = inherited or {}
+    resolved = {}
+    for key in ("hd_bitrate_compression", "ld_bitrate_compression"):
+        value = data[key] if key in data else current.get(key)
+        if value is None:
+            value = inherited.get(key)
+        validate_movie_bitrate(value)
+        resolved[key] = value
+    hd = resolved["hd_bitrate_compression"] or config.MOVIE_HIGHDEF_BITRATE
+    ld = resolved["ld_bitrate_compression"]
+    if ld is not None and ld > hd:
+        raise WrongParameterException(
+            f"The low definition bitrate ({ld}) cannot exceed the high "
+            f"definition one ({hd})."
+        )
+
+
+def get_movie_bitrates(project, task_type_link=None):
+    """
+    Return the (highdef, lowdef) bitrates in Mbit/s the movies of a task
+    are encoded at: the task type link's, then the project's, then the
+    config's. Each version resolves on its own.
+    """
+    bitrates = []
+    for key, default in (
+        ("hd_bitrate_compression", config.MOVIE_HIGHDEF_BITRATE),
+        ("ld_bitrate_compression", config.MOVIE_LOWDEF_BITRATE),
+    ):
+        value = (task_type_link or {}).get(key) or project.get(key)
+        bitrates.append(value or default)
+    # Settings are validated on write, but a project bitrate lowered later
+    # can leave a link above it: the encoder never exceeds the ceilings.
+    highdef = min(bitrates[0], config.MOVIE_HIGHDEF_BITRATE)
+    lowdef = min(bitrates[1], highdef)
+    return highdef, lowdef
+
+
 def get_preview_file_fps(project, entity=None):
     """
     Return fps set at project level or default fps if the dimensions are not
@@ -159,6 +228,19 @@ def get_project_from_preview_file(preview_file_id):
     task = Task.get(preview_file.task_id)
     project = Project.get(task.project_id)
     return project.serialize()
+
+
+def get_task_type_link_from_preview_file(preview_file_id):
+    """
+    Get the project task type link dict of related preview file, or None
+    when the task type is not linked to the project.
+    """
+    preview_file = files_service.get_preview_file_raw(preview_file_id)
+    task = Task.get(preview_file.task_id)
+    link = ProjectTaskTypeLink.get_by(
+        project_id=task.project_id, task_type_id=task.task_type_id
+    )
+    return link.serialize() if link is not None else None
 
 
 def get_entity_from_preview_file(preview_file_id):
@@ -376,7 +458,7 @@ def _process_movie(
     if add_source_to_file_store:
         file_store.add_movie("source", preview_file_id, uploaded_movie_path)
     _record_original_metadata(preview_file_id, uploaded_movie_path)
-    fps, width, height = _get_encoding_parameters(preview_file_id)
+    fps, width, height, bitrates = _get_encoding_parameters(preview_file_id)
 
     # SKIP_NORMALIZATION_FULL turns every upload into a raw store, as if
     # the client had asked for normalize=false. SKIP_NORMALIZATION_HIGHDEF
@@ -393,6 +475,7 @@ def _process_movie(
             fps,
             width,
             height,
+            bitrates,
             encode,
             skip_high_def,
             temp_files,
@@ -404,6 +487,7 @@ def _process_movie(
             fps,
             width,
             height,
+            bitrates,
             skip_high_def,
             temp_files,
         )
@@ -493,14 +577,18 @@ def _record_original_metadata(preview_file_id, uploaded_movie_path):
 
 def _get_encoding_parameters(preview_file_id):
     """
-    The fps and the resolution the previews are encoded at, from the
-    project or the entity overriding them. The job can start before the
-    upload's transaction is visible to it: one retry covers that.
+    The fps, the resolution and the (highdef, lowdef) bitrates the previews
+    are encoded at, from the project, the entity or the task type link
+    overriding them. The job can start before the upload's transaction is
+    visible to it: one retry covers that.
     """
     for attempt in range(2):
         try:
             project = get_project_from_preview_file(preview_file_id)
             entity = get_entity_from_preview_file(preview_file_id)
+            task_type_link = get_task_type_link_from_preview_file(
+                preview_file_id
+            )
             break
         except PreviewFileNotFoundException:
             if attempt == 1:
@@ -510,7 +598,8 @@ def _get_encoding_parameters(preview_file_id):
             time.sleep(2)
     fps = get_preview_file_fps(project, entity)
     width, height = get_preview_file_dimensions(project, entity)
-    return fps, width, height
+    bitrates = get_movie_bitrates(project, task_type_link)
+    return fps, width, height, bitrates
 
 
 def _encode_locally(
@@ -519,6 +608,7 @@ def _encode_locally(
     fps,
     width,
     height,
+    bitrates,
     skip_high_def,
     temp_files,
 ):
@@ -527,12 +617,17 @@ def _encode_locally(
     movie the metadata and the thumbnails are read from: the high def
     one, or the low def one when the high def is skipped.
     """
+    highdef_bitrate, lowdef_bitrate = bitrates
     high_def_path, low_def_path, err = movie.normalize_movie(
         uploaded_movie_path,
         fps=fps,
         width=width,
         height=height,
         skip_high_def=skip_high_def,
+        highdef_bitrate=highdef_bitrate,
+        lowdef_bitrate=lowdef_bitrate,
+        preset=config.MOVIE_ENCODING_PRESET,
+        vbv_bufsize_factor=config.MOVIE_VBV_BUFSIZE_FACTOR,
     )
     temp_files.extend(path for path in (high_def_path, low_def_path) if path)
     if err:
@@ -549,6 +644,7 @@ def _encode_on_remote_worker(
     fps,
     width,
     height,
+    bitrates,
     encode,
     skip_high_def,
     temp_files,
@@ -568,6 +664,7 @@ def _encode_on_remote_worker(
         fps,
         width,
         height,
+        bitrates=bitrates,
         skip_high_def=skip_high_def,
         skip_normalization=not encode,
     )
@@ -672,6 +769,7 @@ def _run_remote_normalize_movie(
     fps,
     width,
     height,
+    bitrates=None,
     skip_high_def=False,
     skip_normalization=False,
 ):
@@ -687,10 +785,14 @@ def _run_remote_normalize_movie(
         "height": height,
         "fps": fps,
         # Optional fields: a runner that predates them keeps building both
-        # encoded versions as before.
+        # encoded versions as before, at its own default bitrates.
         "skip_high_def": skip_high_def,
         "skip_normalization": skip_normalization,
+        "preset": config.MOVIE_ENCODING_PRESET,
+        "vbv_bufsize_factor": config.MOVIE_VBV_BUFSIZE_FACTOR,
     }
+    if bitrates is not None:
+        params["highdef_bitrate"], params["lowdef_bitrate"] = bitrates
     nomad_job = config_store.get_nomad_normalize_job()
     result = remote_job.run_job(app, config, nomad_job, params)
     return result

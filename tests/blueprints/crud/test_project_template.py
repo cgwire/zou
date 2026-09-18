@@ -58,6 +58,11 @@ class ProjectTemplateTestCase(ApiDBTestCase):
         )
         again = self.get(f"data/project-templates/{template['id']}")
         self.assertEqual(again["description"], "Updated description")
+        path = f"data/project-templates/{template['id']}"
+        self.put(path, {"hd_bitrate_compression": 29}, 400)
+        self.put(path, {"hd_bitrate_compression": 10})
+        self.put(path, {"ld_bitrate_compression": 12}, 400)
+        self.put(path, {"ld_bitrate_compression": 10})
 
     def test_delete_project_template(self):
         template = self.get_first("data/project-templates")

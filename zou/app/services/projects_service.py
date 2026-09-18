@@ -24,6 +24,7 @@ from zou.app.services import (
     assets_service,
     base_service,
     edits_service,
+    preview_files_service,
     shots_service,
 )
 from zou.app.services.exception import (
@@ -169,9 +170,11 @@ def _fetch_task_type_links_by_project(project_ids):
     ).all()
     task_types_by_project = defaultdict(dict)
     for link in task_type_links:
-        task_types_by_project[link.project_id][
-            str(link.task_type_id)
-        ] = link.priority
+        task_types_by_project[link.project_id][str(link.task_type_id)] = {
+            "priority": link.priority,
+            "hd_bitrate_compression": link.hd_bitrate_compression,
+            "ld_bitrate_compression": link.ld_bitrate_compression,
+        }
     return task_types_by_project
 
 
@@ -273,9 +276,12 @@ def _build_project_dict_with_extra_data(
         _serialize_descriptor(descriptor)
         for descriptor in descriptors_by_project.get(project.id, [])
     ]
-    project_dict["task_types_priority"] = task_types_by_project.get(
-        project.id, {}
-    )
+    task_type_links = task_types_by_project.get(project.id, {})
+    project_dict["task_type_links"] = task_type_links
+    project_dict["task_types_priority"] = {
+        task_type_id: link["priority"]
+        for task_type_id, link in task_type_links.items()
+    }
     project_dict["task_statuses_link"] = task_statuses_by_project.get(
         project.id, {}
     )
@@ -572,9 +578,15 @@ def remove_asset_type_setting(project_id, asset_type_id):
     )
 
 
-def add_task_type_setting(project_id, task_type_id, priority=None):
+def add_task_type_setting(
+    project_id,
+    task_type_id,
+    priority=None,
+    bitrates=None,
+):
     """
-    Add a task type listed in database to the the project task types.
+    Add a task type listed in database to the the project task types. An
+    existing link keeps its priority and gets the bitrates when given.
     """
     project_id = str(project_id)
     task_type_id = str(task_type_id)
@@ -583,14 +595,24 @@ def add_task_type_setting(project_id, task_type_id, priority=None):
             "task_type_id is required and must be a valid UUID"
         )
 
+    project = get_project_raw(project_id)
+    if bitrates is not None:
+        preview_files_service.validate_movie_bitrates(
+            bitrates, inherited=project.serialize()
+        )
     link = ProjectTaskTypeLink.get_by(
         task_type_id=task_type_id, project_id=project_id
     )
     if not link:
         ProjectTaskTypeLink.create(
-            task_type_id=task_type_id, project_id=project_id, priority=priority
+            task_type_id=task_type_id,
+            project_id=project_id,
+            priority=priority,
+            **(bitrates or {}),
         )
-    return _save_project(get_project_raw(project_id))
+    elif bitrates is not None:
+        link.update(bitrates)
+    return _save_project(project)
 
 
 def remove_task_type_setting(project_id, task_type_id):

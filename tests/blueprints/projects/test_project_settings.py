@@ -57,6 +57,63 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
         project = self.get(f"/data/projects/{self.project_id}")
         self.assertIn(str(self.task_type.id), project.get("task_types", []))
 
+    def test_task_type_link_bitrates(self):
+        path = f"/data/projects/{self.project_id}/settings/task-types"
+        task_type_id = str(self.task_type.id)
+        self.post(path, {"task_type_id": task_type_id, "priority": 3})
+        # A second call keeps the priority and sets the bitrates.
+        self.post(
+            path,
+            {
+                "task_type_id": task_type_id,
+                "hd_bitrate_compression": 20,
+                "ld_bitrate_compression": 4,
+            },
+        )
+        # The link maps ride along the project lists, not the single GET.
+        project = next(
+            project
+            for project in self.get("/data/projects/open")
+            if project["id"] == self.project_id
+        )
+        self.assertEqual(
+            project["task_type_links"][task_type_id],
+            {
+                "priority": 3,
+                "hd_bitrate_compression": 20,
+                "ld_bitrate_compression": 4,
+            },
+        )
+        self.assertEqual(project["task_types_priority"][task_type_id], 3)
+        # A call without bitrates leaves them alone.
+        self.post(path, {"task_type_id": task_type_id, "priority": 4})
+        link = ProjectTaskTypeLink.get_by(
+            project_id=self.project_id, task_type_id=task_type_id
+        )
+        self.assertEqual(link.hd_bitrate_compression, 20)
+        self.post(
+            path,
+            {"task_type_id": task_type_id, "ld_bitrate_compression": 0},
+            400,
+        )
+        # A link low def above the project high def is refused.
+        self.put(
+            f"/data/projects/{self.project_id}", {"hd_bitrate_compression": 10}
+        )
+        self.post(
+            path,
+            {"task_type_id": task_type_id, "ld_bitrate_compression": 12},
+            400,
+        )
+        self.post(
+            path,
+            {
+                "task_type_id": task_type_id,
+                "hd_bitrate_compression": 14,
+                "ld_bitrate_compression": 12,
+            },
+        )
+
     def test_delete_project_task_type(self):
         self.post(
             f"/data/projects/{self.project_id}/settings/task-types",

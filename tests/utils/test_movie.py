@@ -6,6 +6,8 @@ from PIL import Image
 import math
 
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 import ffmpeg
 
@@ -99,6 +101,42 @@ class MovieTestCase(unittest.TestCase):
         width_norm, height_norm = movie.get_movie_size(normalized)
         self.assertEqual(width, width_norm)
         self.assertEqual(height, height_norm)
+
+    def test_normalize_encoding_rate_control(self):
+        """
+        The bitrate is the VBV cap with a buffer of the given factor; a
+        zero factor keeps a plain average bitrate target.
+        """
+        calls = []
+
+        def fake_output(*args, **kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(
+                get_args=lambda: [], run=lambda **kwargs: None
+            )
+
+        with patch.object(movie.ffmpeg, "output", fake_output):
+            movie.normalize_encoding(
+                self.video_only_path, "t", "/tmp/out.mp4", 25, 20, 320, 240
+            )
+            movie.normalize_encoding(
+                self.video_only_path,
+                "t",
+                "/tmp/out.mp4",
+                25,
+                20,
+                320,
+                240,
+                preset="slow",
+                vbv_bufsize_factor=0,
+            )
+        self.assertEqual(calls[0]["b"], "20M")
+        self.assertEqual(calls[0]["maxrate"], "20M")
+        self.assertEqual(calls[0]["bufsize"], "40M")
+        self.assertEqual(calls[0]["preset"], "medium")
+        self.assertEqual(calls[1]["preset"], "slow")
+        self.assertNotIn("maxrate", calls[1])
+        self.assertNotIn("bufsize", calls[1])
 
     def test_normalize_width_unspecified(self):
         filename = "test_normalize_no_width.m4v"
