@@ -51,6 +51,7 @@ def clear_project_cache(project_id):
     project_id = str(project_id)
     cache.cache.delete_memoized(_get_project_cached, project_id, False)
     cache.cache.delete_memoized(_get_project_cached, project_id, True)
+    cache.cache.delete_memoized(get_team_roles, project_id)
     cache.cache.delete_memoized(get_project_by_name)
     cache.cache.delete_memoized(open_projects)
 
@@ -541,10 +542,13 @@ def get_team_raw(project_id):
     )
 
 
+@cache.memoize_function(120)
 def get_team_roles(project_id):
     """
     Return a dict mapping person ids to their explicit role on given
     project. Persons inheriting their global role are absent from the dict.
+    Memoized: every project access check of a non-admin reads it. Always
+    call it with the project id as a string, the cache is keyed on it.
     """
     return {
         str(link.person_id): getattr(link.role, "code", link.role)
