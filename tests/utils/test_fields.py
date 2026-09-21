@@ -50,6 +50,10 @@ class FieldsTestCase(unittest.TestCase):
         self.assertTrue(fields.is_valid_id(unique_id))
         self.assertFalse(fields.is_valid_id("undefined"))
         self.assertFalse(fields.is_valid_id(None))
+        # A UUID followed by anything is not one: uuid.UUID() rejects it, so
+        # letting it through turns a 400 into a database error.
+        for suffix in ("\n", " ", "zz", "?x=1", "/download"):
+            self.assertFalse(fields.is_valid_id(f"{unique_id}{suffix}"))
 
     def test_serialize_orm_array(self):
         person = Person(id=uuid.uuid4(), first_name="Jhon", last_name="Doe")

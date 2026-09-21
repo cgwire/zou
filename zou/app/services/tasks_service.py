@@ -1914,13 +1914,12 @@ def get_or_create_task_type(
     return task_type.serialize()
 
 
-def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
+def _get_time_spent_raw(task_id, person_id, date):
     """
-    Create a new time spent if it doesn't exist. If it exists, it update it
-    with the new duration and returns it from the database.
+    Return the time spent recorded for given task, person and date.
     """
     try:
-        time_spent = TimeSpent.get_by(
+        return TimeSpent.get_by(
             task_id=task_id,
             person_id=person_id,
             date=func.cast(date, TimeSpent.date.type),
@@ -1928,28 +1927,55 @@ def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
     except DataError:
         raise WrongDateFormatException
 
+
+def _apply_time_spent_duration(time_spent, duration, add, project_id):
+    """
+    Set the duration of an existing time spent and notify the change.
+    """
+    if add:
+        duration = time_spent.duration + duration
+    time_spent.update({"duration": duration})
+    events.emit(
+        "time-spent:update",
+        {"time_spent_id": str(time_spent.id)},
+        project_id=project_id,
+    )
+
+
+def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
+    """
+    Create a new time spent if it doesn't exist. If it exists, it update it
+    with the new duration and returns it from the database.
+    """
+    time_spent = _get_time_spent_raw(task_id, person_id, date)
+
     task = base_service.get_instance(Task, task_id, TaskNotFoundException)
     project_id = str(task.project_id)
     if time_spent is not None:
-        if add:
-            time_spent.update({"duration": time_spent.duration + duration})
-        else:
-            time_spent.update({"duration": duration})
-        events.emit(
-            "time-spent:update",
-            {"time_spent_id": str(time_spent.id)},
-            project_id=project_id,
-        )
+        _apply_time_spent_duration(time_spent, duration, add, project_id)
     else:
-        time_spent = TimeSpent.create(
-            task_id=task_id, person_id=person_id, date=date, duration=duration
-        )
-        persons_service.update_person_last_presence(person_id)
-        events.emit(
-            "time-spent:new",
-            {"time_spent_id": str(time_spent.id)},
-            project_id=project_id,
-        )
+        try:
+            time_spent = TimeSpent.create(
+                task_id=task_id,
+                person_id=person_id,
+                date=date,
+                duration=duration,
+            )
+            persons_service.update_person_last_presence(person_id)
+            events.emit(
+                "time-spent:new",
+                {"time_spent_id": str(time_spent.id)},
+                project_id=project_id,
+            )
+        except IntegrityError:
+            # A concurrent request inserted the same (person, task, date)
+            # between the read above and this insert: time_spent_uc rejects
+            # the loser, which updates the winning row instead of 500ing.
+            # BaseMixin.create already rolled the session back.
+            time_spent = _get_time_spent_raw(task_id, person_id, date)
+            if time_spent is None:
+                raise
+            _apply_time_spent_duration(time_spent, duration, add, project_id)
 
     task.duration = sum(
         time_spent.duration
@@ -1966,14 +1992,7 @@ def delete_time_spent(task_id, person_id, date):
     """
     Delete time spent for given task, person and date.
     """
-    try:
-        time_spent = TimeSpent.get_by(
-            task_id=task_id,
-            person_id=person_id,
-            date=func.cast(date, TimeSpent.date.type),
-        )
-    except DataError:
-        raise WrongDateFormatException
+    time_spent = _get_time_spent_raw(task_id, person_id, date)
 
     if time_spent is None:
         raise TimeSpentNotFoundException

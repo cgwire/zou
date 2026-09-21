@@ -99,7 +99,9 @@ class OTIOBaseResource(MethodView, ArgsMixin):
             # handler answers 400, no server-error log.
             raise
         except Exception as e:
-            current_app.logger.error(
+            # An unparseable timeline is client input: warn and answer 400
+            # rather than reporting it as a server error.
+            current_app.logger.warning(
                 f"Import OTIO failed: {type(e).__name__}: {str(e)}"
             )
             return {
@@ -269,7 +271,7 @@ class OTIOBaseResource(MethodView, ArgsMixin):
                                 track.trimmed_range().start_time.to_frames()
                             )
                     except Exception as e:
-                        current_app.logger.error(
+                        current_app.logger.warning(
                             f"Parsing frame_in failed: {type(e).__name__}: {str(e)}"
                         )
                     try:
@@ -286,7 +288,7 @@ class OTIOBaseResource(MethodView, ArgsMixin):
                                 .to_frames()
                             )
                     except Exception as e:
-                        current_app.logger.error(
+                        current_app.logger.warning(
                             f"Parsing frame_out failed: {type(e).__name__}: {str(e)}"
                         )
 
@@ -297,7 +299,7 @@ class OTIOBaseResource(MethodView, ArgsMixin):
                             track.source_range.duration.to_frames()
                         )
                     except Exception as e:
-                        current_app.logger.error(
+                        current_app.logger.warning(
                             f"Parsing nb_frames failed: {type(e).__name__}: {str(e)}"
                         )
 

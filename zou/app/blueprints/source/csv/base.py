@@ -56,13 +56,16 @@ class BaseCsvImportResource(MethodView, ArgsMixin):
         try:
             result = self.run_import(file_path, *args)
             return result, 201
+        # A malformed file is client input, not a server fault: warnings keep
+        # it out of the error monitoring while the 400 still tells the user
+        # which line to fix.
         except ImportRowException as e:
-            current_app.logger.error(
+            current_app.logger.warning(
                 f"Import row {e.line_number} failed: {e.message}"
             )
             return self.format_row_error(e), 400
         except csv.Error as e:
-            current_app.logger.error(f"Import failed: {e}")
+            current_app.logger.warning(f"Import failed: {e}")
             return self.format_error(e), 400
         finally:
             if os.path.exists(file_path):
