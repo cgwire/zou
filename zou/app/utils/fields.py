@@ -10,8 +10,13 @@ from ipaddress import IPv4Address
 from pytz import tzinfo
 from sqlalchemy_utils.types.choice import Choice
 
+# Anchored at both ends: re.match only anchors the start, so an unanchored
+# pattern accepted a valid UUID followed by anything ("<uuid>\n", "<uuid>?x=1")
+# and let it reach the database, where uuid.UUID() raises a StatementError
+# (HTTP 500) instead of the 400 the guards using is_valid_id intend.
 _UUID_RE = re.compile(
-    r"[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
+    r"\A[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}"
+    r"-[a-fA-F0-9]{12}\Z"
 )
 
 
