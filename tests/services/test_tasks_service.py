@@ -4,6 +4,7 @@ import datetime
 from unittest import mock
 
 from sqlalchemy import event
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import StaleDataError
 
 from tests.base import ApiDBTestCase
@@ -583,6 +584,38 @@ class TimeSpentTestCase(TaskTestCase):
             self.task_id, self.person_id, "2017-09-23", 7200, add=True
         )
         self.assertEqual(time_spent["duration"], 14400)
+
+    def test_create_or_update_time_spent_losing_the_insert_race(self):
+        # Two concurrent writes on the same (person, task, date): the loser
+        # reads before the winner commits, so its insert is rejected by
+        # time_spent_uc. It must update the winning row instead of letting
+        # the IntegrityError out as a 500.
+        # The rejection is simulated: a real one rolls the session back, and
+        # the suite runs each test inside a single transaction, so it would
+        # take the fixtures with it.
+        tasks_service.create_or_update_time_spent(
+            self.task_id, self.person_id, "2017-09-23", 3600
+        )
+
+        read_time_spent = tasks_service._get_time_spent_raw
+        reads = []
+
+        def stale_first_read(*args, **kwargs):
+            reads.append(None)
+            if len(reads) == 1:
+                return None
+            return read_time_spent(*args, **kwargs)
+
+        rejected = IntegrityError("INSERT", {}, Exception("time_spent_uc"))
+        with mock.patch.object(
+            tasks_service, "_get_time_spent_raw", stale_first_read
+        ), mock.patch.object(TimeSpent, "create", side_effect=rejected):
+            time_spent = tasks_service.create_or_update_time_spent(
+                self.task_id, self.person_id, "2017-09-23", 7200
+            )
+
+        self.assertEqual(time_spent["duration"], 7200)
+        self.assertEqual(len(TimeSpent.get_all_by(task_id=self.task_id)), 1)
 
     def test_the_task_duration_follows_its_time_spents(self):
         # The duration of the task is the sum of its time spents, and it is
