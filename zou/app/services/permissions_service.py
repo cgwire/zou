@@ -86,11 +86,9 @@ def get_project_role(person_id, project_id):
     project-specific role when one is set on the team link, the person's
     global role otherwise.
     """
-    link = ProjectPersonLink.query.filter_by(
-        project_id=str(project_id), person_id=str(person_id)
-    ).first()
-    if link is not None and link.role is not None:
-        return getattr(link.role, "code", link.role)
+    role = projects_service.get_team_roles(str(project_id)).get(str(person_id))
+    if role is not None:
+        return role
     return persons_service.get_person(person_id)["role"]
 
 

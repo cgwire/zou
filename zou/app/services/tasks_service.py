@@ -14,7 +14,8 @@ Two conventions matter when editing this module:
 import collections
 import uuid
 
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, any_, cast, or_
+from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.exc import StatementError, IntegrityError, DataError
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import case
@@ -487,8 +488,11 @@ def _attach_assignee_ids(task_dicts):
     task_ids = [task["id"] for task in task_dicts]
     links = (
         db.session.query(TaskPersonLink.task_id, TaskPersonLink.person_id)
-        .filter(TaskPersonLink.task_id.in_(task_ids))
-        .all()
+        # One array parameter: an IN list binds one parameter per task,
+        # which takes seconds on a full episode.
+        .filter(
+            TaskPersonLink.task_id == any_(cast(task_ids, ARRAY(UUID)))
+        ).all()
     )
     assignees_by_task = collections.defaultdict(list)
     for task_id, person_id in links:
