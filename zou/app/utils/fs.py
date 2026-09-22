@@ -94,6 +94,39 @@ class ConfirmedFileNotFound(FileNotFound):
     """
 
 
+def is_confirmed_missing_error(exception):
+    """
+    Tell an absence the storage itself confirmed (a 404, or an object
+    store's own missing-object code) apart from every other failure.
+
+    Unlike is_missing_file_error, a bare FileNotFoundError or FileNotFound
+    is NOT confirmed here: download_to_file raises those for its own local
+    temp file too (TMP_DIR missing, or the .part removed from under it by
+    a concurrent _remove_stale_parts), which says nothing about whether
+    the remote object exists. Only an exception the storage backend itself
+    raised for a missing object - already a ConfirmedFileNotFound, or
+    carrying a 404 / a known missing-object code - confirms the absence.
+    """
+    if exception is None:
+        return False
+    if isinstance(exception, ConfirmedFileNotFound):
+        return True
+    if isinstance(exception, (FileNotFound, FileNotFoundError)):
+        return False
+    for attribute in ("http_status", "status", "status_code"):
+        if getattr(exception, attribute, None) == 404:
+            return True
+    response = getattr(exception, "response", None)
+    if isinstance(response, dict):
+        metadata = response.get("ResponseMetadata") or {}
+        if metadata.get("HTTPStatusCode") == 404:
+            return True
+        error = response.get("Error") or {}
+        if error.get("Code") in MISSING_OBJECT_ERROR_CODES:
+            return True
+    return False
+
+
 def get_cache_file_path(config, prefix, instance_id, extension):
     """
     Path of the local copy kept for a file stored on a remote backend.
@@ -237,7 +270,7 @@ def get_file_path_and_file(
                 if exception is not None:
                     if isinstance(exception, ConfirmedFileNotFound):
                         raise exception
-                    if is_missing_file_error(exception):
+                    if is_confirmed_missing_error(exception):
                         raise ConfirmedFileNotFound(
                             f"{prefix}-{instance_id}"
                         ) from exception

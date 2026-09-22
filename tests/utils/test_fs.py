@@ -394,6 +394,21 @@ class ConfirmedFileNotFoundTestCase(unittest.TestCase):
                     self.get(FakeConfig(tmp_dir), open_file)
         self.assertNotIsInstance(raised.value, fs.ConfirmedFileNotFound)
 
+    def test_local_temp_file_error_is_not_confirmed(self):
+        # A FileNotFoundError raised while writing the local temp file
+        # (TMP_DIR missing, or the .part swept by a concurrent
+        # _remove_stale_parts) says nothing about the remote object: it
+        # must not be mistaken for a confirmed absence.
+        def open_file(prefix, instance_id):
+            raise FileNotFoundError("tmp gone")
+            yield b""
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            with mock.patch("zou.app.utils.fs.time.sleep"):
+                with pytest.raises(FileNotFound) as raised:
+                    self.get(FakeConfig(tmp_dir), open_file)
+        self.assertNotIsInstance(raised.value, fs.ConfirmedFileNotFound)
+
 
 class FileStoreConfirmedFileNotFoundTestCase(unittest.TestCase):
     def test_backend_404_is_confirmed(self):
