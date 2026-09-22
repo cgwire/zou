@@ -246,3 +246,23 @@ class ProbePreviewFilesTestCase(ApiDBTestCase):
         )
         summary = self.probe(only_unknown=True)
         self.assertEqual(sum(summary.values()), 0)
+
+
+class ProbePreviewFilesProgressTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_asset()
+        self.generate_fixture_task()
+        self.generate_fixture_preview_file()
+        self.generate_fixture_preview_file(revision=2)
+
+    def test_progress_counts_every_preview(self):
+        from tests.services.test_preview_files_service import SpyProgress
+
+        progress = SpyProgress()
+        with patch.object(file_store, "exists_confirmed", return_value=True):
+            states_service.probe_preview_files(progress=progress)
+        self.assertEqual(progress.total, 2)
+        self.assertEqual(progress.advanced, 2)
+        self.assertTrue(progress.stopped)

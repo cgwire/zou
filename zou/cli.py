@@ -949,6 +949,12 @@ def search_asset(query):
 @click.option(
     "--force-regenerate-tiles", is_flag=True, default=False, show_default=True
 )
+@click.option(
+    "--only-missing-tiles", is_flag=True, default=False, show_default=True
+)
+@click.option("--force", is_flag=True, default=False, show_default=True)
+@click.option("--limit", type=int, default=None, show_default=True)
+@click.option("--progress", is_flag=True, default=False, show_default=True)
 def generate_preview_extra(
     project,
     entity_id,
@@ -959,11 +965,46 @@ def generate_preview_extra(
     with_metadata,
     with_thumbnails,
     force_regenerate_tiles,
+    only_missing_tiles,
+    force,
+    limit,
+    progress,
 ):
     """
     Generate tiles, thumbnails and metadata for all previews.
+
+    --only-missing-tiles queues one background job per movie that has no
+    tile, on Nomad when a tile job is configured, and decodes nothing
+    here. --force queues a movie attempted within the last hour too.
     """
     from zou.app.utils import commands
+    from zou.app.services.exception import JobQueueDisabledException
+
+    if only_missing_tiles:
+        if with_tiles or with_metadata or with_thumbnails:
+            raise click.UsageError(
+                "--only-missing-tiles builds nothing else: drop "
+                "--with-tiles, --with-metadata and --with-thumbnails."
+            )
+        if force_regenerate_tiles:
+            raise click.UsageError(
+                "--only-missing-tiles skips the movies that have a tile: "
+                "--force-regenerate-tiles belongs to --with-tiles."
+            )
+        try:
+            commands.queue_missing_tiles(
+                project=project,
+                entity_id=entity_id,
+                episodes=episode,
+                only_shots=only_shots,
+                only_assets=only_assets,
+                limit=limit,
+                force=force,
+                progress=progress,
+            )
+        except JobQueueDisabledException as exception:
+            raise click.ClickException(str(exception))
+        return
 
     commands.generate_preview_extra(
         project=project,
@@ -975,6 +1016,7 @@ def generate_preview_extra(
         with_tiles=with_tiles,
         with_metadata=with_metadata,
         with_thumbnails=with_thumbnails,
+        progress=progress,
     )
 
 
@@ -1003,7 +1045,8 @@ def reset_picture_files_metadata():
 @click.option("--only-unknown", is_flag=True, default=False, show_default=True)
 @click.option("--limit", type=int, default=None, show_default=True)
 @click.option("--dry-run", is_flag=True, default=False, show_default=True)
-def probe_preview_files(project_id, only_unknown, limit, dry_run):
+@click.option("--progress", is_flag=True, default=False, show_default=True)
+def probe_preview_files(project_id, only_unknown, limit, dry_run, progress):
     """
     Ask the storage which files of the ready previews exist, record their
     states and print the missing ones per kind. --only-unknown skips
@@ -1017,6 +1060,7 @@ def probe_preview_files(project_id, only_unknown, limit, dry_run):
         only_unknown=only_unknown,
         limit=limit,
         dry_run=dry_run,
+        progress=progress,
     )
 
 
