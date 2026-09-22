@@ -60,6 +60,7 @@ from zou.app.services.exception import (
     EpisodeNotFoundException,
 )
 from zou.app.utils import fs
+from zou.app.utils.progress import NullProgress
 
 REMOTE_NORMALIZE_VERSION = 2
 REMOTE_TILE_VERSION = 1
@@ -1763,6 +1764,7 @@ def queue_missing_tiles(
     only_assets=False,
     limit=None,
     force=False,
+    progress=None,
 ):
     """
     Queue the tile build of the movies that have none, one job per movie:
@@ -1790,27 +1792,41 @@ def queue_missing_tiles(
     if limit is not None:
         query = query.limit(limit)
 
+    progress = progress or NullProgress()
     summary = Counter()
-    for preview_file in query.all():
-        try:
-            preview_file_id = str(preview_file.id)
-        except ObjectDeletedError:
-            continue
-        summary["checked"] += 1
-        stored = _has_stored_tile(preview_file_id)
-        if stored is None:
-            summary["storage_errors"] += 1
-            continue
-        if stored:
-            summary["stored"] += 1
-            continue
-        if force:
-            _tile_store().delete(_tile_attempt_key(preview_file_id))
-        if generate_tile_later(preview_file_id):
-            summary["queued"] += 1
-        else:
-            summary["recently_attempted"] += 1
+    preview_files = query.all()
+    progress.start(len(preview_files))
+    try:
+        for preview_file in preview_files:
+            _queue_missing_tile(preview_file, summary, force)
+            progress.advance()
+    finally:
+        progress.stop()
     return summary
+
+
+def _queue_missing_tile(preview_file, summary, force):
+    """
+    Queue the tile build of one movie, counting the outcome.
+    """
+    try:
+        preview_file_id = str(preview_file.id)
+    except ObjectDeletedError:
+        return
+    summary["checked"] += 1
+    stored = _has_stored_tile(preview_file_id)
+    if stored is None:
+        summary["storage_errors"] += 1
+        return
+    if stored:
+        summary["stored"] += 1
+        return
+    if force:
+        _tile_store().delete(_tile_attempt_key(preview_file_id))
+    if generate_tile_later(preview_file_id):
+        summary["queued"] += 1
+    else:
+        summary["recently_attempted"] += 1
 
 
 def _has_stored_tile(preview_file_id):
@@ -1846,11 +1862,13 @@ def generate_preview_extra(
     with_tiles=False,
     with_metadata=False,
     with_thumbnails=False,
+    progress=None,
 ):
     """
     Generate tiles for all movie previews and reset previews file size
     informations of open projects.
     """
+    progress = progress or NullProgress()
     print("Generating preview extras...")
     query = _build_preview_extra_query(
         project=project,
@@ -1862,10 +1880,12 @@ def generate_preview_extra(
 
     total = query.count()
     print(f"{total} previews found.")
+    progress.start(total)
     for index, preview_file in enumerate(query.all()):
         try:
             preview_file_id = str(preview_file.id)
         except ObjectDeletedError:
+            progress.advance()
             continue
         prefix = "previews" if preview_file.extension == "mp4" else "original"
         if config.FS_BACKEND != "local":
@@ -1905,7 +1925,9 @@ def generate_preview_extra(
                     os.remove(preview_file_path)
                 except OSError:
                     pass
+        progress.advance()
 
+    progress.stop()
     print("Extra information generated.")
     return total
 

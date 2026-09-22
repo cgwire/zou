@@ -19,6 +19,7 @@ from zou.app.models.preview_file_storage_state import (
 from zou.app.models.task import Task
 from zou.app.stores import file_store
 from zou.app.utils import cache, date_helpers, fields
+from zou.app.utils.progress import NullProgress
 
 logger = logging.getLogger(__name__)
 
@@ -208,7 +209,11 @@ def probe_file_states(preview_file_id, extension, files=None):
 
 
 def probe_preview_files(
-    project_id=None, only_unknown=False, limit=None, dry_run=False
+    project_id=None,
+    only_unknown=False,
+    limit=None,
+    dry_run=False,
+    progress=None,
 ):
     """
     Probe the storage for the files of the ready preview files and record
@@ -230,13 +235,20 @@ def probe_preview_files(
     if limit is not None:
         query = query.limit(limit)
 
+    progress = progress or NullProgress()
     summary = Counter()
-    for preview_file_id, extension in query.all():
-        states = probe_file_states(preview_file_id, extension)
-        for (bucket, prefix), state in states.items():
-            summary[file_key(bucket, prefix)] += state != OK
-        if not dry_run:
-            record_file_states(preview_file_id, states)
+    preview_files = query.all()
+    progress.start(len(preview_files))
+    try:
+        for preview_file_id, extension in preview_files:
+            states = probe_file_states(preview_file_id, extension)
+            for (bucket, prefix), state in states.items():
+                summary[file_key(bucket, prefix)] += state != OK
+            if not dry_run:
+                record_file_states(preview_file_id, states)
+            progress.advance()
+    finally:
+        progress.stop()
     return summary
 
 

@@ -954,6 +954,7 @@ def search_asset(query):
 )
 @click.option("--force", is_flag=True, default=False, show_default=True)
 @click.option("--limit", type=int, default=None, show_default=True)
+@click.option("--progress", is_flag=True, default=False, show_default=True)
 def generate_preview_extra(
     project,
     entity_id,
@@ -967,6 +968,7 @@ def generate_preview_extra(
     only_missing_tiles,
     force,
     limit,
+    progress,
 ):
     """
     Generate tiles, thumbnails and metadata for all previews.
@@ -998,6 +1000,7 @@ def generate_preview_extra(
                 only_assets=only_assets,
                 limit=limit,
                 force=force,
+                progress=progress,
             )
         except JobQueueDisabledException as exception:
             raise click.ClickException(str(exception))
@@ -1013,6 +1016,7 @@ def generate_preview_extra(
         with_tiles=with_tiles,
         with_metadata=with_metadata,
         with_thumbnails=with_thumbnails,
+        progress=progress,
     )
 
 
@@ -1041,7 +1045,8 @@ def reset_picture_files_metadata():
 @click.option("--only-unknown", is_flag=True, default=False, show_default=True)
 @click.option("--limit", type=int, default=None, show_default=True)
 @click.option("--dry-run", is_flag=True, default=False, show_default=True)
-def probe_preview_files(project_id, only_unknown, limit, dry_run):
+@click.option("--progress", is_flag=True, default=False, show_default=True)
+def probe_preview_files(project_id, only_unknown, limit, dry_run, progress):
     """
     Ask the storage which files of the ready previews exist, record their
     states and print the missing ones per kind. --only-unknown skips
@@ -1055,6 +1060,7 @@ def probe_preview_files(project_id, only_unknown, limit, dry_run):
         only_unknown=only_unknown,
         limit=limit,
         dry_run=dry_run,
+        progress=progress,
     )
 
 

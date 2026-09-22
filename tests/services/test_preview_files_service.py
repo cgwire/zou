@@ -2155,3 +2155,49 @@ class QueueMissingTilesTestCase(PreviewFileTestCase):
                 preview_files_service.JobQueueDisabledException,
                 preview_files_service.queue_missing_tiles,
             )
+
+
+class SpyProgress:
+    """
+    Records what a command reports so the tests can check the counting
+    without a terminal.
+    """
+
+    def __init__(self):
+        self.total = None
+        self.advanced = 0
+        self.stopped = False
+
+    def start(self, total):
+        self.total = total
+
+    def advance(self):
+        self.advanced += 1
+
+    def stop(self):
+        self.stopped = True
+
+
+class QueueMissingTilesProgressTestCase(QueueMissingTilesTestCase):
+    def test_progress_counts_every_movie_looked_at(self):
+        self.generate_fixture_preview_file(revision=2)
+        states_service.record_file_state(
+            self.preview_file_id, "pictures", "tiles", states_service.OK
+        )
+        progress = SpyProgress()
+        with self.job_queue(), patch.object(
+            file_store, "exists_confirmed", return_value=False
+        ):
+            preview_files_service.queue_missing_tiles(progress=progress)
+        self.assertEqual(progress.total, 2)
+        self.assertEqual(progress.advanced, 2)
+        self.assertTrue(progress.stopped)
+
+    def test_progress_stops_when_a_movie_fails(self):
+        progress = SpyProgress()
+        with self.job_queue(), patch.object(
+            file_store, "exists_confirmed", side_effect=RuntimeError("503")
+        ):
+            preview_files_service.queue_missing_tiles(progress=progress)
+        self.assertEqual(progress.advanced, 1)
+        self.assertTrue(progress.stopped)

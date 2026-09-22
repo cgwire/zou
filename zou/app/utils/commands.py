@@ -11,6 +11,7 @@ import orjson as json
 from tabulate import tabulate
 from ldap3 import Server, Connection, ALL, NTLM, SIMPLE
 from zou.app.utils import thumbnail as thumbnail_utils, auth
+from zou.app.utils.progress import NullProgress
 from zou.app.stores import auth_tokens_store, file_store
 from zou.app.services import (
     assets_service,
@@ -925,6 +926,7 @@ def generate_preview_extra(
     with_tiles=False,
     with_metadata=False,
     with_thumbnails=False,
+    progress=False,
 ):
     if episodes is None:
         episodes = []
@@ -939,7 +941,41 @@ def generate_preview_extra(
             with_thumbnails=with_thumbnails,
             with_metadata=with_metadata,
             with_tiles=with_tiles,
+            progress=get_progress("Generating preview extras", progress),
         )
+
+
+class ClickProgress:
+    """
+    Draws a progress bar for a long running command. Outside an
+    interactive terminal click hides the bar, so a cron or a redirected
+    run stays readable.
+    """
+
+    def __init__(self, label):
+        self.label = label
+        self.bar = None
+
+    def start(self, total):
+        self.bar = click.progressbar(length=total, label=self.label)
+        self.bar.__enter__()
+
+    def advance(self):
+        if self.bar is not None:
+            self.bar.update(1)
+
+    def stop(self):
+        if self.bar is not None:
+            self.bar.__exit__(None, None, None)
+            self.bar = None
+
+
+def get_progress(label, enabled):
+    """
+    The reporter a command hands its service: a bar when asked for one,
+    the silent reporter otherwise.
+    """
+    return ClickProgress(label) if enabled else NullProgress()
 
 
 def queue_missing_tiles(
@@ -950,6 +986,7 @@ def queue_missing_tiles(
     only_assets=False,
     limit=None,
     force=False,
+    progress=False,
 ):
     with app.app_context():
         summary = preview_files_service.queue_missing_tiles(
@@ -960,6 +997,7 @@ def queue_missing_tiles(
             only_assets=only_assets,
             limit=limit,
             force=force,
+            progress=get_progress("Queueing tiles", progress),
         )
     print(
         f"{summary['checked']} movies checked: "
@@ -982,7 +1020,11 @@ def reset_picture_files_metadata():
 
 
 def probe_preview_files(
-    project_id=None, only_unknown=False, limit=None, dry_run=False
+    project_id=None,
+    only_unknown=False,
+    limit=None,
+    dry_run=False,
+    progress=False,
 ):
     with app.app_context():
         summary = preview_file_states_service.probe_preview_files(
@@ -990,6 +1032,7 @@ def probe_preview_files(
             only_unknown=only_unknown,
             limit=limit,
             dry_run=dry_run,
+            progress=get_progress("Probing previews", progress),
         )
     # Movies without a tile sheet first: the file a hover rebuilds.
     keys = sorted(summary, key=lambda key: (key != "pictures/tiles", key))
