@@ -99,6 +99,28 @@ class PreviewFileStatesRoutesTestCase(ApiDBTestCase):
             states_service.is_known_missing(states, "pictures", "thumbnails")
         )
 
+    def test_failed_picture_stays_failed_after_recheck_delay(self):
+        # A picture Zou tried and failed to generate (tile ffmpeg error,
+        # ...) is not the same fact as a plain missing one: a confirmed
+        # 404 on it must keep "failed", only refreshing the date so the
+        # short-circuit applies again.
+        states_service.record_file_state(
+            self.preview_file_id,
+            "pictures",
+            "thumbnails",
+            states_service.FAILED,
+        )
+        file_store.remove_picture("thumbnails", self.preview_file_id)
+        self.age_states(3601)
+
+        self.assertEqual(self.get_picture("thumbnails").status_code, 404)
+
+        self.assertEqual(self.state("pictures", "thumbnails"), "failed")
+        states = states_service.get_file_states(self.preview_file_id)
+        self.assertTrue(
+            states_service.is_known_missing(states, "pictures", "thumbnails")
+        )
+
     def test_picture_back_in_storage_is_recorded_ok(self):
         states_service.record_file_state(
             self.preview_file_id, "pictures", "previews", "missing"
