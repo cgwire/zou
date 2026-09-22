@@ -638,13 +638,19 @@ def _build_thumbnails_and_tile(preview_file_id, movie_path, size, temp_files):
     try:
         tile_path = movie.generate_tile(movie_path)
         file_store.add_picture("tiles", preview_file_id, tile_path)
-        os.remove(tile_path)
         preview_file_states_service.record_file_state(
             preview_file_id,
             "pictures",
             "tiles",
             preview_file_states_service.OK,
         )
+        # The tile is stored: a failure removing the local temp copy is
+        # not a generation failure and must not undo the "ok" just
+        # recorded above.
+        try:
+            os.remove(tile_path)
+        except OSError:
+            pass
         current_app.logger.info(f"tile created {tile_path}")
     except Exception:
         preview_file_states_service.record_file_state(
@@ -1875,18 +1881,13 @@ def _run_remote_tile_job(app, preview_file):
         "preview_file_id": str(preview_file.id),
         "movie_prefixes": recorded_prefixes or [],
     }
-    try:
-        result = remote_job.run_job(
-            app, config, config_store.get_nomad_tile_job(), params
-        )
-    except Exception:
-        preview_file_states_service.record_file_state(
-            preview_file.id,
-            "pictures",
-            "tiles",
-            preview_file_states_service.FAILED,
-        )
-        raise
+    # A Nomad dispatch error or a timeout is transient: the tile state
+    # must stay as it was, not be recorded failed. Only a job that
+    # actually completed without producing the tile counts as failed,
+    # below.
+    result = remote_job.run_job(
+        app, config, config_store.get_nomad_tile_job(), params
+    )
     probed = preview_file_states_service.probe_file_states(
         preview_file.id, "mp4", files=[preview_file_states_service.TILE]
     )
@@ -2012,13 +2013,19 @@ def _generate_tiles(
         ):
             tile_path = movie.generate_tile(preview_file_path)
             file_store.add_picture("tiles", preview_file.id, tile_path)
-            os.remove(tile_path)
             preview_file_states_service.record_file_state(
                 preview_file.id,
                 "pictures",
                 "tiles",
                 preview_file_states_service.OK,
             )
+            # The tile is stored: a failure removing the local temp copy
+            # is not a generation failure and must not undo the "ok"
+            # just recorded above.
+            try:
+                os.remove(tile_path)
+            except OSError:
+                pass
             print(
                 f"{index:0{len(str(total))}}/{total} Tile "
                 + f"generated for {preview_file.id}.",

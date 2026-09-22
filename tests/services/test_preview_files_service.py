@@ -1927,6 +1927,60 @@ class PreviewFileWritesRecordStatesTestCase(PreviewFileTestCase):
         )
         self.assertEqual(self.states()["pictures/tiles"], "ok")
 
+    @patch("zou.app.services.preview_files_service.os.remove")
+    @patch("zou.app.services.preview_files_service.file_store.add_picture")
+    @patch("zou.app.services.preview_files_service.movie.generate_tile")
+    def test_tile_stays_ok_when_removing_the_local_copy_fails(
+        self, mock_tile, mock_add_picture, mock_remove
+    ):
+        # The tile already made it to the store: a failure removing the
+        # local temp copy afterwards must not turn the recorded state
+        # back to failed.
+        tile_path = os.path.join(tempfile.mkdtemp(), "tile.png")
+        open(tile_path, "wb").close()
+        mock_tile.return_value = tile_path
+        mock_remove.side_effect = OSError("permission denied")
+        preview_files_service._generate_tiles(
+            file_store, self.preview_file, "/tmp/movie.mp4", 1, 1, force=True
+        )
+        self.assertEqual(self.states()["pictures/tiles"], "ok")
+
+    @patch("zou.app.services.preview_files_service.os.remove")
+    @patch("zou.app.services.preview_files_service.file_store.add_picture")
+    @patch("zou.app.services.preview_files_service.movie.generate_tile")
+    @patch("zou.app.services.preview_files_service.save_variants")
+    @patch(
+        "zou.app.services.preview_files_service.thumbnail_utils"
+        ".turn_into_thumbnail"
+    )
+    @patch("zou.app.services.preview_files_service.movie.generate_thumbnail")
+    def test_build_thumbnails_and_tile_stays_ok_when_remove_fails(
+        self,
+        mock_generate_thumbnail,
+        mock_turn_into_thumbnail,
+        mock_save_variants,
+        mock_generate_tile,
+        mock_add_picture,
+        mock_remove,
+    ):
+        thumbnail_path = os.path.join(tempfile.mkdtemp(), "thumb.png")
+        open(thumbnail_path, "wb").close()
+        mock_generate_thumbnail.return_value = thumbnail_path
+        tile_path = os.path.join(tempfile.mkdtemp(), "tile.png")
+        open(tile_path, "wb").close()
+        mock_generate_tile.return_value = tile_path
+
+        def fail_only_on_tile(path):
+            if path == tile_path:
+                raise OSError("permission denied")
+
+        mock_remove.side_effect = fail_only_on_tile
+
+        preview_files_service._build_thumbnails_and_tile(
+            self.preview_file_id, "/tmp/movie.mp4", (100, 100), []
+        )
+        self.assertEqual(self.states()["pictures/tiles"], "ok")
+
     @patch("zou.app.services.preview_files_service.remote_job.run_job")
     def test_remote_tile_job_without_tile_is_failed(self, mock_run_job):
         mock_run_job.return_value = True
@@ -1941,6 +1995,26 @@ class PreviewFileWritesRecordStatesTestCase(PreviewFileTestCase):
         ):
             preview_files_service.generate_missing_tile(self.preview_file_id)
         self.assertEqual(self.states()["pictures/tiles"], "failed")
+
+    @patch("zou.app.services.preview_files_service.remote_job.run_job")
+    def test_remote_tile_job_dispatch_error_leaves_state_unchanged(
+        self, mock_run_job
+    ):
+        # A Nomad dispatch error or timeout is transient: it must not be
+        # recorded as a failed tile.
+        mock_run_job.side_effect = RuntimeError("Nomad unreachable")
+        with patch.object(
+            preview_files_service.config, "ENABLE_JOB_QUEUE_REMOTE", True
+        ), patch.object(
+            preview_files_service.config_store,
+            "get_nomad_tile_job",
+            return_value="zou-tile-go",
+        ):
+            with self.assertRaises(RuntimeError):
+                preview_files_service.generate_missing_tile(
+                    self.preview_file_id
+                )
+        self.assertNotIn("pictures/tiles", self.states())
 
     def test_copy_records_the_copied_files(self):
         target = self.generate_fixture_preview_file(revision=2)
