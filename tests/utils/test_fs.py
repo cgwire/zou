@@ -329,3 +329,90 @@ class FillCacheInBackgroundTestCase(unittest.TestCase):
             with open(file_path, "rb") as cached:
                 self.assertEqual(cached.read(), b"movie")
             self.assertEqual(calls, ["1"])
+
+
+class LocalConfig:
+    FS_BACKEND = "local"
+
+
+class ConfirmedFileNotFoundTestCase(unittest.TestCase):
+    def get(self, config, open_file, file_size=None, local_path=""):
+        return fs.get_file_path_and_file(
+            config,
+            get_local_path=lambda prefix, instance_id: local_path,
+            open_file=open_file,
+            prefix="lowdef",
+            instance_id="some-id",
+            extension="mp4",
+            file_size=file_size,
+        )
+
+    def test_missing_local_file_is_confirmed(self):
+        with pytest.raises(fs.ConfirmedFileNotFound):
+            self.get(LocalConfig(), None, local_path="/does/not/exist.mp4")
+
+    def test_local_file_of_wrong_size_is_confirmed(self):
+        with tempfile.NamedTemporaryFile() as tmp_file:
+            tmp_file.write(b"abc")
+            tmp_file.flush()
+            with pytest.raises(fs.ConfirmedFileNotFound):
+                self.get(
+                    LocalConfig(), None, file_size=10, local_path=tmp_file.name
+                )
+
+    def test_remote_404_is_confirmed(self):
+        class SwiftClientException(Exception):
+            http_status = 404
+
+        def open_file(prefix, instance_id):
+            raise SwiftClientException("404 Not Found")
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            with pytest.raises(fs.ConfirmedFileNotFound):
+                self.get(FakeConfig(tmp_dir), open_file)
+
+    def test_transient_error_is_not_confirmed(self):
+        class ServerError(Exception):
+            http_status = 503
+
+        def open_file(prefix, instance_id):
+            raise ServerError("Service Unavailable")
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            with mock.patch("zou.app.utils.fs.time.sleep"):
+                with pytest.raises(FileNotFound) as raised:
+                    self.get(FakeConfig(tmp_dir), open_file)
+        self.assertNotIsInstance(raised.value, fs.ConfirmedFileNotFound)
+
+    def test_empty_download_is_not_confirmed(self):
+        def open_file(prefix, instance_id):
+            yield from ()
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            with mock.patch("zou.app.utils.fs.time.sleep"):
+                with pytest.raises(FileNotFound) as raised:
+                    self.get(FakeConfig(tmp_dir), open_file)
+        self.assertNotIsInstance(raised.value, fs.ConfirmedFileNotFound)
+
+
+class FileStoreConfirmedFileNotFoundTestCase(unittest.TestCase):
+    def test_backend_404_is_confirmed(self):
+        from zou.app.stores import file_store
+
+        class SwiftClientException(Exception):
+            http_status = 404
+
+        bucket = mock.MagicMock()
+        bucket.backend.read_chunks.side_effect = SwiftClientException("404")
+        with pytest.raises(fs.ConfirmedFileNotFound):
+            file_store._read_chunks(bucket, "tiles-some-id")
+
+    def test_local_file_vanishing_on_read_is_confirmed(self):
+        from zou.app.stores import file_store
+
+        def read_stream():
+            raise FileNotFoundError("gone")
+            yield b""
+
+        with pytest.raises(fs.ConfirmedFileNotFound):
+            list(file_store._measured_read(read_stream(), "tiles-some-id"))

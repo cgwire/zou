@@ -86,6 +86,14 @@ def is_range_error(exception):
     return False
 
 
+class ConfirmedFileNotFound(FileNotFound):
+    """
+    The storage answered that the file does not exist: a 404, or a local
+    file absent, empty or of the wrong size. A plain FileNotFound may also
+    stand for a transient failure the retry did not get past.
+    """
+
+
 def get_cache_file_path(config, prefix, instance_id, extension):
     """
     Path of the local copy kept for a file stored on a remote backend.
@@ -201,7 +209,7 @@ def get_file_path_and_file(
     if config.FS_BACKEND == "local":
         file_path = get_local_path(prefix, instance_id)
         if is_invalid_file(file_path, file_size):
-            raise FileNotFound
+            raise ConfirmedFileNotFound(f"{prefix}-{instance_id}")
     else:
         file_path = get_cache_file_path(config, prefix, instance_id, extension)
 
@@ -227,15 +235,20 @@ def get_file_path_and_file(
             if is_invalid_file(file_path, file_size):
                 rm_file(file_path)
                 if exception is not None:
-                    if isinstance(exception, FileNotFound):
+                    if isinstance(exception, ConfirmedFileNotFound):
                         raise exception
+                    if is_missing_file_error(exception):
+                        raise ConfirmedFileNotFound(
+                            f"{prefix}-{instance_id}"
+                        ) from exception
                     raise FileNotFound(
                         f"{prefix}-{instance_id}"
                     ) from exception
                 else:
                     # The download reported success but the file is still
                     # missing or empty: treat it as absent (404) like the
-                    # local backend does, not an unhandled 500.
+                    # local backend does, not an unhandled 500. Not a
+                    # confirmed absence: the storage never said so.
                     raise FileNotFound(f"{prefix}-{instance_id}")
 
     return file_path
