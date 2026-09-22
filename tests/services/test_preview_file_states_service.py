@@ -1,4 +1,5 @@
 import datetime
+from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
 
@@ -7,6 +8,7 @@ from zou.app.models.preview_file_storage_state import (
     PreviewFileStorageState,
 )
 from zou.app.services import preview_file_states_service as states_service
+from zou.app.stores import file_store
 from zou.app.utils import date_helpers
 
 
@@ -154,3 +156,35 @@ class PreviewFileStatesServiceTestCase(ApiDBTestCase):
                 states_service.OK,
             )
         )
+
+
+class ProbeFileStatesTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_asset()
+        self.generate_fixture_task()
+        self.preview_file_id = str(self.generate_fixture_preview_file().id)
+
+    def test_probe_asks_the_storage_for_each_expected_file(self):
+        def exists_picture(prefix, _id):
+            return prefix != "tiles"
+
+        with patch.object(
+            file_store, "exists_movie", return_value=True
+        ), patch.object(file_store, "exists_picture", exists_picture):
+            states = states_service.probe_file_states(
+                self.preview_file_id, "mp4"
+            )
+        self.assertEqual(states[("pictures", "tiles")], "missing")
+        self.assertEqual(states[("movies", "lowdef")], "ok")
+        self.assertEqual(len(states), 8)
+
+    def test_probe_leaves_out_a_file_whose_check_failed(self):
+        with patch.object(
+            file_store, "exists_file", side_effect=RuntimeError("503")
+        ):
+            states = states_service.probe_file_states(
+                self.preview_file_id, "pdf"
+            )
+        self.assertEqual(states, {})

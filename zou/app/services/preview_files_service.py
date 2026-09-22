@@ -34,6 +34,7 @@ from zou.app.services import (
     names_service,
     files_service,
     assets_service,
+    preview_file_states_service,
     shots_service,
     projects_service,
     tasks_service,
@@ -444,6 +445,9 @@ def _process_movie(
         skip_high_def,
         add_source_to_file_store,
     )
+    _record_movie_states(
+        preview_file_id, stored_movie_prefixes, remote_handles_thumbnails
+    )
     preview_file_raw = files_service.get_preview_file_raw(preview_file_id)
     preview_file = update_preview_file_raw(
         preview_file_raw,
@@ -635,8 +639,20 @@ def _build_thumbnails_and_tile(preview_file_id, movie_path, size, temp_files):
         tile_path = movie.generate_tile(movie_path)
         file_store.add_picture("tiles", preview_file_id, tile_path)
         os.remove(tile_path)
+        preview_file_states_service.record_file_state(
+            preview_file_id,
+            "pictures",
+            "tiles",
+            preview_file_states_service.OK,
+        )
         current_app.logger.info(f"tile created {tile_path}")
     except Exception:
+        preview_file_states_service.record_file_state(
+            preview_file_id,
+            "pictures",
+            "tiles",
+            preview_file_states_service.FAILED,
+        )
         current_app.logger.error("Failed to create tile", exc_info=1)
 
 
@@ -663,6 +679,35 @@ def _get_stored_movie_prefixes(
     if add_source_to_file_store and "source" not in prefixes:
         prefixes.insert(0, "source")
     return prefixes
+
+
+def _record_movie_states(
+    preview_file_id, stored_movie_prefixes, remote_handles_thumbnails
+):
+    """
+    Record the movie versions stored and, when a remote job built them,
+    which pictures it actually wrote: a picture it should have written
+    and did not is failed. A local build records its pictures as it
+    stores them. A version not produced is not recorded missing: another
+    writer may still bring it, only a read confirms an absence.
+    """
+    states = {
+        ("movies", prefix): preview_file_states_service.OK
+        for prefix in stored_movie_prefixes
+    }
+    if remote_handles_thumbnails:
+        pictures = [
+            key
+            for key in preview_file_states_service.MOVIE_FILES
+            if key[0] == "pictures"
+        ]
+        probed = preview_file_states_service.probe_file_states(
+            preview_file_id, "mp4", files=pictures
+        )
+        states.update(
+            preview_file_states_service.fail_missing(probed, pictures)
+        )
+    preview_file_states_service.record_file_states(preview_file_id, states)
 
 
 def is_remote_normalization_enabled():
@@ -719,6 +764,13 @@ def save_variants(preview_file_id, original_picture_path, with_original=True):
         for prefix, path in variants:
             file_store.add_picture(prefix, preview_file_id, path)
             clear_variant_from_cache(preview_file_id, prefix)
+        preview_file_states_service.record_file_states(
+            preview_file_id,
+            {
+                ("pictures", prefix): preview_file_states_service.OK
+                for prefix, _ in variants
+            },
+        )
     finally:
         # A failed upload must not leak the remaining variant files.
         _remove_temp_files(*[path for _, path in variants])
@@ -1823,9 +1875,28 @@ def _run_remote_tile_job(app, preview_file):
         "preview_file_id": str(preview_file.id),
         "movie_prefixes": recorded_prefixes or [],
     }
-    return remote_job.run_job(
-        app, config, config_store.get_nomad_tile_job(), params
+    try:
+        result = remote_job.run_job(
+            app, config, config_store.get_nomad_tile_job(), params
+        )
+    except Exception:
+        preview_file_states_service.record_file_state(
+            preview_file.id,
+            "pictures",
+            "tiles",
+            preview_file_states_service.FAILED,
+        )
+        raise
+    probed = preview_file_states_service.probe_file_states(
+        preview_file.id, "mp4", files=[preview_file_states_service.TILE]
     )
+    preview_file_states_service.record_file_states(
+        preview_file.id,
+        preview_file_states_service.fail_missing(
+            probed, [preview_file_states_service.TILE]
+        ),
+    )
+    return result
 
 
 def _generate_missing_tile_locally(preview_file):
@@ -1942,11 +2013,24 @@ def _generate_tiles(
             tile_path = movie.generate_tile(preview_file_path)
             file_store.add_picture("tiles", preview_file.id, tile_path)
             os.remove(tile_path)
+            preview_file_states_service.record_file_state(
+                preview_file.id,
+                "pictures",
+                "tiles",
+                preview_file_states_service.OK,
+            )
             print(
                 f"{index:0{len(str(total))}}/{total} Tile "
                 + f"generated for {preview_file.id}.",
             )
     except Exception as e:
+        if preview_file.extension == "mp4":
+            preview_file_states_service.record_file_state(
+                preview_file.id,
+                "pictures",
+                "tiles",
+                preview_file_states_service.FAILED,
+            )
         print(
             f"Failed to generate tile for preview file {preview_file.id}: {e}."
         )
@@ -2028,6 +2112,7 @@ def copy_preview_file_in_another_one(
     is_picture = original_preview_file["extension"] == "png"
 
     stored_movie_prefixes = []
+    copied_files = {}
     if is_movie:
         # The source is copied too: when the normalization is skipped it is
         # the only stored movie, and the preview routes serve it.
@@ -2042,6 +2127,9 @@ def copy_preview_file_in_another_one(
             )
             if copied:
                 stored_movie_prefixes.append(prefix)
+                copied_files[("movies", prefix)] = (
+                    preview_file_states_service.OK
+                )
 
     if is_movie or is_picture:
         prefixes = [
@@ -2054,7 +2142,7 @@ def copy_preview_file_in_another_one(
             prefixes.append("tiles")
 
         for prefix in prefixes:
-            copy_preview_file_on_storage(
+            copied = copy_preview_file_on_storage(
                 file_store.get_local_picture_path,
                 file_store.exists_picture,
                 file_store.copy_picture,
@@ -2062,8 +2150,12 @@ def copy_preview_file_in_another_one(
                 original_preview_file_id,
                 preview_file_to_update_id,
             )
+            if copied:
+                copied_files[("pictures", prefix)] = (
+                    preview_file_states_service.OK
+                )
     else:
-        copy_preview_file_on_storage(
+        copied = copy_preview_file_on_storage(
             file_store.get_local_file_path,
             file_store.exists_file,
             file_store.copy_file,
@@ -2071,6 +2163,14 @@ def copy_preview_file_in_another_one(
             original_preview_file_id,
             preview_file_to_update_id,
         )
+        if copied:
+            copied_files[("files", "previews")] = (
+                preview_file_states_service.OK
+            )
+
+    preview_file_states_service.record_file_states(
+        preview_file_to_update_id, copied_files
+    )
 
     data = {
         "extension": original_preview_file["extension"],

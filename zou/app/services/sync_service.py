@@ -67,7 +67,12 @@ from zou.app.models.studio import Studio
 from zou.app.models.status_automation import StatusAutomation
 from zou.app.models.working_file import WorkingFile
 
-from zou.app.services import deletion_service, tasks_service, projects_service
+from zou.app.services import (
+    deletion_service,
+    preview_file_states_service,
+    tasks_service,
+    projects_service,
+)
 from zou.app.stores import file_store
 from zou.app.utils import events, date_helpers, fs
 from zou.app import config
@@ -1535,6 +1540,13 @@ def download_preview_from_another_instance(
             force,
             dict_errors,
         )
+
+    preview_file_states_service.record_file_states(
+        preview_file_id,
+        preview_file_states_service.probe_file_states(
+            preview_file_id, preview_file.extension
+        ),
+    )
 
     logger.info(
         f"{index:0{len(str(total))}}/{total} Preview file {preview_file_id} processed."

@@ -30,6 +30,7 @@ from zou.app.services import (
     names_service,
     persons_service,
     projects_service,
+    preview_file_states_service,
     preview_files_service,
     tasks_service,
     permissions_service,
@@ -504,6 +505,12 @@ class BaseNewPreviewFilePicture:
         uploaded_file.save(file_path)
         try:
             file_store.add_file("previews", instance_id, file_path)
+            preview_file_states_service.record_file_state(
+                instance_id,
+                "files",
+                "previews",
+                preview_file_states_service.OK,
+            )
             file_size = fs.get_file_size(file_path)
             preview_files_service.update_preview_file(
                 instance_id, {"file_size": file_size}, silent=True
@@ -2318,6 +2325,12 @@ class ExtractTileFromPreview(MethodView):
         if extracted_tile_path is None:
             return {"error": "preview file binary is not available"}, 404
         file_store.add_picture("tiles", preview_file_id, extracted_tile_path)
+        preview_file_states_service.record_file_state(
+            preview_file_id,
+            "pictures",
+            "tiles",
+            preview_file_states_service.OK,
+        )
         try:
             return flask_send_file(
                 extracted_tile_path,

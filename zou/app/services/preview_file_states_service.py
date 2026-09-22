@@ -13,6 +13,7 @@ from zou.app import config, db
 from zou.app.models.preview_file_storage_state import (
     PreviewFileStorageState,
 )
+from zou.app.stores import file_store
 from zou.app.utils import cache, date_helpers, fields
 
 logger = logging.getLogger(__name__)
@@ -162,3 +163,44 @@ def record_file_state(preview_file_id, bucket, prefix, state, refresh=False):
     return record_file_states(
         preview_file_id, {(bucket, prefix): state}, refresh=refresh
     )
+
+
+EXISTS_FUNCTION_NAMES = {
+    "movies": "exists_movie",
+    "pictures": "exists_picture",
+    "files": "exists_file",
+}
+
+
+def probe_file_states(preview_file_id, extension, files=None):
+    """
+    Ask the storage whether each expected file of a preview file exists:
+    {(bucket, prefix): "ok" or "missing"}. A file whose check raised is
+    left out. Costs one round trip per file: for jobs and batches, not
+    for requests.
+    """
+    preview_file_id = str(preview_file_id)
+    states = {}
+    for bucket, prefix in files or get_expected_files(extension):
+        exists = getattr(file_store, EXISTS_FUNCTION_NAMES[bucket])
+        try:
+            is_stored = exists(prefix, preview_file_id)
+        except Exception:
+            logger.warning(
+                f"Could not check {bucket}/{prefix}-{preview_file_id}",
+                exc_info=True,
+            )
+            continue
+        states[(bucket, prefix)] = OK if is_stored else MISSING
+    return states
+
+
+def fail_missing(states, files):
+    """
+    Turn "missing" into "failed" for the given files: a job was supposed
+    to write them.
+    """
+    return {
+        key: (FAILED if key in files and state == MISSING else state)
+        for key, state in states.items()
+    }

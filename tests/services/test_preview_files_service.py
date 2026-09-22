@@ -643,6 +643,12 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
             persisted["data"][files_service.MOVIE_PREFIXES_KEY],
             ["previews", "lowdef"],
         )
+        states = states_service.get_file_states(preview_file_id)
+        self.assertEqual(states["movies/previews"]["state"], "ok")
+        # Not produced is not confirmed missing: nothing recorded.
+        self.assertNotIn("movies/source", states)
+        # The runner was supposed to write the pictures: none are there.
+        self.assertEqual(states["pictures/tiles"]["state"], "failed")
 
     @patch(
         "zou.app.services.preview_files_service._run_remote_normalize_movie"
@@ -1874,3 +1880,81 @@ class MissingTileTestCase(PreviewFileTestCase):
         )
         mock_retrieve.assert_not_called()
         self.assertFalse(self.redis.exists(attempt_key))
+
+
+from zou.app.services import preview_file_states_service as states_service
+
+
+class PreviewFileWritesRecordStatesTestCase(PreviewFileTestCase):
+    def setUp(self):
+        super().setUp()
+        self.preview_file = self.generate_fixture_preview_file()
+        self.preview_file_id = str(self.preview_file.id)
+
+    def states(self):
+        return {
+            key: value["state"]
+            for key, value in states_service.get_file_states(
+                self.preview_file_id
+            ).items()
+        }
+
+    def test_save_variants_records_the_pictures(self):
+        picture_path = self.get_fixture_file_path(
+            os.path.join("thumbnails", "th01.png")
+        )
+        tmp_path = os.path.join(tempfile.mkdtemp(), "original.png")
+        shutil.copyfile(picture_path, tmp_path)
+        preview_files_service.save_variants(self.preview_file_id, tmp_path)
+        states = self.states()
+        for prefix in ["original", "thumbnails", "thumbnails-square"]:
+            self.assertEqual(states[f"pictures/{prefix}"], "ok")
+
+    @patch("zou.app.services.preview_files_service.movie.generate_tile")
+    def test_failed_tile_is_recorded(self, mock_tile):
+        mock_tile.side_effect = RuntimeError("ffmpeg")
+        preview_files_service._generate_tiles(
+            file_store, self.preview_file, "/tmp/movie.mp4", 1, 1, force=True
+        )
+        self.assertEqual(self.states()["pictures/tiles"], "failed")
+
+    @patch("zou.app.services.preview_files_service.file_store.add_picture")
+    @patch("zou.app.services.preview_files_service.movie.generate_tile")
+    def test_built_tile_is_recorded(self, mock_tile, mock_add_picture):
+        tile_path = os.path.join(tempfile.mkdtemp(), "tile.png")
+        open(tile_path, "wb").close()
+        mock_tile.return_value = tile_path
+        preview_files_service._generate_tiles(
+            file_store, self.preview_file, "/tmp/movie.mp4", 1, 1, force=True
+        )
+        self.assertEqual(self.states()["pictures/tiles"], "ok")
+
+    @patch("zou.app.services.preview_files_service.remote_job.run_job")
+    def test_remote_tile_job_without_tile_is_failed(self, mock_run_job):
+        mock_run_job.return_value = True
+        with patch.object(
+            preview_files_service.config, "ENABLE_JOB_QUEUE_REMOTE", True
+        ), patch.object(
+            preview_files_service.config_store,
+            "get_nomad_tile_job",
+            return_value="zou-tile-go",
+        ), patch.object(
+            file_store, "exists_picture", return_value=False
+        ):
+            preview_files_service.generate_missing_tile(self.preview_file_id)
+        self.assertEqual(self.states()["pictures/tiles"], "failed")
+
+    def test_copy_records_the_copied_files(self):
+        target = self.generate_fixture_preview_file(revision=2)
+        with patch.object(
+            preview_files_service,
+            "copy_preview_file_on_storage",
+            side_effect=lambda _p, _e, _c, prefix, *_: prefix != "source",
+        ):
+            preview_files_service.copy_preview_file_in_another_one(
+                self.preview_file_id, str(target.id)
+            )
+        states = states_service.get_file_states(target.id)
+        self.assertEqual(states["movies/lowdef"]["state"], "ok")
+        self.assertEqual(states["pictures/tiles"]["state"], "ok")
+        self.assertNotIn("movies/source", states)
