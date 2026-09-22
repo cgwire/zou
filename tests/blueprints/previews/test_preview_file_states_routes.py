@@ -116,6 +116,49 @@ class PreviewFileStatesRoutesTestCase(ApiDBTestCase):
             self.assertEqual(self.get_picture("previews").status_code, 404)
         self.assertEqual(self.state("pictures", "previews"), "ok")
 
+    def get_movie(self):
+        return self.app.get(
+            f"/movies/originals/preview-files/{self.preview_file_id}.mp4",
+            headers=self.base_headers,
+        )
+
+    def test_movie_skips_a_version_known_missing(self):
+        # normalize=false stores the upload under `previews` only.
+        self.assertEqual(self.get_movie().status_code, 200)
+        self.assertEqual(self.state("movies", "previews"), "ok")
+        states_service.record_file_state(
+            self.preview_file_id, "movies", "previews", "missing"
+        )
+        with patch.object(
+            preview_resources.fs,
+            "get_file_path_and_file",
+            wraps=fs.get_file_path_and_file,
+        ) as get_file:
+            # previews known missing, lowdef and source unknown: the route
+            # tries lowdef then source, both absent in the local store.
+            self.assertEqual(self.get_movie().status_code, 404)
+        tried = [call.args[3] for call in get_file.call_args_list]
+        self.assertNotIn("previews", tried)
+        self.assertEqual(self.state("movies", "lowdef"), "missing")
+        self.assertEqual(self.state("movies", "source"), "missing")
+
+    def test_movie_with_every_version_known_missing_is_404_at_once(self):
+        states_service.record_file_states(
+            self.preview_file_id,
+            {
+                ("movies", "previews"): "missing",
+                ("movies", "lowdef"): "missing",
+                ("movies", "source"): "missing",
+            },
+        )
+        with patch.object(
+            preview_resources.fs,
+            "get_file_path_and_file",
+            wraps=fs.get_file_path_and_file,
+        ) as get_file:
+            self.assertEqual(self.get_movie().status_code, 404)
+        get_file.assert_not_called()
+
     def test_known_missing_tile_still_queues_its_build(self):
         attempt_key = f"tile-attempt:{self.preview_file_id}"
         redis_client.get_client(config.KV_JOB_DB_INDEX).delete(attempt_key)

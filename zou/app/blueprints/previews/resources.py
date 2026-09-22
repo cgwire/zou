@@ -214,7 +214,8 @@ def send_movie_file(
     already did (`preview_file`). A preview file that predates the record
     is served in the default order, and the record is probed and written
     back after the response starts: the probe costs one round trip per
-    version, more than the movie read itself.
+    version, more than the movie read itself. Versions known missing are
+    skipped until the recheck delay has elapsed.
     """
     if preview_file is None:
         preview_file = files_service.get_preview_file_for_access(
@@ -225,7 +226,17 @@ def send_movie_file(
     prefixes = files_service.get_movie_prefixes(
         recorded_prefixes or [], lowdef
     )
-    for prefix in prefixes:
+    states = preview_file_states_service.get_file_states(preview_file_id)
+    candidates = [
+        prefix
+        for prefix in prefixes
+        if not preview_file_states_service.is_known_missing(
+            states, "movies", prefix
+        )
+    ]
+    if not candidates:
+        raise FileNotFound(f"movies-{preview_file_id}")
+    for prefix in candidates:
         try:
             response = send_storage_file(
                 file_store.get_local_movie_path,
@@ -238,10 +249,17 @@ def send_movie_file(
                 last_modified=last_modified,
                 stream_cold=True,
             )
-        except FileNotFound:
-            if prefix == prefixes[-1]:
+        except FileNotFound as exception:
+            if isinstance(exception, fs.ConfirmedFileNotFound):
+                _record_confirmed_missing(
+                    states, "movies", prefix, preview_file_id
+                )
+            if prefix == candidates[-1]:
                 raise
             continue
+        preview_file_states_service.record_file_state(
+            preview_file_id, "movies", prefix, preview_file_states_service.OK
+        )
         if recorded_prefixes is None or prefix != prefixes[0]:
             # No record yet, or one lagging behind the storage (a version
             # removed, a row imported from another instance).
