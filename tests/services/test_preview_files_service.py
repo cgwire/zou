@@ -13,6 +13,7 @@ from tests.base import ApiDBTestCase
 
 from zou.app.models.preview_file import PreviewFile
 from zou.app.services import files_service, preview_files_service
+from zou.app.services import preview_file_states_service as states_service
 from zou.app import config
 from zou.app.stores import file_store, queue_store, redis_client
 from zou.app.utils import thumbnail as thumbnail_utils
@@ -1882,9 +1883,6 @@ class MissingTileTestCase(PreviewFileTestCase):
         self.assertFalse(self.redis.exists(attempt_key))
 
 
-from zou.app.services import preview_file_states_service as states_service
-
-
 class PreviewFileWritesRecordStatesTestCase(PreviewFileTestCase):
     def setUp(self):
         super().setUp()
@@ -1939,7 +1937,7 @@ class PreviewFileWritesRecordStatesTestCase(PreviewFileTestCase):
             "get_nomad_tile_job",
             return_value="zou-tile-go",
         ), patch.object(
-            file_store, "exists_picture", return_value=False
+            file_store, "exists_confirmed", return_value=False
         ):
             preview_files_service.generate_missing_tile(self.preview_file_id)
         self.assertEqual(self.states()["pictures/tiles"], "failed")

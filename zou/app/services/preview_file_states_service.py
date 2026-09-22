@@ -165,26 +165,21 @@ def record_file_state(preview_file_id, bucket, prefix, state, refresh=False):
     )
 
 
-EXISTS_FUNCTION_NAMES = {
-    "movies": "exists_movie",
-    "pictures": "exists_picture",
-    "files": "exists_file",
-}
-
-
 def probe_file_states(preview_file_id, extension, files=None):
     """
     Ask the storage whether each expected file of a preview file exists:
     {(bucket, prefix): "ok" or "missing"}. A file whose check raised is
-    left out. Costs one round trip per file: for jobs and batches, not
-    for requests.
+    left out: exists_confirmed only answers a confirmed absence, a
+    transient storage failure must never be recorded as one. Costs one
+    round trip per file: for jobs and batches, not for requests.
     """
     preview_file_id = str(preview_file_id)
     states = {}
     for bucket, prefix in files or get_expected_files(extension):
-        exists = getattr(file_store, EXISTS_FUNCTION_NAMES[bucket])
         try:
-            is_stored = exists(prefix, preview_file_id)
+            is_stored = file_store.exists_confirmed(
+                bucket, prefix, preview_file_id
+            )
         except Exception:
             logger.warning(
                 f"Could not check {bucket}/{prefix}-{preview_file_id}",

@@ -167,12 +167,12 @@ class ProbeFileStatesTestCase(ApiDBTestCase):
         self.preview_file_id = str(self.generate_fixture_preview_file().id)
 
     def test_probe_asks_the_storage_for_each_expected_file(self):
-        def exists_picture(prefix, _id):
+        def exists_confirmed(bucket, prefix, _id):
+            if bucket == "movies":
+                return True
             return prefix != "tiles"
 
-        with patch.object(
-            file_store, "exists_movie", return_value=True
-        ), patch.object(file_store, "exists_picture", exists_picture):
+        with patch.object(file_store, "exists_confirmed", exists_confirmed):
             states = states_service.probe_file_states(
                 self.preview_file_id, "mp4"
             )
@@ -182,7 +182,7 @@ class ProbeFileStatesTestCase(ApiDBTestCase):
 
     def test_probe_leaves_out_a_file_whose_check_failed(self):
         with patch.object(
-            file_store, "exists_file", side_effect=RuntimeError("503")
+            file_store, "exists_confirmed", side_effect=RuntimeError("503")
         ):
             states = states_service.probe_file_states(
                 self.preview_file_id, "pdf"
