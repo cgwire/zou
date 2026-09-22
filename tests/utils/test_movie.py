@@ -9,6 +9,8 @@ from pathlib import Path
 
 import ffmpeg
 
+from unittest.mock import patch
+
 from zou.utils import movie
 
 
@@ -370,6 +372,19 @@ class MovieTestCase(unittest.TestCase):
 
         self.assertEqual(img_width, target_width * 8)
         self.assertEqual(img_height, 100 * rows)
+
+    def test_create_tile_decodes_on_one_thread(self):
+        """
+        A tile build runs next to the API on the web host: ffmpeg must not
+        take every core to decode the movie.
+        """
+        video_path = "./tests/fixtures/videos/test_preview_tiles.mp4"
+        with patch.object(
+            movie.ffmpeg, "input", wraps=ffmpeg.input
+        ) as ffmpeg_input:
+            tile_path = movie.generate_tile(video_path)
+        os.remove(tile_path)
+        self.assertEqual(ffmpeg_input.call_args.kwargs.get("threads"), 1)
 
     def test_get_movie_fps(self):
         for r_frame_rate, expected in [

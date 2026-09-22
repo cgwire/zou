@@ -8,6 +8,7 @@ import time
 import zipfile
 
 import ffmpeg
+import redis
 from rq.timeouts import BaseTimeoutException
 from PIL import Image
 
@@ -15,7 +16,12 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
 
 from zou.app import config
-from zou.app.stores import config_store, file_store, queue_store
+from zou.app.stores import (
+    config_store,
+    file_store,
+    queue_store,
+    redis_client,
+)
 from zou.app.stores.redis_lock import with_preview_file_lock
 
 from zou.app.models.entity import Entity
@@ -52,8 +58,12 @@ from zou.app.services.exception import (
 from zou.app.utils import fs
 
 REMOTE_NORMALIZE_VERSION = 2
+REMOTE_TILE_VERSION = 1
 # Seconds before a missing tile sheet is built again for the same movie.
 TILE_RETRY_DELAY = 3600
+# Held by the local tile build in progress: one ffmpeg decode at a time
+# next to the API.
+LOCAL_TILE_BUILD_LOCK_KEY = "tile-build:local"
 
 
 def get_preview_file_dimensions(project, entity=None):
@@ -1743,21 +1753,23 @@ def generate_tile_later(preview_file_id):
     Build the missing tile sheet of a movie on the job queue. Without a
     queue nothing happens: the web process runs no ffmpeg of its own. An
     attempt younger than an hour, running or failed, is not repeated: a
-    sidecar file in TMP_DIR remembers it, so a movie ffmpeg cannot tile
-    does not cost a job per hover on the progress bar.
+    Redis key remembers it, shared by every process and kept across a
+    reboot, so a movie ffmpeg cannot tile does not cost a job per hover on
+    the progress bar.
     """
     if not config.ENABLE_JOB_QUEUE:
         return False
-    mark_path = os.path.join(config.TMP_DIR, f"tile-{preview_file_id}.mark")
     try:
-        if time.time() - os.path.getmtime(mark_path) < TILE_RETRY_DELAY:
-            return False
-    except OSError:
-        pass
-    fs.mkdir_p(config.TMP_DIR)
-    with open(mark_path, "a"):
-        pass
-    os.utime(mark_path, None)
+        is_first_attempt = _tile_store().set(
+            _tile_attempt_key(preview_file_id),
+            1,
+            nx=True,
+            ex=TILE_RETRY_DELAY,
+        )
+    except redis.RedisError:
+        return False
+    if not is_first_attempt:
+        return False
     queue_store.job_queue.enqueue(
         generate_missing_tile,
         args=(preview_file_id,),
@@ -1766,11 +1778,22 @@ def generate_tile_later(preview_file_id):
     return True
 
 
+def is_remote_tile_enabled():
+    """
+    Tile sheets are built on a remote worker when the job queue is set to
+    remote and a Nomad tile job is configured.
+    """
+    return (
+        config.ENABLE_JOB_QUEUE_REMOTE
+        and len(config_store.get_nomad_tile_job()) > 0
+    )
+
+
 def generate_missing_tile(preview_file_id):
     """
-    Build and store the tile sheet of a ready movie that has none, from
-    the first stored version of the movie. Runs under its own app
-    context: it is a job.
+    Build and store the tile sheet of a ready movie that has none: on
+    Nomad when a tile job is configured, locally otherwise. Runs under its
+    own app context: it is a job.
     """
     from zou.app import app
 
@@ -1782,23 +1805,74 @@ def generate_missing_tile(preview_file_id):
         ):
             return False
         preview_file_raw = files_service.get_preview_file_raw(preview_file_id)
-        movie_path = _retrieve_stored_movie(preview_file_raw)
+        if is_remote_tile_enabled():
+            return _run_remote_tile_job(app, preview_file_raw)
+        return _generate_missing_tile_locally(preview_file_raw)
+
+
+def _run_remote_tile_job(app, preview_file):
+    """
+    Hand the tile build over to the Nomad runner and wait for it. The
+    runner tries the recorded prefixes first, then the others.
+    """
+    recorded_prefixes = files_service.get_preview_file_data(preview_file).get(
+        files_service.MOVIE_PREFIXES_KEY
+    )
+    params = {
+        "version": str(REMOTE_TILE_VERSION),
+        "preview_file_id": str(preview_file.id),
+        "movie_prefixes": recorded_prefixes or [],
+    }
+    return remote_job.run_job(
+        app, config, config_store.get_nomad_tile_job(), params
+    )
+
+
+def _generate_missing_tile_locally(preview_file):
+    """
+    Build the tile sheet on this host, one movie at a time. While another
+    build runs, give up and forget the attempt: the next 404 queues it
+    again instead of piling decodes up on the API cores.
+    """
+    store = _tile_store()
+    lock = store.lock(
+        LOCAL_TILE_BUILD_LOCK_KEY, timeout=int(config.JOB_QUEUE_TIMEOUT)
+    )
+    if not lock.acquire(blocking=False):
+        store.delete(_tile_attempt_key(preview_file.id))
+        return False
+    try:
+        movie_path = _retrieve_stored_movie(preview_file)
         if movie_path is None:
             return False
-        _generate_tiles(file_store, preview_file_raw, movie_path, 1, 1)
+        _generate_tiles(file_store, preview_file, movie_path, 1, 1)
         return True
+    finally:
+        try:
+            lock.release()
+        except redis.exceptions.LockError:
+            pass
+
+
+def _tile_store():
+    return redis_client.get_client(config.KV_JOB_DB_INDEX)
+
+
+def _tile_attempt_key(preview_file_id):
+    return f"tile-attempt:{preview_file_id}"
 
 
 def _retrieve_stored_movie(preview_file):
     """
-    Local path of the best stored version of a movie, HD first, or None
-    when the storage holds none of them.
+    Local path of the smallest stored version of a movie, low def first,
+    or None when the storage holds none of them. A tile is 100 pixels
+    high: the high def movie only costs a longer decode.
     """
     recorded_prefixes = files_service.get_preview_file_data(preview_file).get(
         files_service.MOVIE_PREFIXES_KEY
     )
     for prefix in files_service.get_movie_prefixes(
-        recorded_prefixes or [], False
+        recorded_prefixes or [], True
     ):
         movie_path = _retrieve_preview_file(
             config, file_store, prefix, preview_file

@@ -528,6 +528,7 @@ if os.getenv("ADMIN_TOKEN"):
             "nomad_host": "JOB_QUEUE_NOMAD_HOST",
             "nomad_normalize_job": "JOB_QUEUE_NOMAD_NORMALIZE_JOB",
             "nomad_playlist_job": "JOB_QUEUE_NOMAD_PLAYLIST_JOB",
+            "nomad_tile_job": "JOB_QUEUE_NOMAD_TILE_JOB",
         }
 
         token = os.getenv("ADMIN_TOKEN")

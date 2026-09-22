@@ -228,6 +228,26 @@ class ConfigStoreTestCase(ApiDBTestCase):
             config_store.get_nomad_playlist_job(), "zou-playlist-v2"
         )
 
+    # --- NOMAD_TILE_JOB ---
+
+    def test_get_nomad_tile_job_fallback(self):
+        """
+        When Redis has no value, fall back to config.
+        """
+        self.assertEqual(
+            config_store.get_nomad_tile_job(),
+            config.JOB_QUEUE_NOMAD_TILE_JOB,
+        )
+
+    def test_get_nomad_tile_job_from_redis(self):
+        """
+        When Redis has a value, return it.
+        """
+        config_store.config_store.set(
+            config_store.NOMAD_TILE_JOB_KEY, "zou-tile-go"
+        )
+        self.assertEqual(config_store.get_nomad_tile_job(), "zou-tile-go")
+
     # --- sync_config ---
 
     def test_sync_config_sets_all_values(self):
@@ -246,6 +266,10 @@ class ConfigStoreTestCase(ApiDBTestCase):
         self.assertEqual(
             values["nomad_playlist_job"],
             config.JOB_QUEUE_NOMAD_PLAYLIST_JOB,
+        )
+        self.assertEqual(
+            values["nomad_tile_job"],
+            config.JOB_QUEUE_NOMAD_TILE_JOB,
         )
         self.assertEqual(
             config_store.config_store.get(config_store.USER_LIMIT_KEY),

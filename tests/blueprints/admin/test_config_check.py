@@ -71,6 +71,7 @@ class ConfigCheckTestCase(ApiDBTestCase):
             "nomad_host",
             "nomad_normalize_job",
             "nomad_playlist_job",
+            "nomad_tile_job",
         ]:
             self.assertIn(key, data)
             self.assertIn("env", data[key])
