@@ -1,8 +1,9 @@
-import datetime
+from freezegun import freeze_time
 
 from tests.base import ApiDBTestCase
 
 from zou.app.services import projects_service, shots_service, tasks_service
+from zou.app.utils import date_helpers
 
 
 class ShotTestCase(ApiDBTestCase):
@@ -222,22 +223,165 @@ class ShotTestCase(ApiDBTestCase):
         shot_e201 = shots_service.get_shot(shot_e201["id"])
         self.assertEqual(shot_e201["nb_frames"], 1000)
 
-    def _age_shot(self):
-        # Versions are skipped within 60 s of the previous update.
-        past = datetime.datetime.now(tz=datetime.timezone.utc).replace(
-            microsecond=0, tzinfo=None
-        ) - datetime.timedelta(minutes=2)
-        self.shot_01.update({"updated_at": past})
+    def _freeze_time(self):
+        # From the current second on: an earlier time would put the token of
+        # the logged in user in the future. For the same reason, a token
+        # issued within the block cannot be used after it.
+        return freeze_time(
+            date_helpers.get_utc_now_datetime().replace(microsecond=0)
+        )
+
+    def _update_shot(self, data, shot_id=None):
+        self.put(f"data/entities/{shot_id or self.shot_id}", data)
+
+    def _set_frame_out(self, frame_out, shot_id=None):
+        self._update_shot({"data": {"frame_out": frame_out}}, shot_id)
+
+    def _get_versions(self, shot_id=None):
+        return self.get(f"data/shots/{shot_id or self.shot_id}/versions")
+
+    def _get_frame_outs(self, shot_id=None):
+        return [
+            version["data"]["frame_out"]
+            for version in self._get_versions(shot_id)
+        ]
 
     def test_update_shot_frame_out_saves_a_version(self):
-        self._age_shot()
-        self.put(f"data/entities/{self.shot_id}", {"data": {"frame_out": 120}})
-        versions = self.get(f"data/shots/{self.shot_id}/versions")
+        self._set_frame_out(120)
+        versions = self._get_versions()
         self.assertEqual(len(versions), 1)
-        self.assertEqual(versions[0]["data"]["frame_out"], 120)
+        self.assertEqual(versions[0]["entity_id"], self.shot_id)
+        self.assertEqual(versions[0]["person_id"], self.user["id"])
+        self.assertEqual(versions[0]["name"], "SH01")
+        self.assertEqual(
+            versions[0]["data"], {"fps": 25, "frame_in": 0, "frame_out": 120}
+        )
+
+    def test_update_shot_frame_in_saves_a_version(self):
+        self._update_shot({"data": {"frame_in": 10}})
+        versions = self._get_versions()
+        self.assertEqual(len(versions), 1)
+        self.assertEqual(versions[0]["data"]["frame_in"], 10)
+
+    def test_update_shot_name_saves_a_version(self):
+        self._update_shot({"name": "SH01B"})
+        versions = self._get_versions()
+        self.assertEqual(len(versions), 1)
+        # A version keeps the name the shot had before the change.
+        self.assertEqual(versions[0]["name"], "SH01")
 
     def test_update_shot_description_saves_no_version(self):
-        self._age_shot()
-        self.put(f"data/entities/{self.shot_id}", {"description": "Reviewed"})
-        versions = self.get(f"data/shots/{self.shot_id}/versions")
-        self.assertEqual(versions, [])
+        self._update_shot({"description": "Reviewed"})
+        self.assertEqual(self._get_versions(), [])
+
+    def test_update_shot_metadata_saves_no_version(self):
+        self._update_shot({"data": {"fps": 24}})
+        self.assertEqual(self._get_versions(), [])
+
+    def test_update_shot_same_frame_out_saves_no_version(self):
+        self._set_frame_out(100)
+        self.assertEqual(self._get_versions(), [])
+
+    def test_update_shot_frames_twice_within_a_minute_updates_the_version(
+        self,
+    ):
+        with self._freeze_time() as frozen_time:
+            self._set_frame_out(120)
+            first = self._get_versions()[0]
+            frozen_time.tick(30)
+            self._set_frame_out(130)
+        versions = self._get_versions()
+        self.assertEqual(len(versions), 1)
+        self.assertEqual(versions[0]["id"], first["id"])
+        # The version keeps the date of the first change of the burst.
+        self.assertEqual(versions[0]["created_at"], first["created_at"])
+        self.assertEqual(versions[0]["data"]["frame_out"], 130)
+
+    def test_update_shot_frame_in_then_frame_out_saves_one_version(self):
+        with self._freeze_time() as frozen_time:
+            self._update_shot({"data": {"frame_in": 10}})
+            frozen_time.tick(5)
+            self._set_frame_out(120)
+        versions = self._get_versions()
+        self.assertEqual(len(versions), 1)
+        self.assertEqual(versions[0]["data"]["frame_in"], 10)
+        self.assertEqual(versions[0]["data"]["frame_out"], 120)
+
+    def test_update_shot_frames_a_minute_after_the_version_updates_it(self):
+        with self._freeze_time() as frozen_time:
+            self._set_frame_out(120)
+            frozen_time.tick(60)
+            self._set_frame_out(130)
+        self.assertEqual(self._get_frame_outs(), [130])
+
+    def test_update_shot_frames_later_than_a_minute_saves_a_version(self):
+        with self._freeze_time() as frozen_time:
+            self._set_frame_out(120)
+            frozen_time.tick(61)
+            self._set_frame_out(130)
+        self.assertEqual(self._get_frame_outs(), [130, 120])
+
+    def test_update_shot_frames_updates_the_last_version_only(self):
+        with self._freeze_time() as frozen_time:
+            self._set_frame_out(110)
+            frozen_time.tick(120)
+            self._set_frame_out(120)
+            frozen_time.tick(10)
+            self._set_frame_out(130)
+        self.assertEqual(self._get_frame_outs(), [130, 110])
+
+    def test_update_shot_frames_after_another_edit_saves_a_version(self):
+        # The window runs from the last version, not from the last update:
+        # an update that recorded nothing does not extend it.
+        with self._freeze_time() as frozen_time:
+            self._set_frame_out(120)
+            frozen_time.tick(120)
+            self._update_shot({"description": "Reviewed"})
+            frozen_time.tick(10)
+            self._set_frame_out(130)
+        self.assertEqual(self._get_frame_outs(), [130, 120])
+
+    def test_update_shot_frames_by_another_person_saves_a_version(self):
+        self._set_frame_out(120)
+        self.generate_fixture_user_manager()
+        projects_service.add_team_member(
+            self.project_id, self.user_manager["id"]
+        )
+        self.log_in_manager()
+        self._set_frame_out(130)
+        versions = self._get_versions()
+        self.assertEqual(
+            sorted((v["data"]["frame_out"], v["person_id"]) for v in versions),
+            [(120, self.user["id"]), (130, self.user_manager["id"])],
+        )
+
+    def test_update_shot_frames_after_another_person_saves_a_version(self):
+        # An older version of mine is not folded into once someone else
+        # recorded one: the history stays in order.
+        self.generate_fixture_user_manager()
+        projects_service.add_team_member(
+            self.project_id, self.user_manager["id"]
+        )
+        with self._freeze_time() as frozen_time:
+            self._set_frame_out(110)
+            frozen_time.tick(10)
+            self.log_in_manager()
+            self._set_frame_out(120)
+            frozen_time.tick(10)
+            self.log_in_admin()
+            self._set_frame_out(130)
+            versions = self._get_versions()
+        self.assertEqual(
+            [(v["data"]["frame_out"], v["person_id"]) for v in versions],
+            [
+                (130, self.user["id"]),
+                (120, self.user_manager["id"]),
+                (110, self.user["id"]),
+            ],
+        )
+
+    def test_update_two_shots_saves_a_version_each(self):
+        self._set_frame_out(120)
+        self._set_frame_out(130, self.shot_02_id)
+        self.assertEqual(self._get_frame_outs(), [120])
+        self.assertEqual(self._get_frame_outs(self.shot_02_id), [130])

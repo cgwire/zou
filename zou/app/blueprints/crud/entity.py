@@ -452,7 +452,8 @@ class EntityResource(BaseModelResource, EntityEventMixin):
           - Crud
         description: Update an entity with data provided in the request
           body. JSON format is expected. Supports shot versioning when
-          frame data changes.
+          frame data or name changes. Changes made by one person less than
+          a minute after the version they recorded update that version.
         parameters:
           - in: path
             name: instance_id
@@ -561,6 +562,14 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             return {"error": True, "message": str(exception)}, 400
 
     def save_version_if_needed(self, shot, previous_shot):
+        """
+        Record a version of given shot when its frame range or its name
+        changed. A client may send one update per field or per keystroke
+        (frame in then frame out, a number typed slowly), so a change made
+        at most a minute after the shot's last version, when the same person
+        recorded it, is folded into that version: one edit of the range
+        yields a single version holding the final values.
+        """
         previous_data = previous_shot.get("data", {}) or {}
         data = shot.get("data", {})
         frame_in = data.get("frame_in", 0)
@@ -571,23 +580,34 @@ class EntityResource(BaseModelResource, EntityEventMixin):
         pname = previous_shot["name"]
         version = None
         if frame_in != pframe_in or frame_out != pframe_out or name != pname:
-            current_user_id = persons_service.get_current_user()["id"]
-            previous_updated_at = date_helpers.get_datetime_from_string(
-                previous_shot["updated_at"]
-            )
-            updated_at = date_helpers.get_datetime_from_string(
-                shot["updated_at"]
-            )
-            if (
-                date_helpers.get_date_diff(previous_updated_at, updated_at)
-                > 60
-            ):
+            person_id = persons_service.get_current_user()["id"]
+            version = self.get_recent_version(shot, person_id)
+            if version is None:
                 version = EntityVersion.create(
                     entity_id=shot["id"],
                     name=pname,
                     data=shot["data"],
-                    person_id=current_user_id,
+                    person_id=person_id,
                 )
+            else:
+                version.update({"data": shot["data"]})
+        return version
+
+    def get_recent_version(self, shot, person_id):
+        """
+        Return the last version of given shot when given person recorded it
+        at most a minute before the shot's last update, or None. Only
+        versions count: an update that recorded nothing does not extend the
+        window. When someone else recorded the last version, an older one of
+        given person is not folded into either: the history stays in order.
+        """
+        version = shots_service.get_last_shot_version_raw(shot["id"])
+        if version is None or str(version.person_id) != str(person_id):
+            return None
+        created_at = version.created_at.replace(microsecond=0)
+        updated_at = date_helpers.get_datetime_from_string(shot["updated_at"])
+        if date_helpers.get_date_diff(created_at, updated_at) > 60:
+            return None
         return version
 
     def emit_update_event(self, entity_dict):
