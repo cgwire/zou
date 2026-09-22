@@ -7,12 +7,16 @@ nor serialized to the clients.
 
 import logging
 
+from collections import Counter
+
 from sqlalchemy.dialects.postgresql import insert
 
 from zou.app import config, db
+from zou.app.models.preview_file import PreviewFile
 from zou.app.models.preview_file_storage_state import (
     PreviewFileStorageState,
 )
+from zou.app.models.task import Task
 from zou.app.stores import file_store
 from zou.app.utils import cache, date_helpers, fields
 
@@ -188,6 +192,39 @@ def probe_file_states(preview_file_id, extension, files=None):
             continue
         states[(bucket, prefix)] = OK if is_stored else MISSING
     return states
+
+
+def probe_preview_files(
+    project_id=None, only_unknown=False, limit=None, dry_run=False
+):
+    """
+    Probe the storage for the files of the ready preview files and record
+    their states. Return how many files are missing or failed, per
+    "bucket/prefix". Sequential: one round trip per file, meant for
+    off-hours.
+    """
+    query = PreviewFile.query.filter(PreviewFile.status == "ready")
+    if project_id is not None:
+        query = query.join(Task).filter(Task.project_id == project_id)
+    if only_unknown:
+        query = query.filter(
+            ~db.session.query(PreviewFileStorageState)
+            .filter(PreviewFileStorageState.preview_file_id == PreviewFile.id)
+            .exists()
+        )
+    query = query.with_entities(PreviewFile.id, PreviewFile.extension)
+    query = query.order_by(PreviewFile.created_at)
+    if limit is not None:
+        query = query.limit(limit)
+
+    summary = Counter()
+    for preview_file_id, extension in query.all():
+        states = probe_file_states(preview_file_id, extension)
+        for (bucket, prefix), state in states.items():
+            summary[file_key(bucket, prefix)] += state != OK
+        if not dry_run:
+            record_file_states(preview_file_id, states)
+    return summary
 
 
 def fail_missing(states, files):

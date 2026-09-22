@@ -999,6 +999,26 @@ def reset_picture_files_metadata():
 
 
 @cli.command()
+@click.option("--project-id", default=None, show_default=True)
+@click.option("--only-unknown", is_flag=True, default=False, show_default=True)
+@click.option("--limit", type=int, default=None, show_default=True)
+@click.option("--dry-run", is_flag=True, default=False, show_default=True)
+def probe_preview_files(project_id, only_unknown, limit, dry_run):
+    """
+    Ask the storage which files of the ready previews exist, record their
+    states and print the missing ones per kind.
+    """
+    from zou.app.utils import commands
+
+    commands.probe_preview_files(
+        project_id=project_id,
+        only_unknown=only_unknown,
+        limit=limit,
+        dry_run=dry_run,
+    )
+
+
+@cli.command()
 def reset_breakdown_data():
     """
     Reset breakdown statistics for all open projects.

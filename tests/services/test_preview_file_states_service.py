@@ -188,3 +188,43 @@ class ProbeFileStatesTestCase(ApiDBTestCase):
                 self.preview_file_id, "pdf"
             )
         self.assertEqual(states, {})
+
+
+class ProbePreviewFilesTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_asset()
+        self.generate_fixture_task()
+        self.preview_file_id = str(self.generate_fixture_preview_file().id)
+
+    def probe(self, **kwargs):
+        with patch.object(
+            file_store,
+            "exists_confirmed",
+            side_effect=lambda bucket, prefix, _id: prefix != "tiles",
+        ):
+            return states_service.probe_preview_files(**kwargs)
+
+    def test_summary_counts_the_missing_files(self):
+        summary = self.probe(dry_run=True)
+        self.assertEqual(summary["pictures/tiles"], 1)
+        self.assertEqual(summary["movies/lowdef"], 0)
+
+    def test_dry_run_records_nothing(self):
+        self.probe(dry_run=True)
+        self.assertEqual(
+            states_service.get_file_states(self.preview_file_id), {}
+        )
+
+    def test_probe_records_the_states(self):
+        self.probe()
+        states = states_service.get_file_states(self.preview_file_id)
+        self.assertEqual(states["pictures/tiles"]["state"], "missing")
+
+    def test_only_unknown_skips_previews_already_recorded(self):
+        states_service.record_file_state(
+            self.preview_file_id, "movies", "lowdef", "ok"
+        )
+        summary = self.probe(only_unknown=True)
+        self.assertEqual(sum(summary.values()), 0)
