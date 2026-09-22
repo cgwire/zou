@@ -1,3 +1,5 @@
+import datetime
+
 from tests.base import ApiDBTestCase
 
 from zou.app.services import projects_service, shots_service, tasks_service
@@ -219,3 +221,23 @@ class ShotTestCase(ApiDBTestCase):
         )
         shot_e201 = shots_service.get_shot(shot_e201["id"])
         self.assertEqual(shot_e201["nb_frames"], 1000)
+
+    def _age_shot(self):
+        # Versions are skipped within 60 s of the previous update.
+        past = datetime.datetime.now(tz=datetime.timezone.utc).replace(
+            microsecond=0, tzinfo=None
+        ) - datetime.timedelta(minutes=2)
+        self.shot_01.update({"updated_at": past})
+
+    def test_update_shot_frame_out_saves_a_version(self):
+        self._age_shot()
+        self.put(f"data/entities/{self.shot_id}", {"data": {"frame_out": 120}})
+        versions = self.get(f"data/shots/{self.shot_id}/versions")
+        self.assertEqual(len(versions), 1)
+        self.assertEqual(versions[0]["data"]["frame_out"], 120)
+
+    def test_update_shot_description_saves_no_version(self):
+        self._age_shot()
+        self.put(f"data/entities/{self.shot_id}", {"description": "Reviewed"})
+        versions = self.get(f"data/shots/{self.shot_id}/versions")
+        self.assertEqual(versions, [])

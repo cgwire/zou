@@ -565,9 +565,9 @@ class EntityResource(BaseModelResource, EntityEventMixin):
         data = shot.get("data", {})
         frame_in = data.get("frame_in", 0)
         pframe_in = previous_data.get("frame_in", 0)
-        frame_out = data.get("frame_in", 0)
-        pframe_out = previous_data.get("frame_in", 0)
-        name = data.get("name", "")
+        frame_out = data.get("frame_out", 0)
+        pframe_out = previous_data.get("frame_out", 0)
+        name = shot["name"]
         pname = previous_shot["name"]
         version = None
         if frame_in != pframe_in or frame_out != pframe_out or name != pname:
