@@ -294,6 +294,64 @@ def send_picture_file(
     )
 
 
+def send_preview_picture_file(prefix, preview_file_id, **kwargs):
+    """
+    send_picture_file for a picture of a preview file, keeping its storage
+    state: a file known missing is answered 404 without asking the
+    storage, a confirmed 404 is recorded, a successful read too.
+    """
+    return _send_preview_variant(
+        "pictures",
+        prefix,
+        preview_file_id,
+        lambda: send_picture_file(prefix, preview_file_id, **kwargs),
+    )
+
+
+def send_preview_standard_file(preview_file_id, extension, **kwargs):
+    """
+    send_standard_file for a non picture, non movie preview file, keeping
+    its storage state like send_preview_picture_file.
+    """
+    return _send_preview_variant(
+        "files",
+        "previews",
+        preview_file_id,
+        lambda: send_standard_file(preview_file_id, extension, **kwargs),
+    )
+
+
+def _send_preview_variant(bucket, prefix, preview_file_id, send):
+    states = preview_file_states_service.get_file_states(preview_file_id)
+    if preview_file_states_service.is_known_missing(states, bucket, prefix):
+        raise FileNotFound(f"{prefix}-{preview_file_id}")
+    try:
+        response = send()
+    except fs.ConfirmedFileNotFound:
+        _record_confirmed_missing(states, bucket, prefix, preview_file_id)
+        raise
+    preview_file_states_service.record_file_state(
+        preview_file_id, bucket, prefix, preview_file_states_service.OK
+    )
+    return response
+
+
+def _record_confirmed_missing(states, bucket, prefix, preview_file_id):
+    """
+    A file that failed to be generated stays failed; the date is always
+    refreshed, so the short-circuit applies for another delay.
+    """
+    current = preview_file_states_service.get_state(states, bucket, prefix)
+    state = (
+        preview_file_states_service.FAILED
+        if current == preview_file_states_service.FAILED
+        else preview_file_states_service.MISSING
+    )
+    preview_file_states_service.record_file_state(
+        preview_file_id, bucket, prefix, state, refresh=True
+    )
+
+
 def send_storage_file(
     get_local_path,
     open_file,
@@ -1170,19 +1228,19 @@ class PreviewFileResource(BasePreviewFileResource):
                     f"Extension not allowed: {extension}"
                 )
             if extension == "png":
-                return send_picture_file(
+                return send_preview_picture_file(
                     "original", instance_id, last_modified=self.last_modified
                 )
             elif extension == "pdf":
                 mimetype = "application/pdf"
-                return send_standard_file(
+                return send_preview_standard_file(
                     instance_id,
                     extension,
-                    mimetype,
+                    mimetype=mimetype,
                     last_modified=self.last_modified,
                 )
             else:
-                return send_standard_file(
+                return send_preview_standard_file(
                     instance_id, extension, last_modified=self.last_modified
                 )
 
@@ -1231,7 +1289,7 @@ class PreviewFileDownloadResource(BasePreviewFileResource):
 
         try:
             if extension == "png":
-                return send_picture_file(
+                return send_preview_picture_file(
                     "original",
                     instance_id,
                     as_attachment=True,
@@ -1239,10 +1297,10 @@ class PreviewFileDownloadResource(BasePreviewFileResource):
                 )
             elif extension == "pdf":
                 mimetype = "application/pdf"
-                return send_standard_file(
+                return send_preview_standard_file(
                     instance_id,
                     extension,
-                    mimetype,
+                    mimetype=mimetype,
                     as_attachment=True,
                     last_modified=self.last_modified,
                 )
@@ -1254,7 +1312,7 @@ class PreviewFileDownloadResource(BasePreviewFileResource):
                     preview_file=self.preview_file,
                 )
             else:
-                return send_standard_file(
+                return send_preview_standard_file(
                     instance_id,
                     extension,
                     as_attachment=True,
@@ -1377,7 +1435,7 @@ class BasePreviewPictureResource(BasePreviewFileResource):
         self.is_allowed(instance_id)
 
         try:
-            return send_picture_file(
+            return send_preview_picture_file(
                 self.picture_type,
                 instance_id,
                 last_modified=self.last_modified,
