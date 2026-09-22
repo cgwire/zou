@@ -157,6 +157,24 @@ class PreviewFileStatesServiceTestCase(ApiDBTestCase):
             )
         )
 
+    def test_known_states_read_failure_does_not_raise(self):
+        # The skip-unchanged read must not turn into an unhandled
+        # exception: on failure, write through unfiltered rather than
+        # raise into the caller.
+        with patch.object(
+            states_service,
+            "_get_file_states",
+            side_effect=RuntimeError("db unavailable"),
+        ):
+            result = states_service.record_file_state(
+                self.preview_file_id,
+                "pictures",
+                "tiles",
+                states_service.OK,
+            )
+        self.assertTrue(result)
+        self.assertEqual(self.rows(), {("pictures", "tiles"): "ok"})
+
 
 class ProbeFileStatesTestCase(ApiDBTestCase):
     def setUp(self):

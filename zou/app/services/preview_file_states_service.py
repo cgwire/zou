@@ -109,6 +109,12 @@ def record_file_states(preview_file_id, states, refresh=False):
     refresh is set: an unchanged state then gets a new date, which keeps a
     file confirmed missing again short-circuited for another delay.
 
+    The skip-unchanged check reads the memoized states (get_file_states,
+    240 s TTL): a write elsewhere that has not reached this process's
+    cache yet can make this check miss a change and skip a needed write,
+    for up to the TTL, bounded by the recheck delay that ages a missing
+    state back into being probed again.
+
     The upsert itself is atomic (a single `INSERT ... ON CONFLICT`), so
     concurrent requests do not lose each other's writes. It emits no
     event and never raises: a lost state costs a storage round trip, not
@@ -116,12 +122,19 @@ def record_file_states(preview_file_id, states, refresh=False):
     """
     preview_file_id = str(preview_file_id)
     if not refresh:
-        known = get_file_states(preview_file_id)
-        states = {
-            (bucket, prefix): state
-            for (bucket, prefix), state in states.items()
-            if get_state(known, bucket, prefix) != state
-        }
+        try:
+            known = get_file_states(preview_file_id)
+            states = {
+                (bucket, prefix): state
+                for (bucket, prefix), state in states.items()
+                if get_state(known, bucket, prefix) != state
+            }
+        except Exception:
+            logger.warning(
+                f"Could not read the known storage states of "
+                f"{preview_file_id}; writing without filtering",
+                exc_info=True,
+            )
     if not states:
         return False
     now = date_helpers.get_utc_now_datetime()
