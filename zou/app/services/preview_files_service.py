@@ -1907,10 +1907,15 @@ def _generate_missing_tile_locally(preview_file):
     again instead of piling decodes up on the API cores.
     """
     store = _tile_store()
-    lock = store.lock(
-        LOCAL_TILE_BUILD_LOCK_KEY, timeout=int(config.JOB_QUEUE_TIMEOUT)
-    )
-    if not lock.acquire(blocking=False):
+    # A plain SET NX, not redis-py's Lock: its release runs a Lua script,
+    # which the fakeredis the tests run on does not support.
+    token = fields.gen_uuid().hex
+    if not store.set(
+        LOCAL_TILE_BUILD_LOCK_KEY,
+        token,
+        nx=True,
+        ex=int(config.JOB_QUEUE_TIMEOUT),
+    ):
         store.delete(_tile_attempt_key(preview_file.id))
         return False
     try:
@@ -1920,10 +1925,10 @@ def _generate_missing_tile_locally(preview_file):
         _generate_tiles(file_store, preview_file, movie_path, 1, 1)
         return True
     finally:
-        try:
-            lock.release()
-        except redis.exceptions.LockError:
-            pass
+        # Only release a lock still ours: an expired one may have been
+        # taken by another build since.
+        if store.get(LOCAL_TILE_BUILD_LOCK_KEY) == token:
+            store.delete(LOCAL_TILE_BUILD_LOCK_KEY)
 
 
 def _tile_store():
