@@ -966,7 +966,7 @@ def probe_preview_files(
     keys = sorted(summary, key=lambda key: (key != "pictures/tiles", key))
     for key in keys:
         if summary[key] > 0:
-            print(f"{key}: {summary[key]} missing or failed")
+            print(f"{key}: {summary[key]} missing")
 
 
 def reset_breakdown_data():

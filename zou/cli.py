@@ -1006,7 +1006,9 @@ def reset_picture_files_metadata():
 def probe_preview_files(project_id, only_unknown, limit, dry_run):
     """
     Ask the storage which files of the ready previews exist, record their
-    states and print the missing ones per kind.
+    states and print the missing ones per kind. --only-unknown skips
+    every preview that already has at least one recorded state; run a
+    full probe once after deploying.
     """
     from zou.app.utils import commands
 

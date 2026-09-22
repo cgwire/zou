@@ -495,3 +495,24 @@ class UpgradeDbTelemetryTestCase(ApiDBTestCase):
         self.run_upgrade_db(
             "old-rev", "head-rev", "--no-telemetry"
         ).assert_not_called()
+
+
+class ProbePreviewFilesCommandTestCase(ApiDBTestCase):
+    def test_summary_reports_missing_not_failed(self):
+        # probe_preview_files only ever yields "ok" or "missing" (see
+        # preview_file_states_service.probe_file_states): the summary it
+        # prints must say so, not "missing or failed", which the probe
+        # itself never records.
+        from collections import Counter
+
+        with patch.object(
+            commands.preview_file_states_service,
+            "probe_preview_files",
+            return_value=Counter({"pictures/tiles": 2, "movies/lowdef": 0}),
+        ):
+            output = io.StringIO()
+            with redirect_stdout(output):
+                commands.probe_preview_files()
+        printed = output.getvalue()
+        self.assertIn("pictures/tiles: 2 missing", printed)
+        self.assertNotIn("or failed", printed)
