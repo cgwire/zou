@@ -17,7 +17,7 @@ from zou.app.models.status_automation import StatusAutomation
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
 
-from zou.app.services import projects_service
+from zou.app.services import preview_files_service, projects_service
 from zou.app.services.exception import (
     ProjectTemplateNotFoundException,
     WrongParameterException,
@@ -117,6 +117,7 @@ def create_project_template(name, description=None, **settings):
     """
     if not name:
         raise WrongParameterException("name is required")
+    preview_files_service.validate_movie_bitrates(settings)
     data = {"name": name, "description": description}
     for key, value in settings.items():
         if key in PRODUCTION_SETTING_FIELDS or key in (
@@ -140,6 +141,9 @@ def update_project_template(template_id, changes):
     Update template fields.
     """
     template = get_project_template_raw(template_id)
+    preview_files_service.validate_movie_bitrates(
+        changes or {}, current=template.serialize()
+    )
     # Filter out fields the caller can't change directly.
     safe_changes = {
         key: value
@@ -220,18 +224,27 @@ def get_template_task_types(template_id):
         link = link_map.get(str(task_type.id))
         if link:
             data["priority"] = link.priority
+            data["hd_bitrate_compression"] = link.hd_bitrate_compression
+            data["ld_bitrate_compression"] = link.ld_bitrate_compression
         result.append(data)
     result.sort(key=lambda t: (t.get("priority") or 0, t.get("name", "")))
     return result
 
 
-def add_task_type_to_template(template_id, task_type_id, priority=None):
+def add_task_type_to_template(
+    template_id, task_type_id, priority=None, bitrates=None
+):
     """
-    Link a task type to given template, or update its priority when the
-    link already exists.
+    Link a task type to given template, or update its priority and its
+    movie bitrates when the link already exists. Bitrates left to None are
+    not touched, so a reorder keeps them.
     """
     _check_required_id(TaskType, task_type_id, "task_type_id", "Task type")
-    _ensure_template_exists(template_id)
+    template = _ensure_template_exists(template_id)
+    if bitrates is not None:
+        preview_files_service.validate_movie_bitrates(
+            bitrates, inherited=template.serialize()
+        )
     if priority is not None:
         priority = int(priority)
     link = ProjectTemplateTaskTypeLink.get_by(
@@ -242,9 +255,14 @@ def add_task_type_to_template(template_id, task_type_id, priority=None):
             project_template_id=template_id,
             task_type_id=task_type_id,
             priority=priority,
+            **(bitrates or {}),
         )
-    elif priority is not None:
-        link.update({"priority": priority})
+    else:
+        update_data = dict(bitrates or {})
+        if priority is not None:
+            update_data["priority"] = priority
+        if update_data:
+            link.update(update_data)
     _notify_template_change(template_id)
     return link.serialize()
 
@@ -622,6 +640,8 @@ def create_template_from_project(project_id, name, description=None):
             project_template_id=template.id,
             task_type_id=link.task_type_id,
             priority=link.priority,
+            hd_bitrate_compression=link.hd_bitrate_compression,
+            ld_bitrate_compression=link.ld_bitrate_compression,
         )
 
     task_status_links = ProjectTaskStatusLink.get_all_by(project_id=project_id)
@@ -759,6 +779,8 @@ def apply_template_to_project(project_id, template_id, override_settings=None):
                 project_id=project.id,
                 task_type_id=link.task_type_id,
                 priority=link.priority,
+                hd_bitrate_compression=link.hd_bitrate_compression,
+                ld_bitrate_compression=link.ld_bitrate_compression,
             )
 
     for link in ProjectTemplateTaskStatusLink.get_all_by(

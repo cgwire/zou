@@ -120,6 +120,15 @@ SKIP_NORMALIZATION_HIGHDEF = envtobool("SKIP_NORMALIZATION_HIGHDEF", False)
 # when the other instance skips the normalization, since the source is then
 # the movie its preview routes serve.
 SYNC_SOURCE_MOVIE_FILES = envtobool("SYNC_SOURCE_MOVIE_FILES", False)
+# Movie encoding defaults, in Mbit/s like the hd_bitrate_compression and
+# ld_bitrate_compression columns of projects and task type links that
+# override them. The bitrate is also the VBV cap, with a buffer of
+# MOVIE_VBV_BUFSIZE_FACTOR times the bitrate: 0 drops the cap and keeps a
+# plain average bitrate target.
+MOVIE_HIGHDEF_BITRATE = int(os.getenv("MOVIE_HIGHDEF_BITRATE", 28))
+MOVIE_LOWDEF_BITRATE = int(os.getenv("MOVIE_LOWDEF_BITRATE", 6))
+MOVIE_ENCODING_PRESET = os.getenv("MOVIE_ENCODING_PRESET", "medium")
+MOVIE_VBV_BUFSIZE_FACTOR = int(os.getenv("MOVIE_VBV_BUFSIZE_FACTOR", 2))
 MAX_IMAGE_PIXELS = int(os.getenv("MAX_IMAGE_PIXELS", 20000 * 20000))
 # Cap on any request body size (Flask MAX_CONTENT_LENGTH). Generous by
 # default so multi-GB movie uploads keep working while unbounded bodies
