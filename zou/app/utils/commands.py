@@ -942,6 +942,35 @@ def generate_preview_extra(
         )
 
 
+def queue_missing_tiles(
+    project=None,
+    entity_id=None,
+    episodes=None,
+    only_shots=False,
+    only_assets=False,
+    limit=None,
+    force=False,
+):
+    with app.app_context():
+        summary = preview_files_service.queue_missing_tiles(
+            project=project,
+            entity_id=entity_id,
+            episodes=episodes,
+            only_shots=only_shots,
+            only_assets=only_assets,
+            limit=limit,
+            force=force,
+        )
+    print(
+        f"{summary['checked']} movies checked: "
+        f"{summary['queued']} queued, "
+        f"{summary['stored']} already there, "
+        f"{summary['recently_attempted']} skipped "
+        "(attempt within the hour), "
+        f"{summary['storage_errors']} storage errors"
+    )
+
+
 def reset_movie_files_metadata():
     with app.app_context():
         preview_files_service.reset_movie_files_metadata()

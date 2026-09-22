@@ -2030,3 +2030,128 @@ class PreviewFileWritesRecordStatesTestCase(PreviewFileTestCase):
         self.assertEqual(states["movies/lowdef"]["state"], "ok")
         self.assertEqual(states["pictures/tiles"]["state"], "ok")
         self.assertNotIn("movies/source", states)
+
+
+class QueueMissingTilesTestCase(PreviewFileTestCase):
+    """
+    Queue the tile build of the movies that have none, one job per
+    movie, without decoding anything in the command itself.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.preview_file = self.generate_fixture_preview_file()
+        self.preview_file_id = str(self.preview_file.id)
+        self.redis = redis_client.get_client(config.KV_JOB_DB_INDEX)
+        self.redis.delete(
+            preview_files_service._tile_attempt_key(self.preview_file_id)
+        )
+
+    @contextmanager
+    def job_queue(self):
+        job_queue = MagicMock()
+        with patch.object(
+            preview_files_service.config, "ENABLE_JOB_QUEUE", True
+        ), patch.object(queue_store, "job_queue", job_queue):
+            yield job_queue
+
+    def queued_ids(self, job_queue):
+        return [
+            call.kwargs["args"][0] for call in job_queue.enqueue.call_args_list
+        ]
+
+    def test_a_movie_whose_tile_is_stored_is_left_alone(self):
+        states_service.record_file_state(
+            self.preview_file_id, "pictures", "tiles", states_service.OK
+        )
+        with self.job_queue() as job_queue:
+            summary = preview_files_service.queue_missing_tiles()
+        job_queue.enqueue.assert_not_called()
+        self.assertEqual(summary["stored"], 1)
+        self.assertEqual(summary["queued"], 0)
+
+    def test_a_movie_without_tile_is_queued(self):
+        states_service.record_file_state(
+            self.preview_file_id, "pictures", "tiles", states_service.MISSING
+        )
+        with self.job_queue() as job_queue:
+            summary = preview_files_service.queue_missing_tiles()
+        self.assertEqual(self.queued_ids(job_queue), [self.preview_file_id])
+        self.assertEqual(summary["queued"], 1)
+
+    def test_an_unknown_tile_is_probed_and_recorded(self):
+        with self.job_queue() as job_queue, patch.object(
+            file_store, "exists_confirmed", return_value=False
+        ) as exists:
+            summary = preview_files_service.queue_missing_tiles()
+        exists.assert_called_once_with(
+            "pictures", "tiles", self.preview_file_id
+        )
+        self.assertEqual(self.queued_ids(job_queue), [self.preview_file_id])
+        self.assertEqual(summary["queued"], 1)
+        states = states_service.get_file_states(self.preview_file_id)
+        self.assertEqual(states["pictures/tiles"]["state"], "missing")
+
+    def test_a_storage_error_skips_the_movie(self):
+        with self.job_queue() as job_queue, patch.object(
+            file_store, "exists_confirmed", side_effect=RuntimeError("503")
+        ):
+            summary = preview_files_service.queue_missing_tiles()
+        job_queue.enqueue.assert_not_called()
+        self.assertEqual(summary["storage_errors"], 1)
+        self.assertEqual(
+            states_service.get_file_states(self.preview_file_id), {}
+        )
+
+    def test_a_recent_attempt_is_skipped_unless_forced(self):
+        states_service.record_file_state(
+            self.preview_file_id, "pictures", "tiles", states_service.FAILED
+        )
+        self.redis.set(
+            preview_files_service._tile_attempt_key(self.preview_file_id), 1
+        )
+        with self.job_queue() as job_queue:
+            summary = preview_files_service.queue_missing_tiles()
+        job_queue.enqueue.assert_not_called()
+        self.assertEqual(summary["recently_attempted"], 1)
+
+        with self.job_queue() as job_queue:
+            summary = preview_files_service.queue_missing_tiles(force=True)
+        self.assertEqual(self.queued_ids(job_queue), [self.preview_file_id])
+        self.assertEqual(summary["queued"], 1)
+
+    def test_limit_caps_the_movies_looked_at(self):
+        self.generate_fixture_preview_file(revision=2)
+        states_service.record_file_state(
+            self.preview_file_id, "pictures", "tiles", states_service.MISSING
+        )
+        with self.job_queue() as job_queue, patch.object(
+            file_store, "exists_confirmed", return_value=False
+        ):
+            summary = preview_files_service.queue_missing_tiles(limit=1)
+        self.assertEqual(len(self.queued_ids(job_queue)), 1)
+        self.assertEqual(summary["checked"], 1)
+
+    def test_pictures_are_not_looked_at(self):
+        picture = self.generate_fixture_preview_file(revision=3)
+        picture.update({"extension": "png"})
+        files_service.clear_preview_file_cache(str(picture.id))
+        states_service.record_file_state(
+            self.preview_file_id, "pictures", "tiles", states_service.OK
+        )
+        with self.job_queue() as job_queue:
+            summary = preview_files_service.queue_missing_tiles()
+        job_queue.enqueue.assert_not_called()
+        self.assertEqual(summary["checked"], 1)
+
+    def test_nothing_is_queued_without_a_job_queue(self):
+        states_service.record_file_state(
+            self.preview_file_id, "pictures", "tiles", states_service.MISSING
+        )
+        with patch.object(
+            preview_files_service.config, "ENABLE_JOB_QUEUE", False
+        ):
+            self.assertRaises(
+                preview_files_service.JobQueueDisabledException,
+                preview_files_service.queue_missing_tiles,
+            )

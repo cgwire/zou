@@ -7,6 +7,8 @@ import tempfile
 import time
 import zipfile
 
+from collections import Counter
+
 import ffmpeg
 import redis
 from rq.timeouts import BaseTimeoutException
@@ -49,6 +51,7 @@ from zou.app.utils import (
 )
 from zou.app.services.exception import (
     AnnotationLockTimeoutException,
+    JobQueueDisabledException,
     AnnotationNotFoundException,
     WrongParameterException,
     PreviewFileNotFoundException,
@@ -1687,24 +1690,20 @@ def reset_picture_files_metadata():
             )
 
 
-def generate_preview_extra(
+def _build_preview_extra_query(
     project=None,
     entity_id=None,
     episodes=None,
     only_shots=False,
     only_assets=False,
-    force_regenerate_tiles=False,
-    with_tiles=False,
-    with_metadata=False,
-    with_thumbnails=False,
+    extensions=("mp4", "png"),
 ):
     """
-    Generate tiles for all movie previews and reset previews file size
-    informations of open projects.
+    The ready previews of the open projects the preview extra commands
+    work on, narrowed by project, entity, episodes and entity kind.
     """
     if episodes is None:
         episodes = []
-    print("Generating preview extras...")
     query = (
         PreviewFile.query.join(Task)
         .join(Entity)
@@ -1712,8 +1711,9 @@ def generate_preview_extra(
         .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
         .filter(ProjectStatus.name.in_(("Active", "open", "Open")))
         .filter(PreviewFile.status.not_in(("broken", "missing", "processing")))
-        .filter(PreviewFile.extension.in_(("mp4", "png")))
+        .filter(PreviewFile.extension.in_(extensions))
     )
+    project_id = None
     if project is not None:
         try:
             project_id = projects_service.get_project_by_name(project)["id"]
@@ -1725,12 +1725,9 @@ def generate_preview_extra(
         query = query.filter(Task.entity_id == entity_id)
 
     if episodes:
-        get_episode_by_name = False
-        if project is not None:
-            get_episode_by_name = True
+        get_episode_by_name = project is not None
         episode_ids = []
         for episode in episodes:
-            episode_id = None
             try:
                 episode_id = shots_service.get_episode(episode)["id"]
             except EpisodeNotFoundException as e:
@@ -1755,6 +1752,113 @@ def generate_preview_extra(
                 assets_service.get_temporal_type_ids()
             )
         )
+    return query
+
+
+def queue_missing_tiles(
+    project=None,
+    entity_id=None,
+    episodes=None,
+    only_shots=False,
+    only_assets=False,
+    limit=None,
+    force=False,
+):
+    """
+    Queue the tile build of the movies that have none, one job per movie:
+    on Nomad when a tile job is configured, on this host otherwise. The
+    command itself decodes nothing and does not wait for the builds.
+
+    The recorded storage state answers for the movies it knows; the
+    others cost one storage round trip, whose answer is recorded on the
+    way. A movie attempted within the hour is skipped unless force is
+    set. Return the counts per outcome.
+    """
+    if not config.ENABLE_JOB_QUEUE:
+        raise JobQueueDisabledException(
+            "No job queue: tiles cannot be built in the background. "
+            "Use --with-tiles to build them in this command instead."
+        )
+    query = _build_preview_extra_query(
+        project=project,
+        entity_id=entity_id,
+        episodes=episodes,
+        only_shots=only_shots,
+        only_assets=only_assets,
+        extensions=("mp4",),
+    )
+    if limit is not None:
+        query = query.limit(limit)
+
+    summary = Counter()
+    for preview_file in query.all():
+        try:
+            preview_file_id = str(preview_file.id)
+        except ObjectDeletedError:
+            continue
+        summary["checked"] += 1
+        stored = _has_stored_tile(preview_file_id)
+        if stored is None:
+            summary["storage_errors"] += 1
+            continue
+        if stored:
+            summary["stored"] += 1
+            continue
+        if force:
+            _tile_store().delete(_tile_attempt_key(preview_file_id))
+        if generate_tile_later(preview_file_id):
+            summary["queued"] += 1
+        else:
+            summary["recently_attempted"] += 1
+    return summary
+
+
+def _has_stored_tile(preview_file_id):
+    """
+    Whether the tile of a movie is stored, from the recorded state when
+    there is one, from the storage otherwise. None when the storage
+    could not answer: a transient failure records nothing and queues
+    nothing.
+    """
+    states = preview_file_states_service.get_file_states(preview_file_id)
+    state = preview_file_states_service.get_state(states, "pictures", "tiles")
+    if state is not None:
+        return state == preview_file_states_service.OK
+    probed = preview_file_states_service.probe_file_states(
+        preview_file_id, "mp4", files=[preview_file_states_service.TILE]
+    )
+    if not probed:
+        return None
+    preview_file_states_service.record_file_states(preview_file_id, probed)
+    return (
+        probed[preview_file_states_service.TILE]
+        == preview_file_states_service.OK
+    )
+
+
+def generate_preview_extra(
+    project=None,
+    entity_id=None,
+    episodes=None,
+    only_shots=False,
+    only_assets=False,
+    force_regenerate_tiles=False,
+    with_tiles=False,
+    with_metadata=False,
+    with_thumbnails=False,
+):
+    """
+    Generate tiles for all movie previews and reset previews file size
+    informations of open projects.
+    """
+    print("Generating preview extras...")
+    query = _build_preview_extra_query(
+        project=project,
+        entity_id=entity_id,
+        episodes=episodes,
+        only_shots=only_shots,
+        only_assets=only_assets,
+    )
 
     total = query.count()
     print(f"{total} previews found.")

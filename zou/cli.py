@@ -949,6 +949,11 @@ def search_asset(query):
 @click.option(
     "--force-regenerate-tiles", is_flag=True, default=False, show_default=True
 )
+@click.option(
+    "--only-missing-tiles", is_flag=True, default=False, show_default=True
+)
+@click.option("--force", is_flag=True, default=False, show_default=True)
+@click.option("--limit", type=int, default=None, show_default=True)
 def generate_preview_extra(
     project,
     entity_id,
@@ -959,11 +964,44 @@ def generate_preview_extra(
     with_metadata,
     with_thumbnails,
     force_regenerate_tiles,
+    only_missing_tiles,
+    force,
+    limit,
 ):
     """
     Generate tiles, thumbnails and metadata for all previews.
+
+    --only-missing-tiles queues one background job per movie that has no
+    tile, on Nomad when a tile job is configured, and decodes nothing
+    here. --force queues a movie attempted within the last hour too.
     """
     from zou.app.utils import commands
+    from zou.app.services.exception import JobQueueDisabledException
+
+    if only_missing_tiles:
+        if with_tiles or with_metadata or with_thumbnails:
+            raise click.UsageError(
+                "--only-missing-tiles builds nothing else: drop "
+                "--with-tiles, --with-metadata and --with-thumbnails."
+            )
+        if force_regenerate_tiles:
+            raise click.UsageError(
+                "--only-missing-tiles skips the movies that have a tile: "
+                "--force-regenerate-tiles belongs to --with-tiles."
+            )
+        try:
+            commands.queue_missing_tiles(
+                project=project,
+                entity_id=entity_id,
+                episodes=episode,
+                only_shots=only_shots,
+                only_assets=only_assets,
+                limit=limit,
+                force=force,
+            )
+        except JobQueueDisabledException as exception:
+            raise click.ClickException(str(exception))
+        return
 
     commands.generate_preview_extra(
         project=project,

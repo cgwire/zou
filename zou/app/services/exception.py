@@ -123,6 +123,13 @@ class OutputTypeNotFoundException(NotFound):
     pass
 
 
+class JobQueueDisabledException(Exception):
+    """
+    Raised when work that only a background worker can do is asked for
+    while the job queue is disabled.
+    """
+
+
 class PreviewFileNotFoundException(NotFound):
     pass
 
