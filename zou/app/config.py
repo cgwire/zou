@@ -187,8 +187,15 @@ JOB_QUEUE_NOMAD_PLAYLIST_JOB = os.getenv(
     "JOB_QUEUE_NOMAD_PLAYLIST_JOB", "zou-playlist"
 )
 JOB_QUEUE_NOMAD_NORMALIZE_JOB = os.getenv("JOB_QUEUE_NOMAD_NORMALIZE_JOB", "")
+JOB_QUEUE_NOMAD_TILE_JOB = os.getenv("JOB_QUEUE_NOMAD_TILE_JOB", "")
 JOB_QUEUE_NOMAD_HOST = os.getenv("JOB_QUEUE_NOMAD_HOST", "zou-nomad-01.zou")
 JOB_QUEUE_TIMEOUT = os.getenv("JOB_QUEUE_TIMEOUT", 3600)
+
+# Seconds during which a preview file known missing is answered 404
+# without asking the storage again.
+PREVIEW_MISSING_FILE_RECHECK_DELAY = int(
+    os.getenv("PREVIEW_MISSING_FILE_RECHECK_DELAY", 3600)
+)
 
 LDAP_HOST = os.getenv("LDAP_HOST", "127.0.0.1")
 LDAP_PORT = os.getenv("LDAP_PORT", "389")

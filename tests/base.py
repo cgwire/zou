@@ -7,7 +7,7 @@ import fakeredis
 
 from mixer.backend.flask import mixer
 
-from zou.app import app, db
+from zou.app import app, config, db
 from zou.app.models.status_automation import StatusAutomation
 from zou.app.utils import events, fields, auth, fs
 from zou.app.services import (
@@ -43,7 +43,7 @@ from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
 from zou.app.models.software import Software
 from zou.app.models.working_file import WorkingFile
-from zou.app.stores import auth_tokens_store, config_store
+from zou.app.stores import auth_tokens_store, config_store, redis_client
 
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
@@ -78,6 +78,10 @@ auth_tokens_store.revoked_tokens_store = fakeredis.FakeStrictRedis(
     decode_responses=True
 )
 config_store.config_store = fakeredis.FakeStrictRedis(decode_responses=True)
+# The job queue db holds the tile attempt marks and the local tile build
+# lock: seed the shared client factory so that no test needs a Redis.
+job_store = fakeredis.FakeStrictRedis(decode_responses=True)
+redis_client._clients[(config.KV_JOB_DB_INDEX, True)] = job_store
 
 # Pre-compute the bcrypt hash once for the default test password.
 # Avoids calling bcrypt.generate_password_hash per user per test.
@@ -132,6 +136,7 @@ class ApiTestCase(unittest.TestCase):
         # tokens and config entries leak from one test to the next.
         self.addCleanup(auth_tokens_store.revoked_tokens_store.flushall)
         self.addCleanup(config_store.config_store.flushall)
+        self.addCleanup(job_store.flushall)
 
         from zou.app.utils import cache
 

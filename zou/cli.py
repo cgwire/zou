@@ -528,6 +528,7 @@ if os.getenv("ADMIN_TOKEN"):
             "nomad_host": "JOB_QUEUE_NOMAD_HOST",
             "nomad_normalize_job": "JOB_QUEUE_NOMAD_NORMALIZE_JOB",
             "nomad_playlist_job": "JOB_QUEUE_NOMAD_PLAYLIST_JOB",
+            "nomad_tile_job": "JOB_QUEUE_NOMAD_TILE_JOB",
         }
 
         token = os.getenv("ADMIN_TOKEN")
@@ -995,6 +996,28 @@ def reset_picture_files_metadata():
     from zou.app.utils import commands
 
     commands.reset_picture_files_metadata()
+
+
+@cli.command()
+@click.option("--project-id", default=None, show_default=True)
+@click.option("--only-unknown", is_flag=True, default=False, show_default=True)
+@click.option("--limit", type=int, default=None, show_default=True)
+@click.option("--dry-run", is_flag=True, default=False, show_default=True)
+def probe_preview_files(project_id, only_unknown, limit, dry_run):
+    """
+    Ask the storage which files of the ready previews exist, record their
+    states and print the missing ones per kind. --only-unknown skips
+    every preview that already has at least one recorded state; run a
+    full probe once after deploying.
+    """
+    from zou.app.utils import commands
+
+    commands.probe_preview_files(
+        project_id=project_id,
+        only_unknown=only_unknown,
+        limit=limit,
+        dry_run=dry_run,
+    )
 
 
 @cli.command()

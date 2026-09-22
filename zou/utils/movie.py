@@ -129,9 +129,11 @@ def generate_tile(movie_path):
     else:
         select = ""
     try:
-        ffmpeg.input(movie_path).output(
+        # One decoding thread: the tile is built next to the API.
+        ffmpeg.input(movie_path, threads=1).output(
             file_target_path,
             vf=f"{select}scale={width}:{height},tile=8x{rows}",
+            threads=1,
         ).overwrite_output().run(quiet=True)
     except ffmpeg._run.Error as e:
         log_ffmpeg_error(e, "An error occured while generating the tile.")

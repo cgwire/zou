@@ -20,6 +20,7 @@ from zou.app.services import (
     edits_service,
     index_service,
     persons_service,
+    preview_file_states_service,
     preview_files_service,
     projects_service,
     shots_service,
@@ -949,6 +950,23 @@ def reset_movie_files_metadata():
 def reset_picture_files_metadata():
     with app.app_context():
         preview_files_service.reset_picture_files_metadata()
+
+
+def probe_preview_files(
+    project_id=None, only_unknown=False, limit=None, dry_run=False
+):
+    with app.app_context():
+        summary = preview_file_states_service.probe_preview_files(
+            project_id=project_id,
+            only_unknown=only_unknown,
+            limit=limit,
+            dry_run=dry_run,
+        )
+    # Movies without a tile sheet first: the file a hover rebuilds.
+    keys = sorted(summary, key=lambda key: (key != "pictures/tiles", key))
+    for key in keys:
+        if summary[key] > 0:
+            print(f"{key}: {summary[key]} missing")
 
 
 def reset_breakdown_data():

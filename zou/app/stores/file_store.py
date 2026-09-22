@@ -6,7 +6,6 @@ from flask import current_app
 from werkzeug.utils import cached_property
 from zou.app import config
 from flask_fs.backends.local import LocalBackend
-from flask_fs.errors import FileNotFound
 from werkzeug.exceptions import RequestedRangeNotSatisfiable
 
 from zou.app.utils import fs
@@ -306,6 +305,51 @@ def _exists(bucket, key, bucket_name):
         return bucket.exists(key)
 
 
+def _bucket_by_name(bucket_name):
+    # Read lazily: pictures/movies/files are only set once configure_storages
+    # runs, so a module-level dict built at import time would stay empty.
+    return {"movies": movies, "pictures": pictures, "files": files}[
+        bucket_name
+    ]
+
+
+def exists_confirmed(bucket_name, prefix, id):
+    """
+    Tell whether a file is confirmed present or confirmed absent, raising
+    on anything else. The exists_* helpers below answer False to a
+    transient failure exactly like flask_fs does (the S3 backend on any
+    ClientError, the Swift backend on any ClientException that is not a
+    404): fine for a preview route falling back to another prefix, wrong
+    for a storage state probe, which must never take a 503 for a
+    confirmed absence.
+    """
+    bucket = _bucket_by_name(bucket_name)
+    key = make_key(prefix, id)
+    with _measure("exists", bucket_name):
+        if config.FS_BACKEND == "local":
+            return bucket.exists(key)
+        if config.FS_BACKEND == "s3":
+            try:
+                bucket.backend.bucket.Object(key).load()
+            except Exception as exc:
+                if fs.is_missing_file_error(exc):
+                    return False
+                raise
+            return True
+        # swift: flask-fs2 is pinned at 0.8.2, whose SwiftBackend._borrow is
+        # a private pool-borrowing context manager (see _read_swift_range
+        # above for the same private-member trade-off).
+        backend = bucket.backend
+        try:
+            with backend._borrow() as conn:
+                conn.head_object(backend.name, key)
+        except Exception as exc:
+            if fs.is_missing_file_error(exc):
+                return False
+            raise
+        return True
+
+
 def _delete(bucket, key, bucket_name):
     with _measure("delete", bucket_name):
         return bucket.delete(key)
@@ -328,7 +372,7 @@ def _read_chunks(bucket, key):
         generator = backend.read_chunks(key)
     except Exception as exc:
         if fs.is_missing_file_error(exc):
-            raise FileNotFound(key) from exc
+            raise fs.ConfirmedFileNotFound(key) from exc
         raise
     if backend.encryptor is not None:
         generator = backend.encryptor.decrypt_file_from_generator(generator)
@@ -362,7 +406,7 @@ def _measured_read(read_stream, key, bucket_name=None):
                     yield chunk
         except FileNotFoundError as exc:
             # The local backend only opens the file on the first read.
-            raise FileNotFound(key) from exc
+            raise fs.ConfirmedFileNotFound(key) from exc
         finally:
             if hasattr(read_stream, "close"):
                 try:
@@ -444,7 +488,7 @@ def read_movie_range(prefix, id, range_header=None):
             content_range = resp_headers.get("content-range")
     except Exception as exc:
         if fs.is_missing_file_error(exc):
-            raise FileNotFound(key) from exc
+            raise fs.ConfirmedFileNotFound(key) from exc
         if fs.is_range_error(exc):
             raise RequestedRangeNotSatisfiable() from exc
         raise

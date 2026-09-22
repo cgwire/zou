@@ -86,6 +86,47 @@ def is_range_error(exception):
     return False
 
 
+class ConfirmedFileNotFound(FileNotFound):
+    """
+    The storage answered that the file does not exist: a 404, or a local
+    file absent, empty or of the wrong size. A plain FileNotFound may also
+    stand for a transient failure the retry did not get past.
+    """
+
+
+def is_confirmed_missing_error(exception):
+    """
+    Tell an absence the storage itself confirmed (a 404, or an object
+    store's own missing-object code) apart from every other failure.
+
+    Unlike is_missing_file_error, a bare FileNotFoundError or FileNotFound
+    is NOT confirmed here: download_to_file raises those for its own local
+    temp file too (TMP_DIR missing, or the .part removed from under it by
+    a concurrent _remove_stale_parts), which says nothing about whether
+    the remote object exists. Only an exception the storage backend itself
+    raised for a missing object - already a ConfirmedFileNotFound, or
+    carrying a 404 / a known missing-object code - confirms the absence.
+    """
+    if exception is None:
+        return False
+    if isinstance(exception, ConfirmedFileNotFound):
+        return True
+    if isinstance(exception, (FileNotFound, FileNotFoundError)):
+        return False
+    for attribute in ("http_status", "status", "status_code"):
+        if getattr(exception, attribute, None) == 404:
+            return True
+    response = getattr(exception, "response", None)
+    if isinstance(response, dict):
+        metadata = response.get("ResponseMetadata") or {}
+        if metadata.get("HTTPStatusCode") == 404:
+            return True
+        error = response.get("Error") or {}
+        if error.get("Code") in MISSING_OBJECT_ERROR_CODES:
+            return True
+    return False
+
+
 def get_cache_file_path(config, prefix, instance_id, extension):
     """
     Path of the local copy kept for a file stored on a remote backend.
@@ -201,7 +242,7 @@ def get_file_path_and_file(
     if config.FS_BACKEND == "local":
         file_path = get_local_path(prefix, instance_id)
         if is_invalid_file(file_path, file_size):
-            raise FileNotFound
+            raise ConfirmedFileNotFound(f"{prefix}-{instance_id}")
     else:
         file_path = get_cache_file_path(config, prefix, instance_id, extension)
 
@@ -227,15 +268,20 @@ def get_file_path_and_file(
             if is_invalid_file(file_path, file_size):
                 rm_file(file_path)
                 if exception is not None:
-                    if isinstance(exception, FileNotFound):
+                    if isinstance(exception, ConfirmedFileNotFound):
                         raise exception
+                    if is_confirmed_missing_error(exception):
+                        raise ConfirmedFileNotFound(
+                            f"{prefix}-{instance_id}"
+                        ) from exception
                     raise FileNotFound(
                         f"{prefix}-{instance_id}"
                     ) from exception
                 else:
                     # The download reported success but the file is still
                     # missing or empty: treat it as absent (404) like the
-                    # local backend does, not an unhandled 500.
+                    # local backend does, not an unhandled 500. Not a
+                    # confirmed absence: the storage never said so.
                     raise FileNotFound(f"{prefix}-{instance_id}")
 
     return file_path

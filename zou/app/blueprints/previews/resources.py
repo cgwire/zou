@@ -30,6 +30,7 @@ from zou.app.services import (
     names_service,
     persons_service,
     projects_service,
+    preview_file_states_service,
     preview_files_service,
     tasks_service,
     permissions_service,
@@ -213,7 +214,8 @@ def send_movie_file(
     already did (`preview_file`). A preview file that predates the record
     is served in the default order, and the record is probed and written
     back after the response starts: the probe costs one round trip per
-    version, more than the movie read itself.
+    version, more than the movie read itself. Versions known missing are
+    skipped until the recheck delay has elapsed.
     """
     if preview_file is None:
         preview_file = files_service.get_preview_file_for_access(
@@ -224,7 +226,17 @@ def send_movie_file(
     prefixes = files_service.get_movie_prefixes(
         recorded_prefixes or [], lowdef
     )
-    for prefix in prefixes:
+    states = preview_file_states_service.get_file_states(preview_file_id)
+    candidates = [
+        prefix
+        for prefix in prefixes
+        if not preview_file_states_service.is_known_missing(
+            states, "movies", prefix
+        )
+    ]
+    if not candidates:
+        raise FileNotFound(f"movies-{preview_file_id}")
+    for prefix in candidates:
         try:
             response = send_storage_file(
                 file_store.get_local_movie_path,
@@ -237,10 +249,17 @@ def send_movie_file(
                 last_modified=last_modified,
                 stream_cold=True,
             )
-        except FileNotFound:
-            if prefix == prefixes[-1]:
+        except FileNotFound as exception:
+            if isinstance(exception, fs.ConfirmedFileNotFound):
+                _record_confirmed_missing(
+                    states, "movies", prefix, preview_file_id
+                )
+            if prefix == candidates[-1]:
                 raise
             continue
+        preview_file_states_service.record_file_state(
+            preview_file_id, "movies", prefix, preview_file_states_service.OK
+        )
         if recorded_prefixes is None or prefix != prefixes[0]:
             # No record yet, or one lagging behind the storage (a version
             # removed, a row imported from another instance).
@@ -290,6 +309,64 @@ def send_picture_file(
         as_attachment=as_attachment,
         download_name=download_name,
         last_modified=last_modified,
+    )
+
+
+def send_preview_picture_file(prefix, preview_file_id, **kwargs):
+    """
+    send_picture_file for a picture of a preview file, keeping its storage
+    state: a file known missing is answered 404 without asking the
+    storage, a confirmed 404 is recorded, a successful read too.
+    """
+    return _send_preview_variant(
+        "pictures",
+        prefix,
+        preview_file_id,
+        lambda: send_picture_file(prefix, preview_file_id, **kwargs),
+    )
+
+
+def send_preview_standard_file(preview_file_id, extension, **kwargs):
+    """
+    send_standard_file for a non picture, non movie preview file, keeping
+    its storage state like send_preview_picture_file.
+    """
+    return _send_preview_variant(
+        "files",
+        "previews",
+        preview_file_id,
+        lambda: send_standard_file(preview_file_id, extension, **kwargs),
+    )
+
+
+def _send_preview_variant(bucket, prefix, preview_file_id, send):
+    states = preview_file_states_service.get_file_states(preview_file_id)
+    if preview_file_states_service.is_known_missing(states, bucket, prefix):
+        raise FileNotFound(f"{prefix}-{preview_file_id}")
+    try:
+        response = send()
+    except fs.ConfirmedFileNotFound:
+        _record_confirmed_missing(states, bucket, prefix, preview_file_id)
+        raise
+    preview_file_states_service.record_file_state(
+        preview_file_id, bucket, prefix, preview_file_states_service.OK
+    )
+    return response
+
+
+def _record_confirmed_missing(states, bucket, prefix, preview_file_id):
+    """
+    A file that failed to be generated stays failed; the date is always
+    refreshed, so the short-circuit applies for another delay.
+    """
+    current = preview_file_states_service.get_state(states, bucket, prefix)
+    state = (
+        preview_file_states_service.FAILED
+        if current == preview_file_states_service.FAILED
+        else preview_file_states_service.MISSING
+    )
+    preview_file_states_service.record_file_state(
+        preview_file_id, bucket, prefix, state, refresh=True
     )
 
 
@@ -504,6 +581,12 @@ class BaseNewPreviewFilePicture:
         uploaded_file.save(file_path)
         try:
             file_store.add_file("previews", instance_id, file_path)
+            preview_file_states_service.record_file_state(
+                instance_id,
+                "files",
+                "previews",
+                preview_file_states_service.OK,
+            )
             file_size = fs.get_file_size(file_path)
             preview_files_service.update_preview_file(
                 instance_id, {"file_size": file_size}, silent=True
@@ -1163,19 +1246,19 @@ class PreviewFileResource(BasePreviewFileResource):
                     f"Extension not allowed: {extension}"
                 )
             if extension == "png":
-                return send_picture_file(
+                return send_preview_picture_file(
                     "original", instance_id, last_modified=self.last_modified
                 )
             elif extension == "pdf":
                 mimetype = "application/pdf"
-                return send_standard_file(
+                return send_preview_standard_file(
                     instance_id,
                     extension,
-                    mimetype,
+                    mimetype=mimetype,
                     last_modified=self.last_modified,
                 )
             else:
-                return send_standard_file(
+                return send_preview_standard_file(
                     instance_id, extension, last_modified=self.last_modified
                 )
 
@@ -1224,7 +1307,7 @@ class PreviewFileDownloadResource(BasePreviewFileResource):
 
         try:
             if extension == "png":
-                return send_picture_file(
+                return send_preview_picture_file(
                     "original",
                     instance_id,
                     as_attachment=True,
@@ -1232,10 +1315,10 @@ class PreviewFileDownloadResource(BasePreviewFileResource):
                 )
             elif extension == "pdf":
                 mimetype = "application/pdf"
-                return send_standard_file(
+                return send_preview_standard_file(
                     instance_id,
                     extension,
-                    mimetype,
+                    mimetype=mimetype,
                     as_attachment=True,
                     last_modified=self.last_modified,
                 )
@@ -1247,7 +1330,7 @@ class PreviewFileDownloadResource(BasePreviewFileResource):
                     preview_file=self.preview_file,
                 )
             else:
-                return send_standard_file(
+                return send_preview_standard_file(
                     instance_id,
                     extension,
                     as_attachment=True,
@@ -1370,7 +1453,7 @@ class BasePreviewPictureResource(BasePreviewFileResource):
         self.is_allowed(instance_id)
 
         try:
-            return send_picture_file(
+            return send_preview_picture_file(
                 self.picture_type,
                 instance_id,
                 last_modified=self.last_modified,
@@ -2318,6 +2401,12 @@ class ExtractTileFromPreview(MethodView):
         if extracted_tile_path is None:
             return {"error": "preview file binary is not available"}, 404
         file_store.add_picture("tiles", preview_file_id, extracted_tile_path)
+        preview_file_states_service.record_file_state(
+            preview_file_id,
+            "pictures",
+            "tiles",
+            preview_file_states_service.OK,
+        )
         try:
             return flask_send_file(
                 extracted_tile_path,

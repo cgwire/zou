@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from contextlib import contextmanager
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from sqlalchemy.orm.exc import StaleDataError
 
@@ -13,7 +13,9 @@ from tests.base import ApiDBTestCase
 
 from zou.app.models.preview_file import PreviewFile
 from zou.app.services import files_service, preview_files_service
-from zou.app.stores import file_store
+from zou.app.services import preview_file_states_service as states_service
+from zou.app import config
+from zou.app.stores import file_store, queue_store, redis_client
 from zou.app.utils import thumbnail as thumbnail_utils
 from zou.utils import movie
 from zou.app.services.exception import (
@@ -642,6 +644,12 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
             persisted["data"][files_service.MOVIE_PREFIXES_KEY],
             ["previews", "lowdef"],
         )
+        states = states_service.get_file_states(preview_file_id)
+        self.assertEqual(states["movies/previews"]["state"], "ok")
+        # Not produced is not confirmed missing: nothing recorded.
+        self.assertNotIn("movies/source", states)
+        # The runner was supposed to write the pictures: none are there.
+        self.assertEqual(states["pictures/tiles"]["state"], "failed")
 
     @patch(
         "zou.app.services.preview_files_service._run_remote_normalize_movie"
@@ -1718,3 +1726,307 @@ class ResetMovieFilesMetadataTestCase(ApiDBTestCase):
         )
         self.assertEqual(preview_file.file_size, os.path.getsize(path))
         self.assertGreater(preview_file.duration, 0)
+
+
+class MissingTileTestCase(PreviewFileTestCase):
+    """
+    Building the tile sheet of a ready movie that has none, after a tile
+    404: on Nomad when a tile job is configured, locally otherwise, one
+    attempt per hour and one local build at a time.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.preview_file = self.generate_fixture_preview_file()
+        self.preview_file_id = str(self.preview_file.id)
+        self.redis = redis_client.get_client(config.KV_JOB_DB_INDEX)
+        self.redis.delete(
+            preview_files_service._tile_attempt_key(self.preview_file_id),
+            preview_files_service.LOCAL_TILE_BUILD_LOCK_KEY,
+        )
+
+    def tearDown(self):
+        self.redis.delete(
+            preview_files_service._tile_attempt_key(self.preview_file_id),
+            preview_files_service.LOCAL_TILE_BUILD_LOCK_KEY,
+        )
+        super().tearDown()
+
+    @contextmanager
+    def job_queue(self):
+        job_queue = MagicMock()
+        with patch.object(
+            preview_files_service.config, "ENABLE_JOB_QUEUE", True
+        ), patch.object(queue_store, "job_queue", job_queue):
+            yield job_queue
+
+    @contextmanager
+    def remote_tile_job(self, job_name="zou-tile-go"):
+        with patch.object(
+            preview_files_service.config, "ENABLE_JOB_QUEUE_REMOTE", True
+        ), patch.object(
+            preview_files_service.config_store,
+            "get_nomad_tile_job",
+            return_value=job_name,
+        ):
+            yield
+
+    def test_tile_attempt_is_remembered_in_redis(self):
+        """
+        The attempt mark outlives TMP_DIR, which a reboot empties: it is
+        kept in Redis, with the retry delay as its lifetime.
+        """
+        with self.job_queue() as job_queue:
+            self.assertTrue(
+                preview_files_service.generate_tile_later(self.preview_file_id)
+            )
+            # What a reboot does to a mark kept in TMP_DIR.
+            mark_path = os.path.join(
+                config.TMP_DIR, f"tile-{self.preview_file_id}.mark"
+            )
+            if os.path.exists(mark_path):
+                os.remove(mark_path)
+            self.assertFalse(
+                preview_files_service.generate_tile_later(self.preview_file_id)
+            )
+        self.assertEqual(job_queue.enqueue.call_count, 1)
+        ttl = self.redis.ttl(
+            preview_files_service._tile_attempt_key(self.preview_file_id)
+        )
+        self.assertGreater(ttl, 0)
+        self.assertLessEqual(ttl, preview_files_service.TILE_RETRY_DELAY)
+
+    @patch("zou.app.services.preview_files_service.movie.generate_tile")
+    @patch("zou.app.services.preview_files_service.remote_job.run_job")
+    def test_missing_tile_is_built_on_nomad(self, mock_run_job, mock_tile):
+        """
+        With a Nomad tile job configured, the web host runs no ffmpeg: the
+        runner gets the preview id and the prefixes recorded for it.
+        """
+        preview_file = files_service.get_preview_file_raw(self.preview_file_id)
+        preview_file.update(
+            {"data": {files_service.MOVIE_PREFIXES_KEY: ["lowdef"]}}
+        )
+        files_service.clear_preview_file_cache(self.preview_file_id)
+
+        with self.remote_tile_job():
+            self.assertTrue(
+                preview_files_service.generate_missing_tile(
+                    self.preview_file_id
+                )
+            )
+
+        mock_tile.assert_not_called()
+        mock_run_job.assert_called_once()
+        _app, _config, job_name, params = mock_run_job.call_args.args
+        self.assertEqual(job_name, "zou-tile-go")
+        self.assertEqual(
+            params,
+            {
+                "version": str(preview_files_service.REMOTE_TILE_VERSION),
+                "preview_file_id": self.preview_file_id,
+                "movie_prefixes": ["lowdef"],
+            },
+        )
+
+    @patch("zou.app.services.preview_files_service.remote_job.run_job")
+    def test_missing_tile_is_built_locally_without_a_tile_job(
+        self, mock_run_job
+    ):
+        """
+        Remote normalization alone does not send tiles to Nomad: without a
+        tile job name, the build stays local.
+        """
+        with self.remote_tile_job(job_name=""), patch.object(
+            preview_files_service, "_retrieve_preview_file", return_value=None
+        ):
+            preview_files_service.generate_missing_tile(self.preview_file_id)
+        mock_run_job.assert_not_called()
+
+    def test_local_tile_reads_the_low_def_movie_first(self):
+        """
+        A tile is 100 pixels high: decoding the high def movie for it is
+        wasted work.
+        """
+        tried = []
+
+        def retrieve(_config, _store, prefix, _preview_file):
+            tried.append(prefix)
+            return None
+
+        with patch.object(
+            preview_files_service, "_retrieve_preview_file", retrieve
+        ):
+            self.assertFalse(
+                preview_files_service.generate_missing_tile(
+                    self.preview_file_id
+                )
+            )
+        self.assertEqual(tried[0], "lowdef")
+
+    @patch("zou.app.services.preview_files_service._retrieve_stored_movie")
+    def test_local_tile_builds_run_one_at_a_time(self, mock_retrieve):
+        """
+        While another local tile build holds the lock, the job gives up
+        and forgets its attempt, so a later 404 queues it again.
+        """
+        attempt_key = preview_files_service._tile_attempt_key(
+            self.preview_file_id
+        )
+        self.redis.set(attempt_key, 1)
+        self.redis.set(preview_files_service.LOCAL_TILE_BUILD_LOCK_KEY, "x")
+
+        self.assertFalse(
+            preview_files_service.generate_missing_tile(self.preview_file_id)
+        )
+        mock_retrieve.assert_not_called()
+        self.assertFalse(self.redis.exists(attempt_key))
+
+
+class PreviewFileWritesRecordStatesTestCase(PreviewFileTestCase):
+    def setUp(self):
+        super().setUp()
+        self.preview_file = self.generate_fixture_preview_file()
+        self.preview_file_id = str(self.preview_file.id)
+
+    def states(self):
+        return {
+            key: value["state"]
+            for key, value in states_service.get_file_states(
+                self.preview_file_id
+            ).items()
+        }
+
+    def test_save_variants_records_the_pictures(self):
+        picture_path = self.get_fixture_file_path(
+            os.path.join("thumbnails", "th01.png")
+        )
+        tmp_path = os.path.join(tempfile.mkdtemp(), "original.png")
+        shutil.copyfile(picture_path, tmp_path)
+        preview_files_service.save_variants(self.preview_file_id, tmp_path)
+        states = self.states()
+        for prefix in ["original", "thumbnails", "thumbnails-square"]:
+            self.assertEqual(states[f"pictures/{prefix}"], "ok")
+
+    @patch("zou.app.services.preview_files_service.movie.generate_tile")
+    def test_failed_tile_is_recorded(self, mock_tile):
+        mock_tile.side_effect = RuntimeError("ffmpeg")
+        preview_files_service._generate_tiles(
+            file_store, self.preview_file, "/tmp/movie.mp4", 1, 1, force=True
+        )
+        self.assertEqual(self.states()["pictures/tiles"], "failed")
+
+    @patch("zou.app.services.preview_files_service.file_store.add_picture")
+    @patch("zou.app.services.preview_files_service.movie.generate_tile")
+    def test_built_tile_is_recorded(self, mock_tile, mock_add_picture):
+        tile_path = os.path.join(tempfile.mkdtemp(), "tile.png")
+        open(tile_path, "wb").close()
+        mock_tile.return_value = tile_path
+        preview_files_service._generate_tiles(
+            file_store, self.preview_file, "/tmp/movie.mp4", 1, 1, force=True
+        )
+        self.assertEqual(self.states()["pictures/tiles"], "ok")
+
+    @patch("zou.app.services.preview_files_service.os.remove")
+    @patch("zou.app.services.preview_files_service.file_store.add_picture")
+    @patch("zou.app.services.preview_files_service.movie.generate_tile")
+    def test_tile_stays_ok_when_removing_the_local_copy_fails(
+        self, mock_tile, mock_add_picture, mock_remove
+    ):
+        # The tile already made it to the store: a failure removing the
+        # local temp copy afterwards must not turn the recorded state
+        # back to failed.
+        tile_path = os.path.join(tempfile.mkdtemp(), "tile.png")
+        open(tile_path, "wb").close()
+        mock_tile.return_value = tile_path
+        mock_remove.side_effect = OSError("permission denied")
+        preview_files_service._generate_tiles(
+            file_store, self.preview_file, "/tmp/movie.mp4", 1, 1, force=True
+        )
+        self.assertEqual(self.states()["pictures/tiles"], "ok")
+
+    @patch("zou.app.services.preview_files_service.os.remove")
+    @patch("zou.app.services.preview_files_service.file_store.add_picture")
+    @patch("zou.app.services.preview_files_service.movie.generate_tile")
+    @patch("zou.app.services.preview_files_service.save_variants")
+    @patch(
+        "zou.app.services.preview_files_service.thumbnail_utils"
+        ".turn_into_thumbnail"
+    )
+    @patch("zou.app.services.preview_files_service.movie.generate_thumbnail")
+    def test_build_thumbnails_and_tile_stays_ok_when_remove_fails(
+        self,
+        mock_generate_thumbnail,
+        mock_turn_into_thumbnail,
+        mock_save_variants,
+        mock_generate_tile,
+        mock_add_picture,
+        mock_remove,
+    ):
+        thumbnail_path = os.path.join(tempfile.mkdtemp(), "thumb.png")
+        open(thumbnail_path, "wb").close()
+        mock_generate_thumbnail.return_value = thumbnail_path
+        tile_path = os.path.join(tempfile.mkdtemp(), "tile.png")
+        open(tile_path, "wb").close()
+        mock_generate_tile.return_value = tile_path
+
+        def fail_only_on_tile(path):
+            if path == tile_path:
+                raise OSError("permission denied")
+
+        mock_remove.side_effect = fail_only_on_tile
+
+        preview_files_service._build_thumbnails_and_tile(
+            self.preview_file_id, "/tmp/movie.mp4", (100, 100), []
+        )
+        self.assertEqual(self.states()["pictures/tiles"], "ok")
+
+    @patch("zou.app.services.preview_files_service.remote_job.run_job")
+    def test_remote_tile_job_without_tile_is_failed(self, mock_run_job):
+        mock_run_job.return_value = True
+        with patch.object(
+            preview_files_service.config, "ENABLE_JOB_QUEUE_REMOTE", True
+        ), patch.object(
+            preview_files_service.config_store,
+            "get_nomad_tile_job",
+            return_value="zou-tile-go",
+        ), patch.object(
+            file_store, "exists_confirmed", return_value=False
+        ):
+            preview_files_service.generate_missing_tile(self.preview_file_id)
+        self.assertEqual(self.states()["pictures/tiles"], "failed")
+
+    @patch("zou.app.services.preview_files_service.remote_job.run_job")
+    def test_remote_tile_job_dispatch_error_leaves_state_unchanged(
+        self, mock_run_job
+    ):
+        # A Nomad dispatch error or timeout is transient: it must not be
+        # recorded as a failed tile.
+        mock_run_job.side_effect = RuntimeError("Nomad unreachable")
+        with patch.object(
+            preview_files_service.config, "ENABLE_JOB_QUEUE_REMOTE", True
+        ), patch.object(
+            preview_files_service.config_store,
+            "get_nomad_tile_job",
+            return_value="zou-tile-go",
+        ):
+            with self.assertRaises(RuntimeError):
+                preview_files_service.generate_missing_tile(
+                    self.preview_file_id
+                )
+        self.assertNotIn("pictures/tiles", self.states())
+
+    def test_copy_records_the_copied_files(self):
+        target = self.generate_fixture_preview_file(revision=2)
+        with patch.object(
+            preview_files_service,
+            "copy_preview_file_on_storage",
+            side_effect=lambda _p, _e, _c, prefix, *_: prefix != "source",
+        ):
+            preview_files_service.copy_preview_file_in_another_one(
+                self.preview_file_id, str(target.id)
+            )
+        states = states_service.get_file_states(target.id)
+        self.assertEqual(states["movies/lowdef"]["state"], "ok")
+        self.assertEqual(states["pictures/tiles"]["state"], "ok")
+        self.assertNotIn("movies/source", states)
