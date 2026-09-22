@@ -43,7 +43,12 @@ from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
 from zou.app.models.software import Software
 from zou.app.models.working_file import WorkingFile
-from zou.app.stores import auth_tokens_store, config_store, redis_client
+from zou.app.stores import (
+    auth_tokens_store,
+    config_store,
+    redis_client,
+    redis_lock,
+)
 
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
@@ -82,6 +87,12 @@ config_store.config_store = fakeredis.FakeStrictRedis(decode_responses=True)
 # lock: seed the shared client factory so that no test needs a Redis.
 job_store = fakeredis.FakeStrictRedis(decode_responses=True)
 redis_client._clients[(config.KV_JOB_DB_INDEX, True)] = job_store
+# The distributed locks (playlists, annotations, cache single-flight)
+# open a fresh client and ping it on every call: without a Redis each
+# call waits for redis-py's connection retries before degrading. The
+# fake runs redis-py's Lock Lua scripts through fakeredis[lua].
+lock_store = fakeredis.FakeStrictRedis(decode_responses=True)
+redis_lock.get_redis_client = lambda: lock_store
 
 # Pre-compute the bcrypt hash once for the default test password.
 # Avoids calling bcrypt.generate_password_hash per user per test.
@@ -137,6 +148,7 @@ class ApiTestCase(unittest.TestCase):
         self.addCleanup(auth_tokens_store.revoked_tokens_store.flushall)
         self.addCleanup(config_store.config_store.flushall)
         self.addCleanup(job_store.flushall)
+        self.addCleanup(lock_store.flushall)
 
         from zou.app.utils import cache
 
