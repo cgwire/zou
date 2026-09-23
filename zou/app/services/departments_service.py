@@ -1,9 +1,12 @@
+from sqlalchemy.orm import selectinload
+
 from zou.app.models.department import (
     Department,
     SoftwareDepartmentLink,
     HardwareItemDepartmentLink,
 )
 from zou.app.models.hardware_item import HardwareItem
+from zou.app.models.person import DepartmentLink, Person
 from zou.app.models.software import Software
 from zou.app.utils import fields
 
@@ -90,6 +93,30 @@ def get_software_for_department(department_id):
         .filter(SoftwareDepartmentLink.department_id == department_id)
         .all()
     )
+
+
+def get_persons_for_department(department_id, minimal=False):
+    """
+    Get all persons belonging to a given department.
+    """
+    _check_department_exists(department_id)
+    persons = (
+        Person.query.join(
+            DepartmentLink, DepartmentLink.person_id == Person.id
+        )
+        .filter(DepartmentLink.department_id == department_id)
+        .options(selectinload(Person.departments))
+        .order_by(Person.first_name, Person.last_name)
+        .all()
+    )
+    return [
+        (
+            person.present_minimal(relations=True)
+            if minimal
+            else person.serialize_safe(relations=True)
+        )
+        for person in persons
+    ]
 
 
 def get_hardware_items_for_department(department_id):

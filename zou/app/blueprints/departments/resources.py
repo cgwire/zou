@@ -488,3 +488,64 @@ class HardwareItemDepartmentResource(MethodView, ArgsMixin):
             department_id, hardware_item_id
         )
         return "", 204
+
+
+class DepartmentPersonsResource(MethodView, ArgsMixin):
+
+    @jwt_required()
+    def get(self, department_id):
+        """
+        Get department members
+        ---
+        description: Retrieve all persons belonging to a given department.
+          Non admin users get the minimal person payload, the same one the
+          person list route returns them.
+        tags:
+          - Departments
+        parameters:
+          - in: path
+            name: department_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Unique identifier of the department
+        responses:
+          200:
+            description: Department members successfully retrieved
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Person unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      first_name:
+                        type: string
+                        description: Person first name
+                        example: "John"
+                      last_name:
+                        type: string
+                        description: Person last name
+                        example: "Doe"
+                      departments:
+                        type: array
+                        description: Departments the person belongs to
+                        items:
+                          type: string
+                          format: uuid
+                          example: b35b7fb5-df86-5776-b181-68564193d36
+          404:
+            description: Department not found
+        """
+        self.check_id_parameter(department_id)
+        persons = departments_service.get_persons_for_department(
+            department_id, minimal=not permissions.has_admin_permissions()
+        )
+        return persons, 200

@@ -8,6 +8,7 @@ from zou.app.blueprints.departments.resources import (
     AllDepartmentHardwareItemsResource,
     AddHardwareItemToDepartmentResource,
     HardwareItemDepartmentResource,
+    DepartmentPersonsResource,
 )
 
 routes = [
@@ -29,6 +30,7 @@ routes = [
         "/data/departments/<department_id>/hardware-items/<hardware_item_id>",
         HardwareItemDepartmentResource,
     ),
+    ("/data/departments/<department_id>/persons", DepartmentPersonsResource),
 ]
 
 blueprint = Blueprint("departments", "departments")
