@@ -35,6 +35,12 @@ from werkzeug.exceptions import NotFound
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
+# A shot version takes the next change of its author up to a minute after
+# its last change, and up to five minutes after its creation, when that
+# change fits it: see EntityResource.get_recent_version.
+SHOT_VERSION_FOLD_DELAY = 60
+SHOT_VERSION_FOLD_MAX_DURATION = 5 * 60
+
 
 class EntityEventMixin(object):
     def emit_event(self, event_name, entity_dict):
@@ -452,7 +458,10 @@ class EntityResource(BaseModelResource, EntityEventMixin):
           - Crud
         description: Update an entity with data provided in the request
           body. JSON format is expected. Supports shot versioning when
-          frame data changes.
+          frame data or name changes. Changes made by one person at most a
+          minute apart update the same version, for five minutes at most.
+          A frame change after a rename, or a change after another route
+          set a frame value this change leaves alone, gets a new version.
         parameters:
           - in: path
             name: instance_id
@@ -561,33 +570,82 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             return {"error": True, "message": str(exception)}, 400
 
     def save_version_if_needed(self, shot, previous_shot):
-        previous_data = previous_shot.get("data", {}) or {}
-        data = shot.get("data", {})
-        frame_in = data.get("frame_in", 0)
-        pframe_in = previous_data.get("frame_in", 0)
-        frame_out = data.get("frame_out", 0)
-        pframe_out = previous_data.get("frame_out", 0)
-        name = shot["name"]
-        pname = previous_shot["name"]
+        """
+        Record a version of given shot when its frame range or its name
+        changed. A client may send one update per field or per keystroke
+        (frame in then frame out, a number typed slowly), so such a burst
+        by one person is folded into a single version holding the final
+        values: see get_recent_version.
+        """
+        frames = self.get_frame_range(shot.get("data"))
+        previous_frames = self.get_frame_range(previous_shot.get("data"))
         version = None
-        if frame_in != pframe_in or frame_out != pframe_out or name != pname:
-            current_user_id = persons_service.get_current_user()["id"]
-            previous_updated_at = date_helpers.get_datetime_from_string(
-                previous_shot["updated_at"]
-            )
-            updated_at = date_helpers.get_datetime_from_string(
-                shot["updated_at"]
-            )
-            if (
-                date_helpers.get_date_diff(previous_updated_at, updated_at)
-                > 60
-            ):
+        if frames != previous_frames or shot["name"] != previous_shot["name"]:
+            person_id = persons_service.get_current_user()["id"]
+            version = self.get_recent_version(shot, previous_shot, person_id)
+            if version is None:
                 version = EntityVersion.create(
                     entity_id=shot["id"],
-                    name=pname,
+                    name=previous_shot["name"],
                     data=shot["data"],
-                    person_id=current_user_id,
+                    person_id=person_id,
                 )
+            else:
+                version.update({"data": shot["data"]})
+        return version
+
+    def get_frame_range(self, data):
+        """
+        Return the frame in and frame out a shot version tracks.
+        """
+        data = data or {}
+        return data.get("frame_in", 0), data.get("frame_out", 0)
+
+    def get_recent_version(self, shot, previous_shot, person_id):
+        """
+        Return the last version of given shot when the change given person
+        just made can be folded into it, or None. That version must:
+
+        - be recorded by given person. When someone else recorded the last
+          version, an older one of given person is not folded into either:
+          the history stays in order.
+        - hold the frame values this change leaves alone as the shot had
+          them, and the name the shot had when this change sets the frame
+          range. A version recorded before a rename holds the old name:
+          folding a frame change would pair it with a range the shot never
+          had under that name. One recorded before a frame change made by a
+          route that records no version holds the old value: folding would
+          credit that change to given person. The values this change sets
+          are not compared: a second rename is folded, and so is a
+          keystroke whose request read the shot before the previous one
+          was saved.
+        - be changed at most a minute before, and created at most five
+          minutes before. Only versions count: an update that recorded
+          nothing does not extend the window.
+        """
+        version = shots_service.get_last_shot_version_raw(shot["id"])
+        if version is None or str(version.person_id) != str(person_id):
+            return None
+        frames = self.get_frame_range(shot.get("data"))
+        previous_frames = self.get_frame_range(previous_shot.get("data"))
+        version_frames = self.get_frame_range(version.data)
+        if frames != previous_frames and version.name != previous_shot["name"]:
+            return None
+        for frame, previous_frame, version_frame in zip(
+            frames, previous_frames, version_frames
+        ):
+            if frame == previous_frame and version_frame != previous_frame:
+                return None
+        updated_at = date_helpers.get_datetime_from_string(shot["updated_at"])
+        last_changed_at = version.updated_at.replace(microsecond=0)
+        created_at = version.created_at.replace(microsecond=0)
+        if (
+            date_helpers.get_date_diff(last_changed_at, updated_at)
+            > SHOT_VERSION_FOLD_DELAY
+            or date_helpers.get_date_diff(created_at, updated_at)
+            > SHOT_VERSION_FOLD_MAX_DURATION
+        ):
+            return None
         return version
 
     def emit_update_event(self, entity_dict):
