@@ -246,6 +246,12 @@ class ShotTestCase(ApiDBTestCase):
             for version in self._get_versions(shot_id)
         ]
 
+    def _get_names_and_frame_outs(self):
+        return [
+            (version["name"], version["data"]["frame_out"])
+            for version in self._get_versions()
+        ]
+
     def test_update_shot_frame_out_saves_a_version(self):
         self._set_frame_out(120)
         versions = self._get_versions()
@@ -321,6 +327,22 @@ class ShotTestCase(ApiDBTestCase):
             self._set_frame_out(130)
         self.assertEqual(self._get_frame_outs(), [130, 120])
 
+    def test_update_shot_frames_in_a_slow_burst_updates_the_version(self):
+        # The minute runs from the last change folded into the version.
+        with self._freeze_time() as frozen_time:
+            for frame_out in [110, 120, 130]:
+                self._set_frame_out(frame_out)
+                frozen_time.tick(50)
+        self.assertEqual(self._get_frame_outs(), [130])
+
+    def test_update_shot_frames_for_over_five_minutes_saves_a_version(self):
+        with self._freeze_time() as frozen_time:
+            for frame_out in range(101, 109):
+                self._set_frame_out(frame_out)
+                frozen_time.tick(50)
+        # 107 is set 300 s after the first change, 108 at 350 s.
+        self.assertEqual(self._get_frame_outs(), [108, 107])
+
     def test_update_shot_frames_updates_the_last_version_only(self):
         with self._freeze_time() as frozen_time:
             self._set_frame_out(110)
@@ -340,6 +362,96 @@ class ShotTestCase(ApiDBTestCase):
             frozen_time.tick(10)
             self._set_frame_out(130)
         self.assertEqual(self._get_frame_outs(), [130, 120])
+
+    def test_update_shot_frames_after_a_rename_saves_a_version(self):
+        # Folding would pair the name from before the rename with the new
+        # range: the shot never had them together.
+        with self._freeze_time() as frozen_time:
+            self._update_shot({"name": "SH01B"})
+            frozen_time.tick(10)
+            self._set_frame_out(120)
+        self.assertEqual(
+            self._get_names_and_frame_outs(),
+            [("SH01B", 120), ("SH01", 100)],
+        )
+
+    def test_update_shot_name_and_frames_after_a_rename_saves_a_version(
+        self,
+    ):
+        # The edit form sends the name and the frames together. As the change
+        # sets the frame range, the version must hold the name the shot had
+        # before it, SH01B, but it holds the one from before the first
+        # rename.
+        with self._freeze_time() as frozen_time:
+            self._update_shot({"name": "SH01B"})
+            frozen_time.tick(10)
+            self._update_shot({"name": "SH01C", "data": {"frame_out": 120}})
+        self.assertEqual(
+            self._get_names_and_frame_outs(),
+            [("SH01B", 120), ("SH01", 100)],
+        )
+
+    def test_update_shot_name_twice_within_a_minute_updates_the_version(
+        self,
+    ):
+        # A typo fixed right away stays out of the history.
+        with self._freeze_time() as frozen_time:
+            self._update_shot({"name": "SH0B"})
+            frozen_time.tick(10)
+            self._update_shot({"name": "SH01B"})
+        self.assertEqual(self._get_names_and_frame_outs(), [("SH01", 100)])
+
+    def test_update_shot_name_after_frames_updates_the_version(self):
+        # The version already holds the shot as it was before the rename,
+        # but not its new name: the next frame change is a new version.
+        with self._freeze_time() as frozen_time:
+            self._set_frame_out(120)
+            frozen_time.tick(10)
+            self._update_shot({"name": "SH01B"})
+            self.assertEqual(self._get_names_and_frame_outs(), [("SH01", 120)])
+            frozen_time.tick(10)
+            self._set_frame_out(130)
+        self.assertEqual(
+            self._get_names_and_frame_outs(),
+            [("SH01B", 130), ("SH01", 120)],
+        )
+
+    def test_update_shot_frames_after_an_unversioned_change_saves_a_version(
+        self,
+    ):
+        # PUT data/shots/<id> and the OTIO import go through update_shot,
+        # which records no version: its change must not land in the last one.
+        with self._freeze_time() as frozen_time:
+            self._set_frame_out(120)
+            frozen_time.tick(10)
+            shots_service.update_shot(
+                self.shot_id,
+                {"data": {"fps": 25, "frame_in": 10, "frame_out": 120}},
+            )
+            frozen_time.tick(10)
+            self._set_frame_out(130)
+        versions = self._get_versions()
+        self.assertEqual(
+            [
+                (v["data"]["frame_in"], v["data"]["frame_out"])
+                for v in versions
+            ],
+            [(10, 130), (0, 120)],
+        )
+
+    def test_update_shot_frames_compares_the_values_left_alone_only(self):
+        # A keystroke whose request read the shot before the previous one
+        # was saved sees another frame out than the version: it still folds.
+        with self._freeze_time() as frozen_time:
+            self._set_frame_out(120)
+            frozen_time.tick(10)
+            shots_service.update_shot(
+                self.shot_id,
+                {"data": {"fps": 25, "frame_in": 0, "frame_out": 125}},
+            )
+            frozen_time.tick(10)
+            self._set_frame_out(130)
+        self.assertEqual(self._get_frame_outs(), [130])
 
     def test_update_shot_frames_by_another_person_saves_a_version(self):
         self._set_frame_out(120)
