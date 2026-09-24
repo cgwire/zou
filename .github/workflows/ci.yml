@@ -136,7 +136,7 @@ jobs:
           -c 'SELECT pg_reload_conf()'
       - name: Run tests 🧪
         run: >-
-          py.test
+          py.test --durations=25
         env:
           DEBUG: 1
           MAIL_DEBUG_BODY: 1
@@ -288,7 +288,7 @@ jobs:
           -c 'SELECT pg_reload_conf()'
       - name: Run tests 🧪
         run: >-
-          py.test
+          py.test --durations=25
         env:
           DEBUG: 1
           MAIL_DEBUG_BODY: 1
