@@ -142,8 +142,10 @@ jobs:
       # with it, every asset, shot or person a test creates is pushed to
       # the index and waited for.
       - name: Run tests 🧪
+        shell: bash
         run: >-
           py.test -n logical --dist loadscope -m "not integration" --durations=25
+          | tee "$RUNNER_TEMP/parallel.log"
         env:
           DEBUG: 1
           MAIL_DEBUG_BODY: 1
@@ -152,13 +154,28 @@ jobs:
       # integration tests still report theirs.
       - name: Run the integration tests 🧪
         if: ${{ !cancelled() }}
+        shell: bash
         run: >-
           py.test -m integration --durations=10 -rs
+          | tee "$RUNNER_TEMP/integration.log"
         env:
           INDEXER_KEY: ${{ env.MEILI_MASTER_KEY }}
           DEBUG: 1
           MAIL_DEBUG_BODY: 1
           MAIL_ENABLED: False
+      # The durations report only lives in the step log: copy it to the run
+      # summary, where the outliers stay visible run after run. The report
+      # runs to the next separator line of pytest.
+      - name: List the slowest tests 📊
+        if: ${{ !cancelled() }}
+        run: |
+          for log in "$RUNNER_TEMP"/parallel.log "$RUNNER_TEMP"/integration.log; do
+            [ -f "$log" ] || continue
+            echo "### Slowest tests, $(basename "$log" .log) pass"
+            echo '```'
+            awk '/^=+ slowest [0-9]+ durations =+$/ {on = 1; next} on && /^=/ {exit} on' "$log"
+            echo '```'
+          done >> "$GITHUB_STEP_SUMMARY"
 
   audit:
     name: Audit dependencies 🔒
@@ -308,8 +325,10 @@ jobs:
       # with it, every asset, shot or person a test creates is pushed to
       # the index and waited for.
       - name: Run tests 🧪
+        shell: bash
         run: >-
           py.test -n logical --dist loadscope -m "not integration" --durations=25
+          | tee "$RUNNER_TEMP/parallel.log"
         env:
           DEBUG: 1
           MAIL_DEBUG_BODY: 1
@@ -318,13 +337,28 @@ jobs:
       # integration tests still report theirs.
       - name: Run the integration tests 🧪
         if: ${{ !cancelled() }}
+        shell: bash
         run: >-
           py.test -m integration --durations=10 -rs
+          | tee "$RUNNER_TEMP/integration.log"
         env:
           INDEXER_KEY: ${{ env.MEILI_MASTER_KEY }}
           DEBUG: 1
           MAIL_DEBUG_BODY: 1
           MAIL_ENABLED: False
+      # The durations report only lives in the step log: copy it to the run
+      # summary, where the outliers stay visible run after run. The report
+      # runs to the next separator line of pytest.
+      - name: List the slowest tests 📊
+        if: ${{ !cancelled() }}
+        run: |
+          for log in "$RUNNER_TEMP"/parallel.log "$RUNNER_TEMP"/integration.log; do
+            [ -f "$log" ] || continue
+            echo "### Slowest tests, $(basename "$log" .log) pass"
+            echo '```'
+            awk '/^=+ slowest [0-9]+ durations =+$/ {on = 1; next} on && /^=/ {exit} on' "$log"
+            echo '```'
+          done >> "$GITHUB_STEP_SUMMARY"
 
   publish:
     name: Publish to PyPI 📦
