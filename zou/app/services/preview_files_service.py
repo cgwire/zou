@@ -360,6 +360,11 @@ def prepare_and_store_movie(
                 f"Preview file {preview_file_id} was deleted during processing"
             )
             return {"id": preview_file_id, "status": "broken"}
+        except remote_job.NomadJobHandedOver:
+            # The worker stops: the next one resumes the job and reads the
+            # upload again.
+            temp_files.remove(uploaded_movie_path)
+            raise
         except BaseTimeoutException:
             # rq raises its timeout inside the job: swallowed, the job
             # would count as successful and mark_broken_on_job_failure
@@ -391,7 +396,8 @@ def _process_movie(
     The movie pipeline itself, one step after the other. Every temporary
     file it produces goes into temp_files, removed by the caller.
     """
-    if add_source_to_file_store:
+    # A job resumed after a handover stored the source already.
+    if add_source_to_file_store and not remote_job.is_resumed():
         file_store.add_movie("source", preview_file_id, uploaded_movie_path)
     _record_original_metadata(preview_file_id, uploaded_movie_path)
     fps, width, height = _get_encoding_parameters(preview_file_id)

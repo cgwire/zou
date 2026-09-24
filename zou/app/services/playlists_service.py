@@ -790,6 +790,7 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
     """
     success = False
     message = None
+    handed_over = False
     from zou.app import app
 
     with app.app_context():
@@ -841,13 +842,18 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
                         app.logger.error(exc)
                         success = False
 
+        except remote_job.NomadJobHandedOver:
+            # The worker stops: the build goes on in the next one.
+            handed_over = True
+            raise
         except Exception as exc:
             app.logger.error(exc)
             success = False
 
         # exception will be logged by rq
         finally:
-            job = end_build_job(playlist, job, success, message)
+            if not handed_over:
+                job = end_build_job(playlist, job, success, message)
 
     if not success:
         raise Exception(f"Failure while building playlist {playlist['id']!r}")

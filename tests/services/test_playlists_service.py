@@ -13,6 +13,7 @@ from zou.app.services import (
     projects_service,
 )
 from zou.app.services.exception import PlaylistLockTimeoutException
+from zou.app.utils import remote_job
 from zou.utils import movie
 from zou.utils.movie import EncodingParameters
 
@@ -496,6 +497,44 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         self.assertEqual(job["status"], "succeeded")
         self.assertIn("concat filter", job["message"])
         self.assertIn("stream number", job["message"])
+
+    def test_a_handed_over_remote_build_stays_running(self):
+        """
+        When the worker stops while Nomad builds the movie, the build goes
+        on in the next worker: it is neither failed nor ended.
+        """
+        playlist = self.generate_fixture_playlists()
+        job = playlists_service.start_build_job(playlist)
+        params = EncodingParameters(width=1920, height=1080, fps="25.00")
+
+        with (
+            patch.object(
+                playlists_service, "playlist_previews", return_value=[]
+            ),
+            patch.object(
+                playlists_service,
+                "retrieve_playlist_tmp_files",
+                return_value=[("/tmp/a.mp4", "a.mp4")],
+            ),
+            patch.object(
+                playlists_service,
+                "_run_remote_job_build_playlist",
+                side_effect=remote_job.NomadJobHandedOver(),
+            ),
+            patch.object(playlists_service, "end_build_job") as end_build_job,
+        ):
+            self.assertRaises(
+                remote_job.NomadJobHandedOver,
+                playlists_service.build_playlist_movie_file,
+                playlist,
+                job,
+                [],
+                params,
+                False,
+                True,
+            )
+
+        end_build_job.assert_not_called()
 
     def test_an_entity_is_added_with_the_preview_it_names(self):
         self.generate_fixture_preview_files()
