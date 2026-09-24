@@ -3,9 +3,15 @@ import unittest
 import orjson as json
 import os
 import ntpath
-import fakeredis
 
 from mixer.backend.flask import mixer
+
+from tests.fake_stores import seed_fake_stores
+
+# Seeded before the app is built by tests/conftest.py, and again here for
+# an import without it (the plugin suites): the stores taken below must
+# never be real clients, since setUp flushes them between tests.
+seed_fake_stores()
 
 from zou.app import app, config, db
 from zou.app.models.status_automation import StatusAutomation
@@ -97,20 +103,10 @@ def indexer_is_up():
     return up
 
 
-auth_tokens_store.revoked_tokens_store = fakeredis.FakeStrictRedis(
-    decode_responses=True
-)
-config_store.config_store = fakeredis.FakeStrictRedis(decode_responses=True)
-# The job queue db holds the tile attempt marks and the local tile build
-# lock: seed the shared client factory so that no test needs a Redis.
-job_store = fakeredis.FakeStrictRedis(decode_responses=True)
-redis_client._clients[(config.KV_JOB_DB_INDEX, True)] = job_store
-# The distributed locks (playlists, annotations, cache single-flight)
-# open a fresh client and ping it on every call: without a Redis each
-# call waits for redis-py's connection retries before degrading. The
-# fake runs redis-py's Lock Lua scripts through fakeredis[lua].
-lock_store = fakeredis.FakeStrictRedis(decode_responses=True)
-redis_lock.get_redis_client = lambda: lock_store
+# The same fake instances the app was built with, so that setUp can flush
+# them.
+job_store = redis_client.get_client(config.KV_JOB_DB_INDEX)
+lock_store = redis_lock.get_redis_client()
 
 # Pre-compute the bcrypt hash once for the default test password.
 # Avoids calling bcrypt.generate_password_hash per user per test.

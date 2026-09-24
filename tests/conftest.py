@@ -5,6 +5,8 @@ import flask_bcrypt
 import pytest
 from sqlalchemy_utils import create_database, database_exists
 
+from tests.fake_stores import seed_fake_stores
+
 # Must be set before zou.app is imported.
 os.environ.setdefault("CACHE_TYPE", "simple")
 os.environ.setdefault("BCRYPT_LOG_ROUNDS", "4")
@@ -80,6 +82,7 @@ def pytest_configure(config):
     from zou.app import create_app
     from zou.app.utils import dbhelpers
 
+    seed_fake_stores()
     app = create_app()
 
     # Register the admin blueprint so it can be tested.
