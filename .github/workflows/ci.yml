@@ -7,6 +7,12 @@ on:
     tags: ["*"]
   pull_request:
 
+# A new push to the same branch makes the run in flight pointless: stop it
+# instead of paying for it to finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   PYTHON_REF: "3.12"
   PG_REF: "18"
