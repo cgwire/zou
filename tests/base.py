@@ -69,7 +69,11 @@ def indexer_is_up():
     """
     Tell whether an indexer is configured (INDEXER_KEY) and the
     Meilisearch instance answers, so integration tests are skipped
-    instead of erroring or hanging when it is absent.
+    instead of erroring or hanging when it is absent. In CI (the CI
+    variable the runner sets) a configured indexer that does not answer
+    is an error instead: pytest exits 0 on a run where every test
+    skipped, so the integration pass would go green having tested
+    nothing.
     """
     import requests
 
@@ -82,9 +86,15 @@ def indexer_is_up():
         f":{config.INDEXER['port']}/health"
     )
     try:
-        return requests.get(url, timeout=1).status_code == 200
+        up = requests.get(url, timeout=1).status_code == 200
     except requests.RequestException:
-        return False
+        up = False
+    if not up and os.environ.get("CI"):
+        raise RuntimeError(
+            f"INDEXER_KEY is set but Meilisearch does not answer at {url}: "
+            "the integration tests would all be skipped"
+        )
+    return up
 
 
 auth_tokens_store.revoked_tokens_store = fakeredis.FakeStrictRedis(

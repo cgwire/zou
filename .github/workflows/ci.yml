@@ -151,7 +151,7 @@ jobs:
       - name: Run the integration tests 🧪
         if: ${{ !cancelled() }}
         run: >-
-          py.test -m integration --durations=10
+          py.test -m integration --durations=10 -rs
         env:
           DEBUG: 1
           MAIL_DEBUG_BODY: 1
@@ -314,7 +314,7 @@ jobs:
       - name: Run the integration tests 🧪
         if: ${{ !cancelled() }}
         run: >-
-          py.test -m integration --durations=10
+          py.test -m integration --durations=10 -rs
         env:
           DEBUG: 1
           MAIL_DEBUG_BODY: 1
