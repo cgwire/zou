@@ -140,8 +140,17 @@ jobs:
       # integration tests share the Meilisearch indexes, so they run alone
       # once the parallel pass is over.
       - name: Run tests 🧪
-        run: |
+        run: >-
           py.test -n logical --dist loadscope -m "not integration" --durations=25
+        env:
+          DEBUG: 1
+          MAIL_DEBUG_BODY: 1
+          MAIL_ENABLED: False
+      # A failed parallel pass keeps a verdict of its own, and the
+      # integration tests still report theirs.
+      - name: Run the integration tests 🧪
+        if: ${{ !cancelled() }}
+        run: >-
           py.test -m integration --durations=10
         env:
           DEBUG: 1
@@ -294,8 +303,17 @@ jobs:
       # integration tests share the Meilisearch indexes, so they run alone
       # once the parallel pass is over.
       - name: Run tests 🧪
-        run: |
+        run: >-
           py.test -n logical --dist loadscope -m "not integration" --durations=25
+        env:
+          DEBUG: 1
+          MAIL_DEBUG_BODY: 1
+          MAIL_ENABLED: False
+      # A failed parallel pass keeps a verdict of its own, and the
+      # integration tests still report theirs.
+      - name: Run the integration tests 🧪
+        if: ${{ !cancelled() }}
+        run: >-
           py.test -m integration --durations=10
         env:
           DEBUG: 1
