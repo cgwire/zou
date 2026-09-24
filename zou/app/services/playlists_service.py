@@ -797,10 +797,13 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
         try:
             previews = playlist_previews(shots, only_movies=True)
             movie_file_path = get_playlist_movie_file_path(job)
-            tmp_file_paths = retrieve_playlist_tmp_files(previews)
 
-            if tmp_file_paths:
+            if previews:
                 if not remote:
+                    # Only a local build reads the previews here: the
+                    # remote runner fetches them itself, falling back on
+                    # the other versions and on a placeholder.
+                    tmp_file_paths = retrieve_playlist_tmp_files(previews)
                     success = False
                     demuxer_message = None
                     if not full:
@@ -921,9 +924,14 @@ def _run_remote_job_build_playlist(
     nomad_job = config_store.get_nomad_playlist_job()
     remote_job.run_job(app, config, nomad_job, params)
 
-    with open(movie_file_path, "wb") as movie_file:
-        for chunk in file_store.open_movie("playlists", job["id"]):
-            movie_file.write(chunk)
+    # Warm the cache the download route reads, right away. Written aside
+    # then renamed: an interrupted download must not leave a truncated
+    # movie there, which the route would serve as is.
+    exception = fs.download_to_file(
+        movie_file_path, file_store.open_movie, "playlists", job["id"]
+    )
+    if exception is not None:
+        raise exception
 
     return movie_file_path
 
