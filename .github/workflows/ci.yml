@@ -22,7 +22,7 @@ env:
   PG_REF: "18"
   PYTHON_VERSIONS: '["3.10", "3.11", "3.12", "3.13", "3.14"]'
   PG_VERSIONS: '["12", "14", "15", "16", "17", "18"]'
-  INDEXER_KEY: testkey0123456789
+  MEILI_MASTER_KEY: testkey0123456789
   PGPASSWORD: mysecretpassword
 
 jobs:
@@ -82,7 +82,7 @@ jobs:
         ports:
           - 7700:7700
         env:
-          MEILI_MASTER_KEY: ${{ env.INDEXER_KEY }}
+          MEILI_MASTER_KEY: ${{ env.MEILI_MASTER_KEY }}
       redis:
         image: redis:7-alpine
         options: >-
@@ -138,7 +138,9 @@ jobs:
       # tests/conftest.py creates the databases on first use: one per
       # pytest-xdist worker, and the plain one for the serial pass. The
       # integration tests share the Meilisearch indexes, so they run alone
-      # once the parallel pass is over.
+      # once the parallel pass is over, and they alone get INDEXER_KEY:
+      # with it, every asset, shot or person a test creates is pushed to
+      # the index and waited for.
       - name: Run tests 🧪
         run: >-
           py.test -n logical --dist loadscope -m "not integration" --durations=25
@@ -153,6 +155,7 @@ jobs:
         run: >-
           py.test -m integration --durations=10 -rs
         env:
+          INDEXER_KEY: ${{ env.MEILI_MASTER_KEY }}
           DEBUG: 1
           MAIL_DEBUG_BODY: 1
           MAIL_ENABLED: False
@@ -245,7 +248,7 @@ jobs:
         ports:
           - 7700:7700
         env:
-          MEILI_MASTER_KEY: ${{ env.INDEXER_KEY }}
+          MEILI_MASTER_KEY: ${{ env.MEILI_MASTER_KEY }}
       redis:
         image: redis:7-alpine
         options: >-
@@ -301,7 +304,9 @@ jobs:
       # tests/conftest.py creates the databases on first use: one per
       # pytest-xdist worker, and the plain one for the serial pass. The
       # integration tests share the Meilisearch indexes, so they run alone
-      # once the parallel pass is over.
+      # once the parallel pass is over, and they alone get INDEXER_KEY:
+      # with it, every asset, shot or person a test creates is pushed to
+      # the index and waited for.
       - name: Run tests 🧪
         run: >-
           py.test -n logical --dist loadscope -m "not integration" --durations=25
@@ -316,6 +321,7 @@ jobs:
         run: >-
           py.test -m integration --durations=10 -rs
         env:
+          INDEXER_KEY: ${{ env.MEILI_MASTER_KEY }}
           DEBUG: 1
           MAIL_DEBUG_BODY: 1
           MAIL_ENABLED: False
