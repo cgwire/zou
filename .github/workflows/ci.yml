@@ -73,6 +73,15 @@ jobs:
           - 7700:7700
         env:
           MEILI_MASTER_KEY: ${{ env.INDEXER_KEY }}
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 6379:6379
     steps:
       - uses: actions/checkout@v6
       - name: Cache APT packages
@@ -206,6 +215,15 @@ jobs:
           - 7700:7700
         env:
           MEILI_MASTER_KEY: ${{ env.INDEXER_KEY }}
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 6379:6379
     steps:
       - uses: actions/checkout@v6
       - name: Cache APT packages
