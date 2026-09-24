@@ -28,6 +28,9 @@ from zou.app.stores.redis_lock import with_preview_file_lock
 
 from zou.app.models.entity import Entity
 from zou.app.models.preview_file import PreviewFile
+from zou.app.models.preview_file_storage_state import (
+    PreviewFileStorageState,
+)
 from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.task import Task
@@ -1771,10 +1774,12 @@ def queue_missing_tiles(
     on Nomad when a tile job is configured, on this host otherwise. The
     command itself decodes nothing and does not wait for the builds.
 
-    The recorded storage state answers for the movies it knows; the
-    others cost one storage round trip, whose answer is recorded on the
+    The movies whose tile is recorded as stored are left out of the
+    query. The recorded state answers for the other movies it knows; the
+    rest cost one storage round trip, whose answer is recorded on the
     way. A movie attempted within the hour is skipped unless force is
-    set. Return the counts per outcome.
+    set. The limit caps the jobs queued, newest movies first. Return the
+    counts per outcome.
     """
     if not config.ENABLE_JOB_QUEUE:
         raise JobQueueDisabledException(
@@ -1789,8 +1794,16 @@ def queue_missing_tiles(
         only_assets=only_assets,
         extensions=("mp4",),
     )
-    if limit is not None:
-        query = query.limit(limit)
+    bucket, prefix = preview_file_states_service.TILE
+    stored_tile = PreviewFileStorageState.query.filter(
+        PreviewFileStorageState.preview_file_id == PreviewFile.id,
+        PreviewFileStorageState.bucket == bucket,
+        PreviewFileStorageState.prefix == prefix,
+        PreviewFileStorageState.state == preview_file_states_service.OK,
+    ).exists()
+    query = query.filter(~stored_tile).order_by(
+        PreviewFile.created_at.desc(), PreviewFile.id
+    )
 
     progress = progress or NullProgress()
     summary = Counter()
@@ -1798,6 +1811,8 @@ def queue_missing_tiles(
     progress.start(len(preview_files))
     try:
         for preview_file in preview_files:
+            if limit is not None and summary["queued"] >= limit:
+                break
             _queue_missing_tile(preview_file, summary, force)
             progress.advance()
     finally:

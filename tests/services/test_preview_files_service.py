@@ -2064,7 +2064,19 @@ class QueueMissingTilesTestCase(PreviewFileTestCase):
         states_service.record_file_state(
             self.preview_file_id, "pictures", "tiles", states_service.OK
         )
-        with self.job_queue() as job_queue:
+        with self.job_queue() as job_queue, patch.object(
+            file_store, "exists_confirmed"
+        ) as exists:
+            summary = preview_files_service.queue_missing_tiles()
+        job_queue.enqueue.assert_not_called()
+        exists.assert_not_called()
+        self.assertEqual(summary["checked"], 0)
+        self.assertEqual(summary["queued"], 0)
+
+    def test_a_probed_stored_tile_is_left_alone(self):
+        with self.job_queue() as job_queue, patch.object(
+            file_store, "exists_confirmed", return_value=True
+        ):
             summary = preview_files_service.queue_missing_tiles()
         job_queue.enqueue.assert_not_called()
         self.assertEqual(summary["stored"], 1)
@@ -2120,28 +2132,62 @@ class QueueMissingTilesTestCase(PreviewFileTestCase):
         self.assertEqual(self.queued_ids(job_queue), [self.preview_file_id])
         self.assertEqual(summary["queued"], 1)
 
-    def test_limit_caps_the_movies_looked_at(self):
-        self.generate_fixture_preview_file(revision=2)
+    def test_limit_caps_the_movies_queued(self):
+        stored = self.generate_fixture_preview_file(revision=2)
+        states_service.record_file_state(
+            str(stored.id), "pictures", "tiles", states_service.OK
+        )
+        attempted = self.generate_fixture_preview_file(revision=3)
+        states_service.record_file_state(
+            str(attempted.id), "pictures", "tiles", states_service.FAILED
+        )
+        self.redis.set(
+            preview_files_service._tile_attempt_key(str(attempted.id)), 1
+        )
+        missing = self.generate_fixture_preview_file(revision=4)
+        states_service.record_file_state(
+            str(missing.id), "pictures", "tiles", states_service.MISSING
+        )
         states_service.record_file_state(
             self.preview_file_id, "pictures", "tiles", states_service.MISSING
         )
-        with self.job_queue() as job_queue, patch.object(
-            file_store, "exists_confirmed", return_value=False
-        ):
-            summary = preview_files_service.queue_missing_tiles(limit=1)
-        self.assertEqual(len(self.queued_ids(job_queue)), 1)
-        self.assertEqual(summary["checked"], 1)
+        try:
+            with self.job_queue() as job_queue:
+                summary = preview_files_service.queue_missing_tiles(limit=2)
+        finally:
+            self.redis.delete(
+                preview_files_service._tile_attempt_key(str(attempted.id))
+            )
+        self.assertCountEqual(
+            self.queued_ids(job_queue),
+            [str(missing.id), self.preview_file_id],
+        )
+        self.assertEqual(summary["queued"], 2)
+        self.assertEqual(summary["recently_attempted"], 1)
+        self.assertEqual(summary["stored"], 0)
+
+    def test_newest_movies_are_queued_first(self):
+        newest = self.generate_fixture_preview_file(revision=2)
+        for preview_file_id in [self.preview_file_id, str(newest.id)]:
+            states_service.record_file_state(
+                preview_file_id, "pictures", "tiles", states_service.MISSING
+            )
+        with self.job_queue() as job_queue:
+            preview_files_service.queue_missing_tiles(limit=1)
+        self.assertEqual(self.queued_ids(job_queue), [str(newest.id)])
 
     def test_pictures_are_not_looked_at(self):
         picture = self.generate_fixture_preview_file(revision=3)
         picture.update({"extension": "png"})
         files_service.clear_preview_file_cache(str(picture.id))
         states_service.record_file_state(
-            self.preview_file_id, "pictures", "tiles", states_service.OK
+            self.preview_file_id, "pictures", "tiles", states_service.MISSING
         )
-        with self.job_queue() as job_queue:
+        with self.job_queue() as job_queue, patch.object(
+            file_store, "exists_confirmed", return_value=False
+        ):
             summary = preview_files_service.queue_missing_tiles()
-        job_queue.enqueue.assert_not_called()
+        self.assertEqual(self.queued_ids(job_queue), [self.preview_file_id])
         self.assertEqual(summary["checked"], 1)
 
     def test_nothing_is_queued_without_a_job_queue(self):
@@ -2182,7 +2228,7 @@ class QueueMissingTilesProgressTestCase(QueueMissingTilesTestCase):
     def test_progress_counts_every_movie_looked_at(self):
         self.generate_fixture_preview_file(revision=2)
         states_service.record_file_state(
-            self.preview_file_id, "pictures", "tiles", states_service.OK
+            self.preview_file_id, "pictures", "tiles", states_service.MISSING
         )
         progress = SpyProgress()
         with self.job_queue(), patch.object(

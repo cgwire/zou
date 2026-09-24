@@ -975,7 +975,8 @@ def generate_preview_extra(
 
     --only-missing-tiles queues one background job per movie that has no
     tile, on Nomad when a tile job is configured, and decodes nothing
-    here. --force queues a movie attempted within the last hour too.
+    here. --limit caps the jobs queued, newest movies first. --force
+    queues a movie attempted within the last hour too.
     """
     from zou.app.utils import commands
     from zou.app.services.exception import JobQueueDisabledException
