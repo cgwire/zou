@@ -54,7 +54,15 @@ from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from flask import current_app
 
-TEST_FOLDER = os.path.join("tests", "tmp")
+# Absolute, so that the folder created and the folder written to are the
+# same one wherever pytest is launched from. One folder per pytest-xdist
+# worker (gw0, gw1, ...): the tests sweep it between runs, which would
+# take the files of a test running on another worker with it.
+TEST_FOLDER = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "tmp",
+    os.environ.get("PYTEST_XDIST_WORKER", "main"),
+)
 
 
 def indexer_is_up():
@@ -1640,12 +1648,10 @@ class ApiDBTestCase(ApiTestCase):
         return file_path_fixture
 
     def get_file_path(self, filename):
-        current_path = os.path.dirname(__file__)
-        result_file_path = os.path.join(TEST_FOLDER, filename)
-        return os.path.join(current_path, "..", result_file_path)
+        return os.path.join(TEST_FOLDER, filename)
 
     def create_test_folder(self):
-        os.mkdir(TEST_FOLDER)
+        os.makedirs(TEST_FOLDER)
 
     def delete_test_folder(self):
         fs.rm_rf(TEST_FOLDER)

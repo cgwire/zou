@@ -1,12 +1,10 @@
 import os
 
-from tests.base import ApiDBTestCase
+from tests.base import ApiDBTestCase, TEST_FOLDER
 
 from zou.app.utils import fs
 
 from PIL import Image
-
-TEST_FOLDER = os.path.join("tests", "tmp")
 
 
 class RouteTileTestCase(ApiDBTestCase):
