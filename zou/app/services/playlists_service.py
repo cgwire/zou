@@ -790,16 +790,20 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
     """
     success = False
     message = None
+    handed_over = False
     from zou.app import app
 
     with app.app_context():
         try:
             previews = playlist_previews(shots, only_movies=True)
             movie_file_path = get_playlist_movie_file_path(job)
-            tmp_file_paths = retrieve_playlist_tmp_files(previews)
 
-            if tmp_file_paths:
+            if previews:
                 if not remote:
+                    # Only a local build reads the previews here: the
+                    # remote runner fetches them itself, falling back on
+                    # the other versions and on a placeholder.
+                    tmp_file_paths = retrieve_playlist_tmp_files(previews)
                     success = False
                     demuxer_message = None
                     if not full:
@@ -841,13 +845,18 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
                         app.logger.error(exc)
                         success = False
 
+        except remote_job.NomadJobHandedOver:
+            # The worker stops: the build goes on in the next one.
+            handed_over = True
+            raise
         except Exception as exc:
             app.logger.error(exc)
             success = False
 
         # exception will be logged by rq
         finally:
-            job = end_build_job(playlist, job, success, message)
+            if not handed_over:
+                job = end_build_job(playlist, job, success, message)
 
     if not success:
         raise Exception(f"Failure while building playlist {playlist['id']!r}")
@@ -915,9 +924,14 @@ def _run_remote_job_build_playlist(
     nomad_job = config_store.get_nomad_playlist_job()
     remote_job.run_job(app, config, nomad_job, params)
 
-    with open(movie_file_path, "wb") as movie_file:
-        for chunk in file_store.open_movie("playlists", job["id"]):
-            movie_file.write(chunk)
+    # Warm the cache the download route reads, right away. Written aside
+    # then renamed: an interrupted download must not leave a truncated
+    # movie there, which the route would serve as is.
+    exception = fs.download_to_file(
+        movie_file_path, file_store.open_movie, "playlists", job["id"]
+    )
+    if exception is not None:
+        raise exception
 
     return movie_file_path
 

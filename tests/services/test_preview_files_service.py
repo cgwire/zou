@@ -16,6 +16,7 @@ from zou.app.services import files_service, preview_files_service
 from zou.app.services import preview_file_states_service as states_service
 from zou.app import config
 from zou.app.stores import file_store, queue_store, redis_client
+from zou.app.utils import remote_job
 from zou.app.utils import thumbnail as thumbnail_utils
 from zou.utils import movie
 from zou.app.services.exception import (
@@ -650,6 +651,83 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
         self.assertNotIn("movies/source", states)
         # The runner was supposed to write the pictures: none are there.
         self.assertEqual(states["pictures/tiles"]["state"], "failed")
+
+    @patch(
+        "zou.app.services.preview_files_service._run_remote_normalize_movie"
+    )
+    @patch(
+        "zou.app.services.preview_files_service"
+        ".is_remote_normalization_enabled"
+    )
+    @patch("zou.app.services.preview_files_service.file_store.add_movie")
+    def test_a_handed_over_normalization_keeps_its_upload(
+        self, mock_add_movie, mock_is_remote, mock_run_remote
+    ):
+        """
+        When the worker stops while Nomad encodes the movie, the next
+        worker resumes the job: the upload stays for it and the preview
+        file stays "processing".
+        """
+        preview_file = self.generate_fixture_preview_file(status="processing")
+        preview_file_id = str(preview_file.id)
+        uploaded_path = self._write_temp_movie()
+        mock_is_remote.return_value = True
+        mock_run_remote.side_effect = remote_job.NomadJobHandedOver()
+
+        with patch.object(
+            preview_files_service, "_get_encoding_parameters"
+        ) as encoding_parameters, patch.object(
+            preview_files_service, "_record_original_metadata"
+        ), patch.object(
+            preview_files_service, "set_preview_file_as_broken"
+        ) as set_broken:
+            encoding_parameters.return_value = (25.0, 1920, 1080)
+            self.assertRaises(
+                remote_job.NomadJobHandedOver,
+                preview_files_service.prepare_and_store_movie,
+                preview_file_id,
+                uploaded_path,
+            )
+
+        self.assertTrue(os.path.exists(uploaded_path))
+        set_broken.assert_not_called()
+
+    @patch("zou.app.services.preview_files_service.movie.get_movie_duration")
+    @patch("zou.app.services.preview_files_service.movie.get_movie_size")
+    @patch(
+        "zou.app.services.preview_files_service._run_remote_normalize_movie"
+    )
+    @patch(
+        "zou.app.services.preview_files_service"
+        ".is_remote_normalization_enabled"
+    )
+    @patch("zou.app.services.preview_files_service.file_store.add_movie")
+    def test_a_resumed_normalization_does_not_store_the_source_again(
+        self,
+        mock_add_movie,
+        mock_is_remote,
+        mock_run_remote,
+        mock_size,
+        mock_duration,
+    ):
+        preview_file = self.generate_fixture_preview_file(status="processing")
+        preview_file_id = str(preview_file.id)
+        uploaded_path = self._write_temp_movie()
+        mock_is_remote.return_value = True
+        mock_run_remote.return_value = True
+        mock_size.return_value = (1920, 1080)
+        mock_duration.return_value = 10.0
+
+        with patch.object(
+            preview_files_service.config, "SKIP_NORMALIZATION_FULL", True
+        ), patch.object(remote_job, "is_resumed", return_value=True):
+            preview_files_service.prepare_and_store_movie(
+                preview_file_id, uploaded_path
+            )
+
+        mock_add_movie.assert_not_called()
+        persisted = files_service.get_preview_file(preview_file_id)
+        self.assertEqual(persisted["status"], "ready")
 
     @patch(
         "zou.app.services.preview_files_service._run_remote_normalize_movie"

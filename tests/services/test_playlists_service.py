@@ -1,10 +1,12 @@
+import os
+
 from contextlib import contextmanager
 from datetime import datetime
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from tests.base import ApiDBTestCase
 
-from zou.app import db
+from zou.app import config, db
 from zou.app.models.build_job import BuildJob
 from zou.app.models.playlist import Playlist
 from zou.app.services import (
@@ -13,6 +15,7 @@ from zou.app.services import (
     projects_service,
 )
 from zou.app.services.exception import PlaylistLockTimeoutException
+from zou.app.utils import fields, fs, remote_job
 from zou.utils import movie
 from zou.utils.movie import EncodingParameters
 
@@ -479,7 +482,9 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
 
         with (
             patch.object(
-                playlists_service, "playlist_previews", return_value=[]
+                playlists_service,
+                "playlist_previews",
+                return_value=[{"id": "a", "extension": "mp4"}],
             ),
             patch.object(
                 playlists_service,
@@ -496,6 +501,164 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         self.assertEqual(job["status"], "succeeded")
         self.assertIn("concat filter", job["message"])
         self.assertIn("stream number", job["message"])
+
+    def test_a_handed_over_remote_build_stays_running(self):
+        """
+        When the worker stops while Nomad builds the movie, the build goes
+        on in the next worker: it is neither failed nor ended.
+        """
+        playlist = self.generate_fixture_playlists()
+        job = playlists_service.start_build_job(playlist)
+        params = EncodingParameters(width=1920, height=1080, fps="25.00")
+
+        with (
+            patch.object(
+                playlists_service,
+                "playlist_previews",
+                return_value=[{"id": "a", "extension": "mp4"}],
+            ),
+            patch.object(
+                playlists_service,
+                "_run_remote_job_build_playlist",
+                side_effect=remote_job.NomadJobHandedOver(),
+            ),
+            patch.object(playlists_service, "end_build_job") as end_build_job,
+        ):
+            self.assertRaises(
+                remote_job.NomadJobHandedOver,
+                playlists_service.build_playlist_movie_file,
+                playlist,
+                job,
+                [],
+                params,
+                False,
+                True,
+            )
+
+        end_build_job.assert_not_called()
+
+    def test_a_remote_build_downloads_no_preview(self):
+        """
+        The remote runner fetches the previews itself: the worker neither
+        downloads them nor checks them.
+        """
+        playlist = self.generate_fixture_playlists()
+        job = playlists_service.start_build_job(playlist)
+        params = EncodingParameters(width=1920, height=1080, fps="25.00")
+        previews = [{"id": "preview-1", "extension": "mp4"}]
+
+        with (
+            patch.object(
+                playlists_service, "playlist_previews", return_value=previews
+            ),
+            patch.object(
+                playlists_service, "retrieve_playlist_tmp_files"
+            ) as retrieve,
+            patch.object(
+                playlists_service, "_run_remote_job_build_playlist"
+            ) as run_remote,
+        ):
+            job = playlists_service.build_playlist_movie_file(
+                playlist, job, [], params, False, True
+            )
+
+        retrieve.assert_not_called()
+        self.assertEqual(run_remote.call_args.args[2], previews)
+        self.assertEqual(job["status"], "succeeded")
+
+    def test_a_remote_build_without_movie_dispatches_nothing(self):
+        playlist = self.generate_fixture_playlists()
+        job = playlists_service.start_build_job(playlist)
+        params = EncodingParameters(width=1920, height=1080, fps="25.00")
+
+        with (
+            patch.object(
+                playlists_service, "playlist_previews", return_value=[]
+            ),
+            patch.object(
+                playlists_service, "_run_remote_job_build_playlist"
+            ) as run_remote,
+        ):
+            self.assertRaises(
+                Exception,
+                playlists_service.build_playlist_movie_file,
+                playlist,
+                job,
+                [],
+                params,
+                False,
+                True,
+            )
+
+        run_remote.assert_not_called()
+
+    def test_a_remote_build_warms_the_download_cache(self):
+        """
+        The built movie is fetched right after the remote job, into the
+        cache entry the download route reads.
+        """
+        job = {"id": fields.gen_uuid()}
+        params = EncodingParameters(width=1920, height=1080, fps="25.00")
+        movie_file_path = playlists_service.get_playlist_movie_file_path(job)
+        self.addCleanup(fs.rm_file, movie_file_path)
+
+        with (
+            patch.object(playlists_service.remote_job, "run_job"),
+            patch.object(
+                playlists_service.config_store,
+                "get_nomad_playlist_job",
+                return_value="zou-playlist",
+            ),
+            patch.object(
+                playlists_service.file_store,
+                "open_movie",
+                return_value=iter([b"built ", b"movie"]),
+            ),
+        ):
+            playlists_service._run_remote_job_build_playlist(
+                MagicMock(), job, [], params, movie_file_path, False
+            )
+
+        self.assertEqual(
+            movie_file_path,
+            fs.get_cache_file_path(config, "playlists", job["id"], "mp4"),
+        )
+        with open(movie_file_path, "rb") as movie_file:
+            self.assertEqual(movie_file.read(), b"built movie")
+
+    def test_an_interrupted_download_leaves_no_truncated_movie(self):
+        job = {"id": fields.gen_uuid()}
+        params = EncodingParameters(width=1920, height=1080, fps="25.00")
+        movie_file_path = playlists_service.get_playlist_movie_file_path(job)
+        self.addCleanup(fs.rm_file, movie_file_path)
+
+        def interrupted(*_):
+            yield b"built "
+            raise ConnectionError("reset")
+
+        with (
+            patch.object(playlists_service.remote_job, "run_job"),
+            patch.object(
+                playlists_service.config_store,
+                "get_nomad_playlist_job",
+                return_value="zou-playlist",
+            ),
+            patch.object(
+                playlists_service.file_store, "open_movie", interrupted
+            ),
+        ):
+            self.assertRaises(
+                ConnectionError,
+                playlists_service._run_remote_job_build_playlist,
+                MagicMock(),
+                job,
+                [],
+                params,
+                movie_file_path,
+                False,
+            )
+
+        self.assertFalse(os.path.exists(movie_file_path))
 
     def test_an_entity_is_added_with_the_preview_it_names(self):
         self.generate_fixture_preview_files()
