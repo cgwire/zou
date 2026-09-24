@@ -7,10 +7,14 @@ on:
     tags: ["*"]
   pull_request:
 
-# A new push to the same branch makes the run in flight pointless: stop it
-# instead of paying for it to finish.
+# A new push to a pull request makes the run in flight pointless: stop it
+# instead of paying for it to finish. Any other run, a push to main or a
+# tag, is alone in its group: every commit on main keeps a verdict to
+# bisect from, and its TestPyPI publish. The group is keyed on the run id
+# rather than the sha, which the bump commit of a release and its tag
+# share: pushed together, one would cancel the other.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 env:
