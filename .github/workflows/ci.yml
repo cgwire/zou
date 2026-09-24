@@ -124,6 +124,16 @@ jobs:
       - name: Create database 🗄
         run: >-
           psql -c 'create database zoudb;' -U postgres -h 127.0.0.1
+      # The database is disposable: fsync, synchronous commits and full page
+      # writes only make every commit, and the TRUNCATE between test classes,
+      # wait for the disk.
+      - name: Relax the durability of the test database 🗄
+        run: >-
+          psql -U postgres -h 127.0.0.1
+          -c 'ALTER SYSTEM SET fsync = off'
+          -c 'ALTER SYSTEM SET synchronous_commit = off'
+          -c 'ALTER SYSTEM SET full_page_writes = off'
+          -c 'SELECT pg_reload_conf()'
       - name: Run tests 🧪
         run: >-
           py.test
@@ -266,6 +276,16 @@ jobs:
       - name: Create database 🗄
         run: >-
           psql -c 'create database zoudb;' -U postgres -h 127.0.0.1
+      # The database is disposable: fsync, synchronous commits and full page
+      # writes only make every commit, and the TRUNCATE between test classes,
+      # wait for the disk.
+      - name: Relax the durability of the test database 🗄
+        run: >-
+          psql -U postgres -h 127.0.0.1
+          -c 'ALTER SYSTEM SET fsync = off'
+          -c 'ALTER SYSTEM SET synchronous_commit = off'
+          -c 'ALTER SYSTEM SET full_page_writes = off'
+          -c 'SELECT pg_reload_conf()'
       - name: Run tests 🧪
         run: >-
           py.test
