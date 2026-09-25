@@ -636,8 +636,10 @@ def sync_with_ldap_server():
             if user["thumbnail"] is not None:
                 save_thumbnail(person, user["thumbnail"])
 
-        person = None
         for user in persons_to_create:
+            # Reset per user: an inactive or failed entry must not inherit
+            # the previous person and receive its thumbnail.
+            person = None
             if user["active"]:
                 try:
                     if persons_service.is_user_limit_reached():
