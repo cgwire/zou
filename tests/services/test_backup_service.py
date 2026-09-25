@@ -10,7 +10,7 @@ from tests.base import ApiDBTestCase
 
 from zou.app.models.organisation import Organisation
 from zou.app.services import backup_service, persons_service
-from zou.app.services.exception import BackupFailedException
+from zou.app.exceptions import BackupFailedException
 
 
 class FakeStdout:

@@ -6,7 +6,7 @@ from zou.app.models.entity_type import EntityType
 from zou.app.utils import events
 from zou.app.services import entities_service, assets_service
 
-from zou.app.services.exception import WrongParameterException
+from zou.app.exceptions import WrongParameterException
 
 
 class EntityTypesResource(BaseModelsResource):

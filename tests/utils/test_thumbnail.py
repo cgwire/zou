@@ -6,7 +6,7 @@ from PIL import Image, ImageCms
 
 from werkzeug.datastructures import FileStorage
 
-from zou.app.services.exception import WrongParameterException
+from zou.app.exceptions import WrongParameterException
 from zou.app.utils import thumbnail, fs
 
 TEST_FOLDER = os.path.join("tests", "tmp")

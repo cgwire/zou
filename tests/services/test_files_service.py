@@ -11,7 +11,7 @@ from zou.app.models.file_status import FileStatus
 from zou.app.models.software import Software
 from zou.app.models.working_file import WorkingFile
 from zou.app.services import deletion_service, files_service
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     EntryAlreadyExistsException,
     OutputFileNotFoundException,
     OutputTypeNotFoundException,
@@ -400,7 +400,7 @@ class OutputFileTestCase(FilesTestCase):
         self.assertEqual(len(captured), 1)
 
     def test_an_entity_with_no_output_file_has_no_last_revision(self):
-        from zou.app.services.exception import NoOutputFileException
+        from zou.app.exceptions import NoOutputFileException
 
         self.assertRaises(
             NoOutputFileException,

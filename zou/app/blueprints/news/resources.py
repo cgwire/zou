@@ -9,7 +9,7 @@ from zou.app.services import (
     user_service,
     persons_service,
 )
-from zou.app.services.exception import NewsNotFoundException
+from zou.app.exceptions import NewsNotFoundException
 from zou.app.utils import fields, permissions
 
 

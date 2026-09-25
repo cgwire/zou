@@ -11,7 +11,7 @@ from zou.app.services import (
     status_automations_service,
     tasks_service,
 )
-from zou.app.services.exception import StatusAutomationNotFoundException
+from zou.app.exceptions import StatusAutomationNotFoundException
 from zou.app.utils import fields
 
 

@@ -30,7 +30,7 @@ from zou.app.services import (
     tasks_service,
     files_service,
 )
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     SearchFilterNotFoundException,
     SearchFilterGroupNotFoundException,
     NotificationNotFoundException,

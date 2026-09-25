@@ -10,7 +10,7 @@ from zou.app import app
 from zou.app.models.person import Person, SENSITIVE_FIELDS
 from zou.app.stores import auth_tokens_store
 from zou.app.services import persons_service, auth_service
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     MissingOTPException,
     NoAuthStrategyConfigured,
     TooMuchLoginFailedAttemps,

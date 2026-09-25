@@ -2,8 +2,8 @@ import re
 
 from zou.app.models.event import ApiEvent
 from zou.app.models.login_log import LoginLog
-from zou.app.utils import cache, fields
-from zou.app.services.exception import WrongParameterException
+from zou.app.utils import cache, events, fields
+from zou.app.exceptions import WrongParameterException
 from sqlalchemy import distinct, func, or_
 
 # Event names are made of lowercase words, digits and dashes on both sides of
@@ -172,6 +172,11 @@ def invalidate_event_names_cache(name):
         cache.cache.delete_memoized(get_event_names)
         return True
     return False
+
+
+# Registered here rather than imported from the write path: the events util
+# sits below the services and must not reach up into them.
+events.add_save_hook(invalidate_event_names_cache)
 
 
 def create_login_log(person_id, ip_address, origin):

@@ -1,7 +1,7 @@
 from flask_jwt_extended import jwt_required
 
 from zou.app.models.preview_background_file import PreviewBackgroundFile
-from zou.app.services.exception import WrongParameterException
+from zou.app.exceptions import WrongParameterException
 from zou.app.services import files_service, deletion_service
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource

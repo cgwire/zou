@@ -6,7 +6,7 @@ from zou.app.models.organisation import Organisation, SENSITIVE_FIELDS
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 from zou.app.services import persons_service
-from zou.app.services.exception import WrongParameterException
+from zou.app.exceptions import WrongParameterException
 from zou.app.utils.permissions import has_admin_permissions
 
 

@@ -5,7 +5,7 @@ import pytest
 from freezegun import freeze_time
 
 from zou.app.utils import date_helpers
-from zou.app.services.exception import WrongDateFormatException
+from zou.app.exceptions import WrongDateFormatException
 
 
 class DateHelpersTestCase(unittest.TestCase):

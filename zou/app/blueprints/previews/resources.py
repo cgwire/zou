@@ -44,7 +44,7 @@ from zou.app.utils import (
     thumbnail as thumbnail_utils,
     date_helpers,
 )
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     PreviewBackgroundFileNotFoundException,
     PreviewFileNotFoundException,
     PreviewFileReuploadNotAllowedException,

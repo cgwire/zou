@@ -13,7 +13,7 @@ from zou.app.services import (
     user_service,
 )
 from zou.app.utils import permissions
-from zou.app.services.exception import WrongParameterException
+from zou.app.exceptions import WrongParameterException
 
 
 class ProductionScheduleVersionsResource(BaseModelsResource):

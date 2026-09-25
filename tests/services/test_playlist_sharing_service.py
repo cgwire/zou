@@ -13,7 +13,7 @@ from zou.app.models.preview_file import PreviewFile
 from zou.app.models.task import Task
 
 from zou.app.services import comments_service, playlist_sharing_service
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     PlaylistShareLinkNotFoundException,
     WrongParameterException,
 )

@@ -22,7 +22,7 @@ from zou.app.utils import events, permissions, fields
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
-from zou.app.services.exception import WrongParameterException
+from zou.app.exceptions import WrongParameterException
 
 
 class ProjectsResource(BaseModelsResource):

@@ -2,7 +2,7 @@ from flask import current_app
 
 from sqlalchemy.exc import StatementError
 
-from zou.app.services.exception import WrongParameterException
+from zou.app.exceptions import WrongParameterException
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource

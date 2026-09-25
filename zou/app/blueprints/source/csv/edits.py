@@ -20,7 +20,7 @@ from zou.app.services.tasks_service import (
     get_task_type,
 )
 from zou.app.services.comments_service import create_comment
-from zou.app.services.exception import WrongParameterException
+from zou.app.exceptions import WrongParameterException
 from zou.app.utils import events
 
 

@@ -11,7 +11,7 @@ from flask_jwt_extended import jwt_required
 from zou.app import config
 
 from zou.app.mixin import ArgsMixin
-from zou.app.services.exception import WrongParameterException
+from zou.app.exceptions import WrongParameterException
 from zou.app.utils import fields
 from zou.app.services import (
     shots_service,

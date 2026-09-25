@@ -3,7 +3,7 @@ from tests.base import ApiDBTestCase
 from zou.app import db
 from zou.app.models.studio import Studio
 from zou.app.services import tasks_service, time_spents_service
-from zou.app.services.exception import WrongDateFormatException
+from zou.app.exceptions import WrongDateFormatException
 
 
 class TimeSpentsTestCase(ApiDBTestCase):

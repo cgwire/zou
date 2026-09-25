@@ -11,7 +11,7 @@ from zou.app.blueprints.source.shotgun.base import (
     ImportRemoveShotgunBaseResource,
 )
 
-from zou.app.services.exception import WrongFileTreeFileException
+from zou.app.exceptions import WrongFileTreeFileException
 
 
 class ImportShotgunProjectsResource(BaseImportShotgunResource):

@@ -19,7 +19,7 @@ from zou.app.services import (
     tasks_service,
     user_service,
 )
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     DepartmentNotFoundException,
     NotificationNotFoundException,
     SearchFilterNotFoundException,

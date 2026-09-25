@@ -38,7 +38,7 @@ from sqlalchemy import types as sa_types
 
 from zou.app.mixin import ArgsMixin
 from zou.app.utils import events, fields, permissions, query
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     WrongParameterException,
 )
 

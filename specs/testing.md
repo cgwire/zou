@@ -111,7 +111,7 @@ For models where mixer can't generate valid data (e.g., check constraints), crea
 ```python
 from tests.base import ApiDBTestCase
 from zou.app.services import my_service
-from zou.app.services.exception import MyNotFoundException
+from zou.app.exceptions import MyNotFoundException
 
 class MyServiceTestCase(ApiDBTestCase):
     def setUp(self):

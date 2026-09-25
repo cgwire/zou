@@ -20,7 +20,7 @@ from zou.app.services import (
     persons_service,
 )
 
-from zou.app.services.exception import AssetNotFoundException
+from zou.app.exceptions import AssetNotFoundException
 
 
 class ImportShotgunAssetsResource(BaseImportShotgunResource):

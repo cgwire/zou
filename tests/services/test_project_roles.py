@@ -17,7 +17,7 @@ from zou.app.services import (
     permissions_service,
     user_service,
 )
-from zou.app.services.exception import WrongParameterException
+from zou.app.exceptions import WrongParameterException
 from zou.app.utils import permissions
 
 

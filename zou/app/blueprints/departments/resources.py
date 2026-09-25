@@ -1,7 +1,7 @@
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
-from zou.app.services.exception import SoftwareNotFoundException
+from zou.app.exceptions import SoftwareNotFoundException
 from zou.app.utils import permissions, validation
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (

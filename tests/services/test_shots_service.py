@@ -16,7 +16,7 @@ from zou.app.services import (
     tasks_service,
 )
 from zou.app.utils import fields
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     EpisodeNotFoundException,
     ModelWithRelationsDeletionException,
     SceneNotFoundException,

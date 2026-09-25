@@ -38,7 +38,7 @@ from zou.app.services import (
     index_service,
     concepts_service,
 )
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     EpisodeNotFoundException,
     ModelWithRelationsDeletionException,
     SequenceNotFoundException,

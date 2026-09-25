@@ -50,7 +50,7 @@ from zou.app.utils import (
     remote_job,
     thumbnail as thumbnail_utils,
 )
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     AnnotationLockTimeoutException,
     JobQueueDisabledException,
     AnnotationNotFoundException,

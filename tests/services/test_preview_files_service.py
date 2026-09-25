@@ -18,7 +18,7 @@ from zou.app import config
 from zou.app.stores import file_store, queue_store, redis_client
 from zou.app.utils import thumbnail as thumbnail_utils
 from zou.utils import movie
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     AnnotationLockTimeoutException,
     AnnotationNotFoundException,
     PreviewFileNotFoundException,

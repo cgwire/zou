@@ -45,7 +45,7 @@ from zou.app.utils.saml import saml_client_for
 from zou.app.utils import oidc
 
 from zou.app.stores import auth_tokens_store
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     EmailOTPAlreadyEnabledException,
     EmailOTPNotEnabledException,
     FIDONoPreregistrationException,

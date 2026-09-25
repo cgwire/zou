@@ -3,7 +3,7 @@ from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app.mixin import ArgsMixin
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     AttachmentFileNotFoundException,
     WrongParameterException,
 )

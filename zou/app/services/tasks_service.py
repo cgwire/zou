@@ -61,7 +61,7 @@ from zou.app.utils import (
 )
 
 
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     CommentNotFoundException,
     EpisodeNotFoundException,
     PersonNotFoundException,

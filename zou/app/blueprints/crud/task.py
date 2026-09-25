@@ -22,7 +22,7 @@ from zou.app.services import (
 )
 from zou.app.utils import events, fields, permissions
 
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     WrongParameterException,
     WrongTaskTypeForEntityException,
 )

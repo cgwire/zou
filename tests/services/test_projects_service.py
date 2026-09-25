@@ -9,7 +9,7 @@ from zou.app.services import (
     deletion_service,
     projects_service,
 )
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     MetadataDescriptorNotFoundException,
     ProjectNotFoundException,
     WrongParameterException,

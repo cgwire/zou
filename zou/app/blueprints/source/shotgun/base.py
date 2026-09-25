@@ -9,7 +9,7 @@ from zou.app.blueprints.source.shotgun.exception import (
 
 from zou.app.services import assets_service, shots_service, tasks_service
 
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     AssetNotFoundException,
     EpisodeNotFoundException,
     SceneNotFoundException,
