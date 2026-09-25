@@ -118,7 +118,11 @@ def uninstall_plugin(plugin_id):
     try:
         manifest = PluginManifest.from_plugin_path(plugin_path)
     except Exception:
-        pass
+        logger.warning(
+            f"Plugin {plugin_id} has no readable manifest, uninstalling "
+            "without its hooks.",
+            exc_info=1,
+        )
 
     _run_plugin_hook(plugin_id, plugin_path, "pre_uninstall", manifest)
 

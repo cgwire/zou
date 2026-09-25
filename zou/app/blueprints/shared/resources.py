@@ -32,6 +32,7 @@ from zou.app.services import (
 from zou.app.exceptions import (
     AttachmentFileNotFoundException,
     PersonNotFoundException,
+    PlaylistShareLinkNotFoundException,
     PreviewFileNotFoundException,
     WrongParameterException,
 )
@@ -136,7 +137,11 @@ class SharedPlaylistGuestResource(MethodView):
                     str(body.guest_id), g.playlist_share_link
                 )
                 return guest
-            except Exception:
+            except (
+                PersonNotFoundException,
+                PlaylistShareLinkNotFoundException,
+            ):
+                # Unknown, or created from another link: a new guest then.
                 pass
 
         guest = playlist_sharing_service.create_guest(

@@ -27,6 +27,7 @@ from zou.app.services import (
     projects_service,
 )
 from zou.app.exceptions import (
+    PersonNotFoundException,
     PlaylistShareLinkNotFoundException,
     PreviewFileNotFoundException,
     WrongParameterException,
@@ -946,7 +947,7 @@ def send_share_invitations(
     for person_id in person_ids or []:
         try:
             person = persons_service.get_person(str(person_id))
-        except Exception:
+        except PersonNotFoundException:
             continue
         person_email = person.get("email")
         if not person_email:

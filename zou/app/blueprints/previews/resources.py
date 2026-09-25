@@ -2642,7 +2642,7 @@ class CreatePreviewBackgroundFileResource(MethodView):
                     os.remove(preview_background_path)
                 if thumbnail_path and os.path.exists(thumbnail_path):
                     os.remove(thumbnail_path)
-            except Exception:
+            except OSError:
                 pass
 
     def emit_preview_background_file_event(self, preview_background_file):

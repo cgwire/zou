@@ -957,7 +957,10 @@ def clear_avatar(person_id):
         try:
             file_store.remove_picture("thumbnails", person_id)
         except Exception:
-            pass
+            logger.warning(
+                f"The avatar file of person {person_id} could not be removed.",
+                exc_info=1,
+            )
     return person.serialize()
 
 

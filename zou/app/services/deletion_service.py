@@ -9,6 +9,7 @@ module level: importing them here at module level would close the cycle
 they open by importing this module.
 """
 
+import logging
 import datetime
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
@@ -64,6 +65,8 @@ from zou.app.exceptions import (
     PreviewFileNotFoundException,
 )
 
+logger = logging.getLogger(__name__)
+
 
 def _remove_quietly(remove_from_store, prefix, file_id):
     """
@@ -73,7 +76,9 @@ def _remove_quietly(remove_from_store, prefix, file_id):
     try:
         remove_from_store(prefix, file_id)
     except Exception:
-        pass
+        logger.warning(
+            f"Stored file {prefix}-{file_id} could not be removed.", exc_info=1
+        )
 
 
 def _remove_older_than(model, date_column, days_old):
