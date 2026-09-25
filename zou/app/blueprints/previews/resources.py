@@ -454,7 +454,13 @@ def send_storage_file(
     """
     file_size = None
     try:
-        if prefix in ["movies", "original", "preview-backgrounds"]:
+        # The recorded file_size is the one of the normalized movie, the
+        # "previews" version (a "movies" prefix never existed): the low
+        # def and source versions have their own sizes.
+        if (prefix == "previews" and extension == "mp4") or prefix in [
+            "original",
+            "preview-backgrounds",
+        ]:
             if prefix == "preview-backgrounds":
                 preview_file = files_service.get_preview_background_file(
                     preview_file_id
