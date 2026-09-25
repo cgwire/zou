@@ -1,3 +1,4 @@
+import logging
 import gzip
 import os
 import subprocess
@@ -14,6 +15,9 @@ from zou.app.utils import date_helpers
 from flask_fs.backends.local import LocalBackend
 
 from zou.app import config
+
+logger = logging.getLogger(__name__)
+
 
 preview_folder = config.PREVIEW_FOLDER
 local_picture = LocalBackend(
@@ -94,14 +98,14 @@ def upload_entity_thumbnail(entity):
     file_path = local.path("thumbnails-" + str(entity.id))
     if entity.has_avatar:
         file_store.add_picture("thumbnails", str(entity.id), file_path)
-        print(f"{file_path} uploaded")
+        logger.info(f"{file_path} uploaded")
 
 
 def upload_preview(preview_file):
     """
     Upload all files link to preview file entry: orginal file and variants.
     """
-    print(f"upload preview {preview_file.id} ({preview_file.extension})")
+    logger.info(f"upload preview {preview_file.id} ({preview_file.extension})")
 
     local_picture = LocalBackend(
         "local", {"root": os.path.join(preview_folder, "pictures")}
@@ -143,7 +147,7 @@ def upload_preview(preview_file):
     prefix = "previews"
     if os.path.exists(file_path) and not exists_func(prefix, preview_file_id):
         ul_func(prefix, preview_file_id, file_path)
-    print(f"{file_path} uploaded")
+    logger.info(f"{file_path} uploaded")
 
 
 def upload_entity_thumbnails_to_storage(days=None):

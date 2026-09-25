@@ -1,3 +1,4 @@
+import logging
 import copy
 import math
 import os
@@ -66,6 +67,9 @@ from zou.app.exceptions import (
 )
 from zou.app.utils import fs
 from zou.app.utils.progress import NullProgress
+
+logger = logging.getLogger(__name__)
+
 
 REMOTE_NORMALIZE_VERSION = 2
 REMOTE_TILE_VERSION = 1
@@ -1983,11 +1987,11 @@ def reset_movie_files_metadata():
                     "duration": duration,
                 },
             )
-            print(
+            logger.info(
                 f"Size information stored for preview file {preview_file.id}",
             )
         except Exception as e:
-            print(
+            logger.warning(
                 f"Failed to store information for preview file {preview_file.id}: {e}"
             )
 
@@ -2016,11 +2020,11 @@ def reset_picture_files_metadata():
                     "file_size": file_size,
                 },
             )
-            print(
+            logger.info(
                 f"Size information stored for preview file {preview_file.id}",
             )
         except Exception as e:
-            print(
+            logger.warning(
                 f"Failed to store information for preview file {preview_file.id}: {e}"
             )
 
@@ -2215,7 +2219,7 @@ def generate_preview_extra(
     informations of open projects.
     """
     progress = progress or NullProgress()
-    print("Generating preview extras...")
+    logger.info("Generating preview extras...")
     query = _build_preview_extra_query(
         project=project,
         entity_id=entity_id,
@@ -2225,7 +2229,7 @@ def generate_preview_extra(
     )
 
     total = query.count()
-    print(f"{total} previews found.")
+    logger.info(f"{total} previews found.")
     progress.start(total)
     for index, preview_file in enumerate(query.all()):
         try:
@@ -2288,7 +2292,7 @@ def generate_preview_extra(
         progress.advance()
 
     progress.stop()
-    print("Extra information generated.")
+    logger.info("Extra information generated.")
     return total
 
 
@@ -2505,7 +2509,7 @@ def _retrieve_preview_file(config, file_store, prefix, preview_file):
             preview_file.extension,
         )
     except Exception as e:
-        print(f"Failed to get preview file {preview_file.id}: {e}.")
+        logger.warning(f"Failed to get preview file {preview_file.id}: {e}.")
         return None
     return preview_file_path
 
@@ -2521,11 +2525,13 @@ def _generate_thumbnails(preview_file, preview_file_path, total, index):
         save_variants(
             preview_file.id, original_picture_path, with_original=False
         )
-        print(
+        logger.info(
             f"{index:0{len(str(total))}}/{total} Thumbnails generated for {preview_file.id}.",
         )
     except Exception as e:
-        print(f"Failed to generate thumbnails for {preview_file.id}: {e}.")
+        logger.warning(
+            f"Failed to generate thumbnails for {preview_file.id}: {e}."
+        )
 
 
 def _generate_tiles(
@@ -2554,7 +2560,7 @@ def _generate_tiles(
                 os.remove(tile_path)
             except OSError:
                 pass
-            print(
+            logger.info(
                 f"{index:0{len(str(total))}}/{total} Tile "
                 + f"generated for {preview_file.id}.",
             )
@@ -2566,7 +2572,7 @@ def _generate_tiles(
                 "tiles",
                 preview_file_states_service.FAILED,
             )
-        print(
+        logger.warning(
             f"Failed to generate tile for preview file {preview_file.id}: {e}."
         )
 
@@ -2598,11 +2604,11 @@ def _reset_preview_file_metadata(
                 "duration": duration,
             },
         )
-        print(
+        logger.info(
             f"{index:0{len(str(total))}}/{total} Size information stored for {preview_file.id}.",
         )
     except Exception as e:
-        print(
+        logger.warning(
             f"Failed to store information for preview file {preview_file.id}: {e}.",
         )
 

@@ -1,3 +1,4 @@
+import logging
 import email.utils
 import importlib
 import importlib.util
@@ -24,6 +25,8 @@ from sqlalchemy.util import FacadeDict
 
 from zou.app import db
 from zou.app.utils.api import configure_api_from_blueprint
+
+logger = logging.getLogger(__name__)
 
 
 class StaticResource(MethodView):
@@ -291,7 +294,9 @@ def downgrade_plugin_migrations(plugin_path):
     try:
         command.downgrade(alembic_cfg, "base")
     except Exception as e:
-        print(f"⚠️  [Plugins] Downgrade failed for {manifest.id}: {e}")
+        logger.warning(
+            f"⚠️  [Plugins] Downgrade failed for {manifest.id}: {e}"
+        )
 
 
 def create_plugin_package(path, output_path, force=False):
@@ -431,7 +436,7 @@ def download_zip_url(url, temp_dir=None):
     temp_dir = Path(temp_dir)
     zip_path = temp_dir / "plugin.zip"
 
-    print(f"[Plugins] Downloading {url}...")
+    logger.info(f"[Plugins] Downloading {url}...")
 
     response = requests.get(url, stream=True, timeout=300)
     response.raise_for_status()
@@ -440,7 +445,7 @@ def download_zip_url(url, temp_dir=None):
         for chunk in response.iter_content(chunk_size=8192):
             f.write(chunk)
 
-    print(f"[Plugins] Successfully downloaded {url}")
+    logger.info(f"[Plugins] Successfully downloaded {url}")
     return zip_path
 
 
@@ -456,7 +461,7 @@ def clone_git_repo(git_url, temp_dir=None):
     repo_name = git_url.rstrip("/").split("/")[-1].replace(".git", "")
     clone_path = temp_dir / repo_name
 
-    print(f"[Plugins] Cloning {git_url}...")
+    logger.info(f"[Plugins] Cloning {git_url}...")
 
     try:
         subprocess.run(
@@ -465,7 +470,7 @@ def clone_git_repo(git_url, temp_dir=None):
             capture_output=True,
             timeout=300,
         )
-        print(f"[Plugins] Successfully cloned {git_url}")
+        logger.warning(f"[Plugins] Successfully cloned {git_url}")
         return clone_path
     except subprocess.CalledProcessError as e:
         error_msg = e.stderr.decode() if e.stderr else str(e)
