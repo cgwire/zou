@@ -687,6 +687,41 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         send_email.assert_called_once()
         self.assertIn(job["id"], send_email.call_args.args[1])
 
+    def test_playlist_tmp_copies_keep_their_own_file(self):
+        """
+        Two previews of a playlist may carry the same display name (the
+        original file name option): their local copies used to overwrite
+        each other, and pile up in TMP_DIR.
+        """
+        self.generate_fixture_preview_files()
+        movie_fixture = self.get_fixture_file_path(
+            os.path.join("videos", "test_preview_tiles.mp4")
+        )
+        previews = [
+            self.preview_file_1.serialize(),
+            self.preview_file_2.serialize(),
+        ]
+        for preview in previews:
+            file_store.add_movie("previews", preview["id"], movie_fixture)
+        tmp_dir = tempfile.mkdtemp()
+        try:
+            with patch.object(
+                playlists_service.names_service,
+                "get_preview_file_name",
+                return_value="render.mp4",
+            ):
+                copies = playlists_service.retrieve_playlist_tmp_files(
+                    previews, tmp_dir=tmp_dir
+                )
+            paths = [path for path, _ in copies]
+            self.assertEqual(len(set(paths)), 2)
+            self.assertTrue(all(path.startswith(tmp_dir) for path in paths))
+            self.assertEqual([name for _, name in copies], ["render.mp4"] * 2)
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            for preview in previews:
+                file_store.remove_movie("previews", preview["id"])
+
     def test_a_movie_stored_as_low_def_only_is_found(self):
         self.generate_fixture_preview_files()
         movie_fixture = self.get_fixture_file_path(
