@@ -733,35 +733,57 @@ def retrieve_playlist_tmp_files(preview_files, full=False):
     return file_paths
 
 
+def _retrieve_playlist_movie(preview_file):
+    """
+    Local path of the movie of given preview, whichever version the
+    normalization settings left in the store.
+    """
+    last_error = None
+    for prefix in preview_files_service.get_stored_movie_prefixes(
+        preview_file
+    ):
+        try:
+            return fs.get_file_path_and_file(
+                config,
+                file_store.get_local_movie_path,
+                file_store.open_movie,
+                prefix,
+                preview_file["id"],
+                "mp4",
+            )
+        except fs.FileNotFound as error:
+            last_error = error
+    raise last_error
+
+
 def retrieve_playlist_tmp_file(preview_file):
     """
     Download one preview of a playlist to the temp folder, so ffmpeg can
     concatenate it locally.
     """
-    if preview_file["extension"] == "mp4":
-        get_path_func = file_store.get_local_movie_path
-        open_func = file_store.open_movie
-        prefix = "previews"
-    elif preview_file["extension"] == "png":
-        get_path_func = file_store.get_local_picture_path
-        open_func = file_store.open_picture
-        prefix = "original"
-    else:
-        get_path_func = file_store.get_local_file_path
-        open_func = file_store.open_file
-        prefix = "previews"
-
     # Same cache entry as the preview routes, written the same way: a
     # download interrupted halfway must not leave a truncated file that
     # the next build would concatenate as is.
-    file_path = fs.get_file_path_and_file(
-        config,
-        get_path_func,
-        open_func,
-        prefix,
-        preview_file["id"],
-        preview_file["extension"],
-    )
+    if preview_file["extension"] == "mp4":
+        file_path = _retrieve_playlist_movie(preview_file)
+    elif preview_file["extension"] == "png":
+        file_path = fs.get_file_path_and_file(
+            config,
+            file_store.get_local_picture_path,
+            file_store.open_picture,
+            "original",
+            preview_file["id"],
+            "png",
+        )
+    else:
+        file_path = fs.get_file_path_and_file(
+            config,
+            file_store.get_local_file_path,
+            file_store.open_file,
+            "previews",
+            preview_file["id"],
+            preview_file["extension"],
+        )
     file_name = names_service.get_preview_file_name(preview_file["id"])
     tmp_file_path = os.path.join(config.TMP_DIR, file_name)
     copyfile(file_path, tmp_file_path)

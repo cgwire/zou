@@ -852,6 +852,29 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
         self.assertEqual(persisted["status"], "broken")
         self.assertFalse(os.path.exists(tmp.name))
 
+    def test_locate_stored_movie_tries_every_version(self):
+        """
+        SKIP_NORMALIZATION_HIGHDEF keeps the low def movie only, and the
+        source only option keeps the upload: a reader pinned on the
+        "previews" version fails on those instances.
+        """
+        preview_file_id = str(self.preview_file.id)
+        preview_file = {"id": preview_file_id, "extension": "mp4", "data": {}}
+        movie_fixture = self.get_fixture_file_path(
+            os.path.join("videos", "test_preview_tiles.mp4")
+        )
+        with self.assertRaises(PreviewFileNotFoundException):
+            preview_files_service.locate_stored_movie(preview_file)
+
+        file_store.add_movie("lowdef", preview_file_id, movie_fixture)
+        try:
+            path = preview_files_service.locate_stored_movie(preview_file)
+            self.assertTrue(os.path.exists(path))
+            self.assertIn("lowdef", os.path.basename(path))
+        finally:
+            file_store.remove_movie("lowdef", preview_file_id)
+
+
     def test_extract_skips_metadata_only_previews(self):
         """
         Imported-only previews have no local binary — extract functions

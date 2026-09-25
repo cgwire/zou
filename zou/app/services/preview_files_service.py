@@ -1221,14 +1221,7 @@ def extract_frame_from_preview_file(preview_file, frame_number):
         raise PreviewFileNotFoundException
 
     if preview_file["extension"] == "mp4":
-        preview_file_path = fs.get_file_path_and_file(
-            config,
-            file_store.get_local_movie_path,
-            file_store.open_movie,
-            "previews",
-            preview_file["id"],
-            "mp4",
-        )
+        preview_file_path = locate_stored_movie(preview_file)
     else:
         raise PreviewFileNotFoundException
 
@@ -1594,14 +1587,8 @@ def extract_tile_from_preview_file(preview_file):
         # Imported via sync-push: metadata only. Skip silently.
         return None
     if preview_file["extension"] == "mp4":
-        preview_file_path = fs.get_file_path_and_file(
-            config,
-            file_store.get_local_movie_path,
-            file_store.open_movie,
-            "previews",
-            preview_file["id"],
-            "mp4",
-        )
+        # A tile is 100 pixels high: the low def movie is enough.
+        preview_file_path = locate_stored_movie(preview_file, lowdef=True)
         extracted_tile_path = movie.generate_tile(preview_file_path)
         return extracted_tile_path
     else:
@@ -1629,13 +1616,12 @@ def reset_movie_files_metadata():
     """
     for preview_file in _get_preview_files_to_reset("mp4"):
         try:
-            preview_file_path = fs.get_file_path_and_file(
-                config,
-                file_store.get_local_movie_path,
-                file_store.open_movie,
-                "previews",
-                str(preview_file.id),
-                "mp4",
+            preview_file_path = locate_stored_movie(
+                {
+                    "id": str(preview_file.id),
+                    "extension": "mp4",
+                    "data": files_service.get_preview_file_data(preview_file),
+                }
             )
             file_size = os.path.getsize(preview_file_path)
             width, height = movie.get_movie_size(preview_file_path)
@@ -1887,18 +1873,31 @@ def generate_preview_extra(
         except ObjectDeletedError:
             progress.advance()
             continue
-        prefix = "previews" if preview_file.extension == "mp4" else "original"
+        if preview_file.extension == "mp4":
+            prefixes = get_stored_movie_prefixes(
+                {"data": files_service.get_preview_file_data(preview_file)}
+            )
+        else:
+            prefixes = ["original"]
         if config.FS_BACKEND != "local":
-            preview_file_already_in_cache = os.path.isfile(
-                os.path.join(
-                    config.TMP_DIR,
-                    f"cache-{prefix}-{preview_file_id}.{preview_file.extension}",
+            preview_file_already_in_cache = any(
+                os.path.isfile(
+                    os.path.join(
+                        config.TMP_DIR,
+                        f"cache-{prefix}-{preview_file_id}"
+                        f".{preview_file.extension}",
+                    )
                 )
+                for prefix in prefixes
             )
         try:
-            preview_file_path = _retrieve_preview_file(
-                config, file_store, prefix, preview_file
-            )
+            preview_file_path = None
+            for prefix in prefixes:
+                preview_file_path = _retrieve_preview_file(
+                    config, file_store, prefix, preview_file
+                )
+                if preview_file_path is not None:
+                    break
             if with_tiles:
                 _generate_tiles(
                     file_store,
@@ -1922,7 +1921,8 @@ def generate_preview_extra(
                 and not preview_file_already_in_cache
             ):
                 try:
-                    os.remove(preview_file_path)
+                    if preview_file_path is not None:
+                        os.remove(preview_file_path)
                 except OSError:
                     pass
         progress.advance()
@@ -2083,6 +2083,43 @@ def _retrieve_stored_movie(preview_file):
         if movie_path is not None:
             return movie_path
     return None
+
+
+def get_stored_movie_prefixes(preview_file, lowdef=False):
+    """
+    Storage prefixes to try for the movie of given preview file dict, best
+    first. The normalization settings decide which versions exist
+    (SKIP_NORMALIZATION_HIGHDEF keeps lowdef only, SKIP_NORMALIZATION_FULL
+    with PREVIEW_SAVE_SOURCE_FILE keeps the source only), so no reader may
+    assume the "previews" one.
+    """
+    data = preview_file.get("data") or {}
+    recorded = data.get(files_service.MOVIE_PREFIXES_KEY) or []
+    return files_service.get_movie_prefixes(recorded, lowdef)
+
+
+def locate_stored_movie(preview_file, lowdef=False):
+    """
+    Local path of a stored version of the movie of given preview file dict,
+    fetched from the store when needed. Raises PreviewFileNotFoundException
+    when the store holds none of the versions.
+    """
+    preview_file_id = str(preview_file["id"])
+    for prefix in get_stored_movie_prefixes(preview_file, lowdef):
+        try:
+            return fs.get_file_path_and_file(
+                config,
+                file_store.get_local_movie_path,
+                file_store.open_movie,
+                prefix,
+                preview_file_id,
+                "mp4",
+            )
+        except fs.FileNotFound:
+            continue
+    raise PreviewFileNotFoundException(
+        f"No stored movie for preview file {preview_file_id}."
+    )
 
 
 def _retrieve_preview_file(config, file_store, prefix, preview_file):

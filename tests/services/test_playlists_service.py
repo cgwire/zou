@@ -1,3 +1,7 @@
+import os
+import shutil
+import tempfile
+
 from contextlib import contextmanager
 from datetime import datetime
 from unittest.mock import patch
@@ -7,6 +11,7 @@ from tests.base import ApiDBTestCase
 from zou.app import db
 from zou.app.models.build_job import BuildJob
 from zou.app.models.playlist import Playlist
+from zou.app.stores import file_store
 from zou.app.services import (
     playlists_service,
     entities_service,
@@ -496,6 +501,25 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         self.assertEqual(job["status"], "succeeded")
         self.assertIn("concat filter", job["message"])
         self.assertIn("stream number", job["message"])
+
+
+    def test_a_movie_stored_as_low_def_only_is_found(self):
+        self.generate_fixture_preview_files()
+        movie_fixture = self.get_fixture_file_path(
+            os.path.join("videos", "test_preview_tiles.mp4")
+        )
+        preview = self.preview_file_1.serialize()
+        file_store.add_movie("lowdef", preview["id"], movie_fixture)
+        tmp_dir = tempfile.mkdtemp()
+        try:
+            path, _ = playlists_service.retrieve_playlist_tmp_file(
+                preview, tmp_dir
+            )
+            self.assertTrue(os.path.exists(path))
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            file_store.remove_movie("lowdef", preview["id"])
+
 
     def test_an_entity_is_added_with_the_preview_it_names(self):
         self.generate_fixture_preview_files()
