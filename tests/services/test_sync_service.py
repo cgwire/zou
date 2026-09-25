@@ -751,9 +751,11 @@ class DownloadFromAnotherInstanceTestCase(unittest.TestCase):
                 downloaded.write(b"content")
             return mock.Mock(status_code=status_code)
 
+        # A failed attempt waits half a second before the next one: the
+        # waits are patched out.
         with mock.patch.object(
             sync_service.gazu.client, "download", side_effect=fake_download
-        ) as downloaded:
+        ) as downloaded, mock.patch.object(sync_service.time, "sleep"):
             sync_service.download_file_from_another_instance(
                 "/pictures/thumbnails/persons/id.png",
                 self.file_path,
