@@ -731,6 +731,7 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
             extension="zip",
             task_id=self.task.id,
             person_id=self.person.id,
+            status="ready",
         )
         payload = b"PK\x03\x04fake-zip-payload"
         with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
@@ -836,6 +837,7 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
             extension="zip",
             task_id=positioned.task_id,
             person_id=self.person.id,
+            status="ready",
         )
         sibling_payload = b"PK\x03\x04sibling-position"
         with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
@@ -899,6 +901,7 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
             extension="gif",
             task_id=self.task.id,
             person_id=self.person.id,
+            status="ready",
         )
         payload = b"GIF89a-fake-animated-payload"
         with tempfile.NamedTemporaryFile(suffix=".gif", delete=False) as tmp:
@@ -979,6 +982,7 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
             extension="png",
             task_id=self.task.id,
             person_id=self.person.id,
+            status="ready",
         )
         payload = b"\x89PNG\r\n\x1a\n-fake-original-png"
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:

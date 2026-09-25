@@ -9,6 +9,7 @@ from zou.app.blueprints.previews import resources as preview_resources
 from zou.app.models.preview_file_storage_state import (
     PreviewFileStorageState,
 )
+from zou.app.services import files_service
 from zou.app.services import preview_file_states_service as states_service
 from zou.app.services import preview_files_service
 from zou.app.stores import file_store, queue_store, redis_client
@@ -195,3 +196,94 @@ class PreviewFileStatesRoutesTestCase(ApiDBTestCase):
             self.assertEqual(self.get_tile().status_code, 404)
         job_queue.enqueue.assert_called_once()
         redis_client.get_client(config.KV_JOB_DB_INDEX).delete(attempt_key)
+
+    def set_processing(self):
+        preview_file = files_service.get_preview_file_raw(self.preview_file_id)
+        preview_file.update({"status": "processing"})
+        files_service.clear_preview_file_cache(self.preview_file_id)
+        # setUp's upload runs synchronously (no job queue in tests) and
+        # already recorded every variant as "ok". A preview file going
+        # back to "processing" (a re-upload building fresh variants) has
+        # no confirmed storage yet, so the fixture is reset to match.
+        for row in PreviewFileStorageState.query.filter_by(
+            preview_file_id=self.preview_file_id
+        ):
+            db.session.delete(row)
+        db.session.commit()
+        states_service.clear_file_states_cache(self.preview_file_id)
+
+    def test_a_processing_preview_answers_202_to_a_json_client(self):
+        self.set_processing()
+        response = self.app.get(
+            f"/pictures/thumbnails/preview-files/{self.preview_file_id}.png",
+            headers={
+                **self.base_headers,
+                "Accept": "application/json, */*;q=0.1",
+            },
+        )
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(response.headers["Retry-After"], "5")
+        self.assertIn("no-store", response.headers["Cache-Control"])
+        self.assertEqual(response.json["status"], "processing")
+        # Nothing is missing: nothing is recorded.
+        self.assertIsNone(self.state("pictures", "thumbnails"))
+
+    def test_a_processing_preview_answers_404_to_a_browser(self):
+        self.set_processing()
+        response = self.app.get(
+            f"/pictures/thumbnails/preview-files/{self.preview_file_id}.png",
+            headers={
+                **self.base_headers,
+                "Accept": "image/avif,image/webp,image/*,*/*;q=0.8",
+            },
+        )
+        self.assertEqual(response.status_code, 404)
+        self.assertIsNone(self.state("pictures", "thumbnails"))
+
+    def test_a_processing_preview_answers_404_to_a_client_without_accept(
+        self,
+    ):
+        self.set_processing()
+        response = self.app.get(
+            f"/pictures/thumbnails/preview-files/{self.preview_file_id}.png",
+            headers=self.base_headers,
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_a_processing_movie_answers_202_to_a_json_client(self):
+        self.set_processing()
+        response = self.app.get(
+            f"/movies/originals/preview-files/{self.preview_file_id}.mp4",
+            headers={
+                **self.base_headers,
+                "Accept": "application/json, */*;q=0.1",
+            },
+        )
+        self.assertEqual(response.status_code, 202)
+        self.assertIsNone(self.state("movies", "previews"))
+
+    def test_a_missing_file_still_answers_404_and_is_recorded(self):
+        file_store.remove_picture("thumbnails", self.preview_file_id)
+        response = self.app.get(
+            f"/pictures/thumbnails/preview-files/{self.preview_file_id}.png",
+            headers={
+                **self.base_headers,
+                "Accept": "application/json, */*;q=0.1",
+            },
+        )
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(self.state("pictures", "thumbnails"), "missing")
+
+    def test_the_shared_helper_answers_202_too(self):
+        from zou.app import app as flask_app
+
+        self.set_processing()
+        with flask_app.test_request_context(
+            headers={"Accept": "application/json, */*;q=0.1"}
+        ):
+            # What the shared playlist routes call, without a JWT.
+            response = preview_resources.send_preview_picture_file(
+                "thumbnails", self.preview_file_id
+            )
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(response.headers["Retry-After"], "5")
