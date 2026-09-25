@@ -795,7 +795,7 @@ def import_last_changes_from_another_instance(
     with app.app_context():
         sync_service.init(source, login, password)
         print("Last events syncing started.")
-        sync_service.run_last_events_sync(minutes=minutes, limit=300)
+        sync_service.run_last_events_sync(minutes=minutes, limit=limit)
         print("Last events syncing ended.")
 
 
@@ -810,7 +810,7 @@ def import_last_file_changes_from_another_instance(
     with app.app_context():
         sync_service.init(source, login, password)
         print("Last files syncing started.")
-        sync_service.run_last_events_files(minutes=minutes, limit=50)
+        sync_service.run_last_events_files(minutes=minutes, limit=limit)
         print("Last files syncing ended.")
 
 
