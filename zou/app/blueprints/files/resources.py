@@ -59,15 +59,21 @@ def send_storage_file(
     open_file = file_store.open_file
     mimetype = "application/octet-stream"
 
-    file_path = fs.get_file_path_and_file(
-        config, get_local_path, open_file, prefix, working_file_id, extension
-    )
-
     download_name = ""
     if as_attachment:
         download_name = working_file_id
 
     try:
+        # The lookup is what raises FileNotFound: it has to sit inside
+        # the try, or a missing binary is a 500 instead of a 404.
+        file_path = fs.get_file_path_and_file(
+            config,
+            get_local_path,
+            open_file,
+            prefix,
+            working_file_id,
+            extension,
+        )
         return flask_send_file(
             file_path,
             conditional=True,
