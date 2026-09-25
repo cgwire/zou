@@ -44,7 +44,7 @@ class ArgsMixin(object):
                 elif len(descriptor) == 2:
                     name, default = descriptor
                 elif len(descriptor) == 1:
-                    name = descriptor
+                    name = descriptor[0]
                 else:
                     raise ValueError
             elif isinstance(descriptor, str):

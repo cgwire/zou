@@ -367,6 +367,14 @@ class SyncCommandsTestCase(ApiDBTestCase):
         events_sync.assert_called_once_with(minutes=5, limit=7)
         files_sync.assert_called_once_with(minutes=5, limit=9)
 
+    def test_clean_tasks_data_requires_a_project_id(self):
+        runner = CliRunner()
+        with patch.object(commands, "reset_tasks_data") as reset:
+            result = runner.invoke(cli, ["clean-tasks-data"])
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("--project-id", result.output)
+        reset.assert_not_called()
+
 
 class CreateAdminCommandTestCase(ApiDBTestCase):
     """
