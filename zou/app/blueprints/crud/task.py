@@ -233,11 +233,20 @@ class TasksResource(BaseModelsResource, ArgsMixin):
         """
         try:
             data = request.json
+            if not isinstance(data, dict):
+                raise WrongParameterException("A JSON object is expected.")
+            for key in ("task_type_id", "entity_id"):
+                if not fields.is_valid_id(data.get(key)):
+                    raise WrongParameterException(
+                        f"A valid {key} is required."
+                    )
             # task.name is NOT NULL; default it like create_task() does so a
             # client omitting it gets a task instead of an IntegrityError.
             data["name"] = data.get("name") or "main"
             is_assignees = "assignees" in data
             assignees = None
+            if is_assignees and not isinstance(data["assignees"], list):
+                raise WrongParameterException("assignees must be a list.")
 
             task_type = tasks_service.get_task_type(data["task_type_id"])
             entity = entities_service.get_entity(data["entity_id"])
