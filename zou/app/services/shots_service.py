@@ -1427,12 +1427,12 @@ def get_weighted_quotas(
     result = query.all()
 
     for task, nb_frames, task_person_id in result:
-        date = task.done_date
+        end_date = task.done_date
         if feedback:
-            date = task.end_date
+            end_date = task.end_date
 
         business_days = (
-            date_helpers.get_business_days(task.real_start_date, date) + 1
+            date_helpers.get_business_days(task.real_start_date, end_date) + 1
         )
         if nb_frames is not None:
             nb_frames = round(nb_frames / business_days) or 0
@@ -1441,8 +1441,12 @@ def get_weighted_quotas(
 
         nb_drawings = task.nb_drawings or 0
 
-        for x in range((date - task.real_start_date).days + 1):
-            if date.weekday() < 5:
+        # Spread the work over the days the task was actually in progress,
+        # from the wip date to the end date. The cursor used to start at
+        # the end date, which pushed every frame past the period.
+        day = task.real_start_date
+        for _ in range((end_date - task.real_start_date).days + 1):
+            if day.weekday() < 5:
                 entry_id = str(task_person_id)
                 # We get quotas for a specific person split by task types
                 if person_id is not None:
@@ -1452,13 +1456,13 @@ def get_weighted_quotas(
                     _add_quota_entry(
                         quotas,
                         entry,
-                        date,
+                        day,
                         timezone,
                         nb_frames,
                         nb_drawings,
                         fps,
                     )
-            date = date + timedelta(1)
+            day = day + timedelta(1)
     return quotas
 
 
