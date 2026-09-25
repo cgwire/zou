@@ -31,6 +31,8 @@ class RouteTileTestCase(ApiDBTestCase):
         fs.rm_rf(TEST_FOLDER)
 
     def test_extract_tile(self):
+        # A small project canvas keeps the normalization of the upload fast.
+        self.project.update({"resolution": "320x180"})
         path = f"/pictures/preview-files/{self.preview_file_id}"
         file_path_fixture = self.get_fixture_file_path(
             "videos/test_preview_small.mp4"
@@ -49,7 +51,7 @@ class RouteTileTestCase(ApiDBTestCase):
         result_image = Image.open(result_file_path)
         # The fixture is anamorphic (2.39 display in a 16:9 raster). Movie
         # normalization now letterboxes it into the 16:9 project canvas
-        # (default 1920x1080), so the tile follows the 16:9 display ratio
+        # (320x180 here), so the tile follows the 16:9 display ratio
         # (8 * ceil(16/9 * 100) = 1424) instead of the source's 2.39 ratio.
         # Its 12 frames fill 2 rows of 8.
         self.assertEqual(result_image.size, (1424, 200))
