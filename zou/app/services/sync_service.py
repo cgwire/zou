@@ -1716,8 +1716,8 @@ def download_file_from_another_instance(
 
     with app.app_context():
         if force or not exist_func(prefix, id):
-            for attemps_count in range(0, number_attemps):
-                if attemps_count > 0:
+            for attempts_count in range(0, number_attemps):
+                if attempts_count > 0:
                     time.sleep(0.5)
                 try:
                     response = gazu.client.download(path, file_path)
@@ -1728,7 +1728,7 @@ def download_file_from_another_instance(
                         e.status_code = response.status_code
                         raise e
                 except Exception as e:
-                    if attemps_count + 1 == number_attemps:
+                    if attempts_count + 1 == number_attemps:
                         if isinstance(e, gazu.exception.DownloadFileException):
                             error = f"Download failed ({path}):\n{e}"
                         else:
@@ -1754,7 +1754,7 @@ def download_file_from_another_instance(
                     save_func(prefix, id, file_path)
                     break
                 except Exception:
-                    if attemps_count + 1 == number_attemps:
+                    if attempts_count + 1 == number_attemps:
                         error = f"Upload failed ({path}):\n{traceback.format_exc()}"
                         write_multithread_dict_errors(
                             dict_errors,

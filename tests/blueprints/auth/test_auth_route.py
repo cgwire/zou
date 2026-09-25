@@ -1221,7 +1221,7 @@ class ChangePasswordErrorsTestCase(ApiDBTestCase):
     def test_change_password_while_locked_out(self):
         """
         check_auth applies the login lockout here too, and the handler
-        used to let TooMuchLoginFailedAttemps out as a 500.
+        used to let TooManyLoginFailedAttempts out as a 500.
         """
         _, headers = self.login()
         Person.get(self.person_dict["id"]).update(

@@ -23,11 +23,11 @@ from zou.app.exceptions import (
     MissingOTPException,
     NoAuthStrategyConfigured,
     PersonNotFoundException,
-    TooMuchLoginFailedAttemps,
+    TooManyLoginFailedAttempts,
     TOTPAlreadyEnabledException,
     TOTPNotEnabledException,
     TwoFactorAuthenticationNotEnabledException,
-    UnactiveUserException,
+    InactiveUserException,
     UserCantConnectDueToNoFallback,
     WrongOTPException,
     WrongPasswordException,
@@ -115,7 +115,7 @@ def check_auth(
         _spend_password_check_time(password)
         raise WrongUserException()
 
-    login_failed_attemps = check_login_failed_attemps(person)
+    login_failed_attemps = check_login_failed_attempts(person)
 
     strategy = app.config["AUTH_STRATEGY"]
     try:
@@ -128,7 +128,7 @@ def check_auth(
         else:
             raise NoAuthStrategyConfigured()
     except WrongPasswordException:
-        update_login_failed_attemps(
+        update_login_failed_attempts(
             person["id"],
             login_failed_attemps + 1,
             date_helpers.get_utc_now_datetime(),
@@ -138,7 +138,7 @@ def check_auth(
     # Past the password, and before the second factor: a deactivated
     # account does not hand out the list of its enabled 2FA methods.
     if not person.get("active", False):
-        raise UnactiveUserException()
+        raise InactiveUserException()
 
     if not no_otp and person_two_factor_authentication_enabled(person):
         if not check_two_factor_authentication(
@@ -148,7 +148,7 @@ def check_auth(
             fido_authentication_response,
             recovery_code,
         ):
-            update_login_failed_attemps(
+            update_login_failed_attempts(
                 person["id"],
                 login_failed_attemps + 1,
                 date_helpers.get_utc_now_datetime(),
@@ -156,7 +156,7 @@ def check_auth(
             raise WrongOTPException()
 
     if login_failed_attemps > 0:
-        update_login_failed_attemps(person["id"], 0)
+        update_login_failed_attempts(person["id"], 0)
 
     # This dict is what the login route hands back to the client, and it
     # was read with the unsafe serialization to reach the secrets above.
@@ -268,13 +268,13 @@ def ldap_auth_strategy(person, password, app):
         raise UserCantConnectDueToNoFallback()
 
 
-def update_login_failed_attemps(
+def update_login_failed_attempts(
     person_id, login_failed_attemps, last_login_failed=None
 ):
     """
-    Update login failed attemps for a person_id.
+    Update login failed attempts for a person_id.
 
-    The person cache is deliberately left alone: check_login_failed_attemps
+    The person cache is deliberately left alone: check_login_failed_attempts
     reads the counter from the row, so nothing needs the cached copy to be
     in step, and clear_person_cache drops every memoized person lookup for
     the whole instance. Calling it here let an anonymous caller keep that
@@ -829,7 +829,7 @@ def hash_recovery_codes(recovery_codes):
     ]
 
 
-def check_login_failed_attemps(person):
+def check_login_failed_attempts(person):
     """
     Return the count to keep going from, raising while the account sits in
     a lockout window.
@@ -843,7 +843,7 @@ def check_login_failed_attemps(person):
     The counter is read from the row, not from the person dict: that dict
     comes from a lookup memoized for two minutes, and keeping it in step
     meant dropping the whole instance person cache on every wrong
-    password. See update_login_failed_attemps.
+    password. See update_login_failed_attempts.
     """
     row = Person.get(person["id"])
     login_failed_attemps = row.login_failed_attemps or 0
@@ -854,9 +854,9 @@ def check_login_failed_attemps(person):
     if last_login_failed is not None:
         locked_until = last_login_failed + LOGIN_LOCKOUT_DELAY
         if locked_until > date_helpers.get_utc_now_datetime():
-            raise TooMuchLoginFailedAttemps()
+            raise TooManyLoginFailedAttempts()
 
-    update_login_failed_attemps(person["id"], 0)
+    update_login_failed_attempts(person["id"], 0)
     return 0
 
 
