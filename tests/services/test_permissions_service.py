@@ -237,6 +237,21 @@ class ProjectAccessTestCase(PermissionsTestCase):
                     self.project_id
                 )
 
+    def test_sharing_a_filter_is_a_project_manager_privilege(self):
+        self.join_team(self.a_user("manager"))
+        self.join_team(self.a_user("artist"))
+
+        with self.as_role("manager"):
+            self.assertTrue(
+                permissions_service.can_share_filter(self.project_id)
+            )
+            # A filter of no production cannot be shared at all.
+            self.assertFalse(permissions_service.can_share_filter(None))
+        with self.as_role("artist"):
+            self.assertFalse(
+                permissions_service.can_share_filter(self.project_id)
+            )
+
     def test_check_manager_project_access(self):
         self.join_team(self.a_user("manager"))
 
