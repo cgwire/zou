@@ -15,6 +15,7 @@ from rq.timeouts import BaseTimeoutException
 from PIL import Image
 
 from sqlalchemy.orm import aliased
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
 
 from zou.app import config
@@ -190,13 +191,16 @@ def update_preview_file(preview_file_id, data, silent=False):
     """
     Update given preview file and notify the clients, unless silent.
     """
+    # Job workers may hit a transient database error right after the
+    # request that created the row committed; that is what the retries
+    # are for. A row that is not there will not appear in six seconds.
     try:
         preview_file = files_service.get_preview_file_raw(preview_file_id)
-    except Exception:
+    except OperationalError:
         try:
             time.sleep(1)
             preview_file = files_service.get_preview_file_raw(preview_file_id)
-        except Exception:
+        except OperationalError:
             time.sleep(5)
             preview_file = files_service.get_preview_file_raw(preview_file_id)
     return update_preview_file_raw(preview_file, data, silent=silent)

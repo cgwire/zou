@@ -896,6 +896,15 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
                     preview_file
                 )
 
+    def test_update_preview_file_does_not_retry_a_missing_row(self):
+        # The retries are for transient database errors on job workers; a
+        # deleted preview used to cost six seconds of sleep before raising.
+        with patch.object(preview_files_service.time, "sleep") as sleep:
+            with self.assertRaises(PreviewFileNotFoundException):
+                preview_files_service.update_preview_file(
+                    fields.gen_uuid(), {"status": "broken"}
+                )
+        sleep.assert_not_called()
 
     def test_extract_skips_metadata_only_previews(self):
         """
