@@ -502,6 +502,27 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         self.assertIn("concat filter", job["message"])
         self.assertIn("stream number", job["message"])
 
+    def test_build_playlist_job_mails_the_finished_build(self):
+        # The job dict handed to the queue says "running" for ever: the
+        # status to test is the one the build returns.
+        self.generate_fixture_preview_files()
+        self.generate_fixture_playlists()
+        playlist = self.playlist.serialize()
+        job = playlists_service.start_build_job(playlist)
+        finished = {**job, "status": "succeeded"}
+
+        with patch.object(
+            playlists_service,
+            "build_playlist_movie_file",
+            return_value=finished,
+        ), patch.object(playlists_service.emails, "send_email") as send_email:
+            playlists_service.build_playlist_job(
+                playlist, job, [], None, self.user["email"], False, False
+            )
+
+        send_email.assert_called_once()
+        self.assertIn(job["id"], send_email.call_args.args[1])
+
 
     def test_a_movie_stored_as_low_def_only_is_found(self):
         self.generate_fixture_preview_files()
