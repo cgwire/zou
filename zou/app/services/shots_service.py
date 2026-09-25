@@ -23,7 +23,7 @@ from zou.app.models.project import Project
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.subscription import Subscription
-from zou.app.models.task import Task, TaskPersonLink
+from zou.app.models.task import Task
 from zou.app.models.time_spent import TimeSpent
 
 from zou.app.services import (
@@ -376,49 +376,18 @@ def prepare_shots_and_tasks(criterions=None, compact=False):
         .all()
     )
 
-    task_query = apply_filters(
-        Task.query.join(Entity, Task.entity_id == Entity.id).join(
-            Sequence, Sequence.id == Entity.parent_id
+    def apply_task_filters(query):
+        return apply_filters(
+            query.join(Sequence, Sequence.id == Entity.parent_id)
         )
-    ).with_entities(
-        # uuid::text in SQL: casting uuids per task row in Python shows
-        # up in profiles on task-heavy productions.
-        cast(Task.id, Text).label("id"),
-        cast(Task.entity_id, Text).label("entity_id"),
-        cast(Task.task_type_id, Text).label("task_type_id"),
-        cast(Task.task_status_id, Text).label("task_status_id"),
-        Task.priority,
-        Task.estimation,
-        Task.duration,
-        Task.retake_count,
-        Task.real_start_date,
-        Task.end_date,
-        Task.start_date,
-        Task.due_date,
-        Task.done_date,
-        Task.last_comment_date,
-        cast(Task.last_preview_file_id, Text).label("last_preview_file_id"),
-        Task.nb_assets_ready,
-        Task.difficulty,
-        Task.nb_drawings,
-        Task.data,
-    )
-    if assigned_to:
-        task_query = task_query.filter(user_service.build_assignee_filter())
-    task_rows = task_query.all()
 
-    link_query = apply_filters(
-        db.session.query(TaskPersonLink)
-        .join(Task, TaskPersonLink.task_id == Task.id)
-        .join(Entity, Task.entity_id == Entity.id)
-        .join(Sequence, Sequence.id == Entity.parent_id)
-    ).with_entities(
-        cast(TaskPersonLink.task_id, Text),
-        cast(TaskPersonLink.person_id, Text),
+    tasks_by_entity, build_task = entities_service.fetch_entity_task_map(
+        apply_task_filters,
+        subscription_map,
+        SHOTS_AND_TASKS_TASK_FIELDS,
+        assigned_to=assigned_to,
+        compact=compact,
     )
-    if assigned_to:
-        link_query = link_query.filter(user_service.build_assignee_filter())
-    link_rows = link_query.all()
 
     not_allowed_map = None
     if "vendor_departments" in criterions:
@@ -429,73 +398,6 @@ def prepare_shots_and_tasks(criterions=None, compact=False):
                 set(row.project_id for row in shot_rows),
             )
         )
-
-    assignees_by_task = {}
-    for task_id, person_id in link_rows:
-        if person_id:
-            assignees_by_task.setdefault(task_id, []).append(person_id)
-
-    tasks_by_entity = {}
-    for row in task_rows:
-        tasks_by_entity.setdefault(row.entity_id, []).append(row)
-
-    if compact:
-
-        def build_task(row):
-            return [
-                row.id,
-                row.duration,
-                fields.serialize_datetime(row.due_date),
-                fields.serialize_datetime(row.end_date),
-                fields.serialize_datetime(row.done_date),
-                row.entity_id,
-                row.estimation,
-                subscription_map.get(row.id, False),
-                fields.serialize_datetime(row.last_comment_date),
-                row.last_preview_file_id,
-                row.nb_assets_ready,
-                row.priority or 0,
-                fields.serialize_datetime(row.real_start_date),
-                row.retake_count,
-                fields.serialize_datetime(row.start_date),
-                row.difficulty,
-                row.nb_drawings,
-                row.task_status_id,
-                row.task_type_id,
-                assignees_by_task.get(row.id, []),
-                fields.serialize_value(row.data),
-            ]
-
-    else:
-
-        def build_task(row):
-            return {
-                "id": row.id,
-                "duration": row.duration,
-                "due_date": fields.serialize_datetime(row.due_date),
-                "end_date": fields.serialize_datetime(row.end_date),
-                "done_date": fields.serialize_datetime(row.done_date),
-                "entity_id": row.entity_id,
-                "estimation": row.estimation,
-                "is_subscribed": subscription_map.get(row.id, False),
-                "last_comment_date": fields.serialize_datetime(
-                    row.last_comment_date
-                ),
-                "last_preview_file_id": row.last_preview_file_id,
-                "nb_assets_ready": row.nb_assets_ready,
-                "priority": row.priority or 0,
-                "real_start_date": fields.serialize_datetime(
-                    row.real_start_date
-                ),
-                "retake_count": row.retake_count,
-                "start_date": fields.serialize_datetime(row.start_date),
-                "difficulty": row.difficulty,
-                "nb_drawings": row.nb_drawings,
-                "task_status_id": row.task_status_id,
-                "task_type_id": row.task_type_id,
-                "assignees": assignees_by_task.get(row.id, []),
-                "data": fields.serialize_value(row.data),
-            }
 
     def iterate():
         for row in shot_rows:
