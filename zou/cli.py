@@ -896,10 +896,11 @@ def clean_tasks_data(project_id):
     """
     Reset task models data (retake count, wip start date and end date)
     """
-    if project_id is not None:
-        from zou.app.utils import commands
+    if project_id is None:
+        raise click.UsageError("--project-id is required.")
+    from zou.app.utils import commands
 
-        commands.reset_tasks_data(project_id)
+    commands.reset_tasks_data(project_id)
 
 
 @cli.command()
