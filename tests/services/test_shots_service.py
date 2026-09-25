@@ -216,7 +216,21 @@ class LookupTestCase(ShotsTestCase):
         self.assertRaises(
             SequenceNotFoundException,
             shots_service.get_sequence_from_shot,
-            orphan,
+            orphan.serialize(),
+        )
+
+    def test_a_sequence_outside_any_episode_leads_to_no_episode(self):
+        # Entity.get(None) returns None rather than raising, so the missing
+        # parent used to surface as an AttributeError.
+        flat = Entity.create(
+            name="SQFLAT",
+            project_id=self.project.id,
+            entity_type_id=self.sequence_type.id,
+        )
+        self.assertRaises(
+            EpisodeNotFoundException,
+            shots_service.get_episode_from_sequence,
+            flat.serialize(),
         )
 
     def test_an_episode_is_read_by_name_inside_its_production(self):

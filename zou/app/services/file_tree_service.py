@@ -23,7 +23,9 @@ from zou.app.services import (
     tasks_service,
 )
 from zou.app.services.exception import (
+    EpisodeNotFoundException,
     MalformedFileTreeException,
+    SequenceNotFoundException,
     WrongFileTreeFileException,
     WrongPathFormatException,
     TaskNotFoundException,
@@ -718,13 +720,20 @@ def get_folder_from_episode(entity, field="name"):
         episode = entity
     else:
         if shots_service.is_shot(entity) or shots_service.is_scene(entity):
-            sequence = shots_service.get_sequence_from_shot(entity)
+            try:
+                sequence = shots_service.get_sequence_from_shot(entity)
+            except SequenceNotFoundException:
+                sequence = None
         elif shots_service.is_sequence(entity):
             sequence = entity
-        # An entity that is none of those (an asset) has no sequence to
-        # walk up from, and falls back below like a missing episode does.
+        # An entity that is none of those (an asset), a shot without a
+        # sequence or a sequence without an episode (a production that is
+        # not a tv show) has nothing to walk up to, and falls back below.
         if sequence is not None:
-            episode = shots_service.get_episode_from_sequence(sequence)
+            try:
+                episode = shots_service.get_episode_from_sequence(sequence)
+            except EpisodeNotFoundException:
+                episode = None
 
     try:
         episode_name = episode[field]
