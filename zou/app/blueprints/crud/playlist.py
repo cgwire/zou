@@ -2,9 +2,6 @@ from flask_jwt_extended import jwt_required
 from sqlalchemy import or_
 
 from zou.app.models.playlist import Playlist
-from zou.app.models.build_job import BuildJob
-from zou.app.models.notification import Notification
-from zou.app.models.playlist_share_link import PlaylistShareLink
 from zou.app.services import (
     permissions_service,
     persons_service,
@@ -421,19 +418,7 @@ class PlaylistResource(BaseModelResource):
         return super().delete(instance_id)
 
     def pre_delete(self, playlist):
-        notifications = Notification.query.filter_by(
-            playlist_id=playlist["id"]
-        ).all()
-        for notification in notifications:
-            notification.delete()
-        query = BuildJob.query.filter_by(playlist_id=playlist["id"])
-        for job in query.all():
-            playlists_service.remove_build_job(playlist, job.id)
-        share_links = PlaylistShareLink.query.filter_by(
-            playlist_id=playlist["id"]
-        ).all()
-        for share_link in share_links:
-            share_link.delete()
+        playlists_service.remove_playlist_dependents(playlist)
 
     def check_update_permissions(self, playlist, data):
         return permissions_service.check_playlist_update_access(playlist)
