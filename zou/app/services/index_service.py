@@ -429,6 +429,13 @@ def index_shot(shot):
     return _index_entry(get_shot_index, prepare_shot, shot)
 
 
+def index_assets(asset_ids):
+    """
+    Register the assets matching given ids into the index in bulk.
+    """
+    return _index_entries(get_asset_index, prepare_asset, asset_ids)
+
+
 def index_shots(shot_ids):
     """
     Register the shots matching given ids into the index in bulk.

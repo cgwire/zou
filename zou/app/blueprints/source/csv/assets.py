@@ -106,7 +106,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             for asset_type in assets_service.get_asset_types()
             if asset_type["id"] in asset_type_ids_in_project
         }
-        self.task_types_in_project_for_assets = (
+        task_types = (
             TaskType.query.join(ProjectTaskTypeLink)
             .filter(ProjectTaskTypeLink.project_id == project_id)
             # for_entity was added nullable in 2018 and only ever backfilled
@@ -121,8 +121,13 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             )
             .all()
         )
+        # Serialized: model instances would be expired by every row commit,
+        # and read again from the database on every row.
+        self.task_types_in_project_for_assets = [
+            task_type.serialize() for task_type in task_types
+        ]
         self.task_type_ids_in_project_for_assets = [
-            str(task_type.id)
+            task_type["id"]
             for task_type in self.task_types_in_project_for_assets
         ]
         self.task_types_for_asset_type = {}
@@ -142,7 +147,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
     def get_tasks_update(self, row):
         tasks_update = []
         for task_type in self.task_types_in_project_for_assets:
-            task_status_name = row.get(task_type.name, None)
+            task_status_name = row.get(task_type["name"], None)
             task_status_id = None
             if task_status_name not in [None, ""]:
                 for status_id, status_names in self.task_statuses.items():
@@ -154,8 +159,8 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                         f"Task status not found for {task_status_name}"
                     )
 
-            task_comment_text = row.get(f"{task_type.name} comment", None)
-            task_assignees = self.get_assignation_ids(row, task_type.name)
+            task_comment_text = row.get(f"{task_type['name']} comment", None)
+            task_assignees = self.get_assignation_ids(row, task_type["name"])
 
             if (
                 task_status_id is not None
@@ -164,7 +169,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             ):
                 tasks_update.append(
                     {
-                        "task_type_id": str(task_type.id),
+                        "task_type_id": task_type["id"],
                         "task_status_id": task_status_id,
                         "comment": task_comment_text,
                         "assignees": task_assignees,
@@ -354,7 +359,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                 created_by=self.current_user_id,
             )
 
-            index_service.index_asset(entity)
+            self.asset_ids_to_index.append(entity.id)
             events.emit(
                 "asset:new",
                 {"asset_id": str(entity.id), "episode_id": episode_id},
@@ -368,8 +373,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         elif self.is_update:
             entity.update({**asset_values, **asset_new_values})
 
-            index_service.remove_asset_index(entity.id)
-            index_service.index_asset(entity)
+            self.asset_ids_to_index.append(entity.id)
             events.emit(
                 "asset:update",
                 {"asset_id": str(entity.id), "episode_id": episode_id},
@@ -386,6 +390,16 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             self.create_missing_tasks(entity)
 
         return entity.serialize()
+
+    def run_import(self, file_path, project_id):
+        self.asset_ids_to_index = []
+        try:
+            return super().run_import(file_path, project_id)
+        finally:
+            # Indexed at the end, without waiting for the indexer on every
+            # row. The rows committed before a failing one stay imported:
+            # they are indexed too.
+            index_service.index_assets(self.asset_ids_to_index)
 
     def get_task_types_for_asset_type(self, asset_type_id):
         """

@@ -183,6 +183,23 @@ class PrepareDocumentTestCase(ApiDBTestCase):
         # The technical fields are not worth searching on.
         self.assertEqual(document["metadatas"], {"camera": "A"})
 
+    def test_index_assets_sends_one_batch(self):
+        asset = self.generate_fixture_asset(name="main_character")
+        with patch.object(
+            index_service.indexing, "get_index", return_value="assets-index"
+        ):
+            with patch.object(
+                index_service.indexing, "index_documents"
+            ) as index_documents:
+                documents = index_service.index_assets([asset.id])
+
+        self.assertEqual(
+            [document["id"] for document in documents], [str(asset.id)]
+        )
+        index_documents.assert_called_once_with(
+            "assets-index", documents, wait=False
+        )
+
     def test_index_shots_sends_one_batch(self):
         # A bulk import indexes its shots at the end, in one call, without
         # waiting for Meilisearch to process them.
@@ -278,6 +295,7 @@ class WithoutIndexerTestCase(ApiDBTestCase):
             index_service.remove_person_index(str(self.person.id)), {}
         )
         self.assertEqual(index_service.index_shots([self.asset.id]), [])
+        self.assertEqual(index_service.index_assets([self.asset.id]), [])
 
     def test_an_indexer_that_stops_answering_is_swallowed_too(self):
         """
