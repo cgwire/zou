@@ -313,11 +313,13 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             "source_id": episode_id,
         }
 
+        # The entity table is polymorphic: without the type, a sequence or
+        # an episode with the same name would be taken for the asset and
+        # re-typed on update.
         entity = Entity.get_by(
-            **{
-                "name": asset_values["name"],
-                "project_id": asset_values["project_id"],
-            }
+            name=asset_values["name"],
+            project_id=asset_values["project_id"],
+            entity_type_id=entity_type_id,
         )
 
         asset_new_values = {}

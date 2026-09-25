@@ -246,6 +246,29 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         entities = Entity.query.all()
         self.assertEqual(len(entities), 3)
 
+    def test_import_assets_does_not_retype_a_sequence_of_the_same_name(self):
+        """
+        The entity table holds assets, shots, sequences and episodes. The
+        lookup used to match on name and project only, so a sequence named
+        like an incoming asset was taken for it and turned into a Prop.
+        """
+        sequence = self.generate_fixture_sequence("Cassette Player")
+        sequence_type_id = str(sequence.entity_type_id)
+        path = f"/import/csv/projects/{self.project.id}/assets?update=true"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets.csv")
+        )
+        self.upload_file(path, file_path_fixture)
+
+        sequence = Entity.get(sequence.id)
+        self.assertEqual(str(sequence.entity_type_id), sequence_type_id)
+        assets = assets_service.get_assets({"project_id": self.project.id})
+        self.assertEqual(
+            sorted(asset["name"] for asset in assets),
+            ["Cassette Player", "Victor", "Wood Stick"],
+        )
+
+
     def generate_person_descriptor(self):
         self.generate_fixture_person()
         MetadataDescriptor.create(
