@@ -233,24 +233,24 @@ def init_data(domain="3d"):
         _init_task_types_for_domain(domain)
         print("Task types initialized.")
 
-        tasks_service.get_default_status()
-        tasks_service.get_or_create_status(
+        tasks_service.get_default_task_status()
+        tasks_service.get_or_create_task_status(
             "Work In Progress", "wip", "#3273dc", is_wip=True
         )
-        tasks_service.get_or_create_status(
+        tasks_service.get_or_create_task_status(
             "Waiting For Approval", "wfa", "#ab26ff", is_feedback_request=True
         )
-        tasks_service.get_or_create_status(
+        tasks_service.get_or_create_task_status(
             "Retake", "retake", "#ff3860", is_retake=True
         )
-        tasks_service.get_or_create_status(
+        tasks_service.get_or_create_task_status(
             "Done", "done", "#22d160", is_done=True
         )
-        tasks_service.get_or_create_status(
+        tasks_service.get_or_create_task_status(
             "Ready To Start", "ready", "#fbc02d"
         )
 
-        tasks_service.get_or_create_status(
+        tasks_service.get_or_create_task_status(
             "Neutral",
             "neutral",
             "#CCCCCC",
@@ -260,7 +260,7 @@ def init_data(domain="3d"):
             is_client_allowed=True,
         )
 
-        tasks_service.get_or_create_status(
+        tasks_service.get_or_create_task_status(
             "Approved",
             "approved",
             "#66BB6A",
@@ -269,7 +269,7 @@ def init_data(domain="3d"):
             is_client_allowed=True,
         )
 
-        tasks_service.get_or_create_status(
+        tasks_service.get_or_create_task_status(
             "Rejected",
             "rejected",
             "#E81123",

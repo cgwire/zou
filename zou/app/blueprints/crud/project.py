@@ -279,7 +279,7 @@ class ProjectsResource(BaseModelsResource):
         # editable right away, instead of one create request per descriptor
         # from the client.
         projects_service.copy_project_metadata_descriptors(str(project.id))
-        user_service.clear_project_cache()
+        user_service.clear_open_projects_cache()
         projects_service.clear_project_cache("")
         return project_dict
 

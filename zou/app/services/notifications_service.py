@@ -95,7 +95,7 @@ def get_notification_recipients(task, replies=None):
     recipients = set(task["assignees"])
     for subscription in get_task_subscriptions(task):
         recipients.add(str(subscription.person_id))
-    for subscription in get_sequence_subscriptions(task):
+    for subscription in get_sequence_subscriptions_for_task(task):
         recipients.add(str(subscription.person_id))
     for reply in replies:
         recipients.add(reply["person_id"])
@@ -109,7 +109,7 @@ def get_task_subscriptions(task):
     return Subscription.get_all_by(task_id=task["id"])
 
 
-def get_sequence_subscriptions(task):
+def get_sequence_subscriptions_for_task(task):
     """
     Return all sequence subscriptions for given task. It returns something only
     if the task is related to a shot of which the sequence has a subscription.
@@ -401,7 +401,7 @@ def get_all_sequence_subscriptions(person_id, project_id, task_type_id):
     )
 
 
-def get_last_notifications(notification_type=None):
+def get_recent_notifications(notification_type=None):
     """
     Return last notification created. This function is used mainly for testing
     purpose.

@@ -32,18 +32,18 @@ class DefaultFileStatusTestCase(ApiDBTestCase):
 
     def setUp(self):
         super().setUp()
-        cache.cache.delete_memoized(files_service.get_default_status)
+        cache.cache.delete_memoized(files_service.get_default_file_status)
 
     def test_the_default_status_is_created_on_first_read(self):
         self.assertEqual(FileStatus.query.count(), 0)
 
-        file_status = files_service.get_default_status()
+        file_status = files_service.get_default_file_status()
 
         self.assertEqual(
             file_status["name"], app.config["DEFAULT_FILE_STATUS"]
         )
         self.assertEqual(FileStatus.query.count(), 1)
-        self.assertEqual(files_service.get_default_status(), file_status)
+        self.assertEqual(files_service.get_default_file_status(), file_status)
 
 
 class FilesTestCase(ApiDBTestCase):

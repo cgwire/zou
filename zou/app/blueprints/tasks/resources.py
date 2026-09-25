@@ -2166,7 +2166,7 @@ class GetTimeSpentResource(MethodView):
                             example: "2024-01-15T10:30:00Z"
         """
         permissions_service.check_task_access(task_id)
-        return tasks_service.get_time_spents(task_id)
+        return tasks_service.get_time_spents_for_task(task_id)
 
 
 class GetTimeSpentDateResource(MethodView):
@@ -2229,7 +2229,7 @@ class GetTimeSpentDateResource(MethodView):
         """
         try:
             permissions_service.check_task_access(task_id)
-            return tasks_service.get_time_spents(task_id, date)
+            return tasks_service.get_time_spents_for_task(task_id, date)
         except WrongDateFormatException:
             raise WrongParameterException("Wrong date format.")
 

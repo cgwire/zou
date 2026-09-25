@@ -317,7 +317,7 @@ class EntityPreviewsResource(MethodView):
         entity = entities_service.get_entity(entity_id)
         permissions_service.check_project_access(entity["project_id"])
         permissions_service.check_entity_access(entity_id)
-        return playlists_service.get_preview_files_for_entity(entity_id)
+        return playlists_service.get_entity_previews_by_task_type(entity_id)
 
 
 class PlaylistAddEntityResource(MethodView, ArgsMixin):
