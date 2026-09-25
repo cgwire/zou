@@ -11,6 +11,7 @@ from sqlalchemy.orm.exc import StaleDataError
 from tests.base import ApiDBTestCase
 
 from zou.app import db
+from zou.app.stores import redis_lock
 from zou.app.models.comment import Comment
 from zou.app.models.studio import Studio
 from zou.app.models.task import Task
@@ -725,6 +726,20 @@ class CommentReaderTestCase(TaskTestCase):
                 "id"
             ],
             self.comment["id"],
+        )
+
+    def test_a_preview_added_to_a_comment_takes_the_task_lock(self):
+        # The next revision and position are read then written: two
+        # uploads at once on the same task would pick the same ones.
+        comment_id = self.generate_fixture_comment()["id"]
+        with mock.patch.object(
+            redis_lock, "with_lock", wraps=redis_lock.with_lock
+        ) as with_lock:
+            tasks_service.add_preview_file_to_comment(
+                comment_id, self.person_id, self.task_id
+            )
+        with_lock.assert_called_once_with(
+            f"preview_revision_lock:{self.task_id}"
         )
 
     def test_a_preview_added_to_a_comment_drops_its_cache(self):

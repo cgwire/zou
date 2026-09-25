@@ -23,6 +23,7 @@ from sqlalchemy.orm import aliased, selectinload
 from sqlalchemy.orm.exc import StaleDataError
 
 from zou.app import config, db
+from zou.app.stores import redis_lock
 from zou.app.utils import events
 
 from zou.app.models.attachment_file import AttachmentFile
@@ -2170,26 +2171,34 @@ def add_preview_file_to_comment(comment_id, person_id, task_id, revision=None):
     news = News.get_by(comment_id=comment_id)
     task = Task.get(comment.object_id)
     project_id = str(task.project_id)
-    position = 1
-    if revision is None and len(comment.previews) == 0:
-        revision = get_next_preview_revision(task_id)
-    elif revision is None:
-        revision = comment.previews[0].revision
-        position = get_next_position(task_id, revision)
-    else:
-        if len(comment.previews) == 0:
-            check_revision_is_unique_for_task(task_id, revision)
-        position = get_next_position(task_id, revision)
-    if position > 1:
-        project = projects_service.get_project(project_id)
-        if project.get("is_single_preview_per_revision"):
-            raise TooManyPreviewFilesException(
-                "Only one preview file is allowed per revision for this "
-                "project."
-            )
-    preview_file = files_service.create_preview_file_raw(
-        str(uuid.uuid4())[:13], revision, task_id, person_id, position=position
-    )
+    # The next revision and position are read then written: two uploads
+    # on the same task at once would pick the same ones, and nothing in
+    # the schema refuses that. The lock serializes them per task.
+    with redis_lock.with_lock(f"preview_revision_lock:{task_id}"):
+        position = 1
+        if revision is None and len(comment.previews) == 0:
+            revision = get_next_preview_revision(task_id)
+        elif revision is None:
+            revision = comment.previews[0].revision
+            position = get_next_position(task_id, revision)
+        else:
+            if len(comment.previews) == 0:
+                check_revision_is_unique_for_task(task_id, revision)
+            position = get_next_position(task_id, revision)
+        if position > 1:
+            project = projects_service.get_project(project_id)
+            if project.get("is_single_preview_per_revision"):
+                raise TooManyPreviewFilesException(
+                    "Only one preview file is allowed per revision for this "
+                    "project."
+                )
+        preview_file = files_service.create_preview_file_raw(
+            str(uuid.uuid4())[:13],
+            revision,
+            task_id,
+            person_id,
+            position=position,
+        )
     events.emit(
         "preview-file:new",
         {
