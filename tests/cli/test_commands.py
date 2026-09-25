@@ -347,6 +347,27 @@ class RenormalizeMoviePreviewFilesTestCase(ApiDBTestCase):
         self.assertEqual(args[0], ("id1", "id2"))
 
 
+class SyncCommandsTestCase(ApiDBTestCase):
+    def test_page_size_reaches_the_sync_service(self):
+        from zou.app.services import sync_service
+
+        with patch.object(sync_service, "init"), patch.object(
+            sync_service, "run_last_events_sync"
+        ) as events_sync, patch.object(
+            sync_service, "run_last_events_files"
+        ) as files_sync, redirect_stdout(
+            io.StringIO()
+        ):
+            commands.import_last_changes_from_another_instance(
+                "http://source", "login", "password", minutes=5, limit=7
+            )
+            commands.import_last_file_changes_from_another_instance(
+                "http://source", "login", "password", minutes=5, limit=9
+            )
+        events_sync.assert_called_once_with(minutes=5, limit=7)
+        files_sync.assert_called_once_with(minutes=5, limit=9)
+
+
 class CreateAdminCommandTestCase(ApiDBTestCase):
     """
     The command a studio runs on an empty instance, and the one it reaches
