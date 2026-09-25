@@ -735,6 +735,16 @@ class TaskListingTestCase(TaskTestCase):
         tasks = self.get(f"/data/persons/{self.person.id}/done-tasks")
         self.assertEqual(len(tasks), 1)
 
+    def test_a_vendor_reads_their_own_tasks(self):
+        # The vendor branch called persons_service.get, which does not
+        # exist: a vendor asking for their own tasks got a 500.
+        self.generate_fixture_user_vendor()
+        self.log_in_vendor()
+        vendor_id = self.user_vendor["id"]
+        self.assertEqual(self.get(f"/data/persons/{vendor_id}/tasks"), [])
+        self.assertEqual(self.get(f"/data/persons/{vendor_id}/done-tasks"), [])
+        self.get(f"/data/persons/{self.person.id}/tasks", 403)
+
     def test_get_related_tasks_for_person(self):
         task_type_id = str(self.task_type_animation.id)
         self.generate_fixture_task()

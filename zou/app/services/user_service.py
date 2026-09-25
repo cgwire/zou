@@ -37,6 +37,7 @@ from zou.app.services.exception import (
     SearchFilterGroupNotFoundException,
     NotificationNotFoundException,
     WrongParameterException,
+    ProjectNotFoundException,
 )
 from zou.app.utils import cache, fields, permissions, events
 
@@ -554,6 +555,17 @@ def get_projects(name=None):
         query = query.filter(Project.name == name)
 
     return fields.serialize_value(query.all())
+
+
+def get_project_by_name(project_name):
+    """
+    Get the project of given name among those the current user belongs to,
+    case insensitive. Raises an exception if none matches.
+    """
+    for project in get_projects():
+        if project["name"].lower() == project_name.lower():
+            return project
+    raise ProjectNotFoundException()
 
 
 def get_filters():

@@ -1,6 +1,7 @@
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
+from zou.app.services.exception import SoftwareNotFoundException
 from zou.app.utils import permissions, validation
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
@@ -150,12 +151,12 @@ class SoftwareDepartmentResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_admin
-    def get(self, department_id):
+    def get(self, department_id, software_id):
         """
-        Get department software licenses
+        Get department software license
         ---
-        description: Retrieve all software items that are associated with a
-          specific department.
+        description: Retrieve one software item associated with a specific
+          department.
         tags:
           - Departments
         parameters:
@@ -166,54 +167,62 @@ class SoftwareDepartmentResource(MethodView, ArgsMixin):
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
             description: Unique identifier of the department
+          - in: path
+            name: software_id
+            required: true
+            type: string
+            format: uuid
+            example: b35b7fb5-df86-5776-b181-68564193d36
+            description: Unique identifier of the software
         responses:
           200:
-            description: Department software licenses successfully retrieved
+            description: Department software license successfully retrieved
             content:
               application/json:
                 schema:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        description: Software license unique identifier
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      name:
-                        type: string
-                        description: Software license name
-                        example: "Maya"
-                      short_name:
-                        type: string
-                        description: Software license short name
-                        example: "MAYA"
-                      file_extension:
-                        type: string
-                        description: Default file extension for the software license
-                        example: ".ma"
-                      department_id:
-                        type: string
-                        format: uuid
-                        description: Department identifier
-                        example: b35b7fb5-df86-5776-b181-68564193d36
-                      created_at:
-                        type: string
-                        format: date-time
-                        description: Creation timestamp
-                        example: "2023-01-01T12:00:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        description: Last update timestamp
-                        example: "2023-01-01T12:30:00Z"
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                      description: Software license unique identifier
+                      example: a24a6ea4-ce75-4665-a070-57453082c25
+                    name:
+                      type: string
+                      description: Software license name
+                      example: "Maya"
+                    short_name:
+                      type: string
+                      description: Software license short name
+                      example: "MAYA"
+                    file_extension:
+                      type: string
+                      description: Default file extension for the software license
+                      example: ".ma"
+                    department_id:
+                      type: string
+                      format: uuid
+                      description: Department identifier
+                      example: b35b7fb5-df86-5776-b181-68564193d36
+                    created_at:
+                      type: string
+                      format: date-time
+                      description: Creation timestamp
+                      example: "2023-01-01T12:00:00Z"
+                    updated_at:
+                      type: string
+                      format: date-time
+                      description: Last update timestamp
+                      example: "2023-01-01T12:30:00Z"
         """
         self.check_id_parameter(department_id)
-        softwares = departments_service.get_softwares_for_department(
+        self.check_id_parameter(software_id)
+        for software in departments_service.get_software_for_department(
             department_id
-        )
-        return softwares, 200
+        ):
+            if software["id"] == software_id:
+                return software, 200
+        raise SoftwareNotFoundException
 
     @jwt_required()
     @permissions.require_admin

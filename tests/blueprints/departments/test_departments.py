@@ -40,6 +40,24 @@ class DepartmentRoutesTestCase(ApiDBTestCase):
         self.assertEqual(len(software_list), 1)
         self.assertEqual(software_list[0]["name"], "Blender")
 
+    def test_get_software_of_department(self):
+        # The handler called a service function that does not exist and
+        # took one path parameter where the route gives two: 500 whatever
+        # the ids.
+        departments_service.add_software_to_department(
+            str(self.department.id), str(self.software.id)
+        )
+        result = self.get(
+            f"/data/departments/{self.department.id}"
+            f"/software-licenses/{self.software.id}"
+        )
+        self.assertEqual(result["id"], str(self.software.id))
+        self.get(
+            f"/data/departments/{self.department_animation.id}"
+            f"/software-licenses/{self.software.id}",
+            404,
+        )
+
     def test_delete_software_from_department(self):
         departments_service.add_software_to_department(
             str(self.department.id), str(self.software.id)

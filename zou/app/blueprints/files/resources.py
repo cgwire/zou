@@ -2557,7 +2557,7 @@ class EntityOutputFilesResource(MethodView, ArgsMixin):
         )
 
 
-class InstanceOutputFilesResource(MethodView):
+class InstanceOutputFilesResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def get(self, asset_instance_id):
