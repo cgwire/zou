@@ -1111,7 +1111,9 @@ class ProductionMetadataDescriptorsResource(MethodView, ArgsMixin):
         Get metadata descriptors
         ---
         description: Get all metadata descriptors. It serves to describe extra
-          fields listed in the data attribute of entities.
+          fields listed in the data attribute of entities. On the role held
+          on the project, a client only gets the ones published to clients,
+          a vendor only the ones of their departments or of no department.
         tags:
           - Projects
         parameters:
@@ -1134,9 +1136,13 @@ class ProductionMetadataDescriptorsResource(MethodView, ArgsMixin):
                     type: object
         """
         permissions_service.check_project_access(project_id)
-        for_client = permissions.has_client_permissions()
+        for_client, vendor_departments = (
+            user_service.get_descriptor_visibility(
+                permissions.get_effective_role()
+            )
+        )
         return projects_service.get_metadata_descriptors(
-            project_id, for_client
+            project_id, for_client, vendor_departments
         )
 
     @jwt_required()

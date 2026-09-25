@@ -1,6 +1,6 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.services import projects_service
+from zou.app.services import persons_service, projects_service
 from zou.app.utils import fields
 
 
@@ -310,6 +310,43 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         self.delete(
             self.descriptors_path(descriptor),
             403,
+        )
+
+    def test_a_vendor_reads_the_descriptors_of_their_departments(self):
+        # The open projects listing narrowed a vendor to the descriptors of
+        # their departments, this route served them all.
+        self.generate_fixture_department()
+        vendor_id = self.generate_fixture_user_vendor()["id"]
+        projects_service.add_team_member(self.project_id, vendor_id)
+        persons_service.add_to_department(str(self.department.id), vendor_id)
+        shared = projects_service.add_metadata_descriptor(
+            self.project_id, "Asset", "Contractor", "string", [], False
+        )
+        theirs = projects_service.add_metadata_descriptor(
+            self.project_id,
+            "Asset",
+            "Rig",
+            "string",
+            [],
+            False,
+            [str(self.department.id)],
+        )
+        projects_service.add_metadata_descriptor(
+            self.project_id,
+            "Asset",
+            "Layout",
+            "string",
+            [],
+            False,
+            [str(self.department_animation.id)],
+        )
+        self.log_in_vendor()
+
+        descriptors = self.get(self.descriptors_path())
+
+        self.assertEqual(
+            {descriptor["id"] for descriptor in descriptors},
+            {shared["id"], theirs["id"]},
         )
 
     def post_task_descriptor(self, task_type_id, name="Render layer"):

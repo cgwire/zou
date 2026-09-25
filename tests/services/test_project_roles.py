@@ -781,3 +781,35 @@ class ProjectReadRoleTestCase(DemotedRoleTestCase):
             [entry["id"] for entry in project["descriptors"]],
             [published["id"]],
         )
+
+
+class MetadataDescriptorsRoleTestCase(DemotedRoleTestCase):
+    """
+    projects/resources.py ProductionMetadataDescriptorsResource.get narrows
+    the descriptors on the role its access check resolves, so a demoted
+    vendor only reads the ones of their departments, here of none.
+    """
+
+    def test_demoted_vendor_reads_the_descriptors_of_no_department(self):
+        project_id = str(self.project.id)
+        shared = projects_service.add_metadata_descriptor(
+            project_id, "Asset", "Contractor", "string", [], False
+        )
+        projects_service.add_metadata_descriptor(
+            project_id,
+            "Asset",
+            "Rig",
+            "string",
+            [],
+            False,
+            [str(self.department.id)],
+        )
+        self.demote_manager("vendor")
+
+        descriptors = self.get(
+            f"data/projects/{project_id}/metadata-descriptors"
+        )
+
+        self.assertEqual(
+            [entry["id"] for entry in descriptors], [shared["id"]]
+        )
