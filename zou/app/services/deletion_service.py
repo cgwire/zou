@@ -411,7 +411,15 @@ def clear_movie_files(preview_file_id):
     """
     for movie_type in files_service.MOVIE_PREFIXES:
         _remove_quietly(file_store.remove_movie, movie_type, preview_file_id)
-    for image_type in ["thumbnails", "thumbnails-square", "previews", "tiles"]:
+    # The movie pipeline also stores the first frame as the "original"
+    # picture, next to the thumbnails cut from it.
+    for image_type in [
+        "original",
+        "thumbnails",
+        "thumbnails-square",
+        "previews",
+        "tiles",
+    ]:
         _remove_quietly(file_store.remove_picture, image_type, preview_file_id)
 
 
