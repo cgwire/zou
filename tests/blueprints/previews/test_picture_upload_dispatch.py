@@ -163,3 +163,48 @@ class PictureUploadDispatchTestCase(ApiDBTestCase):
         # No exception: a preview deleted while its job waited is not a
         # worker crash.
         preview_files_service.prepare_and_store_picture(*args)
+
+
+class FrameExtractionDispatchTestCase(PictureUploadDispatchTestCase):
+    def test_set_main_preview_with_a_frame_queues_the_extraction(self):
+        preview_file_id = self.create_preview_file()
+        self.upload_file(
+            f"/pictures/preview-files/{preview_file_id}", self.picture_path
+        )
+        # The endpoint only accepts a frame number for a movie preview;
+        # the fixture uploaded above is a picture, so force the extension
+        # a real movie upload would have set.
+        preview_files_service.update_preview_file(
+            preview_file_id, {"extension": "mp4"}
+        )
+        job_queue = MagicMock()
+        with patch.object(
+            preview_files_service.config, "ENABLE_JOB_QUEUE", True
+        ), patch.object(queue_store, "job_queue", job_queue):
+            self.put(
+                f"/actions/preview-files/{preview_file_id}/set-main-preview",
+                {"frame_number": 12},
+            )
+        job_queue.enqueue.assert_called_once()
+        self.assertEqual(job_queue.enqueue.call_args.kwargs["args"][1], 12)
+        # The preview file keeps its status: its variants are still there.
+        preview_file = files_service.get_preview_file(preview_file_id)
+        self.assertEqual(preview_file["status"], "ready")
+
+    def test_a_failed_extraction_leaves_the_preview_alone(self):
+        preview_file_id = self.create_preview_file()
+        self.upload_file(
+            f"/pictures/preview-files/{preview_file_id}", self.picture_path
+        )
+        preview_file = files_service.get_preview_file(preview_file_id)
+        with patch.object(
+            preview_files_service,
+            "extract_frame_from_preview_file",
+            side_effect=RuntimeError("ffmpeg"),
+        ):
+            preview_files_service.replace_extracted_frame_for_preview_file(
+                preview_file, 12
+            )
+        self.assertEqual(
+            files_service.get_preview_file(preview_file_id)["status"], "ready"
+        )

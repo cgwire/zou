@@ -1306,20 +1306,54 @@ def extract_frame_from_preview_file(preview_file, frame_number):
     return extracted_frame_path
 
 
+def dispatch_frame_extraction(preview_file, frame_number, no_job=False):
+    """
+    Rebuild the variants of a movie preview from one of its frames, on
+    the job queue when one is enabled. Return whether it was queued.
+    """
+    if config.ENABLE_JOB_QUEUE and not no_job:
+        queue_store.job_queue.enqueue(
+            replace_extracted_frame_for_preview_file,
+            args=(preview_file, frame_number),
+            job_timeout=int(config.JOB_QUEUE_TIMEOUT),
+        )
+        return True
+    replace_extracted_frame_for_preview_file(preview_file, frame_number)
+    return False
+
+
 def replace_extracted_frame_for_preview_file(preview_file, frame_number):
     """
     Replace the preview thumbnail with given frame, so a movie can show
-    the frame the reviewer picked.
+    the frame the reviewer picked. A failure leaves the previous
+    thumbnail in place: nothing is broken, only unchanged.
     """
-    extracted_frame_path = extract_frame_from_preview_file(
-        preview_file, frame_number
-    )
-    if extracted_frame_path is None:
-        return
-    extracted_frame_path = thumbnail_utils.turn_into_thumbnail(
-        extracted_frame_path
-    )
-    save_variants(preview_file["id"], extracted_frame_path)
+    from flask import has_app_context
+    from zou.app import app
+
+    def run():
+        try:
+            extracted_frame_path = extract_frame_from_preview_file(
+                preview_file, frame_number
+            )
+            if extracted_frame_path is None:
+                return
+            extracted_frame_path = thumbnail_utils.turn_into_thumbnail(
+                extracted_frame_path
+            )
+            save_variants(preview_file["id"], extracted_frame_path)
+        except Exception:
+            app.logger.error(
+                f"Could not extract frame {frame_number} of preview file "
+                f"{preview_file['id']}",
+                exc_info=True,
+            )
+
+    if has_app_context():
+        run()
+    else:
+        with app.app_context():
+            run()
 
 
 ANNOTATED_PICTURE_EXTENSIONS = ("jpg", "jpeg", "jpe", "png")

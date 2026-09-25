@@ -1859,8 +1859,8 @@ class SetMainPreviewResource(MethodView, ArgsMixin):
                 raise WrongParameterException(
                     "Can't use a given frame on non movie preview"
                 )
-            preview_files_service.replace_extracted_frame_for_preview_file(
-                preview_file, frame_number
+            preview_files_service.dispatch_frame_extraction(
+                preview_file, frame_number, no_job=self.get_no_job()
             )
         entity = entities_service.update_entity_preview(
             task["entity_id"],
