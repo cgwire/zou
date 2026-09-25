@@ -366,7 +366,20 @@ class MovieTestCase(unittest.TestCase):
             filename = f"{i}-{test_name}.m4v"
             video = str(Path(self.tmpdir) / filename)
             shutil.copyfile(self.video_only_path, video)
-            normalized, _, _ = movie.normalize_movie(video, 5, width, height)
+            # Encoded like the high def version of normalize_movie, which
+            # would also encode a 1280 wide low def one nothing here reads.
+            movie.add_empty_soundtrack(video)
+            normalized = str(Path(self.tmpdir) / f"{i}-{test_name}.mp4")
+            movie.normalize_encoding(
+                video,
+                "Compute high def version",
+                normalized,
+                5,
+                "28M",
+                width,
+                height,
+                keyframes=2,
+            )
             # 2nd item isn't used by build_playlist_movie
             videos.append((normalized, None))
 
