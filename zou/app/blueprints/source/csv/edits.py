@@ -103,7 +103,6 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
             self.episodes = {
                 episode["name"]: episode["id"] for episode in episodes
             }
-        self.created_edits = []
         self.task_types_in_project_for_edits = (
             TaskType.query.join(ProjectTaskTypeLink)
             .filter(ProjectTaskTypeLink.project_id == project_id)
@@ -261,7 +260,13 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
         return entity.serialize()
 
     def run_import(self, file_path, project_id):
-        entities = super().run_import(file_path, project_id)
-        for task_type in self.task_types_in_project_for_edits:
-            create_tasks(task_type.serialize(), self.created_edits)
-        return entities
+        # Set before the import: prepare_import can fail before it does.
+        self.created_edits = []
+        self.task_types_in_project_for_edits = []
+        try:
+            return super().run_import(file_path, project_id)
+        finally:
+            # The edits created before a failing line stay imported, and a
+            # new import would not create their tasks: they get them here.
+            for task_type in self.task_types_in_project_for_edits:
+                create_tasks(task_type.serialize(), self.created_edits)
