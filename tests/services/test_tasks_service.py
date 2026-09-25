@@ -1,5 +1,6 @@
 # -*- coding: UTF-8 -*-
 import datetime
+import uuid
 
 from unittest import mock
 
@@ -249,6 +250,16 @@ class TaskUpdateTestCase(TaskTestCase):
 
 
 class TaskReaderTestCase(TaskTestCase):
+    def test_get_task_cache_is_keyed_by_the_string_id(self):
+        # A UUID and its string used to be two cache entries, and only the
+        # string one was ever dropped by clear_task_cache.
+        tasks_service.get_task(uuid.UUID(self.task_id))
+        self.task.update({"name": "renamed"})
+        tasks_service.clear_task_cache(self.task_id)
+        self.assertEqual(
+            tasks_service.get_task(uuid.UUID(self.task_id))["name"], "renamed"
+        )
+
     def test_get_task(self):
         self.assertRaises(
             TaskNotFoundException, tasks_service.get_task, "wrong-id"
