@@ -711,9 +711,15 @@ def get_sequence_from_shot(shot):
     """
     Return parent sequence of given shot.
     """
-    try:
-        sequence = Entity.get(shot["parent_id"])
-    except Exception:
+    sequence = None
+    if shot.get("parent_id") is not None:
+        try:
+            sequence = Entity.get(shot["parent_id"])
+        except Exception:
+            sequence = None
+    # Entity.get(None) returns None without raising, so the absence has
+    # to be checked, not caught.
+    if sequence is None:
         raise SequenceNotFoundException("Wrong parent_id for given shot.")
     return sequence.serialize(obj_type="Sequence")
 
@@ -769,9 +775,13 @@ def get_episode_from_sequence(sequence):
     """
     Return parent episode of given sequence.
     """
-    try:
-        episode = Entity.get(sequence["parent_id"])
-    except Exception:
+    episode = None
+    if sequence.get("parent_id") is not None:
+        try:
+            episode = Entity.get(sequence["parent_id"])
+        except Exception:
+            episode = None
+    if episode is None:
         raise EpisodeNotFoundException("Wrong parent_id for given sequence.")
     return episode.serialize(obj_type="Episode")
 

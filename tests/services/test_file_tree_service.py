@@ -459,6 +459,36 @@ class WorkingPathTestCase(FileTreeTestCase):
             "cosmos_landromat_s01_p01_animation_v003",
         )
 
+    def test_an_episode_token_falls_back_on_a_flat_production(self):
+        """
+        A template carrying <Episode> on a production whose sequences hang
+        from no episode resolves the token to e001 instead of failing on
+        the missing parent.
+        """
+        flat_sequence = Entity.create(
+            name="SQ01",
+            project_id=self.project.id,
+            entity_type_id=self.sequence_type.id,
+        )
+        flat_shot = Entity.create(
+            name="P002",
+            project_id=self.project.id,
+            entity_type_id=self.shot_type.id,
+            parent_id=flat_sequence.id,
+        )
+        flat_task = self.generate_fixture_shot_task(
+            name="flat", shot_id=flat_shot.id
+        )
+        tree = copy.deepcopy(self.project.file_tree)
+        tree["working"]["folder_path"][
+            "shot"
+        ] = "<Project>/<Episode>/<Sequence>/<Shot>/<TaskType>"
+        self.project.update({"file_tree": tree})
+        self.assertEqual(
+            file_tree_service.get_working_folder_path(flat_task.serialize()),
+            "/simple/productions/cosmos_landromat/e001/sq01/p002/animation",
+        )
+
     def test_the_path_of_a_scene_task(self):
         scene_task = self.generate_fixture_scene_task()
         self.assertEqual(
