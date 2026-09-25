@@ -304,6 +304,10 @@ def _get_task_cached(task_id, relations):
 def get_task(task_id, relations=False):
     """
     Get task matching given id as a dictionary.
+
+    The id is normalized to a string before it reaches the cache: a UUID
+    and its string form would otherwise be two entries, and only the string
+    one is ever invalidated by clear_task_cache.
     """
     return _get_task_cached(str(task_id), bool(relations))
 
@@ -2499,8 +2503,8 @@ def get_persons_tasks_dates(
     for person_id, min_date, max_date in query.all():
         entries[str(person_id)] = {
             "person_id": str(person_id),
-            "min_date": str(min_date),
-            "max_date": str(max_date),
+            "min_date": fields.serialize_value(min_date),
+            "max_date": fields.serialize_value(max_date),
             "busy_periods": [],
         }
 
