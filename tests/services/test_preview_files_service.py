@@ -1060,6 +1060,28 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
         finally:
             file_store.remove_movie("lowdef", preview_file_id)
 
+    def test_a_storage_outage_is_not_a_missing_picture(self):
+        preview_file = {"id": str(self.preview_file.id), "extension": "png"}
+        with patch.object(
+            preview_files_service.fs,
+            "get_file_path_and_file",
+            side_effect=preview_files_service.fs.ConfirmedFileNotFound("x"),
+        ):
+            self.assertIsNone(
+                preview_files_service._copy_picture_preview_to_temp_png(
+                    preview_file
+                )
+            )
+        with patch.object(
+            preview_files_service.fs,
+            "get_file_path_and_file",
+            side_effect=RuntimeError("storage down"),
+        ):
+            with self.assertRaises(RuntimeError):
+                preview_files_service._copy_picture_preview_to_temp_png(
+                    preview_file
+                )
+
 
     def test_extract_skips_metadata_only_previews(self):
         """

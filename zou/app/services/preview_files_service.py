@@ -1684,7 +1684,9 @@ def _copy_picture_preview_to_temp_png(preview_file):
             preview_file["id"],
             preview_file["extension"],
         )
-    except Exception:
+    except fs.FileNotFound:
+        # Only an absent binary answers None (the routes turn it into a
+        # 404). A storage outage or a bug must surface as what it is.
         return None
     fd, temp_path = tempfile.mkstemp(suffix=".png")
     os.close(fd)
