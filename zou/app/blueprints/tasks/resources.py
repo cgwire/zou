@@ -589,7 +589,7 @@ class PersonTasksResource(MethodView):
         else:
             projects = projects_service.open_projects()
         if permissions.has_vendor_permissions():
-            person = persons_service.get(person_id)
+            person = persons_service.get_person(person_id)
             if person["role"] == "vendor":
                 return []
         elif permissions.has_client_permissions():
@@ -744,7 +744,7 @@ class PersonDoneTasksResource(MethodView):
         else:
             projects = projects_service.open_projects()
         if permissions.has_vendor_permissions():
-            person = persons_service.get(person_id)
+            person = persons_service.get_person(person_id)
             if person["role"] == "vendor":
                 return []
         elif permissions.has_client_permissions():

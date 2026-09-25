@@ -188,6 +188,16 @@ class NewOutputFileTestCase(OutputFileTestCase):
         output_file = self.get(f"/data/output-files/{output_file_id}")
         self.assertEqual(output_file["revision"], 66)
 
+    def test_get_output_files_of_an_asset_instance(self):
+        # The resource read its filters through ArgsMixin without
+        # inheriting it: the route answered 500.
+        self.generate_fixture_scene()
+        self.generate_fixture_scene_asset_instance()
+        result = self.get(
+            f"/data/asset-instances/{self.asset_instance.id}/output-files"
+        )
+        self.assertEqual(result, [])
+
     def test_new_output_wrong_data(self):
         data = {"comment_wrong": "test file publish"}
         self.new_output(data, 400)
