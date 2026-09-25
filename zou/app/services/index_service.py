@@ -68,6 +68,36 @@ def _index_entry(get_entry_index, prepare_entry, entry):
     return {}
 
 
+def _index_entries(get_entry_index, prepare_entry, entry_ids):
+    """
+    Build the documents of the entities matching given ids and push them
+    to their index, one call per chunk and without waiting for
+    Meilisearch: a bulk import must not wait on the indexer for every row.
+    Adding a document replaces the one with the same id, so an updated
+    entity needs no removal first. An absent or unreachable indexer is
+    swallowed, as for a single entry.
+    """
+    documents = []
+    if not entry_ids:
+        return documents
+    try:
+        index = get_entry_index()
+        for start in range(0, len(entry_ids), 3000):
+            entries = Entity.query.filter(
+                Entity.id.in_(entry_ids[start : start + 3000])
+            ).all()
+            chunk = [prepare_entry(entry) for entry in entries]
+            indexing.index_documents(index, chunk, wait=False)
+            documents += chunk
+    except indexing.IndexerNotInitializedError:
+        pass
+    except Exception:
+        current_app.logger.error(
+            "Indexer is not reachable, indexation failed.", exc_info=True
+        )
+    return documents
+
+
 def _remove_entry_index(get_entry_index, document_id):
     """
     Remove the document matching given id from its index, swallowing an
@@ -397,6 +427,13 @@ def index_shot(shot):
     Register shot into the index.
     """
     return _index_entry(get_shot_index, prepare_shot, shot)
+
+
+def index_shots(shot_ids):
+    """
+    Register the shots matching given ids into the index in bulk.
+    """
+    return _index_entries(get_shot_index, prepare_shot, shot_ids)
 
 
 def prepare_asset(asset):

@@ -1,5 +1,7 @@
 import os
 
+from unittest.mock import patch
+
 from tests.base import ApiDBTestCase
 from zou.app import db
 
@@ -8,7 +10,7 @@ from zou.app.models.entity_type import EntityType
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.models.task import Task
-from zou.app.services import projects_service, shots_service
+from zou.app.services import index_service, projects_service, shots_service
 
 
 class ImportCsvShotsTestCase(ApiDBTestCase):
@@ -293,3 +295,35 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
         shots = {shot["name"]: shot for shot in shots_service.get_shots()}
         self.assertEqual(sorted(shots), ["SH01", "SH02"])
         self.assertEqual(shots["SH02"]["nb_frames"], 20)
+
+    def test_import_shots_indexes_them_in_one_call(self):
+        # Waiting on the indexer for every row made a 1100-row import last
+        # longer than the 60 s Kitsu waited for its answer.
+        path = f"/import/csv/projects/{self.project.id}/shots"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "shots_blank_lines.csv")
+        )
+        with patch.object(index_service, "index_shot") as index_shot:
+            with patch.object(index_service, "index_shots") as index_shots:
+                self.upload_file(path, file_path_fixture)
+                self.upload_file(f"{path}?update=true", file_path_fixture)
+
+        index_shot.assert_not_called()
+        shot_ids = {shot["id"] for shot in shots_service.get_shots()}
+        self.assertEqual(index_shots.call_count, 2)
+        for call in index_shots.call_args_list:
+            self.assertEqual({str(id) for id in call.args[0]}, shot_ids)
+
+    def test_import_shots_indexes_the_rows_imported_before_a_failure(self):
+        path = f"/import/csv/projects/{self.project.id}/shots"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "shots_missing_name.csv")
+        )
+        with patch.object(index_service, "index_shots") as index_shots:
+            self.upload_file(path, file_path_fixture, 400)
+
+        (shot,) = shots_service.get_shots()
+        index_shots.assert_called_once()
+        self.assertEqual(
+            [str(id) for id in index_shots.call_args.args[0]], [shot["id"]]
+        )

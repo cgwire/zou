@@ -183,6 +183,26 @@ class PrepareDocumentTestCase(ApiDBTestCase):
         # The technical fields are not worth searching on.
         self.assertEqual(document["metadatas"], {"camera": "A"})
 
+    def test_index_shots_sends_one_batch(self):
+        # A bulk import indexes its shots at the end, in one call, without
+        # waiting for Meilisearch to process them.
+        with patch.object(
+            index_service.indexing, "get_index", return_value="shots-index"
+        ):
+            with patch.object(
+                index_service.indexing, "index_documents"
+            ) as index_documents:
+                documents = index_service.index_shots(
+                    [self.shot.id, self.shot.id]
+                )
+
+        self.assertEqual(
+            [document["id"] for document in documents], [str(self.shot.id)]
+        )
+        index_documents.assert_called_once_with(
+            "shots-index", documents, wait=False
+        )
+
     def test_prepare_shot_outside_an_episode(self):
         # A production that is not a series has sequences and no episode:
         # the generator hangs one off self.episode, so this one is built by
@@ -257,6 +277,7 @@ class WithoutIndexerTestCase(ApiDBTestCase):
         self.assertEqual(
             index_service.remove_person_index(str(self.person.id)), {}
         )
+        self.assertEqual(index_service.index_shots([self.asset.id]), [])
 
     def test_an_indexer_that_stops_answering_is_swallowed_too(self):
         """
@@ -284,3 +305,25 @@ class WithoutIndexerTestCase(ApiDBTestCase):
                 self.assertEqual(
                     index_service.remove_asset_index(str(self.asset.id)), {}
                 )
+
+    def test_a_bulk_indexation_swallows_an_indexer_that_stops_answering(self):
+        # A shots import indexes in a finally: a raise there would replace
+        # the import answer (the 201, or the 400 naming the failing line).
+        self.generate_fixture_episode()
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+        with patch.object(
+            index_service.indexing, "get_index", return_value=object()
+        ):
+            with patch.object(
+                index_service.indexing,
+                "index_documents",
+                side_effect=ConnectionError("indexer is down"),
+            ) as index_documents:
+                self.assertEqual(index_service.index_shots([self.shot.id]), [])
+                index_documents.assert_called_once()
+
+    def test_a_bulk_indexation_of_nothing_leaves_the_indexer_alone(self):
+        with patch.object(index_service.indexing, "get_index") as get_index:
+            self.assertEqual(index_service.index_shots([]), [])
+        get_index.assert_not_called()
