@@ -15,6 +15,7 @@ from zou.app.models.department import Department
 from zou.app.models.desktop_login_log import DesktopLoginLog
 from zou.app.models.organisation import Organisation
 from zou.app.models.person import Person
+from zou.app.models.studio import Studio
 from zou.app.models.task import Task
 from zou.app.models.time_spent import TimeSpent
 
@@ -253,6 +254,56 @@ def get_short_persons_map(person_ids):
         Person.id.in_(person_ids)
     )
     return {str(row.id): build_short_person(row) for row in rows}
+
+
+def get_persons_raw():
+    """
+    Every person as an active record, bots and inactive accounts included.
+    """
+    return Person.query.all()
+
+
+def count_active_users():
+    """
+    Number of active human accounts, the figure the user limit applies to.
+    """
+    return Person.query.filter(
+        Person.active,
+        Person.is_bot.isnot(True),
+        Person.is_guest.isnot(True),
+    ).count()
+
+
+def get_studio_raw_by_name(name):
+    """
+    Return the studio of given name as an active record, or None.
+    """
+    return Studio.get_by(name=name)
+
+
+def get_department_raw_by_name(name):
+    """
+    Return the department of given name as an active record, or None.
+    """
+    return Department.get_by(name=name)
+
+
+def import_person(email, data, department_ids=None, update=False):
+    """
+    Create the person of given email from the columns of an import file,
+    or update it when update is set and it exists. Departments are set
+    when given. Return the safe serialization of the person.
+    """
+    person = Person.get_by(email=email, is_bot=False)
+    created = person is None
+    if created:
+        person = Person.create(email=email, password=None, **data)
+    elif update:
+        person.update(data)
+    if (created or update) and department_ids is not None:
+        person.set_departments(department_ids)
+    index_service.index_person(person)
+    return person.serialize_safe()
 
 
 def get_person_by_email_raw(email):

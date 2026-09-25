@@ -21,10 +21,6 @@ from zou.app.services import (
     persons_service,
 )
 
-from zou.app.models.task_type import TaskType
-from zou.app.models.project import ProjectTaskTypeLink
-from zou.app.models.task_type import TaskType
-
 
 from zou.app.services.tasks_service import (
     create_tasks,
@@ -125,9 +121,7 @@ class OTIOBaseResource(MethodView, ArgsMixin):
         self.is_tv_show = projects_service.is_tv_show(self.project)
         self.episode_id = episode_id
         self.task_types_in_project_for_shots = (
-            TaskType.query.join(ProjectTaskTypeLink)
-            .filter(ProjectTaskTypeLink.project_id == project_id)
-            .filter(TaskType.for_entity == "Shot")
+            projects_service.get_project_task_types_raw(project_id, "Shot")
         )
         self.current_user_id = persons_service.get_current_user()["id"]
 

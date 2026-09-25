@@ -877,6 +877,7 @@ def create_asset(
     is_shared=False,
     source_id=None,
     created_by=None,
+    ready_for=None,
 ):
     """
     Create a new asset from given parameters.
@@ -894,6 +895,7 @@ def create_asset(
         is_shared=is_shared,
         source_id=source_id,
         created_by=created_by,
+        ready_for=ready_for,
     )
 
     index_service.index_asset(asset)

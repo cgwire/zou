@@ -4,16 +4,13 @@ from zou.app.blueprints.source.csv.base import (
 )
 
 from zou.app.models.person import (
-    Person,
     ROLE_TYPES,
     CONTRACT_TYPES,
     POSITION_TYPES,
     SENIORITY_TYPES,
     normalize_country,
 )
-from zou.app.models.department import Department
-from zou.app.models.studio import Studio
-from zou.app.services import index_service
+from zou.app.services import persons_service
 from zou.app.utils import permissions
 
 from zou.app.utils.string import strtobool
@@ -172,7 +169,7 @@ class PersonsCsvImportResource(BaseCsvImportResource):
         if studio_name:
             studio = self.add_to_cache_if_absent(
                 self.studio_cache,
-                lambda name: Studio.get_by(name=name),
+                persons_service.get_studio_raw_by_name,
                 studio_name,
             )
             if studio is None:
@@ -189,20 +186,9 @@ class PersonsCsvImportResource(BaseCsvImportResource):
         if departments_value:
             department_ids = self.resolve_departments(departments_value)
 
-        person = Person.get_by(email=email, is_bot=False)
-        created = person is None
-        if created:
-            data["email"] = email
-            data["password"] = None
-            person = Person.create(**data)
-        elif self.is_update:
-            person.update(data)
-
-        if (created or self.is_update) and department_ids is not None:
-            person.set_departments(department_ids)
-
-        index_service.index_person(person)
-        return person.serialize_safe()
+        return persons_service.import_person(
+            email, data, department_ids, update=self.is_update
+        )
 
     def map_choice(self, label, value, choice_map):
         """
@@ -232,7 +218,7 @@ class PersonsCsvImportResource(BaseCsvImportResource):
         ]:
             department = self.add_to_cache_if_absent(
                 self.department_cache,
-                lambda name: Department.get_by(name=name),
+                persons_service.get_department_raw_by_name,
                 name,
             )
             if department is None:

@@ -2,16 +2,14 @@ from zou.app.blueprints.source.csv.base import (
     BaseCsvProjectImportResource,
     RowException,
 )
-from zou.app.models.project import ProjectTaskTypeLink
-from zou.app.models.task_type import TaskType
 
 from zou.app.services import (
     edits_service,
+    entities_service,
     projects_service,
     shots_service,
     persons_service,
 )
-from zou.app.models.entity import Entity
 from zou.app.services.tasks_service import (
     create_task,
     create_tasks,
@@ -21,7 +19,6 @@ from zou.app.services.tasks_service import (
 )
 from zou.app.services.comments_service import create_comment
 from zou.app.exceptions import WrongParameterException
-from zou.app.utils import events
 
 
 class EditsCsvImportResource(BaseCsvProjectImportResource):
@@ -105,9 +102,7 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
             }
         self.created_edits = []
         self.task_types_in_project_for_edits = (
-            TaskType.query.join(ProjectTaskTypeLink)
-            .filter(ProjectTaskTypeLink.project_id == project_id)
-            .filter(TaskType.for_entity == "Edit")
+            projects_service.get_project_task_types_raw(project_id, "Edit")
         )
         self.task_statuses = {
             status["id"]: [status[n].lower() for n in ("name", "short_name")]
@@ -219,7 +214,7 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
             "parent_id": episode_id,
         }
 
-        entity = Entity.get_by(**edit_values)
+        entity = entities_service.find_entity_raw(**edit_values)
 
         edit_new_values = {}
 
@@ -234,27 +229,22 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
         tasks_update = self.get_tasks_update(row)
 
         if entity is None:
-            entity = Entity.create(
-                **{**edit_values, **edit_new_values},
+            edit = edits_service.create_edit(
+                project_id,
+                edit_name,
+                data=edit_new_values["data"],
+                description=edit_new_values.get("description", ""),
+                parent_id=episode_id,
                 created_by=self.current_user_id,
             )
-            events.emit(
-                "edit:new",
-                {"edit_id": str(entity.id), "episode_id": episode_id},
-                project_id=project_id,
-            )
+            entity = entities_service.get_entity_raw(edit["id"])
 
             self.create_and_update_tasks(
                 tasks_update, entity, edit_creation=True
             )
 
         elif self.is_update:
-            entity.update(edit_new_values)
-            events.emit(
-                "edit:update",
-                {"edit_id": str(entity.id), "episode_id": episode_id},
-                project_id=project_id,
-            )
+            edits_service.update_edit(str(entity.id), edit_new_values)
 
             self.create_and_update_tasks(
                 tasks_update, entity, edit_creation=False

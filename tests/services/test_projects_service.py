@@ -268,6 +268,46 @@ class ProjectServiceTestCase(ApiDBTestCase):
         task_types = projects_service.get_project_task_types(self.project.id)
         self.assertEqual(len(task_types), 1)
 
+    def test_get_project_task_types_raw_narrows_to_an_entity_kind(self):
+        """
+        The importers read the task types of a production per entity kind.
+        A task type predating the for_entity column reads NULL and means
+        Asset, the model default.
+        """
+        self.generate_fixture_department()
+        self.generate_fixture_task_type()
+        for task_type in [
+            self.task_type,
+            self.task_type_animation,
+            self.task_type_concept,
+        ]:
+            projects_service.add_task_type_setting(
+                self.project.id, task_type.id
+            )
+        self.task_type_concept.update({"for_entity": None})
+
+        names = lambda task_types: sorted(t.name for t in task_types)
+        self.assertEqual(
+            names(
+                projects_service.get_project_task_types_raw(
+                    self.project.id, "Asset"
+                )
+            ),
+            [self.task_type_concept.name, self.task_type.name],
+        )
+        self.assertEqual(
+            names(
+                projects_service.get_project_task_types_raw(
+                    self.project.id, "Shot"
+                )
+            ),
+            [self.task_type_animation.name],
+        )
+        self.assertEqual(
+            len(projects_service.get_project_task_types_raw(self.project.id)),
+            3,
+        )
+
     def test_get_project_task_statuses(self):
         self.generate_fixture_task_status()
         projects_service.add_task_status_setting(
