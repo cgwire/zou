@@ -545,7 +545,7 @@ class TaskCommentTestCase(TaskTestCase):
         self.assertEqual(len(notifications), 1)
 
         news_list = news_service.get_last_news_for_project(
-            project_id=self.project_id
+            news_service.NewsFilters(project_id=self.project_id)
         )
         self.assertEqual(len(news_list["data"]), 2)
 
