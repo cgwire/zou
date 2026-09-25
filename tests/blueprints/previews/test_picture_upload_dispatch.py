@@ -13,10 +13,10 @@ from zou.app.services import (
 from zou.app.stores import file_store, queue_store
 
 
-class PictureUploadDispatchTestCase(ApiDBTestCase):
+class BasePreviewDispatchTestCase(ApiDBTestCase):
     """
-    How a picture upload is handed over: to the RQ queue by default, in
-    the request thread when asked for.
+    A task to attach preview files to and a picture to upload, shared by
+    the dispatch test cases without running each other's tests.
     """
 
     def setUp(self):
@@ -46,6 +46,13 @@ class PictureUploadDispatchTestCase(ApiDBTestCase):
             {},
         )
         return preview_file["id"]
+
+
+class PictureUploadDispatchTestCase(BasePreviewDispatchTestCase):
+    """
+    How a picture upload is handed over: to the RQ queue by default, in
+    the request thread when asked for.
+    """
 
     def test_upload_queues_the_variants_and_answers_processing(self):
         preview_file_id = self.create_preview_file()
@@ -163,8 +170,10 @@ class PictureUploadDispatchTestCase(ApiDBTestCase):
         self.delete(f"data/preview-files/{preview_file_id}?force=true")
 
         # No exception: a preview deleted while its job waited is not a
-        # worker crash.
-        preview_files_service.prepare_and_store_picture(*args)
+        # worker crash. update_preview_file waits 1 then 5 seconds for the
+        # missing row to show up: the waits are skipped.
+        with patch.object(preview_files_service.time, "sleep"):
+            preview_files_service.prepare_and_store_picture(*args)
 
     def test_an_inline_failure_marks_the_preview_broken(self):
         preview_file_id = self.create_preview_file()
@@ -188,7 +197,7 @@ class PictureUploadDispatchTestCase(ApiDBTestCase):
         self.assertFalse(os.path.exists(tmp_path))
 
 
-class FrameExtractionDispatchTestCase(PictureUploadDispatchTestCase):
+class FrameExtractionDispatchTestCase(BasePreviewDispatchTestCase):
     def test_set_main_preview_with_a_frame_queues_the_extraction(self):
         preview_file_id = self.create_preview_file()
         self.upload_file(
