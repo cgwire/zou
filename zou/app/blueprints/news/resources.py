@@ -32,30 +32,21 @@ class NewsMixin(ArgsMixin):
 
         after = self.parse_date_parameter(after)
         before = self.parse_date_parameter(before)
+        filters = news_service.NewsFilters(
+            project_ids=project_ids,
+            only_preview=only_preview,
+            task_type_id=task_type_id,
+            task_status_id=task_status_id,
+            episode_id=episode_id,
+            author_id=person_id,
+            after=after,
+            before=before,
+            current_user=current_user,
+        )
         result = news_service.get_last_news_for_project(
-            project_ids=project_ids,
-            only_preview=only_preview,
-            task_type_id=task_type_id,
-            task_status_id=task_status_id,
-            episode_id=episode_id,
-            author_id=person_id,
-            page=page,
-            limit=limit,
-            after=after,
-            before=before,
-            current_user=current_user,
+            filters, page=page, limit=limit
         )
-        stats = news_service.get_news_stats_for_project(
-            project_ids=project_ids,
-            only_preview=only_preview,
-            task_type_id=task_type_id,
-            task_status_id=task_status_id,
-            episode_id=episode_id,
-            author_id=person_id,
-            after=after,
-            before=before,
-            current_user=current_user,
-        )
+        stats = news_service.get_news_stats_for_project(filters)
         result["stats"] = stats
         return result
 

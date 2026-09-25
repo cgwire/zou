@@ -3095,15 +3095,7 @@ class OpenTasksResource(MethodView, ArgsMixin):
         )
         check_open_tasks_filter_args(self, args)
         return tasks_service.get_open_tasks(
-            task_type_id=args["task_type_id"],
-            project_id=args["project_id"],
-            person_id=args["person_id"],
-            task_status_id=args["task_status_id"],
-            studio_id=args["studio_id"],
-            department_id=args["department_id"],
-            start_date=args["start_date"],
-            due_date=args["due_date"],
-            priority=args["priority"],
+            tasks_service.OpenTasksFilters.from_args(args),
             page=args["page"],
             limit=args["limit"],
         )
@@ -3273,4 +3265,6 @@ class OpenTasksBurndownResource(MethodView, ArgsMixin):
             ]
         )
         check_open_tasks_filter_args(self, args)
-        return tasks_service.get_open_tasks_burndown(**args)
+        return tasks_service.get_open_tasks_burndown(
+            tasks_service.OpenTasksFilters.from_args(args)
+        )

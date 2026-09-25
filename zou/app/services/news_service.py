@@ -1,4 +1,6 @@
+import dataclasses
 import math
+from typing import Any, Optional
 
 from sqlalchemy import func
 from sqlalchemy.orm import aliased
@@ -14,19 +16,28 @@ from zou.app.utils import cache, events, fields
 from zou.app.services import names_service, persons_service, tasks_service
 
 
-def _apply_news_filters(
-    query,
-    project_id=None,
-    project_ids=None,
-    current_user=None,
-    task_status_id=None,
-    task_type_id=None,
-    author_id=None,
-    episode_id=None,
-    only_preview=False,
-    before=None,
-    after=None,
-):
+@dataclasses.dataclass
+class NewsFilters:
+    """
+    Criteria shared by the news list and the news stats. project_ids is a
+    scoping allowlist, distinct from the project_id the caller asked for:
+    when it is empty the query falls back to the projects the current
+    user belongs to, admins excepted.
+    """
+
+    project_id: Optional[str] = None
+    project_ids: Optional[list] = None
+    current_user: Optional[Any] = None
+    task_status_id: Optional[str] = None
+    task_type_id: Optional[str] = None
+    author_id: Optional[str] = None
+    episode_id: Optional[str] = None
+    only_preview: bool = False
+    before: Optional[Any] = None
+    after: Optional[Any] = None
+
+
+def _apply_news_filters(query, filters):
     """
     Apply the filters shared by the news list and the news stats.
 
@@ -34,40 +45,43 @@ def _apply_news_filters(
     caller asked for. When it is empty the query falls back to the projects
     the current user belongs to, admins excepted.
     """
-    if project_id is not None:
-        query = query.filter(Task.project_id == project_id)
+    if filters.project_id is not None:
+        query = query.filter(Task.project_id == filters.project_id)
 
-    if project_ids and len(project_ids) > 0:
-        query = query.filter(Project.id.in_(project_ids))
-    elif current_user is not None and current_user.role.code != "admin":
-        query = query.filter(Project.team.contains(current_user))
+    if filters.project_ids and len(filters.project_ids) > 0:
+        query = query.filter(Project.id.in_(filters.project_ids))
+    elif (
+        filters.current_user is not None
+        and filters.current_user.role.code != "admin"
+    ):
+        query = query.filter(Project.team.contains(filters.current_user))
 
-    if episode_id is not None:
+    if filters.episode_id is not None:
         Sequence = aliased(Entity, name="sequence")
         query = query.join(Sequence, Entity.parent_id == Sequence.id).filter(
-            Sequence.parent_id == episode_id
+            Sequence.parent_id == filters.episode_id
         )
 
-    if task_status_id is not None:
-        query = query.filter(Comment.task_status_id == task_status_id)
+    if filters.task_status_id is not None:
+        query = query.filter(Comment.task_status_id == filters.task_status_id)
 
-    if task_type_id is not None:
-        query = query.filter(Task.task_type_id == task_type_id)
+    if filters.task_type_id is not None:
+        query = query.filter(Task.task_type_id == filters.task_type_id)
 
-    if author_id is not None:
-        query = query.filter(News.author_id == author_id)
+    if filters.author_id is not None:
+        query = query.filter(News.author_id == filters.author_id)
 
-    if only_preview:
+    if filters.only_preview:
         query = query.filter(News.preview_file_id != None)
 
-    if after is not None:
+    if filters.after is not None:
         query = query.filter(
-            News.created_at > func.cast(after, News.created_at.type)
+            News.created_at > func.cast(filters.after, News.created_at.type)
         )
 
-    if before is not None:
+    if filters.before is not None:
         query = query.filter(
-            News.created_at < func.cast(before, News.created_at.type)
+            News.created_at < func.cast(filters.before, News.created_at.type)
         )
 
     return query
@@ -156,20 +170,7 @@ def delete_news_for_comment(comment_id):
 
 
 def get_last_news_for_project(
-    project_ids=None,
-    project_id=None,
-    news_id=None,
-    entity_id=None,
-    only_preview=False,
-    task_type_id=None,
-    task_status_id=None,
-    author_id=None,
-    page=1,
-    limit=50,
-    before=None,
-    after=None,
-    episode_id=None,
-    current_user=None,
+    filters=None, news_id=None, entity_id=None, page=1, limit=50
 ):
     """
     Return last 50 news for given project. Add related information to make it
@@ -194,19 +195,7 @@ def get_last_news_for_project(
     if entity_id is not None:
         query = query.filter(Entity.id == entity_id)
 
-    query = _apply_news_filters(
-        query,
-        project_id=project_id,
-        project_ids=project_ids,
-        current_user=current_user,
-        task_status_id=task_status_id,
-        task_type_id=task_type_id,
-        author_id=author_id,
-        episode_id=episode_id,
-        only_preview=only_preview,
-        before=before,
-        after=after,
-    )
+    query = _apply_news_filters(query, filters or NewsFilters())
 
     total, nb_pages = _get_news_total(query, limit)
 
@@ -321,24 +310,11 @@ def get_last_news_for_project(
     }
 
 
-def get_news_stats_for_project(
-    project_ids=None,
-    project_id=None,
-    only_preview=False,
-    task_type_id=None,
-    task_status_id=None,
-    episode_id=None,
-    author_id=None,
-    before=None,
-    after=None,
-    current_user=None,
-):
+def get_news_stats_for_project(filters=None):
     """
     Return the number of news by task status for given project and filters.
     { "task-status-1": 24, "task-status-2": 58 }
     """
-    if project_ids is None:
-        project_ids = []
     query = (
         News.query.join(Task, News.task_id == Task.id)
         .join(Project)
@@ -352,19 +328,7 @@ def get_news_stats_for_project(
         .filter(News.change == True)
     )
 
-    query = _apply_news_filters(
-        query,
-        project_id=project_id,
-        project_ids=project_ids,
-        current_user=current_user,
-        task_status_id=task_status_id,
-        task_type_id=task_type_id,
-        author_id=author_id,
-        episode_id=episode_id,
-        only_preview=only_preview,
-        before=before,
-        after=after,
-    )
+    query = _apply_news_filters(query, filters or NewsFilters())
 
     stats = {}
     for task_status_id, count in query.all():
@@ -378,7 +342,9 @@ def get_news(project_id, news_id):
     """
     Return a single news, in the same shape as the news list.
     """
-    return get_last_news_for_project(project_id=project_id, news_id=news_id)
+    return get_last_news_for_project(
+        NewsFilters(project_id=project_id), news_id=news_id
+    )
 
 
 def get_news_for_entity(entity_id):
