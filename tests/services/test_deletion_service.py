@@ -161,6 +161,19 @@ class RemovePreviewFileTestCase(DeletionTestCase):
         self.assertEqual(result["id"], preview_id)
         self.assertIsNone(PreviewFile.get(preview_id))
 
+    def test_clear_movie_files_removes_the_original_frame(self):
+        # The movie pipeline stores the first frame as the "original"
+        # picture, which used to be left behind in the store.
+        with mock.patch.object(
+            deletion_service.file_store, "remove_picture"
+        ) as remove_picture, mock.patch.object(
+            deletion_service.file_store, "remove_movie"
+        ):
+            deletion_service.clear_movie_files("some-id")
+        removed = {call.args[0] for call in remove_picture.call_args_list}
+        self.assertIn("original", removed)
+        self.assertIn("tiles", removed)
+
     def test_remove_preview_file_keeps_files_when_db_delete_fails(self):
         self.generate_fixture_preview_file()
 
