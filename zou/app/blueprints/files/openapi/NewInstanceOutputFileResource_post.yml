@@ -1,0 +1,145 @@
+Create new instance output file
+---
+description: Create a new output file linked to an asset instance
+  for a specific shot. Output files track the source working file
+  and require output type and task type for categorization.
+tags:
+- Files
+parameters:
+  - in: path
+    name: asset_instance_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Asset instance unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+  - in: path
+    name: temporal_entity_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Temporal entity unique identifier
+    example: b35b7fb5-df86-5776-b181-68564193d36
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - output_type_id
+          - task_type_id
+        properties:
+          name:
+            type: string
+            description: Output file name
+            default: main
+            example: "main"
+          mode:
+            type: string
+            description: Output file mode
+            default: output
+            example: "output"
+          output_type_id:
+            type: string
+            format: uuid
+            description: Output type identifier
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          task_type_id:
+            type: string
+            format: uuid
+            description: Task type identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
+          person_id:
+            type: string
+            format: uuid
+            description: Person identifier
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          working_file_id:
+            type: string
+            format: uuid
+            description: Source working file identifier
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          file_status_id:
+            type: string
+            format: uuid
+            description: File status identifier
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          is_sequence:
+            type: boolean
+            description: Whether file is a sequence
+            default: false
+            example: false
+          comment:
+            type: string
+            description: Output file comment
+            example: "Final render"
+          extension:
+            type: string
+            description: File extension
+            example: ".mp4"
+          representation:
+            type: string
+            description: File representation
+            example: "mp4"
+          revision:
+            type: integer
+            description: File revision number
+            example: 1
+          nb_elements:
+            type: integer
+            description: Number of elements
+            default: 1
+            example: 1
+          sep:
+            type: string
+            description: Path separator
+            default: /
+            example: "/"
+responses:
+  201:
+    description: New output file created successfully
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Output file unique identifier
+              example: b35b7fb5-df86-5776-b181-68564193d36
+            name:
+              type: string
+              description: Output file name
+              example: "main"
+            path:
+              type: string
+              description: Output file path
+              example: "/project/asset/instance/output/main_v001.mp4"
+            revision:
+              type: integer
+              description: Output file revision
+              example: 1
+            asset_instance_id:
+              type: string
+              format: uuid
+              description: Asset instance identifier
+              example: c46c8gc6-eg97-6887-c292-79675204e47
+            temporal_entity_id:
+              type: string
+              format: uuid
+              description: Temporal entity identifier
+              example: d57d9hd7-fh08-7998-d403-80786315f58
+            created_at:
+              type: string
+              format: date-time
+              description: Creation timestamp
+              example: "2023-01-01T12:00:00Z"
+            updated_at:
+              type: string
+              format: date-time
+              description: Last update timestamp
+              example: "2023-01-01T12:30:00Z"

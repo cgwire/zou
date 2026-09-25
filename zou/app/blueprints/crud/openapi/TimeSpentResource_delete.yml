@@ -1,0 +1,20 @@
+Delete time spent
+---
+tags:
+  - Crud
+description: Delete a time spent record by its ID. Returns
+  empty response on success. Updates task duration
+  automatically.
+parameters:
+  - in: path
+    name: instance_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+responses:
+    204:
+      description: Time spent record deleted successfully
+    400:
+      description: Integrity error or cannot delete

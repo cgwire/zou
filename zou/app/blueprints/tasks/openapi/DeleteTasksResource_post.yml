@@ -1,0 +1,24 @@
+Delete tasks batch
+---
+tags:
+- Tasks
+description: Delete tasks given by id list. Useful for batch deletions.
+parameters:
+  - in: path
+    name: project_id
+    required: true
+    schema:
+      type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+responses:
+    200:
+        description: Tasks matching id list given in parameter deleted
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+                format: uuid
+              example: ["a24a6ea4-ce75-4665-a070-57453082c25"]

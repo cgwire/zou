@@ -1,0 +1,29 @@
+Create a metadata descriptor on all accessible projects
+---
+description: Create the same metadata descriptor in every open
+  project the user can access that does not already own one with the
+  same field name. Replaces one create request per project.
+tags:
+  - Projects
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - name
+          - data_type
+        properties:
+          entity_type:
+            type: string
+            default: "Project"
+          name:
+            type: string
+          data_type:
+            type: string
+responses:
+  201:
+    description: Created descriptors
+  400:
+    description: Invalid parameters

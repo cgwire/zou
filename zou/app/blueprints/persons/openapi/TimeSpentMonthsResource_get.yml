@@ -1,0 +1,21 @@
+Get time spent months table
+---
+description: Return a table giving time spent by user and by month for
+  given year.
+tags:
+  - Persons
+parameters:
+  - in: path
+    name: year
+    required: true
+    schema:
+      type: integer
+    description: Year to get time spent table for
+    example: 2022
+responses:
+  200:
+    description: Table giving time spent by user and by month for given year
+    content:
+      application/json:
+        schema:
+          type: object

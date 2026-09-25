@@ -1,0 +1,39 @@
+Get shared movie tile strip
+---
+description: Serve the filmstrip/tile image used for timeline hover
+  previews, when the share token is valid.
+tags:
+  - Playlists
+parameters:
+  - in: path
+    name: token
+    required: true
+    schema:
+      type: string
+    description: Share link token
+  - in: path
+    name: preview_file_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Preview file unique identifier
+responses:
+  200:
+    description: Tile sprite image
+    content:
+      image/png:
+        schema:
+          type: string
+          format: binary
+  403:
+    description: Preview file is not part of this shared playlist
+  404:
+    description: Tile file missing
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            error:
+              type: string

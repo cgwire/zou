@@ -1,0 +1,50 @@
+Add entities to playlist
+---
+description: Atomically add several (entity, preview) couples to the
+  given playlist in a single database write. A playlist entry is the
+  couple, so the same entity may be added several times with
+  different previews; only exact duplicate couples are skipped. When
+  a couple has no preview_file_id, the entity's latest preview
+  (highest revision, restricted to the playlist task type when one is
+  set) is used.
+tags:
+  - Playlists
+parameters:
+  - in: path
+    name: playlist_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Playlist unique identifier
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - entities
+        properties:
+          entities:
+            type: array
+            items:
+              type: object
+              required:
+                - entity_id
+              properties:
+                entity_id:
+                  type: string
+                  format: uuid
+                preview_file_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+            description: Entity/preview couples to add to the playlist
+responses:
+  200:
+    description: Updated playlist
+    content:
+      application/json:
+        schema:
+          type: object

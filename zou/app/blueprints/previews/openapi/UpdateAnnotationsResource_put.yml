@@ -1,0 +1,62 @@
+Update preview annotations
+---
+description: Allow to modify the annotations stored at the preview level.
+  Modifications are applied via three fields, additions to give all the
+  annotations that need to be added, updates that list annotations that
+  needs to be modified, and deletions to list the IDs of annotations that
+  needs to be removed.
+tags:
+  - Previews
+parameters:
+  - in: path
+    name: preview_file_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Preview file unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          additions:
+            type: array
+            description: Annotations to add
+            items:
+              type: object
+            example: [{"type": "drawing", "x": 100, "y": 200}]
+          updates:
+            type: array
+            description: Annotations to update
+            items:
+              type: object
+            example: [{"id": "uuid", "x": 150, "y": 250}]
+          deletions:
+            type: array
+            description: Annotation IDs to remove
+            items:
+              type: string
+              format: uuid
+            example: ["a24a6ea4-ce75-4665-a070-57453082c25"]
+responses:
+  200:
+    description: Preview annotations updated
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Preview file unique identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c25
+            annotations:
+              type: array
+              description: Updated annotations
+              items:
+                type: object

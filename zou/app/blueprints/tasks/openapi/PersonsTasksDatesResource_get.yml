@@ -1,0 +1,57 @@
+Get persons tasks dates
+---
+tags:
+- Tasks
+description: For each active person, return the first start date of all
+  tasks assigned to them and the last end date. Useful for schedule
+  planning. Admins get the studio-wide view; managers and supervisors
+  are restricted to the projects of their own teams.
+parameters:
+  - in: query
+    name: project_id
+    required: false
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+    description: Filter by project ID
+responses:
+    200:
+      description: First start date and last end date for tasks per
+        person
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                person_id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c25
+                min_date:
+                  type: string
+                  description: First task start date for this person
+                    within the requested scope
+                  example: "2024-01-15 00:00:00"
+                max_date:
+                  type: string
+                  description: Last task due date for this person
+                    within the requested scope
+                  example: "2024-03-21 00:00:00"
+                busy_periods:
+                  type: array
+                  description: Anonymous, merged date intervals
+                    covering the person's tasks in open productions
+                    outside the caller's scope. No production or
+                    task detail is exposed.
+                  items:
+                    type: object
+                    properties:
+                      start_date:
+                        type: string
+                        example: "2024-01-15 00:00:00"
+                      end_date:
+                        type: string
+                        example: "2024-03-21 00:00:00"

@@ -1,0 +1,45 @@
+Get concept task types
+---
+description: Retrieve all task types that are related to a specific
+  concept.
+tags:
+  - Concepts
+parameters:
+  - in: path
+    name: concept_id
+    required: true
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+    description: Unique identifier of the concept
+responses:
+  200:
+    description: List of concept task types successfully retrieved
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Task type unique identifier
+                example: b35b7fb5-df86-5776-b181-68564193d36
+              name:
+                type: string
+                description: Task type name
+                example: "Concept Art"
+              short_name:
+                type: string
+                description: Task type short name
+                example: "CON"
+              color:
+                type: string
+                description: Task type color code
+                example: "#FF5733"
+              for_entity:
+                type: string
+                description: Entity type this task type is for
+                example: "Concept"

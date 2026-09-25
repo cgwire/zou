@@ -1,0 +1,60 @@
+Create project episode
+---
+tags:
+- Shots
+description: Create an episode in a project. Provide name and
+  description. Status is optional.
+parameters:
+  - in: path
+    name: project_id
+    required: True
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - name
+          - description
+        properties:
+          name:
+            type: string
+            required: true
+            example: EP01
+          description:
+            type: string
+            required: true
+            example: A short description of the episode
+          status:
+            type: string
+            required: false
+            example: running
+responses:
+    201:
+        description: Episode created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c25
+                name:
+                  type: string
+                  example: EP01
+                project_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c25
+                description:
+                  type: string
+                  example: A short description of the episode
+                status:
+                  type: string
+                  example: running

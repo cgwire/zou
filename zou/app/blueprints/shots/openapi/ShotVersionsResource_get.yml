@@ -1,0 +1,31 @@
+Get shot versions
+---
+tags:
+- Shots
+description: Get data versions of a shot. Use this to inspect version
+  history.
+parameters:
+  - in: path
+    name: shot_id
+    required: True
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+responses:
+    200:
+        description: Data versions of given shot
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  created_at:
+                    type: string
+                    format: date-time
+                    example: "2024-01-15T10:30:00Z"

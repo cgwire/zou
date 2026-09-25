@@ -1,3 +1,4 @@
+from flasgger import swag_from
 from zou.app.blueprints.export.csv.base import BaseCsvExport
 from flask_jwt_extended import jwt_required
 from sqlalchemy import func
@@ -14,26 +15,10 @@ class PersonsCsvExport(BaseCsvExport):
         self.studio_cache = {}
 
     @jwt_required()
+    @swag_from("openapi/PersonsCsvExport_get.yml")
     def get(self):
         """
         Export persons csv
-        ---
-        tags:
-          - Export
-        description: Export persons as CSV file. Includes first name, last
-          name, email, phone, role, departments, studio, country, contract
-          type, position, seniority, daily salary and active status.
-          Excludes bot accounts.
-        produces:
-          - text/csv
-        responses:
-            200:
-              description: Persons exported as CSV successfully
-              content:
-                text/csv:
-                  schema:
-                    type: string
-                  example: "First Name;Last Name;Email;Phone;Role;Departments;Studio;Country;Contract Type;Position;Seniority;Daily Salary;Active\nJohn;Doe;john.doe@example.com;+1234567890;user;Animation;Paris;FR;freelance;artist;mid;320;yes"
         """
         return super().get()
 

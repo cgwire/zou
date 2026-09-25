@@ -1,0 +1,27 @@
+Get shared playlist
+---
+description: Retrieve a playlist with preview file revisions for a
+  secret share link. No JWT; the path token (and optional query
+  password) is the credential.
+tags:
+  - Playlists
+parameters:
+  - in: path
+    name: token
+    required: true
+    schema:
+      type: string
+    description: Share link token
+  - in: query
+    name: password
+    required: false
+    schema:
+      type: string
+    description: Password when the link is protected
+responses:
+  200:
+    description: Playlist with preview file revisions and enriched shots
+    content:
+      application/json:
+        schema:
+          type: object

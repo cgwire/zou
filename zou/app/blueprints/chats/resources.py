@@ -1,3 +1,4 @@
+from flasgger import swag_from
 from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -18,49 +19,10 @@ from zou.app.exceptions import WrongParameterException
 class ChatResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/ChatResource_get.yml")
     def get(self, entity_id):
         """
         Get chat details
-        ---
-        description: Retrieve chat information and messages for a specific entity.
-          Returns chat metadata including participants and all associated messages.
-        tags:
-          - Chat
-        parameters:
-          - in: path
-            name: entity_id
-            description: ID of the entity related to the chat
-            type: string
-            format: uuid
-            required: true
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: Chat information successfully retrieved
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Chat unique identifier
-                    entity_id:
-                      type: string
-                      format: uuid
-                      description: Entity ID this chat is associated with
-                    participants:
-                      type: array
-                      items:
-                        type: string
-                        format: uuid
-                      description: List of participant user IDs
-                    messages:
-                      type: array
-                      items:
-                        type: object
-                      description: Array of chat messages
         """
         entity = entities_service.get_entity(entity_id)
         permissions_service.check_project_access(entity["project_id"])
@@ -73,52 +35,10 @@ class ChatResource(MethodView):
 class ChatMessagesResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/ChatMessagesResource_get.yml")
     def get(self, entity_id):
         """
         Get chat messages
-        ---
-        description: Retrieve all chat messages for a specific entity.
-          Returns a list of messages with sender information and timestamps.
-        tags:
-          - Chat
-        parameters:
-          - in: path
-            name: entity_id
-            description: ID of the entity related to the chat
-            type: string
-            format: uuid
-            required: true
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: Chat messages successfully retrieved
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        description: Message unique identifier
-                      message:
-                        type: string
-                        description: Message content
-                      person_id:
-                        type: string
-                        format: uuid
-                        description: ID of the message sender
-                      created_at:
-                        type: string
-                        format: date-time
-                        description: Message creation timestamp
-                      attachments:
-                        type: array
-                        items:
-                          type: object
-                        description: Array of file attachments
         """
         entity = entities_service.get_entity(entity_id)
         permissions_service.check_project_access(entity["project_id"])
@@ -126,80 +46,10 @@ class ChatMessagesResource(MethodView):
         return chats_service.get_chat_messages_for_entity(entity_id)
 
     @jwt_required()
+    @swag_from("openapi/ChatMessagesResource_post.yml")
     def post(self, entity_id):
         """
         Create chat message
-        ---
-        description: Create a new chat message for a specific entity.
-          Supports both JSON and form data with optional file attachments.
-          Only chat participants can send messages.
-        tags:
-          - Chat
-        parameters:
-          - in: path
-            name: entity_id
-            description: ID of the entity related to the chat
-            type: string
-            format: uuid
-            required: true
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    description: Message content to send
-                    example: Hello, world!
-                required:
-                  - message
-            multipart/form-data:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    description: Message content to send
-                    example: Hello, world!
-                  files:
-                    type: array
-                    items:
-                      type: string
-                      format: binary
-                    description: Files to attach to the message
-                required:
-                  - message
-        responses:
-          201:
-            description: Chat message successfully created
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Created message unique identifier
-                    message:
-                      type: string
-                      description: Message content
-                    person_id:
-                      type: string
-                      format: uuid
-                      description: ID of the message sender
-                    created_at:
-                      type: string
-                      format: date-time
-                      description: Message creation timestamp
-                    attachments:
-                      type: array
-                      items:
-                        type: object
-                      description: Array of attached files
         """
         entity = entities_service.get_entity(entity_id)
         permissions_service.check_project_access(entity["project_id"])
@@ -227,61 +77,10 @@ class ChatMessagesResource(MethodView):
 class ChatMessageResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/ChatMessageResource_get.yml")
     def get(self, entity_id, chat_message_id):
         """
         Get chat message
-        ---
-        description: Retrieve a specific chat message by its ID.
-          Returns detailed message information including content and metadata.
-        tags:
-          - Chat
-        parameters:
-          - in: path
-            name: entity_id
-            description: ID of the entity related to the chat
-            type: string
-            format: uuid
-            required: true
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: chat_message_id
-            description: ID of the chat message
-            type: string
-            format: uuid
-            required: true
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: Chat message successfully retrieved
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Message unique identifier
-                    message:
-                      type: string
-                      description: Message content
-                    person_id:
-                      type: string
-                      format: uuid
-                      description: ID of the message sender
-                    created_at:
-                      type: string
-                      format: date-time
-                      description: Message creation timestamp
-                    updated_at:
-                      type: string
-                      format: date-time
-                      description: Message last update timestamp
-                    attachments:
-                      type: array
-                      items:
-                        type: object
-                      description: Array of file attachments
         """
         entity = entities_service.get_entity(entity_id)
         permissions_service.check_project_access(entity["project_id"])
@@ -293,32 +92,10 @@ class ChatMessageResource(MethodView):
         return chat_message
 
     @jwt_required()
+    @swag_from("openapi/ChatMessageResource_delete.yml")
     def delete(self, entity_id, chat_message_id):
         """
         Delete chat message
-        ---
-        description: Delete a specific chat message. Only the message author
-          or administrators can delete messages.
-        tags:
-          - Chat
-        parameters:
-          - in: path
-            name: entity_id
-            description: ID of the entity related to the chat
-            type: string
-            format: uuid
-            required: true
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: chat_message_id
-            description: ID of the chat message to delete
-            type: string
-            format: uuid
-            required: true
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          204:
-            description: Chat message successfully deleted
         """
         entity = entities_service.get_entity(entity_id)
         permissions_service.check_project_access(entity["project_id"])

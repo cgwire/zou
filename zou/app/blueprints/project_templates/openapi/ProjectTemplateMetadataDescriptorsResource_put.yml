@@ -1,0 +1,5 @@
+Replace the JSONB metadata descriptors snapshot on a project
+template. Admin only.
+---
+tags:
+  - Project Templates

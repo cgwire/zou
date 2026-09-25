@@ -1,0 +1,46 @@
+Get the configuration of the Kitsu instance
+---
+description: The configuration includes self-hosted status, Crisp token, indexer configuration, SAML status, and dark theme status.
+tags:
+  - Index
+responses:
+  '200':
+    description: Configuration object
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            is_self_hosted:
+              type: boolean
+              example: true
+            crisp_token:
+              type: string
+              example: "abc123def456"
+            dark_theme_by_default:
+              type: boolean
+              example: false
+            indexer_configured:
+              type: boolean
+              example: true
+            saml_enabled:
+              type: boolean
+              example: false
+            saml_idp_name:
+              type: string
+              example: "My Company SSO"
+            default_locale:
+              type: string
+              example: "en_US"
+            default_timezone:
+              type: string
+              example: "UTC"
+            sentry:
+              type: object
+              properties:
+                dsn:
+                  type: string
+                  example: "https://example@sentry.io/123456"
+                sampleRate:
+                  type: number
+                  example: 0.1

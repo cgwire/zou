@@ -1,0 +1,22 @@
+Get attachment thumbnail
+---
+description: Download the thumbnail representing given attachment file.
+tags:
+  - Previews
+parameters:
+  - in: path
+    name: attachment_file_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Attachment file unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+responses:
+  200:
+    description: Attachment thumbnail downloaded
+    content:
+      image/png:
+        schema:
+          type: string
+          format: binary

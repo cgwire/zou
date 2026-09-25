@@ -1,0 +1,81 @@
+Get assets with tasks
+---
+description: Retrieve all production assets with their related tasks. Includes project name, asset type name, and all associated tasks. Supports filtering by episode
+tags:
+  - Assets
+parameters:
+  - in: query
+    name: project_id
+    type: string
+    format: uuid
+    description: Filter assets by specific project
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+  - in: query
+    name: episode_id
+    type: string
+    format: uuid
+    description: Filter assets by episode (returns assets not linked to episode and assets linked to given episode)
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+  - in: query
+    name: compact
+    type: boolean
+    default: false
+    description: Encode assets and tasks as positional value arrays
+      (halves the payload). Field names are given by the
+      asset_fields and task_fields entries of the response, map
+      values by name, never by hardcoded position.
+  - in: query
+    name: stream
+    type: boolean
+    default: false
+    description: Stream the response as NDJSON (one header line,
+      then one asset per line) instead of a single JSON document,
+      to keep server memory flat on large productions.
+  - in: query
+    name: asset_type_id
+    type: string
+    format: uuid
+    description: Filter assets by asset type
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+responses:
+  200:
+    description: List of assets with tasks successfully retrieved
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Asset unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+              name:
+                type: string
+                description: Asset name
+                example: "Character Name"
+              project_id:
+                type: string
+                format: uuid
+                description: Project identifier
+                example: b35b7fb5-df86-5776-b181-68564193d36
+              entity_type_id:
+                type: string
+                format: uuid
+                description: Asset type identifier
+                example: c46c8gc6-eg97-6887-c292-79675204e47
+              project_name:
+                type: string
+                description: Project name
+                example: "My Project"
+              asset_type_name:
+                type: string
+                description: Asset type name
+                example: "Character"
+              tasks:
+                type: array
+                items:
+                  type: object
+                description: Array of related tasks

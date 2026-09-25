@@ -1,0 +1,16 @@
+Delete shot
+---
+tags:
+- Shots
+description: Delete a shot by id. Requires manager access or ownership of
+  the shot.
+parameters:
+  - in: path
+    name: shot_id
+    required: True
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+responses:
+    204:
+        description: Shot deleted

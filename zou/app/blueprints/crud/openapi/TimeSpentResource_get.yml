@@ -1,0 +1,59 @@
+Get time spent
+---
+tags:
+  - Crud
+description: Retrieve a time spent record by its ID and return
+  it as a JSON object. Supports including relations.
+parameters:
+  - in: path
+    name: instance_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+  - in: query
+    name: relations
+    required: false
+    schema:
+      type: boolean
+    default: true
+    example: true
+    description: Whether to include relations
+responses:
+    200:
+      description: Time spent record retrieved successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+              task_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c25
+              person_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c25
+              date:
+                type: string
+                format: date
+                example: "2024-01-15"
+              duration:
+                type: number
+                example: 8.5
+              created_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T10:30:00Z"
+              updated_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T10:30:00Z"
+    400:
+      description: Invalid ID format or query error

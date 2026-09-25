@@ -1,0 +1,20 @@
+Delete status automation
+---
+tags:
+  - Crud
+description: Delete a status automation by its ID. Returns empty
+  response on success. Cannot delete if automation is used in a
+  project.
+parameters:
+  - in: path
+    name: instance_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+responses:
+    204:
+      description: Status automation deleted successfully
+    400:
+      description: Automation is used in a project or integrity error

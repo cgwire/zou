@@ -1,0 +1,38 @@
+Get episode
+---
+tags:
+- Shots
+description: Get an episode by id.
+  needs.
+parameters:
+  - in: path
+    name: episode_id
+    required: True
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+responses:
+    200:
+        description: Episode found and returned
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c25
+                name:
+                  type: string
+                  example: EP01
+                project_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c25
+                description:
+                  type: string
+                  example: A short description of the episode
+                status:
+                  type: string
+                  example: running

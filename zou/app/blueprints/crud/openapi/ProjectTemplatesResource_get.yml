@@ -1,0 +1,8 @@
+Get project templates
+---
+tags:
+  - Crud
+description: Retrieve all project templates. Manager+ access.
+responses:
+    200:
+      description: Project templates retrieved successfully

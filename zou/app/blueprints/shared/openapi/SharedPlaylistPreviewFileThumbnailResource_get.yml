@@ -1,0 +1,39 @@
+Get shared preview thumbnail
+---
+description: Serve the PNG thumbnail for a preview file when the share
+  token is valid.
+tags:
+  - Playlists
+parameters:
+  - in: path
+    name: token
+    required: true
+    schema:
+      type: string
+    description: Share link token
+  - in: path
+    name: preview_file_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Preview file unique identifier
+responses:
+  200:
+    description: Thumbnail image
+    content:
+      image/png:
+        schema:
+          type: string
+          format: binary
+  403:
+    description: Preview file is not part of this shared playlist
+  404:
+    description: Thumbnail file missing
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            error:
+              type: string

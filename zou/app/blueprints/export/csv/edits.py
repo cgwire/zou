@@ -1,3 +1,4 @@
+from flasgger import swag_from
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 from slugify import slugify
@@ -15,32 +16,10 @@ from zou.app.utils import csv_utils
 
 class EditsCsvExport(MethodView):
     @jwt_required()
+    @swag_from("openapi/EditsCsvExport_get.yml")
     def get(self, project_id):
         """
         Export edits csv
-        ---
-        tags:
-          - Export
-        description: Export project edits as CSV file. Includes edit
-          information, task statuses, assignments, and metadata.
-        produces:
-          - text/csv
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-              description: Edits exported as CSV successfully
-              content:
-                text/csv:
-                  schema:
-                    type: string
-                  example: "Project,Episode,Name,Description,Time Spent\nProject A,EP01,Edit_001,Description,8.75"
         """
         self.task_type_map = tasks_service.get_task_type_map()
         self.task_status_map = tasks_service.get_task_status_map()

@@ -1,0 +1,31 @@
+Invite person
+---
+description: Sends an email to given person to invite him or her to
+  connect to Kitsu.
+tags:
+  - Persons
+parameters:
+  - in: path
+    name: person_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Person unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+responses:
+  200:
+    description: Email sent successfully
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+              description: Success flag
+              example: true
+            message:
+              type: string
+              description: Success message
+              example: "Email sent"

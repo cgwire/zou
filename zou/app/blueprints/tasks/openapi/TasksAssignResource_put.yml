@@ -1,0 +1,73 @@
+Assign tasks to person
+---
+tags:
+- Tasks
+description: Assign a list of tasks to a person. Unknown task ids are
+  ignored.
+parameters:
+  - in: path
+    name: person_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - task_ids
+        properties:
+          task_ids:
+            type: array
+            items:
+              type: string
+              format: uuid
+            example: [
+              "a24a6ea4-ce75-4665-a070-57453082c25",
+              "b24a6ea4-ce75-4665-a070-57453082c25"
+            ]
+responses:
+    200:
+        description: Tasks assigned to person
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  name:
+                    type: string
+                    example: SH010 Animation
+                  task_type_id:
+                    type: string
+                    format: uuid
+                    example: b24a6ea4-ce75-4665-a070-57453082c25
+                  task_status_id:
+                    type: string
+                    format: uuid
+                    example: c24a6ea4-ce75-4665-a070-57453082c25
+                  entity_id:
+                    type: string
+                    format: uuid
+                    example: d24a6ea4-ce75-4665-a070-57453082c25
+                  project_id:
+                    type: string
+                    format: uuid
+                    example: e24a6ea4-ce75-4665-a070-57453082c25
+                  assignees:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+                    example: ["f24a6ea4-ce75-4665-a070-57453082c25"]
+    400:
+        description: Assignee does not exist

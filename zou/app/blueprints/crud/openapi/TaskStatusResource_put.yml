@@ -1,0 +1,68 @@
+Update task status
+---
+tags:
+  - Crud
+description: Update a task status with data provided in the
+  request body. JSON format is expected. If is_default is set
+  to true, sets all other statuses to non-default.
+parameters:
+  - in: path
+    name: instance_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            example: In Progress
+          short_name:
+            type: string
+            example: WIP
+          color:
+            type: string
+            example: "#00FF00"
+          is_default:
+            type: boolean
+            example: true
+responses:
+    200:
+      description: Task status updated successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+              name:
+                type: string
+                example: In Progress
+              short_name:
+                type: string
+                example: WIP
+              color:
+                type: string
+                example: "#00FF00"
+              is_default:
+                type: boolean
+                example: true
+              created_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T10:30:00Z"
+              updated_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T11:00:00Z"
+    400:
+      description: Invalid data format or validation error

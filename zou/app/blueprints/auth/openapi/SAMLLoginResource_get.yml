@@ -1,0 +1,11 @@
+SAML SSO login redirect
+---
+description: Initiate SAML SSO login by redirecting to SAML identity
+  provider.
+tags:
+    - Authentication
+responses:
+  302:
+    description: Redirect to SAML identity provider
+  400:
+    description: SAML not enabled or wrong parameter

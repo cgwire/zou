@@ -1,0 +1,52 @@
+Get task time spent for date
+---
+tags:
+- Tasks
+parameters:
+  - in: path
+    name: task_id
+    required: true
+    schema:
+      type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+  - in: path
+    name: date
+    required: true
+    schema:
+      type: string
+    format: date
+    example: "2022-07-12"
+responses:
+    200:
+        description: Time spent on the task for the date
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  task_id:
+                    type: string
+                    format: uuid
+                    example: b24a6ea4-ce75-4665-a070-57453082c25
+                  person_id:
+                    type: string
+                    format: uuid
+                    example: c24a6ea4-ce75-4665-a070-57453082c25
+                  date:
+                    type: string
+                    format: date
+                    example: "2022-07-12"
+                  duration:
+                    type: number
+                    example: 120
+                  created_at:
+                    type: string
+                    format: date-time
+                    example: "2024-01-15T10:30:00Z"

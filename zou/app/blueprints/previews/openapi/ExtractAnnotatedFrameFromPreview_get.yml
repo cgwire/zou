@@ -1,0 +1,38 @@
+Extract annotated frame from preview
+---
+description: Extract a frame from a movie preview, or the picture
+  itself from a picture preview, and overlay the matching
+  annotation on it. `frame_number` is required for movies and
+  ignored for pictures. Returns 400 if no annotation is recorded.
+tags:
+  - Previews
+parameters:
+  - in: path
+    name: preview_file_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Preview file unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+  - in: query
+    name: frame_number
+    required: false
+    schema:
+      type: integer
+      minimum: 1
+    description: Frame number to extract (movies only, 1-based)
+    example: 120
+responses:
+  200:
+    description: Composited frame as PNG image
+    content:
+      image/png:
+        schema:
+          type: string
+          format: binary
+  400:
+    description: No annotation, missing frame_number on movie, or
+      unsupported extension
+  404:
+    description: Preview file binary is not available

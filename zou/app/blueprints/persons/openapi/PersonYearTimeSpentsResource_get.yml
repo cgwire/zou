@@ -1,0 +1,40 @@
+Get year time spents
+---
+description: Get aggregated time spents for given person and year.
+tags:
+  - Persons
+parameters:
+  - in: path
+    name: person_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Person unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+  - in: path
+    name: year
+    required: true
+    schema:
+      type: integer
+    description: Year to get aggregated time spents for
+    example: 2022
+responses:
+  200:
+    description: Aggregated time spents for given person and year
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            total_duration:
+              type: number
+              format: float
+              description: Total duration in hours
+              example: 2080.5
+            year:
+              type: integer
+              description: Year
+              example: 2022
+  400:
+    description: Wrong date format

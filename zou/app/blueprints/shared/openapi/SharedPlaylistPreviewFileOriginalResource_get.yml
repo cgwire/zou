@@ -1,0 +1,39 @@
+Get shared original picture preview
+---
+description: Serve the full-size PNG for a still preview, authorized by
+  the share token.
+tags:
+  - Playlists
+parameters:
+  - in: path
+    name: token
+    required: true
+    schema:
+      type: string
+    description: Share link token
+  - in: path
+    name: preview_file_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Preview file unique identifier
+responses:
+  200:
+    description: Original picture file
+    content:
+      image/png:
+        schema:
+          type: string
+          format: binary
+  403:
+    description: Preview file is not part of this shared playlist
+  404:
+    description: Original file missing
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            error:
+              type: string

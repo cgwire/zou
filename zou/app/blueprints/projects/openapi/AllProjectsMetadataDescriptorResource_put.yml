@@ -1,0 +1,18 @@
+Update a metadata descriptor on all accessible projects
+---
+description: Update every metadata descriptor sharing the given field
+  name across the open projects the user can access. Replaces one
+  update request per project.
+tags:
+  - Projects
+parameters:
+  - in: path
+    name: field_name
+    required: true
+    schema:
+      type: string
+responses:
+  200:
+    description: Updated descriptors
+  400:
+    description: Invalid parameters

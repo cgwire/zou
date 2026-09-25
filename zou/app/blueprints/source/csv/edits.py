@@ -1,3 +1,4 @@
+from flasgger import swag_from
 from zou.app.blueprints.source.csv.base import (
     BaseCsvProjectImportResource,
     RowException,
@@ -22,68 +23,10 @@ from zou.app.exceptions import WrongParameterException
 
 
 class EditsCsvImportResource(BaseCsvProjectImportResource):
+    @swag_from("openapi/EditsCsvImportResource_post.yml")
     def post(self, project_id):
         """
         Import edits csv
-        ---
-        tags:
-          - Import
-        description: Import project edits from a CSV file. Creates or updates
-          edits based on CSV rows. Supports metadata descriptors and task
-          status updates.
-        consumes:
-          - multipart/form-data
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: update
-            required: false
-            schema:
-              type: boolean
-            default: false
-            example: false
-            description: Whether to update existing edits
-          - in: formData
-            name: file
-            type: file
-            required: true
-            description: CSV file with edit data
-        responses:
-            201:
-              description: Edits imported successfully
-              content:
-                application/json:
-                  schema:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: Edit_001
-                        project_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        parent_id:
-                          type: string
-                          format: uuid
-                          example: c24a6ea4-ce75-4665-a070-57453082c25
-                        description:
-                          type: string
-                          example: Edit description
-            400:
-              description: Invalid CSV format or missing required columns
         """
         return super().post(project_id)
 

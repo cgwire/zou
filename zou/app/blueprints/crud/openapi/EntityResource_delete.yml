@@ -1,0 +1,19 @@
+Delete entity
+---
+tags:
+  - Crud
+description: Delete an entity by its ID. Returns empty response
+  on success. Can only be deleted by creator or project manager.
+parameters:
+  - in: path
+    name: instance_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+responses:
+    204:
+      description: Entity deleted successfully
+    400:
+      description: Integrity error or cannot delete

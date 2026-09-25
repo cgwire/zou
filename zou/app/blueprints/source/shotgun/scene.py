@@ -1,3 +1,4 @@
+from flasgger import swag_from
 from flask import current_app
 from flask_jwt_extended import jwt_required
 
@@ -17,75 +18,10 @@ class ImportShotgunScenesResource(BaseImportShotgunResource):
         BaseImportShotgunResource.__init__(self)
 
     @jwt_required()
+    @swag_from("openapi/ImportShotgunScenesResource_post.yml")
     def post(self):
         """
         Import shotgun scenes
-        ---
-        description: Import Shotgun scenes. Send a list of Shotgun scene
-          entries in the JSON body. Returns created or updated scenes linked
-          to sequences.
-        tags:
-          - Import
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: integer
-                      description: Shotgun ID of the scene
-                      example: 12345
-                    code:
-                      type: string
-                      description: Scene code
-                      example: "SC01"
-                    project:
-                      type: object
-                      description: Project information
-                      properties:
-                        name:
-                          type: string
-                          example: "My Project"
-              example:
-                - id: 12345
-                  code: "SC01"
-                  project:
-                    name: "My Project"
-        responses:
-          200:
-            description: Scenes imported successfully
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        description: Scene unique identifier
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      name:
-                        type: string
-                        description: Scene name
-                        example: "SC01"
-                      created_at:
-                        type: string
-                        format: date-time
-                        description: Creation timestamp
-                        example: "2024-01-15T10:30:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        description: Update timestamp
-                        example: "2024-01-15T11:00:00Z"
-          400:
-            description: Invalid request body or data format error
         """
         return super().post()
 
@@ -153,47 +89,9 @@ class ImportRemoveShotgunSceneResource(ImportRemoveShotgunBaseResource):
         )
 
     @jwt_required()
+    @swag_from("openapi/ImportRemoveShotgunSceneResource_post.yml")
     def post(self):
         """
         Remove shotgun scene
-        ---
-        description: Remove a Shotgun scene from the database. Provide the
-          Shotgun entry ID in the JSON body.
-        tags:
-          - Import
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - id
-                properties:
-                  id:
-                    type: integer
-                    description: Shotgun ID of the scene to remove
-                    example: 12345
-              example:
-                id: 12345
-        responses:
-          200:
-            description: Removal result returned
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    success:
-                      type: boolean
-                      description: Whether the removal was successful
-                      example: true
-                    removed_instance_id:
-                      type: string
-                      format: uuid
-                      description: ID of the removed scene, if found
-                      example: a24a6ea4-ce75-4665-a070-57453082c25
-          400:
-            description: Invalid request body or instance not found
         """
         return super().post()

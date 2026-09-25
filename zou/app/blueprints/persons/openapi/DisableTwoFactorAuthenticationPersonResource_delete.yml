@@ -1,0 +1,43 @@
+Disable two factor authentication
+---
+description: Allow admin to disable two factor authentication for given
+  user. An admin can't disable two factor authentication for other
+  admins.
+tags:
+  - Persons
+parameters:
+  - in: path
+    name: person_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Person unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+responses:
+  200:
+    description: Two factor authentication disabled successfully
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+              description: Success flag
+              example: true
+  400:
+    description: Inactive user or two factor authentication not enabled
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            error:
+              type: boolean
+              description: Error flag
+              example: true
+            message:
+              type: string
+              description: Error message
+              example: "User is unactive."

@@ -1,3 +1,4 @@
+from flasgger import swag_from
 from zou.app.blueprints.source.csv.base import (
     BaseCsvImportResource,
     RowException,
@@ -17,93 +18,10 @@ from zou.app.utils.string import strtobool
 
 
 class PersonsCsvImportResource(BaseCsvImportResource):
+    @swag_from("openapi/PersonsCsvImportResource_post.yml")
     def post(self):
         """
         Import persons csv
-        ---
-        tags:
-          - Import
-        description: Import persons from a CSV file. Creates or updates
-          persons based on CSV rows. Supports first/last name, email, phone,
-          role, departments, studio, country, contract type, position,
-          seniority, daily salary and active status.
-        consumes:
-          - multipart/form-data
-        parameters:
-          - in: query
-            name: update
-            required: false
-            schema:
-              type: boolean
-            default: false
-            example: false
-            description: Whether to update existing persons
-          - in: formData
-            name: file
-            type: file
-            required: true
-            description: CSV file with person data
-        responses:
-            201:
-              description: Persons imported successfully
-              content:
-                application/json:
-                  schema:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        first_name:
-                          type: string
-                          example: John
-                        last_name:
-                          type: string
-                          example: Doe
-                        email:
-                          type: string
-                          format: email
-                          example: john.doe@example.com
-                        phone:
-                          type: string
-                          example: +1234567890
-                        role:
-                          type: string
-                          example: user
-                        departments:
-                          type: array
-                          items:
-                            type: string
-                            format: uuid
-                          example: []
-                        studio_id:
-                          type: string
-                          format: uuid
-                          example: null
-                        country:
-                          type: string
-                          description: ISO 3166-1 alpha-2 country code (nullable)
-                          example: FR
-                        contract_type:
-                          type: string
-                          example: open-ended
-                        position:
-                          type: string
-                          example: lead
-                        seniority:
-                          type: string
-                          example: senior
-                        daily_salary:
-                          type: integer
-                          example: 320
-                        active:
-                          type: boolean
-                          example: true
-            400:
-              description: Invalid CSV format or missing required columns
         """
         return super().post()
 

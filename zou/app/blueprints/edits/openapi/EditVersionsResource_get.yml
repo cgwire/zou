@@ -1,0 +1,52 @@
+Get edit versions
+---
+description: Retrieve all data versions of a specific edit. This
+  includes historical versions and metadata about changes over time.
+tags:
+  - Edits
+parameters:
+  - in: path
+    name: edit_id
+    required: true
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+    description: Unique identifier of the edit
+responses:
+  200:
+    description: Edit versions successfully retrieved
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Version unique identifier
+                example: b35b7fb5-df86-5776-b181-68564193d36
+              edit_id:
+                type: string
+                format: uuid
+                description: Edit identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+              version_number:
+                type: integer
+                description: Version number
+                example: 1
+              data:
+                type: object
+                description: Version data content
+                example: {"duration": 120, "fps": 24, "changes": "Added transitions"}
+              created_at:
+                type: string
+                format: date-time
+                description: Creation timestamp
+                example: "2023-01-01T12:00:00Z"
+              created_by:
+                type: string
+                format: uuid
+                description: Creator person identifier
+                example: c46c8gc6-eg97-6887-c292-79675204e47

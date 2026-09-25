@@ -1,0 +1,63 @@
+Get entity news
+---
+description: Retrieve all news entries that are linked to a specific
+  entity.
+tags:
+  - Entities
+parameters:
+  - in: path
+    name: entity_id
+    required: true
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+    description: Unique identifier of the entity
+responses:
+  200:
+    description: List of entity news successfully retrieved
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: News unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+              change:
+                type: boolean
+                description: Whether this news represents a change
+                example: true
+              author_id:
+                type: string
+                format: uuid
+                description: Author person identifier
+                example: b35b7fb5-df86-5776-b181-68564193d36
+              comment_id:
+                type: string
+                format: uuid
+                description: Comment identifier
+                example: c46c8gc6-eg97-6887-c292-79675204e47
+              task_id:
+                type: string
+                format: uuid
+                description: Task identifier
+                example: d57d9hd7-fh08-7998-d403-80786315f58
+              preview_file_id:
+                type: string
+                format: uuid
+                description: Preview file identifier
+                example: e68e0ie8-gi19-8009-e514-91897426g69
+              created_at:
+                type: string
+                format: date-time
+                description: Creation timestamp
+                example: "2023-01-01T12:00:00Z"
+              updated_at:
+                type: string
+                format: date-time
+                description: Last update timestamp
+                example: "2023-01-01T12:30:00Z"

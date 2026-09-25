@@ -1,3 +1,4 @@
+from flasgger import swag_from
 from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -41,50 +42,10 @@ from zou.app.exceptions import (
 
 class ShotResource(MethodView, ArgsMixin):
     @jwt_required()
+    @swag_from("openapi/ShotResource_get.yml")
     def get(self, shot_id):
         """
         Get shot
-        ---
-        tags:
-        - Shots
-        description: Get a shot by id. Returns full shot data. Use this to fetch
-          a single shot with all fields needed by the UI.
-        parameters:
-          - in: path
-            name: shot_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: Shot found and returned
-                content:
-                  application/json:
-                    schema:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: SH010
-                        project_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        parent_id:
-                          type: string
-                          format: uuid
-                          example: c24a6ea4-ce75-4665-a070-57453082c25
-                        nb_frames:
-                          type: integer
-                          example: 120
-                        data:
-                          type: object
-                          example: {"camera": "camA", "cut_in": 1001}
         """
         shot = shots_service.get_full_shot(shot_id)
         permissions_service.check_project_access(shot["project_id"])
@@ -92,72 +53,10 @@ class ShotResource(MethodView, ArgsMixin):
         return shot
 
     @jwt_required()
+    @swag_from("openapi/ShotResource_put.yml")
     def put(self, shot_id):
         """
         Update shot
-        ---
-        tags:
-        - Shots
-        description: Update a shot by id. Only mutable fields are allowed. Send a
-          JSON body with the fields to change.
-        parameters:
-          - in: path
-            name: shot_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                description: Data to update on the shot
-                properties:
-                  name:
-                    type: string
-                    example: SH010 new name
-                  description:
-                    type: string
-                    example: Update description for the shot
-                  nb_frames:
-                    type: integer
-                    example: 24
-                  data:
-                    type: object
-                    example: {"camera": "camA", "cut_in": 1001}
-        responses:
-            200:
-                description: Shot updated
-                content:
-                  application/json:
-                    schema:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: SH010
-                        project_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        parent_id:
-                          type: string
-                          format: uuid
-                          example: c24a6ea4-ce75-4665-a070-57453082c25
-                        nb_frames:
-                          type: integer
-                          example: 120
-                        data:
-                          type: object
-                          example: {"camera": "camA", "cut_in": 1001}
-            400:
-                description: Invalid body or unsupported fields
         """
         shot = shots_service.get_shot(shot_id)
         permissions_service.check_manager_project_access(shot["project_id"])
@@ -181,24 +80,10 @@ class ShotResource(MethodView, ArgsMixin):
         return shots_service.update_shot(shot_id, data)
 
     @jwt_required()
+    @swag_from("openapi/ShotResource_delete.yml")
     def delete(self, shot_id):
         """
         Delete shot
-        ---
-        tags:
-        - Shots
-        description: Delete a shot by id. Requires manager access or ownership of
-          the shot.
-        parameters:
-          - in: path
-            name: shot_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            204:
-                description: Shot deleted
         """
         force = self.get_force()
         shot = shots_service.get_shot(shot_id)
@@ -214,39 +99,10 @@ class ShotResource(MethodView, ArgsMixin):
 
 class SceneResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/SceneResource_get.yml")
     def get(self, scene_id):
         """
         Get scene
-        ---
-        tags:
-        - Shots
-        description: Get a scene by id. Returns full scene data needed by clients.
-        parameters:
-          - in: path
-            name: scene_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: Scene found and returned
-                content:
-                  application/json:
-                    schema:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: SC001
-                        project_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
         """
         scene = shots_service.get_full_scene(scene_id)
         permissions_service.check_project_access(scene["project_id"])
@@ -254,23 +110,10 @@ class SceneResource(MethodView):
         return scene
 
     @jwt_required()
+    @swag_from("openapi/SceneResource_delete.yml")
     def delete(self, scene_id):
         """
         Delete scene
-        ---
-        tags:
-        - Shots
-        description: Delete a scene by id. Requires manager access or ownership.
-        parameters:
-          - in: path
-            name: scene_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            204:
-                description: Scene deleted
         """
         scene = shots_service.get_scene(scene_id)
         if scene["created_by"] == persons_service.get_current_user()["id"]:
@@ -285,58 +128,10 @@ class SceneResource(MethodView):
 
 class AllShotsResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/AllShotsResource_get.yml")
     def get(self):
         """
         Get all shots
-        ---
-        tags:
-        - Shots
-        description: Get all shots across projects with optional filters. Use
-          sequence_id, project_id, or parent_id to filter.
-        parameters:
-          - in: query
-            name: sequence_id
-            required: False
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: project_id
-            required: False
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: parent_id
-            required: False
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All shot entries
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: SH020
-                          project_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
-                          parent_id:
-                            type: string
-                            format: uuid
-                            example: c24a6ea4-ce75-4665-a070-57453082c25
         """
         criterions = query.get_query_criterions_from_request(request)
         if "sequence_id" in criterions:
@@ -353,42 +148,10 @@ class AllShotsResource(MethodView):
 
 class ScenesResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/ScenesResource_get.yml")
     def get(self):
         """
         Get scenes
-        ---
-        tags:
-        - Shots
-        description: Get scenes with optional filters. Use project_id to filter
-          by project.
-        parameters:
-          - in: query
-            name: project_id
-            required: False
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All scene entries
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: SC001
-                          project_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
         """
         criterions = query.get_query_criterions_from_request(request)
         permissions_service.check_project_access(
@@ -401,42 +164,10 @@ class ScenesResource(MethodView):
 
 class ShotAssetsResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/ShotAssetsResource_get.yml")
     def get(self, shot_id):
         """
         Get shot assets
-        ---
-        tags:
-        - Shots
-        description: Get assets linked to a shot. Returns the breakdown casting
-          for the shot.
-        parameters:
-          - in: path
-            name: shot_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All assets for given shot
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: Character A
-                          entity_type_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
         """
         shot = shots_service.get_shot(shot_id)
         permissions_service.check_project_access(shot["project_id"])
@@ -446,37 +177,10 @@ class ShotAssetsResource(MethodView):
 
 class ShotTaskTypesResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/ShotTaskTypesResource_get.yml")
     def get(self, shot_id):
         """
         Get shot task types
-        ---
-        tags:
-        - Shots
-        description: Get task types for a shot.
-        parameters:
-          - in: path
-            name: shot_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All task types related to given shot
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: Animation
         """
         shot = shots_service.get_shot(shot_id)
         permissions_service.check_project_access(shot["project_id"])
@@ -486,60 +190,10 @@ class ShotTaskTypesResource(MethodView):
 
 class ShotTasksResource(MethodView, ArgsMixin):
     @jwt_required()
+    @swag_from("openapi/ShotTasksResource_get.yml")
     def get(self, shot_id):
         """
         Get shot tasks
-        ---
-        tags:
-        - Shots
-        description: Get tasks for a shot. Optionally include relations using
-          query params.
-        parameters:
-          - in: path
-            name: shot_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All tasks related to given shot
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: SH010 Animation
-                          task_type_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
-                          task_status_id:
-                            type: string
-                            format: uuid
-                            example: c24a6ea4-ce75-4665-a070-57453082c25
-                          entity_id:
-                            type: string
-                            format: uuid
-                            example: d24a6ea4-ce75-4665-a070-57453082c25
-                          project_id:
-                            type: string
-                            format: uuid
-                            example: e24a6ea4-ce75-4665-a070-57453082c25
-                          assignees:
-                            type: array
-                            items:
-                              type: string
-                              format: uuid
-                            example: ["f24a6ea4-ce75-4665-a070-57453082c25"]
         """
         shot = shots_service.get_shot(shot_id)
         permissions_service.check_project_access(shot["project_id"])
@@ -550,50 +204,10 @@ class ShotTasksResource(MethodView, ArgsMixin):
 
 class SequenceShotTasksResource(MethodView, ArgsMixin):
     @jwt_required()
+    @swag_from("openapi/SequenceShotTasksResource_get.yml")
     def get(self, sequence_id):
         """
         Get sequence shot tasks
-        ---
-        tags:
-        - Shots
-        description: Get shot tasks for a sequence. Restricted for vendor
-          permissions.
-        parameters:
-          - in: path
-            name: sequence_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All shot tasks related to given sequence
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: SH010 Animation
-                          task_type_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
-                          entity_id:
-                            type: string
-                            format: uuid
-                            example: c24a6ea4-ce75-4665-a070-57453082c25
-                          task_status_id:
-                            type: string
-                            format: uuid
-                            example: d24a6ea4-ce75-4665-a070-57453082c25
         """
         sequence = shots_service.get_sequence(sequence_id)
         permissions_service.check_project_access(sequence["project_id"])
@@ -608,50 +222,10 @@ class SequenceShotTasksResource(MethodView, ArgsMixin):
 
 class EpisodeShotTasksResource(MethodView, ArgsMixin):
     @jwt_required()
+    @swag_from("openapi/EpisodeShotTasksResource_get.yml")
     def get(self, episode_id):
         """
         Get episode shot tasks
-        ---
-        tags:
-        - Shots
-        description: Get shot tasks for an episode. Restricted for vendor
-          permissions.
-        parameters:
-          - in: path
-            name: episode_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All shot tasks related to given episode
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: EP01 Layout
-                          task_type_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
-                          entity_id:
-                            type: string
-                            format: uuid
-                            example: c24a6ea4-ce75-4665-a070-57453082c25
-                          task_status_id:
-                            type: string
-                            format: uuid
-                            example: d24a6ea4-ce75-4665-a070-57453082c25
         """
         episode = shots_service.get_episode(episode_id)
         permissions_service.check_project_access(episode["project_id"])
@@ -666,50 +240,10 @@ class EpisodeShotTasksResource(MethodView, ArgsMixin):
 
 class EpisodeAssetTasksResource(MethodView, ArgsMixin):
     @jwt_required()
+    @swag_from("openapi/EpisodeAssetTasksResource_get.yml")
     def get(self, episode_id):
         """
         Get episode asset tasks
-        ---
-        tags:
-        - Shots
-        description: Get asset tasks for an episode. Restricted for vendor
-          permissions.
-        parameters:
-          - in: path
-            name: episode_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All assets tasks related to given episode
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: Character Modeling
-                          task_type_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
-                          entity_id:
-                            type: string
-                            format: uuid
-                            example: c24a6ea4-ce75-4665-a070-57453082c25
-                          task_status_id:
-                            type: string
-                            format: uuid
-                            example: d24a6ea4-ce75-4665-a070-57453082c25
         """
         episode = shots_service.get_episode(episode_id)
         permissions_service.check_project_access(episode["project_id"])
@@ -724,46 +258,10 @@ class EpisodeAssetTasksResource(MethodView, ArgsMixin):
 
 class EpisodeShotsResource(MethodView, ArgsMixin):
     @jwt_required()
+    @swag_from("openapi/EpisodeShotsResource_get.yml")
     def get(self, episode_id):
         """
         Get episode shots
-        ---
-        tags:
-        - Shots
-        description: Get shots for an episode. Supports including relations via
-          query params.
-        parameters:
-          - in: path
-            name: episode_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All shots related to given episode
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: SH010
-                          project_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
-                          parent_id:
-                            type: string
-                            format: uuid
-                            example: c24a6ea4-ce75-4665-a070-57453082c25
         """
         episode = shots_service.get_episode(episode_id)
         permissions_service.check_project_access(episode["project_id"])
@@ -779,52 +277,10 @@ class EpisodeShotsResource(MethodView, ArgsMixin):
 
 class ShotPreviewsResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/ShotPreviewsResource_get.yml")
     def get(self, shot_id):
         """
         Get shot previews
-        ---
-        tags:
-        - Shots
-        description: Return previews for a shot as a dict keyed by task type id.
-          Each value is an array of previews for that task type.
-        parameters:
-          - in: path
-            name: shot_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All previews related to given shot
-                content:
-                  application/json:
-                    schema:
-                      type: object
-                      additionalProperties:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            id:
-                              type: string
-                              format: uuid
-                              example: b24a6ea4-ce75-4665-a070-57453082c25
-                            revision:
-                              type: integer
-                              example: 3
-                            file_id:
-                              type: string
-                              format: uuid
-                              example: c24a6ea4-ce75-4665-a070-57453082c25
-                    example:
-                      "a24a6ea4-ce75-4665-a070-57453082c25": [
-                        {
-                          "id": "b24a6ea4-ce75-4665-a070-57453082c25",
-                          "revision": 3,
-                          "file_id": "c24a6ea4-ce75-4665-a070-57453082c25"
-                        }
-                      ]
         """
         shot = shots_service.get_shot(shot_id)
         permissions_service.check_project_access(shot["project_id"])
@@ -834,54 +290,10 @@ class ShotPreviewsResource(MethodView):
 
 class SequenceTasksResource(MethodView, ArgsMixin):
     @jwt_required()
+    @swag_from("openapi/SequenceTasksResource_get.yml")
     def get(self, sequence_id):
         """
         Get sequence tasks
-        ---
-        tags:
-        - Shots
-        description: Get tasks for a sequence. Optionally include relations using
-          query params.
-        parameters:
-          - in: path
-            name: sequence_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All tasks related to given shot
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: SH010 Animation
-                          task_type_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
-                          task_status_id:
-                            type: string
-                            format: uuid
-                            example: c24a6ea4-ce75-4665-a070-57453082c25
-                          entity_id:
-                            type: string
-                            format: uuid
-                            example: d24a6ea4-ce75-4665-a070-57453082c25
-                          project_id:
-                            type: string
-                            format: uuid
-                            example: e24a6ea4-ce75-4665-a070-57453082c25
         """
         sequence = shots_service.get_sequence(sequence_id)
         permissions_service.check_project_access(sequence["project_id"])
@@ -896,37 +308,10 @@ class SequenceTasksResource(MethodView, ArgsMixin):
 
 class SequenceTaskTypesResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/SequenceTaskTypesResource_get.yml")
     def get(self, sequence_id):
         """
         Get sequence task types
-        ---
-        tags:
-        - Shots
-        description: Get task types for a sequence.
-        parameters:
-          - in: path
-            name: sequence_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All task types related to given shot
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: Animation
         """
         sequence = shots_service.get_sequence(sequence_id)
         permissions_service.check_project_access(sequence["project_id"])
@@ -937,68 +322,10 @@ class SequenceTaskTypesResource(MethodView):
 class ShotsAndTasksResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/ShotsAndTasksResource_get.yml")
     def get(self):
         """
         Get shots and tasks
-        ---
-        tags:
-        - Shots
-        description: Get shots and their related tasks. Optionally filter by project.
-        parameters:
-          - in: query
-            name: project_id
-            required: False
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: compact
-            type: boolean
-            default: false
-            description: Encode shots and tasks as positional value arrays
-              (halves the payload). Field names are given by the
-              shot_fields and task_fields entries of the response, map
-              values by name, never by hardcoded position.
-          - in: query
-            name: stream
-            type: boolean
-            default: false
-            description: Stream the response as NDJSON (one header line,
-              then one shot per line) instead of a single JSON document,
-              to keep server memory flat on large productions.
-        responses:
-            200:
-                description: All shots
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: SH010
-                          project_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
-                          tasks:
-                            type: array
-                            items:
-                              type: object
-                              properties:
-                                id:
-                                  type: string
-                                  format: uuid
-                                  example: c24a6ea4-ce75-4665-a070-57453082c25
-                                name:
-                                  type: string
-                                  example: SH010 Animation
         """
         criterions = query.get_query_criterions_from_request(request)
         # Kitsu-oriented options for full-project views: compact halves
@@ -1041,53 +368,10 @@ class ShotsAndTasksResource(MethodView):
 
 class SceneAndTasksResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/SceneAndTasksResource_get.yml")
     def get(self):
         """
         Get scenes and tasks
-        ---
-        tags:
-        - Shots
-        description: Get scenes and their related tasks. Optionally filter by project.
-        parameters:
-          - in: query
-            name: project_id
-            required: False
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All scenes
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: SC001
-                          project_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
-                          tasks:
-                            type: array
-                            items:
-                              type: object
-                              properties:
-                                id:
-                                  type: string
-                                  format: uuid
-                                  example: c24a6ea4-ce75-4665-a070-57453082c25
-                                name:
-                                  type: string
-                                  example: Layout
         """
         criterions = query.get_query_criterions_from_request(request)
         query.check_criterion_id_format(
@@ -1104,54 +388,10 @@ class SceneAndTasksResource(MethodView):
 
 class SequenceAndTasksResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/SequenceAndTasksResource_get.yml")
     def get(self):
         """
         Get sequences and tasks
-        ---
-        tags:
-        - Shots
-        description: Get sequences and their related tasks.
-          Optionally filter by project.
-        parameters:
-          - in: query
-            name: project_id
-            required: False
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All sequences
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: SQ010
-                          project_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
-                          tasks:
-                            type: array
-                            items:
-                              type: object
-                              properties:
-                                id:
-                                  type: string
-                                  format: uuid
-                                  example: c24a6ea4-ce75-4665-a070-57453082c25
-                                name:
-                                  type: string
-                                  example: SQ010 Editing
         """
         criterions = query.get_query_criterions_from_request(request)
         query.check_criterion_id_format(
@@ -1187,54 +427,10 @@ class SequenceAndTasksResource(MethodView):
 
 class EpisodeAndTasksResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/EpisodeAndTasksResource_get.yml")
     def get(self):
         """
         Get episodes and tasks
-        ---
-        tags:
-        - Shots
-        description: Get episodes and their related tasks.
-          Optionally filter by project.
-        parameters:
-          - in: query
-            name: project_id
-            required: False
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All episodes
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: EP01
-                          project_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
-                          tasks:
-                            type: array
-                            items:
-                              type: object
-                              properties:
-                                id:
-                                  type: string
-                                  format: uuid
-                                  example: c24a6ea4-ce75-4665-a070-57453082c25
-                                name:
-                                  type: string
-                                  example: EP01 Layout
         """
         criterions = query.get_query_criterions_from_request(request)
         query.check_criterion_id_format(
@@ -1263,46 +459,10 @@ class EpisodeAndTasksResource(MethodView):
 
 class ProjectShotsResource(MethodView, ArgsMixin):
     @jwt_required()
+    @swag_from("openapi/ProjectShotsResource_get.yml")
     def get(self, project_id):
         """
         Get project shots
-        ---
-        tags:
-        - Shots
-        description: Get shots for a project. May limit to assigned shots for
-          vendor users.
-        parameters:
-          - in: path
-            name: project_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All shots related to given project
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: SH010
-                          project_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
-                          parent_id:
-                            type: string
-                            format: uuid
-                            example: c24a6ea4-ce75-4665-a070-57453082c25
         """
         projects_service.get_project(project_id)
         permissions_service.check_project_access(project_id)
@@ -1315,76 +475,10 @@ class ProjectShotsResource(MethodView, ArgsMixin):
         )
 
     @jwt_required()
+    @swag_from("openapi/ProjectShotsResource_post.yml")
     def post(self, project_id):
         """
         Create project shot
-        ---
-        tags:
-        - Shots
-        description: Create a shot in a project. Provide name and optional
-          fields like description, sequence_id and nb_frames.
-        parameters:
-          - in: path
-            name: project_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - name
-                properties:
-                  name:
-                    type: string
-                    required: true
-                    example: SH010
-                  description:
-                    type: string
-                    required: false
-                    example: A short description of the shot
-                  sequence_id:
-                    type: string
-                    format: uuid
-                    required: false
-                    example: a24a6ea4-ce75-4665-a070-57453082c25
-                  nb_frames:
-                    type: integer
-                    required: false
-                    example: 24
-        responses:
-            201:
-                description: Shot created
-                content:
-                  application/json:
-                    schema:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: SH010
-                        project_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        sequence_id:
-                          type: string
-                          format: uuid
-                          example: c24a6ea4-ce75-4665-a070-57453082c25
-                        nb_frames:
-                          type: integer
-                          example: 24
-                        description:
-                          type: string
-                          example: A short description of the shot
         """
         body = validation.validate_request_body(NewShotSchema)
         projects_service.get_project(project_id)
@@ -1404,46 +498,10 @@ class ProjectShotsResource(MethodView, ArgsMixin):
 
 class ProjectSequencesResource(MethodView, ArgsMixin):
     @jwt_required()
+    @swag_from("openapi/ProjectSequencesResource_get.yml")
     def get(self, project_id):
         """
         Get project sequences
-        ---
-        tags:
-        - Shots
-        description: Get sequences for a project. May limit to assigned items for
-          vendor users.
-        parameters:
-          - in: path
-            name: project_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All sequences related to given project
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: SQ01
-                          project_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
-                          episode_id:
-                            type: string
-                            format: uuid
-                            example: c24a6ea4-ce75-4665-a070-57453082c25
         """
         projects_service.get_project(project_id)
         permissions_service.check_project_access(project_id)
@@ -1456,65 +514,10 @@ class ProjectSequencesResource(MethodView, ArgsMixin):
         )
 
     @jwt_required()
+    @swag_from("openapi/ProjectSequencesResource_post.yml")
     def post(self, project_id):
         """
         Create project sequence
-        ---
-        tags:
-        - Shots
-        description: Create a sequence in a project. Provide name and optional
-          episode_id.
-        parameters:
-          - in: path
-            name: project_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - name
-                properties:
-                  name:
-                    type: string
-                    required: true
-                    example: SQ01
-                  episode_id:
-                    type: string
-                    format: uuid
-                    required: false
-                    example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            201:
-                description: Sequence created
-                content:
-                  application/json:
-                    schema:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: SQ01
-                        project_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        episode_id:
-                          type: string
-                          format: uuid
-                          example: c24a6ea4-ce75-4665-a070-57453082c25
-                        description:
-                          type: string
-                          example: A sequence description
         """
         body = validation.validate_request_body(NewSequenceSchema)
         projects_service.get_project(project_id)
@@ -1532,48 +535,10 @@ class ProjectSequencesResource(MethodView, ArgsMixin):
 
 class ProjectEpisodesResource(MethodView, ArgsMixin):
     @jwt_required()
+    @swag_from("openapi/ProjectEpisodesResource_get.yml")
     def get(self, project_id):
         """
         Get project episodes
-        ---
-        tags:
-        - Shots
-        description: Get episodes for a project. May limit to assigned items for
-          vendor users.
-        parameters:
-          - in: path
-            name: project_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All episodes related to given project
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: EP01
-                          project_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
-                          description:
-                            type: string
-                            example: A short description of the episode
-                          status:
-                            type: string
-                            example: running
         """
         projects_service.get_project(project_id)
         permissions_service.check_project_access(project_id)
@@ -1586,68 +551,10 @@ class ProjectEpisodesResource(MethodView, ArgsMixin):
         )
 
     @jwt_required()
+    @swag_from("openapi/ProjectEpisodesResource_post.yml")
     def post(self, project_id):
         """
         Create project episode
-        ---
-        tags:
-        - Shots
-        description: Create an episode in a project. Provide name and
-          description. Status is optional.
-        parameters:
-          - in: path
-            name: project_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - name
-                  - description
-                properties:
-                  name:
-                    type: string
-                    required: true
-                    example: EP01
-                  description:
-                    type: string
-                    required: true
-                    example: A short description of the episode
-                  status:
-                    type: string
-                    required: false
-                    example: running
-        responses:
-            201:
-                description: Episode created
-                content:
-                  application/json:
-                    schema:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: EP01
-                        project_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        description:
-                          type: string
-                          example: A short description of the episode
-                        status:
-                          type: string
-                          example: running
         """
         body = validation.validate_request_body(NewEpisodeSchema)
         projects_service.get_project(project_id)
@@ -1667,61 +574,10 @@ class ProjectEpisodesResource(MethodView, ArgsMixin):
 
 class ProjectEpisodeStatsResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/ProjectEpisodeStatsResource_get.yml")
     def get(self, project_id):
         """
         Get episode stats
-        ---
-        tags:
-        - Shots
-        description: Return number of tasks by status, task type and episode
-          for the project.
-        parameters:
-          - in: path
-            name: project_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: Number of tasks by status, task types and episodes for given project
-                content:
-                  application/json:
-                    schema:
-                      type: object
-                      additionalProperties:
-                        type: object
-                        additionalProperties:
-                          type: object
-                          additionalProperties:
-                            type: object
-                            properties:
-                              count:
-                                type: integer
-                                example: 120
-                              frames:
-                                type: integer
-                                example: 1440
-                              drawings:
-                                type: integer
-                                example: 360
-                      example:
-                        episodeId1:
-                          taskTypeId1:
-                            taskStatusId1:
-                              count: 50
-                              frames: 600
-                              drawings: 150
-                            taskStatusId2:
-                              count: 70
-                              frames: 840
-                              drawings: 210
-                        all:
-                          all:
-                            taskStatusId1:
-                              count: 200
-                              frames: 2400
-                              drawings: 600
         """
         projects_service.get_project(project_id)
         permissions_service.check_project_access(project_id)
@@ -1732,139 +588,10 @@ class ProjectEpisodeStatsResource(MethodView):
 
 class ProjectEpisodeRetakeStatsResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/ProjectEpisodeRetakeStatsResource_get.yml")
     def get(self, project_id):
         """
         Get episode retake stats
-        ---
-        tags:
-        - Shots
-        description: Return retake and done counts by task type and episode.
-          Includes evolution data and max retake count.
-        parameters:
-          - in: path
-            name: project_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: Number of tasks by status, task types and episodes for given project
-                content:
-                  application/json:
-                    schema:
-                      type: object
-                      additionalProperties:
-                        type: object
-                        properties:
-                          max_retake_count:
-                            type: integer
-                            example: 4
-                          evolution:
-                            type: object
-                            additionalProperties:
-                              type: object
-                              properties:
-                                retake:
-                                  type: object
-                                  properties:
-                                    count:
-                                      type: integer
-                                      example: 80
-                                    frames:
-                                      type: integer
-                                      example: 7900
-                                    drawings:
-                                      type: integer
-                                      example: 8000
-                                done:
-                                  type: object
-                                  properties:
-                                    count:
-                                      type: integer
-                                      example: 117
-                                    frames:
-                                      type: integer
-                                      example: 3900
-                                    drawings:
-                                      type: integer
-                                      example: 8000
-                          done:
-                            type: object
-                            properties:
-                              count:
-                                type: integer
-                                example: 197
-                              frames:
-                                type: integer
-                                example: 16090
-                              drawings:
-                                type: integer
-                                example: 16090
-                          retake:
-                            type: object
-                            properties:
-                              count:
-                                type: integer
-                                example: 0
-                              frames:
-                                type: integer
-                                example: 0
-                              drawings:
-                                type: integer
-                                example: 0
-                          other:
-                            type: object
-                            properties:
-                              count:
-                                type: integer
-                                example: 5
-                              frames:
-                                type: integer
-                                example: 185
-                              drawings:
-                                type: integer
-                                example: 185
-                      example:
-                        episodeId1:
-                          max_retake_count: 4
-                          evolution:
-                            "1":
-                              retake:
-                                count: 80
-                                frames: 7900
-                                drawings: 8000
-                              done:
-                                count: 117
-                                frames: 3900
-                                drawings: 8000
-                          done:
-                            count: 197
-                            frames: 16090
-                            drawings: 16090
-                          retake:
-                            count: 0
-                            frames: 0
-                            drawings: 0
-                          other:
-                            count: 5
-                            frames: 185
-                            drawings: 185
-                        all:
-                          all:
-                            max_retake_count: 4
-                            done:
-                              count: 500
-                              frames: 50000
-                              drawings: 50000
-                            retake:
-                              count: 100
-                              frames: 10000
-                              drawings: 10000
-                            other:
-                              count: 10
-                              frames: 1000
-                              drawings: 1000
         """
         projects_service.get_project(project_id)
         permissions_service.check_project_access(project_id)
@@ -1875,46 +602,10 @@ class ProjectEpisodeRetakeStatsResource(MethodView):
 
 class EpisodeResource(MethodView, ArgsMixin):
     @jwt_required()
+    @swag_from("openapi/EpisodeResource_get.yml")
     def get(self, episode_id):
         """
         Get episode
-        ---
-        tags:
-        - Shots
-        description: Get an episode by id.
-          needs.
-        parameters:
-          - in: path
-            name: episode_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: Episode found and returned
-                content:
-                  application/json:
-                    schema:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: EP01
-                        project_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        description:
-                          type: string
-                          example: A short description of the episode
-                        status:
-                          type: string
-                          example: running
         """
         episode = shots_service.get_full_episode(episode_id)
         permissions_service.check_project_access(episode["project_id"])
@@ -1922,24 +613,10 @@ class EpisodeResource(MethodView, ArgsMixin):
         return episode
 
     @jwt_required()
+    @swag_from("openapi/EpisodeResource_delete.yml")
     def delete(self, episode_id):
         """
         Delete episode
-        ---
-        tags:
-        - Shots
-        description: Delete an episode by id. Requires manager access or
-          ownership.
-        parameters:
-          - in: path
-            name: episode_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            204:
-                description: Episode deleted
         """
         force = self.get_force()
         episode = shots_service.get_episode(episode_id)
@@ -1955,48 +632,10 @@ class EpisodeResource(MethodView, ArgsMixin):
 
 class EpisodesResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/EpisodesResource_get.yml")
     def get(self):
         """
         Get episodes
-        ---
-        tags:
-        - Shots
-        description: Get episodes with optional filters. Use project_id to
-          filter by project.
-        parameters:
-          - in: query
-            name: project_id
-            required: False
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All episode entries
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: EP01
-                          project_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
-                          description:
-                            type: string
-                            example: A short description of the episode
-                          status:
-                            type: string
-                            example: running
         """
         criterions = query.get_query_criterions_from_request(request)
         permissions_service.check_project_access(
@@ -2018,52 +657,10 @@ class EpisodesResource(MethodView):
 
 class EpisodeSequencesResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/EpisodeSequencesResource_get.yml")
     def get(self, episode_id):
         """
         Get episode sequences
-        ---
-        tags:
-        - Shots
-        description: Get sequences for an episode. You can add query filters
-          if needed.
-        parameters:
-          - in: path
-            name: episode_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: project_id
-            required: False
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All sequence entries for given episode
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: SQ01
-                          project_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
-                          parent_id:
-                            type: string
-                            format: uuid
-                            example: c24a6ea4-ce75-4665-a070-57453082c25
         """
         if not fields.is_valid_id(episode_id):
             return []
@@ -2084,36 +681,10 @@ class EpisodeSequencesResource(MethodView):
 
 class EpisodeTaskTypesResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/EpisodeTaskTypesResource_get.yml")
     def get(self, episode_id):
         """
         Get episode task types
-        ---
-        tags:
-        - Shots
-        parameters:
-          - in: path
-            name: episode_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All task types related to given episode
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: Animation
         """
         episode = shots_service.get_episode(episode_id)
         permissions_service.check_project_access(episode["project_id"])
@@ -2123,58 +694,10 @@ class EpisodeTaskTypesResource(MethodView):
 
 class EpisodeTasksResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/EpisodeTasksResource_get.yml")
     def get(self, episode_id):
         """
         Get episode tasks
-        ---
-        tags:
-        - Shots
-        parameters:
-          - in: path
-            name: episode_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All tasks related to given episode
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: EP01 Layout
-                          task_type_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
-                          task_status_id:
-                            type: string
-                            format: uuid
-                            example: c24a6ea4-ce75-4665-a070-57453082c25
-                          entity_id:
-                            type: string
-                            format: uuid
-                            example: d24a6ea4-ce75-4665-a070-57453082c25
-                          project_id:
-                            type: string
-                            format: uuid
-                            example: e24a6ea4-ce75-4665-a070-57453082c25
-                          assignees:
-                            type: array
-                            items:
-                              type: string
-                              format: uuid
-                            example: ["f24a6ea4-ce75-4665-a070-57453082c25"]
         """
         episode = shots_service.get_episode(episode_id)
         permissions_service.check_project_access(episode["project_id"])
@@ -2186,43 +709,10 @@ class EpisodeTasksResource(MethodView):
 
 class SequenceResource(MethodView, ArgsMixin):
     @jwt_required()
+    @swag_from("openapi/SequenceResource_get.yml")
     def get(self, sequence_id):
         """
         Get sequence
-        ---
-        tags:
-        - Shots
-        description: Get a sequence by id.
-        parameters:
-          - in: path
-            name: sequence_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: Sequence found and returned
-                content:
-                  application/json:
-                    schema:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: SQ01
-                        project_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        parent_id:
-                          type: string
-                          format: uuid
-                          example: c24a6ea4-ce75-4665-a070-57453082c25
         """
         sequence = shots_service.get_full_sequence(sequence_id)
         permissions_service.check_project_access(sequence["project_id"])
@@ -2230,24 +720,10 @@ class SequenceResource(MethodView, ArgsMixin):
         return sequence
 
     @jwt_required()
+    @swag_from("openapi/SequenceResource_delete.yml")
     def delete(self, sequence_id):
         """
         Delete sequence
-        ---
-        tags:
-        - Shots
-        description: Delete a sequence by id. Requires manager access or
-          ownership.
-        parameters:
-          - in: path
-            name: sequence_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            204:
-                description: Sequence deleted
         """
         force = self.get_force()
         sequence = shots_service.get_sequence(sequence_id)
@@ -2263,46 +739,10 @@ class SequenceResource(MethodView, ArgsMixin):
 
 class SequencesResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/SequencesResource_get.yml")
     def get(self):
         """
         Get sequences
-        ---
-        tags:
-        - Shots
-        description: Get sequences with optional filters. Use episode_id to
-          filter by episode.
-        parameters:
-          - in: query
-            name: episode_id
-            required: False
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All sequence entries
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: SQ01
-                          project_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
-                          parent_id:
-                            type: string
-                            format: uuid
-                            example: c24a6ea4-ce75-4665-a070-57453082c25
         """
         criterions = query.get_query_criterions_from_request(request)
         if "episode_id" in criterions:
@@ -2329,52 +769,10 @@ class SequencesResource(MethodView):
 
 class SequenceShotsResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/SequenceShotsResource_get.yml")
     def get(self, sequence_id):
         """
         Get sequence shots
-        ---
-        tags:
-        - Shots
-        description: Get shots for a sequence. Supports filtering using query
-          params.
-        parameters:
-          - in: path
-            name: sequence_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: project_id
-            required: False
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All shot entries for given sequence
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: SH010
-                          project_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
-                          parent_id:
-                            type: string
-                            format: uuid
-                            example: c24a6ea4-ce75-4665-a070-57453082c25
         """
         sequence = shots_service.get_sequence(sequence_id)
         permissions_service.check_project_access(sequence["project_id"])
@@ -2386,45 +784,10 @@ class SequenceShotsResource(MethodView):
 
 class ProjectScenesResource(MethodView, ArgsMixin):
     @jwt_required()
+    @swag_from("openapi/ProjectScenesResource_get.yml")
     def get(self, project_id):
         """
         Get project scenes
-        ---
-        tags:
-        - Shots
-        description: Get all scenes for a project.
-        parameters:
-          - in: path
-            name: project_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All scenes related to given project
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: SC001
-                          project_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
-                          parent_id:
-                            type: string
-                            format: uuid
-                            example: c24a6ea4-ce75-4665-a070-57453082c25
         """
         projects_service.get_project(project_id)
         permissions_service.check_project_access(project_id)
@@ -2438,63 +801,10 @@ class ProjectScenesResource(MethodView, ArgsMixin):
         )
 
     @jwt_required()
+    @swag_from("openapi/ProjectScenesResource_post.yml")
     def post(self, project_id):
         """
         Create project scene
-        ---
-        tags:
-        - Shots
-        description: Create a new scene in a project. Provide a name and the
-          related sequence id.
-        parameters:
-          - in: path
-            name: project_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - name
-                  - sequence_id
-                properties:
-                  name:
-                    type: string
-                    required: true
-                    example: "Name of scene"
-                  sequence_id:
-                    type: string
-                    format: uuid
-                    required: true
-                    example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            201:
-                description: Scene created for given project
-                content:
-                  application/json:
-                    schema:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: SC001
-                        project_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        parent_id:
-                          type: string
-                          format: uuid
-                          example: c24a6ea4-ce75-4665-a070-57453082c25
         """
         body = validation.validate_request_body(NewSceneSchema)
         projects_service.get_project(project_id)
@@ -2510,45 +820,10 @@ class ProjectScenesResource(MethodView, ArgsMixin):
 
 class SequenceScenesResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/SequenceScenesResource_get.yml")
     def get(self, sequence_id):
         """
         Get sequence scenes
-        ---
-        tags:
-        - Shots
-        description: Get scenes that belong to a sequence.
-        parameters:
-          - in: path
-            name: sequence_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All scenes related to given sequence
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: SC010
-                          project_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
-                          parent_id:
-                            type: string
-                            format: uuid
-                            example: c24a6ea4-ce75-4665-a070-57453082c25
         """
         sequence = shots_service.get_sequence(sequence_id)
         permissions_service.check_project_access(sequence["project_id"])
@@ -2560,37 +835,10 @@ class SequenceScenesResource(MethodView):
 
 class SceneTaskTypesResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/SceneTaskTypesResource_get.yml")
     def get(self, scene_id):
         """
         Get scene task types
-        ---
-        tags:
-        - Shots
-        description: Get task types for a scene.
-        parameters:
-          - in: path
-            name: scene_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All task types related to given scene
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: Animation
         """
         scene = shots_service.get_scene(scene_id)
         permissions_service.check_project_access(scene["project_id"])
@@ -2600,53 +848,10 @@ class SceneTaskTypesResource(MethodView):
 
 class SceneTasksResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/SceneTasksResource_get.yml")
     def get(self, scene_id):
         """
         Get scene tasks
-        ---
-        tags:
-        - Shots
-        description: Get tasks for a scene.
-        parameters:
-          - in: path
-            name: scene_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All tasks related to given scene
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: SC001 Layout
-                          task_type_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
-                          task_status_id:
-                            type: string
-                            format: uuid
-                            example: c24a6ea4-ce75-4665-a070-57453082c25
-                          entity_id:
-                            type: string
-                            format: uuid
-                            example: d24a6ea4-ce75-4665-a070-57453082c25
-                          project_id:
-                            type: string
-                            format: uuid
-                            example: e24a6ea4-ce75-4665-a070-57453082c25
         """
         scene = shots_service.get_scene(scene_id)
         permissions_service.check_project_access(scene["project_id"])
@@ -2656,41 +861,10 @@ class SceneTasksResource(MethodView):
 
 class SceneShotsResource(MethodView, ArgsMixin):
     @jwt_required()
+    @swag_from("openapi/SceneShotsResource_get.yml")
     def get(self, scene_id):
         """
         Get scene shots
-        ---
-        tags:
-        - Shots
-        description: Get shots that come from a scene.
-        parameters:
-          - in: path
-            name: scene_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All shots that come from given scene
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: SH010
-                          project_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
         """
         scene = shots_service.get_scene(scene_id)
         permissions_service.check_project_access(scene["project_id"])
@@ -2698,50 +872,10 @@ class SceneShotsResource(MethodView, ArgsMixin):
         return scenes_service.get_shots_by_scene(scene_id)
 
     @jwt_required()
+    @swag_from("openapi/SceneShotsResource_post.yml")
     def post(self, scene_id):
         """
         Link shot to scene
-        ---
-        tags:
-        - Shots
-        description: Link a shot to a scene as its source.
-        parameters:
-          - in: path
-            name: scene_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - shot_id
-                properties:
-                  shot_id:
-                    type: string
-                    format: uuid
-                    required: true
-                    example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            201:
-                description: Scene marked as source of shot
-                content:
-                  application/json:
-                    schema:
-                      type: object
-                      properties:
-                        scene_id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        shot_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
         """
         body = validation.validate_request_body(AddShotToSceneSchema)
 
@@ -2753,28 +887,10 @@ class SceneShotsResource(MethodView, ArgsMixin):
 
 class RemoveShotFromSceneResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/RemoveShotFromSceneResource_delete.yml")
     def delete(self, scene_id, shot_id):
         """
         Delete given shot from given scene.
-        ---
-        tags:
-        - Shots
-        parameters:
-          - in: path
-            name: scene_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: shot_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            204:
-                description: Given shot deleted from given scene
         """
         scene = shots_service.get_scene(scene_id)
         permissions_service.check_project_access(scene["project_id"])
@@ -2789,39 +905,10 @@ class ShotVersionsResource(MethodView):
     """
 
     @jwt_required()
+    @swag_from("openapi/ShotVersionsResource_get.yml")
     def get(self, shot_id):
         """
         Get shot versions
-        ---
-        tags:
-        - Shots
-        description: Get data versions of a shot. Use this to inspect version
-          history.
-        parameters:
-          - in: path
-            name: shot_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: Data versions of given shot
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          created_at:
-                            type: string
-                            format: date-time
-                            example: "2024-01-15T10:30:00Z"
         """
         shot = shots_service.get_shot(shot_id)
         permissions_service.check_project_access(shot["project_id"])
@@ -2832,57 +919,10 @@ class ShotVersionsResource(MethodView):
 class ProjectQuotasResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/ProjectQuotasResource_get.yml")
     def get(self, project_id, task_type_id):
         """
         Get project quotas
-        ---
-        tags:
-        - Shots
-        description: Get quotas statistics for a project and task type. Supports
-          weighted and raw modes with optional feedback filtering.
-        parameters:
-          - in: path
-            name: project_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: task_type_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: count_mode
-            required: True
-            type: string
-            enum: [weighted, weigtheddone, feedback, done]
-            example: weighted
-          - in: query
-            name: studio_id
-            required: False
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: Quotas statistics for shots
-                content:
-                  application/json:
-                    schema:
-                      type: object
-                      additionalProperties:
-                        type: object
-                        properties:
-                          count:
-                            type: integer
-                            example: 42
-                          frames:
-                            type: integer
-                            example: 1200
-            400:
-                description: Invalid count_mode or parameter
         """
         projects_service.get_project(project_id)
         permissions_service.check_project_access(project_id)
@@ -2923,57 +963,10 @@ class ProjectQuotasResource(MethodView, ArgsMixin):
 class ProjectPersonQuotasResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/ProjectPersonQuotasResource_get.yml")
     def get(self, project_id, person_id):
         """
         Get project person quotas
-        ---
-        tags:
-        - Shots
-        description: Get quotas statistics for a person in a project. Supports
-          weighted and raw modes with optional feedback filtering.
-        parameters:
-          - in: path
-            name: project_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: person_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: count_mode
-            required: True
-            type: string
-            enum: [weighted, weigtheddone, feedback, done]
-            example: weighted
-          - in: query
-            name: studio_id
-            required: False
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: Quotas statistics for shots
-                content:
-                  application/json:
-                    schema:
-                      type: object
-                      additionalProperties:
-                        type: object
-                        properties:
-                          count:
-                            type: integer
-                            example: 15
-                          frames:
-                            type: integer
-                            example: 360
-            400:
-                description: Invalid count_mode or parameter
         """
         projects_service.get_project(project_id)
         permissions_service.resolve_project_role(project_id)
@@ -3020,50 +1013,10 @@ class ProjectPersonQuotasResource(MethodView, ArgsMixin):
 
 class SetShotsFramesResource(MethodView, ArgsMixin):
     @jwt_required()
+    @swag_from("openapi/SetShotsFramesResource_post.yml")
     def post(self, project_id, task_type_id):
         """
         Set shots frames
-        ---
-        tags:
-        - Shots
-        description: Set number of frames on shots based on latest preview
-          files for a task type. Optionally scope by episode via query
-          param.
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - shots
-                properties:
-                  shots:
-                    type: array
-                    required: true
-                    items:
-                      type: object
-                      properties:
-                        shot_id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        nb_frames:
-                          type: integer
-                          example: 24
-        responses:
-            200:
-                description: Frames set for given shots
-                content:
-                  application/json:
-                    schema:
-                      type: object
-                      properties:
-                        updated:
-                          type: integer
-                          example: 12
-            400:
-                description: Invalid ids or parameters
         """
         permissions_service.check_manager_project_access(project_id)
         if not fields.is_valid_id(task_type_id) or not fields.is_valid_id(

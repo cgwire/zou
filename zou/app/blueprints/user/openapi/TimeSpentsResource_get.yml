@@ -1,0 +1,69 @@
+Get time spents
+---
+description: Retrieve all time spent entries for the current user.
+  Optionally accepts date range parameters to filter results.
+tags:
+- User
+parameters:
+  - in: query
+    name: start_date
+    required: false
+    schema:
+      type: string
+      format: date
+    description: Start date for filtering time spents
+    example: "2023-01-01"
+  - in: query
+    name: end_date
+    required: false
+    schema:
+      type: string
+      format: date
+    description: End date for filtering time spents
+    example: "2023-12-31"
+responses:
+    200:
+      description: Time spent entries for the current user
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Time spent unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c25
+                person_id:
+                  type: string
+                  format: uuid
+                  description: Person identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d36
+                task_id:
+                  type: string
+                  format: uuid
+                  description: Task identifier
+                  example: c46c8gc6-eg97-6887-c292-79675204e47
+                date:
+                  type: string
+                  format: date
+                  description: Date of time spent
+                  example: "2023-01-01"
+                duration:
+                  type: number
+                  description: Duration in seconds
+                  example: 3600
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: "2023-01-01T12:00:00Z"
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Last update timestamp
+                  example: "2023-01-01T12:30:00Z"
+    400:
+      description: Wrong date format

@@ -1,0 +1,11 @@
+Pre-enable TOTP
+---
+description: Prepare TOTP (Time-based One-Time Password) for enabling.
+  It returns provisioning URI and secret for authenticator app setup.
+tags:
+    - Authentication
+responses:
+  200:
+    description: TOTP pre-enabled
+  400:
+    description: TOTP already enabled

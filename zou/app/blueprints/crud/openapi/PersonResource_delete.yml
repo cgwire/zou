@@ -1,0 +1,27 @@
+Delete person
+---
+tags:
+  - Crud
+description: Delete a person by their ID. Returns empty response
+  on success. Cannot delete yourself.
+parameters:
+  - in: path
+    name: instance_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+  - in: query
+    name: force
+    required: false
+    schema:
+      type: boolean
+    default: false
+    example: false
+    description: Force deletion even if person has associated data
+responses:
+    204:
+      description: Person deleted successfully
+    400:
+      description: Cannot delete person or integrity error

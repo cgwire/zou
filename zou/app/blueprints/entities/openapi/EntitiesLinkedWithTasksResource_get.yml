@@ -1,0 +1,68 @@
+Get linked entities
+---
+description: Retrieve all entities that are linked to a specific entity
+  along with their associated tasks. This includes related entities,
+  dependencies, and hierarchical relationships.
+tags:
+  - Entities
+parameters:
+  - in: path
+    name: entity_id
+    required: true
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+    description: Unique identifier of the entity
+responses:
+  200:
+    description: List of linked entities successfully retrieved
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Entity unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+              name:
+                type: string
+                description: Entity name
+                example: "Character Model"
+              entity_type_id:
+                type: string
+                format: uuid
+                description: Entity type identifier
+                example: b35b7fb5-df86-5776-b181-68564193d36
+              project_id:
+                type: string
+                format: uuid
+                description: Project identifier
+                example: c46c8gc6-eg97-6887-c292-79675204e47
+              parent_id:
+                type: string
+                format: uuid
+                description: Parent entity identifier
+                example: d57d9hd7-fh08-7998-d403-80786315f58
+              tasks:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                      description: Task unique identifier
+                      example: e68e0ie8-gi19-8009-e514-91897426g69
+                    name:
+                      type: string
+                      description: Task name
+                      example: "Modeling Task"
+                    task_type_id:
+                      type: string
+                      format: uuid
+                      description: Task type identifier
+                      example: f79f1jf9-hj20-9010-f625-02998537h80

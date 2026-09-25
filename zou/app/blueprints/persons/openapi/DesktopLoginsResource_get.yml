@@ -1,0 +1,40 @@
+Get desktop login logs
+---
+description: Retrieve desktop login logs for a person. Desktop login
+  logs can only be created by current user.
+tags:
+  - Persons
+parameters:
+  - in: path
+    name: person_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Person unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+responses:
+  200:
+    description: Desktop login logs for the person
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Log entry unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+              person_id:
+                type: string
+                format: uuid
+                description: Person unique identifier
+                example: b35b7fb5-df86-5776-b181-68564193d36
+              date:
+                type: string
+                format: date-time
+                description: Login date and time
+                example: "2022-07-12T10:30:00Z"

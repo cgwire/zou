@@ -1,0 +1,38 @@
+Add entity to playlist
+---
+description: Atomically add a single entity to the given playlist.
+tags:
+  - Playlists
+parameters:
+  - in: path
+    name: playlist_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Playlist unique identifier
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - entity_id
+        properties:
+          entity_id:
+            type: string
+            format: uuid
+            description: Entity unique identifier to add to playlist
+          preview_file_id:
+            type: string
+            format: uuid
+            nullable: true
+            description: Optional preview file identifier associated to the entity
+responses:
+  200:
+    description: Updated playlist
+    content:
+      application/json:
+        schema:
+          type: object

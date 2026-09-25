@@ -1,0 +1,30 @@
+Subscribe to several tasks
+---
+description: Create subscription entries for the current user and
+  every task in the id list. Useful to subscribe to a selection in
+  one request. Returns the created subscriptions.
+tags:
+- User
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - task_ids
+        properties:
+          task_ids:
+            type: array
+            items:
+              type: string
+              format: uuid
+responses:
+    201:
+      description: Subscriptions created successfully
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object

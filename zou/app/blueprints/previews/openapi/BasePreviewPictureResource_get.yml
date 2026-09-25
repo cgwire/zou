@@ -1,0 +1,22 @@
+Get preview thumbnail
+---
+description: Download a thumbnail for a preview file.
+tags:
+  - Previews
+parameters:
+  - in: path
+    name: instance_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Preview file unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+responses:
+  200:
+    description: Preview thumbnail downloaded
+    content:
+      image/png:
+        schema:
+          type: string
+          format: binary

@@ -1,0 +1,76 @@
+Set task to review
+---
+tags:
+- Tasks
+description: Create a new preview file entry and set the path from the
+  disk. Optionally change the task status.
+parameters:
+  - in: path
+    name: task_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          person_id:
+            type: string
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          comment:
+            type: string
+            example: Please check this version
+          name:
+            type: string
+            example: main
+          revision:
+            type: integer
+            example: 1
+          change_status:
+            type: boolean
+            example: true
+responses:
+    200:
+        description: Task set to review and preview created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c25
+                name:
+                  type: string
+                  example: SH010 Animation
+                task_type_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c25
+                task_status_id:
+                  type: string
+                  format: uuid
+                  example: c24a6ea4-ce75-4665-a070-57453082c25
+                entity_id:
+                  type: string
+                  format: uuid
+                  example: d24a6ea4-ce75-4665-a070-57453082c25
+                project_id:
+                  type: string
+                  format: uuid
+                  example: e24a6ea4-ce75-4665-a070-57453082c25
+                assignees:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  example: ["f24a6ea4-ce75-4665-a070-57453082c25"]
+    400:
+        description: Invalid person or parameters
