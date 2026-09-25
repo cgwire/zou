@@ -243,6 +243,10 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
+          # The dev version derives from the commit hash: a file already
+          # there is this same build, uploaded by a re-run or a duplicated
+          # run of the push.
+          skip-existing: true
 
   publish:
     name: Publish to PyPI 📦
@@ -266,3 +270,8 @@ jobs:
           python3 -m build
       - name: Publish to PyPI 📦
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # release.sh never tags a version twice: a file already there is
+          # this same release, uploaded by a re-run or a duplicated run of
+          # the tag push.
+          skip-existing: true

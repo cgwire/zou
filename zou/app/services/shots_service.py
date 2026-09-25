@@ -1176,9 +1176,11 @@ def create_shot(
     nb_frames=0,
     description=None,
     created_by=None,
+    index=True,
 ):
     """
-    Create shot for given project and sequence.
+    Create shot for given project and sequence. A bulk import passes
+    index=False and indexes all its shots at the end.
     """
     if data is None:
         data = {}
@@ -1212,7 +1214,8 @@ def create_shot(
             if shot is None:
                 raise
         else:
-            index_service.index_shot(shot)
+            if index:
+                index_service.index_shot(shot)
             events.emit(
                 "shot:new",
                 {
@@ -1261,15 +1264,17 @@ def create_scene(project_id, sequence_id, name, created_by=None):
     return scene.serialize(obj_type="Scene")
 
 
-def update_shot(shot_id, data_dict):
+def update_shot(shot_id, data_dict, index=True):
     """
     Update shot fields matching given id with data from dict given in parameter.
+    A bulk import passes index=False and indexes all its shots at the end.
     """
     shot = get_shot_raw(shot_id)
     shot.update(data_dict)
 
-    index_service.remove_shot_index(shot.id)
-    index_service.index_shot(shot)
+    if index:
+        index_service.remove_shot_index(shot.id)
+        index_service.index_shot(shot)
     clear_shot_cache(shot_id)
     events.emit(
         "shot:update", {"shot_id": shot_id}, project_id=str(shot.project_id)

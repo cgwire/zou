@@ -115,6 +115,25 @@ class MovieTestCase(unittest.TestCase):
         self.assertEqual(width / 2, width_norm)
         self.assertEqual(height / 2, height_norm)
 
+    def test_normalize_skip_high_def(self):
+        # SKIP_NORMALIZATION_HIGHDEF and the remote normalization ask for
+        # the low def version alone: no high def path, a single encoding.
+        video = str(Path(self.tmpdir) / "test_normalize_skip_high_def.m4v")
+        shutil.copyfile(self.video_only_path, video)
+
+        with patch.object(
+            movie, "normalize_encoding", wraps=movie.normalize_encoding
+        ) as normalize_encoding:
+            high_def, low_def, err = movie.normalize_movie(
+                video, 5, 320, 240, skip_high_def=True
+            )
+
+        self.assertIsNone(high_def)
+        self.assertIsNone(err)
+        normalize_encoding.assert_called_once()
+        self.assertEqual(normalize_encoding.call_args.args[2], low_def)
+        self.assertEqual(movie.get_movie_size(low_def), (1280, 960))
+
     def test_normalize_letterbox(self):
         # A 4:3 source normalized into a 16:9 canvas must be letterboxed
         # (pillarboxed here), not stretched: exact canvas dimensions, black
@@ -149,7 +168,7 @@ class MovieTestCase(unittest.TestCase):
         # 16:9 raster) must be de-anamorphed and letterboxed into the 16:9
         # project canvas, not squished to fill it. The tile-size route test
         # cannot catch this distortion, so assert on the pixels here.
-        source = "./tests/fixtures/videos/test_preview_tiles.mp4"
+        source = "./tests/fixtures/videos/test_preview_small.mp4"
         video = str(Path(self.tmpdir) / "test_anamorphic.mp4")
         shutil.copyfile(source, video)
 
@@ -296,6 +315,9 @@ class MovieTestCase(unittest.TestCase):
     def test_concat_demuxer_keeps_frame_count(self):
         # AAC audio never ends exactly on a video frame boundary. The
         # playlist movie must still hold the exact sum of the shot frames.
+        # The shots are encoded like the low def version normalize_movie
+        # builds, at their own size instead of 1280 wide: the frame count
+        # does not depend on it, the encoding time does.
         lengths = [37, 50, 61, 48, 73, 29]
         videos = []
         for i, length in enumerate(lengths):
@@ -310,8 +332,16 @@ class MovieTestCase(unittest.TestCase):
                 t=length / 24,
                 pix_fmt="yuv420p",
             ).overwrite_output().run(quiet=True)
-            _, normalized, _ = movie.normalize_movie(
-                source, 24, 320, 240, skip_high_def=True
+            normalized = str(Path(self.tmpdir) / f"{i}-frame_count.mp4")
+            movie.normalize_encoding(
+                source,
+                "Compute low def version",
+                normalized,
+                24,
+                "6M",
+                320,
+                240,
+                keyframes=2,
             )
             videos.append((normalized, None))
 
@@ -336,7 +366,20 @@ class MovieTestCase(unittest.TestCase):
             filename = f"{i}-{test_name}.m4v"
             video = str(Path(self.tmpdir) / filename)
             shutil.copyfile(self.video_only_path, video)
-            normalized, _, _ = movie.normalize_movie(video, 5, width, height)
+            # Encoded like the high def version of normalize_movie, which
+            # would also encode a 1280 wide low def one nothing here reads.
+            movie.add_empty_soundtrack(video)
+            normalized = str(Path(self.tmpdir) / f"{i}-{test_name}.mp4")
+            movie.normalize_encoding(
+                video,
+                "Compute high def version",
+                normalized,
+                5,
+                "28M",
+                width,
+                height,
+                keyframes=2,
+            )
             # 2nd item isn't used by build_playlist_movie
             videos.append((normalized, None))
 
@@ -378,7 +421,7 @@ class MovieTestCase(unittest.TestCase):
         A tile build runs next to the API on the web host: ffmpeg must not
         take every core to decode the movie.
         """
-        video_path = "./tests/fixtures/videos/test_preview_tiles.mp4"
+        video_path = "./tests/fixtures/videos/test_preview_small.mp4"
         with patch.object(
             movie.ffmpeg, "input", wraps=ffmpeg.input
         ) as ffmpeg_input:

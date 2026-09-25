@@ -3,7 +3,8 @@ import tempfile
 
 from tests.base import ApiDBTestCase
 
-from zou.app.services import edits_service, shots_service
+from zou.app.models.task import Task
+from zou.app.services import edits_service, projects_service, shots_service
 
 
 class ImportCsvEditsTestCase(ApiDBTestCase):
@@ -63,4 +64,28 @@ class ImportCsvEditsTestCase(ApiDBTestCase):
         )
         self.assertEqual(
             edits_service.get_edits_for_project(str(self.project.id)), []
+        )
+
+    def test_import_creates_the_tasks_of_rows_before_a_failure(self):
+        # The tasks were created once the whole file was imported: a
+        # rejected line left the edits imported before it without them,
+        # and a new import does not create them.
+        self.generate_fixture_task_type()
+        projects_service.add_task_type_setting(
+            self.project.id, self.task_type_edit.id
+        )
+        self.upload_file(
+            self.path,
+            self.write_csv("Name,Edit\nOpening,\nEnding,Unknown\n"),
+            code=400,
+        )
+
+        edits = edits_service.get_edits_for_project(str(self.project.id))
+        self.assertEqual([edit["name"] for edit in edits], ["Opening"])
+        self.assertEqual(
+            [
+                (str(task.entity_id), str(task.task_type_id))
+                for task in Task.query.all()
+            ],
+            [(edits[0]["id"], str(self.task_type_edit.id))],
         )
