@@ -600,12 +600,11 @@ def remove_entity_link(link_id):
     """
     Delete the entity link matching given id and return it.
     """
-    try:
-        link = EntityLink.get_by(id=link_id)
-        link.delete()
-        return link.serialize()
-    except Exception:
+    link = EntityLink.get_by(id=link_id)
+    if link is None:
         raise EntityLinkNotFoundException
+    link.delete()
+    return link.serialize()
 
 
 def get_not_allowed_descriptors_fields_for_vendor(
