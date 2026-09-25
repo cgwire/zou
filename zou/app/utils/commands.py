@@ -1120,9 +1120,7 @@ def renormalize_movie_preview_files(
             query = query.filter(PreviewFile.id.in_(preview_file_id))
 
         if project_id is not None:
-            query = query.join(Task).filter(
-                PreviewFile.project_id == project_id
-            )
+            query = query.join(Task).filter(Task.project_id == project_id)
 
         selected_statuses = []
         if all_broken:

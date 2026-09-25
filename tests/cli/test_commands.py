@@ -11,7 +11,7 @@ from tests.base import ApiDBTestCase
 from zou.app.models.person import Person
 from zou.app.services import preview_files_service
 from zou.app.stores import auth_tokens_store, file_store
-from zou.app.utils import commands
+from zou.app.utils import commands, fields
 from zou.app.utils import progress as progress_utils
 from zou.app.models.entity_type import EntityType
 from zou.app.models.plugin import Plugin
@@ -302,6 +302,28 @@ class RenormalizeMoviePreviewFilesTestCase(ApiDBTestCase):
 
         self.assertIn(self.preview_file_id, seen_ids)
         self.assertNotIn(non_mp4_id, seen_ids)
+
+    def test_project_id_filter_joins_the_task(self):
+        # PreviewFile has no project column: the filter used to read one
+        # and raise before any row was looked at.
+        seen_ids = []
+
+        def fake_exists(prefix, pid):
+            seen_ids.append(pid)
+            return False
+
+        buf = io.StringIO()
+        with redirect_stdout(buf), patch.object(
+            file_store, "exists_movie", side_effect=fake_exists
+        ), patch.object(preview_files_service, "prepare_and_store_movie"):
+            commands.renormalize_movie_preview_files(
+                all_broken=True, project_id=str(self.project.id)
+            )
+            commands.renormalize_movie_preview_files(
+                all_broken=True, project_id=fields.gen_uuid()
+            )
+
+        self.assertEqual(seen_ids, [self.preview_file_id])
 
     def test_cli_accepts_repeated_preview_file_id_option(self):
         runner = CliRunner()
