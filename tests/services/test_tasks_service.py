@@ -488,6 +488,11 @@ class TaskTypeReaderTestCase(TaskTestCase):
         self.assertEqual(len(task_types), 1)
         self.assertEqual(task_types[0]["id"], str(self.task_type.id))
 
+        # Two tasks of the same type on the entity name the type once.
+        self.generate_fixture_task(name="Second")
+        task_types = tasks_service.get_task_types_for_entity(self.asset.id)
+        self.assertEqual(len(task_types), 1)
+
     def test_get_task_types_for_shot(self):
         task_types = tasks_service.get_task_types_for_shot(self.shot.id)
         self.assertEqual(len(task_types), 1)
