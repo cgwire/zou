@@ -471,6 +471,18 @@ def get_open_projects(name=None):
         )
         query = query.filter(ProjectPersonLink.person_id == current_user["id"])
 
+    for_client, vendor_departments = get_descriptor_visibility()
+    return projects_service.get_projects_with_extra_data(
+        query, for_client, vendor_departments
+    )
+
+
+def get_descriptor_visibility():
+    """
+    Return the (for_client, vendor_departments) pair narrowing the metadata
+    descriptors served to the current user: a client only gets the ones
+    published to clients, a vendor only the ones of their departments.
+    """
     for_client = False
     vendor_departments = None
     if permissions.has_client_permissions():
@@ -479,10 +491,7 @@ def get_open_projects(name=None):
         vendor_departments = persons_service.get_current_user(relations=True)[
             "departments"
         ]
-
-    return projects_service.get_projects_with_extra_data(
-        query, for_client, vendor_departments
-    )
+    return for_client, vendor_departments
 
 
 def get_open_project_ids():

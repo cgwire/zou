@@ -92,7 +92,31 @@ def get_projects_with_extra_data(
     * Add metadata descriptors for this project.
     * Add task types and task statuses for this project.
     """
-    projects_list = query.all()
+    return _serialize_projects_with_extra_data(
+        query.all(), for_client, vendor_departments
+    )
+
+
+def get_project_with_extra_data(
+    project, for_client=False, vendor_departments=None
+):
+    """
+    Serialize one project row the way the open projects listing does, extra
+    data included: a project read by its id, the only way to reach a closed
+    one, is then no lesser than a listed one.
+    """
+    return _serialize_projects_with_extra_data(
+        [project], for_client, vendor_departments
+    )[0]
+
+
+def _serialize_projects_with_extra_data(
+    projects_list, for_client=False, vendor_departments=None
+):
+    """
+    Serialize given project rows with their extra data, fetched in one query
+    per kind for the whole list.
+    """
     if not projects_list:
         return []
 
