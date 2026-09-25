@@ -12,7 +12,7 @@ preview turns "ready" once its variants are stored. Add `?no_job=true`
 to the upload to keep the previous synchronous behaviour.
 
 A variant requested while the preview is being built answers 202 to a
-client that accepts JSON, and 404 to a browser, as before. Gazu 1.3.0
+client that accepts JSON, and 404 to a browser, as before. Gazu 1.3.1
 or later understands the 202 and retries on its own; an older Gazu keeps
 seeing 404.
 
