@@ -94,6 +94,8 @@ class BaseModelsResource(MethodView, ArgsMixin):
     def paginated_entries(self, query, page, limit=None, relations=False):
         total = query.count()
         limit = limit or current_app.config["NB_RECORDS_PER_PAGE"]
+        if limit < 1:
+            raise WrongParameterException("limit must be a positive integer.")
         offset = (page - 1) * limit
 
         nb_pages = int(math.ceil(total / float(limit)))
@@ -351,16 +353,18 @@ class BaseModelsResource(MethodView, ArgsMixin):
                         result = fields.pick_fields(result, field_names)
                     return result
         except StatementError as exception:
-            if hasattr(exception, "message"):
-                return (
-                    {
-                        "error": True,
-                        "message": f"One of the value of the filter has not the proper format: {exception.message}",
-                    },
-                    400,
-                )
-            else:
-                raise exception
+            # A filter value the driver refuses (an int column given a
+            # word, a malformed date) surfaces here, on execution. The raw
+            # text carries the statement and its bound values, so only the
+            # sanitized message reaches the client.
+            current_app.logger.info(str(exception))
+            return (
+                {
+                    "error": True,
+                    "message": build_db_error_message(exception),
+                },
+                400,
+            )
         except permissions.PermissionDenied:
             raise
 

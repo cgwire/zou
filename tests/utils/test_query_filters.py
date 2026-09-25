@@ -25,6 +25,19 @@ class QueryTestCase(ApiDBTestCase):
         self.get('data/projects?id=["broken', 400)
         self.get("data/projects?is_clients_isolated=notabool", 400)
 
+    def test_values_the_driver_refuses_return_400(self):
+        """
+        Only UUIDs and booleans are validated before the query runs. The
+        driver rejects the rest on execution, which used to surface as a 500.
+        """
+        self.get("data/projects?created_at=yesterday", 400)
+        self.get("data/tasks?priority=abc", 400)
+        self.get("data/tasks?episode_id=abc", 400)
+
+    def test_pagination_needs_a_positive_limit(self):
+        self.get("data/projects?page=1&limit=-1", 400)
+        self.get("data/projects?page=1&limit=0")
+
     def test_get_by_name(self):
         entities = self.get("data/entities")
         self.assertEqual(len(entities), 5)
