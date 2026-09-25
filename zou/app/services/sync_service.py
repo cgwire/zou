@@ -1720,7 +1720,14 @@ def download_file_from_another_instance(
                 if attemps_count > 0:
                     time.sleep(0.5)
                 try:
-                    response = gazu.client.download(path, file_path)
+                    # processing_timeout=0: a sync has no reason to wait
+                    # for a remote file still being built, unlike an
+                    # interactive client. A preview still "processing" on
+                    # the source instance should fail this attempt right
+                    # away, not eat into this call's own retry budget.
+                    response = gazu.client.download(
+                        path, file_path, processing_timeout=0
+                    )
                     if response.status_code != 200:
                         e = gazu.exception.DownloadFileException(
                             f"{response.status_code} {http_responses[response.status_code]}."

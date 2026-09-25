@@ -201,7 +201,14 @@ class LookupTestCase(FilesTestCase):
 
         self.assertEqual(
             set(result.keys()),
-            {"id", "task_id", "updated_at", "extension", "movie_prefixes"},
+            {
+                "id",
+                "task_id",
+                "updated_at",
+                "extension",
+                "status",
+                "movie_prefixes",
+            },
         )
         self.assertEqual(result["id"], preview_file_id)
         self.assertEqual(result["task_id"], task_id)

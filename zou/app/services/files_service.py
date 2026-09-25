@@ -825,6 +825,7 @@ def get_preview_file_for_access(preview_file_id):
                 PreviewFile.task_id,
                 PreviewFile.updated_at,
                 PreviewFile.extension,
+                PreviewFile.status,
                 PreviewFile.data[MOVIE_PREFIXES_KEY].label("movie_prefixes"),
             )
             .filter_by(id=preview_file_id)
@@ -839,6 +840,7 @@ def get_preview_file_for_access(preview_file_id):
         "task_id": str(row.task_id) if row.task_id else None,
         "updated_at": fields.serialize_value(row.updated_at),
         "extension": row.extension,
+        "status": getattr(row.status, "code", row.status),
         # None for a preview file that predates the record, a list of
         # prefixes otherwise.
         "movie_prefixes": (

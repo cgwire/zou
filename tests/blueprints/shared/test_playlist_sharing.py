@@ -9,6 +9,7 @@ from zou.app.models.playlist_share_link import PlaylistShareLink
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
+from zou.app.services import preview_file_states_service as states_service
 from zou.app.stores import file_store
 
 # Share-link passwords are hashed with bcrypt; the verification path must
@@ -731,6 +732,7 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
             extension="zip",
             task_id=self.task.id,
             person_id=self.person.id,
+            status="ready",
         )
         payload = b"PK\x03\x04fake-zip-payload"
         with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
@@ -836,6 +838,7 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
             extension="zip",
             task_id=positioned.task_id,
             person_id=self.person.id,
+            status="ready",
         )
         sibling_payload = b"PK\x03\x04sibling-position"
         with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
@@ -899,6 +902,7 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
             extension="gif",
             task_id=self.task.id,
             person_id=self.person.id,
+            status="ready",
         )
         payload = b"GIF89a-fake-animated-payload"
         with tempfile.NamedTemporaryFile(suffix=".gif", delete=False) as tmp:
@@ -979,6 +983,7 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
             extension="png",
             task_id=self.task.id,
             person_id=self.person.id,
+            status="ready",
         )
         payload = b"\x89PNG\r\n\x1a\n-fake-original-png"
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
@@ -1017,7 +1022,8 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
     def test_shared_original_missing_file(self):
         """
         A preview that is part of the shared playlist but whose original
-        file is absent from storage yields a 404, not a 500.
+        file is absent from storage yields a 404, not a 500, and the
+        confirmed absence is recorded.
         """
 
         preview_file = PreviewFile.create(
@@ -1026,6 +1032,7 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
             extension="gif",
             task_id=self.task.id,
             person_id=self.person.id,
+            status="ready",
         )
         PlaylistModel.get(self.playlist["id"]).update(
             {
@@ -1051,3 +1058,11 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
             )
         )
         self.assertEqual(response.status_code, 404)
+        # Reached the storage lookup (not the processing short-circuit):
+        # the confirmed absence is recorded. A non-png extension is
+        # served through send_preview_standard_file, bucket "files".
+        states = states_service.get_file_states(str(preview_file.id))
+        self.assertEqual(
+            states_service.get_state(states, "files", "previews"),
+            "missing",
+        )

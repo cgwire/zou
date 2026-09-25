@@ -3,7 +3,7 @@ import unicodedata
 from urllib.parse import quote
 import orjson as json
 
-from flask import request, current_app, Response
+from flask import request, current_app, jsonify, Response
 from flask import send_file as flask_send_file
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -194,6 +194,58 @@ def stream_movie_from_storage(
     return response
 
 
+PROCESSING_RETRY_AFTER = 5
+
+
+def wants_json_over_picture():
+    """
+    Whether the client would rather read JSON than an image. A browser
+    asks for image/* explicitly and keeps the 404 it knows how to
+    handle; a client that says Accept: application/json is told the file
+    is on its way.
+    """
+    accept = request.accept_mimetypes
+    return accept["application/json"] > accept["image/png"]
+
+
+def preview_processing_response(preview_file_id):
+    """
+    The answer for a preview file whose files are still being built: not
+    an error, and never cached.
+    """
+    response = jsonify(
+        {"status": "processing", "preview_file_id": preview_file_id}
+    )
+    response.status_code = 202
+    response.headers["Retry-After"] = str(PROCESSING_RETRY_AFTER)
+    response.cache_control.no_store = True
+    return response
+
+
+def _processing_answer(preview_file_id):
+    """
+    The answer to give for a preview file being processed, or None when
+    it is not. A JSON client is told to come back; everyone else gets the
+    404 they already handle. No storage state is recorded either way: an
+    absence that is expected is not an absence.
+
+    The 404 case is built and returned here, rather than raised as
+    FileNotFound, so it carries Cache-Control: no-store. Raising it would
+    let it surface as a bare werkzeug 404 (via PreviewFileNotFoundException
+    in the caller), which a browser is free to cache heuristically and
+    keep showing once the preview turns ready.
+    """
+    preview_file = files_service.get_preview_file_for_access(preview_file_id)
+    if preview_file["status"] != "processing":
+        return None
+    if wants_json_over_picture():
+        return preview_processing_response(preview_file_id)
+    response = jsonify(error=True, message="Preview file was not found.")
+    response.status_code = 404
+    response.cache_control.no_store = True
+    return response
+
+
 def send_movie_file(
     preview_file_id,
     as_attachment=False,
@@ -221,6 +273,9 @@ def send_movie_file(
         preview_file = files_service.get_preview_file_for_access(
             preview_file_id
         )
+    processing = _processing_answer(preview_file_id)
+    if processing is not None:
+        return processing
     # .get: a dict memoized by the previous release has no such key.
     recorded_prefixes = preview_file.get("movie_prefixes")
     prefixes = files_service.get_movie_prefixes(
@@ -340,6 +395,9 @@ def send_preview_standard_file(preview_file_id, extension, **kwargs):
 
 
 def _send_preview_variant(bucket, prefix, preview_file_id, send):
+    processing = _processing_answer(preview_file_id)
+    if processing is not None:
+        return processing
     states = preview_file_states_service.get_file_states(preview_file_id)
     if preview_file_states_service.is_known_missing(states, bucket, prefix):
         raise FileNotFound(f"{prefix}-{preview_file_id}")
@@ -492,8 +550,8 @@ class BaseNewPreviewFilePicture:
 
     def save_picture_preview(self, instance_id, uploaded_file):
         """
-        Get uploaded picture, build thumbnails then save everything in the file
-        storage.
+        Get uploaded picture, read the metadata the response carries and
+        hand the variants over to the job queue.
         """
         tmp_folder = config.TMP_DIR
         original_tmp_path = thumbnail_utils.save_file(
@@ -501,13 +559,16 @@ class BaseNewPreviewFilePicture:
         )
         file_size = fs.get_file_size(original_tmp_path)
         width, height = thumbnail_utils.get_dimensions(original_tmp_path)
-        preview_files_service.save_variants(instance_id, original_tmp_path)
+        queued = preview_files_service.dispatch_picture_processing(
+            instance_id, original_tmp_path, no_job=self.get_no_job()
+        )
         return {
             "preview_file_id": instance_id,
             "file_size": file_size,
             "extension": "png",
             "width": width,
             "height": height,
+            "queued": queued,
         }
 
     @staticmethod
@@ -633,18 +694,18 @@ class BaseNewPreviewFilePicture:
         preview_file = None
         if extension in ALLOWED_PICTURE_EXTENSION:
             metadata = self.save_picture_preview(instance_id, uploaded_file)
+            data = {
+                "extension": "png",
+                "original_name": original_file_name,
+                "width": metadata["width"],
+                "height": metadata["height"],
+                "file_size": metadata["file_size"],
+            }
+            if not metadata["queued"]:
+                data["status"] = "ready"
             preview_file = preview_files_service.update_preview_file(
-                instance_id,
-                {
-                    "extension": "png",
-                    "original_name": original_file_name,
-                    "width": metadata["width"],
-                    "height": metadata["height"],
-                    "file_size": metadata["file_size"],
-                    "status": "ready",
-                },
+                instance_id, data
             )
-            tasks_service.update_preview_file_info(preview_file)
         elif extension in ALLOWED_MOVIE_EXTENSION:
             normalize = self.get_bool_parameter("normalize", "true")
             try:
@@ -1856,8 +1917,8 @@ class SetMainPreviewResource(MethodView, ArgsMixin):
                 raise WrongParameterException(
                     "Can't use a given frame on non movie preview"
                 )
-            preview_files_service.replace_extracted_frame_for_preview_file(
-                preview_file, frame_number
+            preview_files_service.dispatch_frame_extraction(
+                preview_file, frame_number, no_job=self.get_no_job()
             )
         entity = entities_service.update_entity_preview(
             task["entity_id"],

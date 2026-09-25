@@ -268,10 +268,10 @@ def mark_broken_on_job_failure(
     job, connection, exc_type, exc_value, traceback
 ):
     """
-    RQ failure callback for the movie normalization job: mark the preview
-    file as broken and drop its temporary file. Without it, a job killed by
-    timeout or a dead worker leaves the preview file stuck on "processing"
-    forever.
+    RQ failure callback for the movie normalization and picture variant
+    jobs: mark the preview file as broken and drop its temporary file.
+    Without it, a job killed by timeout or a dead worker leaves the
+    preview file stuck on "processing" forever.
     """
     from zou.app import app as current_app
 
@@ -279,8 +279,8 @@ def mark_broken_on_job_failure(
     uploaded_movie_path = job.args[1] if len(job.args) > 1 else None
     with current_app.app_context():
         current_app.logger.error(
-            f"Normalization job failed for preview file {preview_file_id}: "
-            f"{exc_value}"
+            f"Preview processing job failed for preview file "
+            f"{preview_file_id}: {exc_value}"
         )
         if uploaded_movie_path is not None:
             _remove_temp_files(uploaded_movie_path)
@@ -383,6 +383,82 @@ def prepare_and_store_movie(
                 return {"id": preview_file_id, "status": "broken"}
         finally:
             _remove_temp_files(*temp_files)
+
+
+def dispatch_picture_processing(
+    preview_file_id, original_picture_path, no_job=False
+):
+    """
+    Build the picture variants on the job queue when one is enabled, in
+    the calling thread otherwise. Return whether the work was queued, so
+    the caller knows whether the preview file is still processing.
+
+    Like the movie pipeline, the job receives a local path: the workers
+    run on the API host, or share TMP_DIR with it.
+    """
+    if config.ENABLE_JOB_QUEUE and not no_job:
+        queue_store.job_queue.enqueue(
+            prepare_and_store_picture,
+            args=(preview_file_id, original_picture_path),
+            job_timeout=int(config.JOB_QUEUE_TIMEOUT),
+            on_failure=mark_broken_on_job_failure,
+        )
+        return True
+    prepare_and_store_picture(preview_file_id, original_picture_path)
+    return False
+
+
+def prepare_and_store_picture(preview_file_id, original_picture_path):
+    """
+    Build the variants of an uploaded picture, store them and mark the
+    preview file ready. Runs from a job as well as from a request: it
+    brings its own app context when there is none.
+    """
+    from flask import has_app_context
+    from zou.app import app
+
+    def run():
+        try:
+            save_variants(preview_file_id, original_picture_path)
+            preview_file = update_preview_file(
+                preview_file_id, {"status": "ready"}
+            )
+            tasks_service.update_preview_file_info(preview_file)
+        except PreviewFileNotFoundException:
+            # Deleted while the job waited in the queue: nothing to build.
+            app.logger.warning(
+                f"Preview file {preview_file_id} was deleted before its "
+                f"variants could be built"
+            )
+        except BaseTimeoutException:
+            # rq raises its timeout inside the job: swallowed, the job
+            # would count as successful and mark_broken_on_job_failure
+            # would never run.
+            raise
+        except Exception:
+            # Covers the inline path (no job queue, or ?no_job=true): the
+            # queued path relies on on_failure=mark_broken_on_job_failure,
+            # but that callback never runs for a call made directly from
+            # the request thread. Marking broken here first, then
+            # re-raising, keeps both paths consistent and leaves rq's
+            # failure handling (which is idempotent) intact.
+            app.logger.error(
+                f"Picture processing failed for preview file {preview_file_id}",
+                exc_info=1,
+            )
+            try:
+                set_preview_file_as_broken(preview_file_id)
+            except PreviewFileNotFoundException:
+                pass
+            raise
+        finally:
+            _remove_temp_files(original_picture_path)
+
+    if has_app_context():
+        run()
+    else:
+        with app.app_context():
+            run()
 
 
 def _process_movie(
@@ -1251,20 +1327,54 @@ def extract_frame_from_preview_file(preview_file, frame_number):
     return extracted_frame_path
 
 
+def dispatch_frame_extraction(preview_file, frame_number, no_job=False):
+    """
+    Rebuild the variants of a movie preview from one of its frames, on
+    the job queue when one is enabled. Return whether it was queued.
+    """
+    if config.ENABLE_JOB_QUEUE and not no_job:
+        queue_store.job_queue.enqueue(
+            replace_extracted_frame_for_preview_file,
+            args=(preview_file, frame_number),
+            job_timeout=int(config.JOB_QUEUE_TIMEOUT),
+        )
+        return True
+    replace_extracted_frame_for_preview_file(preview_file, frame_number)
+    return False
+
+
 def replace_extracted_frame_for_preview_file(preview_file, frame_number):
     """
     Replace the preview thumbnail with given frame, so a movie can show
-    the frame the reviewer picked.
+    the frame the reviewer picked. A failure leaves the previous
+    thumbnail in place: nothing is broken, only unchanged.
     """
-    extracted_frame_path = extract_frame_from_preview_file(
-        preview_file, frame_number
-    )
-    if extracted_frame_path is None:
-        return
-    extracted_frame_path = thumbnail_utils.turn_into_thumbnail(
-        extracted_frame_path
-    )
-    save_variants(preview_file["id"], extracted_frame_path)
+    from flask import has_app_context
+    from zou.app import app
+
+    def run():
+        try:
+            extracted_frame_path = extract_frame_from_preview_file(
+                preview_file, frame_number
+            )
+            if extracted_frame_path is None:
+                return
+            extracted_frame_path = thumbnail_utils.turn_into_thumbnail(
+                extracted_frame_path
+            )
+            save_variants(preview_file["id"], extracted_frame_path)
+        except Exception:
+            app.logger.error(
+                f"Could not extract frame {frame_number} of preview file "
+                f"{preview_file['id']}",
+                exc_info=True,
+            )
+
+    if has_app_context():
+        run()
+    else:
+        with app.app_context():
+            run()
 
 
 ANNOTATED_PICTURE_EXTENSIONS = ("jpg", "jpeg", "jpe", "png")

@@ -746,7 +746,7 @@ class DownloadFromAnotherInstanceTestCase(unittest.TestCase):
         self.saved.append((prefix, id, file_path))
 
     def download(self, exists=False, force=False, status_code=200, attemps=3):
-        def fake_download(path, file_path):
+        def fake_download(path, file_path, **kwargs):
             with open(file_path, "wb") as downloaded:
                 downloaded.write(b"content")
             return mock.Mock(status_code=status_code)
@@ -797,6 +797,17 @@ class DownloadFromAnotherInstanceTestCase(unittest.TestCase):
         """
         self.download(status_code=404)
         self.assertEqual(self.errors, {})
+
+    def test_does_not_wait_for_a_file_still_processing_on_the_source(self):
+        """
+        A sync has no reason to wait for a remote file to finish building:
+        it should fail (and retry the outer loop) right away rather than
+        inherit gazu's default processing budget.
+        """
+        downloaded = self.download()
+        self.assertEqual(
+            downloaded.call_args.kwargs.get("processing_timeout"), 0
+        )
 
 
 class FetchEventsTestCase(unittest.TestCase):
