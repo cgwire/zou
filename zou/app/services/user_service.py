@@ -92,14 +92,8 @@ def _deny_sharing_without_manager_access(data, instance):
     if (
         data.get("is_shared", None) is not None
         and instance.is_shared != data["is_shared"]
-        and (
-            data.get("project_id", None) is None
-            or (
-                data["project_id"] is not None
-                and not permissions_service.has_manager_project_access(
-                    data["project_id"]
-                )
-            )
+        and not permissions_service.can_share_filter(
+            data.get("project_id", None)
         )
     ):
         data["is_shared"] = False
@@ -112,7 +106,7 @@ def _get_own_or_as_admin(model, instance_id, current_user):
     when nothing matches, the caller raises.
     """
     instance = model.get_by(id=instance_id, person_id=current_user["id"])
-    if instance is None and current_user["role"] == "admin":
+    if instance is None and permissions.has_admin_permissions():
         instance = model.get_by(id=instance_id)
     return instance
 
@@ -610,11 +604,7 @@ def create_filter(
     Add a new search filter to the database.
     """
     current_user = persons_service.get_current_user()
-
-    if project_id is None or (
-        project_id is not None
-        and not permissions_service.has_manager_project_access(project_id)
-    ):
+    if not permissions_service.can_share_filter(project_id):
         is_shared = False
 
     if search_filter_group_id is not None:
@@ -796,10 +786,7 @@ def create_filter_group(
     Add a new search filter group to the database.
     """
     current_user = persons_service.get_current_user()
-    if project_id is None or (
-        project_id is not None
-        and not permissions_service.has_manager_project_access(project_id)
-    ):
+    if not permissions_service.can_share_filter(project_id):
         is_shared = False
 
     if department_id is not None:
