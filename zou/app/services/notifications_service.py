@@ -409,17 +409,6 @@ def get_all_sequence_subscriptions(person_id, project_id, task_type_id):
     )
 
 
-def delete_notifications_for_comment(comment_id):
-    """
-    Delete every notification tied to given comment. Mandatory before the
-    comment itself can be deleted.
-    """
-    notifications = Notification.get_all_by(comment_id=comment_id)
-    for notification in notifications:
-        notification.delete()
-    return fields.serialize_list(notifications)
-
-
 def get_last_notifications(notification_type=None):
     """
     Return last notification created. This function is used mainly for testing

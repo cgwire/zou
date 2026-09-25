@@ -567,19 +567,6 @@ class CommentNotificationTestCase(NotificationsTestCase):
 
         self.assertEqual(self.kinds(), [("reply", self.admin_id)])
 
-    def test_delete_notifications_for_comment(self):
-        notifications_service.create_notification(
-            self.assignee_id,
-            comment_id=self.comment["id"],
-            author_id=self.comment["person_id"],
-            task_id=self.comment["object_id"],
-        )
-        result = notifications_service.delete_notifications_for_comment(
-            self.comment["id"]
-        )
-        self.assertEqual(len(result), 1)
-        self.assertEqual(Notification.get_all(), [])
-
     def test_get_last_notifications(self):
         notifications_service.create_notification(
             self.assignee_id,

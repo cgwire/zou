@@ -469,18 +469,6 @@ def save_project_status(project_statuses):
     return result
 
 
-def get_or_create_project(name):
-    """
-    Get project which match given name. Create it if it does not exist.
-    """
-    project = Project.get_by(name=name)
-    if project is None:
-        open_status = get_or_create_open_status()
-        project = Project(name=name, project_status_id=open_status["id"])
-        project.save()
-    return project.serialize()
-
-
 def get_project_raw(project_id):
     """
     Get project matching given id, as active record. Raises an exception if

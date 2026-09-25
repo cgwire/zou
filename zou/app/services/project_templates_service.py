@@ -90,26 +90,6 @@ def get_project_template(template_id):
     return get_project_template_raw(template_id).serialize()
 
 
-def get_project_templates():
-    """
-    Return all templates as a list of dicts.
-    """
-    templates = ProjectTemplate.query.order_by(ProjectTemplate.name).all()
-    return fields.serialize_models(templates)
-
-
-def get_project_template_by_name(name):
-    """
-    Return the template matching given name, case insensitively, or raise.
-    """
-    template = ProjectTemplate.query.filter(
-        ProjectTemplate.name.ilike(name)
-    ).first()
-    if template is None:
-        raise ProjectTemplateNotFoundException()
-    return template.serialize()
-
-
 def create_project_template(name, description=None, **settings):
     """
     Create a new empty template. Extra keyword arguments are forwarded as

@@ -427,13 +427,6 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         self.assertEqual(names, ["Playlist 1", "Playlist 3", "Playlist 4"])
         self.assertNotIn(elsewhere.name, names)
 
-    def test_get_playlist_file_name(self):
-        playlist = self.generate_fixture_playlists()
-        self.assertEqual(
-            playlists_service.get_playlist_file_name(playlist),
-            "cosmos-landromat-playlist-4",
-        )
-
     def test_start_and_end_build_job(self):
         """
         The two ends of a playlist build: the row the clients poll while the

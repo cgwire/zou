@@ -1114,15 +1114,6 @@ def get_playlist_download_context_name(project, playlist):
     return context_name
 
 
-def get_playlist_file_name(playlist):
-    """
-    Build file name for the movie file matching given playlist.
-    """
-    project = projects_service.get_project(playlist["project_id"])
-    download_name = f"{slugify(project['name'])}_{slugify(playlist['name'])}"
-    return slugify(download_name)
-
-
 def get_playlist_movie_file_path(build_job):
     """
     Build file path for the movie file matching given playlist.
