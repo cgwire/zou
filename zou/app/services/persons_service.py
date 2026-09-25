@@ -15,6 +15,7 @@ from zou.app.models.department import Department
 from zou.app.models.desktop_login_log import DesktopLoginLog
 from zou.app.models.organisation import Organisation
 from zou.app.models.person import Person
+from zou.app.models.task import Task
 from zou.app.models.time_spent import TimeSpent
 
 from zou.app import config, file_store, db
@@ -318,6 +319,15 @@ def get_current_user_fido_devices():
     Return FIDO device names for the current user.
     """
     return current_user.fido_devices()
+
+
+def build_assignee_filter():
+    """
+    Query filter for tasks assigned to the current user. Lives here, at the
+    bottom of the service layers, so the entity services can scope a
+    listing without reaching up into user_service.
+    """
+    return Task.assignees.contains(get_current_user_raw())
 
 
 def get_current_user_raw():

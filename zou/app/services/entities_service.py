@@ -54,14 +54,172 @@ def clear_entity_cache(entity_id):
     """
     Drop the memoized serialization and full name of given entity.
     """
-    # Deferred import: names_service imports entities_service. Renaming a
-    # parent (sequence, episode) still leaves children names cached up to
-    # their TTL; only the entity's own name is invalidated here.
-    from zou.app.services import names_service
-
+    # Renaming a parent (sequence, episode) still leaves the children
+    # names cached up to their TTL; only the entity's own name goes.
     entity_id = str(entity_id)
     cache.cache.delete_memoized(_get_entity_cached, entity_id)
-    cache.cache.delete_memoized(names_service.get_full_entity_name, entity_id)
+    cache.cache.delete_memoized(get_full_entity_name, entity_id)
+
+
+def _load_entities(entity_ids, *already_loaded):
+    """
+    Return the serialized entities for given ids, keyed by id. Entities
+    present in the already loaded maps are reused, only the rest is queried.
+    The maps are searched in order, so the first one wins.
+    """
+    entities = {}
+    missing = {str(entity_id) for entity_id in entity_ids}
+    for loaded in already_loaded:
+        for entity_id in missing & loaded.keys():
+            entities[entity_id] = loaded[entity_id]
+        missing -= entities.keys()
+
+    if missing:
+        for entity in Entity.query.filter(Entity.id.in_(list(missing))).all():
+            entities[str(entity.id)] = entity.serialize()
+    return entities
+
+
+def _collect_parent_ids(entities_map):
+    """
+    Return the ids of the parents of given entities, skipping the roots.
+    """
+    return {
+        entity["parent_id"]
+        for entity in entities_map.values()
+        if entity["parent_id"] is not None
+    }
+
+
+@cache.memoize_function(1200)
+def get_full_entity_name(entity_id):
+    """
+    Get full entity name whether it's an asset or a shot. If it's a shot
+    the result is "Episode name / Sequence name / Shot name". If it's an
+    asset the result is "Asset type name / Asset name".
+    """
+    entity = get_entity(entity_id)
+    episode_id = None
+    if shots_service.is_shot(entity):
+        sequence = get_entity(entity["parent_id"])
+        if sequence["parent_id"] is None:
+            name = f"{sequence['name']} / {entity['name']}"
+        else:
+            episode = get_entity(sequence["parent_id"])
+            episode_id = episode["id"]
+            name = f"{episode['name']} / {sequence['name']} / {entity['name']}"
+    elif shots_service.is_episode(entity):
+        name = entity["name"]
+    elif shots_service.is_sequence(entity):
+        name = entity["name"]
+        if entity["parent_id"] is not None:
+            episode = get_entity(entity["parent_id"])
+            episode_id = episode["id"]
+            name = f"{episode['name']} / {entity['name']}"
+    else:
+        asset_type = get_entity_type(entity["entity_type_id"])
+        episode_id = entity["source_id"]
+        name = f"{asset_type['name']} / {entity['name']}"
+    return name, episode_id, entity["preview_file_id"]
+
+
+def get_full_entity_names(entity_ids):
+    """
+    Batch version of get_full_entity_name. Takes a list of entity IDs
+    and returns a dict mapping entity_id -> (name, episode_id,
+    preview_file_id). Uses 2-3 queries instead of N.
+    """
+    if not entity_ids:
+        return {}
+
+    unique_ids = list(set(entity_ids))
+
+    entities_map = _load_entities(unique_ids)
+    parent_ids = _collect_parent_ids(entities_map)
+    parents_map = _load_entities(parent_ids, entities_map)
+    # Grandparents are the episodes of the sequences.
+    grandparent_ids = _collect_parent_ids(parents_map)
+    grandparents_map = _load_entities(
+        grandparent_ids, entities_map, parents_map
+    )
+
+    all_entities = {}
+    all_entities.update(grandparents_map)
+    all_entities.update(parents_map)
+    all_entities.update(entities_map)
+
+    # Get type IDs for classification
+    shot_type = shots_service.get_shot_type()
+    episode_type = shots_service.get_episode_type()
+    sequence_type = shots_service.get_sequence_type()
+
+    # Anything that is not a shot, an episode or a sequence is an asset, so
+    # its entity type has to be resolved to build the name.
+    asset_type_ids = {
+        entity["entity_type_id"]
+        for entity in entities_map.values()
+        if str(entity["entity_type_id"])
+        not in (shot_type["id"], episode_type["id"], sequence_type["id"])
+    }
+    asset_types_map = {}
+    if asset_type_ids:
+        asset_types_map = {
+            str(entity_type.id): entity_type.serialize()
+            for entity_type in EntityType.query.filter(
+                EntityType.id.in_(list(asset_type_ids))
+            ).all()
+        }
+
+    # Build names
+    result = {}
+    for eid in unique_ids:
+        str_eid = str(eid)
+        entity = entities_map.get(str_eid)
+        if entity is None:
+            continue
+
+        episode_id = None
+        etype = str(entity["entity_type_id"])
+
+        if etype == shot_type["id"]:
+            parent = all_entities.get(str(entity["parent_id"]))
+            if parent is None:
+                name = entity["name"]
+            elif parent["parent_id"] is None:
+                name = f"{parent['name']} / {entity['name']}"
+            else:
+                grandparent = all_entities.get(str(parent["parent_id"]))
+                if grandparent:
+                    episode_id = grandparent["id"]
+                    name = (
+                        f"{grandparent['name']} / {parent['name']} / "
+                        f"{entity['name']}"
+                    )
+                else:
+                    name = f"{parent['name']} / {entity['name']}"
+        elif etype == episode_type["id"]:
+            name = entity["name"]
+        elif etype == sequence_type["id"]:
+            if entity["parent_id"] is None:
+                name = entity["name"]
+            else:
+                parent = all_entities.get(str(entity["parent_id"]))
+                if parent:
+                    episode_id = parent["id"]
+                    name = f"{parent['name']} / {entity['name']}"
+                else:
+                    name = entity["name"]
+        else:
+            asset_type = asset_types_map.get(str(entity["entity_type_id"]))
+            episode_id = entity["source_id"]
+            if asset_type:
+                name = f"{asset_type['name']} / {entity['name']}"
+            else:
+                name = entity["name"]
+
+        result[str_eid] = name, episode_id, entity["preview_file_id"]
+
+    return result
 
 
 def clear_entity_type_cache(entity_type_id):
@@ -235,8 +393,6 @@ def get_entities_for_project(
     Retrieve all entities related to given project of which entity is entity
     type.
     """
-    from zou.app.services import user_service
-
     query = (
         Entity.query.filter(Entity.entity_type_id == entity_type_id)
         .filter(Entity.project_id == project_id)
@@ -248,7 +404,7 @@ def get_entities_for_project(
 
     if only_assigned:
         query = query.outerjoin(Task).filter(
-            user_service.build_assignee_filter()
+            persons_service.build_assignee_filter()
         )
     result = query.all()
     return Entity.serialize_list(result, obj_type=obj_type)
@@ -369,8 +525,6 @@ def fetch_entity_task_map(
     assigned_to=True only the tasks assigned to the current user are
     fetched.
     """
-    from zou.app.services import user_service
-
     task_query = apply_filters(
         Task.query.join(Entity, Task.entity_id == Entity.id)
     ).with_entities(
@@ -397,7 +551,7 @@ def fetch_entity_task_map(
         Task.data,
     )
     if assigned_to:
-        task_query = task_query.filter(user_service.build_assignee_filter())
+        task_query = task_query.filter(persons_service.build_assignee_filter())
     task_rows = task_query.all()
 
     link_query = apply_filters(
@@ -409,7 +563,7 @@ def fetch_entity_task_map(
         cast(TaskPersonLink.person_id, Text),
     )
     if assigned_to:
-        link_query = link_query.filter(user_service.build_assignee_filter())
+        link_query = link_query.filter(persons_service.build_assignee_filter())
 
     assignees_by_task = {}
     for task_id, person_id in link_query.all():

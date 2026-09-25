@@ -1,3 +1,14 @@
+"""
+Cascading removals: what goes with a task, a preview, an entity, an episode
+or a whole project.
+
+This is the top of the service layers, above the entity services (assets,
+shots, edits, concepts) that call remove_task for their force branch. Those
+services are imported inside the functions that need them rather than at
+module level: importing them here at module level would close the cycle
+they open by importing this module.
+"""
+
 import datetime
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
@@ -293,8 +304,6 @@ def remove_preview_file(preview_file, force=False):
     # The download routes read their whole authorization off the memoized
     # serialization: left in place, it keeps handing out the task the
     # permission is checked against, and the file goes on being served.
-    from zou.app.services import files_service
-
     files_service.clear_preview_file_cache(preview_file_id)
 
     # Remove the physical files only once the DB row is gone: if the
