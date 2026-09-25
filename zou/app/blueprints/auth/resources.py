@@ -55,10 +55,10 @@ from zou.app.exceptions import (
     NoAuthStrategyConfigured,
     NoTwoFactorAuthenticationEnabled,
     PersonNotFoundException,
-    TooMuchLoginFailedAttemps,
+    TooManyLoginFailedAttempts,
     TOTPAlreadyEnabledException,
     TOTPNotEnabledException,
-    UnactiveUserException,
+    InactiveUserException,
     UserCantConnectDueToNoFallback,
     WrongOTPException,
     WrongPasswordException,
@@ -320,7 +320,7 @@ class LoginResource(MethodView, ArgsMixin):
         except TimeoutError:
             current_app.logger.info("Timeout occurs while logging in.")
             return {"login": False}, 400
-        except UnactiveUserException:
+        except InactiveUserException:
             current_app.logger.info(f"User {email} is unactive.")
             return (
                 {
@@ -331,9 +331,9 @@ class LoginResource(MethodView, ArgsMixin):
                 },
                 401,
             )
-        except TooMuchLoginFailedAttemps:
+        except TooManyLoginFailedAttempts:
             current_app.logger.info(
-                f"User {email} can't log in due to too much login failed attemps."
+                f"User {email} can't log in due to too many failed login attempts."
             )
             return (
                 {
@@ -546,11 +546,11 @@ class ChangePasswordResource(MethodView, ArgsMixin):
             )
         except auth.PasswordTooShortException:
             return {"error": True, "message": "Password is too short."}, 400
-        except UnactiveUserException:
+        except InactiveUserException:
             return {"error": True, "message": "User is unactive."}, 400
         except WrongPasswordException:
             return {"error": True, "message": "Old password is wrong."}, 400
-        except TooMuchLoginFailedAttemps:
+        except TooManyLoginFailedAttempts:
             # check_auth applies the login lockout here too, so a user who
             # just failed five logins and then changes his password used to
             # get a 500. The caller holds a token for the account, telling
@@ -650,7 +650,7 @@ class ResetPasswordResource(MethodView, ArgsMixin):
             )
         except auth.PasswordTooShortException:
             return {"error": True, "message": "Password is too short."}, 400
-        except UnactiveUserException:
+        except InactiveUserException:
             return {"error": True, "message": "User is inactive."}, 400
 
     def post(self):

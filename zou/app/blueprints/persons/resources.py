@@ -31,7 +31,7 @@ from zou.app.exceptions import (
     DepartmentNotFoundException,
     WrongDateFormatException,
     WrongParameterException,
-    UnactiveUserException,
+    InactiveUserException,
     TwoFactorAuthenticationNotEnabledException,
     PersonInProtectedAccounts,
 )
@@ -1883,7 +1883,7 @@ class ChangePasswordForPersonResource(MethodView, ArgsMixin):
             )
         except auth.PasswordTooShortException:
             return {"error": True, "message": "Password is too short."}, 400
-        except UnactiveUserException:
+        except InactiveUserException:
             return {"error": True, "message": "User is unactive."}, 400
         except PersonInProtectedAccounts as exception:
             return (
@@ -1973,7 +1973,7 @@ class DisableTwoFactorAuthenticationPersonResource(MethodView, ArgsMixin):
             )
             return {"success": True}
 
-        except UnactiveUserException:
+        except InactiveUserException:
             return {"error": True, "message": "User is unactive."}, 400
         except TwoFactorAuthenticationNotEnabledException:
             return {

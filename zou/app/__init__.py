@@ -29,7 +29,7 @@ from zou.app.exceptions import (
     WrongIdFormatException,
     WrongParameterException,
     WrongTaskTypeForEntityException,
-    UnactiveUserException,
+    InactiveUserException,
 )
 
 from zou.app.utils import cache, fs, monitoring
@@ -233,7 +233,7 @@ def configure_auth(app):
             current_app.logger.error(
                 f"Identity {identity.id} is not active anymore"
             )
-            raise UnactiveUserException
+            raise InactiveUserException
 
     @jwt.token_in_blocklist_loader
     def check_if_token_is_revoked(_, payload):

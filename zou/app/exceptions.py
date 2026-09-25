@@ -318,7 +318,7 @@ class TwoFactorAuthenticationRequiredException(Exception):
     """
 
 
-class TooMuchLoginFailedAttemps(Exception):
+class TooManyLoginFailedAttempts(Exception):
     pass
 
 
@@ -326,7 +326,7 @@ class UserCantConnectDueToNoFallback(Exception):
     pass
 
 
-class UnactiveUserException(Unauthorized):
+class InactiveUserException(Unauthorized):
     pass
 
 
@@ -386,3 +386,8 @@ class ProductionScheduleVersionNotFoundException(NotFound):
 
 class BackupFailedException(Exception):
     pass
+
+
+# Former misspelled names, kept so plugins written against them still import.
+TooMuchLoginFailedAttemps = TooManyLoginFailedAttempts
+UnactiveUserException = InactiveUserException
