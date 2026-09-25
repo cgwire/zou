@@ -9,6 +9,7 @@ from zou.app.exceptions import (
 )
 from zou.app.utils import permissions, date_helpers, validation
 from zou.app.blueprints.comments.schemas import (
+    BatchCommentItemSchema,
     CommentCreateSchema,
     CommentReplySchema,
     MoveCommentSchema,
@@ -575,9 +576,12 @@ class CommentManyTasksResource(MethodView):
                         description: Creation timestamp
                         example: "2023-01-01T12:00:00Z"
         """
-        comments = request.json
-        if not isinstance(comments, list):
-            raise WrongParameterException("Request body must be a JSON array.")
+        comments = [
+            item.model_dump(mode="json", exclude_none=True)
+            for item in validation.validate_request_list(
+                BatchCommentItemSchema
+            )
+        ]
         person = persons_service.get_current_user(relations=True)
         try:
             permissions_service.check_manager_project_access(project_id)

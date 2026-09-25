@@ -20,6 +20,7 @@ from zou.app.services import (
     permissions_service,
 )
 from zou.app.blueprints.assets.schemas import (
+    CastingEntrySchema,
     NewAssetSchema,
     AssetInstanceSchema,
     SetSharedAssetsSchema,
@@ -1165,9 +1166,10 @@ class AssetCastingResource(MethodView):
                             description: Entity name
                             example: "SH001"
         """
-        casting = request.json
-        if not isinstance(casting, list):
-            raise WrongParameterException("Request body must be a JSON array.")
+        casting = [
+            entry.model_dump(mode="json")
+            for entry in validation.validate_request_list(CastingEntrySchema)
+        ]
         asset = assets_service.get_asset(asset_id)
         permissions_service.check_manager_project_access(asset["project_id"])
         return breakdown_service.update_casting(asset_id, casting)

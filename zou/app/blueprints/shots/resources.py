@@ -28,6 +28,7 @@ from zou.app.utils import (
 )
 from zou.app.blueprints.shots.schemas import (
     NewShotSchema,
+    UpdateShotSchema,
     NewSequenceSchema,
     NewEpisodeSchema,
     NewSceneSchema,
@@ -160,12 +161,9 @@ class ShotResource(MethodView, ArgsMixin):
         """
         shot = shots_service.get_shot(shot_id)
         permissions_service.check_manager_project_access(shot["project_id"])
-        data = request.json
-        if data is None:
-            raise WrongParameterException(
-                "Data are empty. Please verify that you sent JSON data and"
-                " that you set the right headers."
-            )
+        data = validation.validate_request_body(UpdateShotSchema).model_dump(
+            mode="json", exclude_unset=True
+        )
         for field in [
             "id",
             "created_at",

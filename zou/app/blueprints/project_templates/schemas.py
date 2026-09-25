@@ -61,6 +61,22 @@ class AddBackgroundSchema(BaseSchema):
     )
 
 
+class ReorderTaskTypesSchema(BaseSchema):
+    """
+    Body of the task type reorder route: the ids in their new order.
+    """
+
+    task_type_ids: List[str]
+
+
+class ReorderTaskStatusesSchema(BaseSchema):
+    """
+    Body of the task status reorder route: the ids in their new order.
+    """
+
+    task_status_ids: List[str]
+
+
 class SetMetadataDescriptorsSchema(BaseSchema):
     """
     Body for replacing the metadata descriptors snapshot on a template.

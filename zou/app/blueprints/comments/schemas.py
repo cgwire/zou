@@ -2,13 +2,27 @@
 Pydantic schemas for request body validation in the comments blueprint.
 """
 
-from typing import Optional
+from typing import List, Optional
+from uuid import UUID
 
 import orjson as json
 
 from pydantic import Field, field_validator
 
 from zou.app.utils.validation import BaseSchema
+
+
+class BatchCommentItemSchema(BaseSchema):
+    """
+    One entry of the batch comment bodies. An entry missing its task,
+    status or text is skipped by the route rather than refused, which is
+    why nothing is required here.
+    """
+
+    object_id: Optional[UUID] = None
+    task_status_id: Optional[UUID] = None
+    comment: Optional[str] = None
+    links: List[str] = Field(default_factory=list)
 
 
 class CommentReplySchema(BaseSchema):
