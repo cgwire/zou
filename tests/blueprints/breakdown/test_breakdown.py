@@ -33,6 +33,16 @@ class BreakdownRoutesTestCase(ApiDBTestCase):
             new_casting,
         )
 
+    def test_update_entities_casting_refuses_a_malformed_body(self):
+        path = (
+            f"/data/projects/{self.project_id}/entities/{self.shot_id}/casting"
+        )
+        self.put(path, {"asset_id": self.asset_id}, 400)
+        self.put(path, [{"asset_id": "not-a-uuid", "nb_occurences": 1}], 400)
+        self.put(
+            path, [{"asset_id": self.asset_id, "nb_occurences": "x"}], 400
+        )
+
     def test_get_asset_type_casting(self):
         self.put(
             f"/data/projects/{self.project_id}"

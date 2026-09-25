@@ -17,6 +17,8 @@ from zou.app.blueprints.project_templates.schemas import (
     AddTaskStatusSchema,
     AddTaskTypeSchema,
     CreateTemplateFromProjectSchema,
+    ReorderTaskStatusesSchema,
+    ReorderTaskTypesSchema,
     SetMetadataDescriptorsSchema,
 )
 
@@ -464,16 +466,9 @@ class ProjectTemplateTaskTypesReorderResource(MethodView):
               description: Updated task type links
         """
         permissions.check_admin_permissions()
-        body = request.json
-        if not isinstance(body, dict) or not isinstance(
-            body.get("task_type_ids"), list
-        ):
-            raise WrongParameterException(
-                "Request body must be a JSON object with a "
-                "'task_type_ids' list."
-            )
+        body = validation.validate_request_body(ReorderTaskTypesSchema)
         return project_templates_service.set_template_task_type_priorities(
-            project_template_id, body["task_type_ids"]
+            project_template_id, body.task_type_ids
         )
 
 
@@ -514,14 +509,7 @@ class ProjectTemplateTaskStatusesReorderResource(MethodView):
               description: Updated task status links
         """
         permissions.check_admin_permissions()
-        body = request.json
-        if not isinstance(body, dict) or not isinstance(
-            body.get("task_status_ids"), list
-        ):
-            raise WrongParameterException(
-                "Request body must be a JSON object with a "
-                "'task_status_ids' list."
-            )
+        body = validation.validate_request_body(ReorderTaskStatusesSchema)
         return project_templates_service.set_template_task_status_priorities(
-            project_template_id, body["task_status_ids"]
+            project_template_id, body.task_status_ids
         )

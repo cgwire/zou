@@ -9,7 +9,7 @@ validation error raises WrongParameterException with a 400-style payload
 
 from flask import request
 
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import TypeAdapter, BaseModel, ConfigDict, ValidationError
 
 from zou.app.exceptions import WrongParameterException
 from zou.app.utils import fields
@@ -65,6 +65,23 @@ def validate_request_body(SchemaClass, *, data=None):
         raise WrongParameterException(
             "Validation error.",
             dict={"errors": errors},
+        )
+
+
+def validate_request_list(SchemaClass):
+    """
+    Validate a request body that is a JSON array of objects, each one
+    against given Pydantic schema, and return the list of instances.
+    """
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, list):
+        raise WrongParameterException("Request body must be a JSON array.")
+    try:
+        return TypeAdapter(list[SchemaClass]).validate_python(payload)
+    except ValidationError as e:
+        raise WrongParameterException(
+            "Validation error.",
+            dict={"errors": _format_validation_errors(e)},
         )
 
 

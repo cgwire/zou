@@ -252,6 +252,20 @@ class ShotTestCase(ApiDBTestCase):
             for version in self._get_versions()
         ]
 
+    def test_update_shot_checks_the_typed_columns(self):
+        # The body used to reach the model as is: a frame count that is not
+        # a number failed on the database, as a 500.
+        self.put(f"data/shots/{self.shot_id}", {"nb_frames": "abc"}, 400)
+        self.put(f"data/shots/{self.shot_id}", {"name": ""}, 400)
+        # Other columns of the entity still pass through.
+        shot = self.put(
+            f"data/shots/{self.shot_id}",
+            {"nb_frames": "12", "description": "A shot", "id": "ignored"},
+        )
+        self.assertEqual(shot["nb_frames"], 12)
+        self.assertEqual(shot["description"], "A shot")
+        self.assertEqual(shot["id"], self.shot_id)
+
     def test_update_shot_frame_out_saves_a_version(self):
         self._set_frame_out(120)
         versions = self._get_versions()
