@@ -194,9 +194,9 @@ class TimeSpentsResource(BaseModelsResource):
 
         return query.filter(
             self.model.date.between(
-                func.cast(start_date, TimeSpent.date.type)
-            ),
-            func.cast(end_date, TimeSpent.date.type),
+                func.cast(start_date, TimeSpent.date.type),
+                func.cast(end_date, TimeSpent.date.type),
+            )
         )
 
     def post_creation(self, instance):
