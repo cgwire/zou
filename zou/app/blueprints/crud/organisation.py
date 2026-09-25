@@ -6,6 +6,7 @@ from zou.app.models.organisation import Organisation, SENSITIVE_FIELDS
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 from zou.app.services import persons_service
+from zou.app.services.exception import WrongParameterException
 from zou.app.utils.permissions import has_admin_permissions
 
 
@@ -310,7 +311,10 @@ class OrganisationResource(BaseModelResource):
 
     def pre_update(self, instance_dict, data):
         if "hours_by_day" in data:
-            data["hours_by_day"] = float(data["hours_by_day"])
+            try:
+                data["hours_by_day"] = float(data["hours_by_day"])
+            except (TypeError, ValueError):
+                raise WrongParameterException("hours_by_day must be a number.")
         return data
 
     def serialize_instance(self, data, relations=True):

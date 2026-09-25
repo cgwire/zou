@@ -40,6 +40,14 @@ class OrganisationTestCase(ApiDBTestCase):
         )
         self.put_404(f"data/organisations/{fields.gen_uuid()}", data)
 
+    def test_update_organisation_refuses_a_non_numeric_hours_by_day(self):
+        organisation = self.get_first("data/organisations")
+        self.put(
+            f"data/organisations/{organisation['id']}",
+            {"hours_by_day": "abc"},
+            400,
+        )
+
     def test_chat_tokens_are_admin_only(self):
         organisation = Organisation.query.first()
         organisation.update({field: "a-secret" for field in SENSITIVE_FIELDS})
