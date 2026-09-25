@@ -16,7 +16,7 @@ from zou.app.services import (
     tasks_service,
 )
 
-from zou.app.services.exception import PlaylistNotFoundException
+from zou.app.exceptions import PlaylistNotFoundException
 from zou.app.utils import permissions
 
 UNKNOWN = "00000000-0000-0000-0000-000000000000"

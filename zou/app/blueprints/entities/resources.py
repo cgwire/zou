@@ -4,7 +4,7 @@ from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.entities.schemas import CreateEntityTasksSchema
 from zou.app.mixin import ArgsMixin
-from zou.app.services.exception import EntityNotFoundException
+from zou.app.exceptions import EntityNotFoundException
 from zou.app.services import (
     deletion_service,
     entities_service,

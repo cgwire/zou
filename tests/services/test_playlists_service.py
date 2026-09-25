@@ -17,7 +17,7 @@ from zou.app.services import (
     entities_service,
     projects_service,
 )
-from zou.app.services.exception import PlaylistLockTimeoutException
+from zou.app.exceptions import PlaylistLockTimeoutException
 from zou.app.utils import fields, fs, remote_job
 from zou.utils import movie
 from zou.utils.movie import EncodingParameters

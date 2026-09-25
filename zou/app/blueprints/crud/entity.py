@@ -29,7 +29,7 @@ from zou.app.services import (
 )
 from zou.app.utils import date_helpers, events, permissions
 
-from zou.app.services.exception import WrongParameterException
+from zou.app.exceptions import WrongParameterException
 
 from zou.app.blueprints.crud.base import (
     BaseModelResource,

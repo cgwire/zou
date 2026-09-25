@@ -5,7 +5,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 from flask_fs.errors import FileNotFound
 
 from zou.app import config
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     ModelWithRelationsDeletionException,
     TwoFactorAuthenticationRequiredException,
     WrongIdFormatException,

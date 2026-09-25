@@ -15,7 +15,7 @@ from babel.dates import format_datetime
 
 from zou.app.services import persons_service, templates_service
 from zou.app.models.person import Person, SENSITIVE_FIELDS
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     EmailOTPAlreadyEnabledException,
     EmailOTPNotEnabledException,
     FIDONoPreregistrationException,

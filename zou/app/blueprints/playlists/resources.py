@@ -33,7 +33,7 @@ from zou.app.services import (
     permissions_service,
     user_service,
 )
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     BuildJobNotFoundException,
     PlaylistShareLinkNotFoundException,
 )

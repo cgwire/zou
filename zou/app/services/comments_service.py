@@ -29,7 +29,7 @@ from zou.app.services import (
     concepts_service,
     preview_files_service,
 )
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     AttachmentFileNotFoundException,
     WrongParameterException,
     AssetNotFoundException,

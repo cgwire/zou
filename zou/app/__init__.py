@@ -21,7 +21,7 @@ from zou.app import swagger as swagger_module
 from zou.app.swagger import configure_openapi_route
 from zou.app.stores import auth_tokens_store, config_store, file_store
 from zou.app.indexer import indexing
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     ModelWithRelationsDeletionException,
     PersonNotFoundException,
     PreviewProcessingFailedException,

@@ -42,7 +42,7 @@ from zou.app.stores import file_store
 from zou.app import config
 
 from zou.app.services import base_service, files_service
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     ProjectNotFoundException,
     AttachmentFileNotFoundException,
     CommentNotFoundException,

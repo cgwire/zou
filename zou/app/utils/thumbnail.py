@@ -9,7 +9,7 @@ from pathlib import Path
 from PIL import Image, ImageCms, ImageFile, UnidentifiedImageError
 
 from zou.app import config
-from zou.app.services.exception import WrongParameterException
+from zou.app.exceptions import WrongParameterException
 from zou.app.utils import fs
 
 logger = logging.getLogger(__name__)

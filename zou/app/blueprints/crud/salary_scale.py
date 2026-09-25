@@ -2,7 +2,7 @@ from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
 
-from zou.app.services.exception import WrongParameterException
+from zou.app.exceptions import WrongParameterException
 
 from zou.app.models.department import Department
 from zou.app.models.salary_scale import SalaryScale

@@ -29,7 +29,7 @@ from zou.app.services import (
     preview_files_service,
     tasks_service,
 )
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     AttachmentFileNotFoundException,
     PersonNotFoundException,
     PreviewFileNotFoundException,

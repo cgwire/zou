@@ -21,7 +21,7 @@ from zou.app.models.task import Task
 from zou.app.models.time_spent import TimeSpent
 from zou.app.mixin import ArgsMixin
 from zou.app.utils import events, fields, permissions
-from zou.app.services.exception import WrongParameterException
+from zou.app.exceptions import WrongParameterException
 from zou.app.services import (
     entities_service,
     shots_service,

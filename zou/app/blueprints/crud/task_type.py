@@ -5,7 +5,7 @@ from flask_jwt_extended import jwt_required
 from zou.app.models.task_type import TaskType
 from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.project import ProjectTaskTypeLink
-from zou.app.services.exception import WrongParameterException
+from zou.app.exceptions import WrongParameterException
 from zou.app.services import tasks_service
 from zou.app.utils import permissions
 

@@ -21,7 +21,7 @@ from zou.app.services import (
     shots_service,
     tasks_service,
 )
-from zou.app.services.exception import AssetNotFoundException
+from zou.app.exceptions import AssetNotFoundException
 
 from flask import current_app
 

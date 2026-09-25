@@ -32,7 +32,7 @@ from zou.app.services import (
     user_service,
 )
 
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     EntryAlreadyExistsException,
     MalformedFileTreeException,
     OutputTypeNotFoundException,

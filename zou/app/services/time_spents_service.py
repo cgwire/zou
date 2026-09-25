@@ -20,7 +20,7 @@ from zou.app.models.person import Person
 from zou.app.utils import fields, date_helpers
 
 from zou.app.services import user_service, projects_service
-from zou.app.services.exception import WrongDateFormatException
+from zou.app.exceptions import WrongDateFormatException
 
 
 def _apply_time_spent_filters(

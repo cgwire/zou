@@ -33,7 +33,7 @@ from zou.app.blueprints.shots.schemas import (
     NewSceneSchema,
     AddShotToSceneSchema,
 )
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     WrongParameterException,
 )
 

@@ -22,7 +22,7 @@ from zou.app.blueprints.user.schemas import (
     NotificationUpdateSchema,
     SubscribeTasksSchema,
 )
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     WrongDateFormatException,
     WrongParameterException,
 )

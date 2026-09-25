@@ -5,7 +5,7 @@ from zou.app.mixin import ArgsMixin
 from zou.app.utils import fields, permissions
 
 from zou.app.services import events_service, permissions_service, user_service
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     ProjectNotFoundException,
     WrongParameterException,
 )

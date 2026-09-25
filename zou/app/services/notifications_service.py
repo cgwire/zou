@@ -15,7 +15,7 @@ from zou.app.services import (
     tasks_service,
     persons_service,
 )
-from zou.app.services.exception import PersonNotFoundException
+from zou.app.exceptions import PersonNotFoundException
 from zou.app.utils import date_helpers, events, fields, query as query_utils
 
 from zou.app.utils import cache

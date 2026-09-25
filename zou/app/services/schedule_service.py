@@ -26,7 +26,7 @@ from zou.app.services import (
 )
 from zou.app import db
 
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     ProductionScheduleVersionNotFoundException,
     WrongParameterException,
 )

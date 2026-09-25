@@ -11,7 +11,8 @@ from tests.base import ApiDBTestCase
 from zou.app.models.person import Person
 from zou.app.services import preview_files_service
 from zou.app.stores import auth_tokens_store, file_store
-from zou.app.utils import commands, fields
+from zou.app.services import commands_service as commands
+from zou.app.utils import fields
 from zou.app.utils import progress as progress_utils
 from zou.app.models.entity_type import EntityType
 from zou.app.models.plugin import Plugin
@@ -166,11 +167,11 @@ class RenormalizeMoviePreviewFilesTestCase(ApiDBTestCase):
             "get_local_movie_path",
             return_value=missing_path,
         ), patch(
-            "zou.app.utils.commands.shutil.copyfile"
+            "zou.app.services.commands_service.shutil.copyfile"
         ), patch(
-            "zou.app.utils.commands.config.FS_BACKEND", "local"
+            "zou.app.services.commands_service.config.FS_BACKEND", "local"
         ), patch(
-            "zou.app.utils.commands.config.ENABLE_JOB_QUEUE", False
+            "zou.app.services.commands_service.config.ENABLE_JOB_QUEUE", False
         ), patch.object(
             preview_files_service, "prepare_and_store_movie"
         ) as mock_prepare:
@@ -614,7 +615,7 @@ class GeneratePreviewExtraOnlyMissingTilesTestCase(ApiDBTestCase):
         self.assertIn("--only-missing-tiles", result.output)
 
     def test_a_disabled_job_queue_is_reported(self):
-        from zou.app.services.exception import JobQueueDisabledException
+        from zou.app.exceptions import JobQueueDisabledException
 
         with patch.object(
             commands.preview_files_service,

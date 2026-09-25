@@ -9,7 +9,7 @@ from zou.app.services import permissions_service, tasks_service, user_service
 
 from zou.app.models.time_spent import TimeSpent
 from zou.app.models.task import Task
-from zou.app.services.exception import WrongParameterException
+from zou.app.exceptions import WrongParameterException
 
 
 class TimeSpentsResource(BaseModelsResource):

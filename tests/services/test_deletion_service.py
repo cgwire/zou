@@ -27,7 +27,7 @@ from zou.app.models.time_spent import TimeSpent
 
 from zou.app.services import deletion_service, shots_service
 from zou.app.utils import date_helpers
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     CommentNotFoundException,
     EpisodeNotFoundException,
     ModelWithRelationsDeletionException,

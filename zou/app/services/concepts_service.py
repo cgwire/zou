@@ -27,7 +27,7 @@ from zou.app.services import (
     notifications_service,
     user_service,
 )
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     ConceptNotFoundException,
     WrongIdFormatException,
     EntityNotFoundException,

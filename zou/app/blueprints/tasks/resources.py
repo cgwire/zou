@@ -5,7 +5,7 @@ from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     CommentNotFoundException,
     TaskNotFoundException,
     PersonNotFoundException,

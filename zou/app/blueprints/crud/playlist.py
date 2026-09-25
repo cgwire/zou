@@ -8,7 +8,7 @@ from zou.app.services import (
     playlists_service,
     user_service,
 )
-from zou.app.services.exception import WrongParameterException
+from zou.app.exceptions import WrongParameterException
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.utils import fields, permissions

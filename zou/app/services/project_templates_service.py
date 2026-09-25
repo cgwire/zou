@@ -18,7 +18,7 @@ from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
 
 from zou.app.services import preview_files_service, projects_service
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     ProjectTemplateNotFoundException,
     WrongParameterException,
 )

@@ -215,7 +215,7 @@ def update_thing(thing_id, data):
     return thing.serialize()
 ```
 
-- Raise domain exceptions from `zou/app/services/exception.py` (e.g., `ThingNotFoundException`)
+- Raise domain exceptions from `zou/app/exceptions.py` (e.g., `ThingNotFoundException`)
 - Emit events after mutations: `events.emit("entity:action", data, project_id=...)`
 - `get_*_raw()` returns SQLAlchemy instance (for internal use), `get_*()` returns serialized dict
 
@@ -397,7 +397,7 @@ class DepartmentTestCase(ApiDBTestCase):
 ```python
 from tests.base import ApiDBTestCase
 from zou.app.services import my_service
-from zou.app.services.exception import MyNotFoundException
+from zou.app.exceptions import MyNotFoundException
 
 class MyServiceTestCase(ApiDBTestCase):
     def setUp(self):

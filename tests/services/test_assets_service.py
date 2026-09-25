@@ -2,7 +2,7 @@ from tests.base import ApiDBTestCase
 
 from zou.app.models.entity import Entity
 from zou.app.services import assets_service, breakdown_service
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     AssetNotFoundException,
     AssetTypeNotFoundException,
 )

@@ -14,7 +14,7 @@ Blueprint resource → Service function → Model query/mutation → Event emiss
 - Functions named with verbs: `get_task()`, `create_task()`, `update_task()`, `delete_task()`
 - `get_*_raw()` returns the SQLAlchemy model instance
 - `get_*()` returns a serialized dict
-- Raise specific exceptions from `zou/app/services/exception.py` (e.g., `TaskNotFoundException`)
+- Raise specific exceptions from `zou/app/exceptions.py` (e.g., `TaskNotFoundException`)
 - Emit events after mutations via `events_service.emit()`
 - Use `@cache.memoize_function(timeout)` for expensive reads
 
@@ -95,10 +95,10 @@ def create_task(data):
 
 ## Exception pattern
 
-All service exceptions live in `zou/app/services/exception.py`. Each model has a corresponding `<Model>NotFoundException`. Blueprints catch these and return appropriate HTTP status codes.
+All service exceptions live in `zou/app/exceptions.py`. Each model has a corresponding `<Model>NotFoundException`. Blueprints catch these and return appropriate HTTP status codes.
 
 ```python
-from zou.app.services.exception import TaskNotFoundException
+from zou.app.exceptions import TaskNotFoundException
 
 def get_task(task_id):
     task = Task.get(task_id)

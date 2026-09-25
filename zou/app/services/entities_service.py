@@ -30,7 +30,7 @@ from zou.app.models.task import Task, TaskPersonLink
 
 from zou.app import db
 
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     PreviewFileNotFoundException,
     EntityLinkNotFoundException,
     EntityNotFoundException,

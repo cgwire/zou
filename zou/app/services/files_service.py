@@ -20,7 +20,7 @@ from zou.app.services.base_service import (
     get_or_create_instance_by_name,
 )
 
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     WorkingFileNotFoundException,
     OutputFileNotFoundException,
     OutputTypeNotFoundException,

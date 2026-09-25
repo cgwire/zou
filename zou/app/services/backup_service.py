@@ -7,7 +7,7 @@ from zou.app.models.person import Person
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
 
-from zou.app.services.exception import BackupFailedException
+from zou.app.exceptions import BackupFailedException
 from zou.app.stores import file_store
 from zou.app.utils import date_helpers
 

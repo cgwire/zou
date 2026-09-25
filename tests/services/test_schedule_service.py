@@ -14,7 +14,7 @@ from zou.app.models.production_schedule_version import (
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 from zou.app.services import projects_service, schedule_service, tasks_service
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     ProductionScheduleVersionNotFoundException,
     WrongParameterException,
 )

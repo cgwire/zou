@@ -14,7 +14,7 @@ from zou.app.services import (
     projects_service,
     shots_service,
 )
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     EpisodeNotFoundException,
     SequenceNotFoundException,
 )

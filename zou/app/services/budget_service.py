@@ -2,7 +2,7 @@ from zou.app.models.budget import Budget
 from zou.app.models.budget_entry import BudgetEntry
 
 from zou.app.services import base_service
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     BudgetNotFoundException,
     BudgetEntryNotFoundException,
 )

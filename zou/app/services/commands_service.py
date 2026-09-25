@@ -1,4 +1,9 @@
-# coding: utf-8
+"""
+Operations run from the command line (zou <command>): LDAP sync, instance
+sync, dumps, preview renormalization, plugin management. The CLI in
+zou/cli.py parses the arguments and calls here; the functions carry the
+application logic and print their progress.
+"""
 
 import os
 import datetime
@@ -36,7 +41,7 @@ from zou.app.models.task import Task
 from zou.app.models.plugin import Plugin
 from sqlalchemy.sql.expression import not_
 
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     PersonNotFoundException,
     IsUserLimitReachedException,
 )

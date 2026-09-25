@@ -6,7 +6,7 @@ import sqlalchemy.orm as orm
 
 from zou.app import config
 from zou.app.utils import fields, string
-from zou.app.services.exception import WrongParameterException
+from zou.app.exceptions import WrongParameterException
 from sqlalchemy import func, types as sa_types
 from sqlalchemy.inspection import inspect
 

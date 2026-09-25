@@ -3,7 +3,7 @@ from flask_jwt_extended import jwt_required
 from flask.views import MethodView
 
 from zou.app.services import project_templates_service
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     ProjectNotFoundException,
     ProjectTemplateNotFoundException,
     WrongParameterException,

@@ -27,7 +27,7 @@ from zou.app.blueprints.persons.schemas import (
     AddToDepartmentSchema,
     ChangePasswordSchema,
 )
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     DepartmentNotFoundException,
     WrongDateFormatException,
     WrongParameterException,

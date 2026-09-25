@@ -27,7 +27,7 @@ from zou.app.services import (
     templates_service,
 )
 from zou.app.stores import auth_tokens_store
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     OrganisationNotFoundException,
     PersonNotFoundException,
     PersonInProtectedAccounts,

@@ -10,7 +10,7 @@ from zou.app.models.person import DepartmentLink, Person
 from zou.app.models.software import Software
 from zou.app.utils import fields
 
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     DepartmentNotFoundException,
     SoftwareNotFoundException,
     HardwareItemNotFoundException,

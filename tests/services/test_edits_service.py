@@ -5,7 +5,7 @@ from tests.base import ApiDBTestCase
 from zou.app.models.entity import EntityVersion
 from zou.app.models.schedule_item import ScheduleItem
 from zou.app.services import edits_service
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     EditNotFoundException,
     WrongIdFormatException,
     WrongParameterException,

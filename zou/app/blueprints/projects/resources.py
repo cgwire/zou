@@ -34,7 +34,7 @@ from zou.app.blueprints.projects.schemas import (
     BudgetEntryUpdateSchema,
     ScheduleVersionCopySchema,
 )
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     BudgetNotFoundException,
     TaskTypeNotFoundException,
     WrongDateFormatException,

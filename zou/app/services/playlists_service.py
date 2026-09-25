@@ -49,7 +49,7 @@ from zou.app.services import (
     templates_service,
 )
 
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     BuildJobNotFoundException,
     PlaylistLockTimeoutException,
     PlaylistNotFoundException,

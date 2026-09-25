@@ -9,7 +9,7 @@ from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.utils import permissions
 from zou.app.services import projects_service, user_service
 
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     WrongParameterException,
 )
 
