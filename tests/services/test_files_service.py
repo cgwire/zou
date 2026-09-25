@@ -770,7 +770,7 @@ class PreviewFileTestCase(FilesTestCase):
         files_service.get_preview_file(preview_file_id)
         files_service.get_preview_file_for_access(preview_file_id)
 
-        files_service.remove_preview_file(preview_file_id)
+        files_service.remove_preview_file_row(preview_file_id)
 
         for get in [
             files_service.get_preview_file,
@@ -784,7 +784,7 @@ class PreviewFileTestCase(FilesTestCase):
     def test_a_removed_preview_is_announced(self):
         self.generate_fixture_preview_file()
         captured = self.capture_events("preview-file:delete")
-        files_service.remove_preview_file(self.preview_file.id)
+        files_service.remove_preview_file_row(self.preview_file.id)
         self.assertEqual(len(captured), 1)
 
     def test_a_deleted_preview_stops_being_downloadable(self):

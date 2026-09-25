@@ -169,10 +169,8 @@ class PlaylistTestCase(ApiDBTestCase):
 
     def test_remove_playlist_takes_the_dependents_with_it(self):
         """
-        PlaylistResource.pre_delete and playlists_service.remove_playlist are
-        two implementations of one cascade, not one shared by both, so the
-        service needs its own case: a dependent added to one route is not
-        added to the other.
+        The service and the CRUD route share remove_playlist_dependents;
+        both are exercised so the cascade cannot drift apart again.
         """
         self.assert_dependents_go_with_the_playlist(
             playlists_service.remove_playlist

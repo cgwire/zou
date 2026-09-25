@@ -1104,10 +1104,11 @@ def get_output_files_for_output_type_and_asset_instance(
     return OutputFile.serialize_list(output_files)
 
 
-def remove_preview_file(preview_file_id):
+def remove_preview_file_row(preview_file_id):
     """
-    Delete a preview file row and tell the clients. The stored binaries
-    are the business of deletion_service.
+    Delete a preview file row and tell the clients, nothing else: no
+    stored binary, no task or entity pointing at it. The whole cascade is
+    deletion_service.remove_preview_file, which this name stays apart from.
     """
     preview_file = get_preview_file_raw(preview_file_id)
     preview_file.delete()
