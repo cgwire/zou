@@ -1,3 +1,4 @@
+import logging
 from flask import current_app
 
 from zou.app.indexer import indexing
@@ -18,6 +19,8 @@ from zou.app.exceptions import (
     EpisodeNotFoundException,
     SequenceNotFoundException,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def get_index(index_name):
@@ -125,7 +128,7 @@ def reset_entry_index(
     if documents:
         indexing.index_documents(index, documents)
         total += len(documents)
-    print(total, f"{index_name} indexed")
+    logger.info(total, f"{index_name} indexed")
     return entries
 
 

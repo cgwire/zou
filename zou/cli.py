@@ -3,6 +3,7 @@
 import warnings
 
 warnings.filterwarnings("ignore")
+import logging
 import os
 import sys
 import click
@@ -75,7 +76,9 @@ def _get_migrations_path():
 
 @click.group()
 def cli():
-    pass
+    # The services report their progress through logging; without a
+    # handler nothing below WARNING would reach the terminal.
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
 
 
 @cli.command()

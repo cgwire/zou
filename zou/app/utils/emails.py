@@ -1,3 +1,4 @@
+import logging
 import re
 import traceback
 from email import charset as email_charset
@@ -6,6 +7,9 @@ from html.parser import HTMLParser
 from flask_mail import Message
 
 from zou.app import mail
+
+logger = logging.getLogger(__name__)
+
 
 # Force quoted-printable encoding for utf-8 message bodies so that the
 # Python email module wraps lines at 76 chars. Without this, long HTML
@@ -31,7 +35,7 @@ def send_email(subject, html, recipient_email, body=None, locale=None):
     if body is None:
         body = strip_html_tags(html)
     if app.config["MAIL_DEBUG_BODY"]:
-        print(body)
+        logger.info(body)
     if app.config["MAIL_ENABLED"]:
         with app.app_context():
             try:
