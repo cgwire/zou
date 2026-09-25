@@ -1,4 +1,3 @@
-import datetime
 import re
 import random
 import string
@@ -262,8 +261,11 @@ def _manage_status_change(task_status, task, comment):
             # leaves a feedback or a done status.
 
             if task_status["is_wip"] and task["real_start_date"] is None:
-                new_data["real_start_date"] = datetime.datetime.now(
-                    datetime.timezone.utc
+                # Naive UTC like every other datetime stored: an aware
+                # value is converted by the server session timezone on
+                # the way into a timestamp without time zone column.
+                new_data["real_start_date"] = (
+                    date_helpers.get_utc_now_datetime()
                 )
 
         tasks_service.update_task(task["id"], new_data)
