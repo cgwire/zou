@@ -3,6 +3,8 @@ import logging
 
 import orjson as json
 import os
+import shutil
+import tempfile
 import zlib
 
 from flask import current_app
@@ -709,10 +711,15 @@ def playlist_previews(shots, only_movies=False):
     return result
 
 
-def retrieve_playlist_tmp_files(preview_files, full=False):
+def retrieve_playlist_tmp_files(preview_files, full=False, tmp_dir=None):
     """
-    Retrieve all files for a given playlist into the temporary folder.
+    Retrieve all files for a given playlist into the temporary folder. The
+    copies land in tmp_dir, which the caller owns and removes once done:
+    they used to pile up in TMP_DIR and two previews sharing an upload name
+    overwrote each other.
     """
+    if tmp_dir is None:
+        tmp_dir = config.TMP_DIR
     file_paths = []
     for preview_file in preview_files:
         if full:
@@ -724,11 +731,13 @@ def retrieve_playlist_tmp_files(preview_files, full=False):
             )
             for preview_file in sub_preview_files:
                 tmp_file_path, file_name = retrieve_playlist_tmp_file(
-                    preview_file
+                    preview_file, tmp_dir, len(file_paths)
                 )
                 file_paths.append((tmp_file_path, file_name))
         else:
-            tmp_file_path, file_name = retrieve_playlist_tmp_file(preview_file)
+            tmp_file_path, file_name = retrieve_playlist_tmp_file(
+                preview_file, tmp_dir, len(file_paths)
+            )
             file_paths.append((tmp_file_path, file_name))
     return file_paths
 
@@ -756,11 +765,14 @@ def _retrieve_playlist_movie(preview_file):
     raise last_error
 
 
-def retrieve_playlist_tmp_file(preview_file):
+def retrieve_playlist_tmp_file(preview_file, tmp_dir=None, index=0):
     """
     Download one preview of a playlist to the temp folder, so ffmpeg can
-    concatenate it locally.
+    concatenate it locally. The copy is prefixed by its index so that two
+    previews carrying the same display name keep their own file.
     """
+    if tmp_dir is None:
+        tmp_dir = config.TMP_DIR
     # Same cache entry as the preview routes, written the same way: a
     # download interrupted halfway must not leave a truncated file that
     # the next build would concatenate as is.
@@ -785,7 +797,7 @@ def retrieve_playlist_tmp_file(preview_file):
             preview_file["extension"],
         )
     file_name = names_service.get_preview_file_name(preview_file["id"])
-    tmp_file_path = os.path.join(config.TMP_DIR, file_name)
+    tmp_file_path = os.path.join(tmp_dir, f"{index:04d}_{file_name}")
     copyfile(file_path, tmp_file_path)
     return tmp_file_path, file_name
 
@@ -795,14 +807,20 @@ def build_playlist_zip_file(playlist):
     Build a zip for all files for a given playlist into the temporary folder.
     """
     previews = playlist_previews(playlist["shots"])
-    tmp_file_paths = retrieve_playlist_tmp_files(previews, full=True)
+    tmp_dir = tempfile.mkdtemp(prefix="playlist-zip-", dir=config.TMP_DIR)
+    try:
+        tmp_file_paths = retrieve_playlist_tmp_files(
+            previews, full=True, tmp_dir=tmp_dir
+        )
 
-    zip_file_path = get_playlist_zip_file_path(playlist)
-    if os.path.exists(zip_file_path):
-        os.remove(zip_file_path)
-    with ZipFile(zip_file_path, "w") as zip:
-        for file_path, file_name in tmp_file_paths:
-            zip.write(file_path, file_name)
+        zip_file_path = get_playlist_zip_file_path(playlist)
+        if os.path.exists(zip_file_path):
+            os.remove(zip_file_path)
+        with ZipFile(zip_file_path, "w") as zip:
+            for file_path, file_name in tmp_file_paths:
+                zip.write(file_path, file_name)
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
     return zip_file_path
 
 
@@ -815,10 +833,15 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
     from zou.app import app
 
     with app.app_context():
+        tmp_dir = tempfile.mkdtemp(
+            prefix="playlist-build-", dir=config.TMP_DIR
+        )
         try:
             previews = playlist_previews(shots, only_movies=True)
             movie_file_path = get_playlist_movie_file_path(job)
-            tmp_file_paths = retrieve_playlist_tmp_files(previews)
+            tmp_file_paths = retrieve_playlist_tmp_files(
+                previews, tmp_dir=tmp_dir
+            )
 
             if tmp_file_paths:
                 if not remote:
@@ -869,6 +892,7 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
 
         # exception will be logged by rq
         finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
             job = end_build_job(playlist, job, success, message)
 
     if not success:
