@@ -19,6 +19,7 @@ from zou.app.services import (
     assets_service,
     index_service,
     projects_service,
+    shots_service,
     tasks_service,
 )
 
@@ -275,6 +276,28 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
             ["Cassette Player", "Victor", "Wood Stick"],
         )
 
+    def test_import_assets_empty_episode_cell_means_no_episode(self):
+        # DictReader reads an empty cell as "", which used to create an
+        # episode named "" that every later empty row was attached to.
+        self.project.update({"production_type": "tvshow"})
+        path = f"/import/csv/projects/{self.project.id}/assets"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets_empty_episode.csv")
+        )
+        self.upload_file(path, file_path_fixture)
+
+        episodes = shots_service.get_episodes({"project_id": self.project.id})
+        self.assertEqual([episode["name"] for episode in episodes], ["E01"])
+        assets = {
+            asset["name"]: asset
+            for asset in assets_service.get_assets(
+                {"project_id": self.project.id}
+            )
+        }
+        self.assertEqual(
+            assets["Cassette Player"]["source_id"], episodes[0]["id"]
+        )
+        self.assertIsNone(assets["Wood Stick"]["source_id"])
 
     def generate_person_descriptor(self):
         self.generate_fixture_person()

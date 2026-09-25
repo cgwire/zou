@@ -52,6 +52,25 @@ class ImportCsvEditsTestCase(ApiDBTestCase):
             sorted(edit["name"] for edit in edits), ["Ending", "Opening"]
         )
 
+    def test_an_empty_episode_cell_means_no_episode(self):
+        # DictReader reads an empty cell as "", which used to create an
+        # episode named "".
+        self.project.update({"production_type": "tvshow"})
+        self.upload_file(
+            self.path,
+            self.write_csv("Name,Episode\nOpening,E01\nTeaser,\n"),
+        )
+        episodes = shots_service.get_episodes({"project_id": self.project.id})
+        self.assertEqual([episode["name"] for episode in episodes], ["E01"])
+        edits = {
+            edit["name"]: edit
+            for edit in edits_service.get_edits_for_project(
+                str(self.project.id)
+            )
+        }
+        self.assertEqual(edits["Opening"]["parent_id"], episodes[0]["id"])
+        self.assertIsNone(edits["Teaser"]["parent_id"])
+
     def test_episode_column_is_refused_outside_a_tv_show(self):
         """
         A short has no episode to hang an edit from, so the column is a

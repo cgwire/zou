@@ -191,7 +191,9 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
 
     def import_row(self, row, project_id):
         edit_name = row["Name"]
-        episode_name = row.get("Episode", None)
+        # An empty cell reads as "" with DictReader: it means no episode,
+        # not an episode named "".
+        episode_name = (row.get("Episode") or "").strip() or None
         episode_id = None
 
         if self.is_tv_show:

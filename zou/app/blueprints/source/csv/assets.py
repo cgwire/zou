@@ -260,7 +260,9 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             # An empty cell used to create an asset type named "" that
             # every later empty row then reused.
             raise RowException("An asset type is required in the Type column")
-        episode_name = row.get("Episode", None)
+        # An empty cell reads as "" with DictReader: it means no episode,
+        # not an episode named "".
+        episode_name = (row.get("Episode") or "").strip() or None
         episode_id = None
 
         if self.is_tv_show:
