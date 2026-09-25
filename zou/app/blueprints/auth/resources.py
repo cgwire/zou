@@ -151,6 +151,65 @@ class LogoutResource(MethodView):
             return logout_data
 
 
+def _build_login_response(user, email):
+    """
+    Tokens, cookies and login log of a successful authentication. A user
+    the 2FA policy applies to who has not set it up gets restricted
+    tokens, and the response says so.
+    """
+    # Check if 2FA enforcement requires restricted access
+    requires_2fa_setup = False
+    if app.config["ENFORCE_2FA"]:
+        if not auth_service.is_user_exempt_from_2fa(user, app):
+            if not auth_service.person_two_factor_authentication_enabled(user):
+                requires_2fa_setup = True
+
+    additional_claims = {"identity_type": "person"}
+    if requires_2fa_setup:
+        additional_claims["requires_2fa_setup"] = True
+
+    access_token, refresh_token = auth_service.create_auth_tokens(
+        user["id"], additional_claims
+    )
+
+    ip_address = request.environ.get("HTTP_X_REAL_IP", request.remote_addr)
+
+    organisation = persons_service.get_organisation(
+        sensitive=user["role"] == "admin"
+    )
+
+    # check_auth() serializes the person without relations, so add
+    # departments to reach parity with /auth/authenticated.
+    user["departments"] = persons_service.get_person(user["id"])["departments"]
+
+    response_data = {
+        "user": user,
+        "organisation": organisation,
+        "login": True,
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+    }
+    if requires_2fa_setup:
+        response_data["two_factor_authentication_required"] = True
+
+    response = jsonify(response_data)
+
+    if is_from_browser(request.user_agent):
+        set_access_cookies(response, access_token)
+        set_refresh_cookies(response, refresh_token)
+        events_service.create_login_log(user["id"], ip_address, "web")
+    else:
+        events_service.create_login_log(user["id"], ip_address, "script")
+    if requires_2fa_setup:
+        current_app.logger.info(
+            f"User {email} logged in with restricted"
+            " access - 2FA setup required."
+        )
+    else:
+        current_app.logger.info(f"User {email} is logged in.")
+    return response
+
+
 class LoginResource(MethodView, ArgsMixin):
 
     def post(self):
@@ -241,65 +300,7 @@ class LoginResource(MethodView, ArgsMixin):
                     400,
                 )
 
-            # Check if 2FA enforcement requires restricted access
-            requires_2fa_setup = False
-            if app.config["ENFORCE_2FA"]:
-                if not auth_service.is_user_exempt_from_2fa(user, app):
-                    if not auth_service.person_two_factor_authentication_enabled(
-                        user
-                    ):
-                        requires_2fa_setup = True
-
-            additional_claims = {"identity_type": "person"}
-            if requires_2fa_setup:
-                additional_claims["requires_2fa_setup"] = True
-
-            access_token, refresh_token = auth_service.create_auth_tokens(
-                user["id"], additional_claims
-            )
-
-            ip_address = request.environ.get(
-                "HTTP_X_REAL_IP", request.remote_addr
-            )
-
-            organisation = persons_service.get_organisation(
-                sensitive=user["role"] == "admin"
-            )
-
-            # check_auth() serializes the person without relations, so add
-            # departments to reach parity with /auth/authenticated.
-            user["departments"] = persons_service.get_person(user["id"])[
-                "departments"
-            ]
-
-            response_data = {
-                "user": user,
-                "organisation": organisation,
-                "login": True,
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-            }
-            if requires_2fa_setup:
-                response_data["two_factor_authentication_required"] = True
-
-            response = jsonify(response_data)
-
-            if is_from_browser(request.user_agent):
-                set_access_cookies(response, access_token)
-                set_refresh_cookies(response, refresh_token)
-                events_service.create_login_log(user["id"], ip_address, "web")
-            else:
-                events_service.create_login_log(
-                    user["id"], ip_address, "script"
-                )
-            if requires_2fa_setup:
-                current_app.logger.info(
-                    f"User {email} logged in with restricted"
-                    " access - 2FA setup required."
-                )
-            else:
-                current_app.logger.info(f"User {email} is logged in.")
-            return response
+            return _build_login_response(user, email)
         except WrongUserException:
             current_app.logger.info(f"User {email} is not registered.")
             return {"login": False, "message": "Wrong email or password."}, 400
