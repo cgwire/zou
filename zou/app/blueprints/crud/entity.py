@@ -31,9 +31,11 @@ from zou.app.utils import date_helpers, events, permissions
 
 from zou.app.services.exception import WrongParameterException
 
-from werkzeug.exceptions import NotFound
-
-from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
+from zou.app.blueprints.crud.base import (
+    BaseModelResource,
+    BaseModelsResource,
+    build_db_error_message,
+)
 
 # A shot version takes the next change of its author up to a minute after
 # its last change, and up to five minutes after its creation, when that
@@ -558,14 +560,15 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             return entity_dict, 200
 
         except StatementError as exception:
+            # Only malformed values are answered here. Anything else (a
+            # permission refusal, a service error) keeps its own status
+            # through the application handlers instead of becoming a 400.
             current_app.logger.error(str(exception), exc_info=1)
-            return {"error": True, "message": str(exception)}, 400
+            return (
+                {"error": True, "message": build_db_error_message(exception)},
+                400,
+            )
         except TypeError as exception:
-            current_app.logger.error(str(exception), exc_info=1)
-            return {"error": True, "message": str(exception)}, 400
-        except NotFound as exception:
-            return {"error": True, "message": str(exception)}, 404
-        except Exception as exception:
             current_app.logger.error(str(exception), exc_info=1)
             return {"error": True, "message": str(exception)}, 400
 
