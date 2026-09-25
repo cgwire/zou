@@ -39,7 +39,7 @@ from zou.app import db
 from sqlalchemy.exc import StatementError
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.orm.exc import ObjectDeletedError
-from sqlalchemy import or_
+from sqlalchemy import and_, false, or_
 
 
 def clear_project_cache(project_id):
@@ -152,27 +152,56 @@ def serialize_projects_with_extra_data(projects_list, descriptor_visibilities):
     ]
 
 
+def _build_descriptor_narrowing(for_client=False, vendor_departments=None):
+    """
+    Return the criterion keeping the metadata descriptors a client or a
+    vendor may read, None when nothing is narrowed: a client only gets the
+    ones published to clients, a vendor only the ones of their departments
+    or of no department. Shared by every route serving descriptors, so that
+    they all apply the same rule.
+    """
+    if for_client:
+        return MetadataDescriptor.for_client == True
+    if vendor_departments is not None:
+        return or_(
+            MetadataDescriptor.departments == None,
+            MetadataDescriptor.departments.any(
+                Department.id.in_(vendor_departments)
+            ),
+        )
+    return None
+
+
 def _narrow_metadata_descriptors(
     query, for_client=False, vendor_departments=None
 ):
     """
     Narrow given metadata descriptors query to the ones a client or a vendor
-    may read: a client only gets the ones published to clients, a vendor
-    only the ones of their departments or of no department. Shared by every
-    route serving descriptors, so that they all apply the same rule.
+    may read.
     """
-    if for_client:
-        return query.filter(MetadataDescriptor.for_client == True)
-    if vendor_departments is not None:
-        return query.filter(
-            or_(
-                MetadataDescriptor.departments == None,
-                MetadataDescriptor.departments.any(
-                    Department.id.in_(vendor_departments)
-                ),
-            )
-        )
-    return query
+    narrowing = _build_descriptor_narrowing(for_client, vendor_departments)
+    if narrowing is None:
+        return query
+    return query.filter(narrowing)
+
+
+def build_metadata_descriptors_filter(descriptor_visibilities):
+    """
+    Return a filter keeping the metadata descriptors of the projects of
+    given (project_ids, for_client, vendor_departments) triples, each
+    narrowed as its triple says: a query spanning several projects narrows
+    each on the role held on it.
+    """
+    criteria = []
+    for project_ids, for_client, vendor_departments in descriptor_visibilities:
+        criterion = MetadataDescriptor.project_id.in_(project_ids)
+        narrowing = _build_descriptor_narrowing(for_client, vendor_departments)
+        if narrowing is not None:
+            criterion = and_(criterion, narrowing)
+        criteria.append(criterion)
+    if not criteria:
+        return false()
+    return or_(*criteria)
 
 
 def _fetch_metadata_descriptors_by_project(

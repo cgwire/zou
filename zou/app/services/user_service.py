@@ -467,37 +467,49 @@ def get_open_projects(name=None):
     if name is not None:
         query = query.filter(Project.name == name)
 
-    current_user = persons_service.get_current_user()
-    project_roles = {}
     if not permissions.has_admin_permissions():
+        current_user = persons_service.get_current_user()
         query = query.join(
             ProjectPersonLink, Project.id == ProjectPersonLink.project_id
         )
         query = query.filter(ProjectPersonLink.person_id == current_user["id"])
-        # A listing resolves no project, so a role check would read the
-        # global role for every project listed: the role set on each team
-        # link is read instead. An admin keeps the global role, as in the
-        # project access check.
-        project_roles = get_project_roles()
 
     projects = query.all()
+    return projects_service.serialize_projects_with_extra_data(
+        projects,
+        get_descriptor_visibilities([project.id for project in projects]),
+    )
+
+
+def get_descriptor_visibilities(project_ids):
+    """
+    Return the (project_ids, for_client, vendor_departments) triples
+    narrowing the metadata descriptors of given projects for the current
+    user, grouped on the role held on each. A listing resolves no project,
+    so a role check would read the global role for every project listed:
+    the role set on each team link is read instead. An admin keeps the
+    global role, as in the project access check.
+    """
+    current_user = persons_service.get_current_user()
+    project_roles = {}
+    if not permissions.has_admin_permissions():
+        project_roles = get_project_roles()
+
     project_ids_by_role = defaultdict(list)
-    for project in projects:
-        role = project_roles.get(str(project.id))
+    for project_id in project_ids:
+        role = project_roles.get(str(project_id))
         if role in (None, "admin"):
             # An admin slot is invalid data, which the role checks read as
             # the global role too.
             role = current_user["role"]
-        project_ids_by_role[role].append(project.id)
+        project_ids_by_role[role].append(project_id)
     descriptor_visibilities = []
-    for role, project_ids in project_ids_by_role.items():
+    for role, role_project_ids in project_ids_by_role.items():
         for_client, vendor_departments = get_descriptor_visibility(role)
         descriptor_visibilities.append(
-            (project_ids, for_client, vendor_departments)
+            (role_project_ids, for_client, vendor_departments)
         )
-    return projects_service.serialize_projects_with_extra_data(
-        projects, descriptor_visibilities
-    )
+    return descriptor_visibilities
 
 
 def get_descriptor_visibility(role):
