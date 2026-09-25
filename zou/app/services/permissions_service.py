@@ -465,6 +465,26 @@ def check_entities_belong_to_project(entity_ids, project_id):
     return entities
 
 
+def check_metadata_descriptor_access(descriptor):
+    """
+    Raise a PermissionDenied exception if the current user may not read
+    given metadata descriptor with the role held on its project: a client
+    only reads the ones published to clients, a vendor the ones of their
+    departments or of no department, as the descriptors of a production
+    are listed to them. The project is resolved here, before the role is
+    read.
+    """
+    check_project_access(descriptor["project_id"])
+    for_client, vendor_departments = user_service.get_descriptor_visibility(
+        permissions.get_effective_role()
+    )
+    if not projects_service.is_metadata_descriptor_visible(
+        descriptor["id"], for_client, vendor_departments
+    ):
+        raise permissions.PermissionDenied
+    return True
+
+
 def check_manager_project_access(project_id):
     """
     Return true if current user is a manager and has a task assigned for this

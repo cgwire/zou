@@ -1025,6 +1025,35 @@ def get_metadata_descriptor(metadata_descriptor_id):
     )
 
 
+def get_project_metadata_descriptor(project_id, metadata_descriptor_id):
+    """
+    Get metadata descriptor for given id as dict, provided it belongs to
+    given project. The id comes from the client next to a project it may
+    access: a descriptor of another project is not found.
+    """
+    descriptor = get_metadata_descriptor(metadata_descriptor_id)
+    if descriptor["project_id"] != str(project_id):
+        raise MetadataDescriptorNotFoundException()
+    return descriptor
+
+
+def is_metadata_descriptor_visible(
+    metadata_descriptor_id, for_client=False, vendor_departments=None
+):
+    """
+    Return True if given metadata descriptor is left in by the narrowing of
+    a client or a vendor.
+    """
+    query = _narrow_metadata_descriptors(
+        MetadataDescriptor.query.filter(
+            MetadataDescriptor.id == metadata_descriptor_id
+        ),
+        for_client,
+        vendor_departments,
+    )
+    return query.first() is not None
+
+
 def update_metadata_descriptor(metadata_descriptor_id, changes):
     """
     Update metadata descriptor information for given id.
