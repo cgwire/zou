@@ -23,7 +23,7 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
         self.task_id = str(self.task.id)
         self.wip_status_id = str(self.task_status_wip.id)
         self.movie_path = self.get_fixture_file_path(
-            os.path.join("videos", "test_preview_tiles.mp4")
+            os.path.join("videos", "test_preview_small.mp4")
         )
 
     def upload_movie_preview(self, save_source_file=False):

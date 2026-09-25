@@ -149,7 +149,7 @@ class MovieTestCase(unittest.TestCase):
         # 16:9 raster) must be de-anamorphed and letterboxed into the 16:9
         # project canvas, not squished to fill it. The tile-size route test
         # cannot catch this distortion, so assert on the pixels here.
-        source = "./tests/fixtures/videos/test_preview_tiles.mp4"
+        source = "./tests/fixtures/videos/test_preview_small.mp4"
         video = str(Path(self.tmpdir) / "test_anamorphic.mp4")
         shutil.copyfile(source, video)
 
@@ -378,7 +378,7 @@ class MovieTestCase(unittest.TestCase):
         A tile build runs next to the API on the web host: ffmpeg must not
         take every core to decode the movie.
         """
-        video_path = "./tests/fixtures/videos/test_preview_tiles.mp4"
+        video_path = "./tests/fixtures/videos/test_preview_small.mp4"
         with patch.object(
             movie.ffmpeg, "input", wraps=ffmpeg.input
         ) as ffmpeg_input:
