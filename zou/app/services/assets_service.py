@@ -945,8 +945,6 @@ def remove_asset(asset_id, force=False):
             asset.serialize(obj_type="Asset")
         )
     else:
-        from zou.app.services import tasks_service
-
         # Before deleting EntityLinks, collect affected shot IDs so we can
         # refresh their casting stats after deletion
         cast_in = breakdown_service.get_cast_in(asset_id)
@@ -957,7 +955,6 @@ def remove_asset(asset_id, force=False):
         tasks = Task.query.filter_by(entity_id=asset_id).all()
         for task in tasks:
             deletion_service.remove_task(task.id, force=True)
-            tasks_service.clear_task_cache(str(task.id))
         index_service.remove_asset_index(str(asset_id))
         events.emit(
             "asset:delete",

@@ -115,8 +115,7 @@ def build_assignee_filter():
     """
     Query filter for task to retrieve only tasks assigned to current user.
     """
-    current_user = persons_service.get_current_user_raw()
-    return Task.assignees.contains(current_user)
+    return persons_service.build_assignee_filter()
 
 
 def build_team_filter():

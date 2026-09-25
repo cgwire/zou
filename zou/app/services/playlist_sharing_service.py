@@ -12,7 +12,12 @@ from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
 from zou.app.services import (
+    comments_service,
+    deletion_service,
+    emails_service,
+    entities_service,
     files_service,
+    notifications_service,
     persons_service,
     playlists_service,
     tasks_service,
@@ -285,7 +290,6 @@ def update_guest_comment(comment_id, guest_id, data, token):
     client-allowed (a guest must not be able to set a manager-only status).
     """
     from zou.app.models.comment import Comment
-    from zou.app.services import comments_service, notifications_service
 
     instance = _load_guest_comment(comment_id, guest_id, token)
 
@@ -356,7 +360,6 @@ def delete_guest_comment(comment_id, guest_id, token):
     Scoped to the share link via ``token`` so a guest cannot delete a
     comment they authored on a task that is not part of this playlist.
     """
-    from zou.app.services import deletion_service
 
     instance = _load_guest_comment(comment_id, guest_id, token)
 
@@ -407,7 +410,6 @@ def add_guest_comment_attachments(comment_id, guest_id, files, token):
     to the share link's playlist via ``token``.
     Returns the updated comment dict (with relations).
     """
-    from zou.app.services import comments_service
 
     comment = _load_guest_comment(comment_id, guest_id, token)
     comments_service.add_attachments_to_comment(comment, files)
@@ -422,7 +424,6 @@ def download_shared_attachment(token, attachment_id, file_name):
     served by this link.
     """
     from flask import send_file as flask_send_file
-    from zou.app.services import comments_service
 
     attachment = comments_service.get_attachment_file(attachment_id)
     comment_id = attachment.get("comment_id")
@@ -476,7 +477,6 @@ def remove_guest_comment_attachment(
     scoped to the share link's playlist via ``token``.
     """
     from zou.app.models.attachment_file import AttachmentFile
-    from zou.app.services import deletion_service
 
     _load_guest_comment(comment_id, guest_id, token)
     attachment = AttachmentFile.get(attachment_id)
@@ -492,13 +492,11 @@ def get_shared_task_comments(task_id):
     tasks_service.get_comments which requires a JWT-authenticated current
     user.
     """
-    from zou.app.services.tasks_service import (
-        _prepare_query,
-        _run_task_comments_query,
-    )
 
-    query = _prepare_query(task_id, is_client=True, is_manager=False)
-    comments, _ = _run_task_comments_query(query)
+    query = tasks_service._prepare_query(
+        task_id, is_client=True, is_manager=False
+    )
+    comments, _ = tasks_service._run_task_comments_query(query)
 
     guest_ids = {
         str(person_id)
@@ -759,8 +757,6 @@ def get_shared_playlist_context(token):
         entity_id = shot_entry.get("entity_id")
         if entity_id and entity_id not in entity_names:
             try:
-                from zou.app.services import entities_service
-
                 entity = entities_service.get_entity(entity_id)
                 entity_names[entity_id] = {
                     "id": entity_id,
@@ -827,7 +823,6 @@ def send_share_invitations(
     to a link they don't own.
     """
     from zou.app import config
-    from zou.app.services import emails_service
 
     share_link = get_share_link_by_token_raw(token)
     if str(share_link.playlist_id) != str(playlist_id):
