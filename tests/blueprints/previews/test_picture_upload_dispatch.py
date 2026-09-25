@@ -1,4 +1,6 @@
 import os
+import shutil
+import tempfile
 
 from unittest.mock import MagicMock, patch
 
@@ -163,6 +165,27 @@ class PictureUploadDispatchTestCase(ApiDBTestCase):
         # No exception: a preview deleted while its job waited is not a
         # worker crash.
         preview_files_service.prepare_and_store_picture(*args)
+
+    def test_an_inline_failure_marks_the_preview_broken(self):
+        preview_file_id = self.create_preview_file()
+        tmp_path = tempfile.mktemp(suffix=".png")
+        shutil.copy(self.picture_path, tmp_path)
+
+        with patch.object(
+            preview_files_service,
+            "save_variants",
+            side_effect=RuntimeError("boom"),
+        ):
+            self.assertRaises(
+                RuntimeError,
+                preview_files_service.prepare_and_store_picture,
+                preview_file_id,
+                tmp_path,
+            )
+
+        preview_file = files_service.get_preview_file(preview_file_id)
+        self.assertEqual(preview_file["status"], "broken")
+        self.assertFalse(os.path.exists(tmp_path))
 
 
 class FrameExtractionDispatchTestCase(PictureUploadDispatchTestCase):

@@ -268,10 +268,10 @@ def mark_broken_on_job_failure(
     job, connection, exc_type, exc_value, traceback
 ):
     """
-    RQ failure callback for the movie normalization job: mark the preview
-    file as broken and drop its temporary file. Without it, a job killed by
-    timeout or a dead worker leaves the preview file stuck on "processing"
-    forever.
+    RQ failure callback for the movie normalization and picture variant
+    jobs: mark the preview file as broken and drop its temporary file.
+    Without it, a job killed by timeout or a dead worker leaves the
+    preview file stuck on "processing" forever.
     """
     from zou.app import app as current_app
 
@@ -279,8 +279,8 @@ def mark_broken_on_job_failure(
     uploaded_movie_path = job.args[1] if len(job.args) > 1 else None
     with current_app.app_context():
         current_app.logger.error(
-            f"Normalization job failed for preview file {preview_file_id}: "
-            f"{exc_value}"
+            f"Preview processing job failed for preview file "
+            f"{preview_file_id}: {exc_value}"
         )
         if uploaded_movie_path is not None:
             _remove_temp_files(uploaded_movie_path)
@@ -430,6 +430,27 @@ def prepare_and_store_picture(preview_file_id, original_picture_path):
                 f"Preview file {preview_file_id} was deleted before its "
                 f"variants could be built"
             )
+        except BaseTimeoutException:
+            # rq raises its timeout inside the job: swallowed, the job
+            # would count as successful and mark_broken_on_job_failure
+            # would never run.
+            raise
+        except Exception:
+            # Covers the inline path (no job queue, or ?no_job=true): the
+            # queued path relies on on_failure=mark_broken_on_job_failure,
+            # but that callback never runs for a call made directly from
+            # the request thread. Marking broken here first, then
+            # re-raising, keeps both paths consistent and leaves rq's
+            # failure handling (which is idempotent) intact.
+            app.logger.error(
+                f"Picture processing failed for preview file {preview_file_id}",
+                exc_info=1,
+            )
+            try:
+                set_preview_file_as_broken(preview_file_id)
+            except PreviewFileNotFoundException:
+                pass
+            raise
         finally:
             _remove_temp_files(original_picture_path)
 
