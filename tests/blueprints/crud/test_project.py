@@ -112,6 +112,29 @@ class ProjectTestCase(ApiDBTestCase):
         projects = self.get("data/projects")
         self.assertEqual(len(projects), 4)
 
+    def test_create_project_with_a_default_preview_background(self):
+        background = self.generate_fixture_preview_background_file()
+        background_id = str(background.id)
+        data = {
+            "name": "Cosmos Landromat 2",
+            "preview_background_files": [background_id],
+            "preview_background_file_id": background_id,
+        }
+        project = self.post("data/projects", data)
+        self.assertEqual(project["preview_background_file_id"], background_id)
+        project_again = self.get(
+            f"data/projects/{project['id']}?relations=true"
+        )
+        self.assertEqual(
+            project_again["preview_background_files"], [background_id]
+        )
+
+        # The default must be one of the files attached to the project.
+        data["preview_background_files"] = []
+        self.post("data/projects", data, 400)
+        del data["preview_background_files"]
+        self.post("data/projects", data, 400)
+
     def test_update_project(self):
         project = self.get_first("data/projects")
         data = {"name": "Cosmos Landromat 3"}
