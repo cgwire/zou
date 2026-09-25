@@ -238,6 +238,9 @@ class PreviewFileStatesRoutesTestCase(ApiDBTestCase):
             },
         )
         self.assertEqual(response.status_code, 404)
+        # A processing preview turns ready soon: this 404 must not be
+        # cached by the browser past that point.
+        self.assertIn("no-store", response.headers["Cache-Control"])
         self.assertIsNone(self.state("pictures", "thumbnails"))
 
     def test_a_processing_preview_answers_404_to_a_client_without_accept(

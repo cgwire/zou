@@ -228,13 +228,22 @@ def _processing_answer(preview_file_id):
     it is not. A JSON client is told to come back; everyone else gets the
     404 they already handle. No storage state is recorded either way: an
     absence that is expected is not an absence.
+
+    The 404 case is built and returned here, rather than raised as
+    FileNotFound, so it carries Cache-Control: no-store. Raising it would
+    let it surface as a bare werkzeug 404 (via PreviewFileNotFoundException
+    in the caller), which a browser is free to cache heuristically and
+    keep showing once the preview turns ready.
     """
     preview_file = files_service.get_preview_file_for_access(preview_file_id)
     if preview_file["status"] != "processing":
         return None
     if wants_json_over_picture():
         return preview_processing_response(preview_file_id)
-    raise FileNotFound(f"processing-{preview_file_id}")
+    response = jsonify(error=True, message="Preview file was not found.")
+    response.status_code = 404
+    response.cache_control.no_store = True
+    return response
 
 
 def send_movie_file(
