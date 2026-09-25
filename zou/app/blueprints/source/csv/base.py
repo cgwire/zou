@@ -98,6 +98,13 @@ class BaseCsvImportResource(MethodView, ArgsMixin):
                 # reader.line_num is the real file line (header included),
                 # so errors point at the line the user sees in the file.
                 line_number = reader.line_num
+                # Spreadsheets often export empty lines made of separators
+                # only: they carry nothing to import.
+                if not any(
+                    isinstance(value, str) and value.strip()
+                    for value in row.values()
+                ):
+                    continue
                 try:
                     row = self.import_row(row, *args)
                     result.append(row)

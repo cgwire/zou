@@ -102,7 +102,6 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         )
         project = projects_service.get_project(project_id)
         self.is_tv_show = projects_service.is_tv_show(project)
-        self.created_shots = []
         self.task_types_in_project_for_shots = (
             TaskType.query.join(ProjectTaskTypeLink)
             .filter(ProjectTaskTypeLink.project_id == project_id)
@@ -202,6 +201,15 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
             self.created_shots.append(entity.serialize())
 
     def import_row(self, row, project_id):
+        # An empty cell used to create a sequence or a shot named "", from a
+        # spreadsheet total row for instance.
+        required_columns = ["Sequence", "Name"]
+        if self.is_tv_show:
+            required_columns.insert(0, "Episode")
+        for column in required_columns:
+            if not (row[column] or "").strip():
+                raise RowException(f"{column} cannot be empty")
+
         if self.is_tv_show:
             episode_name = row["Episode"]
         sequence_name = row["Sequence"]
@@ -348,7 +356,13 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         return entity.serialize()
 
     def run_import(self, file_path, project_id):
-        entities = super().run_import(file_path, project_id)
-        for task_type in self.task_types_in_project_for_shots:
-            create_tasks(task_type.serialize(), self.created_shots)
-        return entities
+        # Set before the import: prepare_import can fail before it does.
+        self.created_shots = []
+        self.task_types_in_project_for_shots = []
+        try:
+            return super().run_import(file_path, project_id)
+        finally:
+            # The shots created before a failing line stay imported, and a
+            # new import would not create their tasks: they get them here.
+            for task_type in self.task_types_in_project_for_shots:
+                create_tasks(task_type.serialize(), self.created_shots)

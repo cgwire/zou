@@ -220,3 +220,76 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
         self.assertEqual(filled["data"]["frame_out"], 1100)
         self.assertIsInstance(filled["data"]["frame_in"], int)
         self.assertIsInstance(filled["data"]["frame_out"], int)
+
+    def test_import_shots_rejects_a_line_without_name(self):
+        # A spreadsheet total row and a sequence placeholder line used to
+        # create a sequence named "" and shots without a name.
+        path = f"/import/csv/projects/{self.project.id}/shots"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "shots_missing_name.csv")
+        )
+        result = self.upload_file(path, file_path_fixture, 400)
+
+        self.assertEqual(result["line_number"], 3)
+        self.assertEqual(result["message"], "Name cannot be empty")
+        self.assertEqual(result["imported_rows"], 1)
+        self.assertEqual(
+            [shot["name"] for shot in shots_service.get_shots()], ["SH01"]
+        )
+        # The line is rejected before its sequence is created.
+        self.assertEqual(
+            [sequence["name"] for sequence in shots_service.get_sequences()],
+            ["SQ01"],
+        )
+
+    def test_import_shots_rejects_a_line_without_episode(self):
+        path = f"/import/csv/projects/{self.project.id}/shots"
+        self.project.update({"production_type": "tvshow"})
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "shots_missing_episode.csv")
+        )
+        result = self.upload_file(path, file_path_fixture, 400)
+
+        self.assertEqual(result["line_number"], 3)
+        self.assertEqual(result["message"], "Episode cannot be empty")
+        self.assertEqual(
+            [episode["name"] for episode in shots_service.get_episodes()],
+            ["E01"],
+        )
+
+    def test_import_shots_creates_the_tasks_of_rows_before_a_failure(self):
+        # The tasks were created once the whole file was imported: a
+        # rejected line left the shots imported before it without them,
+        # and a new import does not create them.
+        db.session.add(
+            ProjectTaskTypeLink(
+                project_id=self.project_id,
+                task_type_id=self.task_type_layout.id,
+            )
+        )
+        path = f"/import/csv/projects/{self.project.id}/shots"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "shots_missing_name.csv")
+        )
+        self.upload_file(path, file_path_fixture, 400)
+
+        shots = shots_service.get_shots()
+        self.assertEqual([shot["name"] for shot in shots], ["SH01"])
+        self.assertEqual(
+            [
+                (str(task.entity_id), str(task.task_type_id))
+                for task in Task.query.all()
+            ],
+            [(shots[0]["id"], str(self.task_type_layout.id))],
+        )
+
+    def test_import_shots_skips_blank_lines(self):
+        path = f"/import/csv/projects/{self.project.id}/shots"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "shots_blank_lines.csv")
+        )
+        self.upload_file(path, file_path_fixture)
+
+        shots = {shot["name"]: shot for shot in shots_service.get_shots()}
+        self.assertEqual(sorted(shots), ["SH01", "SH02"])
+        self.assertEqual(shots["SH02"]["nb_frames"], 20)
