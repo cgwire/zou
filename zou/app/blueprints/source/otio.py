@@ -230,13 +230,13 @@ class OTIOBaseResource(MethodView, ArgsMixin):
                         if getattr(track.media_reference, "name_prefix", None):
                             name = track.media_reference.name_prefix
                         elif getattr(track.media_reference, "name", None):
-                            name, _ = os.path.splitext(
+                            name = os.path.splitext(
                                 track.media_reference.name
                             )[0]
                         elif getattr(
                             track.media_reference, "target_url", None
                         ):
-                            name, _ = os.path.splitext(
+                            name = os.path.splitext(
                                 os.path.basename(
                                     track.media_reference.target_url
                                 )

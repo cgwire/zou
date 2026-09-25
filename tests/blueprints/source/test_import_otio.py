@@ -87,6 +87,44 @@ class ImportOTIOEdlTestCase(ApiDBTestCase):
         self.assertIn("Unsupported file type '.csv'", result["message"])
         self.assertIn("edl", result["message"])
 
+    def test_a_nameless_clip_is_named_after_its_media_reference(self):
+        """
+        EDL and XML exports often leave the clip name empty and only fill
+        the media reference. Deriving the name from it used to unpack a
+        string into two variables and fail the whole import.
+        """
+        import opentimelineio as otio
+
+        clip = otio.schema.Clip(
+            name="",
+            media_reference=otio.schema.ExternalReference(
+                target_url="/renders/sc010.mov"
+            ),
+            source_range=otio.opentime.TimeRange(
+                otio.opentime.RationalTime(0, 25),
+                otio.opentime.RationalTime(10, 25),
+            ),
+        )
+        clip.media_reference.name = "sc010.mov"
+        track = otio.schema.Track(kind=otio.schema.TrackKind.Video)
+        track.append(clip)
+        timeline = otio.schema.Timeline(name="cut")
+        timeline.tracks.append(track)
+
+        path = f"/import/otio/projects/{self.project.id}"
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".otio", delete=False
+        ) as otio_file:
+            otio_file.write(otio.adapters.write_to_string(timeline))
+        try:
+            self.upload_file(path, otio_file.name)
+        finally:
+            os.remove(otio_file.name)
+
+        self.assertEqual(
+            [shot["name"] for shot in shots_service.get_shots()], ["sc010"]
+        )
+
     def test_import_unparseable_file(self):
         result = self._upload_bad_file(".edl", "this is not an edl\n")
         self.assertIn("Failed to parse OTIO file", result["message"])
