@@ -1,6 +1,7 @@
 from flask import current_app
 from flask_jwt_extended import jwt_required
 
+from zou.app import db
 from zou.app.models.project import Project
 from zou.app.models.project import ProjectPersonLink
 from zou.app.models.person import Person
@@ -126,12 +127,21 @@ class ImportShotgunProjectConnectionsResource(BaseImportShotgunResource):
             if project is not None and person is not None:
                 project.team.append(person)
                 project.save()
+                # Record the Shotgun id on the link so the next import and
+                # the removal route find it instead of duplicating it.
+                link = ProjectPersonLink.query.filter_by(
+                    project_id=project.id, person_id=person.id
+                ).first()
+                link.shotgun_id = data["shotgun_id"]
+                db.session.commit()
                 current_app.logger.info(
                     f"Project Person Link created: {project}"
                 )
         else:
-            project.update(data)
-            current_app.logger.info(f"Project updated: {project}")
+            project = Project.get(project_person_link.project_id)
+            current_app.logger.info(
+                f"Project Person Link already there: {project}"
+            )
 
         return project
 
@@ -141,6 +151,18 @@ class ImportRemoveShotgunProjectConnectionResource(
 ):
     def __init__(self):
         ImportRemoveShotgunBaseResource.__init__(self, ProjectPersonLink)
+
+    def get_instance(self, sg_model):
+        # ProjectPersonLink is a bare link table without BaseMixin, so the
+        # generic get_by lookup does not exist on it.
+        return ProjectPersonLink.query.filter_by(
+            shotgun_id=sg_model["id"]
+        ).first()
+
+    def delete_instance(self, instance):
+        db.session.delete(instance)
+        db.session.commit()
+        return True
 
     @jwt_required()
     def post(self):
