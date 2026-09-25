@@ -241,10 +241,15 @@ class ProjectsResource(BaseModelsResource):
             ]
 
         if data.get("preview_background_file_id") is not None:
+            preview_background_files_ids = [
+                str(preview_background_file.id)
+                for preview_background_file in data.get(
+                    "preview_background_files", []
+                )
+            ]
             if (
-                "preview_background_files" not in data
-                or data["preview_background_file_id"]
-                not in data["preview_background_files_ids"]
+                data["preview_background_file_id"]
+                not in preview_background_files_ids
             ):
                 raise WrongParameterException(
                     "Invalid preview_background_file_id"
