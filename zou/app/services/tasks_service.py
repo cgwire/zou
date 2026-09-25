@@ -667,6 +667,7 @@ def get_task_types_for_entity(entity_id):
         TaskType.query.join(Task)
         .join(Entity)
         .filter(Entity.id == entity_id)
+        .distinct()
         .all()
     )
     return fields.serialize_models(task_types)
