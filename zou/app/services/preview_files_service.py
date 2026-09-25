@@ -385,6 +385,61 @@ def prepare_and_store_movie(
             _remove_temp_files(*temp_files)
 
 
+def dispatch_picture_processing(
+    preview_file_id, original_picture_path, no_job=False
+):
+    """
+    Build the picture variants on the job queue when one is enabled, in
+    the calling thread otherwise. Return whether the work was queued, so
+    the caller knows whether the preview file is still processing.
+
+    Like the movie pipeline, the job receives a local path: the workers
+    run on the API host, or share TMP_DIR with it.
+    """
+    if config.ENABLE_JOB_QUEUE and not no_job:
+        queue_store.job_queue.enqueue(
+            prepare_and_store_picture,
+            args=(preview_file_id, original_picture_path),
+            job_timeout=int(config.JOB_QUEUE_TIMEOUT),
+            on_failure=mark_broken_on_job_failure,
+        )
+        return True
+    prepare_and_store_picture(preview_file_id, original_picture_path)
+    return False
+
+
+def prepare_and_store_picture(preview_file_id, original_picture_path):
+    """
+    Build the variants of an uploaded picture, store them and mark the
+    preview file ready. Runs from a job as well as from a request: it
+    brings its own app context when there is none.
+    """
+    from flask import has_app_context
+    from zou.app import app
+
+    def run():
+        try:
+            save_variants(preview_file_id, original_picture_path)
+            preview_file = update_preview_file(
+                preview_file_id, {"status": "ready"}
+            )
+            tasks_service.update_preview_file_info(preview_file)
+        except PreviewFileNotFoundException:
+            # Deleted while the job waited in the queue: nothing to build.
+            app.logger.warning(
+                f"Preview file {preview_file_id} was deleted before its "
+                f"variants could be built"
+            )
+        finally:
+            _remove_temp_files(original_picture_path)
+
+    if has_app_context():
+        run()
+    else:
+        with app.app_context():
+            run()
+
+
 def _process_movie(
     preview_file_id,
     uploaded_movie_path,

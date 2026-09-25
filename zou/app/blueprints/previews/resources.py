@@ -492,8 +492,8 @@ class BaseNewPreviewFilePicture:
 
     def save_picture_preview(self, instance_id, uploaded_file):
         """
-        Get uploaded picture, build thumbnails then save everything in the file
-        storage.
+        Get uploaded picture, read the metadata the response carries and
+        hand the variants over to the job queue.
         """
         tmp_folder = config.TMP_DIR
         original_tmp_path = thumbnail_utils.save_file(
@@ -501,13 +501,16 @@ class BaseNewPreviewFilePicture:
         )
         file_size = fs.get_file_size(original_tmp_path)
         width, height = thumbnail_utils.get_dimensions(original_tmp_path)
-        preview_files_service.save_variants(instance_id, original_tmp_path)
+        queued = preview_files_service.dispatch_picture_processing(
+            instance_id, original_tmp_path, no_job=self.get_no_job()
+        )
         return {
             "preview_file_id": instance_id,
             "file_size": file_size,
             "extension": "png",
             "width": width,
             "height": height,
+            "queued": queued,
         }
 
     @staticmethod
@@ -633,18 +636,21 @@ class BaseNewPreviewFilePicture:
         preview_file = None
         if extension in ALLOWED_PICTURE_EXTENSION:
             metadata = self.save_picture_preview(instance_id, uploaded_file)
+            data = {
+                "extension": "png",
+                "original_name": original_file_name,
+                "width": metadata["width"],
+                "height": metadata["height"],
+                "file_size": metadata["file_size"],
+            }
+            if not metadata["queued"]:
+                data["status"] = "ready"
             preview_file = preview_files_service.update_preview_file(
-                instance_id,
-                {
-                    "extension": "png",
-                    "original_name": original_file_name,
-                    "width": metadata["width"],
-                    "height": metadata["height"],
-                    "file_size": metadata["file_size"],
-                    "status": "ready",
-                },
+                instance_id, data
             )
-            tasks_service.update_preview_file_info(preview_file)
+            if not metadata["queued"]:
+                # The queued path does this once the variants are stored.
+                tasks_service.update_preview_file_info(preview_file)
         elif extension in ALLOWED_MOVIE_EXTENSION:
             normalize = self.get_bool_parameter("normalize", "true")
             try:
