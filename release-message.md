@@ -16,6 +16,16 @@ client that accepts JSON, and 404 to a browser, as before. Gazu 1.3.0
 or later understands the 202 and retries on its own; an older Gazu keeps
 seeing 404.
 
+If your instance has a job queue enabled, its rq workers must run on the
+API host, or share `TMP_DIR` with it: the picture job now receives a
+local path, exactly like the movie job already did. Previously this only
+affected movie uploads; it now affects every picture upload too.
+
+A preview file left in the "processing" status by an older import or a
+past failure is no longer served: it now answers the same 202/404 as a
+genuinely processing preview. Use the "mark broken" action of the
+preview list to fix one manually.
+
 =====================================================================================================================================
 New release information - Tuesday (today), March, 10th night around 8:00 PM (GMT)
 
