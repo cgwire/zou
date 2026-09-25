@@ -6,7 +6,8 @@ from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
 
-from zou.app.services import index_service, shots_service
+from zou.app.models.task import Task
+from zou.app.services import index_service, projects_service, shots_service
 
 # (name, nb_frames, frame_in, frame_out) of the first two cuts both edl
 # fixtures describe.
@@ -186,4 +187,28 @@ class ImportOTIOEdlTestCase(ApiDBTestCase):
         index_shots.assert_called_once()
         self.assertEqual(
             {str(id) for id in index_shots.call_args.args[0]}, shot_ids
+        )
+
+    def test_import_edl_creates_the_tasks_of_clips_before_a_failure(self):
+        # The tasks were created once the whole timeline was imported: a
+        # failing clip left the shots saved before it without them, and a
+        # new import does not create them.
+        self.generate_fixture_task_type()
+        projects_service.add_task_type_setting(
+            self.project.id, self.task_type_layout.id
+        )
+        path = f"/import/otio/projects/{self.project.id}"
+        file_path = self.get_fixture_file_path(
+            os.path.join("edl", "unmatched_clip.edl")
+        )
+        self.upload_file(path, file_path, 400)
+
+        shot_ids = {shot["id"] for shot in shots_service.get_shots()}
+        self.assertEqual(len(shot_ids), 2)
+        self.assertEqual(
+            {
+                (str(task.entity_id), str(task.task_type_id))
+                for task in Task.query.all()
+            },
+            {(shot_id, str(self.task_type_layout.id)) for shot_id in shot_ids},
         )

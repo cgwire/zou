@@ -208,9 +208,10 @@ class OTIOBaseResource(MethodView, ArgsMixin):
             # clip. The shots saved before a failing clip stay imported:
             # they are indexed too.
             index_service.index_shots(self.shot_ids_to_index)
-
-        for task_type in self.task_types_in_project_for_shots:
-            create_tasks(task_type.serialize(), result["created_shots"])
+            # A new import would not create the tasks of the shots created
+            # before a failing clip: they get them here.
+            for task_type in self.task_types_in_project_for_shots:
+                create_tasks(task_type.serialize(), result["created_shots"])
 
         return result
 
