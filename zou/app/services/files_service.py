@@ -120,7 +120,7 @@ def _apply_output_file_filters(
 
 
 @cache.memoize_function(240)
-def get_default_status():
+def get_default_file_status():
     """
     Return default file status to set on a file when it is created.
     """
@@ -360,7 +360,7 @@ def create_new_output_revision(
         except NoOutputFileException:
             revision = 1
 
-    file_status_id = file_status_id or get_default_status()["id"]
+    file_status_id = file_status_id or get_default_file_status()["id"]
 
     try:
         output_file = OutputFile.get_by(

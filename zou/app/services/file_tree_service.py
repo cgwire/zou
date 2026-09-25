@@ -118,7 +118,7 @@ def get_working_file_name(
     working templates have no <OutputType> token to fill.
     """
     entity = entities_service.get_entity(task["entity_id"])
-    project = get_project(entity)
+    project = get_project_of_entity(entity)
     tree = get_tree_from_project(project)
 
     file_name = get_file_name_root(
@@ -149,7 +149,7 @@ def get_output_file_name(
     its project. An output covering several elements gets a _[1-N] suffix, the
     range notation the DCCs expand into one file per element.
     """
-    project = get_project(entity)
+    project = get_project_of_entity(entity)
     tree = get_tree_from_project(project)
 
     file_name = get_file_name_root(
@@ -185,7 +185,7 @@ def get_instance_file_name(
     instance sits in.
     """
     asset = entities_service.get_entity(asset_instance["asset_id"])
-    project = get_project(temporal_entity)
+    project = get_project_of_entity(temporal_entity)
     tree = get_tree_from_project(project)
 
     file_name = get_file_name_root(
@@ -221,7 +221,7 @@ def get_working_folder_path(
     separator of the target platform.
     """
     entity = entities_service.get_entity(task["entity_id"])
-    project = get_project(entity)
+    project = get_project_of_entity(entity)
     tree = get_tree_from_project(project)
     root_path = get_root_path(tree, mode, sep)
     style = tree[mode]["folder_path"].get("style", "")
@@ -256,7 +256,7 @@ def get_output_folder_path(
     Render the output folder of given entity, same way as the working one but
     with the output tokens: task type, output type and representation.
     """
-    project = get_project(entity)
+    project = get_project_of_entity(entity)
     tree = get_tree_from_project(project)
     root_path = get_root_path(tree, mode, sep)
     style = tree[mode]["folder_path"].get("style", "")
@@ -295,7 +295,7 @@ def get_instance_folder_path(
     can give instances a layout of their own.
     """
     asset = entities_service.get_entity(asset_instance["asset_id"])
-    project = get_project(temporal_entity)
+    project = get_project_of_entity(temporal_entity)
     tree = get_tree_from_project(project)
     root_path = get_root_path(tree, mode, sep)
     style = tree[mode]["folder_path"].get("style", "")
@@ -320,7 +320,7 @@ def get_instance_folder_path(
     return join_path(root_path, folder_path, "")
 
 
-def get_project(entity):
+def get_project_of_entity(entity):
     """
     Return the project given entity belongs to.
     """
@@ -617,7 +617,7 @@ def get_folder_from_project(entity, field="name"):
     Value of the <Project> token: read on the project of given entity, not on
     the entity.
     """
-    project = get_project(entity)
+    project = get_project_of_entity(entity)
     return project[field]
 
 

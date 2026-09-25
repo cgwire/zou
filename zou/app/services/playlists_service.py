@@ -327,7 +327,7 @@ def set_preview_files_for_entities(playlist_dict, with_annotations=True):
     # can hold thousands of revisions, and hydrating that many ORM instances
     # was the bulk of the query time. We also skip the heavy JSONB blobs `data`
     # (never used) and `annotations` (only when the caller asked for them). This
-    # mirrors get_preview_files_for_entity().
+    # mirrors get_entity_previews_by_task_type().
     preview_columns = [
         PreviewFile.id,
         PreviewFile.revision,
@@ -405,7 +405,7 @@ def set_preview_files_for_entities(playlist_dict, with_annotations=True):
     return (playlist_dict, preview_file_map)
 
 
-def get_preview_files_for_entity(entity_id):
+def get_entity_previews_by_task_type(entity_id):
     """
     Get all preview files available for given shot.
     """
@@ -1309,7 +1309,7 @@ def generate_playlisted_entity_from_task(task_id, task_type_links):
         playlisted_entity = get_base_asset_for_playlist(entity, task_id)
 
     task_type_id = task["task_type_id"]
-    preview_files = get_preview_files_for_entity(entity["id"])
+    preview_files = get_entity_previews_by_task_type(entity["id"])
 
     preview_file = None
     if task_type_id in preview_files and len(preview_files[task_type_id]) > 0:
@@ -1452,7 +1452,7 @@ def get_base_asset_for_playlist(entity, task_id):
     )
 
 
-def get_preview_files_for_task(task_id):
+def get_preview_files_for_task_raw(task_id):
     """
     Return all preview file active records for given task.
     """

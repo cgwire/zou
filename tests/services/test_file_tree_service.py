@@ -89,7 +89,9 @@ class TreeLookupTestCase(FileTreeTestCase):
         )
 
     def test_the_production_of_an_entity_is_read_off_the_entity(self):
-        project = file_tree_service.get_project(self.asset.serialize())
+        project = file_tree_service.get_project_of_entity(
+            self.asset.serialize()
+        )
         self.assertEqual(project["name"], self.project.name)
 
     def test_the_root_path_is_the_mountpoint_and_the_root(self):

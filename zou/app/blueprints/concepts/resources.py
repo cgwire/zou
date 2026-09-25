@@ -411,7 +411,7 @@ class ConceptPreviewsResource(MethodView):
         permissions_service.check_entity_access(concept["id"])
         if permissions.has_client_permissions():
             raise permissions.PermissionDenied
-        return playlists_service.get_preview_files_for_entity(concept_id)
+        return playlists_service.get_entity_previews_by_task_type(concept_id)
 
 
 class ConceptsAndTasksResource(MethodView):

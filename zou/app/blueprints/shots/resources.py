@@ -829,7 +829,7 @@ class ShotPreviewsResource(MethodView):
         shot = shots_service.get_shot(shot_id)
         permissions_service.check_project_access(shot["project_id"])
         permissions_service.check_entity_access(shot["id"])
-        return playlists_service.get_preview_files_for_entity(shot_id)
+        return playlists_service.get_entity_previews_by_task_type(shot_id)
 
 
 class SequenceTasksResource(MethodView, ArgsMixin):

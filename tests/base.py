@@ -1000,7 +1000,7 @@ class ApiDBTestCase(ApiTestCase):
     def generate_fixture_task_status_todo(self):
         if hasattr(self, "task_status_todo"):
             return self.task_status_todo
-        self.task_status_todo = tasks_service.get_default_status()
+        self.task_status_todo = tasks_service.get_default_task_status()
         return self.task_status_todo
 
     def generate_fixture_status_automation_to_status(self):

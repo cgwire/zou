@@ -105,10 +105,12 @@ class CastingTestCase(BreakdownTestCase):
 
     def test_the_number_of_occurrences_is_kept(self):
         self.cast(self.shot_id, self.asset_id, nb_occurences=3)
-        link = breakdown_service.get_entity_link(self.shot_id, self.asset_id)
+        link = breakdown_service.get_entity_link_between(
+            self.shot_id, self.asset_id
+        )
         self.assertEqual(link["nb_occurences"], 3)
         self.assertIsNone(
-            breakdown_service.get_entity_link(
+            breakdown_service.get_entity_link_between(
                 self.shot_id, self.asset_character_id
             )
         )
@@ -127,7 +129,9 @@ class CastingTestCase(BreakdownTestCase):
             self.shot_id, self.asset_id, nb_occurences=5, label="moving"
         )
 
-        link = breakdown_service.get_entity_link(self.shot_id, self.asset_id)
+        link = breakdown_service.get_entity_link_between(
+            self.shot_id, self.asset_id
+        )
         self.assertEqual(link["nb_occurences"], 5)
         self.assertEqual(link["label"], "moving")
 
@@ -381,7 +385,9 @@ class AssetCastingTestCase(BreakdownTestCase):
 
         breakdown_service.cast_asset(self.shot_id, self.asset_id, 3)
 
-        link = breakdown_service.get_entity_link(self.shot_id, self.asset_id)
+        link = breakdown_service.get_entity_link_between(
+            self.shot_id, self.asset_id
+        )
         self.assertEqual(link["nb_occurences"], 3)
         self.assertEqual(link["label"], "animate")
 
@@ -389,7 +395,9 @@ class AssetCastingTestCase(BreakdownTestCase):
             self.shot_id, self.asset_id, label="fixed"
         )
 
-        link = breakdown_service.get_entity_link(self.shot_id, self.asset_id)
+        link = breakdown_service.get_entity_link_between(
+            self.shot_id, self.asset_id
+        )
         self.assertEqual(link["nb_occurences"], 3)
         self.assertEqual(link["label"], "fixed")
 

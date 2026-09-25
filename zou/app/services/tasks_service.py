@@ -178,16 +178,16 @@ def get_to_review_status():
     """
     Return the task status previews are set to on upload.
     """
-    return get_or_create_status(config.TO_REVIEW_TASK_STATUS, "pndng")
+    return get_or_create_task_status(config.TO_REVIEW_TASK_STATUS, "pndng")
 
 
 @cache.memoize_function(120)
-def get_default_status(for_concept=False):
+def get_default_task_status(for_concept=False):
     """
     Return the task status new tasks start on.
     """
     if for_concept:
-        return get_or_create_status(
+        return get_or_create_task_status(
             "Neutral",
             "neutral",
             "#CCCCCC",
@@ -195,7 +195,9 @@ def get_default_status(for_concept=False):
             for_concept=True,
         )
     else:
-        return get_or_create_status("Todo", "todo", "#f5f5f5", is_default=True)
+        return get_or_create_task_status(
+            "Todo", "todo", "#f5f5f5", is_default=True
+        )
 
 
 def get_task_status_raw(task_status_id):
@@ -732,7 +734,7 @@ def get_next_position(task_id, revision):
     return len(preview_files) + 1
 
 
-def get_time_spents(task_id, date=None):
+def get_time_spents_for_task(task_id, date=None):
     """
     Return time spents for given task.
     """
@@ -1601,7 +1603,7 @@ def create_tasks(task_type, entities):
     ).all()
     existing_entity_ids = {str(task.entity_id) for task in existing_tasks}
 
-    task_status = get_default_status(
+    task_status = get_default_task_status(
         for_concept=entities[0]["entity_type_id"]
         == concepts_service.get_concept_type()["id"]
     )
@@ -1707,7 +1709,7 @@ def create_tasks_for_entity(entity, task_types=None):
         ).all()
     }
 
-    task_status = get_default_status(
+    task_status = get_default_task_status(
         for_concept=entity["entity_type_id"]
         == concepts_service.get_concept_type()["id"]
     )
@@ -1737,7 +1739,7 @@ def create_task(task_type, entity, name="main"):
     """
     Create a new task for given task type and entity.
     """
-    task_status = get_default_status(
+    task_status = get_default_task_status(
         for_concept=entity["entity_type_id"]
         == concepts_service.get_concept_type()["id"]
     )
@@ -1821,7 +1823,7 @@ def update_task(task_id, data):
     return task.serialize()
 
 
-def get_or_create_status(
+def get_or_create_task_status(
     name,
     short_name="",
     color="#f5f5f5",
@@ -2386,7 +2388,7 @@ def reset_task_data(task_id):
     end_date = None
     done_date = None
     entity = entities_service.get_entity(task.entity_id)
-    task_status_id = get_default_status(
+    task_status_id = get_default_task_status(
         for_concept=entity["entity_type_id"]
         == concepts_service.get_concept_type()["id"]
     )["id"]

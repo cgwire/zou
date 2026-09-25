@@ -426,7 +426,7 @@ def get_or_create_open_status():
     """
     Return open status. If it does not exist, it creates it.
     """
-    return get_or_create_status("Open")
+    return get_or_create_project_status("Open")
 
 
 @cache.memoize_function(480)
@@ -434,7 +434,7 @@ def get_open_status():
     """
     Return open status. If it does not exist, it creates it.
     """
-    return get_or_create_status("Open")
+    return get_or_create_project_status("Open")
 
 
 @cache.memoize_function(120)
@@ -442,10 +442,10 @@ def get_closed_status():
     """
     Return closed status. If it does not exist, it creates it.
     """
-    return get_or_create_status("Closed")
+    return get_or_create_project_status("Closed")
 
 
-def get_or_create_status(name):
+def get_or_create_project_status(name):
     """
     Return given status. If it does not exist, it creates it.
     """
@@ -464,7 +464,7 @@ def save_project_status(project_statuses):
     filtered_satuses = (x for x in project_statuses if x is not None)
 
     for status in filtered_satuses:
-        project_status = get_or_create_status(status)
+        project_status = get_or_create_project_status(status)
         result.append(project_status)
     return result
 

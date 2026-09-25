@@ -127,7 +127,10 @@ class NotificationRecipientTestCase(NotificationsTestCase):
         """
         asset_task = self.generate_fixture_task().serialize(relations=True)
         self.assertEqual(
-            notifications_service.get_sequence_subscriptions(asset_task), []
+            notifications_service.get_sequence_subscriptions_for_task(
+                asset_task
+            ),
+            [],
         )
 
 
@@ -576,10 +579,10 @@ class CommentNotificationTestCase(NotificationsTestCase):
             type="comment",
         )
         self.assertEqual(
-            len(notifications_service.get_last_notifications()), 1
+            len(notifications_service.get_recent_notifications()), 1
         )
         self.assertEqual(
-            notifications_service.get_last_notifications(
+            notifications_service.get_recent_notifications(
                 notification_type="assignation"
             ),
             [],

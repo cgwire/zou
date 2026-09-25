@@ -65,7 +65,7 @@ class BaseStatusResource(MethodView):
 
     def _check_database(self):
         try:
-            projects_service.get_or_create_status("Open")
+            projects_service.get_or_create_project_status("Open")
             return True
         except Exception:
             app.logger.warning("Database probe failed.", exc_info=1)

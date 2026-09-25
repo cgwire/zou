@@ -67,7 +67,7 @@ def clear_filter_group_cache(user_id=None):
     _clear_user_scoped_cache(get_user_filter_groups, user_id)
 
 
-def clear_project_cache():
+def clear_open_projects_cache():
     """
     Drop the memoized open project list.
     """
