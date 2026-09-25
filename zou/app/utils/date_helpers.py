@@ -55,8 +55,10 @@ def get_today_string_with_timezone(timezone):
     """
     Get today date in string format with timezone applied.
     """
+    # Start from the current instant: a bare date is taken as midnight UTC
+    # and lands on the previous day once converted west of UTC.
     return get_simple_string_with_timezone_from_date(
-        datetime.date.today(), timezone
+        datetime.datetime.now(tz=datetime.timezone.utc), timezone
     )
 
 

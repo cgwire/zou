@@ -575,6 +575,17 @@ class ProjectTimeSpentTestCase(TimeSpentsTestCase):
         )
         self.assertEqual(list(result), [self.person_id])
 
+    def test_month_keys_are_calendar_months_whatever_the_timezone(self):
+        # A time spent date is a working day, not an instant: the 1st of a
+        # month used to land in the previous one for users west of UTC.
+        self.log(self.task_id, "2018-07-01", 100)
+        result = time_spents_service.get_project_month_time_spents(
+            str(self.project.id), timezone="America/Los_Angeles"
+        )
+        person = result[self.task_type.department_id][self.person.id]
+        self.assertEqual(person["2018-07"], 100)
+        self.assertEqual(person["2018-06"], 1100)
+
     def test_get_project_month_time_spents(self):
         """
         Durations by department, by person, by month, with a running total
