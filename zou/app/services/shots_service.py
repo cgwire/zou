@@ -241,19 +241,6 @@ def get_scenes(criterions=None):
     return scenes
 
 
-def get_episode_map(criterions=None):
-    """
-    Returns a dict where keys are episode_id and values are episodes.
-    """
-    if criterions is None:
-        criterions = {}
-    episodes = get_episodes(criterions)
-    episode_map = {}
-    for episode in episodes:
-        episode_map[episode["id"]] = episode
-    return episode_map
-
-
 # Field orders of the compact encoding of the with-tasks view. Clients
 # must map values by reading these names from the response header, never
 # by hardcoding positions.

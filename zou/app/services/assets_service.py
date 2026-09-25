@@ -175,39 +175,6 @@ def get_all_raw_assets():
     return query.all()
 
 
-def get_full_assets(criterions=None):
-    """
-    Get all assets for given criterions with additional informations: project
-    name and asset type name.
-    """
-    if criterions is None:
-        criterions = {}
-    assigned_to = False
-    if "assigned_to" in criterions:
-        assigned_to = True
-        del criterions["assigned_to"]
-
-    query = (
-        Entity.query.filter_by(**criterions)
-        .filter(build_asset_type_filter())
-        .join(Project)
-        .join(EntityType)
-        .add_columns(Project.name, EntityType.name)
-        .order_by(Project.name, EntityType.name, Entity.name)
-    )
-    if assigned_to:
-        query = query.outerjoin(Task)
-        query = query.filter(user_service.build_assignee_filter())
-    data = query.all()
-    assets = []
-    for asset_model, project_name, asset_type_name in data:
-        asset = asset_model.serialize(obj_type="Asset")
-        asset["project_name"] = project_name
-        asset["asset_type_name"] = asset_type_name
-        assets.append(asset)
-    return assets
-
-
 def _apply_asset_and_tasks_criterions(
     query, criterions, assigned_to, only_user_projects=False
 ):
@@ -819,16 +786,6 @@ def get_or_create_asset_type(name):
     return asset_type.serialize(obj_type="AssetType")
 
 
-def get_asset_type_by_name(asset_type_name):
-    """
-    Return asset type matching given name.
-    """
-    asset_type = EntityType.get_by(name=asset_type_name)
-    if asset_type is None or not is_asset_type(asset_type):
-        raise AssetTypeNotFoundException
-    return asset_type.serialize(obj_type="AssetType")
-
-
 def is_asset(entity):
     """
     Returns true if given entity is an asset, not a shot.
@@ -981,44 +938,6 @@ def remove_asset(asset_id, force=False):
                 breakdown_service.refresh_shot_casting_stats(shot)
     deleted_asset = asset.serialize(obj_type="Asset")
     return deleted_asset
-
-
-def add_asset_link(asset_in_id, asset_out_id):
-    """
-    Link asset together, mark asset_in as asset out dependency.
-    """
-    asset_in = get_asset_raw(asset_in_id)
-    asset_out = get_asset_raw(asset_out_id)
-
-    if asset_out not in asset_in.entities_out:
-        asset_in.entities_out.append(asset_out)
-        asset_in.save()
-        events.emit(
-            "asset:new-link",
-            {"asset_in": asset_in.id, "asset_out": asset_out.id},
-            project_id=str(asset_in.project_id),
-        )
-    return asset_in.serialize(obj_type="Asset")
-
-
-def remove_asset_link(asset_in_id, asset_out_id):
-    """
-    Remove link asset together, unmark asset_in as asset out dependency.
-    """
-    asset_in = get_asset_raw(asset_in_id)
-    asset_out = get_asset_raw(asset_out_id)
-
-    if asset_out in asset_in.entities_out:
-        asset_in.entities_out = [
-            x for x in asset_in.entities_out if x.id != asset_out_id
-        ]
-        asset_in.save()
-        events.emit(
-            "asset:remove-link",
-            {"asset_in": asset_in.id, "asset_out": asset_out.id},
-            project_id=str(asset_in.project_id),
-        )
-    return asset_in.serialize(obj_type="Asset")
 
 
 def cancel_asset(asset_id, force=True):

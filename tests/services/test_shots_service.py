@@ -322,14 +322,6 @@ class ListingTestCase(ShotsTestCase):
         self.assertEqual([shot["name"] for shot in shots], ["A01", "P01"])
         self.assertDictEqual(shots[1], shot_dict)
 
-    def test_the_episodes_are_listed_by_id(self):
-        self.generate_fixture_episode("E02")
-        episode_map = shots_service.get_episode_map()
-        self.assertEqual(len(episode_map.keys()), 2)
-        self.assertEqual(
-            episode_map[str(self.episode.id)]["name"], self.episode.name
-        )
-
     def test_the_shots_are_listed_with_their_tasks(self):
         self.generate_shot_task()
         self.generate_fixture_shot_task(name="Secondary")

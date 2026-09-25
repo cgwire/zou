@@ -597,22 +597,6 @@ def update_person(person_id, data, bypass_protected_accounts=False):
         return person.serialize()
 
 
-def delete_person(person_id):
-    """
-    Delete person entry from database.
-    """
-    person = base_service.get_instance(
-        Person, person_id, PersonNotFoundException
-    )
-    person_dict = person.serialize()
-    person.delete()
-    index_service.remove_person_index(person_id)
-    events.emit("person:delete", {"person_id": person_id})
-    clear_person_cache()
-    logger.info("Person deleted", extra={"person_id": str(person_id)})
-    return person_dict
-
-
 def get_desktop_login_logs(person_id):
     """
     Get all logs for user desktop logins.

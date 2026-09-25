@@ -62,13 +62,6 @@ class PersonReadTestCase(PersonsTestCase):
             PersonNotFoundException, persons_service.get_person_raw, None
         )
 
-    def test_get_person_of_a_deleted_person(self):
-        persons_service.get_person(self.person_id)
-        persons_service.delete_person(self.person_id)
-        self.assertRaises(
-            PersonNotFoundException, persons_service.get_person, self.person_id
-        )
-
     def test_get_person_hides_the_credentials(self):
         """
         Everything that authenticates a person is stripped unless the
@@ -634,21 +627,6 @@ class PersonWriteTestCase(PersonsTestCase):
         new_password = auth.encrypt_password("newpassword")
         persons_service.update_password(self.person_email, new_password)
         self.assertEqual(Person.get(self.person_id).password, new_password)
-
-    def test_delete_person(self):
-        person = persons_service.create_person(
-            "todelete@test.com",
-            auth.encrypt_password("pass"),
-            "Delete",
-            "Me",
-        )
-        result = persons_service.delete_person(person["id"])
-        self.assertEqual(result["id"], person["id"])
-        self.assertRaises(
-            PersonNotFoundException,
-            persons_service.get_person,
-            person["id"],
-        )
 
     def test_add_to_department(self):
         department_id = str(self.department.id)

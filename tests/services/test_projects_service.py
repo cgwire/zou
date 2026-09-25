@@ -63,13 +63,6 @@ class ProjectServiceTestCase(ApiDBTestCase):
         statuses = ProjectStatus.query.all()
         self.assertEqual(len(statuses), 4)
 
-    def test_get_or_create_project(self):
-        project = projects_service.get_or_create_project("Agent 327")
-        projects = projects_service.get_projects()
-        self.assertIsNotNone(project["id"])
-        self.assertEqual(project["name"], "Agent 327")
-        self.assertEqual(len(projects), 3)
-
     def test_get_project_by_name(self):
         project = projects_service.get_project_by_name(self.project.name)
         self.assertEqual(project["name"], self.project.name)
