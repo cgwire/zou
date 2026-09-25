@@ -2,12 +2,35 @@ import datetime
 import unittest
 
 import pytest
+from freezegun import freeze_time
 
 from zou.app.utils import date_helpers
 from zou.app.services.exception import WrongDateFormatException
 
 
 class DateHelpersTestCase(unittest.TestCase):
+    def test_today_follows_the_timezone_from_the_current_instant(self):
+        # Built from a bare date, "today" was midnight UTC converted, hence
+        # always the previous day west of UTC.
+        with freeze_time("2026-09-23T02:00:00"):
+            self.assertEqual(
+                date_helpers.get_today_string_with_timezone(
+                    "America/Los_Angeles"
+                ),
+                "2026-09-22",
+            )
+            self.assertEqual(
+                date_helpers.get_today_string_with_timezone("Europe/Paris"),
+                "2026-09-23",
+            )
+        with freeze_time("2026-09-23T12:00:00"):
+            self.assertEqual(
+                date_helpers.get_today_string_with_timezone(
+                    "America/Los_Angeles"
+                ),
+                "2026-09-23",
+            )
+
     def test_date(self):
         date_string = date_helpers.get_date_string_with_timezone(
             "2021-02-10T12:00:00", "Europe/Paris"

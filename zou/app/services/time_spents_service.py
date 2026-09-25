@@ -587,9 +587,10 @@ def get_project_month_time_spents(project_id, timezone=None):
     )
 
     for time_spent, department_id in query.all():
-        date_key = date_helpers.get_simple_string_with_timezone_from_date(
-            time_spent.date, timezone
-        )[0:7]
+        # A time spent date is a plain calendar day, already the working
+        # day it was logged on: running it through the user timezone
+        # shifted the 1st of a month into the previous one west of UTC.
+        date_key = time_spent.date.strftime("%Y-%m")
         department = data.setdefault(department_id, {"total": 0})
         person = department.setdefault(time_spent.person_id, {"total": 0})
         person[date_key] = person.get(date_key, 0) + time_spent.duration
