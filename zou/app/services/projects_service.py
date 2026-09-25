@@ -39,7 +39,7 @@ from zou.app import db
 from sqlalchemy.exc import StatementError
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.orm.exc import ObjectDeletedError
-from sqlalchemy import or_
+from sqlalchemy import and_, false, or_
 
 
 def clear_project_cache(project_id):
@@ -93,14 +93,45 @@ def get_projects_with_extra_data(
     * Add task types and task statuses for this project.
     """
     projects_list = query.all()
+    project_ids = [project.id for project in projects_list]
+    return serialize_projects_with_extra_data(
+        projects_list, [(project_ids, for_client, vendor_departments)]
+    )
+
+
+def get_project_with_extra_data(
+    project, for_client=False, vendor_departments=None
+):
+    """
+    Serialize one project row the way the open projects listing does, extra
+    data included: a project read by its id, the only way to reach a closed
+    one, is then no lesser than a listed one.
+    """
+    return serialize_projects_with_extra_data(
+        [project], [([project.id], for_client, vendor_departments)]
+    )[0]
+
+
+def serialize_projects_with_extra_data(projects_list, descriptor_visibilities):
+    """
+    Serialize given project rows with their extra data, fetched in one query
+    per kind for the whole list. The metadata descriptors are narrowed on a
+    role that can be set per project: descriptor_visibilities lists the
+    (project_ids, for_client, vendor_departments) triples covering the
+    rows, and their descriptors are fetched in one query per triple.
+    """
     if not projects_list:
         return []
 
     project_ids = [p.id for p in projects_list]
 
-    descriptors_by_project = _fetch_metadata_descriptors_by_project(
-        project_ids, for_client, vendor_departments
-    )
+    descriptors_by_project = {}
+    for ids, for_client, vendor_departments in descriptor_visibilities:
+        descriptors_by_project.update(
+            _fetch_metadata_descriptors_by_project(
+                ids, for_client, vendor_departments
+            )
+        )
     task_types_by_project = _fetch_task_type_links_by_project(project_ids)
     task_statuses_by_project = _fetch_task_status_links_by_project(project_ids)
     tvshow_project_ids = [
@@ -121,6 +152,58 @@ def get_projects_with_extra_data(
     ]
 
 
+def _build_descriptor_narrowing(for_client=False, vendor_departments=None):
+    """
+    Return the criterion keeping the metadata descriptors a client or a
+    vendor may read, None when nothing is narrowed: a client only gets the
+    ones published to clients, a vendor only the ones of their departments
+    or of no department. Shared by every route serving descriptors, so that
+    they all apply the same rule.
+    """
+    if for_client:
+        return MetadataDescriptor.for_client == True
+    if vendor_departments is not None:
+        return or_(
+            MetadataDescriptor.departments == None,
+            MetadataDescriptor.departments.any(
+                Department.id.in_(vendor_departments)
+            ),
+        )
+    return None
+
+
+def _narrow_metadata_descriptors(
+    query, for_client=False, vendor_departments=None
+):
+    """
+    Narrow given metadata descriptors query to the ones a client or a vendor
+    may read.
+    """
+    narrowing = _build_descriptor_narrowing(for_client, vendor_departments)
+    if narrowing is None:
+        return query
+    return query.filter(narrowing)
+
+
+def build_metadata_descriptors_filter(descriptor_visibilities):
+    """
+    Return a filter keeping the metadata descriptors of the projects of
+    given (project_ids, for_client, vendor_departments) triples, each
+    narrowed as its triple says: a query spanning several projects narrows
+    each on the role held on it.
+    """
+    criteria = []
+    for project_ids, for_client, vendor_departments in descriptor_visibilities:
+        criterion = MetadataDescriptor.project_id.in_(project_ids)
+        narrowing = _build_descriptor_narrowing(for_client, vendor_departments)
+        if narrowing is not None:
+            criterion = and_(criterion, narrowing)
+        criteria.append(criterion)
+    if not criteria:
+        return false()
+    return or_(*criteria)
+
+
 def _fetch_metadata_descriptors_by_project(
     project_ids, for_client=False, vendor_departments=None
 ):
@@ -129,26 +212,13 @@ def _fetch_metadata_descriptors_by_project(
     in one query. Clients only get the descriptors published to them, and
     a vendor only the ones of their departments.
     """
-    if for_client:
-        descriptors_query = MetadataDescriptor.query.filter(
-            MetadataDescriptor.project_id.in_(project_ids),
-            MetadataDescriptor.for_client == True,
-        )
-    elif vendor_departments is not None:
-        descriptors_query = MetadataDescriptor.query.filter(
+    descriptors_query = _narrow_metadata_descriptors(
+        MetadataDescriptor.query.filter(
             MetadataDescriptor.project_id.in_(project_ids)
-        ).filter(
-            or_(
-                MetadataDescriptor.departments == None,
-                MetadataDescriptor.departments.any(
-                    Department.id.in_(vendor_departments)
-                ),
-            )
-        )
-    else:
-        descriptors_query = MetadataDescriptor.query.filter(
-            MetadataDescriptor.project_id.in_(project_ids)
-        )
+        ),
+        for_client,
+        vendor_departments,
+    )
     # Eager-load departments to avoid N+1 when serializing descriptors
     descriptors_query = descriptors_query.options(
         joinedload(MetadataDescriptor.departments)
@@ -946,15 +1016,17 @@ def add_metadata_descriptor(
     return descriptor.serialize()
 
 
-def get_metadata_descriptors(project_id, for_client=False):
+def get_metadata_descriptors(
+    project_id, for_client=False, vendor_departments=None
+):
     """
-    Get all metadata descriptors for given project and entity type.
+    Get all metadata descriptors for given project and entity type, narrowed
+    for a client or a vendor as the open projects listing narrows them.
     """
     query = MetadataDescriptor.query.filter(
         MetadataDescriptor.project_id == project_id
     ).order_by(MetadataDescriptor.position, MetadataDescriptor.name)
-    if for_client:
-        query = query.filter(MetadataDescriptor.for_client == True)
+    query = _narrow_metadata_descriptors(query, for_client, vendor_departments)
 
     # Eager-load departments to avoid N+1 during serialization
     query = query.options(joinedload(MetadataDescriptor.departments))
@@ -980,6 +1052,35 @@ def get_metadata_descriptor(metadata_descriptor_id):
     return get_metadata_descriptor_raw(metadata_descriptor_id).serialize(
         relations=True
     )
+
+
+def get_project_metadata_descriptor(project_id, metadata_descriptor_id):
+    """
+    Get metadata descriptor for given id as dict, provided it belongs to
+    given project. The id comes from the client next to a project it may
+    access: a descriptor of another project is not found.
+    """
+    descriptor = get_metadata_descriptor(metadata_descriptor_id)
+    if descriptor["project_id"] != str(project_id):
+        raise MetadataDescriptorNotFoundException()
+    return descriptor
+
+
+def is_metadata_descriptor_visible(
+    metadata_descriptor_id, for_client=False, vendor_departments=None
+):
+    """
+    Return True if given metadata descriptor is left in by the narrowing of
+    a client or a vendor.
+    """
+    query = _narrow_metadata_descriptors(
+        MetadataDescriptor.query.filter(
+            MetadataDescriptor.id == metadata_descriptor_id
+        ),
+        for_client,
+        vendor_departments,
+    )
+    return query.first() is not None
 
 
 def update_metadata_descriptor(metadata_descriptor_id, changes):

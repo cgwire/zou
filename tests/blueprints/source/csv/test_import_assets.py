@@ -1,5 +1,7 @@
 import os
 
+from unittest.mock import patch
+
 from tests.base import ApiDBTestCase
 from zou.app import db
 
@@ -13,7 +15,12 @@ from zou.app.models.project import (
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 
-from zou.app.services import assets_service, projects_service, tasks_service
+from zou.app.services import (
+    assets_service,
+    index_service,
+    projects_service,
+    tasks_service,
+)
 
 
 class ImportCsvAssetsTestCase(ApiDBTestCase):
@@ -400,4 +407,44 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
             ProjectAssetTypeLink.query.filter_by(
                 project_id=self.project_id, asset_type_id=asset_type.id
             ).first()
+        )
+
+    def test_import_assets_indexes_them_in_one_call(self):
+        # Waiting on the indexer for every row made a large import last
+        # longer than Kitsu waited for its answer.
+        path = f"/import/csv/projects/{self.project.id}/assets"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets.csv")
+        )
+        with patch.object(index_service, "index_asset") as index_asset:
+            with patch.object(
+                index_service, "remove_asset_index"
+            ) as remove_asset_index:
+                with patch.object(
+                    index_service, "index_assets"
+                ) as index_assets:
+                    self.upload_file(path, file_path_fixture)
+                    self.upload_file(f"{path}?update=true", file_path_fixture)
+
+        index_asset.assert_not_called()
+        remove_asset_index.assert_not_called()
+        asset_ids = {str(asset.id) for asset in Entity.query.all()}
+        self.assertEqual(index_assets.call_count, 2)
+        for call in index_assets.call_args_list:
+            self.assertEqual({str(id) for id in call.args[0]}, asset_ids)
+
+    def test_import_assets_indexes_the_rows_imported_before_a_failure(self):
+        self.link_asset_task_types_to_project()
+        path = f"/import/csv/projects/{self.project.id}/assets"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets_broken_task_status.csv")
+        )
+        with patch.object(index_service, "index_assets") as index_assets:
+            self.upload_file(path, file_path_fixture, 400)
+
+        asset_ids = {str(asset.id) for asset in Entity.query.all()}
+        self.assertEqual(len(asset_ids), 2)
+        index_assets.assert_called_once()
+        self.assertEqual(
+            {str(id) for id in index_assets.call_args.args[0]}, asset_ids
         )

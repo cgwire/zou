@@ -287,6 +287,27 @@ class ProjectResource(BaseModelResource, ArgsMixin):
     def check_read_permissions(self, project):
         return permissions_service.check_project_access(project["id"])
 
+    def get_serialized_instance(self, instance_id, relations=True):
+        # With its relations, the project is the one the open projects
+        # listing serves, extra data included: a closed project, read by
+        # its id since it is out of that listing, was missing its metadata
+        # descriptors, task type priorities, and task status links.
+        if not relations:
+            return super().get_serialized_instance(instance_id, relations)
+        project = self.get_model_or_404(instance_id)
+        # The read is serialized before check_read_permissions runs, and the
+        # descriptors are narrowed on a role that can be set per project:
+        # the access check comes first, it resolves that role.
+        permissions_service.check_project_access(str(project.id))
+        for_client, vendor_departments = (
+            user_service.get_descriptor_visibility(
+                permissions.get_effective_role()
+            )
+        )
+        return projects_service.get_project_with_extra_data(
+            project, for_client, vendor_departments
+        )
+
     @jwt_required()
     def get(self, instance_id):
         """
@@ -295,7 +316,10 @@ class ProjectResource(BaseModelResource, ArgsMixin):
         tags:
           - Crud
         description: Retrieve a project by its ID and return it as a JSON
-          object. Supports including relations. Requires project access.
+          object, with the extra data of the open projects listing (metadata
+          descriptors, task type priorities, task status links, first
+          episode). Without relations, the bare project is returned.
+          Requires project access.
         parameters:
           - in: path
             name: instance_id
@@ -340,6 +364,24 @@ class ProjectResource(BaseModelResource, ArgsMixin):
                       project_status_name:
                         type: string
                         example: Open
+                      descriptors:
+                        type: array
+                        items:
+                          type: object
+                        description: Metadata descriptors of the project,
+                          narrowed to the ones published to a client or to
+                          the departments of a vendor
+                      task_types_priority:
+                        type: object
+                        description: Priority of each task type, by id
+                      task_statuses_link:
+                        type: object
+                        description: Priority and board roles of each task
+                          status, by id
+                      first_episode_id:
+                        type: string
+                        format: uuid
+                        example: c24a6ea4-ce75-4665-a070-57453082c25
                       created_at:
                         type: string
                         format: date-time
