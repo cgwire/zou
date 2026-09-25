@@ -648,9 +648,6 @@ class BaseNewPreviewFilePicture:
             preview_file = preview_files_service.update_preview_file(
                 instance_id, data
             )
-            if not metadata["queued"]:
-                # The queued path does this once the variants are stored.
-                tasks_service.update_preview_file_info(preview_file)
         elif extension in ALLOWED_MOVIE_EXTENSION:
             normalize = self.get_bool_parameter("normalize", "true")
             try:

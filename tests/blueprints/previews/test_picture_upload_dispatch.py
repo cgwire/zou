@@ -3,7 +3,11 @@ import os
 from unittest.mock import MagicMock, patch
 
 from tests.base import ApiDBTestCase
-from zou.app.services import files_service, preview_files_service
+from zou.app.services import (
+    files_service,
+    preview_files_service,
+    tasks_service,
+)
 from zou.app.stores import file_store, queue_store
 
 
@@ -118,6 +122,17 @@ class PictureUploadDispatchTestCase(ApiDBTestCase):
         )
         preview_file = files_service.get_preview_file(preview_file_id)
         self.assertEqual(preview_file["status"], "ready")
+
+    def test_a_synchronous_upload_updates_the_task_info_once(self):
+        preview_file_id = self.create_preview_file()
+        with patch.object(
+            tasks_service, "update_preview_file_info"
+        ) as update_preview_file_info:
+            self.upload_file(
+                f"/pictures/preview-files/{preview_file_id}",
+                self.picture_path,
+            )
+        update_preview_file_info.assert_called_once()
 
     def test_a_jpeg_upload_keeps_its_dimensions(self):
         preview_file_id = self.create_preview_file()
