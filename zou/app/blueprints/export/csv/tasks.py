@@ -1,3 +1,4 @@
+from flasgger import swag_from
 from zou.app.blueprints.export.csv.base import BaseCsvExport
 from flask_jwt_extended import jwt_required
 from sqlalchemy.orm import aliased, selectinload
@@ -20,25 +21,10 @@ class TasksCsvExport(BaseCsvExport):
         self.file_name = "tasks_export"
 
     @jwt_required()
+    @swag_from("openapi/TasksCsvExport_get.yml")
     def get(self):
         """
         Export tasks csv
-        ---
-        tags:
-          - Export
-        description: Export tasks as CSV file. Includes tasks from open
-          projects with project, task type, episode, sequence, entity,
-          assigner, assignees, dates, duration, estimation, and status.
-        produces:
-          - text/csv
-        responses:
-            200:
-              description: Tasks exported as CSV successfully
-              content:
-                text/csv:
-                  schema:
-                    type: string
-                  example: "Project,Task Type,Episode,Sequence,Entity Type,Entity,Assigner,Assignees,Duration,Estimation,Start date,Due date,WIP date,Validation date,Task Status\nProject A,Animation,EP01,SQ01,Shot,SH010,John Doe,Jane Doe,480,600,2024-01-01,2024-01-15,2024-01-05,2024-01-20,WIP"
         """
         return super().get()
 

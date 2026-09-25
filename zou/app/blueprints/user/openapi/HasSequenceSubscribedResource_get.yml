@@ -1,0 +1,31 @@
+Check sequence subscription
+---
+description: Check if the current user has subscribed to a specific
+  sequence and task type combination. Returns true if subscribed.
+tags:
+- User
+parameters:
+  - in: path
+    name: sequence_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Sequence unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+  - in: path
+    name: task_type_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Task type unique identifier
+    example: b35b7fb5-df86-5776-b181-68564193d36
+responses:
+    200:
+      description: Subscription status for the sequence and task type
+      content:
+        application/json:
+          schema:
+            type: boolean
+            example: true

@@ -1,0 +1,53 @@
+Get next entity output file revision
+---
+description: Get the next revision number for an output file based
+  on entity, output type, task type, and name. Used for automatic
+  revision numbering.
+tags:
+- Files
+parameters:
+  - in: path
+    name: entity_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Entity unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - output_type_id
+          - task_type_id
+        properties:
+          name:
+            type: string
+            description: File name
+            default: main
+            example: "main"
+          output_type_id:
+            type: string
+            format: uuid
+            description: Output type identifier
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          task_type_id:
+            type: string
+            format: uuid
+            description: Task type identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
+responses:
+  200:
+    description: Next revision number for the output file
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            next_revision:
+              type: integer
+              description: Next available revision number
+              example: 3

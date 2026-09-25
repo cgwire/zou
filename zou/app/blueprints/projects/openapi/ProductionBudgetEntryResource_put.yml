@@ -1,0 +1,81 @@
+Update budget entry
+---
+description: Update a budget entry for given production and budget.
+tags:
+  - Projects
+parameters:
+  - in: path
+    name: project_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Project unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+  - in: path
+    name: budget_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Budget unique identifier
+    example: b35b7fb5-df86-5776-b181-68564193d36
+  - in: path
+    name: entry_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Budget entry unique identifier
+    example: c46c8gc6-eg97-6887-c292-79675204e47
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          department_id:
+            type: string
+            format: uuid
+            description: Department unique identifier
+            example: c46c8gc6-eg97-6887-c292-79675204e47
+          person_id:
+            type: string
+            format: uuid
+            description: Person unique identifier
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          start_date:
+            type: string
+            format: date
+            description: Budget entry start date
+            example: "2025-01-01"
+          months_duration:
+            type: integer
+            description: Budget entry duration in months
+            example: 12
+          daily_salary:
+            type: number
+            format: float
+            description: Daily salary amount
+            example: 100.00
+          position:
+            type: string
+            description: Position name
+            example: "Artist"
+          seniority:
+            type: string
+            description: Seniority level
+            example: "Mid"
+          exceptions:
+            type: object
+            description: Map of amount exceptions. Key is the date and
+              value is the amount
+            example: {"2025-01-01": 1000, "2025-02-01": 2000}
+responses:
+  200:
+    description: Budget entry updated
+    content:
+      application/json:
+        schema:
+          type: object

@@ -1,0 +1,43 @@
+Download working file
+---
+description: Download a working file from storage. Returns the file
+  content with appropriate headers for caching and attachment.
+tags:
+- Files
+parameters:
+  - in: path
+    name: working_file_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Working file unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+responses:
+  200:
+    description: Working file downloaded successfully
+    content:
+      image/png:
+        schema:
+          type: string
+          format: binary
+          description: PNG image file
+          example: "binary data"
+      image/jpg:
+        schema:
+          type: string
+          format: binary
+          description: JPEG image file
+          example: "binary data"
+      image/gif:
+        schema:
+          type: string
+          format: binary
+          description: GIF image file
+          example: "binary data"
+      application/octet-stream:
+        schema:
+          type: string
+          format: binary
+          description: Binary file content
+          example: "binary data"

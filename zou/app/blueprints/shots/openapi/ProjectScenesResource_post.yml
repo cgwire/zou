@@ -1,0 +1,55 @@
+Create project scene
+---
+tags:
+- Shots
+description: Create a new scene in a project. Provide a name and the
+  related sequence id.
+parameters:
+  - in: path
+    name: project_id
+    required: True
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - name
+          - sequence_id
+        properties:
+          name:
+            type: string
+            required: true
+            example: "Name of scene"
+          sequence_id:
+            type: string
+            format: uuid
+            required: true
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+responses:
+    201:
+        description: Scene created for given project
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c25
+                name:
+                  type: string
+                  example: SC001
+                project_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c25
+                parent_id:
+                  type: string
+                  format: uuid
+                  example: c24a6ea4-ce75-4665-a070-57453082c25

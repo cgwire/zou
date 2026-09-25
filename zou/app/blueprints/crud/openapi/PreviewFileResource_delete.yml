@@ -1,0 +1,28 @@
+Delete preview file
+---
+tags:
+  - Crud
+description: Delete a preview file by its ID. Returns empty
+  response on success. May require force flag if file has
+  associated data.
+parameters:
+  - in: path
+    name: instance_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+  - in: query
+    name: force
+    required: false
+    schema:
+      type: boolean
+    default: false
+    example: false
+    description: Force deletion even if file has associated data
+responses:
+    204:
+      description: Preview file deleted successfully
+    400:
+      description: Integrity error or cannot delete

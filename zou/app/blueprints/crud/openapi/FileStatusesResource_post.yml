@@ -1,0 +1,49 @@
+Create file status
+---
+tags:
+  - Crud
+description: Create a new file status with data provided in the
+  request body. JSON format is expected.
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - name
+        properties:
+          name:
+            type: string
+            example: Approved
+          color:
+            type: string
+            example: "#00FF00"
+responses:
+    201:
+      description: File status created successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+              name:
+                type: string
+                example: Approved
+              color:
+                type: string
+                example: "#00FF00"
+              created_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T10:30:00Z"
+              updated_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T10:30:00Z"
+    400:
+      description: Invalid data format or validation error

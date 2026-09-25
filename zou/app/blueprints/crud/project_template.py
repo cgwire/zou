@@ -1,3 +1,4 @@
+from flasgger import swag_from
 from flask import request
 from flask_jwt_extended import jwt_required
 
@@ -34,55 +35,18 @@ class ProjectTemplatesResource(BaseModelsResource):
         return permissions.check_admin_permissions()
 
     @jwt_required()
+    @swag_from("openapi/ProjectTemplatesResource_get.yml")
     def get(self):
         """
         Get project templates
-        ---
-        tags:
-          - Crud
-        description: Retrieve all project templates. Manager+ access.
-        responses:
-            200:
-              description: Project templates retrieved successfully
         """
         return super().get()
 
     @jwt_required()
+    @swag_from("openapi/ProjectTemplatesResource_post.yml")
     def post(self):
         """
         Create project template
-        ---
-        tags:
-          - Crud
-        description: Create a new empty project template. Admin only.
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - name
-                properties:
-                  name:
-                    type: string
-                  description:
-                    type: string
-                  fps:
-                    type: string
-                  ratio:
-                    type: string
-                  resolution:
-                    type: string
-                  production_type:
-                    type: string
-                  production_style:
-                    type: string
-        responses:
-            201:
-              description: Project template created successfully
-            400:
-              description: Invalid data or duplicate name
         """
         data = request.json or {}
         self.check_create_permissions(data)
@@ -109,24 +73,18 @@ class ProjectTemplateResource(BaseModelResource):
         return permissions.check_admin_permissions()
 
     @jwt_required()
+    @swag_from("openapi/ProjectTemplateResource_get.yml")
     def get(self, instance_id):
         """
         Get project template
-        ---
-        tags:
-          - Crud
-        description: Retrieve a project template by its ID. Manager+ access.
         """
         return super().get(instance_id)
 
     @jwt_required()
+    @swag_from("openapi/ProjectTemplateResource_put.yml")
     def put(self, instance_id):
         """
         Update project template
-        ---
-        tags:
-          - Crud
-        description: Update a project template. Admin only.
         """
         data = request.json or {}
         self.check_update_permissions(None, data)
@@ -141,13 +99,10 @@ class ProjectTemplateResource(BaseModelResource):
         return template, 200
 
     @jwt_required()
+    @swag_from("openapi/ProjectTemplateResource_delete.yml")
     def delete(self, instance_id):
         """
         Delete project template
-        ---
-        tags:
-          - Crud
-        description: Delete a project template. Admin only.
         """
         permissions.check_admin_permissions()
         try:

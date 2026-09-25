@@ -1,0 +1,109 @@
+Get notifications
+---
+description: Retrieve the last 100 user notifications filtered by
+  given parameters. Supports filtering by date range, task type, status,
+  and other criteria.
+tags:
+- User
+parameters:
+  - in: query
+    name: after
+    required: false
+    schema:
+      type: string
+      format: date
+    description: Filter notifications after this date
+    example: "2023-01-01"
+  - in: query
+    name: before
+    required: false
+    schema:
+      type: string
+      format: date
+    description: Filter notifications before this date
+    example: "2023-12-31"
+  - in: query
+    name: task_type_id
+    required: false
+    schema:
+      type: string
+      format: uuid
+    description: Filter by task type ID
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+  - in: query
+    name: task_status_id
+    required: false
+    schema:
+      type: string
+      format: uuid
+    description: Filter by task status ID
+    example: b35b7fb5-df86-5776-b181-68564193d36
+  - in: query
+    name: type
+    required: false
+    schema:
+      type: string
+    description: Filter by notification type
+    example: "comment"
+  - in: query
+    name: read
+    required: false
+    schema:
+      type: boolean
+    description: Filter by read status
+    example: false
+  - in: query
+    name: watching
+    required: false
+    schema:
+      type: boolean
+    description: Filter by watching status
+    example: true
+responses:
+    200:
+      description: Last 100 user notifications matching filters
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Notification unique identifier
+                  example: c46c8gc6-eg97-6887-c292-79675204e47
+                type:
+                  type: string
+                  description: Notification type
+                  example: "comment"
+                read:
+                  type: boolean
+                  description: Whether notification is read
+                  example: false
+                author_id:
+                  type: string
+                  format: uuid
+                  description: Author person identifier
+                  example: d57d9hd7-fh08-7998-d403-80786315f58
+                comment_id:
+                  type: string
+                  format: uuid
+                  description: Comment identifier
+                  example: e68e0ie8-gi19-8009-e514-91897426g69
+                task_id:
+                  type: string
+                  format: uuid
+                  description: Task identifier
+                  example: f79f1jf9-hj20-9010-f625-a09008537h80
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: "2023-01-01T12:00:00Z"
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Last update timestamp
+                  example: "2023-01-01T12:30:00Z"

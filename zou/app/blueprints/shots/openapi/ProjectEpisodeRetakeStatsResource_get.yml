@@ -1,0 +1,131 @@
+Get episode retake stats
+---
+tags:
+- Shots
+description: Return retake and done counts by task type and episode.
+  Includes evolution data and max retake count.
+parameters:
+  - in: path
+    name: project_id
+    required: True
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+responses:
+    200:
+        description: Number of tasks by status, task types and episodes for given project
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  max_retake_count:
+                    type: integer
+                    example: 4
+                  evolution:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        retake:
+                          type: object
+                          properties:
+                            count:
+                              type: integer
+                              example: 80
+                            frames:
+                              type: integer
+                              example: 7900
+                            drawings:
+                              type: integer
+                              example: 8000
+                        done:
+                          type: object
+                          properties:
+                            count:
+                              type: integer
+                              example: 117
+                            frames:
+                              type: integer
+                              example: 3900
+                            drawings:
+                              type: integer
+                              example: 8000
+                  done:
+                    type: object
+                    properties:
+                      count:
+                        type: integer
+                        example: 197
+                      frames:
+                        type: integer
+                        example: 16090
+                      drawings:
+                        type: integer
+                        example: 16090
+                  retake:
+                    type: object
+                    properties:
+                      count:
+                        type: integer
+                        example: 0
+                      frames:
+                        type: integer
+                        example: 0
+                      drawings:
+                        type: integer
+                        example: 0
+                  other:
+                    type: object
+                    properties:
+                      count:
+                        type: integer
+                        example: 5
+                      frames:
+                        type: integer
+                        example: 185
+                      drawings:
+                        type: integer
+                        example: 185
+              example:
+                episodeId1:
+                  max_retake_count: 4
+                  evolution:
+                    "1":
+                      retake:
+                        count: 80
+                        frames: 7900
+                        drawings: 8000
+                      done:
+                        count: 117
+                        frames: 3900
+                        drawings: 8000
+                  done:
+                    count: 197
+                    frames: 16090
+                    drawings: 16090
+                  retake:
+                    count: 0
+                    frames: 0
+                    drawings: 0
+                  other:
+                    count: 5
+                    frames: 185
+                    drawings: 185
+                all:
+                  all:
+                    max_retake_count: 4
+                    done:
+                      count: 500
+                      frames: 50000
+                      drawings: 50000
+                    retake:
+                      count: 100
+                      frames: 10000
+                      drawings: 10000
+                    other:
+                      count: 10
+                      frames: 1000
+                      drawings: 1000

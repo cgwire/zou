@@ -1,0 +1,23 @@
+Check task subscription
+---
+description: Check if the current user has subscribed to a specific
+  task.
+tags:
+- User
+parameters:
+  - in: path
+    name: task_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Task unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+responses:
+    200:
+      description: Subscription status for the task
+      content:
+        application/json:
+          schema:
+            type: boolean
+            example: true

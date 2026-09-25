@@ -1,0 +1,99 @@
+Create metadata descriptor
+---
+description: Create a new metadata descriptor. It serves to describe
+  extra fields listed in the data attribute of entities.
+tags:
+  - Projects
+parameters:
+  - in: path
+    name: project_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Project unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - name
+          - data_type
+        properties:
+          entity_type:
+            type: string
+            description: Entity type for the metadata descriptor
+            enum:
+              - Asset
+              - Shot
+              - Edit
+              - Episode
+              - Sequence
+              - Project
+              - Task
+            default: "Asset"
+            example: "Asset"
+          task_type_id:
+            type: string
+            format: uuid
+            description: Task type the descriptor is scoped to.
+              Required for Task descriptors, forbidden otherwise.
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          name:
+            type: string
+            description: Name of the metadata descriptor
+            example: "Custom Field"
+          data_type:
+            type: string
+            description: Type of data (string, number, boolean, etc.)
+            example: "string"
+          for_client:
+            type: string
+            description: Whether the descriptor is for client
+            default: "False"
+            example: "True"
+          choices:
+            type: array
+            description: List of choices for the descriptor
+            items:
+              type: string
+            example: ["option1", "option2"]
+          departments:
+            type: array
+            description: List of departments for the descriptor
+            items:
+              type: string
+            example: ["department1", "department2"]
+responses:
+  201:
+    description: Metadata descriptor created
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Metadata descriptor unique identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c25
+            name:
+              type: string
+              description: Metadata descriptor name
+              example: "Custom Field"
+            data_type:
+              type: string
+              description: Metadata descriptor data type
+              example: "string"
+            departments:
+              type: array
+              description: Departments the descriptor is limited to
+              items:
+                type: string
+                format: uuid
+              example: ["a24a6ea4-ce75-4665-a070-57453082c25"]
+  400:
+    description: Invalid parameters

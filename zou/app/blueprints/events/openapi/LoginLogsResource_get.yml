@@ -1,0 +1,75 @@
+Get login logs
+---
+description: Retrieve last login logs with filtering support. Filters can
+  be specified in the query string to narrow down results by date range
+  or cursor-based pagination.
+tags:
+  - Events
+parameters:
+  - in: query
+    name: after
+    type: string
+    format: date
+    example: "2022-07-12"
+    description: Filter logs after this date
+  - in: query
+    name: before
+    type: string
+    format: date
+    example: "2022-07-12"
+    description: Filter logs before this date
+  - in: query
+    name: cursor_login_log_id
+    required: False
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+    description: ID of the last login log from previous page for cursor-based pagination
+  - in: query
+    name: limit
+    type: integer
+    default: 100
+    example: 100
+    description: Maximum number of login logs to return
+  - in: query
+    name: person_ids
+    type: array
+    items:
+      type: string
+      format: uuid
+    description: Filter login logs by person. Repeat the parameter for
+      each value.
+responses:
+  200:
+    description: List of login logs successfully retrieved
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Login log unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+              created_at:
+                type: string
+                format: date-time
+                description: Login timestamp
+                example: "2023-01-01T12:00:00Z"
+              ip_address:
+                type: string
+                description: IP address of the login
+                example: "192.168.1.100"
+              person_id:
+                type: string
+                format: uuid
+                description: Person identifier
+                example: b35b7fb5-df86-5776-b181-68564193d36
+              origin:
+                type: string
+                description: Login origin
+                example: "web"
+                enum: ["web", "script"]

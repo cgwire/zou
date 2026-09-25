@@ -1,0 +1,54 @@
+Get shots casting asset
+---
+description: Retrieve all shots that cast a specific asset in their breakdown.
+tags:
+  - Assets
+parameters:
+  - in: path
+    name: asset_id
+    required: true
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+    description: Unique identifier of the asset
+responses:
+  200:
+    description: List of shots casting the asset successfully retrieved
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Shot unique identifier
+                example: d57d9hd7-fh08-7998-d403-80786315f58
+              name:
+                type: string
+                description: Shot name
+                example: "SH001"
+              project_id:
+                type: string
+                format: uuid
+                description: Project identifier
+                example: b35b7fb5-df86-5776-b181-68564193d36
+              sequence_id:
+                type: string
+                format: uuid
+                description: Sequence identifier
+                example: e68e0ie8-gi19-8009-e514-91897426g69
+              frame_in:
+                type: integer
+                description: Frame in
+                example: 100
+              frame_out:
+                type: integer
+                description: Frame out
+                example: 200
+              duration:
+                type: integer
+                description: Shot duration in frames
+                example: 100

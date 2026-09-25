@@ -1,0 +1,46 @@
+Get scene asset instances
+---
+description: Retrieve all asset instances that are linked to a specific scene.
+tags:
+  - Breakdown
+parameters:
+  - in: path
+    name: scene_id
+    required: true
+    type: string
+    format: uuid
+    example: i02i4mi2-km53-2443-i958-35231870k03
+    description: Unique identifier of the scene
+responses:
+  200:
+    description: Scene asset instances successfully retrieved
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Asset instance unique identifier
+                example: j13j5nj3-ln64-3554-j069-46342981l14
+              asset_id:
+                type: string
+                format: uuid
+                description: Asset identifier
+                example: c46c8gc6-eg97-6887-c292-79675204e47
+              scene_id:
+                type: string
+                format: uuid
+                description: Scene identifier
+                example: i02i4mi2-km53-2443-i958-35231870k03
+              number:
+                type: string
+                description: Instance number
+                example: "001"
+              description:
+                type: string
+                description: Instance description
+                example: "Main character instance"

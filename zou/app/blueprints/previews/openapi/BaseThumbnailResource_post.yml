@@ -1,0 +1,31 @@
+Create thumbnail
+---
+description: Create a thumbnail for given object instance.
+tags:
+  - Previews
+parameters:
+  - in: path
+    name: instance_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Object instance unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+  - in: formData
+    name: file
+    required: true
+    type: file
+    description: Image file to use as thumbnail
+responses:
+  201:
+    description: Thumbnail created successfully
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            thumbnail_path:
+              type: string
+              description: URL path to the thumbnail
+              example: "/api/thumbnails/persons/uuid"

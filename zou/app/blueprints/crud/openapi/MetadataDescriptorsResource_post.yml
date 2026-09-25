@@ -1,0 +1,72 @@
+Create metadata descriptor
+---
+tags:
+  - Crud
+description: Create a new metadata descriptor with data provided in
+  the request body. JSON format is expected. Validates data_type.
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - name
+          - field_name
+          - data_type
+          - project_id
+        properties:
+          name:
+            type: string
+            example: Custom Field
+          field_name:
+            type: string
+            example: custom_field
+          data_type:
+            type: string
+            example: text
+          project_id:
+            type: string
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          entity_type:
+            type: string
+            example: Asset
+responses:
+    201:
+      description: Metadata descriptor created successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+              name:
+                type: string
+                example: Custom Field
+              field_name:
+                type: string
+                example: custom_field
+              data_type:
+                type: string
+                example: text
+              project_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c25
+              entity_type:
+                type: string
+                example: Asset
+              created_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T10:30:00Z"
+              updated_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T10:30:00Z"
+    400:
+      description: Invalid data format or invalid data_type

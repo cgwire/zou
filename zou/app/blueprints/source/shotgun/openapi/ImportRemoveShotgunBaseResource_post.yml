@@ -1,0 +1,40 @@
+Remove shotgun resource
+---
+tags:
+  - Import
+description: Remove a Shotgun resource from the database. Provide the
+  Shotgun entry ID in the JSON body.
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - id
+        properties:
+          id:
+            type: integer
+            example: 12345
+            description: Shotgun ID of the entry to remove
+      example:
+        id: 12345
+responses:
+    200:
+      description: Removal result returned
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+                description: Whether the removal was successful
+              removed_instance_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+                description: ID of the removed instance, if found
+    400:
+      description: Invalid request body or instance not found

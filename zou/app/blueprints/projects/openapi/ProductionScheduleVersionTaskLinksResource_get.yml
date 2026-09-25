@@ -1,0 +1,33 @@
+Get production schedule version task links
+---
+description: Get task links for given production schedule version.
+tags:
+  - Projects
+parameters:
+  - in: path
+    name: production_schedule_version_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Production schedule version unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+  - in: query
+    name: task_type_id
+    required: false
+    schema:
+      type: string
+      format: uuid
+    description: Task type unique identifier for filtering
+    example: b35b7fb5-df86-5776-b181-68564193d36
+responses:
+  200:
+    description: Task links for given production schedule version
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+  400:
+    description: Wrong ID format

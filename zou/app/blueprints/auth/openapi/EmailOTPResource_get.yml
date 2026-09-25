@@ -1,0 +1,17 @@
+Send email OTP
+---
+description: Send a one-time password by email to the user for
+  authentication.
+tags:
+    - Authentication
+parameters:
+  - in: query
+    name: email
+    required: True
+    type: string
+    format: email
+    description: User email address
+responses:
+  200:
+    description: Answered the same way whether or not the address
+      belongs to an account able to receive an OTP

@@ -1,0 +1,23 @@
+Unregister FIDO device
+---
+description: Unregister a FIDO device from WebAuthn authentication.
+  The user must be authenticated.
+tags:
+    - Authentication
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          device_name:
+            type: string
+            description: Name of the FIDO device to unregister
+        required:
+          - device_name
+responses:
+  200:
+    description: FIDO device unregistered
+  400:
+    description: FIDO not enabled

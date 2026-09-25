@@ -1,0 +1,44 @@
+Set assets shared
+---
+description: Share or unshare a specific list of assets by their IDs.
+tags:
+  - Assets
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - asset_ids
+        properties:
+          asset_ids:
+            type: array
+            items:
+              type: string
+              format: uuid
+            description: List of asset IDs to update
+            example: ["a24a6ea4-ce75-4665-a070-57453082c25", "b35b7fb5-df86-5776-b181-68564193d36"]
+          is_shared:
+            type: boolean
+            description: Whether to share or unshare the assets
+            example: true
+responses:
+  200:
+    description: Assets shared status successfully updated
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            updated_count:
+              type: integer
+              description: Number of assets updated
+              example: 2
+            asset_ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+              description: List of updated asset IDs
+              example: ["a24a6ea4-ce75-4665-a070-57453082c25", "b35b7fb5-df86-5776-b181-68564193d36"]

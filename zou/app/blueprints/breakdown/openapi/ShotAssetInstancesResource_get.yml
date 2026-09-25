@@ -1,0 +1,46 @@
+Get shot asset instances
+---
+description: Retrieve all asset instances that are linked to a specific shot.
+tags:
+  - Breakdown
+parameters:
+  - in: path
+    name: shot_id
+    required: true
+    type: string
+    format: uuid
+    example: e68e0ie8-gi19-8009-e514-91897426g69
+    description: Unique identifier of the shot
+responses:
+  200:
+    description: Shot asset instances successfully retrieved
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Asset instance unique identifier
+                example: h91h3lh1-jl42-1332-h847-24120759j92
+              asset_id:
+                type: string
+                format: uuid
+                description: Asset identifier
+                example: c46c8gc6-eg97-6887-c292-79675204e47
+              shot_id:
+                type: string
+                format: uuid
+                description: Shot identifier
+                example: e68e0ie8-gi19-8009-e514-91897426g69
+              number:
+                type: string
+                description: Instance number
+                example: "001"
+              description:
+                type: string
+                description: Instance description
+                example: "Main character instance"

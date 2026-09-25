@@ -1,0 +1,29 @@
+Get sequence task types
+---
+tags:
+- Shots
+description: Get task types for a sequence.
+parameters:
+  - in: path
+    name: sequence_id
+    required: True
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+responses:
+    200:
+        description: All task types related to given shot
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  name:
+                    type: string
+                    example: Animation

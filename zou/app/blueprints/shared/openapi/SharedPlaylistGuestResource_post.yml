@@ -1,0 +1,42 @@
+Create or retrieve guest for shared playlist
+---
+description: Create a guest identity for the shared playlist, or return
+  an existing guest when `guest_id` is provided and still valid.
+tags:
+  - Playlists
+parameters:
+  - in: path
+    name: token
+    required: true
+    schema:
+      type: string
+    description: Share link token
+requestBody:
+  required: false
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          first_name:
+            type: string
+            default: Guest
+          last_name:
+            type: string
+          guest_id:
+            type: string
+            format: uuid
+            description: If set, return this guest if it still exists
+responses:
+  200:
+    description: Existing guest returned
+    content:
+      application/json:
+        schema:
+          type: object
+  201:
+    description: New guest created
+    content:
+      application/json:
+        schema:
+          type: object

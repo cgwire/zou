@@ -1,0 +1,56 @@
+Get task attachment files
+---
+description: Retrieve all attachment files related to a specific task.
+  Requires administrator permissions.
+tags:
+  - Comments
+parameters:
+  - in: path
+    name: task_id
+    required: true
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+    description: Unique identifier of the task
+responses:
+  200:
+    description: Task attachment files successfully retrieved
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Attachment file unique identifier
+                example: d57d9hd7-fh08-7998-d403-80786315f58
+              name:
+                type: string
+                description: File name
+                example: "document.pdf"
+              mimetype:
+                type: string
+                description: File MIME type
+                example: "application/pdf"
+              size:
+                type: integer
+                description: File size in bytes
+                example: 1024000
+              comment_id:
+                type: string
+                format: uuid
+                description: Comment identifier
+                example: b35b7fb5-df86-5776-b181-68564193d36
+              task_id:
+                type: string
+                format: uuid
+                description: Task identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+              reply_id:
+                type: string
+                format: uuid
+                description: Reply identifier if attached to a reply
+                example: c46c8gc6-eg97-6887-c292-79675204e47

@@ -1,0 +1,34 @@
+Download attachment file
+---
+description: Download a specific attachment file from a comment or chat
+  message. Supports various file types including images and documents.
+tags:
+  - Comments
+produces:
+  - multipart/form-data
+  - image/png
+  - image/gif
+  - image/jpeg
+parameters:
+  - in: path
+    name: attachment_file_id
+    required: true
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+    description: Unique identifier of the attachment file
+  - in: path
+    name: file_name
+    required: true
+    type: string
+    example: "document.pdf"
+    description: Name of the file to download
+responses:
+  200:
+    description: Attachment file successfully downloaded
+    content:
+      application/octet-stream:
+        schema:
+          type: string
+          format: binary
+          description: File content

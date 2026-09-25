@@ -1,0 +1,62 @@
+Create scene asset instance
+---
+description: Create an asset instance on a specific scene.
+tags:
+  - Breakdown
+parameters:
+  - in: path
+    name: scene_id
+    required: true
+    type: string
+    format: uuid
+    example: i02i4mi2-km53-2443-i958-35231870k03
+    description: Unique identifier of the scene
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - asset_id
+        properties:
+          asset_id:
+            type: string
+            format: uuid
+            description: Asset identifier to create instance from
+            example: c46c8gc6-eg97-6887-c292-79675204e47
+          description:
+            type: string
+            description: Instance description
+            example: "Main character instance"
+responses:
+  201:
+    description: Asset instance successfully created on scene
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Asset instance unique identifier
+              example: j13j5nj3-ln64-3554-j069-46342981l14
+            asset_id:
+              type: string
+              format: uuid
+              description: Asset identifier
+              example: c46c8gc6-eg97-6887-c292-79675204e47
+            scene_id:
+              type: string
+              format: uuid
+              description: Scene identifier
+              example: i02i4mi2-km53-2443-i958-35231870k03
+            number:
+              type: string
+              description: Instance number
+              example: "001"
+            description:
+              type: string
+              description: Instance description
+              example: "Main character instance"

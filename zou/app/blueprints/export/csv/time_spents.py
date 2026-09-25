@@ -1,3 +1,4 @@
+from flasgger import swag_from
 from zou.app.blueprints.export.csv.base import BaseCsvExport
 from flask_jwt_extended import jwt_required
 
@@ -19,25 +20,10 @@ class TimeSpentsCsvExport(BaseCsvExport):
         BaseCsvExport.__init__(self)
 
     @jwt_required()
+    @swag_from("openapi/TimeSpentsCsvExport_get.yml")
     def get(self):
         """
         Export time spents csv
-        ---
-        tags:
-          - Export
-        description: Export time spent records as CSV file. Includes time
-          spent entries for open projects with project, person, entity,
-          task type, date, and duration information.
-        produces:
-          - text/csv
-        responses:
-            200:
-              description: Time spents exported as CSV successfully
-              content:
-                text/csv:
-                  schema:
-                    type: string
-                  example: "Project,Person,Entity Type Name,Entity,Task Type,Date,Time spent\nProject A,John Doe,Shot,SH010,Animation,2024-01-15,480"
         """
         return super().get()
 

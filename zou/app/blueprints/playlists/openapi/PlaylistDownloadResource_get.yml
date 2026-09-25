@@ -1,0 +1,45 @@
+Download playlist build
+---
+description: Download given playlist build as MP4 file.
+tags:
+  - Playlists
+parameters:
+  - in: path
+    name: playlist_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Playlist unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+  - in: path
+    name: build_job_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Build job unique identifier
+    example: b35b7fb5-df86-5776-b181-68564193d36
+responses:
+  200:
+    description: Playlist build downloaded as MP4 file
+    content:
+      video/mp4:
+        schema:
+          type: string
+          format: binary
+  400:
+    description: Build not finished, need to retry later
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            error:
+              type: boolean
+              description: Error flag
+              example: true
+            message:
+              type: string
+              description: Error message
+              example: "Build is not finished"

@@ -1,0 +1,16 @@
+Delete sequence
+---
+tags:
+- Shots
+description: Delete a sequence by id. Requires manager access or
+  ownership.
+parameters:
+  - in: path
+    name: sequence_id
+    required: True
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+responses:
+    204:
+        description: Sequence deleted

@@ -1,0 +1,49 @@
+Get project quotas
+---
+tags:
+- Shots
+description: Get quotas statistics for a project and task type. Supports
+  weighted and raw modes with optional feedback filtering.
+parameters:
+  - in: path
+    name: project_id
+    required: True
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+  - in: path
+    name: task_type_id
+    required: True
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+  - in: query
+    name: count_mode
+    required: True
+    type: string
+    enum: [weighted, weigtheddone, feedback, done]
+    example: weighted
+  - in: query
+    name: studio_id
+    required: False
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+responses:
+    200:
+        description: Quotas statistics for shots
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    example: 42
+                  frames:
+                    type: integer
+                    example: 1200
+    400:
+        description: Invalid count_mode or parameter

@@ -1,0 +1,68 @@
+Create project shot
+---
+tags:
+- Shots
+description: Create a shot in a project. Provide name and optional
+  fields like description, sequence_id and nb_frames.
+parameters:
+  - in: path
+    name: project_id
+    required: True
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - name
+        properties:
+          name:
+            type: string
+            required: true
+            example: SH010
+          description:
+            type: string
+            required: false
+            example: A short description of the shot
+          sequence_id:
+            type: string
+            format: uuid
+            required: false
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          nb_frames:
+            type: integer
+            required: false
+            example: 24
+responses:
+    201:
+        description: Shot created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c25
+                name:
+                  type: string
+                  example: SH010
+                project_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c25
+                sequence_id:
+                  type: string
+                  format: uuid
+                  example: c24a6ea4-ce75-4665-a070-57453082c25
+                nb_frames:
+                  type: integer
+                  example: 24
+                description:
+                  type: string
+                  example: A short description of the shot

@@ -1,0 +1,62 @@
+Get project entity links
+---
+description: Retrieve all entity links related to a specific project. Results can be paginated using page and limit query parameters. If you prefer a more accurate pagination, you can use cursor_created_at to get the next page. It's mainly used for synchronisation purpose.
+tags:
+  - Breakdown
+parameters:
+  - in: path
+    name: project_id
+    required: true
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+    description: Unique identifier of the project
+  - in: query
+    name: page
+    required: false
+    type: integer
+    example: 2
+    description: Page number for pagination
+  - in: query
+    name: limit
+    required: false
+    type: integer
+    example: 100
+    description: Number of items per page
+  - in: query
+    name: cursor_created_at
+    required: false
+    type: string
+    format: date-time
+    example: "2020-01-01T00:00:00"
+    description: Cursor for pagination based on creation date
+responses:
+  200:
+    description: Project entity links successfully retrieved
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Entity link unique identifier
+                example: m46m8qm6-oq97-6887-m403-80786315o47
+              entity_in_id:
+                type: string
+                format: uuid
+                description: Source entity identifier
+                example: c46c8gc6-eg97-6887-c292-79675204e47
+              entity_out_id:
+                type: string
+                format: uuid
+                description: Target entity identifier
+                example: d57d9hd7-fh08-7998-d403-80786315f58
+              created_at:
+                type: string
+                format: date-time
+                description: Creation timestamp
+                example: "2020-01-01T00:00:00"

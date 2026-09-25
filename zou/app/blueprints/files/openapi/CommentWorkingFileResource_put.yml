@@ -1,0 +1,50 @@
+Update working file comment
+---
+description: Update the comment on a specific working file. Comments
+  provide context about changes made to the working file.
+tags:
+- Files
+parameters:
+  - in: path
+    name: working_file_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Working file unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - comment
+        properties:
+          comment:
+            type: string
+            description: Working file comment
+            example: "Updated lighting and materials"
+responses:
+  200:
+    description: Working file comment updated successfully
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Working file unique identifier
+              example: b35b7fb5-df86-5776-b181-68564193d36
+            comment:
+              type: string
+              description: Updated comment
+              example: "Updated lighting and materials"
+            updated_at:
+              type: string
+              format: date-time
+              description: Last update timestamp
+              example: "2023-01-01T12:30:00Z"

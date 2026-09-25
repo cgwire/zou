@@ -1,0 +1,55 @@
+Set project file tree
+---
+description: Define a template file to use for a given project.
+  Template files are located on the server side and each template
+  has a name for selection.
+tags:
+- Files
+parameters:
+  - in: path
+    name: project_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Project unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - tree_name
+        properties:
+          tree_name:
+            type: string
+            description: Name of the file tree template
+            example: "default"
+responses:
+  200:
+    description: File tree template set successfully
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Project unique identifier
+              example: b35b7fb5-df86-5776-b181-68564193d36
+            name:
+              type: string
+              description: Project name
+              example: "My Project"
+            file_tree:
+              type: object
+              description: File tree template configuration
+              example: {"template": "default"}
+            updated_at:
+              type: string
+              format: date-time
+              description: Last update timestamp
+              example: "2023-01-01T12:30:00Z"

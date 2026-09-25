@@ -1,0 +1,43 @@
+Create preview background file
+---
+description: Main resource to add a preview background file. It stores
+  the preview background file and generates a rectangle thumbnail.
+tags:
+  - Previews
+parameters:
+  - in: path
+    name: instance_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Preview background file unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+  - in: formData
+    name: file
+    required: true
+    type: file
+    description: HDR file to upload
+responses:
+  201:
+    description: Preview background file added successfully
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Preview background file unique identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c25
+            extension:
+              type: string
+              description: File extension
+              example: "hdr"
+            file_size:
+              type: integer
+              description: File size in bytes
+              example: 2048000
+  400:
+    description: Wrong file format or error saving file

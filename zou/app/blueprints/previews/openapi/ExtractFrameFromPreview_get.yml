@@ -1,0 +1,30 @@
+Extract frame from preview
+---
+description: Extract a frame from a preview file movie. Frame number can
+  be specified as query parameter, defaults to 0.
+tags:
+  - Previews
+parameters:
+  - in: path
+    name: preview_file_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Preview file unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+  - in: query
+    name: frame_number
+    required: false
+    schema:
+      type: integer
+    description: Frame number to extract
+    example: 120
+responses:
+  200:
+    description: Extracted frame as PNG image
+    content:
+      image/png:
+        schema:
+          type: string
+          format: binary

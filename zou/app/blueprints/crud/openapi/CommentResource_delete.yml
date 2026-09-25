@@ -1,0 +1,19 @@
+Delete comment
+---
+tags:
+  - Crud
+description: Delete a comment by its ID. Returns empty response
+  on success. Updates task status if comment had status change.
+parameters:
+  - in: path
+    name: instance_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+responses:
+    204:
+      description: Comment deleted successfully
+    400:
+      description: Cannot delete comment or integrity error

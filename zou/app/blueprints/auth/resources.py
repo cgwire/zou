@@ -1,3 +1,4 @@
+from flasgger import swag_from
 import hmac
 import secrets
 
@@ -91,20 +92,10 @@ def _build_2fa_registration_response(response_data, user_id):
 class AuthenticatedResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/AuthenticatedResource_get.yml")
     def get(self):
         """
         Check authentication status
-        ---
-        description: Returns information if the user is authenticated.
-          It can be used by third party tools, especially browser frontend,
-          to know if current user is still logged in.
-        tags:
-            - Authentication
-        responses:
-          200:
-            description: User authenticated
-          401:
-            description: Person not found
         """
         person = persons_service.get_current_user(relations=True)
         person["fido_devices"] = (
@@ -124,16 +115,10 @@ class LogoutResource(MethodView):
 
     @jwt_required()
     @permissions.require_person
+    @swag_from("openapi/LogoutResource_get.yml")
     def get(self):
         """
         Logout user
-        ---
-        description: Log user out by revoking auth tokens. Once logged out, current user cannot access the API anymore.
-        tags:
-            - Authentication
-        responses:
-          200:
-            description: Logout successful
         """
         try:
             payload = get_jwt()
@@ -212,62 +197,10 @@ def _build_login_response(user, email):
 
 class LoginResource(MethodView, ArgsMixin):
 
+    @swag_from("openapi/LoginResource_post.yml")
     def post(self):
         """
         Login user
-        ---
-        description: Log in user by creating and registering auth tokens.
-          Login is based on email and password. If no user matches given email
-          It fallbacks to a desktop ID. It is useful for desktop tools that
-          don't know user email.
-          It is also possible to login with TOTP, Email OTP, FIDO and recovery
-          code.
-        tags:
-            - Authentication
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  email:
-                    type: string
-                    format: email
-                    example: admin@example.com
-                    description: User email address
-                  password:
-                    type: string
-                    format: password
-                    example: "********"
-                    description: User password
-                    required: true
-                  totp:
-                    type: string
-                    example: 123456
-                    description: TOTP verification code for two-factor authentication
-                    required: false
-                  email_otp:
-                    type: string
-                    example: 123456
-                    description: Email OTP verification code for two-factor authentication
-                  fido_authentication_response:
-                    type: object
-                    description: FIDO authentication response for WebAuth
-                  recovery_code:
-                    type: string
-                    example: ABCD-EFGH-IJKL-MNOP
-                    description: Recovery code for two-factor authentication
-                required:
-                  - email
-                  - password
-        responses:
-          200:
-            description: Login successful
-          400:
-            description: Login failed
-          401:
-            description: User is unactive, flagged by "unactive" in the body
         """
         body = validation.validate_request_body(LoginSchema)
         email = body.email
@@ -406,17 +339,10 @@ class LoginResource(MethodView, ArgsMixin):
 class RefreshTokenResource(MethodView):
     @jwt_required(refresh=True)
     @permissions.require_person
+    @swag_from("openapi/RefreshTokenResource_get.yml")
     def get(self):
         """
         Refresh access token
-        ---
-        description: Tokens are considered outdated every two weeks.
-          This route allows to extend their lifetime before they get outdated.
-        tags:
-            - Authentication
-        responses:
-          200:
-            description: Access Token
         """
         user = persons_service.get_current_user()
         additional_claims = {"identity_type": "person"}
@@ -450,43 +376,10 @@ class ChangePasswordResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_person
+    @swag_from("openapi/ChangePasswordResource_post.yml")
     def post(self):
         """
         Change user password
-        ---
-        description: Allow the user to change his password. Requires current
-          password for verification and password confirmation to ensure
-          accuracy.
-        tags:
-            - Authentication
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  old_password:
-                    type: string
-                    format: password
-                    description: Current password
-                  password:
-                    type: string
-                    format: password
-                    description: New password
-                  password_2:
-                    type: string
-                    format: password
-                    description: New password confirmation
-                required:
-                  - old_password
-                  - password
-                  - password_2
-        responses:
-          200:
-            description: Password changed
-          400:
-            description: Invalid password or inactive user
         """
         body = validation.validate_request_body(ChangePasswordSchema)
 
@@ -571,51 +464,10 @@ class ChangePasswordResource(MethodView, ArgsMixin):
 
 class ResetPasswordResource(MethodView, ArgsMixin):
 
+    @swag_from("openapi/ResetPasswordResource_put.yml")
     def put(self):
         """
         Reset password with token
-        ---
-        description: Allow a user to change his password when he forgets it.
-          It uses a token sent by email to the user to verify it is the user
-          who requested the password reset.
-        tags:
-            - Authentication
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  email:
-                    type: string
-                    format: email
-                    example: admin@example.com
-                    description: User email address
-                  token:
-                    type: string
-                    format: JWT token
-                    description: Password reset token
-                  password:
-                    type: string
-                    format: password
-                    description: New password
-                  password2:
-                    type: string
-                    format: password
-                    description: New password confirmation
-                required:
-                  - email
-                  - token
-                  - password
-                  - password2
-        responses:
-          200:
-            description: Password reset
-          400:
-            description: Invalid password
-                         Wrong or expired token
-                         Inactive user
         """
         body = validation.validate_request_body(ResetPasswordSchema)
 
@@ -653,33 +505,10 @@ class ResetPasswordResource(MethodView, ArgsMixin):
         except InactiveUserException:
             return {"error": True, "message": "User is inactive."}, 400
 
+    @swag_from("openapi/ResetPasswordResource_post.yml")
     def post(self):
         """
         Request password reset
-        ---
-        description: Send a password reset token by email to the user.
-          It uses a classic scheme where a token is sent by email.
-        tags:
-            - Authentication
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  email:
-                    type: string
-                    format: email
-                    example: admin@example.com
-                    description: User email address
-                required:
-                  - email
-        responses:
-          200:
-            description: Reset token sent
-          400:
-            description: Email not listed in database
         """
         body = validation.validate_request_body(SendPasswordResetSchema)
 
@@ -734,19 +563,10 @@ class TOTPResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_person
+    @swag_from("openapi/TOTPResource_put.yml")
     def put(self):
         """
         Pre-enable TOTP
-        ---
-        description: Prepare TOTP (Time-based One-Time Password) for enabling.
-          It returns provisioning URI and secret for authenticator app setup.
-        tags:
-            - Authentication
-        responses:
-          200:
-            description: TOTP pre-enabled
-          400:
-            description: TOTP already enabled
         """
         try:
             totp_provisionning_uri, totp_secret = auth_service.pre_enable_totp(
@@ -764,31 +584,10 @@ class TOTPResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_person
+    @swag_from("openapi/TOTPResource_post.yml")
     def post(self):
         """
         Enable TOTP
-        ---
-        description: Enable TOTP (Time-based One-Time Password) authentication.
-          It requires verification code from authenticator app.
-        tags:
-            - Authentication
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  totp:
-                    type: string
-                    description: TOTP verification code from authenticator app
-                required:
-                  - totp
-        responses:
-          200:
-            description: TOTP enabled
-          400:
-            description: TOTP already enabled or verification failed
         """
         body = validation.validate_request_body(TotpSchema)
 
@@ -818,38 +617,10 @@ class TOTPResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_person
+    @swag_from("openapi/TOTPResource_delete.yml")
     def delete(self):
         """
         Disable TOTP
-        ---
-        description: Disable TOTP (Time-based One-Time Password) authentication.
-          It requires two-factor authentication verification.
-        tags:
-            - Authentication
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  totp:
-                    type: string
-                    description: TOTP verification code
-                  email_otp:
-                    type: string
-                    description: Email OTP verification code
-                  fido_authentication_response:
-                    type: object
-                    description: FIDO authentication response
-                  recovery_code:
-                    type: string
-                    description: Recovery code for two-factor authentication
-        responses:
-          200:
-            description: TOTP disabled
-          400:
-            description: TOTP not enabled or verification failed
         """
         body = validation.validate_request_body(TwoFactorAuthSchema)
 
@@ -887,25 +658,10 @@ class TOTPResource(MethodView, ArgsMixin):
 
 class EmailOTPResource(MethodView, ArgsMixin):
 
+    @swag_from("openapi/EmailOTPResource_get.yml")
     def get(self):
         """
         Send email OTP
-        ---
-        description: Send a one-time password by email to the user for
-          authentication.
-        tags:
-            - Authentication
-        parameters:
-          - in: query
-            name: email
-            required: True
-            type: string
-            format: email
-            description: User email address
-        responses:
-          200:
-            description: Answered the same way whether or not the address
-              belongs to an account able to receive an OTP
         """
         args = self.get_args(
             [
@@ -935,19 +691,10 @@ class EmailOTPResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_person
+    @swag_from("openapi/EmailOTPResource_put.yml")
     def put(self):
         """
         Pre-enable email OTP
-        ---
-        description: Prepare email OTP (One-Time Password) for enabling.
-          It sets up email-based two-factor authentication.
-        tags:
-            - Authentication
-        responses:
-          200:
-            description: Email OTP pre-enabled
-          400:
-            description: Email OTP already enabled
         """
         try:
             auth_service.pre_enable_email_otp(
@@ -962,31 +709,10 @@ class EmailOTPResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_person
+    @swag_from("openapi/EmailOTPResource_post.yml")
     def post(self):
         """
         Enable email OTP
-        ---
-        description: Enable email OTP (One-Time Password) authentication.
-          It requires verification code sent to email.
-        tags:
-            - Authentication
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  email_otp:
-                    type: string
-                    description: Email OTP verification code
-                required:
-                  - email_otp
-        responses:
-          200:
-            description: Email OTP enabled
-          400:
-            description: Email OTP already enabled or verification failed
         """
         body = validation.validate_request_body(EmailOtpSchema)
 
@@ -1017,38 +743,10 @@ class EmailOTPResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_person
+    @swag_from("openapi/EmailOTPResource_delete.yml")
     def delete(self):
         """
         Disable email OTP
-        ---
-        description: Disable email OTP (One-Time Password) authentication.
-          It requires two-factor authentication verification.
-        tags:
-            - Authentication
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  totp:
-                    type: string
-                    description: TOTP verification code
-                  email_otp:
-                    type: string
-                    description: Email OTP verification code
-                  fido_authentication_response:
-                    type: object
-                    description: FIDO authentication response
-                  recovery_code:
-                    type: string
-                    description: Recovery code for two-factor authentication
-        responses:
-          200:
-            description: Email OTP disabled
-          400:
-            description: Email OTP not enabled or verification failed
         """
         body = validation.validate_request_body(TwoFactorAuthSchema)
 
@@ -1090,26 +788,10 @@ class FIDOResource(MethodView, ArgsMixin):
     challenge for a FIDO device.
     """
 
+    @swag_from("openapi/FIDOResource_get.yml")
     def get(self):
         """
         Get FIDO challenge
-        ---
-        description: Get a challenge for FIDO device authentication.
-          It is used for WebAuthn authentication flow.
-        tags:
-            - Authentication
-        parameters:
-          - in: query
-            name: email
-            required: True
-            type: string
-            format: email
-            description: User email address
-        responses:
-          200:
-            description: FIDO challenge generated
-          400:
-            description: No FIDO challenge available for this address
         """
         args = self.get_args(
             [
@@ -1143,19 +825,10 @@ class FIDOResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_person
+    @swag_from("openapi/FIDOResource_put.yml")
     def put(self):
         """
         Pre-register FIDO device
-        ---
-        description: Prepare FIDO device for registration.
-          It returns registration options for WebAuthn.
-        tags:
-            - Authentication
-        responses:
-          200:
-            description: FIDO device pre-registered data
-          400:
-            description: Invalid request
         """
         return auth_service.pre_register_fido(
             persons_service.get_current_user()["id"]
@@ -1163,35 +836,10 @@ class FIDOResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_person
+    @swag_from("openapi/FIDOResource_post.yml")
     def post(self):
         """
         Register FIDO device
-        ---
-        description: Register a FIDO device for WebAuthn authentication.
-          It requires registration response from the device.
-        tags:
-            - Authentication
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  registration_response:
-                    type: object
-                    description: FIDO device registration response
-                  device_name:
-                    type: string
-                    description: Name for the FIDO device
-                required:
-                  - registration_response
-                  - device_name
-        responses:
-          200:
-            description: FIDO device registered
-          400:
-            description: Registration failed or no preregistration
         """
         try:
             body = validation.validate_request_body(FidoRegisterSchema)
@@ -1222,31 +870,10 @@ class FIDOResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_person
+    @swag_from("openapi/FIDOResource_delete.yml")
     def delete(self):
         """
         Unregister FIDO device
-        ---
-        description: Unregister a FIDO device from WebAuthn authentication.
-          The user must be authenticated.
-        tags:
-            - Authentication
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  device_name:
-                    type: string
-                    description: Name of the FIDO device to unregister
-                required:
-                  - device_name
-        responses:
-          200:
-            description: FIDO device unregistered
-          400:
-            description: FIDO not enabled
         """
         body = validation.validate_request_body(FidoUnregisterSchema)
 
@@ -1280,38 +907,10 @@ class RecoveryCodesResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_person
+    @swag_from("openapi/RecoveryCodesResource_put.yml")
     def put(self):
         """
         Generate recovery codes
-        ---
-        description: Generate new recovery codes for two-factor authentication.
-          It requires two-factor authentication verification.
-        tags:
-            - Authentication
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  totp:
-                    type: string
-                    description: TOTP verification code
-                  email_otp:
-                    type: string
-                    description: Email OTP verification code
-                  fido_authentication_response:
-                    type: object
-                    description: FIDO authentication response
-                  recovery_code:
-                    type: string
-                    description: Recovery code for two-factor authentication
-        responses:
-          200:
-            description: New recovery codes generated
-          400:
-            description: No two-factor authentication enabled or verification failed
         """
         body = validation.validate_request_body(TwoFactorAuthSchema)
 
@@ -1353,20 +952,10 @@ class RecoveryCodesResource(MethodView, ArgsMixin):
 
 
 class SAMLSSOResource(MethodView, ArgsMixin):
+    @swag_from("openapi/SAMLSSOResource_post.yml")
     def post(self):
         """
         SAML SSO login
-        ---
-        description: Handle SAML SSO login response. Processes authentication
-          response from SAML identity provider and creates a new user if they
-          don't exist.
-        tags:
-            - Authentication
-        responses:
-          302:
-            description: Login successful, redirect to home page
-          400:
-            description: SAML not enabled or wrong parameter
         """
         if not config.SAML_ENABLED:
             return {"error": "SAML is not enabled."}, 400
@@ -1457,19 +1046,10 @@ class SAMLSSOResource(MethodView, ArgsMixin):
 
 class SAMLLoginResource(MethodView, ArgsMixin):
 
+    @swag_from("openapi/SAMLLoginResource_get.yml")
     def get(self):
         """
         SAML SSO login redirect
-        ---
-        description: Initiate SAML SSO login by redirecting to SAML identity
-          provider.
-        tags:
-            - Authentication
-        responses:
-          302:
-            description: Redirect to SAML identity provider
-          400:
-            description: SAML not enabled or wrong parameter
         """
         if not config.SAML_ENABLED:
             return {"error": "SAML is not enabled."}, 400
@@ -1498,19 +1078,10 @@ class SAMLLoginResource(MethodView, ArgsMixin):
 
 
 class OIDCLoginResource(MethodView, ArgsMixin):
+    @swag_from("openapi/OIDCLoginResource_get.yml")
     def get(self):
         """
         OIDC SSO login redirect
-        ---
-        description: Initiate OIDC SSO login by redirecting to the OpenID
-          Connect identity provider.
-        tags:
-            - Authentication
-        responses:
-          302:
-            description: Redirect to OIDC identity provider
-          400:
-            description: OIDC not enabled
         """
         if not config.OIDC_ENABLED:
             return {"error": "OIDC is not enabled."}, 400
@@ -1523,20 +1094,10 @@ class OIDCLoginResource(MethodView, ArgsMixin):
 
 
 class OIDCCallbackResource(MethodView, ArgsMixin):
+    @swag_from("openapi/OIDCCallbackResource_get.yml")
     def get(self):
         """
         OIDC SSO callback
-        ---
-        description: Handle the OIDC SSO callback. Exchanges the authorization
-          code, validates the ID token, then logs in the matching user
-          (creating one on first login when none exists).
-        tags:
-            - Authentication
-        responses:
-          302:
-            description: Login successful, redirect to home page
-          400:
-            description: OIDC not enabled or email not verified
         """
         if not config.OIDC_ENABLED:
             return {"error": "OIDC is not enabled."}, 400

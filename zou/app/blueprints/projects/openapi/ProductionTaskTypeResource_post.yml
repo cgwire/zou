@@ -1,0 +1,61 @@
+Add task type to production
+---
+description: Add a task type linked to a production.
+tags:
+  - Projects
+parameters:
+  - in: path
+    name: project_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Project unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - task_type_id
+        properties:
+          task_type_id:
+            type: string
+            format: uuid
+            description: Task type unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
+          priority:
+            type: string
+            description: Task type priority
+            example: "None"
+          hd_bitrate_compression:
+            type: integer
+            description: High definition movie bitrate in Mbit/s
+              for this task type, null inherits the project's
+            example: 20
+          ld_bitrate_compression:
+            type: integer
+            description: Low definition movie bitrate in Mbit/s
+              for this task type, null inherits the project's
+            example: 4
+responses:
+  201:
+    description: Task type added to production
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Project unique identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c25
+            name:
+              type: string
+              description: Project name
+              example: "My Project"
+  400:
+    description: Invalid parameters

@@ -1,0 +1,51 @@
+Get shared original picture preview for any extension
+---
+description: Serve the original still preview for an arbitrary
+  extension (gif, svg, jpg, pdf, ...), authorized by the share token.
+  Mirrors the authenticated
+  ``/pictures/originals/preview-files/<id>.<extension>`` route, which
+  the ``.png``-only shared route did not cover, so animated GIFs and
+  other non-PNG originals 404'd through a share link.
+tags:
+  - Playlists
+parameters:
+  - in: path
+    name: token
+    required: true
+    schema:
+      type: string
+    description: Share link token
+  - in: path
+    name: preview_file_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Preview file unique identifier
+  - in: path
+    name: extension
+    required: true
+    schema:
+      type: string
+    description: File extension
+responses:
+  200:
+    description: Original picture file
+    content:
+      application/octet-stream:
+        schema:
+          type: string
+          format: binary
+  400:
+    description: Extension not allowed
+  403:
+    description: Preview file is not part of this shared playlist
+  404:
+    description: Original file missing
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            error:
+              type: string

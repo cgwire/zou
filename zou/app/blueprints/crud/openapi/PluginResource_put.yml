@@ -1,0 +1,55 @@
+Update plugin
+---
+tags:
+  - Crud
+description: Update a plugin with data provided in the request
+  body. JSON format is expected.
+parameters:
+  - in: path
+    name: instance_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            example: Updated Plugin Name
+          active:
+            type: boolean
+            example: true
+responses:
+    200:
+      description: Plugin updated successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+              name:
+                type: string
+                example: Updated Plugin Name
+              active:
+                type: boolean
+                example: true
+              created_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T10:30:00Z"
+              updated_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T11:00:00Z"
+    400:
+      description: Invalid data format or validation error

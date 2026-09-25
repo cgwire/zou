@@ -1,0 +1,49 @@
+Create studio
+---
+tags:
+  - Crud
+description: Create a new studio with data provided in the
+  request body. JSON format is expected.
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - name
+        properties:
+          name:
+            type: string
+            example: Studio Name
+          hours_by_day:
+            type: number
+            example: 8.0
+responses:
+    201:
+      description: Studio created successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+              name:
+                type: string
+                example: Studio Name
+              hours_by_day:
+                type: number
+                example: 8.0
+              created_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T10:30:00Z"
+              updated_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T10:30:00Z"
+    400:
+      description: Invalid data format or validation error

@@ -1,0 +1,52 @@
+Create preview background file
+---
+tags:
+  - Crud
+description: Create a new preview background file with data
+  provided in the request body. JSON format is expected.
+  Names must be unique. If is_default is true, resets other
+  defaults.
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - name
+        properties:
+          name:
+            type: string
+            example: background_file_name
+          is_default:
+            type: boolean
+            default: false
+            example: false
+responses:
+    201:
+      description: Preview background file created successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+              name:
+                type: string
+                example: background_file_name
+              is_default:
+                type: boolean
+                example: false
+              created_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T10:30:00Z"
+              updated_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T10:30:00Z"
+    400:
+      description: Invalid data format or name already exists

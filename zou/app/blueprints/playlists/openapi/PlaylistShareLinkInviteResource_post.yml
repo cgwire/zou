@@ -1,0 +1,51 @@
+Invite reviewers to a shared playlist
+---
+description: Send the share URL by email to a list of recipients
+  (raw emails and/or existing person ids).
+tags:
+  - Playlists
+parameters:
+  - in: path
+    name: playlist_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+  - in: path
+    name: token
+    required: true
+    schema:
+      type: string
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          emails:
+            type: array
+            items:
+              type: string
+              format: email
+          person_ids:
+            type: array
+            items:
+              type: string
+              format: uuid
+          message:
+            type: string
+responses:
+  200:
+    description: Invitations dispatched
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            sent:
+              type: array
+              items:
+                type: string
+  400:
+    description: One of the supplied emails is invalid

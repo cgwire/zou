@@ -1,0 +1,16 @@
+Delete episode
+---
+tags:
+- Shots
+description: Delete an episode by id. Requires manager access or
+  ownership.
+parameters:
+  - in: path
+    name: episode_id
+    required: True
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+responses:
+    204:
+        description: Episode deleted

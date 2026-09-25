@@ -1,0 +1,36 @@
+Get salary scales
+---
+tags:
+  - Crud
+description: Retrieve all salary scale entries. Automatically
+  creates missing combinations of department, position, and
+  seniority.
+responses:
+    200:
+      description: Salary scales retrieved successfully
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c25
+                department_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c25
+                position:
+                  type: string
+                  example: artist
+                seniority:
+                  type: string
+                  example: junior
+                rate:
+                  type: number
+                  example: 50.0
+    400:
+      description: Query error

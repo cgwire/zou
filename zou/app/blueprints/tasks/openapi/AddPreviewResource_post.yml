@@ -1,0 +1,66 @@
+Add task preview
+---
+tags:
+- Tasks
+description: Add preview metadata to a task. The preview file is
+  uploaded after. Revision is auto set to last + 1. It can also be set
+  manually.
+parameters:
+  - in: path
+    name: task_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+  - in: path
+    name: comment_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          revision:
+            type: integer
+            description: Revision number for the preview
+            example: 1
+responses:
+    201:
+      description: Preview metadata added to task
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c25
+              comment_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+              task_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c25
+              revision:
+                type: integer
+                example: 3
+              person_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c25
+              created_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T10:30:00Z"
+    400:
+      description: Bad request

@@ -1,3 +1,4 @@
+from flasgger import swag_from
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
@@ -13,120 +14,10 @@ from zou.app.exceptions import (
 
 class EventsResource(MethodView, ArgsMixin):
     @jwt_required()
+    @swag_from("openapi/EventsResource_get.yml")
     def get(self):
         """
         Get events
-        ---
-        description: Retrieve last events with filtering support. Filters can be
-          specified in the query string to narrow down results by date range,
-          project, or other criteria.
-        tags:
-          - Events
-        parameters:
-          - in: query
-            name: after
-            type: string
-            format: date
-            example: "2022-07-12"
-            description: Filter events after this date
-          - in: query
-            name: before
-            type: string
-            format: date
-            example: "2022-07-12"
-            description: Filter events before this date
-          - in: query
-            name: only_files
-            type: boolean
-            default: false
-            description: Return only file-related events
-            example: false
-          - in: query
-            name: cursor_event_id
-            required: False
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-            description: ID of the last event from previous page for cursor-based pagination
-          - in: query
-            name: limit
-            type: integer
-            default: 100
-            example: 100
-            description: Maximum number of events to return
-          - in: query
-            name: project_id
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-            description: Filter events by specific project
-          - in: query
-            name: name
-            type: string
-            example: "user_login"
-            description: Filter events by event name
-          - in: query
-            name: name_prefixes
-            type: array
-            items:
-              type: string
-            example: ["task", "comment"]
-            description: Filter events by object, the part of the event name
-              before the colon. Repeat the parameter for each value.
-          - in: query
-            name: name_suffixes
-            type: array
-            items:
-              type: string
-            example: ["update", "delete"]
-            description: Filter events by action, the part of the event name
-              after the colon. Repeat the parameter for each value.
-          - in: query
-            name: person_ids
-            type: array
-            items:
-              type: string
-              format: uuid
-            description: Filter events by author. Repeat the parameter for
-              each value.
-        responses:
-          200:
-            description: List of events successfully retrieved
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        description: Event unique identifier
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      name:
-                        type: string
-                        description: Event name
-                        example: "user_login"
-                      data:
-                        type: object
-                        description: Event data content
-                        example: {"user_id": "b35b7fb5-df86-5776-b181-68564193d36"}
-                      project_id:
-                        type: string
-                        format: uuid
-                        description: Project identifier
-                        example: c46c8gc6-eg97-6887-c292-79675204e47
-                      created_at:
-                        type: string
-                        format: date-time
-                        description: Event timestamp
-                        example: "2023-01-01T12:00:00Z"
-                      user_id:
-                        type: string
-                        format: uuid
-                        description: User identifier who triggered the event
-                        example: d57d9hd7-fh08-7998-d403-80786315f58
         """
         args = self.get_args(
             [
@@ -206,83 +97,10 @@ class EventsResource(MethodView, ArgsMixin):
 
 class LoginLogsResource(MethodView, ArgsMixin):
     @jwt_required()
+    @swag_from("openapi/LoginLogsResource_get.yml")
     def get(self):
         """
         Get login logs
-        ---
-        description: Retrieve last login logs with filtering support. Filters can
-          be specified in the query string to narrow down results by date range
-          or cursor-based pagination.
-        tags:
-          - Events
-        parameters:
-          - in: query
-            name: after
-            type: string
-            format: date
-            example: "2022-07-12"
-            description: Filter logs after this date
-          - in: query
-            name: before
-            type: string
-            format: date
-            example: "2022-07-12"
-            description: Filter logs before this date
-          - in: query
-            name: cursor_login_log_id
-            required: False
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-            description: ID of the last login log from previous page for cursor-based pagination
-          - in: query
-            name: limit
-            type: integer
-            default: 100
-            example: 100
-            description: Maximum number of login logs to return
-          - in: query
-            name: person_ids
-            type: array
-            items:
-              type: string
-              format: uuid
-            description: Filter login logs by person. Repeat the parameter for
-              each value.
-        responses:
-          200:
-            description: List of login logs successfully retrieved
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        description: Login log unique identifier
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      created_at:
-                        type: string
-                        format: date-time
-                        description: Login timestamp
-                        example: "2023-01-01T12:00:00Z"
-                      ip_address:
-                        type: string
-                        description: IP address of the login
-                        example: "192.168.1.100"
-                      person_id:
-                        type: string
-                        format: uuid
-                        description: Person identifier
-                        example: b35b7fb5-df86-5776-b181-68564193d36
-                      origin:
-                        type: string
-                        description: Login origin
-                        example: "web"
-                        enum: ["web", "script"]
         """
         args = self.get_args(
             [
@@ -318,27 +136,10 @@ class LoginLogsResource(MethodView, ArgsMixin):
 
 class EventNamesResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/EventNamesResource_get.yml")
     def get(self):
         """
         Get event names
-        ---
-        description: >-
-          Retrieve the distinct event names present in the log. It is meant to
-          build the object and action filters of the log screen. The list is
-          not scoped to the caller's productions: it exposes the event
-          vocabulary, not any production data.
-        tags:
-          - Events
-        responses:
-          200:
-            description: Sorted list of the event names in use
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: string
-                    example: "task:update"
         """
         permissions.check_manager_permissions()
         return events_service.get_event_names()

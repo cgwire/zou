@@ -1,0 +1,63 @@
+Subscribe to sequence
+---
+description: Create a subscription entry for the current user, given
+  sequence, and task type. When subscribed, the user receives
+  notifications for all comments posted on tasks related to the
+  sequence.
+tags:
+- User
+parameters:
+  - in: path
+    name: sequence_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Sequence unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+  - in: path
+    name: task_type_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Task type unique identifier
+    example: b35b7fb5-df86-5776-b181-68564193d36
+responses:
+    201:
+      description: Subscription created successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Subscription unique identifier
+                example: c46c8gc6-eg97-6887-c292-79675204e47
+              person_id:
+                type: string
+                format: uuid
+                description: Person identifier
+                example: d57d9hd7-fh08-7998-d403-80786315f58
+              sequence_id:
+                type: string
+                format: uuid
+                description: Sequence identifier
+                example: e68e0ie8-gi19-8009-e514-91897426g69
+              task_type_id:
+                type: string
+                format: uuid
+                description: Task type identifier
+                example: f79f1jf9-hj20-9010-f625-a09008537h80
+              created_at:
+                type: string
+                format: date-time
+                description: Creation timestamp
+                example: "2023-01-01T12:00:00Z"
+              updated_at:
+                type: string
+                format: date-time
+                description: Last update timestamp
+                example: "2023-01-01T12:30:00Z"

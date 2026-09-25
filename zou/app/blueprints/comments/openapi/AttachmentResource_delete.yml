@@ -1,0 +1,31 @@
+Delete comment attachment
+---
+description: Delete a specific attachment file linked to a comment. Only
+  the comment author or project managers can delete attachments.
+tags:
+  - Comments
+parameters:
+  - in: path
+    name: task_id
+    required: true
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+    description: Unique identifier of the task
+  - in: path
+    name: comment_id
+    required: true
+    type: string
+    format: uuid
+    example: b35b7fb5-df86-5776-b181-68564193d36
+    description: Unique identifier of the comment
+  - in: path
+    name: attachment_file_id
+    required: true
+    type: string
+    format: uuid
+    example: c46c8gc6-eg97-6887-c292-79675204e47
+    description: Unique identifier of the attachment
+responses:
+  204:
+    description: Attachment successfully deleted

@@ -1,0 +1,22 @@
+Download preview file
+---
+description: Download a generic file preview as attachment.
+tags:
+  - Previews
+parameters:
+  - in: path
+    name: instance_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Preview file unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+responses:
+  200:
+    description: Generic file preview downloaded as attachment
+    content:
+      application/octet-stream:
+        schema:
+          type: string
+          format: binary

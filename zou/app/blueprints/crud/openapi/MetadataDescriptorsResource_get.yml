@@ -1,0 +1,67 @@
+Get metadata descriptors
+---
+tags:
+  - Crud
+description: Retrieve all metadata descriptors. Supports filtering
+  via query parameters and pagination. Vendor access is blocked.
+  Includes project permission filtering for non-admin users.
+parameters:
+  - in: query
+    name: page
+    required: false
+    schema:
+      type: integer
+    example: 1
+    description: Page number for pagination
+  - in: query
+    name: limit
+    required: false
+    schema:
+      type: integer
+    example: 50
+    description: Number of results per page
+  - in: query
+    name: relations
+    required: false
+    schema:
+      type: boolean
+    default: true
+    example: true
+    description: Whether to include relations
+responses:
+    200:
+      description: Metadata descriptors retrieved successfully
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c25
+                name:
+                  type: string
+                  example: Custom Field
+                field_name:
+                  type: string
+                  example: custom_field
+                data_type:
+                  type: string
+                  example: text
+                project_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c25
+                created_at:
+                  type: string
+                  format: date-time
+                  example: "2024-01-15T10:30:00Z"
+                updated_at:
+                  type: string
+                  format: date-time
+                  example: "2024-01-15T10:30:00Z"
+    400:
+      description: Invalid filter format or query error

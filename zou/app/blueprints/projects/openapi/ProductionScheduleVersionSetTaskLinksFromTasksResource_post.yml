@@ -1,0 +1,30 @@
+Set task links from tasks
+---
+description: Set task links for given production schedule version from
+  tasks.
+tags:
+  - Projects
+parameters:
+  - in: path
+    name: production_schedule_version_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Production schedule version unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+responses:
+  200:
+    description: Task links created
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            task_link_count:
+              type: integer
+              description: Number of task links copied
+  400:
+    description: Wrong ID format

@@ -1,0 +1,42 @@
+Create model
+---
+tags:
+  - Crud
+description: Create a new model instance with data provided in the
+  request body. JSON format is expected. The model performs validation
+  automatically when instantiated.
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            example: Model Name
+responses:
+    201:
+      description: Model created successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+              name:
+                type: string
+                example: Model Name
+              created_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T10:30:00Z"
+              updated_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T10:30:00Z"
+    400:
+      description: Invalid data format or validation error

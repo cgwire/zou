@@ -1,0 +1,12 @@
+SAML SSO login
+---
+description: Handle SAML SSO login response. Processes authentication
+  response from SAML identity provider and creates a new user if they
+  don't exist.
+tags:
+    - Authentication
+responses:
+  302:
+    description: Login successful, redirect to home page
+  400:
+    description: SAML not enabled or wrong parameter

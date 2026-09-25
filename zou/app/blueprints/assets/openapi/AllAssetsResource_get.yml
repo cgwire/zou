@@ -1,0 +1,65 @@
+Get all assets
+---
+description: Retrieve all production assets with filtering and pagination. Supports advanced filtering by project, asset type, task status, and other criteria
+tags:
+  - Assets
+parameters:
+  - in: query
+    name: project_id
+    type: string
+    format: uuid
+    description: Filter assets by specific project
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+  - in: query
+    name: asset_type_id
+    type: string
+    format: uuid
+    description: Filter assets by asset type
+    example: a24a6ea4-ce75-4665-a070-57453082c25
+  - in: query
+    name: page
+    type: integer
+    description: Page number for pagination
+    example: 1
+  - in: query
+    name: limit
+    type: integer
+    description: Number of assets per page
+    example: 100
+responses:
+  200:
+    description: List of assets successfully retrieved
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Asset unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+              name:
+                type: string
+                description: Asset name
+                example: "Character Name"
+              project_id:
+                type: string
+                format: uuid
+                description: Project identifier
+                example: b35b7fb5-df86-5776-b181-68564193d36
+              entity_type_id:
+                type: string
+                format: uuid
+                description: Asset type identifier
+                example: c46c8gc6-eg97-6887-c292-79675204e47
+              project_name:
+                type: string
+                description: Project name
+                example: "My Project"
+              asset_type_name:
+                type: string
+                description: Asset type name
+                example: "Character"
