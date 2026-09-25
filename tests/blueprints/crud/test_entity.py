@@ -53,6 +53,16 @@ class EntityTestCase(ApiDBTestCase):
 
         self.put_404(f"data/entities/{fields.gen_uuid()}", data)
 
+    def test_update_entity_refusal_is_a_403(self):
+        """
+        A refusal used to fall into a catch-all and come back as a 400
+        carrying the exception text, which hid it from clients and tests
+        filtering on the status.
+        """
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        self.put(f"data/entities/{self.asset_1_id}", {"name": "Nope"}, 403)
+
     def test_delete_entity(self):
         entities = self.get("data/entities")
         self.assertEqual(len(entities), 3)
