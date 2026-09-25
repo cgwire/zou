@@ -1,24 +1,19 @@
-from sqlalchemy import or_
-
 from zou.app.blueprints.source.csv.base import (
     BaseCsvProjectImportResource,
     RowException,
 )
-from zou.app.models.project import ProjectTaskTypeLink
-from zou.app.models.task_type import TaskType
 
 from zou.app.services import (
     assets_service,
+    entities_service,
+    index_service,
     projects_service,
     shots_service,
     persons_service,
     comments_service,
-    index_service,
     tasks_service,
 )
-from zou.app.models.entity import Entity
 from zou.app.exceptions import WrongParameterException
-from zou.app.utils import events
 
 
 class AssetsCsvImportResource(BaseCsvProjectImportResource):
@@ -106,20 +101,8 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             for asset_type in assets_service.get_asset_types()
             if asset_type["id"] in asset_type_ids_in_project
         }
-        task_types = (
-            TaskType.query.join(ProjectTaskTypeLink)
-            .filter(ProjectTaskTypeLink.project_id == project_id)
-            # for_entity was added nullable in 2018 and only ever backfilled
-            # for shots, so a task type predating it reads NULL and means
-            # "Asset", the model default. Databases we cannot inspect still
-            # carry those rows.
-            .filter(
-                or_(
-                    TaskType.for_entity == "Asset",
-                    TaskType.for_entity.is_(None),
-                )
-            )
-            .all()
+        task_types = projects_service.get_project_task_types_raw(
+            project_id, "Asset"
         )
         # Serialized: model instances would be expired by every row commit,
         # and read again from the database on every row.
@@ -138,10 +121,9 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         self.current_user_id = persons_service.get_current_user()["id"]
         self.task_types_for_ready_for_map = {
             task_type.name: str(task_type.id)
-            for task_type in TaskType.query.join(ProjectTaskTypeLink)
-            .filter(ProjectTaskTypeLink.project_id == project_id)
-            .filter(TaskType.for_entity == "Shot")
-            .all()
+            for task_type in projects_service.get_project_task_types_raw(
+                project_id, "Shot"
+            )
         }
 
     def get_tasks_update(self, row):
@@ -323,7 +305,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         # The entity table is polymorphic: without the type, a sequence or
         # an episode with the same name would be taken for the asset and
         # re-typed on update.
-        entity = Entity.get_by(
+        entity = entities_service.find_entity_raw(
             name=asset_values["name"],
             project_id=asset_values["project_id"],
             entity_type_id=entity_type_id,
@@ -358,30 +340,30 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         tasks_update = self.get_tasks_update(row)
 
         if entity is None:
-            entity = Entity.create(
-                **{**asset_values, **asset_new_values},
+            asset = assets_service.create_asset(
+                project_id,
+                entity_type_id,
+                asset_name,
+                asset_new_values.get("description"),
+                asset_new_values["data"],
+                source_id=episode_id,
                 created_by=self.current_user_id,
+                ready_for=asset_new_values.get("ready_for"),
+                index=False,
             )
-
+            entity = entities_service.get_entity_raw(asset["id"])
             self.asset_ids_to_index.append(entity.id)
-            events.emit(
-                "asset:new",
-                {"asset_id": str(entity.id), "episode_id": episode_id},
-                project_id=project_id,
-            )
 
             self.create_and_update_tasks(
                 tasks_update, entity, asset_creation=True
             )
 
         elif self.is_update:
-            entity.update({**asset_values, **asset_new_values})
-
             self.asset_ids_to_index.append(entity.id)
-            events.emit(
-                "asset:update",
-                {"asset_id": str(entity.id), "episode_id": episode_id},
-                project_id=project_id,
+            assets_service.update_asset(
+                str(entity.id),
+                {**asset_values, **asset_new_values},
+                index=False,
             )
 
             self.create_and_update_tasks(

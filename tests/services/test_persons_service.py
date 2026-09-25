@@ -321,6 +321,50 @@ class PersonListTestCase(PersonsTestCase):
             [person["id"] for person in persons_service.get_active_persons()],
         )
 
+    def test_count_active_users_leaves_out_bots_and_guests(self):
+        before = persons_service.count_active_users()
+        persons_service.create_person(
+            "bot@example.com", None, "Bot", "Account", is_bot=True
+        )
+        self.a_guest()
+        self.assertEqual(persons_service.count_active_users(), before)
+        persons_service.create_person(
+            "human@example.com", None, "Human", "Account"
+        )
+        self.assertEqual(persons_service.count_active_users(), before + 1)
+
+    def test_import_person_creates_then_updates_on_demand(self):
+        self.generate_fixture_department()
+        department_id = str(self.department.id)
+        data = {"first_name": "Ada", "last_name": "Lovelace"}
+
+        person = persons_service.import_person(
+            "ada@example.com", data, [department_id]
+        )
+        self.assertEqual(person["first_name"], "Ada")
+        self.assertEqual(
+            persons_service.get_person(person["id"], relations=True)[
+                "departments"
+            ],
+            [department_id],
+        )
+
+        # Without update, an existing account is left alone.
+        person = persons_service.import_person(
+            "ada@example.com", {"first_name": "Augusta"}, None
+        )
+        self.assertEqual(person["first_name"], "Ada")
+        person = persons_service.import_person(
+            "ada@example.com", {"first_name": "Augusta"}, [], update=True
+        )
+        self.assertEqual(person["first_name"], "Augusta")
+        self.assertEqual(
+            persons_service.get_person(person["id"], relations=True)[
+                "departments"
+            ],
+            [],
+        )
+
     def test_get_all_raw_active_persons(self):
         persons_service.update_person(self.person_id, {"active": False})
         self.assertNotIn(

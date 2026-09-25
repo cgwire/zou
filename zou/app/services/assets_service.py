@@ -877,9 +877,12 @@ def create_asset(
     is_shared=False,
     source_id=None,
     created_by=None,
+    ready_for=None,
+    index=True,
 ):
     """
-    Create a new asset from given parameters.
+    Create a new asset from given parameters. A bulk import passes
+    index=False and indexes all its assets at the end.
     """
     project = projects_service.get_project_raw(project_id)
     asset_type = get_asset_type_raw(asset_type_id)
@@ -894,9 +897,11 @@ def create_asset(
         is_shared=is_shared,
         source_id=source_id,
         created_by=created_by,
+        ready_for=ready_for,
     )
 
-    index_service.index_asset(asset)
+    if index:
+        index_service.index_asset(asset)
     events.emit(
         "asset:new",
         {"asset_id": asset.id, "asset_type": asset_type.id},
@@ -906,15 +911,17 @@ def create_asset(
     return asset.serialize(obj_type="Asset")
 
 
-def update_asset(asset_id, data):
+def update_asset(asset_id, data, index=True):
     """
-    Update given asset, drop its cache and notify the clients.
+    Update given asset, drop its cache and notify the clients. A bulk
+    import passes index=False and indexes all its assets at the end.
     """
     asset = get_asset_raw(asset_id)
     asset.update(data)
 
-    index_service.remove_asset_index(asset_id)
-    index_service.index_asset(asset)
+    if index:
+        index_service.remove_asset_index(asset_id)
+        index_service.index_asset(asset)
     events.emit(
         "asset:update",
         {"asset_id": asset_id, "data": data},

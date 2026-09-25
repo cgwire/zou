@@ -294,6 +294,14 @@ def get_entity_type_by_name_or_not_found(name):
     return entity_type.serialize()
 
 
+def find_entity_raw(**lookup):
+    """
+    Return the entity matching given columns (name, project_id,
+    entity_type_id, parent_id...) as an active record, or None.
+    """
+    return Entity.get_by(**lookup)
+
+
 def get_entity_raw(entity_id):
     """
     Return an entity type matching given id, as an active record. Raises an

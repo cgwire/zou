@@ -10,10 +10,10 @@ from flask_jwt_extended import jwt_required
 
 from zou.app.mixin import ArgsMixin
 from zou.app import app
-from zou.app.models.person import Person
 from zou.app.utils import permissions, string
 from zou.app.services import (
     permissions_service,
+    persons_service,
     projects_service,
     user_service,
 )
@@ -211,7 +211,7 @@ class BaseCsvProjectImportResource(BaseCsvImportResource, ArgsMixin):
             return value
         if self.person_lookup is None:
             self.person_lookup = {}
-            for person in Person.query.all():
+            for person in persons_service.get_persons_raw():
                 self.person_lookup[str(person.id)] = str(person.id)
                 self.person_lookup[person.full_name.lower()] = str(person.id)
                 if person.email:

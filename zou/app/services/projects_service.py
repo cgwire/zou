@@ -1489,6 +1489,25 @@ def set_project_task_status_link_priorities(project_id, task_status_ids):
     return links
 
 
+def get_project_task_types_raw(project_id, for_entity=None):
+    """
+    Task types configured on given project as active records, narrowed to
+    the ones of an entity kind when for_entity is given. for_entity was
+    added nullable in 2018 and only ever backfilled for shots, so a task
+    type predating it reads NULL and means "Asset", the model default.
+    """
+    query = TaskType.query.join(ProjectTaskTypeLink).filter(
+        ProjectTaskTypeLink.project_id == project_id
+    )
+    if for_entity == "Asset":
+        query = query.filter(
+            or_(TaskType.for_entity == "Asset", TaskType.for_entity.is_(None))
+        )
+    elif for_entity is not None:
+        query = query.filter(TaskType.for_entity == for_entity)
+    return query.all()
+
+
 def get_project_task_types(project_id):
     """
     Return the task types configured on given project.

@@ -3,7 +3,7 @@ from flask.views import MethodView
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from zou.app import config
-from zou.app.models.person import Person
+from zou.app.services import persons_service
 from zou.app.stores import config_store
 
 
@@ -16,11 +16,7 @@ class ConfigCheckResource(MethodView):
 
         comparison = config_store.get_config_comparison()
         try:
-            comparison["active_users"] = Person.query.filter(
-                Person.active,
-                Person.is_bot.isnot(True),
-                Person.is_guest.isnot(True),
-            ).count()
+            comparison["active_users"] = persons_service.count_active_users()
         except (ProgrammingError, OperationalError) as exc:
             current_app.logger.warning(
                 f"Config check could not count active users: {exc}"
