@@ -1039,7 +1039,9 @@ def build_playlist_job(playlist, job, shots, params, email, full, remote):
     Build playlist file (concatenate all movie previews). This function is
     aimed at being run as a job in a job queue.
     """
-    build_playlist_movie_file(playlist, job, shots, params, full, remote)
+    # The job dict handed to the queue still says "running": the status
+    # to test is the one end_build_job returns.
+    job = build_playlist_movie_file(playlist, job, shots, params, full, remote)
 
     # Just in case, since rq jobs which encounter an error raise an
     # exception in order to be flagged as failed.
