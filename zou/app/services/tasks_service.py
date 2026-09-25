@@ -128,8 +128,8 @@ def clear_task_cache(task_id):
     """
     Drop every memoized serialization of given task.
     """
-    cache.cache.delete_memoized(get_task, task_id)
-    cache.cache.delete_memoized(get_task, task_id, True)
+    cache.cache.delete_memoized(_get_task_cached, str(task_id), False)
+    cache.cache.delete_memoized(_get_task_cached, str(task_id), True)
 
 
 def clear_comment_cache(comment_id):
@@ -296,11 +296,15 @@ def get_task_raw(task_id):
 
 
 @cache.memoize_function(120)
+def _get_task_cached(task_id, relations):
+    return get_task_raw(task_id).serialize(relations=relations)
+
+
 def get_task(task_id, relations=False):
     """
     Get task matching given id as a dictionary.
     """
-    return get_task_raw(task_id).serialize(relations=relations)
+    return _get_task_cached(str(task_id), bool(relations))
 
 
 def get_task_by_shotgun_id(shotgun_id):

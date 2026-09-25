@@ -736,7 +736,7 @@ def reply_comment(comment_id, text, person_id=None, files=None):
     else:
         person = persons_service.get_person(person_id)
     comment = tasks_service.get_comment_raw(comment_id)
-    task = tasks_service.get_task(comment.object_id, relations=True)
+    task = tasks_service.get_task(str(comment.object_id), relations=True)
     if comment.replies is None:
         comment.replies = []
 
@@ -797,7 +797,7 @@ def delete_reply(comment_id, reply_id):
     the notifications it raised.
     """
     comment = tasks_service.get_comment_raw(comment_id)
-    task = tasks_service.get_task(comment.object_id)
+    task = tasks_service.get_task(str(comment.object_id))
 
     if comment.attachment_files is not None:
         for attachment_file in comment.attachment_files:
