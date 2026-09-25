@@ -300,7 +300,9 @@ class ProjectResource(BaseModelResource, ArgsMixin):
         # the access check comes first, it resolves that role.
         permissions_service.check_project_access(str(project.id))
         for_client, vendor_departments = (
-            user_service.get_descriptor_visibility()
+            user_service.get_descriptor_visibility(
+                permissions.get_effective_role()
+            )
         )
         return projects_service.get_project_with_extra_data(
             project, for_client, vendor_departments

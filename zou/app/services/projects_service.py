@@ -92,8 +92,10 @@ def get_projects_with_extra_data(
     * Add metadata descriptors for this project.
     * Add task types and task statuses for this project.
     """
-    return _serialize_projects_with_extra_data(
-        query.all(), for_client, vendor_departments
+    projects_list = query.all()
+    project_ids = [project.id for project in projects_list]
+    return serialize_projects_with_extra_data(
+        projects_list, [(project_ids, for_client, vendor_departments)]
     )
 
 
@@ -105,26 +107,31 @@ def get_project_with_extra_data(
     data included: a project read by its id, the only way to reach a closed
     one, is then no lesser than a listed one.
     """
-    return _serialize_projects_with_extra_data(
-        [project], for_client, vendor_departments
+    return serialize_projects_with_extra_data(
+        [project], [([project.id], for_client, vendor_departments)]
     )[0]
 
 
-def _serialize_projects_with_extra_data(
-    projects_list, for_client=False, vendor_departments=None
-):
+def serialize_projects_with_extra_data(projects_list, descriptor_visibilities):
     """
     Serialize given project rows with their extra data, fetched in one query
-    per kind for the whole list.
+    per kind for the whole list. The metadata descriptors are narrowed on a
+    role that can be set per project: descriptor_visibilities lists the
+    (project_ids, for_client, vendor_departments) triples covering the
+    rows, and their descriptors are fetched in one query per triple.
     """
     if not projects_list:
         return []
 
     project_ids = [p.id for p in projects_list]
 
-    descriptors_by_project = _fetch_metadata_descriptors_by_project(
-        project_ids, for_client, vendor_departments
-    )
+    descriptors_by_project = {}
+    for ids, for_client, vendor_departments in descriptor_visibilities:
+        descriptors_by_project.update(
+            _fetch_metadata_descriptors_by_project(
+                ids, for_client, vendor_departments
+            )
+        )
     task_types_by_project = _fetch_task_type_links_by_project(project_ids)
     task_statuses_by_project = _fetch_task_status_links_by_project(project_ids)
     tvshow_project_ids = [
