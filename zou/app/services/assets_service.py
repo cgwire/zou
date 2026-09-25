@@ -15,7 +15,7 @@ from zou.app.models.entity import (
 from zou.app.models.entity_type import EntityType
 from zou.app.models.subscription import Subscription
 from zou.app.models.project import Project
-from zou.app.models.task import Task, TaskPersonLink
+from zou.app.models.task import Task
 from zou.app.models.asset_instance import AssetInstance
 
 from zou.app.services import (
@@ -329,51 +329,18 @@ def prepare_assets_and_tasks(
         .all()
     )
 
-    task_query = _apply_asset_and_tasks_criterions(
-        Task.query.join(Entity, Task.entity_id == Entity.id),
-        criterions,
-        assigned_to,
-        only_user_projects,
-    ).with_entities(
-        # uuid::text in SQL: casting 4-5 uuids per task row in Python
-        # (uuid.__str__ + the UUID result processor) shows up in profiles
-        # at 75k tasks.
-        cast(Task.id, Text).label("id"),
-        cast(Task.entity_id, Text).label("entity_id"),
-        cast(Task.task_type_id, Text).label("task_type_id"),
-        cast(Task.task_status_id, Text).label("task_status_id"),
-        Task.priority,
-        Task.estimation,
-        Task.duration,
-        Task.retake_count,
-        Task.real_start_date,
-        Task.end_date,
-        Task.start_date,
-        Task.due_date,
-        Task.done_date,
-        Task.last_comment_date,
-        cast(Task.last_preview_file_id, Text).label("last_preview_file_id"),
-        Task.difficulty,
-        Task.data,
-    )
-    if assigned_to:
-        task_query = task_query.filter(user_service.build_assignee_filter())
-    task_rows = task_query.all()
+    def apply_task_filters(query):
+        return _apply_asset_and_tasks_criterions(
+            query, criterions, assigned_to, only_user_projects
+        )
 
-    link_query = _apply_asset_and_tasks_criterions(
-        db.session.query(TaskPersonLink)
-        .join(Task, TaskPersonLink.task_id == Task.id)
-        .join(Entity, Task.entity_id == Entity.id),
-        criterions,
-        assigned_to,
-        only_user_projects,
-    ).with_entities(
-        cast(TaskPersonLink.task_id, Text),
-        cast(TaskPersonLink.person_id, Text),
+    tasks_by_entity, build_task = entities_service.fetch_entity_task_map(
+        apply_task_filters,
+        subscription_map,
+        ASSETS_AND_TASKS_TASK_FIELDS,
+        assigned_to=assigned_to,
+        compact=compact,
     )
-    if assigned_to:
-        link_query = link_query.filter(user_service.build_assignee_filter())
-    link_rows = link_query.all()
 
     cast_in_episode_ids = {}
     if "project_id" in criterions or with_episode_ids:
@@ -418,69 +385,6 @@ def prepare_assets_and_tasks(
                 set(row.project_id for row in asset_rows),
             )
         )
-
-    assignees_by_task = {}
-    for task_id, person_id in link_rows:
-        if person_id:
-            assignees_by_task.setdefault(task_id, []).append(person_id)
-
-    tasks_by_entity = {}
-    for row in task_rows:
-        tasks_by_entity.setdefault(row.entity_id, []).append(row)
-
-    if compact:
-
-        def build_task(row):
-            return [
-                row.id,
-                fields.serialize_datetime(row.due_date),
-                fields.serialize_datetime(row.done_date),
-                row.duration,
-                row.entity_id,
-                row.estimation,
-                fields.serialize_datetime(row.end_date),
-                subscription_map.get(row.id, False),
-                fields.serialize_datetime(row.last_comment_date),
-                row.last_preview_file_id or "",
-                row.priority or 0,
-                fields.serialize_datetime(row.real_start_date),
-                row.retake_count,
-                fields.serialize_datetime(row.start_date),
-                row.difficulty,
-                row.task_status_id,
-                row.task_type_id,
-                assignees_by_task.get(row.id, []),
-                fields.serialize_value(row.data),
-            ]
-
-    else:
-
-        def build_task(row):
-            return {
-                "id": row.id,
-                "due_date": fields.serialize_datetime(row.due_date),
-                "done_date": fields.serialize_datetime(row.done_date),
-                "duration": row.duration,
-                "entity_id": row.entity_id,
-                "estimation": row.estimation,
-                "end_date": fields.serialize_datetime(row.end_date),
-                "is_subscribed": subscription_map.get(row.id, False),
-                "last_comment_date": fields.serialize_datetime(
-                    row.last_comment_date
-                ),
-                "last_preview_file_id": row.last_preview_file_id or "",
-                "priority": row.priority or 0,
-                "real_start_date": fields.serialize_datetime(
-                    row.real_start_date
-                ),
-                "retake_count": row.retake_count,
-                "start_date": fields.serialize_datetime(row.start_date),
-                "difficulty": row.difficulty,
-                "task_status_id": row.task_status_id,
-                "task_type_id": row.task_type_id,
-                "assignees": assignees_by_task.get(row.id, []),
-                "data": fields.serialize_value(row.data),
-            }
 
     def iterate():
         for row in asset_rows:

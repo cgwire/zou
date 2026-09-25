@@ -519,7 +519,11 @@ ENTITIES_AND_TASKS_TASK_FIELDS = [
 
 
 def fetch_entity_task_map(
-    apply_filters, subscription_map, task_fields, assigned_to=False
+    apply_filters,
+    subscription_map,
+    task_fields,
+    assigned_to=False,
+    compact=False,
 ):
     """
     Shared core of the get_*_and_tasks views: fetch the tasks and the
@@ -529,9 +533,10 @@ def fetch_entity_task_map(
 
     Returns (tasks_by_entity, build_task): task rows grouped by entity id
     (uuid as text) and a builder producing task dicts restricted to
-    task_fields, so every view keeps its exact response shape. With
-    assigned_to=True only the tasks assigned to the current user are
-    fetched.
+    task_fields, so every view keeps its exact response shape; with
+    compact=True the builder produces a list of values in the order of
+    task_fields instead. With assigned_to=True only the tasks assigned to
+    the current user are fetched.
     """
     task_query = apply_filters(
         Task.query.join(Entity, Task.entity_id == Entity.id)
@@ -582,13 +587,34 @@ def fetch_entity_task_map(
     for row in task_rows:
         tasks_by_entity.setdefault(row.entity_id, []).append(row)
 
-    builders = [(name, _TASK_FIELD_BUILDERS[name]) for name in task_fields]
+    builders = [
+        (
+            name,
+            _TASK_FIELD_BUILDERS.get(name)
+            or {
+                "is_subscribed": lambda row: subscription_map.get(
+                    row.id, False
+                ),
+                "assignees": lambda row: assignees_by_task.get(row.id, []),
+            }[name],
+        )
+        for name in task_fields
+    ]
 
-    def build_task(row):
-        task = {name: builder(row) for name, builder in builders}
-        task["is_subscribed"] = subscription_map.get(row.id, False)
-        task["assignees"] = assignees_by_task.get(row.id, [])
-        return task
+    if compact:
+
+        def build_task(row):
+            return [builder(row) for _, builder in builders]
+
+    else:
+
+        def build_task(row):
+            task = {name: builder(row) for name, builder in builders}
+            task.setdefault(
+                "is_subscribed", subscription_map.get(row.id, False)
+            )
+            task.setdefault("assignees", assignees_by_task.get(row.id, []))
+            return task
 
     return tasks_by_entity, build_task
 
