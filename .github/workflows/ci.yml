@@ -26,13 +26,16 @@ env:
   PGPASSWORD: mysecretpassword
 
 jobs:
+  # A push to main or a pull request tests every Python on the reference
+  # Postgres and every other Postgres on the reference Python. A tag tests
+  # the reference pair alone, and that one leg gates the publish.
   setup:
-    name: Build test matrices 🔧
+    name: Build the test matrix 🔧
     runs-on: ubuntu-latest
     outputs:
-      full-matrix: ${{ steps.matrix.outputs.full }}
+      matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
-      - name: Generate matrices
+      - name: Generate the matrix
         id: matrix
         run: |
           python3 -c "
@@ -43,28 +46,28 @@ jobs:
           py_all = json.loads(os.environ['PYTHON_VERSIONS'])
           pg_all = json.loads(os.environ['PG_VERSIONS'])
 
-          full = []
-          for py in py_all:
-              full.append({'python-version': py, 'pg-version': pg_ref})
-          for pg in pg_all:
-              if pg != pg_ref:
-                  full.append({'python-version': py_ref, 'pg-version': pg})
+          entries = []
+          if os.environ['GITHUB_REF'].startswith('refs/tags/'):
+              entries.append({'python-version': py_ref, 'pg-version': pg_ref})
+          else:
+              for py in py_all:
+                  entries.append({'python-version': py, 'pg-version': pg_ref})
+              for pg in pg_all:
+                  if pg != pg_ref:
+                      entries.append({'python-version': py_ref, 'pg-version': pg})
 
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-              f.write(f'full={json.dumps({\"include\": full})}\n')
+              f.write(f'matrix={json.dumps({\"include\": entries})}\n')
           "
-
-  # --- PR and main: full matrix ---
 
   test:
     name: >-
       Test Python ${{ matrix.python-version }} / PG ${{ matrix.pg-version }} 🐍
     needs: setup
-    if: "!startsWith(github.ref, 'refs/tags')"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.setup.outputs.full-matrix) }}
+      matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
     services:
       postgres:
         image: "postgres:${{ matrix.pg-version }}"
@@ -241,128 +244,9 @@ jobs:
         with:
           repository-url: https://test.pypi.org/legacy/
 
-  # --- Tag pipeline: gate test → publish ---
-
-  gate-test:
-    name: Gate test Python 3.12 / PG 18 🐍
-    needs: setup
-    if: startsWith(github.ref, 'refs/tags')
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: "postgres:18"
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 2s
-          --health-timeout 5s
-          --health-retries 15
-        ports:
-          - 5432:5432
-        env:
-          POSTGRES_PASSWORD: ${{ env.PGPASSWORD }}
-      meilisearch:
-        image: getmeili/meilisearch:v1.1
-        ports:
-          - 7700:7700
-        env:
-          MEILI_MASTER_KEY: ${{ env.MEILI_MASTER_KEY }}
-      redis:
-        image: redis:7-alpine
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 2s
-          --health-timeout 5s
-          --health-retries 10
-        ports:
-          - 6379:6379
-    steps:
-      - uses: actions/checkout@v6
-      - name: Cache APT packages
-        uses: actions/cache@v5
-        id: apt-cache
-        with:
-          path: ~/apt-cache
-          key: apt-ffmpeg-${{ runner.os }}
-      - name: Install ffmpeg
-        run: |
-          if [ -d ~/apt-cache ] && ls ~/apt-cache/*.deb 1>/dev/null 2>&1; then
-            sudo dpkg -i ~/apt-cache/*.deb 2>/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -f --no-install-recommends)
-          else
-            sudo apt-get update -qq
-            sudo apt-get install -y --no-install-recommends ffmpeg
-            sudo apt-get autoclean -y
-            mkdir -p ~/apt-cache
-            cp /var/cache/apt/archives/ffmpeg*.deb ~/apt-cache/ 2>/dev/null || true
-            cp /var/cache/apt/archives/libav*.deb ~/apt-cache/ 2>/dev/null || true
-            cp /var/cache/apt/archives/libsw*.deb ~/apt-cache/ 2>/dev/null || true
-            cp /var/cache/apt/archives/libpostproc*.deb ~/apt-cache/ 2>/dev/null || true
-          fi
-      - name: Set up Python 🐍
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ env.PYTHON_REF }}
-          cache: pip
-      - name: Upgrade pip 📦
-        run: >-
-          pip install --upgrade pip setuptools
-      - name: Install packages 📦
-        run: >-
-          pip install -r requirements.txt
-      # The databases are disposable: fsync, synchronous commits and full
-      # page writes only make every commit, the CREATE DATABASE of each
-      # worker and the TRUNCATE between test classes wait for the disk.
-      - name: Relax the durability of the test databases 🗄
-        run: >-
-          psql -U postgres -h 127.0.0.1
-          -c 'ALTER SYSTEM SET fsync = off'
-          -c 'ALTER SYSTEM SET synchronous_commit = off'
-          -c 'ALTER SYSTEM SET full_page_writes = off'
-          -c 'SELECT pg_reload_conf()'
-      # tests/conftest.py creates the databases on first use: one per
-      # pytest-xdist worker, and the plain one for the serial pass. The
-      # integration tests share the Meilisearch indexes, so they run alone
-      # once the parallel pass is over, and they alone get INDEXER_KEY:
-      # with it, every asset, shot or person a test creates is pushed to
-      # the index and waited for.
-      - name: Run tests 🧪
-        shell: bash
-        run: >-
-          py.test -n logical --dist loadscope -m "not integration" --durations=25
-          | tee "$RUNNER_TEMP/parallel.log"
-        env:
-          DEBUG: 1
-          MAIL_DEBUG_BODY: 1
-          MAIL_ENABLED: False
-      # A failed parallel pass keeps a verdict of its own, and the
-      # integration tests still report theirs.
-      - name: Run the integration tests 🧪
-        if: ${{ !cancelled() }}
-        shell: bash
-        run: >-
-          py.test -m integration --durations=10 -rs
-          | tee "$RUNNER_TEMP/integration.log"
-        env:
-          INDEXER_KEY: ${{ env.MEILI_MASTER_KEY }}
-          DEBUG: 1
-          MAIL_DEBUG_BODY: 1
-          MAIL_ENABLED: False
-      # The durations report only lives in the step log: copy it to the run
-      # summary, where the outliers stay visible run after run. The report
-      # runs to the next separator line of pytest.
-      - name: List the slowest tests 📊
-        if: ${{ !cancelled() }}
-        run: |
-          for log in "$RUNNER_TEMP"/parallel.log "$RUNNER_TEMP"/integration.log; do
-            [ -f "$log" ] || continue
-            echo "### Slowest tests, $(basename "$log" .log) pass"
-            echo '```'
-            awk '/^=+ slowest [0-9]+ durations =+$/ {on = 1; next} on && /^=/ {exit} on' "$log"
-            echo '```'
-          done >> "$GITHUB_STEP_SUMMARY"
-
   publish:
     name: Publish to PyPI 📦
-    needs: gate-test
+    needs: test
     if: startsWith(github.ref, 'refs/tags') && github.repository == 'cgwire/zou'
     runs-on: ubuntu-latest
     permissions:
