@@ -1004,6 +1004,45 @@ def get_last_notifications(
         )
     )
 
+    query = _filter_notifications(
+        query,
+        notification_id,
+        after,
+        before,
+        task_type_id,
+        task_status_id,
+        notification_type,
+        read,
+        watching,
+    )
+
+    try:
+        # The query is lazy: a date the driver refuses raises here, not
+        # while the filters are being stacked above.
+        notifications = query.limit(100).all()
+    except DataError:
+        raise WrongParameterException("Wrong date format for after or before.")
+
+    for row in notifications:
+        result.append(_serialize_notification(row, is_current_user_artist))
+
+    return result
+
+
+def _filter_notifications(
+    query,
+    notification_id,
+    after,
+    before,
+    task_type_id,
+    task_status_id,
+    notification_type,
+    read,
+    watching,
+):
+    """
+    Narrow the notification listing to the criteria the caller gave.
+    """
     if notification_id is not None:
         query = query.filter(Notification.id == notification_id)
 
@@ -1036,15 +1075,16 @@ def get_last_notifications(
             query = query.filter(Subscription.id != None)
         else:
             query = query.filter(Subscription.id == None)
+    return query
 
-    try:
-        # The query is lazy: a date the driver refuses raises here, not
-        # while the filters are being stacked above.
-        notifications = query.limit(100).all()
-    except DataError:
-        raise WrongParameterException("Wrong date format for after or before.")
 
-    for (
+def _serialize_notification(row, is_current_user_artist):
+    """
+    Build the notification dict of one row of the listing query, with the
+    entity or playlist it points at and the text of the comment or reply
+    that raised it. A client comment is blanked for an artist.
+    """
+    (
         notification,
         project_id,
         project_name,
@@ -1056,98 +1096,95 @@ def get_last_notifications(
         task_entity_id,
         subscription_id,
         role,
-    ) in notifications:
-        full_entity_name, episode_id, entity_preview_file_id = "", None, None
-        playlist_id = notification.playlist_id
-        playlist_name = ""
-        playlist_for_entity = ""
-        playlist_is_for_all = False
-        if notification.playlist_id is None:
-            full_entity_name, episode_id, entity_preview_file_id = (
-                names_service.get_full_entity_name(task_entity_id)
+    ) = row
+
+    full_entity_name, episode_id, entity_preview_file_id = "", None, None
+    playlist_id = notification.playlist_id
+    playlist_name = ""
+    playlist_for_entity = ""
+    playlist_is_for_all = False
+    if notification.playlist_id is None:
+        full_entity_name, episode_id, entity_preview_file_id = (
+            names_service.get_full_entity_name(task_entity_id)
+        )
+    else:
+        playlist = playlists_service.get_playlist(notification.playlist_id)
+        episode_id = playlist.get("episode_id", None)
+        project = projects_service.get_project(playlist["project_id"])
+        project_id = project["id"]
+        project_name = project["name"]
+        playlist_name = playlist["name"]
+        playlist_for_entity = playlist["for_entity"]
+        playlist_is_for_all = playlist["is_for_all"]
+
+    preview_file_id = None
+    mentions = []
+    department_mentions = []
+    reply_mentions = []
+    reply_department_mentions = []
+    if comment_id is not None:
+        comment = Comment.get(comment_id)
+        if len(comment.previews) > 0:
+            preview_file_id = comment.previews[0].id
+        mentions = comment.mentions or []
+        department_mentions = comment.department_mentions or []
+
+    reply_text = ""
+    if notification.type in ["reply", "reply-mention"]:
+        reply = next(
+            (
+                reply
+                for reply in comment_replies
+                if reply["id"] == str(notification.reply_id)
+            ),
+            None,
+        )
+        if reply is not None:
+            reply_text = reply["text"]
+            reply_mentions = reply.get("mentions", []) or []
+            reply_department_mentions = (
+                reply.get("department_mentions", []) or []
             )
         else:
-            playlist = playlists_service.get_playlist(notification.playlist_id)
-            episode_id = playlist.get("episode_id", None)
-            project = projects_service.get_project(playlist["project_id"])
-            project_id = project["id"]
-            project_name = project["name"]
-            playlist_name = playlist["name"]
-            playlist_for_entity = playlist["for_entity"]
-            playlist_is_for_all = playlist["is_for_all"]
+            reply_mentions = []
+            reply_department_mentions = []
 
-        preview_file_id = None
-        mentions = []
-        department_mentions = []
-        reply_mentions = []
-        reply_department_mentions = []
-        if comment_id is not None:
-            comment = Comment.get(comment_id)
-            if len(comment.previews) > 0:
-                preview_file_id = comment.previews[0].id
-            mentions = comment.mentions or []
-            department_mentions = comment.department_mentions or []
-
+    if role == "client" and is_current_user_artist:
+        comment_text = ""
         reply_text = ""
-        if notification.type in ["reply", "reply-mention"]:
-            reply = next(
-                (
-                    reply
-                    for reply in comment_replies
-                    if reply["id"] == str(notification.reply_id)
-                ),
-                None,
-            )
-            if reply is not None:
-                reply_text = reply["text"]
-                reply_mentions = reply.get("mentions", []) or []
-                reply_department_mentions = (
-                    reply.get("department_mentions", []) or []
-                )
-            else:
-                reply_mentions = []
-                reply_department_mentions = []
 
-        if role == "client" and is_current_user_artist:
-            comment_text = ""
-            reply_text = ""
-
-        result.append(
-            fields.serialize_dict(
-                {
-                    "id": notification.id,
-                    "type": "Notification",
-                    "notification_type": notification.type,
-                    "author_id": notification.author_id,
-                    "comment_id": notification.comment_id,
-                    "task_id": notification.task_id,
-                    "task_type_id": task_type_id,
-                    "task_status_id": task_status_id,
-                    "mentions": mentions,
-                    "department_mentions": department_mentions,
-                    "reply_mentions": reply_mentions,
-                    "reply_department_mentions": reply_department_mentions,
-                    "preview_file_id": preview_file_id,
-                    "project_id": project_id,
-                    "project_name": project_name,
-                    "comment_text": comment_text,
-                    "reply_text": reply_text,
-                    "created_at": notification.created_at,
-                    "read": notification.read,
-                    "change": notification.change,
-                    "full_entity_name": full_entity_name,
-                    "episode_id": episode_id,
-                    "entity_preview_file_id": entity_preview_file_id,
-                    "subscription_id": subscription_id,
-                    "playlist_id": playlist_id,
-                    "playlist_name": playlist_name,
-                    "playlist_for_entity": playlist_for_entity,
-                    "playlist_is_for_all": playlist_is_for_all,
-                }
-            )
-        )
-
-    return result
+    return fields.serialize_dict(
+        {
+            "id": notification.id,
+            "type": "Notification",
+            "notification_type": notification.type,
+            "author_id": notification.author_id,
+            "comment_id": notification.comment_id,
+            "task_id": notification.task_id,
+            "task_type_id": task_type_id,
+            "task_status_id": task_status_id,
+            "mentions": mentions,
+            "department_mentions": department_mentions,
+            "reply_mentions": reply_mentions,
+            "reply_department_mentions": reply_department_mentions,
+            "preview_file_id": preview_file_id,
+            "project_id": project_id,
+            "project_name": project_name,
+            "comment_text": comment_text,
+            "reply_text": reply_text,
+            "created_at": notification.created_at,
+            "read": notification.read,
+            "change": notification.change,
+            "full_entity_name": full_entity_name,
+            "episode_id": episode_id,
+            "entity_preview_file_id": entity_preview_file_id,
+            "subscription_id": subscription_id,
+            "playlist_id": playlist_id,
+            "playlist_name": playlist_name,
+            "playlist_for_entity": playlist_for_entity,
+            "playlist_is_for_all": playlist_is_for_all,
+        }
+    )
 
 
 def mark_notifications_as_read():

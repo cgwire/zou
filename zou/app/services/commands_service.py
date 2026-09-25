@@ -88,246 +88,123 @@ def _init_asset_types_for_domain(domain):
             assets_service.get_or_create_asset_type(name)
 
 
+# Departments (name, color) and task types (department, name, color,
+# priority, for_entity) that init-data creates, per studio domain. The
+# "default" entry is the 3d pipeline.
+DOMAIN_TASK_TYPES = {
+    "2d": {
+        "departments": [
+            ("Concept", "#8D6E63"),
+            ("Layout", "#7CB342"),
+            ("Animation", "#009688"),
+            ("Compositing", "#F06292"),
+        ],
+        "task_types": [
+            ("Concept", "Concept", "#8D6E63", 1, "Asset"),
+            ("Concept", "Storyboard", "#43A047", 1, "Shot"),
+            ("Layout", "Layout", "#7CB342", 2, "Shot"),
+            ("Animation", "Animation", "#009688", 3, "Shot"),
+            ("Animation", "Clean-up", "#4DB6AC", 4, "Shot"),
+            ("Compositing", "Color", "#F9A825", 5, "Shot"),
+            ("Compositing", "Compositing", "#ff5252", 6, "Shot"),
+            ("Compositing", "Edit", "#9b298c", 7, "Edit"),
+            ("Concept", "Concept", "#8D6E63", 1, "Concept"),
+        ],
+    },
+    "vfx": {
+        "departments": [
+            ("Modeling", "#78909C"),
+            ("Animation", "#009688"),
+            ("FX", "#26C6DA"),
+            ("Compositing", "#F06292"),
+            ("Concept", "#8D6E63"),
+            ("Layout", "#7CB342"),
+            ("Matchmove", "#5C6BC0"),
+            ("DMP", "#8D6E63"),
+        ],
+        "task_types": [
+            ("Concept", "Concept", "#8D6E63", 1, "Asset"),
+            ("Modeling", "Modeling", "#78909C", 2, "Asset"),
+            ("Modeling", "Shading", "#64B5F6", 3, "Asset"),
+            ("Animation", "Rigging", "#9CCC65", 4, "Asset"),
+            ("Matchmove", "Matchmove", "#5C6BC0", 1, "Shot"),
+            ("Matchmove", "Rotomation", "#7986CB", 2, "Shot"),
+            ("Concept", "Storyboard", "#43A047", 1, "Shot"),
+            ("Layout", "Layout", "#7CB342", 2, "Shot"),
+            ("Animation", "Animation", "#009688", 3, "Shot"),
+            ("Compositing", "Lighting", "#F9A825", 4, "Shot"),
+            ("FX", "FX", "#26C6DA", 5, "Shot"),
+            ("Compositing", "Rendering", "#F06292", 6, "Shot"),
+            ("Compositing", "Compositing", "#ff5252", 7, "Shot"),
+            ("DMP", "DMP", "#A1887F", 8, "Shot"),
+            ("Compositing", "Edit", "#9b298c", 9, "Edit"),
+            ("Concept", "Concept", "#8D6E63", 1, "Concept"),
+        ],
+    },
+    "games": {
+        "departments": [
+            ("Game Design", "#7B1FA2"),
+            ("Level Design", "#00897B"),
+            ("Character Art", "#78909C"),
+            ("Environment Art", "#43A047"),
+            ("Animation", "#009688"),
+            ("VFX", "#26C6DA"),
+            ("QA", "#E53935"),
+        ],
+        "task_types": [
+            ("Game Design", "Game Design", "#7B1FA2", 1, "Asset"),
+            ("Level Design", "Level Design", "#00897B", 2, "Asset"),
+            ("Character Art", "Character Art", "#78909C", 3, "Asset"),
+            ("Environment Art", "Environment Art", "#43A047", 4, "Asset"),
+            ("Animation", "Animation", "#009688", 5, "Asset"),
+            ("VFX", "VFX", "#26C6DA", 6, "Asset"),
+            ("Character Art", "Concept", "#8D6E63", 1, "Concept"),
+            ("QA", "QA", "#E53935", 1, "Shot"),
+        ],
+    },
+    "default": {
+        "departments": [
+            ("Modeling", "#78909C"),
+            ("Animation", "#009688"),
+            ("FX", "#26C6DA"),
+            ("Compositing", "#F06292"),
+            ("Concept", "#8D6E63"),
+            ("Layout", "#7CB342"),
+        ],
+        "task_types": [
+            ("Concept", "Concept", "#8D6E63", 1, "Asset"),
+            ("Modeling", "Modeling", "#78909C", 2, "Asset"),
+            ("Modeling", "Shading", "#64B5F6", 3, "Asset"),
+            ("Animation", "Rigging", "#9CCC65", 4, "Asset"),
+            ("Concept", "Storyboard", "#43A047", 1, "Shot"),
+            ("Layout", "Layout", "#7CB342", 2, "Shot"),
+            ("Animation", "Animation", "#009688", 3, "Shot"),
+            ("Compositing", "Lighting", "#F9A825", 4, "Shot"),
+            ("FX", "FX", "#26C6DA", 5, "Shot"),
+            ("Compositing", "Rendering", "#F06292", 6, "Shot"),
+            ("Compositing", "Compositing", "#ff5252", 7, "Shot"),
+            ("Compositing", "Edit", "#9b298c", 8, "Edit"),
+            ("Concept", "Concept", "#8D6E63", 1, "Concept"),
+        ],
+    },
+}
+
+
 def _init_task_types_for_domain(domain):
     """
     Initialize departments and task types according to domain.
     """
-    if domain == "2d":
-        concept = tasks_service.get_or_create_department("Concept", "#8D6E63")
-        layout = tasks_service.get_or_create_department("Layout", "#7CB342")
-        animation = tasks_service.get_or_create_department(
-            "Animation", "#009688"
-        )
-        compositing = tasks_service.get_or_create_department(
-            "Compositing", "#F06292"
-        )
-
-        tasks_service.get_or_create_task_type(concept, "Concept", "#8D6E63", 1)
+    setup = DOMAIN_TASK_TYPES.get(domain, DOMAIN_TASK_TYPES["default"])
+    departments = {}
+    for name, color in setup["departments"]:
+        departments[name] = tasks_service.get_or_create_department(name, color)
+    for department, name, color, priority, for_entity in setup["task_types"]:
         tasks_service.get_or_create_task_type(
-            concept,
-            "Storyboard",
-            "#43A047",
-            priority=1,
-            for_entity="Shot",
-        )
-        tasks_service.get_or_create_task_type(
-            layout, "Layout", "#7CB342", priority=2, for_entity="Shot"
-        )
-        tasks_service.get_or_create_task_type(
-            animation, "Animation", "#009688", priority=3, for_entity="Shot"
-        )
-        tasks_service.get_or_create_task_type(
-            animation, "Clean-up", "#4DB6AC", priority=4, for_entity="Shot"
-        )
-        tasks_service.get_or_create_task_type(
-            compositing, "Color", "#F9A825", priority=5, for_entity="Shot"
-        )
-        tasks_service.get_or_create_task_type(
-            compositing,
-            "Compositing",
-            "#ff5252",
-            priority=6,
-            for_entity="Shot",
-        )
-        tasks_service.get_or_create_task_type(
-            compositing, "Edit", "#9b298c", priority=7, for_entity="Edit"
-        )
-        tasks_service.get_or_create_task_type(
-            concept, "Concept", "#8D6E63", 1, for_entity="Concept"
-        )
-
-    elif domain == "vfx":
-        modeling = tasks_service.get_or_create_department(
-            "Modeling", "#78909C"
-        )
-        animation = tasks_service.get_or_create_department(
-            "Animation", "#009688"
-        )
-        fx = tasks_service.get_or_create_department("FX", "#26C6DA")
-        compositing = tasks_service.get_or_create_department(
-            "Compositing", "#F06292"
-        )
-        concept = tasks_service.get_or_create_department("Concept", "#8D6E63")
-        layout = tasks_service.get_or_create_department("Layout", "#7CB342")
-        matchmove = tasks_service.get_or_create_department(
-            "Matchmove", "#5C6BC0"
-        )
-        dmp = tasks_service.get_or_create_department("DMP", "#8D6E63")
-
-        tasks_service.get_or_create_task_type(concept, "Concept", "#8D6E63", 1)
-        tasks_service.get_or_create_task_type(
-            modeling, "Modeling", "#78909C", 2
-        )
-        tasks_service.get_or_create_task_type(
-            modeling, "Shading", "#64B5F6", 3
-        )
-        tasks_service.get_or_create_task_type(
-            animation, "Rigging", "#9CCC65", 4
-        )
-        tasks_service.get_or_create_task_type(
-            matchmove, "Matchmove", "#5C6BC0", 1, for_entity="Shot"
-        )
-        tasks_service.get_or_create_task_type(
-            matchmove, "Rotomation", "#7986CB", 2, for_entity="Shot"
-        )
-        tasks_service.get_or_create_task_type(
-            concept, "Storyboard", "#43A047", priority=1, for_entity="Shot"
-        )
-        tasks_service.get_or_create_task_type(
-            layout, "Layout", "#7CB342", priority=2, for_entity="Shot"
-        )
-        tasks_service.get_or_create_task_type(
-            animation, "Animation", "#009688", priority=3, for_entity="Shot"
-        )
-        tasks_service.get_or_create_task_type(
-            compositing, "Lighting", "#F9A825", priority=4, for_entity="Shot"
-        )
-        tasks_service.get_or_create_task_type(
-            fx, "FX", "#26C6DA", priority=5, for_entity="Shot"
-        )
-        tasks_service.get_or_create_task_type(
-            compositing, "Rendering", "#F06292", priority=6, for_entity="Shot"
-        )
-        tasks_service.get_or_create_task_type(
-            compositing,
-            "Compositing",
-            "#ff5252",
-            priority=7,
-            for_entity="Shot",
-        )
-        tasks_service.get_or_create_task_type(
-            dmp, "DMP", "#A1887F", priority=8, for_entity="Shot"
-        )
-        tasks_service.get_or_create_task_type(
-            compositing, "Edit", "#9b298c", priority=9, for_entity="Edit"
-        )
-        tasks_service.get_or_create_task_type(
-            concept, "Concept", "#8D6E63", 1, for_entity="Concept"
-        )
-
-    elif domain == "games":
-        game_design = tasks_service.get_or_create_department(
-            "Game Design", "#7B1FA2"
-        )
-        level_design = tasks_service.get_or_create_department(
-            "Level Design", "#00897B"
-        )
-        character_art = tasks_service.get_or_create_department(
-            "Character Art", "#78909C"
-        )
-        environment_art = tasks_service.get_or_create_department(
-            "Environment Art", "#43A047"
-        )
-        animation = tasks_service.get_or_create_department(
-            "Animation", "#009688"
-        )
-        vfx = tasks_service.get_or_create_department("VFX", "#26C6DA")
-        qa = tasks_service.get_or_create_department("QA", "#E53935")
-
-        tasks_service.get_or_create_task_type(
-            game_design, "Game Design", "#7B1FA2", 1
-        )
-        tasks_service.get_or_create_task_type(
-            level_design, "Level Design", "#00897B", 2
-        )
-        tasks_service.get_or_create_task_type(
-            character_art, "Character Art", "#78909C", 3
-        )
-        tasks_service.get_or_create_task_type(
-            environment_art, "Environment Art", "#43A047", 4
-        )
-        tasks_service.get_or_create_task_type(
-            animation, "Animation", "#009688", 5
-        )
-        tasks_service.get_or_create_task_type(vfx, "VFX", "#26C6DA", 6)
-        tasks_service.get_or_create_task_type(
-            character_art, "Concept", "#8D6E63", 1, for_entity="Concept"
-        )
-        tasks_service.get_or_create_task_type(
-            qa, "QA", "#E53935", 1, for_entity="Shot"
-        )
-
-    else:
-        # 3d (default)
-        modeling = tasks_service.get_or_create_department(
-            "Modeling", "#78909C"
-        )
-        animation = tasks_service.get_or_create_department(
-            "Animation", "#009688"
-        )
-        fx = tasks_service.get_or_create_department("FX", "#26C6DA")
-        compositing = tasks_service.get_or_create_department(
-            "Compositing", "#F06292"
-        )
-        concept = tasks_service.get_or_create_department("Concept", "#8D6E63")
-        layout = tasks_service.get_or_create_department("Layout", "#7CB342")
-
-        tasks_service.get_or_create_task_type(concept, "Concept", "#8D6E63", 1)
-        tasks_service.get_or_create_task_type(
-            modeling, "Modeling", "#78909C", 2
-        )
-        tasks_service.get_or_create_task_type(
-            modeling, "Shading", "#64B5F6", 3
-        )
-        tasks_service.get_or_create_task_type(
-            animation, "Rigging", "#9CCC65", 4
-        )
-
-        tasks_service.get_or_create_task_type(
-            concept,
-            "Storyboard",
-            "#43A047",
-            priority=1,
-            for_entity="Shot",
-        )
-        tasks_service.get_or_create_task_type(
-            layout,
-            "Layout",
-            "#7CB342",
-            priority=2,
-            for_entity="Shot",
-        )
-        tasks_service.get_or_create_task_type(
-            animation,
-            "Animation",
-            "#009688",
-            priority=3,
-            for_entity="Shot",
-        )
-        tasks_service.get_or_create_task_type(
-            compositing,
-            "Lighting",
-            "#F9A825",
-            priority=4,
-            for_entity="Shot",
-        )
-        tasks_service.get_or_create_task_type(
-            fx, "FX", "#26C6DA", priority=5, for_entity="Shot"
-        )
-        tasks_service.get_or_create_task_type(
-            compositing,
-            "Rendering",
-            "#F06292",
-            priority=6,
-            for_entity="Shot",
-        )
-        tasks_service.get_or_create_task_type(
-            compositing,
-            "Compositing",
-            "#ff5252",
-            priority=7,
-            for_entity="Shot",
-        )
-        tasks_service.get_or_create_task_type(
-            compositing,
-            "Edit",
-            "#9b298c",
-            priority=8,
-            for_entity="Edit",
-        )
-
-        tasks_service.get_or_create_task_type(
-            concept, "Concept", "#8D6E63", 1, for_entity="Concept"
+            departments[department],
+            name,
+            color,
+            priority=priority,
+            for_entity=for_entity,
         )
 
 
@@ -404,289 +281,314 @@ def init_data(domain="3d"):
         print("Task status initialized.")
 
 
+def _ldap_settings():
+    """
+    The directory connection settings, from the configuration and the
+    environment.
+    """
+    return {
+        "LDAP_HOST": app.config["LDAP_HOST"],
+        "LDAP_PORT": app.config["LDAP_PORT"],
+        "LDAP_PASSWORD": os.getenv("LDAP_PASSWORD", "password"),
+        "LDAP_BASE_DN": app.config["LDAP_BASE_DN"],
+        "LDAP_DOMAIN": app.config["LDAP_DOMAIN"],
+        "LDAP_USER": os.getenv("LDAP_USER", ""),
+        "LDAP_GROUP": app.config["LDAP_GROUP"],
+        "LDAP_SSL": app.config["LDAP_SSL"],
+        "EMAIL_DOMAIN": os.getenv("EMAIL_DOMAIN", "studio.local"),
+        "LDAP_EXCLUDED_ACCOUNTS": os.getenv("LDAP_EXCLUDED_ACCOUNTS", ""),
+        "LDAP_IS_AD": app.config["LDAP_IS_AD"],
+        "LDAP_IS_AD_SIMPLE": app.config["LDAP_IS_AD_SIMPLE"],
+    }
+
+
+def _ldap_clean_value(value):
+    cleaned_value = str(value)
+    if cleaned_value == "[]":
+        cleaned_value = ""
+    return cleaned_value
+
+
+def _ldap_search_users(settings, conn, excluded_accounts):
+    """
+    Read the user entries of the directory (or of the configured group) and
+    return them as dicts the person sync understands.
+    """
+    is_ad = settings["LDAP_IS_AD"] or settings["LDAP_IS_AD_SIMPLE"]
+    attributes = ["givenName", "sn", "mail", "cn"]
+    if is_ad:
+        if settings["LDAP_IS_AD_SIMPLE"]:
+            attributes += ["cn"]
+        else:
+            attributes += ["sAMAccountName"]
+        attributes += [
+            "thumbnailPhoto",
+            "userAccountControl",
+            "objectGUID",
+        ]
+    else:
+        attributes += [
+            "uid",
+            "jpegPhoto",
+            "uniqueIdentifier",
+            "organizationalStatus",
+        ]
+    query = "(objectClass=person)"
+    if is_ad:
+        query = "(&(objectClass=person)(!(objectClass=computer)))"
+    group_members = None
+    if len(settings["LDAP_GROUP"]) > 0:
+        if is_ad:
+            query = (
+                f"(&(objectClass=person)(memberOf={settings['LDAP_GROUP']}))"
+            )
+        else:
+            conn.search(
+                settings["LDAP_BASE_DN"],
+                f"(&(objectClass=groupofUniqueNames)(cn={settings['LDAP_GROUP']}))",
+                attributes=["uniqueMember"],
+            )
+            group_members = conn.entries[0].uniqueMember.values
+    conn.search(settings["LDAP_BASE_DN"], query, attributes=attributes)
+    ldap_users = []
+    for entry in conn.entries:
+        if settings["LDAP_IS_AD_SIMPLE"]:
+            desktop_login = entry.cn
+        elif settings["LDAP_IS_AD"]:
+            desktop_login = entry.sAMAccountName
+        else:
+            desktop_login = entry.uid
+        desktop_login = _ldap_clean_value(desktop_login)
+
+        if desktop_login not in excluded_accounts and (
+            group_members is None or entry.entry_dn in group_members
+        ):
+            if is_ad:
+                ldap_uid = _ldap_clean_value(entry.objectGUID)
+            elif entry.uniqueIdentifier:
+                ldap_uid = _ldap_clean_value(entry.uniqueIdentifier)
+            else:
+                ldap_uid = None
+            thumbnails = (
+                entry.thumbnailPhoto if is_ad else entry.jpegPhoto
+            ).raw_values
+            if len(thumbnails) > 0 and len(thumbnails[0]) > 0:
+                thumbnail = thumbnails[0]
+            else:
+                thumbnail = None
+
+            emails = entry.mail.values
+            if len(emails) == 0:
+                emails = [f"{desktop_login}@{settings['EMAIL_DOMAIN']}"]
+            else:
+
+                def sort_mails(email):
+                    if email == desktop_login:
+                        return -2
+                    elif settings["EMAIL_DOMAIN"] in email:
+                        return -1
+                    else:
+                        return 0
+
+                emails = sorted(emails, key=sort_mails)
+
+            if is_ad:
+                active = bool(entry.userAccountControl.value & 2) is False
+            elif entry.organizationalStatus:
+                active = entry.organizationalStatus.value.lower() == "active"
+            else:
+                active = False
+
+            ldap_users.append(
+                {
+                    "first_name": _ldap_clean_value(
+                        entry.givenName or entry.cn
+                    ),
+                    "last_name": _ldap_clean_value(entry.sn),
+                    "email": emails[0].lower(),
+                    "emails": emails,
+                    "desktop_login": desktop_login,
+                    "thumbnail": thumbnail,
+                    "active": active,
+                    "ldap_uid": ldap_uid,
+                }
+            )
+    return ldap_users
+
+
+def _ldap_fetch_users(settings):
+    """
+    Bind to the directory with the configured account and list its users.
+    """
+    excluded_accounts = settings["LDAP_EXCLUDED_ACCOUNTS"].split(",")
+    ldap_server = f"{settings['LDAP_HOST']}:{settings['LDAP_PORT']}"
+    SSL = settings["LDAP_SSL"]
+    if settings["LDAP_IS_AD_SIMPLE"]:
+        user = settings["LDAP_USER"]
+        authentication = SIMPLE
+    elif settings["LDAP_IS_AD"]:
+        user = f"{settings['LDAP_DOMAIN']}\\{settings['LDAP_USER']}"
+        authentication = NTLM
+    elif "=" in settings["LDAP_USER"]:
+        # settings["LDAP_USER"] is already a full bind DN, use it as is. OpenLDAP
+        # admin accounts often live outside the users base DN
+        # (e.g. cn=admin,dc=studio,dc=local).
+        user = settings["LDAP_USER"]
+        authentication = SIMPLE
+    else:
+        user = f"uid={settings['LDAP_USER']},{settings['LDAP_BASE_DN']}"
+        authentication = SIMPLE
+
+    server = Server(ldap_server, get_info=ALL, use_ssl=SSL)
+    conn = Connection(
+        server,
+        user=user,
+        password=settings["LDAP_PASSWORD"],
+        authentication=authentication,
+        raise_exceptions=True,
+        auto_bind=True,
+    )
+
+    return _ldap_search_users(settings, conn, excluded_accounts)
+
+
+def _ldap_update_persons(users):
+    """
+    Align the persons with the directory users: disable the ones that are
+    gone, update the ones found, create the missing active ones.
+    """
+    persons_to_update = []
+    persons_to_create = []
+    for user in sorted(users, key=lambda k: k["active"]):
+        person = None
+        try:
+            person = persons_service.get_person_by_ldap_uid(user["ldap_uid"])
+        except PersonNotFoundException:
+            try:
+                person = persons_service.get_person_by_desktop_login(
+                    user["desktop_login"]
+                )
+            except PersonNotFoundException:
+                for mail in user["emails"]:
+                    try:
+                        person = persons_service.get_person_by_email(mail)
+                        break
+                    except PersonNotFoundException:
+                        pass
+
+        if person is None:
+            persons_to_create.append(user)
+        else:
+            persons_to_update.append((person, user))
+
+    for person in (
+        Person.query.filter_by(is_generated_from_ldap=True, active=True)
+        .filter(not_(Person.id.in_([p[0]["id"] for p in persons_to_update])))
+        .all()
+    ):
+        persons_service.update_person(
+            person.id, {"active": False}, bypass_protected_accounts=True
+        )
+        print(f"User {person.desktop_login} disabled (not found in LDAP).")
+
+    for person, user in persons_to_update:
+        try:
+            if (
+                not person["active"]
+                and user["active"]
+                and persons_service.is_user_limit_reached()
+            ):
+                raise IsUserLimitReachedException
+
+            if any(
+                user[key] != person[key]
+                for key in [
+                    key
+                    for key in user.keys()
+                    if key not in ["thumbnail", "emails"]
+                ]
+            ):
+                persons_service.update_person(
+                    person["id"],
+                    {
+                        "email": user["email"],
+                        "first_name": user["first_name"],
+                        "last_name": user["last_name"],
+                        "active": user["active"],
+                        "is_generated_from_ldap": True,
+                        "desktop_login": user["desktop_login"],
+                        "ldap_uid": user["ldap_uid"],
+                    },
+                    bypass_protected_accounts=True,
+                )
+                print(f"User {user['desktop_login']} updated.")
+        except IsUserLimitReachedException:
+            print(
+                f"User {user['desktop_login']} update failed (limit reached, limit {persons_service.get_user_limit()})."
+            )
+        except Exception:
+            print(
+                f"User {user['desktop_login']} update failed (email duplicated?)."
+            )
+
+        if user["thumbnail"] is not None:
+            _ldap_save_thumbnail(person, user["thumbnail"])
+
+    for user in persons_to_create:
+        # Reset per user: an inactive or failed entry must not inherit
+        # the previous person and receive its thumbnail.
+        person = None
+        if user["active"]:
+            try:
+                if persons_service.is_user_limit_reached():
+                    raise IsUserLimitReachedException
+                person = persons_service.create_person(
+                    user["email"],
+                    "default".encode("utf-8"),
+                    user["first_name"],
+                    user["last_name"],
+                    desktop_login=user["desktop_login"],
+                    is_generated_from_ldap=True,
+                    ldap_uid=user["ldap_uid"],
+                )
+                print(f"User {user['desktop_login']} created.")
+            except IsUserLimitReachedException:
+                print(
+                    f"User {user['desktop_login']} creation failed (limit reached, limit {persons_service.get_user_limit()})."
+                )
+            except Exception:
+                print(
+                    f"User {user['desktop_login']} creation failed (email duplicated?)."
+                )
+
+        if person is not None and user["thumbnail"] is not None:
+            _ldap_save_thumbnail(person, user["thumbnail"])
+
+
+def _ldap_save_thumbnail(person, thumbnail):
+    """
+    Store the directory photo as the avatar of given person.
+    """
+    thumbnail_path = "/tmp/ldap_th.jpg"
+    with open(thumbnail_path, "wb") as th_file:
+        th_file.write(thumbnail)
+    thumbnail_png_path = thumbnail_utils.convert_jpg_to_png(thumbnail_path)
+    thumbnail_utils.turn_into_thumbnail(
+        thumbnail_png_path, size=thumbnail_utils.BIG_SQUARE_SIZE
+    )
+    file_store.add_picture("thumbnails", person["id"], thumbnail_png_path)
+    os.remove(thumbnail_png_path)
+    persons_service.update_person(
+        person["id"], {"has_avatar": True}, bypass_protected_accounts=True
+    )
+
+
 def sync_with_ldap_server():
     """
     Connect to a LDAP server, then creates all related accounts.
     """
-    LDAP_HOST = app.config["LDAP_HOST"]
-    LDAP_PORT = app.config["LDAP_PORT"]
-    LDAP_PASSWORD = os.getenv("LDAP_PASSWORD", "password")
-    LDAP_BASE_DN = app.config["LDAP_BASE_DN"]
-    LDAP_DOMAIN = app.config["LDAP_DOMAIN"]
-    LDAP_USER = os.getenv("LDAP_USER", "")
-    LDAP_GROUP = app.config["LDAP_GROUP"]
-    LDAP_SSL = app.config["LDAP_SSL"]
-    EMAIL_DOMAIN = os.getenv("EMAIL_DOMAIN", "studio.local")
-    LDAP_EXCLUDED_ACCOUNTS = os.getenv("LDAP_EXCLUDED_ACCOUNTS", "")
-    LDAP_IS_AD = app.config["LDAP_IS_AD"]
-    LDAP_IS_AD_SIMPLE = app.config["LDAP_IS_AD_SIMPLE"]
-
-    def clean_value(value):
-        cleaned_value = str(value)
-        if cleaned_value == "[]":
-            cleaned_value = ""
-        return cleaned_value
-
-    def search_ldap_users(conn, excluded_accounts):
-        is_ad = LDAP_IS_AD or LDAP_IS_AD_SIMPLE
-        attributes = ["givenName", "sn", "mail", "cn"]
-        if is_ad:
-            if LDAP_IS_AD_SIMPLE:
-                attributes += ["cn"]
-            else:
-                attributes += ["sAMAccountName"]
-            attributes += [
-                "thumbnailPhoto",
-                "userAccountControl",
-                "objectGUID",
-            ]
-        else:
-            attributes += [
-                "uid",
-                "jpegPhoto",
-                "uniqueIdentifier",
-                "organizationalStatus",
-            ]
-        query = "(objectClass=person)"
-        if is_ad:
-            query = "(&(objectClass=person)(!(objectClass=computer)))"
-        group_members = None
-        if len(LDAP_GROUP) > 0:
-            if is_ad:
-                query = f"(&(objectClass=person)(memberOf={LDAP_GROUP}))"
-            else:
-                conn.search(
-                    LDAP_BASE_DN,
-                    f"(&(objectClass=groupofUniqueNames)(cn={LDAP_GROUP}))",
-                    attributes=["uniqueMember"],
-                )
-                group_members = conn.entries[0].uniqueMember.values
-        conn.search(LDAP_BASE_DN, query, attributes=attributes)
-        ldap_users = []
-        for entry in conn.entries:
-            if LDAP_IS_AD_SIMPLE:
-                desktop_login = entry.cn
-            elif LDAP_IS_AD:
-                desktop_login = entry.sAMAccountName
-            else:
-                desktop_login = entry.uid
-            desktop_login = clean_value(desktop_login)
-
-            if desktop_login not in excluded_accounts and (
-                group_members is None or entry.entry_dn in group_members
-            ):
-                if is_ad:
-                    ldap_uid = clean_value(entry.objectGUID)
-                elif entry.uniqueIdentifier:
-                    ldap_uid = clean_value(entry.uniqueIdentifier)
-                else:
-                    ldap_uid = None
-                thumbnails = (
-                    entry.thumbnailPhoto if is_ad else entry.jpegPhoto
-                ).raw_values
-                if len(thumbnails) > 0 and len(thumbnails[0]) > 0:
-                    thumbnail = thumbnails[0]
-                else:
-                    thumbnail = None
-
-                emails = entry.mail.values
-                if len(emails) == 0:
-                    emails = [f"{desktop_login}@{EMAIL_DOMAIN}"]
-                else:
-
-                    def sort_mails(email):
-                        if email == desktop_login:
-                            return -2
-                        elif EMAIL_DOMAIN in email:
-                            return -1
-                        else:
-                            return 0
-
-                    emails = sorted(emails, key=sort_mails)
-
-                if is_ad:
-                    active = bool(entry.userAccountControl.value & 2) is False
-                elif entry.organizationalStatus:
-                    active = (
-                        entry.organizationalStatus.value.lower() == "active"
-                    )
-                else:
-                    active = False
-
-                ldap_users.append(
-                    {
-                        "first_name": clean_value(entry.givenName or entry.cn),
-                        "last_name": clean_value(entry.sn),
-                        "email": emails[0].lower(),
-                        "emails": emails,
-                        "desktop_login": desktop_login,
-                        "thumbnail": thumbnail,
-                        "active": active,
-                        "ldap_uid": ldap_uid,
-                    }
-                )
-        return ldap_users
-
-    def get_ldap_users():
-        excluded_accounts = LDAP_EXCLUDED_ACCOUNTS.split(",")
-        ldap_server = f"{LDAP_HOST}:{LDAP_PORT}"
-        SSL = LDAP_SSL
-        if LDAP_IS_AD_SIMPLE:
-            user = LDAP_USER
-            authentication = SIMPLE
-        elif LDAP_IS_AD:
-            user = f"{LDAP_DOMAIN}\\{LDAP_USER}"
-            authentication = NTLM
-        elif "=" in LDAP_USER:
-            # LDAP_USER is already a full bind DN, use it as is. OpenLDAP
-            # admin accounts often live outside the users base DN
-            # (e.g. cn=admin,dc=studio,dc=local).
-            user = LDAP_USER
-            authentication = SIMPLE
-        else:
-            user = f"uid={LDAP_USER},{LDAP_BASE_DN}"
-            authentication = SIMPLE
-
-        server = Server(ldap_server, get_info=ALL, use_ssl=SSL)
-        conn = Connection(
-            server,
-            user=user,
-            password=LDAP_PASSWORD,
-            authentication=authentication,
-            raise_exceptions=True,
-            auto_bind=True,
-        )
-
-        return search_ldap_users(conn, excluded_accounts)
-
-    def update_person_list_with_ldap_users(users):
-        persons_to_update = []
-        persons_to_create = []
-        for user in sorted(users, key=lambda k: k["active"]):
-            person = None
-            try:
-                person = persons_service.get_person_by_ldap_uid(
-                    user["ldap_uid"]
-                )
-            except PersonNotFoundException:
-                try:
-                    person = persons_service.get_person_by_desktop_login(
-                        user["desktop_login"]
-                    )
-                except PersonNotFoundException:
-                    for mail in user["emails"]:
-                        try:
-                            person = persons_service.get_person_by_email(mail)
-                            break
-                        except PersonNotFoundException:
-                            pass
-
-            if person is None:
-                persons_to_create.append(user)
-            else:
-                persons_to_update.append((person, user))
-
-        for person in (
-            Person.query.filter_by(is_generated_from_ldap=True, active=True)
-            .filter(
-                not_(Person.id.in_([p[0]["id"] for p in persons_to_update]))
-            )
-            .all()
-        ):
-            persons_service.update_person(
-                person.id, {"active": False}, bypass_protected_accounts=True
-            )
-            print(f"User {person.desktop_login} disabled (not found in LDAP).")
-
-        for person, user in persons_to_update:
-            try:
-                if (
-                    not person["active"]
-                    and user["active"]
-                    and persons_service.is_user_limit_reached()
-                ):
-                    raise IsUserLimitReachedException
-
-                if any(
-                    user[key] != person[key]
-                    for key in [
-                        key
-                        for key in user.keys()
-                        if key not in ["thumbnail", "emails"]
-                    ]
-                ):
-                    persons_service.update_person(
-                        person["id"],
-                        {
-                            "email": user["email"],
-                            "first_name": user["first_name"],
-                            "last_name": user["last_name"],
-                            "active": user["active"],
-                            "is_generated_from_ldap": True,
-                            "desktop_login": user["desktop_login"],
-                            "ldap_uid": user["ldap_uid"],
-                        },
-                        bypass_protected_accounts=True,
-                    )
-                    print(f"User {user['desktop_login']} updated.")
-            except IsUserLimitReachedException:
-                print(
-                    f"User {user['desktop_login']} update failed (limit reached, limit {persons_service.get_user_limit()})."
-                )
-            except Exception:
-                print(
-                    f"User {user['desktop_login']} update failed (email duplicated?)."
-                )
-
-            if user["thumbnail"] is not None:
-                save_thumbnail(person, user["thumbnail"])
-
-        for user in persons_to_create:
-            # Reset per user: an inactive or failed entry must not inherit
-            # the previous person and receive its thumbnail.
-            person = None
-            if user["active"]:
-                try:
-                    if persons_service.is_user_limit_reached():
-                        raise IsUserLimitReachedException
-                    person = persons_service.create_person(
-                        user["email"],
-                        "default".encode("utf-8"),
-                        user["first_name"],
-                        user["last_name"],
-                        desktop_login=user["desktop_login"],
-                        is_generated_from_ldap=True,
-                        ldap_uid=user["ldap_uid"],
-                    )
-                    print(f"User {user['desktop_login']} created.")
-                except IsUserLimitReachedException:
-                    print(
-                        f"User {user['desktop_login']} creation failed (limit reached, limit {persons_service.get_user_limit()})."
-                    )
-                except Exception:
-                    print(
-                        f"User {user['desktop_login']} creation failed (email duplicated?)."
-                    )
-
-            if person is not None and user["thumbnail"] is not None:
-                save_thumbnail(person, user["thumbnail"])
-
-    def save_thumbnail(person, thumbnail):
-        thumbnail_path = "/tmp/ldap_th.jpg"
-        with open(thumbnail_path, "wb") as th_file:
-            th_file.write(thumbnail)
-        thumbnail_png_path = thumbnail_utils.convert_jpg_to_png(thumbnail_path)
-        thumbnail_utils.turn_into_thumbnail(
-            thumbnail_png_path, size=thumbnail_utils.BIG_SQUARE_SIZE
-        )
-        file_store.add_picture("thumbnails", person["id"], thumbnail_png_path)
-        os.remove(thumbnail_png_path)
-        persons_service.update_person(
-            person["id"], {"has_avatar": True}, bypass_protected_accounts=True
-        )
-
-    ldap_users = get_ldap_users()
-    update_person_list_with_ldap_users(ldap_users)
+    settings = _ldap_settings()
+    _ldap_update_persons(_ldap_fetch_users(settings))
 
 
 def import_data_from_another_instance(

@@ -1767,60 +1767,14 @@ def download_file_from_another_instance(
     return path, file_path
 
 
-def verify_project_sync(project_name, direction="pull"):
+def _project_sync_specs(pid):
     """
-    Compare row counts for every project-scoped model between the local
-    instance and a remote one (configured via ``init(...)``).
-
-    ``direction="pull"`` (default): the remote is the source of a sync-full;
-    column ``Source``=remote, ``Target``=local. Used to detect batches
-    dropped silently by ``sync_entries`` and tables not yet wired into
-    ``project_events``.
-
-    ``direction="push"``: the remote is the target of a sync-push;
-    column ``Source``=local, ``Target``=remote. Used to detect rows that
-    didn't reach the target after a sync-push.
-
-    Pure read-only.
+    (label, source counter, target counter, synced_by_sync_full) for every
+    project-scoped model. synced=False rows flag tables present in the
+    schema that sync_full doesn't migrate today, surfaced so the operator
+    knows to handle them out-of-band.
     """
-    remote_role = "source" if direction == "pull" else "target"
-
-    try:
-        remote_project = gazu.project.get_project_by_name(project_name)
-    except Exception as exception:
-        # gazu answers None for a production it does not know, so anything
-        # raised here is the connection itself. The clause used to name
-        # gazu.exception.ProjectNotFoundException, which does not exist:
-        # evaluating it turned every failure into an AttributeError raised
-        # while handling the first one.
-        print(f"Could not reach the {remote_role} instance: {exception}")
-        return
-
-    if remote_project is None:
-        print(f"Project '{project_name}' not found on {remote_role}.")
-        return
-
-    pid = remote_project["id"]
-    local_project = Project.get(pid)
-    if local_project is None:
-        if direction == "pull":
-            print(
-                f"Project '{project_name}' ({pid}) is not present locally."
-                f" Run `zou sync-full --only-projects --project "
-                f"'{project_name}'` first."
-            )
-        else:
-            print(
-                f"Project '{project_name}' ({pid}) is not present locally."
-                " Nothing to push-verify against."
-            )
-        return
-
-    # (label, source counter, target counter, synced_by_sync_full)
-    # synced=False rows flag tables present in the schema that sync_full
-    # doesn't migrate today — surface them so the operator knows to handle
-    # them out-of-band.
-    specs = [
+    return [
         (
             "Episode",
             _src_count(f"projects/{pid}/episodes"),
@@ -1962,6 +1916,58 @@ def verify_project_sync(project_name, direction="pull"):
         ),
         ("PlaylistShareLink", None, _tgt_share_link(pid), False),
     ]
+
+
+def verify_project_sync(project_name, direction="pull"):
+    """
+    Compare row counts for every project-scoped model between the local
+    instance and a remote one (configured via ``init(...)``).
+
+    ``direction="pull"`` (default): the remote is the source of a sync-full;
+    column ``Source``=remote, ``Target``=local. Used to detect batches
+    dropped silently by ``sync_entries`` and tables not yet wired into
+    ``project_events``.
+
+    ``direction="push"``: the remote is the target of a sync-push;
+    column ``Source``=local, ``Target``=remote. Used to detect rows that
+    didn't reach the target after a sync-push.
+
+    Pure read-only.
+    """
+    remote_role = "source" if direction == "pull" else "target"
+
+    try:
+        remote_project = gazu.project.get_project_by_name(project_name)
+    except Exception as exception:
+        # gazu answers None for a production it does not know, so anything
+        # raised here is the connection itself. The clause used to name
+        # gazu.exception.ProjectNotFoundException, which does not exist:
+        # evaluating it turned every failure into an AttributeError raised
+        # while handling the first one.
+        print(f"Could not reach the {remote_role} instance: {exception}")
+        return
+
+    if remote_project is None:
+        print(f"Project '{project_name}' not found on {remote_role}.")
+        return
+
+    pid = remote_project["id"]
+    local_project = Project.get(pid)
+    if local_project is None:
+        if direction == "pull":
+            print(
+                f"Project '{project_name}' ({pid}) is not present locally."
+                f" Run `zou sync-full --only-projects --project "
+                f"'{project_name}'` first."
+            )
+        else:
+            print(
+                f"Project '{project_name}' ({pid}) is not present locally."
+                " Nothing to push-verify against."
+            )
+        return
+
+    specs = _project_sync_specs(pid)
 
     print(f"\nVerifying project '{project_name}' ({pid}):\n")
     header = (
