@@ -941,7 +941,8 @@ def _run_concatenation(
         with app.app_context():
             app.logger.error(
                 "Unable to build playlist %r using %s",
-                (playlist["id"], mode.__qualname__),
+                playlist["id"],
+                mode.__qualname__,
                 exc_info=1,
             )
     return success, message

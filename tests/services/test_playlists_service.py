@@ -704,6 +704,28 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
             shutil.rmtree(tmp_dir, ignore_errors=True)
             file_store.remove_movie("lowdef", preview["id"])
 
+    def test_a_failed_concatenation_is_logged(self):
+        # The log call used to hand a tuple to two placeholders: the
+        # logging module reported its own error and the trace was lost.
+        from zou.app import app
+
+        def broken_mode(*args, **kwargs):
+            raise RuntimeError("ffmpeg exploded")
+
+        with self.assertLogs(app.logger, level="ERROR") as logs:
+            success, _ = playlists_service._run_concatenation(
+                {"id": "pl-1"},
+                {"id": "job-1"},
+                [],
+                "/tmp/out.mp4",
+                None,
+                broken_mode,
+            )
+        self.assertFalse(success)
+        self.assertTrue(
+            any("Unable to build playlist" in line for line in logs.output)
+        )
+
     def test_an_entity_is_added_with_the_preview_it_names(self):
         self.generate_fixture_preview_files()
         playlist = Playlist.create(
