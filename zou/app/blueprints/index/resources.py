@@ -68,6 +68,7 @@ class BaseStatusResource(MethodView):
             projects_service.get_or_create_status("Open")
             return True
         except Exception:
+            app.logger.warning("Database probe failed.", exc_info=1)
             return False
 
     def _check_key_value_store(self):
@@ -91,7 +92,8 @@ class BaseStatusResource(MethodView):
                 timeout=5,
             )
             return True
-        except Exception:
+        except Exception as exception:
+            app.logger.warning(f"Event stream probe failed: {exception}")
             return False
 
     def _check_job_queue(self):
@@ -118,7 +120,8 @@ class BaseStatusResource(MethodView):
             return True
         except indexing.IndexerNotInitializedError:
             return False
-        except Exception:
+        except Exception as exception:
+            app.logger.warning(f"Indexer probe failed: {exception}")
             return False
 
 

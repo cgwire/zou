@@ -24,6 +24,8 @@ from zou.app.services import (
     projects_service,
 )
 from zou.app.exceptions import (
+    EntityNotFoundException,
+    PersonNotFoundException,
     PlaylistShareLinkNotFoundException,
     PreviewFileNotFoundException,
     WrongParameterException,
@@ -763,7 +765,8 @@ def get_shared_playlist_context(token):
                     "name": entity.get("name", ""),
                     "preview_file_id": entity.get("preview_file_id"),
                 }
-            except Exception:
+            except EntityNotFoundException:
+                # A playlist may still name an entity that was deleted.
                 pass
 
     return {
@@ -847,7 +850,7 @@ def send_share_invitations(
     for person_id in person_ids or []:
         try:
             person = persons_service.get_person(str(person_id))
-        except Exception:
+        except PersonNotFoundException:
             continue
         person_email = person.get("email")
         if not person_email:

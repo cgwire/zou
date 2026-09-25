@@ -454,7 +454,8 @@ def check_fido(person, authentication_response):
             get_fido_attested_credential_data_from_person(fido_credentials),
             authentication_response,
         )
-    except Exception:
+    except Exception as exception:
+        current_app.logger.info(f"FIDO authentication failed: {exception}")
         return False
     return True
 
@@ -868,4 +869,8 @@ def logout(jti, refresh_jti=None):
     try:
         revoke_tokens(current_app, jti, refresh_jti=refresh_jti)
     except Exception:
-        pass
+        current_app.logger.warning(
+            "The token store is unreachable, the session tokens were not "
+            "revoked.",
+            exc_info=1,
+        )

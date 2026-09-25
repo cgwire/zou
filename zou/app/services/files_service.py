@@ -1,3 +1,4 @@
+import logging
 import itertools
 from operator import itemgetter
 
@@ -38,6 +39,9 @@ from zou.app.utils import cache, fields, fs, events, query as query_utils
 from sqlalchemy import desc, func
 from sqlalchemy.exc import StatementError, IntegrityError
 from sqlalchemy.sql.expression import and_
+
+logger = logging.getLogger(__name__)
+
 
 MOVIE_PREFIXES = ["previews", "lowdef", "source"]
 LOWDEF_MOVIE_PREFIXES = ["lowdef", "previews", "source"]
@@ -872,6 +876,10 @@ def _is_movie_stored(prefix, preview_file_id):
     try:
         return file_store.exists_movie(prefix, preview_file_id)
     except Exception:
+        logger.warning(
+            f"Could not check the store for {prefix}-{preview_file_id}.",
+            exc_info=1,
+        )
         return False
 
 
