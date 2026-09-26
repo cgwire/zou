@@ -18,7 +18,7 @@ responses:
                   type: string
                   format: uuid
                   description: Task unique identifier
-                  example: b35b7fb5-df86-5776-b181-68564193d36
+                  example: b35b7fb5-df86-5776-b181-68564193d360
                 name:
                   type: string
                   description: Task name
@@ -27,24 +27,24 @@ responses:
                   type: string
                   format: uuid
                   description: Task type identifier
-                  example: c46c8gc6-eg97-6887-c292-79675204e47
+                  example: c46c80c6-e097-6887-c292-79675204e470
                 task_status_id:
                   type: string
                   format: uuid
                   description: Task status identifier
-                  example: d57d9hd7-fh08-7998-d403-80786315f58
+                  example: d57d91d7-f108-7998-d403-80786315f580
                 assigner_id:
                   type: string
                   format: uuid
                   description: Person who assigned the task
-                  example: e68e0ie8-gi19-8009-e514-91897426g69
+                  example: e68e02e8-0219-8009-e514-918974260690
                 assignees:
                   type: array
                   items:
                     type: string
                     format: uuid
                   description: List of assigned person identifiers
-                  example: ["f79f1jf9-hj20-9010-f625-a09008537h80"]
+                  example: ["f79f13f9-1320-9010-f625-a09008537180"]
                 created_at:
                   type: string
                   format: date-time

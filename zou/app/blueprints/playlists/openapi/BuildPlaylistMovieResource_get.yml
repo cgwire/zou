@@ -12,7 +12,7 @@ parameters:
       type: string
       format: uuid
     description: Playlist unique identifier
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
   - in: query
     name: full
     required: false
@@ -32,7 +32,7 @@ responses:
               type: string
               format: uuid
               description: Build job unique identifier
-              example: a24a6ea4-ce75-4665-a070-57453082c25
+              example: a24a6ea4-ce75-4665-a070-57453082c250
             status:
               type: string
               description: Build job status

@@ -9,7 +9,7 @@ parameters:
     required: true
     type: string
     format: uuid
-    example: i02i4mi2-km53-2443-i958-35231870k03
+    example: 20224622-4653-2443-2958-352318704030
     description: Unique identifier of the scene
 requestBody:
   required: true
@@ -24,7 +24,7 @@ requestBody:
             type: string
             format: uuid
             description: Asset identifier to create instance from
-            example: c46c8gc6-eg97-6887-c292-79675204e47
+            example: c46c80c6-e097-6887-c292-79675204e470
           description:
             type: string
             description: Instance description
@@ -41,17 +41,17 @@ responses:
               type: string
               format: uuid
               description: Asset instance unique identifier
-              example: j13j5nj3-ln64-3554-j069-46342981l14
+              example: 31335733-5764-3554-3069-463429815140
             asset_id:
               type: string
               format: uuid
               description: Asset identifier
-              example: c46c8gc6-eg97-6887-c292-79675204e47
+              example: c46c80c6-e097-6887-c292-79675204e470
             scene_id:
               type: string
               format: uuid
               description: Scene identifier
-              example: i02i4mi2-km53-2443-i958-35231870k03
+              example: 20224622-4653-2443-2958-352318704030
             number:
               type: string
               description: Instance number

@@ -17,7 +17,7 @@ requestBody:
           object_id:
             type: string
             format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            example: a24a6ea4-ce75-4665-a070-57453082c250
           object_type:
             type: string
             example: Asset
@@ -35,11 +35,11 @@ responses:
               id:
                 type: string
                 format: uuid
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+                example: a24a6ea4-ce75-4665-a070-57453082c250
               object_id:
                 type: string
                 format: uuid
-                example: b24a6ea4-ce75-4665-a070-57453082c25
+                example: b24a6ea4-ce75-4665-a070-57453082c250
               object_type:
                 type: string
                 example: Asset

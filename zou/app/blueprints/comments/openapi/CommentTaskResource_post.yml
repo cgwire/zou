@@ -12,7 +12,7 @@ parameters:
     required: true
     type: string
     format: uuid
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Unique identifier of the task
 requestBody:
   required: true
@@ -27,7 +27,7 @@ requestBody:
             type: string
             format: uuid
             description: Task status identifier
-            example: c46c8gc6-eg97-6887-c292-79675204e47
+            example: c46c80c6-e097-6887-c292-79675204e470
           comment:
             type: string
             description: Comment text content
@@ -36,7 +36,7 @@ requestBody:
             type: string
             format: uuid
             description: Person identifier (optional, defaults to current user)
-            example: d57d9hd7-fh08-7998-d403-80786315f58
+            example: d57d91d7-f108-7998-d403-80786315f580
           created_at:
             type: string
             format: date-time
@@ -64,17 +64,17 @@ responses:
               type: string
               format: uuid
               description: Comment unique identifier
-              example: b35b7fb5-df86-5776-b181-68564193d36
+              example: b35b7fb5-df86-5776-b181-68564193d360
             task_id:
               type: string
               format: uuid
               description: Task identifier
-              example: a24a6ea4-ce75-4665-a070-57453082c25
+              example: a24a6ea4-ce75-4665-a070-57453082c250
             person_id:
               type: string
               format: uuid
               description: Person identifier
-              example: d57d9hd7-fh08-7998-d403-80786315f58
+              example: d57d91d7-f108-7998-d403-80786315f580
             comment:
               type: string
               description: Comment text content
@@ -83,7 +83,7 @@ responses:
               type: string
               format: uuid
               description: Task status identifier
-              example: c46c8gc6-eg97-6887-c292-79675204e47
+              example: c46c80c6-e097-6887-c292-79675204e470
             created_at:
               type: string
               format: date-time

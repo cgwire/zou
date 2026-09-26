@@ -21,11 +21,11 @@ requestBody:
           task_id:
             type: string
             format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            example: a24a6ea4-ce75-4665-a070-57453082c250
           entity_id:
             type: string
             format: uuid
-            example: b24a6ea4-ce75-4665-a070-57453082c25
+            example: b24a6ea4-ce75-4665-a070-57453082c250
           revision:
             type: integer
             default: 1
@@ -41,18 +41,18 @@ responses:
               id:
                 type: string
                 format: uuid
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+                example: a24a6ea4-ce75-4665-a070-57453082c250
               name:
                 type: string
                 example: work_file_v001
               task_id:
                 type: string
                 format: uuid
-                example: b24a6ea4-ce75-4665-a070-57453082c25
+                example: b24a6ea4-ce75-4665-a070-57453082c250
               entity_id:
                 type: string
                 format: uuid
-                example: c24a6ea4-ce75-4665-a070-57453082c25
+                example: c24a6ea4-ce75-4665-a070-57453082c250
               revision:
                 type: integer
                 example: 1

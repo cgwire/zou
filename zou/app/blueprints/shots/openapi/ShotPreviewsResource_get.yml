@@ -10,7 +10,7 @@ parameters:
     required: True
     type: string
     format: uuid
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
     200:
         description: All previews related to given shot
@@ -26,19 +26,19 @@ responses:
                     id:
                       type: string
                       format: uuid
-                      example: b24a6ea4-ce75-4665-a070-57453082c25
+                      example: b24a6ea4-ce75-4665-a070-57453082c250
                     revision:
                       type: integer
                       example: 3
                     file_id:
                       type: string
                       format: uuid
-                      example: c24a6ea4-ce75-4665-a070-57453082c25
+                      example: c24a6ea4-ce75-4665-a070-57453082c250
             example:
-              "a24a6ea4-ce75-4665-a070-57453082c25": [
+              "a24a6ea4-ce75-4665-a070-57453082c250": [
                 {
-                  "id": "b24a6ea4-ce75-4665-a070-57453082c25",
+                  "id": "b24a6ea4-ce75-4665-a070-57453082c250",
                   "revision": 3,
-                  "file_id": "c24a6ea4-ce75-4665-a070-57453082c25"
+                  "file_id": "c24a6ea4-ce75-4665-a070-57453082c250"
                 }
               ]

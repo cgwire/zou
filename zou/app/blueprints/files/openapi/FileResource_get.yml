@@ -13,7 +13,7 @@ parameters:
       type: string
       format: uuid
     description: File unique identifier
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
   200:
     description: File information retrieved successfully
@@ -26,7 +26,7 @@ responses:
               type: string
               format: uuid
               description: File unique identifier
-              example: b35b7fb5-df86-5776-b181-68564193d36
+              example: b35b7fb5-df86-5776-b181-68564193d360
             name:
               type: string
               description: File name
@@ -48,9 +48,9 @@ responses:
               type: string
               format: uuid
               description: Task identifier (for working files)
-              example: c46c8gc6-eg97-6887-c292-79675204e47
+              example: c46c80c6-e097-6887-c292-79675204e470
             entity_id:
               type: string
               format: uuid
               description: Entity identifier (for output files)
-              example: d57d9hd7-fh08-7998-d403-80786315f58
+              example: d57d91d7-f108-7998-d403-80786315f580

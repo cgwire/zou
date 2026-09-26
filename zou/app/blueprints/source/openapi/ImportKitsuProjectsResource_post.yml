@@ -17,7 +17,7 @@ requestBody:
               type: string
               format: uuid
               description: Kitsu ID of the project
-              example: a24a6ea4-ce75-4665-a070-57453082c25
+              example: a24a6ea4-ce75-4665-a070-57453082c250
             name:
               type: string
               description: Project name
@@ -27,7 +27,7 @@ requestBody:
               description: Production type
               example: "tvshow"
       example:
-        - id: a24a6ea4-ce75-4665-a070-57453082c25
+        - id: a24a6ea4-ce75-4665-a070-57453082c250
           name: "My Project"
           production_type: "tvshow"
 responses:
@@ -44,7 +44,7 @@ responses:
                 type: string
                 format: uuid
                 description: Project unique identifier
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+                example: a24a6ea4-ce75-4665-a070-57453082c250
               name:
                 type: string
                 description: Project name

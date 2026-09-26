@@ -12,7 +12,7 @@ parameters:
       type: string
       format: uuid
     description: Shot unique identifier
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
     200:
       description: Task types related to given shot for current user
@@ -27,7 +27,7 @@ responses:
                   type: string
                   format: uuid
                   description: Task type unique identifier
-                  example: b35b7fb5-df86-5776-b181-68564193d36
+                  example: b35b7fb5-df86-5776-b181-68564193d360
                 name:
                   type: string
                   description: Task type name

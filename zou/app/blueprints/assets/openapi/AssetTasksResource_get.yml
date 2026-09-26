@@ -9,20 +9,20 @@ parameters:
     required: true
     type: string
     format: uuid
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Unique identifier of the asset
   - in: query
     name: task_type_id
     type: string
     format: uuid
     description: Filter tasks by task type
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
   - in: query
     name: task_status_id
     type: string
     format: uuid
     description: Filter tasks by task status
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
   200:
     description: List of asset tasks successfully retrieved
@@ -37,7 +37,7 @@ responses:
                 type: string
                 format: uuid
                 description: Task unique identifier
-                example: e68e0ie8-gi19-8009-e514-91897426g69
+                example: e68e02e8-0219-8009-e514-918974260690
               name:
                 type: string
                 description: Task name
@@ -46,22 +46,22 @@ responses:
                 type: string
                 format: uuid
                 description: Task type identifier
-                example: f79f1jf9-hj20-9110-f625-02908537h70
+                example: f79f13f9-1320-9110-f625-029085371700
               task_status_id:
                 type: string
                 format: uuid
                 description: Task status identifier
-                example: g80g2kg0-ik31-0221-g736-13019648i81
+                example: 08002400-2431-0221-0736-130196482810
               entity_id:
                 type: string
                 format: uuid
                 description: Asset identifier
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+                example: a24a6ea4-ce75-4665-a070-57453082c250
               assigned_to:
                 type: string
                 format: uuid
                 description: Assigned user identifier
-                example: h91h3lh1-jl42-1332-h847-24120759j92
+                example: 19113511-3542-1332-1847-241207593920
               created_at:
                 type: string
                 format: date-time

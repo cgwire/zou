@@ -18,21 +18,21 @@ requestBody:
               type: string
               format: uuid
               description: Kitsu ID of the entity link
-              example: a24a6ea4-ce75-4665-a070-57453082c25
+              example: a24a6ea4-ce75-4665-a070-57453082c250
             entity_in_id:
               type: string
               format: uuid
               description: Source entity ID
-              example: b24a6ea4-ce75-4665-a070-57453082c25
+              example: b24a6ea4-ce75-4665-a070-57453082c250
             entity_out_id:
               type: string
               format: uuid
               description: Target entity ID
-              example: c24a6ea4-ce75-4665-a070-57453082c25
+              example: c24a6ea4-ce75-4665-a070-57453082c250
       example:
-        - id: a24a6ea4-ce75-4665-a070-57453082c25
-          entity_in_id: b24a6ea4-ce75-4665-a070-57453082c25
-          entity_out_id: c24a6ea4-ce75-4665-a070-57453082c25
+        - id: a24a6ea4-ce75-4665-a070-57453082c250
+          entity_in_id: b24a6ea4-ce75-4665-a070-57453082c250
+          entity_out_id: c24a6ea4-ce75-4665-a070-57453082c250
 responses:
   200:
     description: Entity links imported successfully
@@ -47,17 +47,17 @@ responses:
                 type: string
                 format: uuid
                 description: Entity link unique identifier
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+                example: a24a6ea4-ce75-4665-a070-57453082c250
               entity_in_id:
                 type: string
                 format: uuid
                 description: Source entity ID
-                example: b24a6ea4-ce75-4665-a070-57453082c25
+                example: b24a6ea4-ce75-4665-a070-57453082c250
               entity_out_id:
                 type: string
                 format: uuid
                 description: Target entity ID
-                example: c24a6ea4-ce75-4665-a070-57453082c25
+                example: c24a6ea4-ce75-4665-a070-57453082c250
               created_at:
                 type: string
                 format: date-time

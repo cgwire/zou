@@ -11,7 +11,7 @@ parameters:
     type: string
     format: uuid
     description: ID of the last preview file from previous page for cursor-based pagination
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
   - in: query
     name: limit
     required: false
@@ -32,7 +32,7 @@ responses:
                 type: string
                 format: uuid
                 description: Preview file unique identifier
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+                example: a24a6ea4-ce75-4665-a070-57453082c250
               status:
                 type: string
                 description: Preview file status

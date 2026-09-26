@@ -9,7 +9,7 @@ parameters:
     required: true
     type: string
     format: uuid
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Unique identifier of the project
 responses:
   200:
@@ -25,7 +25,7 @@ responses:
                 type: string
                 format: uuid
                 description: Shot unique identifier
-                example: e68e0ie8-gi19-8009-e514-91897426g69
+                example: e68e02e8-0219-8009-e514-918974260690
               shot_name:
                 type: string
                 description: Shot name
@@ -34,7 +34,7 @@ responses:
                 type: string
                 format: uuid
                 description: Sequence identifier
-                example: f79f1jf9-hj20-9110-f625-02908537h70
+                example: f79f13f9-1320-9110-f625-029085371700
               sequence_name:
                 type: string
                 description: Sequence name
@@ -48,7 +48,7 @@ responses:
                       type: string
                       format: uuid
                       description: Asset identifier
-                      example: c46c8gc6-eg97-6887-c292-79675204e47
+                      example: c46c80c6-e097-6887-c292-79675204e470
                     asset_name:
                       type: string
                       description: Asset name

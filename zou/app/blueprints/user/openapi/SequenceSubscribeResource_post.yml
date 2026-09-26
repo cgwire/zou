@@ -14,7 +14,7 @@ parameters:
       type: string
       format: uuid
     description: Sequence unique identifier
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
   - in: path
     name: task_type_id
     required: true
@@ -22,7 +22,7 @@ parameters:
       type: string
       format: uuid
     description: Task type unique identifier
-    example: b35b7fb5-df86-5776-b181-68564193d36
+    example: b35b7fb5-df86-5776-b181-68564193d360
 responses:
     201:
       description: Subscription created successfully
@@ -35,22 +35,22 @@ responses:
                 type: string
                 format: uuid
                 description: Subscription unique identifier
-                example: c46c8gc6-eg97-6887-c292-79675204e47
+                example: c46c80c6-e097-6887-c292-79675204e470
               person_id:
                 type: string
                 format: uuid
                 description: Person identifier
-                example: d57d9hd7-fh08-7998-d403-80786315f58
+                example: d57d91d7-f108-7998-d403-80786315f580
               sequence_id:
                 type: string
                 format: uuid
                 description: Sequence identifier
-                example: e68e0ie8-gi19-8009-e514-91897426g69
+                example: e68e02e8-0219-8009-e514-918974260690
               task_type_id:
                 type: string
                 format: uuid
                 description: Task type identifier
-                example: f79f1jf9-hj20-9010-f625-a09008537h80
+                example: f79f13f9-1320-9010-f625-a09008537180
               created_at:
                 type: string
                 format: date-time
