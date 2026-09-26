@@ -29,16 +29,29 @@ All tests inherit from `ApiDBTestCase` (`tests/base.py`), which provides:
 ```
 tests/
 ├── base.py              # ApiDBTestCase and all fixture generators
-├── conftest.py          # Schema creation/teardown (pytest hooks)
-├── models/              # CRUD blueprint tests (one file per model)
+├── conftest.py          # Schema creation/teardown, bcrypt bypass (pytest hooks)
+├── blueprints/<name>/   # Route tests, one directory per blueprint (crud, auth, shots...)
 ├── services/            # Service function tests
 ├── utils/               # Utility function tests
-├── auth/                # Auth endpoint tests
-├── assets/              # Asset endpoint tests
-├── shots/               # Shot endpoint tests
-├── tasks/               # Task endpoint tests
-└── ...                  # Other blueprint route tests
+├── stores/              # Redis and file store tests
+├── cli/                 # CLI command tests
+├── remote/              # Nomad runner tests
+├── misc/                # Static guards (service calls, imports, permission symmetry)
+└── fixtures/            # CSV, EDL, Shotgun, picture and video fixtures
 ```
+
+## What conftest.py does for you
+
+- **Isolated preview store**: `PREVIEW_FOLDER` is forced to a temporary
+  directory before the app loads, so route tests never write into a
+  development store.
+- **Fast passwords**: bcrypt runs with 4 rounds and password verification
+  is bypassed during login. A test that asserts on the verification itself
+  opts out with `pytestmark = pytest.mark.real_bcrypt`.
+- **Integration marker**: tests needing a running Meilisearch are marked
+  `integration` and skipped when the indexer is not reachable.
+- **No SQLite fallback**: the suite needs a PostgreSQL instance; the CI
+  starts one per job.
 
 ## CRUD model test pattern
 

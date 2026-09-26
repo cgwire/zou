@@ -15,7 +15,7 @@ Blueprint resource → Service function → Model query/mutation → Event emiss
 - `get_*_raw()` returns the SQLAlchemy model instance
 - `get_*()` returns a serialized dict
 - Raise specific exceptions from `zou/app/exceptions.py` (e.g., `TaskNotFoundException`)
-- Emit events after mutations via `events_service.emit()`
+- Emit events after mutations via `zou.app.utils.events.emit()`
 - Use `@cache.memoize_function(timeout)` for expensive reads
 
 ## Service list
