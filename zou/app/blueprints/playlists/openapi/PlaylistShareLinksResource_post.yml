@@ -1,0 +1,66 @@
+Create a share link for a playlist
+---
+description: Create a link that lets guests review the playlist without
+  an account. The link can expire, forbid comments and require a password.
+  Requires the manager role on the production.
+tags:
+  - Playlists
+parameters:
+  - in: path
+    name: playlist_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+requestBody:
+  required: false
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          expiration_date:
+            type: string
+            format: date-time
+            description: Date after which the link stops working
+            example: "2026-12-31"
+          can_comment:
+            type: boolean
+            default: true
+            description: Whether guests may comment and annotate
+          password:
+            type: string
+            description: Password guests must give to open the link
+responses:
+  201:
+    description: Share link created, with its token
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            token:
+              type: string
+            playlist_id:
+              type: string
+              format: uuid
+            expiration_date:
+              type: string
+              format: date-time
+              nullable: true
+            is_active:
+              type: boolean
+            can_comment:
+              type: boolean
+            has_password:
+              type: boolean
+  400:
+    description: Invalid body
+  403:
+    description: Not a manager of the production
+  404:
+    description: Playlist not found
