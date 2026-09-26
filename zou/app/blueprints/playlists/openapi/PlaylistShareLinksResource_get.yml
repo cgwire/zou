@@ -1,0 +1,50 @@
+List the share links of a playlist
+---
+description: Return every share link created for given playlist, active or
+  revoked, without the passwords (has_password says whether one is set).
+  Requires the manager role on the production.
+tags:
+  - Playlists
+parameters:
+  - in: path
+    name: playlist_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+responses:
+  200:
+    description: Share links of the playlist
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              token:
+                type: string
+              playlist_id:
+                type: string
+                format: uuid
+              created_by:
+                type: string
+                format: uuid
+              expiration_date:
+                type: string
+                format: date-time
+                nullable: true
+              is_active:
+                type: boolean
+              can_comment:
+                type: boolean
+              has_password:
+                type: boolean
+  403:
+    description: Not a manager of the production
+  404:
+    description: Playlist not found

@@ -438,7 +438,11 @@ class PlaylistShareLinksResource(MethodView):
     """
 
     @jwt_required()
+    @swag_from("openapi/PlaylistShareLinksResource_get.yml")
     def get(self, playlist_id):
+        """
+        List the share links of a playlist
+        """
         permissions.check_manager_permissions()
         playlist = playlists_service.get_playlist(playlist_id)
         permissions_service.check_manager_project_access(
@@ -449,7 +453,11 @@ class PlaylistShareLinksResource(MethodView):
         )
 
     @jwt_required()
+    @swag_from("openapi/PlaylistShareLinksResource_post.yml")
     def post(self, playlist_id):
+        """
+        Create a share link for a playlist
+        """
         permissions.check_manager_permissions()
         playlist = playlists_service.get_playlist(playlist_id)
         permissions_service.check_manager_project_access(
@@ -473,7 +481,11 @@ class PlaylistShareLinkResource(MethodView):
     """
 
     @jwt_required()
+    @swag_from("openapi/PlaylistShareLinkResource_delete.yml")
     def delete(self, playlist_id, token):
+        """
+        Revoke a share link
+        """
         permissions.check_manager_permissions()
         playlist = playlists_service.get_playlist(playlist_id)
         permissions_service.check_manager_project_access(

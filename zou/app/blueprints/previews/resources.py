@@ -1938,5 +1938,14 @@ class PreviewBackgroundFileThumbnailResource(BaseThumbnailResource):
     def check_allowed_to_get(self, preview_background_file_id):
         return True
 
+    @jwt_required()
     def post(self, preview_background_file_id):
-        raise AttributeError("Method not allowed")
+        """
+        Uploads are not allowed on the display url.
+        """
+        # Raising AttributeError here used to surface as an anonymous 500.
+        return {
+            "error": True,
+            "message": "Preview backgrounds are uploaded through "
+            "/pictures/preview-background-files/<preview_background_file_id>.",
+        }, 405
