@@ -296,8 +296,10 @@ adding or reviewing a route.
 **One data path, one policy.** The dominant defect class here is two routes
 serving the same data with different guards — list vs. single, bulk vs. unit,
 export vs. import. When you add a route next to an existing one, copy its
-guard or change both. `tests/misc/test_crud_permission_symmetry.py` enforces
-this for CRUD list/single pairs.
+guard or change both. `tests/blueprints/crud/test_permission_symmetry.py` enforces
+this for CRUD list/single pairs (a static check: it verifies that a
+single-instance resource naming a restrictor has a list resource naming
+one too, not that the two policies are equal).
 
 **Never trust a client-supplied id to belong to its parent.** A route that
 takes `<task_id>/<comment_id>/<attachment_file_id>` must check each link, not
