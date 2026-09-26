@@ -9,7 +9,7 @@ parameters:
     required: true
     type: string
     format: uuid
-    example: e68e0ie8-gi19-8009-e514-91897426g69
+    example: e68e02e8-0219-8009-e514-918974260690
     description: Unique identifier of the shot
 responses:
   200:
@@ -25,17 +25,17 @@ responses:
                 type: string
                 format: uuid
                 description: Asset instance unique identifier
-                example: h91h3lh1-jl42-1332-h847-24120759j92
+                example: 19113511-3542-1332-1847-241207593920
               asset_id:
                 type: string
                 format: uuid
                 description: Asset identifier
-                example: c46c8gc6-eg97-6887-c292-79675204e47
+                example: c46c80c6-e097-6887-c292-79675204e470
               shot_id:
                 type: string
                 format: uuid
                 description: Shot identifier
-                example: e68e0ie8-gi19-8009-e514-91897426g69
+                example: e68e02e8-0219-8009-e514-918974260690
               number:
                 type: string
                 description: Instance number

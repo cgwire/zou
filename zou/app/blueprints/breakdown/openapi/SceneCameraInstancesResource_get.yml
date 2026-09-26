@@ -9,7 +9,7 @@ parameters:
     required: true
     type: string
     format: uuid
-    example: i02i4mi2-km53-2443-i958-35231870k03
+    example: 20224622-4653-2443-2958-352318704030
     description: Unique identifier of the scene
 responses:
   200:
@@ -25,17 +25,17 @@ responses:
                 type: string
                 format: uuid
                 description: Camera instance unique identifier
-                example: k24k6ok4-mo75-4665-k180-57453082m25
+                example: 42446844-6875-4665-4180-574530826250
               camera_id:
                 type: string
                 format: uuid
                 description: Camera identifier
-                example: l35l7pl5-np86-5776-l291-68564193n36
+                example: 53557955-7986-5776-5291-685641937360
               scene_id:
                 type: string
                 format: uuid
                 description: Scene identifier
-                example: i02i4mi2-km53-2443-i958-35231870k03
+                example: 20224622-4653-2443-2958-352318704030
               number:
                 type: string
                 description: Instance number

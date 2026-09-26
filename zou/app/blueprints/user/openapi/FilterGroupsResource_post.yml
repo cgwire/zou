@@ -41,12 +41,12 @@ requestBody:
             type: string
             format: uuid
             description: Project identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            example: a24a6ea4-ce75-4665-a070-57453082c250
           department_id:
             type: string
             format: uuid
             description: Department identifier
-            example: b35b7fb5-df86-5776-b181-68564193d36
+            example: b35b7fb5-df86-5776-b181-68564193d360
 responses:
     201:
       description: Filter group created successfully
@@ -59,7 +59,7 @@ responses:
                 type: string
                 format: uuid
                 description: Filter group unique identifier
-                example: c46c8gc6-eg97-6887-c292-79675204e47
+                example: c46c80c6-e097-6887-c292-79675204e470
               name:
                 type: string
                 description: Filter group name
@@ -80,7 +80,7 @@ responses:
                 type: string
                 format: uuid
                 description: Project identifier
-                example: d57d9hd7-fh08-7998-d403-80786315f58
+                example: d57d91d7-f108-7998-d403-80786315f580
               is_shared:
                 type: boolean
                 description: Whether filter group is shared

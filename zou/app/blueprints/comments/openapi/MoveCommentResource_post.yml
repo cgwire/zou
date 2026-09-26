@@ -19,14 +19,14 @@ parameters:
     type: string
     format: uuid
     description: Unique identifier of the comment's current task
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
   - in: path
     name: comment_id
     required: true
     type: string
     format: uuid
     description: Unique identifier of the comment to move
-    example: b35b7fb5-df86-5776-b181-68564193d36
+    example: b35b7fb5-df86-5776-b181-68564193d360
 requestBody:
   required: true
   content:
@@ -42,7 +42,7 @@ requestBody:
             description: Unique identifier of the task to move the
               comment to. Must belong to the same entity as the
               current task.
-            example: c46c8gc6-eg97-6887-c292-79675204e47
+            example: c46c80c6-e097-6887-c292-79675204e470
 responses:
   200:
     description: Comment successfully moved to the target task. The

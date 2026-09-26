@@ -14,14 +14,14 @@
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            example: a24a6ea4-ce75-4665-a070-57453082c250
           - in: query
             name: episode_id
             required: false
             schema:
               type: string
               format: uuid
-            example: b24a6ea4-ce75-4665-a070-57453082c25
+            example: b24a6ea4-ce75-4665-a070-57453082c250
             description: Episode ID to filter casting links
           - in: query
             name: is_shot_casting

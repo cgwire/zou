@@ -10,19 +10,19 @@ parameters:
     required: False
     type: string
     format: uuid
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
   - in: query
     name: project_id
     required: False
     type: string
     format: uuid
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
   - in: query
     name: parent_id
     required: False
     type: string
     format: uuid
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
     200:
         description: All shot entries
@@ -36,15 +36,15 @@ responses:
                   id:
                     type: string
                     format: uuid
-                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                    example: a24a6ea4-ce75-4665-a070-57453082c250
                   name:
                     type: string
                     example: SH020
                   project_id:
                     type: string
                     format: uuid
-                    example: b24a6ea4-ce75-4665-a070-57453082c25
+                    example: b24a6ea4-ce75-4665-a070-57453082c250
                   parent_id:
                     type: string
                     format: uuid
-                    example: c24a6ea4-ce75-4665-a070-57453082c25
+                    example: c24a6ea4-ce75-4665-a070-57453082c250

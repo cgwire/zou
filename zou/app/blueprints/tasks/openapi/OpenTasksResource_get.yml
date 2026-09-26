@@ -11,7 +11,7 @@ parameters:
     schema:
       type: string
       format: uuid
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Filter tasks on given project ID
   - in: query
     name: task_status_id
@@ -19,7 +19,7 @@ parameters:
     schema:
       type: string
       format: uuid
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Filter tasks on given task status ID
   - in: query
     name: task_type_id
@@ -27,7 +27,7 @@ parameters:
     schema:
       type: string
       format: uuid
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Filter tasks on given task type ID
   - in: query
     name: person_id
@@ -35,7 +35,7 @@ parameters:
     schema:
       type: string
       format: uuid
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Filter tasks on given person ID
   - in: query
     name: start_date

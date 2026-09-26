@@ -16,7 +16,7 @@ requestBody:
           asset_id:
             type: string
             format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            example: a24a6ea4-ce75-4665-a070-57453082c250
           name:
             type: string
             example: Instance Name
@@ -31,11 +31,11 @@ responses:
               id:
                 type: string
                 format: uuid
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+                example: a24a6ea4-ce75-4665-a070-57453082c250
               asset_id:
                 type: string
                 format: uuid
-                example: b24a6ea4-ce75-4665-a070-57453082c25
+                example: b24a6ea4-ce75-4665-a070-57453082c250
               name:
                 type: string
                 example: Instance Name

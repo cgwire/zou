@@ -13,7 +13,7 @@ parameters:
     schema:
       type: string
       format: uuid
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Filter by project ID
 responses:
     200:
@@ -29,7 +29,7 @@ responses:
                 person_id:
                   type: string
                   format: uuid
-                  example: a24a6ea4-ce75-4665-a070-57453082c25
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
                 min_date:
                   type: string
                   description: First task start date for this person

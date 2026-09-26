@@ -11,7 +11,7 @@ parameters:
     schema:
       type: string
     format: uuid
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
     200:
         description: All notifications to tasks related to given project
@@ -28,19 +28,19 @@ responses:
                       id:
                         type: string
                         format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                        example: a24a6ea4-ce75-4665-a070-57453082c250
                       person_id:
                         type: string
                         format: uuid
-                        example: b24a6ea4-ce75-4665-a070-57453082c25
+                        example: b24a6ea4-ce75-4665-a070-57453082c250
                       task_id:
                         type: string
                         format: uuid
-                        example: c24a6ea4-ce75-4665-a070-57453082c25
+                        example: c24a6ea4-ce75-4665-a070-57453082c250
                       comment_id:
                         type: string
                         format: uuid
-                        example: d24a6ea4-ce75-4665-a070-57453082c25
+                        example: d24a6ea4-ce75-4665-a070-57453082c250
                       notification_type:
                         type: string
                         example: assignment

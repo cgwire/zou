@@ -11,7 +11,7 @@ parameters:
     schema:
       type: string
       format: uuid
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Filter news by specific project
   - in: query
     name: before
@@ -51,7 +51,7 @@ parameters:
     schema:
       type: string
       format: uuid
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Filter news by specific team member
   - in: query
     name: task_type_id
@@ -59,7 +59,7 @@ parameters:
     schema:
       type: string
       format: uuid
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Filter news by task type
   - in: query
     name: task_status_id
@@ -67,7 +67,7 @@ parameters:
     schema:
       type: string
       format: uuid
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Filter news by task status
   - in: query
     name: episode_id
@@ -75,7 +75,7 @@ parameters:
     schema:
       type: string
       format: uuid
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Filter news by specific episode
   - in: query
     name: only_preview

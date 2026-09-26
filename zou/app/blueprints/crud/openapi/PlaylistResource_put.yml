@@ -12,7 +12,7 @@ parameters:
     schema:
       type: string
       format: uuid
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
 requestBody:
   required: true
   content:
@@ -31,11 +31,11 @@ requestBody:
                 entity_id:
                   type: string
                   format: uuid
-                  example: b24a6ea4-ce75-4665-a070-57453082c25
+                  example: b24a6ea4-ce75-4665-a070-57453082c250
                 preview_file_id:
                   type: string
                   format: uuid
-                  example: c24a6ea4-ce75-4665-a070-57453082c25
+                  example: c24a6ea4-ce75-4665-a070-57453082c250
             example: []
 responses:
     200:
@@ -48,14 +48,14 @@ responses:
               id:
                 type: string
                 format: uuid
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+                example: a24a6ea4-ce75-4665-a070-57453082c250
               name:
                 type: string
                 example: Updated Playlist Name
               project_id:
                 type: string
                 format: uuid
-                example: b24a6ea4-ce75-4665-a070-57453082c25
+                example: b24a6ea4-ce75-4665-a070-57453082c250
               shots:
                 type: array
                 items:

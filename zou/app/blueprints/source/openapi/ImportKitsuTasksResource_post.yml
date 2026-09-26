@@ -17,7 +17,7 @@ requestBody:
               type: string
               format: uuid
               description: Kitsu ID of the task
-              example: a24a6ea4-ce75-4665-a070-57453082c25
+              example: a24a6ea4-ce75-4665-a070-57453082c250
             name:
               type: string
               description: Task name
@@ -26,23 +26,23 @@ requestBody:
               type: string
               format: uuid
               description: Project ID
-              example: b24a6ea4-ce75-4665-a070-57453082c25
+              example: b24a6ea4-ce75-4665-a070-57453082c250
             entity_id:
               type: string
               format: uuid
               description: Entity ID the task is linked to
-              example: c24a6ea4-ce75-4665-a070-57453082c25
+              example: c24a6ea4-ce75-4665-a070-57453082c250
             task_type_id:
               type: string
               format: uuid
               description: Task type ID
-              example: d24a6ea4-ce75-4665-a070-57453082c25
+              example: d24a6ea4-ce75-4665-a070-57453082c250
       example:
-        - id: a24a6ea4-ce75-4665-a070-57453082c25
+        - id: a24a6ea4-ce75-4665-a070-57453082c250
           name: "Modeling"
-          project_id: b24a6ea4-ce75-4665-a070-57453082c25
-          entity_id: c24a6ea4-ce75-4665-a070-57453082c25
-          task_type_id: d24a6ea4-ce75-4665-a070-57453082c25
+          project_id: b24a6ea4-ce75-4665-a070-57453082c250
+          entity_id: c24a6ea4-ce75-4665-a070-57453082c250
+          task_type_id: d24a6ea4-ce75-4665-a070-57453082c250
 responses:
   200:
     description: Tasks imported successfully
@@ -57,7 +57,7 @@ responses:
                 type: string
                 format: uuid
                 description: Task unique identifier
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+                example: a24a6ea4-ce75-4665-a070-57453082c250
               name:
                 type: string
                 description: Task name

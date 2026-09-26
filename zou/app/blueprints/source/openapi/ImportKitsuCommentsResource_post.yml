@@ -18,12 +18,12 @@ requestBody:
               type: string
               format: uuid
               description: Kitsu ID of the comment
-              example: a24a6ea4-ce75-4665-a070-57453082c25
+              example: a24a6ea4-ce75-4665-a070-57453082c250
             object_id:
               type: string
               format: uuid
               description: Task ID the comment is linked to
-              example: b24a6ea4-ce75-4665-a070-57453082c25
+              example: b24a6ea4-ce75-4665-a070-57453082c250
             text:
               type: string
               description: Comment text
@@ -32,12 +32,12 @@ requestBody:
               type: string
               format: uuid
               description: Person who created the comment
-              example: c24a6ea4-ce75-4665-a070-57453082c25
+              example: c24a6ea4-ce75-4665-a070-57453082c250
       example:
-        - id: a24a6ea4-ce75-4665-a070-57453082c25
-          object_id: b24a6ea4-ce75-4665-a070-57453082c25
+        - id: a24a6ea4-ce75-4665-a070-57453082c250
+          object_id: b24a6ea4-ce75-4665-a070-57453082c250
           text: "This is a comment"
-          person_id: c24a6ea4-ce75-4665-a070-57453082c25
+          person_id: c24a6ea4-ce75-4665-a070-57453082c250
 responses:
   200:
     description: Comments imported successfully
@@ -52,7 +52,7 @@ responses:
                 type: string
                 format: uuid
                 description: Comment unique identifier
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+                example: a24a6ea4-ce75-4665-a070-57453082c250
               text:
                 type: string
                 description: Comment text

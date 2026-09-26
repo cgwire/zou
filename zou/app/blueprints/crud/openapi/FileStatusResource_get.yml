@@ -11,7 +11,7 @@ parameters:
     schema:
       type: string
       format: uuid
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
   - in: query
     name: relations
     required: false
@@ -31,7 +31,7 @@ responses:
               id:
                 type: string
                 format: uuid
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+                example: a24a6ea4-ce75-4665-a070-57453082c250
               name:
                 type: string
                 example: Approved

@@ -264,7 +264,7 @@ swagger_template = {
                     "type": "string",
                     "format": "UUID",
                     "description": "A unique ID made of letters, hyphens and numbers",
-                    "example": "a24a6ea4-ce75-4665-a070-57453082c25",
+                    "example": "a24a6ea4-ce75-4665-a070-57453082c250",
                 },
                 "created_at": {
                     "type": "string",

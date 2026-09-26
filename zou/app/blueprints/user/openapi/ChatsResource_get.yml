@@ -18,12 +18,12 @@ responses:
                   type: string
                   format: uuid
                   description: Chat unique identifier
-                  example: a24a6ea4-ce75-4665-a070-57453082c25
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
                 entity_id:
                   type: string
                   format: uuid
                   description: Entity identifier
-                  example: b35b7fb5-df86-5776-b181-68564193d36
+                  example: b35b7fb5-df86-5776-b181-68564193d360
                 entity_type:
                   type: string
                   description: Entity type
@@ -34,7 +34,7 @@ responses:
                     type: string
                     format: uuid
                   description: List of participant person identifiers
-                  example: ["c46c8gc6-eg97-6887-c292-79675204e47"]
+                  example: ["c46c80c6-e097-6887-c292-79675204e470"]
                 created_at:
                   type: string
                   format: date-time

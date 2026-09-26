@@ -18,7 +18,7 @@ requestBody:
               type: string
               format: uuid
               description: Kitsu ID of the entity
-              example: a24a6ea4-ce75-4665-a070-57453082c25
+              example: a24a6ea4-ce75-4665-a070-57453082c250
             name:
               type: string
               description: Entity name
@@ -27,17 +27,17 @@ requestBody:
               type: string
               format: uuid
               description: Project ID
-              example: b24a6ea4-ce75-4665-a070-57453082c25
+              example: b24a6ea4-ce75-4665-a070-57453082c250
             entity_type_id:
               type: string
               format: uuid
               description: Entity type ID
-              example: c24a6ea4-ce75-4665-a070-57453082c25
+              example: c24a6ea4-ce75-4665-a070-57453082c250
       example:
-        - id: a24a6ea4-ce75-4665-a070-57453082c25
+        - id: a24a6ea4-ce75-4665-a070-57453082c250
           name: "Asset01"
-          project_id: b24a6ea4-ce75-4665-a070-57453082c25
-          entity_type_id: c24a6ea4-ce75-4665-a070-57453082c25
+          project_id: b24a6ea4-ce75-4665-a070-57453082c250
+          entity_type_id: c24a6ea4-ce75-4665-a070-57453082c250
 responses:
   200:
     description: Entities imported successfully
@@ -52,7 +52,7 @@ responses:
                 type: string
                 format: uuid
                 description: Entity unique identifier
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+                example: a24a6ea4-ce75-4665-a070-57453082c250
               name:
                 type: string
                 description: Entity name

@@ -17,13 +17,13 @@ requestBody:
               type: string
               format: uuid
             example: [
-              "a24a6ea4-ce75-4665-a070-57453082c25",
-              "b24a6ea4-ce75-4665-a070-57453082c25"
+              "a24a6ea4-ce75-4665-a070-57453082c250",
+              "b24a6ea4-ce75-4665-a070-57453082c250"
             ]
           person_id:
             type: string
             format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
     200:
         description: Assignations removed
@@ -34,4 +34,4 @@ responses:
               items:
                 type: string
                 format: uuid
-              example: ["a24a6ea4-ce75-4665-a070-57453082c25"]
+              example: ["a24a6ea4-ce75-4665-a070-57453082c250"]

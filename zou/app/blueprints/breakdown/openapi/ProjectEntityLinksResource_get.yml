@@ -9,7 +9,7 @@ parameters:
     required: true
     type: string
     format: uuid
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Unique identifier of the project
   - in: query
     name: page
@@ -44,17 +44,17 @@ responses:
                 type: string
                 format: uuid
                 description: Entity link unique identifier
-                example: m46m8qm6-oq97-6887-m403-80786315o47
+                example: 64668a66-8a97-6887-6403-807863158470
               entity_in_id:
                 type: string
                 format: uuid
                 description: Source entity identifier
-                example: c46c8gc6-eg97-6887-c292-79675204e47
+                example: c46c80c6-e097-6887-c292-79675204e470
               entity_out_id:
                 type: string
                 format: uuid
                 description: Target entity identifier
-                example: d57d9hd7-fh08-7998-d403-80786315f58
+                example: d57d91d7-f108-7998-d403-80786315f580
               created_at:
                 type: string
                 format: date-time

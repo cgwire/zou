@@ -9,7 +9,7 @@ parameters:
     required: true
     type: string
     format: uuid
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Unique identifier of the parent asset
 requestBody:
   required: true
@@ -24,7 +24,7 @@ requestBody:
             type: string
             format: uuid
             description: Unique identifier of the asset to instantiate
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            example: a24a6ea4-ce75-4665-a070-57453082c250
           description:
             type: string
             description: Description for the asset instance
@@ -41,17 +41,17 @@ responses:
               type: string
               format: uuid
               description: Created asset instance unique identifier
-              example: f79f1jf9-hj20-9110-f625-02908537h70
+              example: f79f13f9-1320-9110-f625-029085371700
             asset_id:
               type: string
               format: uuid
               description: Parent asset identifier
-              example: a24a6ea4-ce75-4665-a070-57453082c25
+              example: a24a6ea4-ce75-4665-a070-57453082c250
             target_asset_id:
               type: string
               format: uuid
               description: Target asset identifier
-              example: b35b7fb5-df86-5776-b181-68564193d36
+              example: b35b7fb5-df86-5776-b181-68564193d360
             number:
               type: string
               description: Instance number

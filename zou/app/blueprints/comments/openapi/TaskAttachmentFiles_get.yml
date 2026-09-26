@@ -10,7 +10,7 @@ parameters:
     required: true
     type: string
     format: uuid
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Unique identifier of the task
 responses:
   200:
@@ -26,7 +26,7 @@ responses:
                 type: string
                 format: uuid
                 description: Attachment file unique identifier
-                example: d57d9hd7-fh08-7998-d403-80786315f58
+                example: d57d91d7-f108-7998-d403-80786315f580
               name:
                 type: string
                 description: File name
@@ -43,14 +43,14 @@ responses:
                 type: string
                 format: uuid
                 description: Comment identifier
-                example: b35b7fb5-df86-5776-b181-68564193d36
+                example: b35b7fb5-df86-5776-b181-68564193d360
               task_id:
                 type: string
                 format: uuid
                 description: Task identifier
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+                example: a24a6ea4-ce75-4665-a070-57453082c250
               reply_id:
                 type: string
                 format: uuid
                 description: Reply identifier if attached to a reply
-                example: c46c8gc6-eg97-6887-c292-79675204e47
+                example: c46c80c6-e097-6887-c292-79675204e470

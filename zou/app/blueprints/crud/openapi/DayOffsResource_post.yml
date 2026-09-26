@@ -27,7 +27,7 @@ requestBody:
           person_id:
             type: string
             format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
     201:
       description: Day off created successfully
@@ -39,7 +39,7 @@ responses:
               id:
                 type: string
                 format: uuid
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+                example: a24a6ea4-ce75-4665-a070-57453082c250
               date:
                 type: string
                 format: date
@@ -51,7 +51,7 @@ responses:
               person_id:
                 type: string
                 format: uuid
-                example: b24a6ea4-ce75-4665-a070-57453082c25
+                example: b24a6ea4-ce75-4665-a070-57453082c250
               created_at:
                 type: string
                 format: date-time

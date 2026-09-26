@@ -22,7 +22,7 @@ requestBody:
             type: string
             format: uuid
             description: Filter search results by project ID
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            example: a24a6ea4-ce75-4665-a070-57453082c250
           limit:
             type: integer
             default: 3
@@ -53,7 +53,7 @@ responses:
               type: array
               description: List of matching persons
               example: [{
-                  "id": "a24a6ea4-ce75-4665-a070-57453082c25",
+                  "id": "a24a6ea4-ce75-4665-a070-57453082c250",
                   "name": "John Doe",
                   ...
                 }]
@@ -61,7 +61,7 @@ responses:
               type: array
               description: List of matching assets
               example: [{
-                  "id": "a24a6ea4-ce75-4665-a070-57453082c25",
+                  "id": "a24a6ea4-ce75-4665-a070-57453082c250",
                   "name": "Chair prop CHR_001",
                   ...
                 }]
@@ -71,7 +71,7 @@ responses:
               type: array
               description: List of matching shots
               example: [{
-                  "id": "a24a6ea4-ce75-4665-a070-57453082c25",
+                  "id": "a24a6ea4-ce75-4665-a070-57453082c250",
                   "name": "Shot 001",
                   ...
                 }]

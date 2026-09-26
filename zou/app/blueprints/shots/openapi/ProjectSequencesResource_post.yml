@@ -10,7 +10,7 @@ parameters:
     required: True
     type: string
     format: uuid
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
 requestBody:
   required: true
   content:
@@ -28,7 +28,7 @@ requestBody:
             type: string
             format: uuid
             required: false
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
     201:
         description: Sequence created
@@ -40,18 +40,18 @@ responses:
                 id:
                   type: string
                   format: uuid
-                  example: a24a6ea4-ce75-4665-a070-57453082c25
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
                 name:
                   type: string
                   example: SQ01
                 project_id:
                   type: string
                   format: uuid
-                  example: b24a6ea4-ce75-4665-a070-57453082c25
+                  example: b24a6ea4-ce75-4665-a070-57453082c250
                 episode_id:
                   type: string
                   format: uuid
-                  example: c24a6ea4-ce75-4665-a070-57453082c25
+                  example: c24a6ea4-ce75-4665-a070-57453082c250
                 description:
                   type: string
                   example: A sequence description

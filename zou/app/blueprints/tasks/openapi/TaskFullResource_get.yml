@@ -11,7 +11,7 @@ parameters:
     schema:
       type: string
     format: uuid
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
     200:
         description: Task with full information
@@ -23,26 +23,26 @@ responses:
                 id:
                   type: string
                   format: uuid
-                  example: a24a6ea4-ce75-4665-a070-57453082c25
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
                 name:
                   type: string
                   example: SH010 Animation
                 task_type_id:
                   type: string
                   format: uuid
-                  example: b24a6ea4-ce75-4665-a070-57453082c25
+                  example: b24a6ea4-ce75-4665-a070-57453082c250
                 task_status_id:
                   type: string
                   format: uuid
-                  example: c24a6ea4-ce75-4665-a070-57453082c25
+                  example: c24a6ea4-ce75-4665-a070-57453082c250
                 entity_id:
                   type: string
                   format: uuid
-                  example: d24a6ea4-ce75-4665-a070-57453082c25
+                  example: d24a6ea4-ce75-4665-a070-57453082c250
                 project_id:
                   type: string
                   format: uuid
-                  example: e24a6ea4-ce75-4665-a070-57453082c25
+                  example: e24a6ea4-ce75-4665-a070-57453082c250
                 assignees:
                   type: array
                   items:
@@ -51,7 +51,7 @@ responses:
                       id:
                         type: string
                         format: uuid
-                        example: f24a6ea4-ce75-4665-a070-57453082c25
+                        example: f24a6ea4-ce75-4665-a070-57453082c250
                       first_name:
                         type: string
                         example: John
@@ -64,7 +64,7 @@ responses:
                     id:
                       type: string
                       format: uuid
-                      example: b24a6ea4-ce75-4665-a070-57453082c25
+                      example: b24a6ea4-ce75-4665-a070-57453082c250
                     name:
                       type: string
                       example: Animation
@@ -74,7 +74,7 @@ responses:
                     id:
                       type: string
                       format: uuid
-                      example: c24a6ea4-ce75-4665-a070-57453082c25
+                      example: c24a6ea4-ce75-4665-a070-57453082c250
                     name:
                       type: string
                       example: In Progress

@@ -12,7 +12,7 @@ parameters:
       type: string
       format: uuid
     description: Notification unique identifier
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
 requestBody:
   required: true
   content:
@@ -36,7 +36,7 @@ responses:
                 type: string
                 format: uuid
                 description: Notification unique identifier
-                example: b35b7fb5-df86-5776-b181-68564193d36
+                example: b35b7fb5-df86-5776-b181-68564193d360
               type:
                 type: string
                 description: Notification type
@@ -49,17 +49,17 @@ responses:
                 type: string
                 format: uuid
                 description: Author person identifier
-                example: c46c8gc6-eg97-6887-c292-79675204e47
+                example: c46c80c6-e097-6887-c292-79675204e470
               comment_id:
                 type: string
                 format: uuid
                 description: Comment identifier
-                example: d57d9hd7-fh08-7998-d403-80786315f58
+                example: d57d91d7-f108-7998-d403-80786315f580
               task_id:
                 type: string
                 format: uuid
                 description: Task identifier
-                example: e68e0ie8-gi19-8009-e514-91897426g69
+                example: e68e02e8-0219-8009-e514-918974260690
               created_at:
                 type: string
                 format: date-time

@@ -17,7 +17,7 @@ parameters:
       type: string
       format: uuid
     description: Unique identifier of the entity
-    example: a24a6ea4-ce75-4665-a070-57453082c25
+    example: a24a6ea4-ce75-4665-a070-57453082c250
 requestBody:
   required: false
   content:
@@ -35,7 +35,7 @@ requestBody:
               type valid for the entity.
         example:
           task_type_ids:
-            - b24a6ea4-ce75-4665-a070-57453082c25
+            - b24a6ea4-ce75-4665-a070-57453082c250
 responses:
   201:
     description: Created tasks
