@@ -1,6 +1,8 @@
 import datetime
 from tests.base import ApiDBTestCase
 
+from zou.app.models.studio import Studio
+
 from zou.app.services import tasks_service
 from zou.app.utils import fields
 
@@ -130,6 +132,26 @@ class ShotRoutesTestCase(ApiDBTestCase):
                 "2024-06-07": 20,
             },
         )
+
+    def test_get_project_quotas_of_a_studio(self):
+        """
+        The studio filter used to expand into one EXISTS per member of the
+        studio; a studio without members then matched every task.
+        """
+        studio = Studio.create(name="Paris")
+        self.person.update({"studio_id": studio.id})
+        self.a_shot_closed_on("2024-06-12")
+        path = (
+            f"/data/projects/{self.project.id}"
+            f"/quotas/{self.task_type_animation.id}?count_mode=feedback"
+        )
+
+        result = self.get(f"{path}&studio_id={studio.id}")
+        self.assertEqual(result["total"]["day"]["frames"], {"2024-06-12": 100})
+
+        empty_studio = Studio.create(name="Empty")
+        result = self.get(f"{path}&studio_id={empty_studio.id}")
+        self.assertEqual(result, {})
 
     def test_get_project_person_quotas(self):
         """
