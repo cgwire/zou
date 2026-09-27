@@ -94,7 +94,10 @@ class GetFilePathAndFileTestCase(unittest.TestCase):
                         instance_id="does-not-exist",
                         extension="mp4",
                     )
-                sleep.assert_called_once()
+                # One short pause: the storage clients retry on their own,
+                # a long sleep here only holds the request worker.
+                sleep.assert_called_once_with(fs.TRANSIENT_RETRY_DELAY)
+        self.assertLessEqual(fs.TRANSIENT_RETRY_DELAY, 1)
         self.assertEqual(calls, ["lowdef", "lowdef"])
 
 
