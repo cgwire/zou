@@ -333,6 +333,11 @@ class SharedPlaylistReadTestCase(PlaylistSharingTestCase):
         self.assertIn("project", result)
         self.assertIn("task_types", result)
         self.assertIn("task_statuses", result)
+        # The entities the playlist names come along, read in one query.
+        self.assertEqual(
+            result["entity_names"][str(self.asset.id)]["name"],
+            self.asset.name,
+        )
 
 
 class GuestTestCase(PlaylistSharingTestCase):

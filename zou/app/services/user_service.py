@@ -23,7 +23,6 @@ from zou.app.services import (
     names_service,
     permissions_service,
     persons_service,
-    playlists_service,
     plugins_service,
     projects_service,
     shots_service,

@@ -24,7 +24,6 @@ from zou.app.services import (
     projects_service,
 )
 from zou.app.exceptions import (
-    EntityNotFoundException,
     PersonNotFoundException,
     PlaylistShareLinkNotFoundException,
     PreviewFileNotFoundException,
@@ -753,21 +752,31 @@ def get_shared_playlist_context(token):
     task_types = projects_service.get_project_task_types(project_id)
     task_statuses = projects_service.get_project_task_statuses(project_id)
 
-    # Collect entity names from playlist shots
+    # The entities the playlist names, in one query: reading them one by
+    # one cost a query per shot for the first guest of every playlist. An
+    # entity that was deleted since is simply absent.
+    entity_ids = {
+        str(shot_entry["entity_id"])
+        for shot_entry in playlist.get("shots", [])
+        if shot_entry.get("entity_id")
+    }
     entity_names = {}
-    for shot_entry in playlist.get("shots", []):
-        entity_id = shot_entry.get("entity_id")
-        if entity_id and entity_id not in entity_names:
-            try:
-                entity = entities_service.get_entity(entity_id)
-                entity_names[entity_id] = {
-                    "id": entity_id,
-                    "name": entity.get("name", ""),
-                    "preview_file_id": entity.get("preview_file_id"),
-                }
-            except EntityNotFoundException:
-                # A playlist may still name an entity that was deleted.
-                pass
+    if entity_ids:
+        rows = (
+            Entity.query.filter(Entity.id.in_(list(entity_ids)))
+            .with_entities(Entity.id, Entity.name, Entity.preview_file_id)
+            .all()
+        )
+        entity_names = {
+            str(entity_id): {
+                "id": str(entity_id),
+                "name": name or "",
+                "preview_file_id": (
+                    str(preview_file_id) if preview_file_id else None
+                ),
+            }
+            for entity_id, name, preview_file_id in rows
+        }
 
     return {
         "project": {
