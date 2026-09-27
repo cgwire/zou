@@ -28,7 +28,7 @@ from zou.app.services import (
     user_service,
     concepts_service,
 )
-from zou.app.utils import date_helpers, events, permissions
+from zou.app.utils import date_helpers, events, fields, permissions
 
 from zou.app.exceptions import WrongParameterException
 
@@ -263,8 +263,13 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             if data.get("source_id", None) == "null":
                 data["source_id"] = None
 
-            is_ready_for_changed = str(entity.ready_for) != data.get(
-                "ready_for", ""
+            # Only a payload that carries ready_for can change it: without
+            # this test every asset update recomputed the casting stats of
+            # each shot the asset is cast in.
+            is_ready_for_changed = (
+                "ready_for" in data
+                and fields.serialize_value(entity.ready_for)
+                != data["ready_for"]
             )
 
             entity.update(data)

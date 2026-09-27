@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from tests.base import ApiDBTestCase
 
 from zou.app.utils import fields
@@ -52,6 +54,38 @@ class EntityTestCase(ApiDBTestCase):
         )
 
         self.put_404(f"data/entities/{fields.gen_uuid()}", data)
+
+    def test_update_entity_refreshes_casting_stats_on_ready_for_only(self):
+        """
+        The casting stats of every shot an asset is cast in were recomputed
+        on each asset update, because a payload without ready_for compared
+        as a change of it.
+        """
+        self.generate_fixture_department()
+        self.generate_fixture_task_type()
+        target = (
+            "zou.app.blueprints.crud.entity.breakdown_service"
+            ".refresh_casting_stats"
+        )
+        with patch(target) as refresh_casting_stats:
+            self.put(f"data/entities/{self.asset_1_id}", {"name": "Renamed"})
+            refresh_casting_stats.assert_not_called()
+
+            self.put(
+                f"data/entities/{self.asset_1_id}",
+                {"ready_for": str(self.task_type.id)},
+            )
+            refresh_casting_stats.assert_called_once()
+
+            refresh_casting_stats.reset_mock()
+            self.put(
+                f"data/entities/{self.asset_1_id}",
+                {"ready_for": str(self.task_type.id)},
+            )
+            refresh_casting_stats.assert_not_called()
+
+            self.put(f"data/entities/{self.asset_1_id}", {"ready_for": None})
+            refresh_casting_stats.assert_called_once()
 
     def test_update_entity_refusal_is_a_403(self):
         """
