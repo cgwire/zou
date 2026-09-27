@@ -1,3 +1,7 @@
+from unittest import mock
+
+import redis
+
 from tests.base import ApiDBTestCase
 
 from zou.app.stores import redis_lock
@@ -19,3 +23,17 @@ class RedisLockTestCase(ApiDBTestCase):
             ) as second:
                 self.assertTrue(first)
                 self.assertTrue(second)
+
+    def test_an_unreachable_redis_degrades_to_an_unlocked_run(self):
+        # The lock used to open and ping a client on every call; the shared
+        # client connects lazily, so the failure shows up on acquire.
+        class Unreachable:
+            def lock(self, *args, **kwargs):
+                raise redis.ConnectionError("down")
+
+        with mock.patch.object(
+            redis_lock, "get_redis_client", return_value=Unreachable()
+        ):
+            with self.assertLogs(redis_lock.logger, level="WARNING"):
+                with redis_lock.with_lock("test-lock") as acquired:
+                    self.assertTrue(acquired)
