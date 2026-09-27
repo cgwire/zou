@@ -161,6 +161,7 @@ class Entity(db.Model, BaseMixin, SerializerMixin):
         UUIDType(binary=False),
         db.ForeignKey("person.id"),
         nullable=True,
+        index=True,
     )
 
     entities_out = db.relationship(
