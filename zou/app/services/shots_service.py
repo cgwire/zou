@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from operator import itemgetter
 from sqlalchemy.orm import aliased
 from sqlalchemy.exc import IntegrityError, StatementError
-from sqlalchemy import cast, func, or_, Text
+from sqlalchemy import cast, func, Text
 
 from zou.app.utils import (
     cache,
@@ -1270,12 +1270,10 @@ def get_weighted_quotas(
         query = query.filter(Task.done_date != None)
 
     if studio_id is not None:
-        persons_from_studio = Person.query.filter(
-            Person.studio_id == studio_id
-        ).all()
-        query = query.filter(
-            or_(*[Task.assignees.contains(p) for p in persons_from_studio])
-        )
+        # One EXISTS on the assignees, instead of one per member of the
+        # studio; a studio without members then matches nothing, where the
+        # empty or_() matched everything.
+        query = query.filter(Task.assignees.any(Person.studio_id == studio_id))
     result = query.all()
 
     for task, nb_frames, date, duration, task_person_id in result:
@@ -1320,9 +1318,10 @@ def get_weighted_quotas(
         query = query.filter(Task.done_date != None)
 
     if studio_id is not None:
-        query = query.filter(
-            or_(*[Task.assignees.contains(p) for p in persons_from_studio])
-        )
+        # One EXISTS on the assignees, instead of one per member of the
+        # studio; a studio without members then matches nothing, where the
+        # empty or_() matched everything.
+        query = query.filter(Task.assignees.any(Person.studio_id == studio_id))
     result = query.all()
 
     for task, nb_frames, task_person_id in result:
@@ -1406,12 +1405,10 @@ def get_raw_quotas(
         query = query.filter(Task.done_date != None)
 
     if studio_id is not None:
-        persons_from_studio = Person.query.filter(
-            Person.studio_id == studio_id
-        ).all()
-        query = query.filter(
-            or_(*[Task.assignees.contains(p) for p in persons_from_studio])
-        )
+        # One EXISTS on the assignees, instead of one per member of the
+        # studio; a studio without members then matches nothing, where the
+        # empty or_() matched everything.
+        query = query.filter(Task.assignees.any(Person.studio_id == studio_id))
 
     result = query.all()
 
