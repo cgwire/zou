@@ -6,8 +6,11 @@ from flask_jwt_extended import verify_jwt_in_request
 
 from tests.base import ApiDBTestCase
 
-from zou.app import app
+from sqlalchemy import event
+
+from zou.app import app, db
 from zou.app.models.entity import Entity
+from zou.app.models.notification import Notification
 from zou.app.models.person import Person
 from zou.app.models.project import Project
 from zou.app.models.search_filter import SearchFilter
@@ -158,6 +161,51 @@ class NotificationTestCase(UserContextTestCase):
         first = self.bell()[1]
 
         self.assertEqual(self.texts(notification_id=first["id"]), ["Lets go"])
+
+    def test_the_bell_names_the_playlist_of_a_playlist_notification(self):
+        self.generate_fixture_playlist("Dailies")
+        Notification.create(
+            type="playlist-ready",
+            person_id=self.artist["id"],
+            author_id=self.user["id"],
+            playlist_id=self.playlist.id,
+        )
+        notification = self.bell()[0]
+        self.assertEqual(notification["playlist_id"], str(self.playlist.id))
+        self.assertEqual(notification["playlist_name"], "Dailies")
+        self.assertEqual(notification["project_id"], self.project_id)
+        self.assertEqual(notification["project_name"], self.project.name)
+        self.assertEqual(notification["playlist_for_entity"], "shot")
+        self.assertEqual(notification["full_entity_name"], "")
+
+    def test_the_bell_reads_the_comments_in_a_fixed_number_of_queries(self):
+        """
+        The comment, its previews and the entity name of every row used to
+        be read one by one: a bell of a hundred notifications cost two
+        hundred queries on a listing the clients poll.
+        """
+
+        def count_queries(action):
+            statements = []
+            engine = db.engine
+
+            def record(conn, cursor, statement, parameters, context, many):
+                statements.append(statement)
+
+            event.listen(engine, "before_cursor_execute", record)
+            try:
+                action()
+            finally:
+                event.remove(engine, "before_cursor_execute", record)
+            return len(statements)
+
+        self.a_comment(text="One")
+        one = count_queries(self.bell)
+        for text in ["Two", "Three", "Four", "Five", "Six"]:
+            self.a_comment(text=text)
+        six = count_queries(self.bell)
+        self.assertEqual(len(self.bell()), 6)
+        self.assertEqual(six, one)
 
     def test_the_bell_is_bounded_by_dates(self):
         self.a_comment(text="Lets go")

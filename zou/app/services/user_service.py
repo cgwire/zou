@@ -1,4 +1,4 @@
-from sqlalchemy.orm import aliased
+from sqlalchemy.orm import aliased, selectinload
 from sqlalchemy import func, or_, and_
 from sqlalchemy.exc import DataError
 
@@ -7,6 +7,7 @@ from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.notification import Notification
 from zou.app.models.person import Person
+from zou.app.models.playlist import Playlist
 from zou.app.models.project import Project, ProjectPersonLink
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.subscription import Subscription
@@ -1023,10 +1024,62 @@ def get_last_notifications(
     except DataError:
         raise WrongParameterException("Wrong date format for after or before.")
 
+    context = _load_notification_context(notifications)
     for row in notifications:
-        result.append(_serialize_notification(row, is_current_user_artist))
+        result.append(
+            _serialize_notification(row, is_current_user_artist, context)
+        )
 
     return result
+
+
+def _load_notification_context(notifications):
+    """
+    Load in a fixed number of queries what the notification rows point at:
+    the comments with their previews, the playlists with their project, the
+    full names of the entities. Reading them per row cost up to three
+    queries per notification on a listing the clients poll.
+    """
+    comment_ids = set()
+    playlist_ids = set()
+    entity_ids = set()
+    for row in notifications:
+        notification = row[0]
+        comment_id = row[4]
+        task_entity_id = row[8]
+        if comment_id is not None:
+            comment_ids.add(comment_id)
+        if notification.playlist_id is not None:
+            playlist_ids.add(notification.playlist_id)
+        elif task_entity_id is not None:
+            entity_ids.add(task_entity_id)
+
+    comments = {}
+    if comment_ids:
+        comments = {
+            str(comment.id): comment
+            for comment in Comment.query.options(
+                selectinload(Comment.previews)
+            ).filter(Comment.id.in_(list(comment_ids)))
+        }
+
+    playlists = {}
+    if playlist_ids:
+        for playlist, project_name in (
+            Playlist.query.join(Project, Project.id == Playlist.project_id)
+            .filter(Playlist.id.in_(list(playlist_ids)))
+            .with_entities(Playlist, Project.name)
+            .all()
+        ):
+            playlists[str(playlist.id)] = (playlist, project_name)
+
+    return {
+        "comments": comments,
+        "playlists": playlists,
+        "entity_names": names_service.get_full_entity_names(
+            [str(entity_id) for entity_id in entity_ids]
+        ),
+    }
 
 
 def _filter_notifications(
@@ -1078,11 +1131,12 @@ def _filter_notifications(
     return query
 
 
-def _serialize_notification(row, is_current_user_artist):
+def _serialize_notification(row, is_current_user_artist, context):
     """
     Build the notification dict of one row of the listing query, with the
     entity or playlist it points at and the text of the comment or reply
-    that raised it. A client comment is blanked for an artist.
+    that raised it, read from the context _load_notification_context
+    built. A client comment is blanked for an artist.
     """
     (
         notification,
@@ -1104,26 +1158,26 @@ def _serialize_notification(row, is_current_user_artist):
     playlist_for_entity = ""
     playlist_is_for_all = False
     if notification.playlist_id is None:
-        full_entity_name, episode_id, entity_preview_file_id = (
-            names_service.get_full_entity_name(task_entity_id)
-        )
+        full_entity_name, episode_id, entity_preview_file_id = context[
+            "entity_names"
+        ].get(str(task_entity_id), ("", None, None))
     else:
-        playlist = playlists_service.get_playlist(notification.playlist_id)
-        episode_id = playlist.get("episode_id", None)
-        project = projects_service.get_project(playlist["project_id"])
-        project_id = project["id"]
-        project_name = project["name"]
-        playlist_name = playlist["name"]
-        playlist_for_entity = playlist["for_entity"]
-        playlist_is_for_all = playlist["is_for_all"]
+        playlist, project_name = context["playlists"][
+            str(notification.playlist_id)
+        ]
+        episode_id = playlist.episode_id
+        project_id = playlist.project_id
+        playlist_name = playlist.name
+        playlist_for_entity = playlist.for_entity
+        playlist_is_for_all = playlist.is_for_all
 
     preview_file_id = None
     mentions = []
     department_mentions = []
     reply_mentions = []
     reply_department_mentions = []
-    if comment_id is not None:
-        comment = Comment.get(comment_id)
+    comment = context["comments"].get(str(comment_id))
+    if comment is not None:
         if len(comment.previews) > 0:
             preview_file_id = comment.previews[0].id
         mentions = comment.mentions or []
