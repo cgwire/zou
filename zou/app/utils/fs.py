@@ -40,6 +40,13 @@ MISSING_OBJECT_ERROR_CODES = {
 }
 
 
+# Pause before the single retry of a transient storage failure. The
+# storage clients already retry on their own (FS_SWIFT_RETRIES, botocore's
+# retry mode), so this second chance only has to outlast a hiccup: a long
+# pause here holds a request worker for nothing.
+TRANSIENT_RETRY_DELAY = 0.5
+
+
 def is_missing_file_error(exception):
     """
     Tell a missing object apart from a transient storage failure.
@@ -274,14 +281,14 @@ def get_file_path_and_file(
             # The cache entry is only ever replaced as a whole, so a
             # concurrent request may well have completed it while this
             # one was failing: the disk is checked before paying for a
-            # retry. An object that is not there will not be there three
-            # seconds later either, only a transient failure deserves the
+            # retry. An object that is not there will not be there a
+            # moment later either, only a transient failure deserves the
             # retry: the movie routes probe up to three prefixes and
             # would otherwise sleep on each missing one.
             if is_invalid_file(
                 file_path, file_size
             ) and not is_missing_file_error(exception):
-                time.sleep(3)
+                time.sleep(TRANSIENT_RETRY_DELAY)
                 exception = download_to_file(
                     file_path, open_file, prefix, instance_id
                 )
