@@ -5,6 +5,9 @@ from zou.app.models.production_schedule_version import (
     ProductionScheduleVersionTaskLink,
 )
 from zou.app.services import projects_service, schedule_service
+from zou.app.services.exception import (
+    ProductionScheduleVersionNotFoundException,
+)
 from zou.app.utils import fields
 
 
@@ -118,6 +121,26 @@ class ProductionScheduleVersionTestCase(ApiDBTestCase):
             derived["id"]
         )
         self.assertIsNone(derived["production_schedule_from"])
+
+    def test_update_version_clears_its_cache(self):
+        version = self.get_first(self._list_url())
+        # Warm the memoized serialization the service actions read.
+        schedule_service.get_production_schedule_version(version["id"])
+        self.put(
+            f"data/production-schedule-versions/{version['id']}",
+            {"locked": True},
+        )
+        cached = schedule_service.get_production_schedule_version(
+            version["id"]
+        )
+        self.assertTrue(cached["locked"])
+
+    def test_delete_version_clears_its_cache(self):
+        version = self.get_first(self._list_url())
+        schedule_service.get_production_schedule_version(version["id"])
+        self.delete(f"data/production-schedule-versions/{version['id']}")
+        with self.assertRaises(ProductionScheduleVersionNotFoundException):
+            schedule_service.get_production_schedule_version(version["id"])
 
     def test_task_link_list_is_scoped_to_the_project(self):
         self.generate_fixture_asset()

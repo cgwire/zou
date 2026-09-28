@@ -100,8 +100,20 @@ class ProductionScheduleVersionResource(BaseModelResource):
             project_id=instance_dict["project_id"]
         )
 
+    def post_update(self, instance_dict, data):
+        schedule_service.clear_production_schedule_version_cache(
+            instance_dict["id"]
+        )
+        return instance_dict
+
     def pre_delete(self, instance_dict):
         schedule_service.detach_production_schedule_version(
+            instance_dict["id"]
+        )
+        return instance_dict
+
+    def post_delete(self, instance_dict):
+        schedule_service.clear_production_schedule_version_cache(
             instance_dict["id"]
         )
         return instance_dict
