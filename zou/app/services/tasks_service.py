@@ -20,7 +20,7 @@ from sqlalchemy.exc import StatementError, IntegrityError, DataError
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import case
 from sqlalchemy.orm import aliased, selectinload
-from sqlalchemy.orm.exc import StaleDataError
+from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
 
 from zou.app import config, db
 from zou.app.utils import events
@@ -1951,6 +1951,18 @@ def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
     Create a new time spent if it doesn't exist. If it exists, it update it
     with the new duration and returns it from the database.
     """
+    try:
+        return _create_or_update_time_spent(
+            task_id, person_id, date, duration, add
+        )
+    except ObjectDeletedError:
+        # Every commit expires the row, so reading it back after a concurrent
+        # DELETE finds nothing. The deleting request recomputes the task
+        # duration itself.
+        raise TimeSpentNotFoundException
+
+
+def _create_or_update_time_spent(task_id, person_id, date, duration, add):
     time_spent = _get_time_spent_raw(task_id, person_id, date)
 
     task = base_service.get_instance(Task, task_id, TaskNotFoundException)

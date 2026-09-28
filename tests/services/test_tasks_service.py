@@ -3,7 +3,7 @@ import datetime
 
 from unittest import mock
 
-from sqlalchemy import event
+from sqlalchemy import event, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import StaleDataError
 
@@ -28,6 +28,7 @@ from zou.app.services.exception import (
     RevisionAlreadyExistsException,
     StudioNotFoundException,
     TaskNotFoundException,
+    TimeSpentNotFoundException,
 )
 
 
@@ -616,6 +617,27 @@ class TimeSpentTestCase(TaskTestCase):
 
         self.assertEqual(time_spent["duration"], 7200)
         self.assertEqual(len(TimeSpent.get_all_by(task_id=self.task_id)), 1)
+
+    def test_create_time_spent_deleted_by_a_concurrent_request(self):
+        # The insert is committed, then a concurrent DELETE removes the row
+        # before this request reloads it: that must answer 404, not 500.
+        def delete_the_new_row(person_id):
+            db.session.execute(text("DELETE FROM time_spent"))
+            db.session.commit()
+
+        with mock.patch.object(
+            persons_service,
+            "update_person_last_presence",
+            side_effect=delete_the_new_row,
+        ):
+            self.assertRaises(
+                TimeSpentNotFoundException,
+                tasks_service.create_or_update_time_spent,
+                self.task_id,
+                self.person_id,
+                "2017-09-23",
+                3600,
+            )
 
     def test_the_task_duration_follows_its_time_spents(self):
         # The duration of the task is the sum of its time spents, and it is
