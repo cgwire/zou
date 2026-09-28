@@ -4,7 +4,7 @@ from zou.app.models.production_schedule_version import (
     ProductionScheduleVersion,
     ProductionScheduleVersionTaskLink,
 )
-from zou.app.services import projects_service
+from zou.app.services import projects_service, schedule_service
 from zou.app.utils import fields
 
 
@@ -75,6 +75,49 @@ class ProductionScheduleVersionTestCase(ApiDBTestCase):
         self.delete_404(
             f"data/production-schedule-versions/{fields.gen_uuid()}"
         )
+
+    def test_project_manager_can_delete_version(self):
+        # A manager role held on this production only is enough.
+        version = self.get_first(self._list_url())
+        artist = self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            self.project_id, artist["id"], role="manager"
+        )
+        self.log_in_cg_artist()
+        self.delete(f"data/production-schedule-versions/{version['id']}")
+        self.log_in_admin()
+        self.assertEqual(len(self.get(self._list_url())), 2)
+
+    def test_artist_cannot_delete_version(self):
+        version = self.get_first(self._list_url())
+        artist = self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(self.project_id, artist["id"])
+        self.log_in_cg_artist()
+        self.delete(f"data/production-schedule-versions/{version['id']}", 403)
+
+    def test_delete_version_applied_to_the_project(self):
+        version = self.get_first(self._list_url())
+        projects_service.update_project(
+            self.project_id, {"from_schedule_version_id": version["id"]}
+        )
+        # Warm the memoized project: the route must drop it.
+        projects_service.get_project(self.project_id)
+        self.delete(f"data/production-schedule-versions/{version['id']}")
+        project = projects_service.get_project(self.project_id)
+        self.assertIsNone(project["from_schedule_version_id"])
+
+    def test_delete_version_another_one_was_copied_from(self):
+        source, derived = self.get(self._list_url())[:2]
+        ProductionScheduleVersion.get(derived["id"]).update(
+            {"production_schedule_from": source["id"]}
+        )
+        # Warm the memoized version the service actions read.
+        schedule_service.get_production_schedule_version(derived["id"])
+        self.delete(f"data/production-schedule-versions/{source['id']}")
+        derived = schedule_service.get_production_schedule_version(
+            derived["id"]
+        )
+        self.assertIsNone(derived["production_schedule_from"])
 
     def test_task_link_list_is_scoped_to_the_project(self):
         self.generate_fixture_asset()

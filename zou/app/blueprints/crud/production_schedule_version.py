@@ -95,6 +95,17 @@ class ProductionScheduleVersionResource(BaseModelResource):
             project_id=instance_dict["project_id"]
         )
 
+    def check_delete_permissions(self, instance_dict):
+        return permissions_service.check_manager_project_access(
+            project_id=instance_dict["project_id"]
+        )
+
+    def pre_delete(self, instance_dict):
+        schedule_service.detach_production_schedule_version(
+            instance_dict["id"]
+        )
+        return instance_dict
+
 
 class ProductionScheduleVersionTaskLinksResource(BaseModelsResource):
     def __init__(self):
