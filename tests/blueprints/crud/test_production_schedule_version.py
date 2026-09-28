@@ -1,4 +1,10 @@
 from tests.base import ApiDBTestCase
+
+from zou.app.models.production_schedule_version import (
+    ProductionScheduleVersion,
+    ProductionScheduleVersionTaskLink,
+)
+from zou.app.services import projects_service
 from zou.app.utils import fields
 
 
@@ -69,3 +75,38 @@ class ProductionScheduleVersionTestCase(ApiDBTestCase):
         self.delete_404(
             f"data/production-schedule-versions/{fields.gen_uuid()}"
         )
+
+    def test_task_link_list_is_scoped_to_the_project(self):
+        self.generate_fixture_asset()
+        self.generate_fixture_task()
+        version = self.get_first(self._list_url())
+        other_project = self.generate_fixture_project_standard()
+        other_version = ProductionScheduleVersion.create(
+            name="Other", project_id=other_project.id
+        )
+        link = ProductionScheduleVersionTaskLink.create(
+            production_schedule_version_id=version["id"],
+            task_id=self.task.id,
+        )
+        ProductionScheduleVersionTaskLink.create(
+            production_schedule_version_id=other_version.id,
+            task_id=self.task.id,
+        )
+        path = (
+            "data/production-schedule-version-task-links"
+            f"?project_id={self.project_id}"
+        )
+
+        links = self.get(path)
+        self.assertEqual([row["id"] for row in links], [str(link.id)])
+
+        manager = self.generate_fixture_user_manager()
+        projects_service.add_team_member(self.project_id, manager["id"])
+        self.log_in_manager()
+        links = self.get(path)
+        self.assertEqual([row["id"] for row in links], [str(link.id)])
+
+    def test_task_link_list_refuses_a_malformed_project_id(self):
+        path = "data/production-schedule-version-task-links?project_id="
+        self.get(f"{path}not-a-uuid", 400)
+        self.get(path, 400)
