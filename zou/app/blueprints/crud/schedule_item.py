@@ -30,6 +30,11 @@ class ScheduleItemsResource(BaseModelsResource):
         """
         return super().post()
 
+    def check_create_permissions(self, data):
+        return permissions_service.check_manager_project_access(
+            data.get("project_id")
+        )
+
     def check_creation_integrity(self, data):
         schedule_item = ScheduleItem.get_by(
             project_id=data.get("project_id", None),
@@ -50,6 +55,11 @@ class ScheduleItemResource(BaseModelResource):
     def check_update_permissions(self, instance, data):
         return permissions_service.check_supervisor_project_task_type_access(
             instance["project_id"], instance["task_type_id"]
+        )
+
+    def check_delete_permissions(self, instance_dict):
+        return permissions_service.check_manager_project_access(
+            instance_dict["project_id"]
         )
 
     @jwt_required()
