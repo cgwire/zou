@@ -483,6 +483,24 @@ class RemoveProjectTestCase(DeletionTestCase):
         for model, row_id in removed:
             self.assertIsNone(model.get(row_id), model.__name__)
 
+    def test_remove_project_with_an_applied_production_schedule_version(
+        self,
+    ):
+        # Regression: applying a version points the project at it, and that
+        # reference blocked the deletion of the version, hence of the
+        # project, until the key got its SET NULL rule.
+        project_id = str(self.project.id)
+        version = ProductionScheduleVersion.create(
+            name="v1", project_id=self.project.id
+        )
+        self.project.update({"from_schedule_version_id": version.id})
+        version_id = str(version.id)
+
+        deletion_service.remove_project(project_id)
+
+        self.assertIsNone(Project.get(project_id))
+        self.assertIsNone(ProductionScheduleVersion.get(version_id))
+
     def test_remove_project_leaves_the_other_productions_alone(self):
         """
         remove_project walks a dozen tables, each scoped to the production
