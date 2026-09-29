@@ -1176,9 +1176,11 @@ def create_shot(
     nb_frames=0,
     description=None,
     created_by=None,
+    index=True,
 ):
     """
-    Create shot for given project and sequence.
+    Create shot for given project and sequence. A bulk import passes
+    index=False and indexes all its shots at the end.
     """
     if data is None:
         data = {}
@@ -1212,7 +1214,8 @@ def create_shot(
             if shot is None:
                 raise
         else:
-            index_service.index_shot(shot)
+            if index:
+                index_service.index_shot(shot)
             events.emit(
                 "shot:new",
                 {
@@ -1261,15 +1264,17 @@ def create_scene(project_id, sequence_id, name, created_by=None):
     return scene.serialize(obj_type="Scene")
 
 
-def update_shot(shot_id, data_dict):
+def update_shot(shot_id, data_dict, index=True):
     """
     Update shot fields matching given id with data from dict given in parameter.
+    A bulk import passes index=False and indexes all its shots at the end.
     """
     shot = get_shot_raw(shot_id)
     shot.update(data_dict)
 
-    index_service.remove_shot_index(shot.id)
-    index_service.index_shot(shot)
+    if index:
+        index_service.remove_shot_index(shot.id)
+        index_service.index_shot(shot)
     clear_shot_cache(shot_id)
     events.emit(
         "shot:update", {"shot_id": shot_id}, project_id=str(shot.project_id)
@@ -1280,8 +1285,8 @@ def update_shot(shot_id, data_dict):
 
 def get_shot_versions(shot_id):
     """
-    Shot metadata changes are versioned. This function returns all versions
-    of a given shot.
+    Return all versions of given shot, most recent first. A version is
+    recorded when the frame range or the name of the shot changes.
     """
     versions = (
         EntityVersion.query.filter_by(entity_id=shot_id)
@@ -1289,6 +1294,18 @@ def get_shot_versions(shot_id):
         .all()
     )
     return EntityVersion.serialize_list(versions, obj_type="ShotVersion")
+
+
+def get_last_shot_version_raw(shot_id):
+    """
+    Return the most recent version of given shot as a model, or None when
+    the shot was never versioned.
+    """
+    return (
+        EntityVersion.query.filter_by(entity_id=shot_id)
+        .order_by(EntityVersion.created_at.desc())
+        .first()
+    )
 
 
 def get_base_entity_type_name(entity_dict):

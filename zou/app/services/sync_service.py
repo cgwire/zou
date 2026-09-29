@@ -67,7 +67,12 @@ from zou.app.models.studio import Studio
 from zou.app.models.status_automation import StatusAutomation
 from zou.app.models.working_file import WorkingFile
 
-from zou.app.services import deletion_service, tasks_service, projects_service
+from zou.app.services import (
+    deletion_service,
+    preview_file_states_service,
+    tasks_service,
+    projects_service,
+)
 from zou.app.stores import file_store
 from zou.app.utils import events, date_helpers, fs
 from zou.app import config
@@ -1536,9 +1541,39 @@ def download_preview_from_another_instance(
             dict_errors,
         )
 
+    _record_synced_preview_states(preview_file_id, preview_file.extension)
+
     logger.info(
         f"{index:0{len(str(total))}}/{total} Preview file {preview_file_id} processed."
     )
+
+
+def _record_synced_preview_states(preview_file_id, extension):
+    """
+    Probe the storage for the expected files of a preview file just
+    synced from another instance and record their states.
+
+    download_preview_from_another_instance runs in a ThreadPool worker
+    when the sync is multithreaded, which carries no Flask app context:
+    it brings its own, the same way
+    files_service.probe_and_record_movie_prefixes does.
+    """
+    from flask import has_app_context
+    from zou.app import app
+
+    def run():
+        preview_file_states_service.record_file_states(
+            preview_file_id,
+            preview_file_states_service.probe_file_states(
+                preview_file_id, extension
+            ),
+        )
+
+    if has_app_context():
+        run()
+    else:
+        with app.app_context():
+            run()
 
 
 def download_preview_background_from_another_instance(
@@ -1685,7 +1720,14 @@ def download_file_from_another_instance(
                 if attemps_count > 0:
                     time.sleep(0.5)
                 try:
-                    response = gazu.client.download(path, file_path)
+                    # processing_timeout=0: a sync has no reason to wait
+                    # for a remote file still being built, unlike an
+                    # interactive client. A preview still "processing" on
+                    # the source instance should fail this attempt right
+                    # away, not eat into this call's own retry budget.
+                    response = gazu.client.download(
+                        path, file_path, processing_timeout=0
+                    )
                     if response.status_code != 200:
                         e = gazu.exception.DownloadFileException(
                             f"{response.status_code} {http_responses[response.status_code]}."

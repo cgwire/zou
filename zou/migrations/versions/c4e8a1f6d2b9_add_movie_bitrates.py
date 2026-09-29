@@ -1,7 +1,7 @@
 """Add movie encoding bitrates to task type links
 
 Revision ID: c4e8a1f6d2b9
-Revises: a3f7c2d91b45
+Revises: c4e8a2f1d6b3
 Create Date: 2026-09-15 09:00:00.000000
 
 """
@@ -10,7 +10,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = "c4e8a1f6d2b9"
-down_revision = "a3f7c2d91b45"
+down_revision = "c4e8a2f1d6b3"
 branch_labels = None
 depends_on = None
 

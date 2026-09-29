@@ -3,7 +3,7 @@ import unicodedata
 from urllib.parse import quote
 import orjson as json
 
-from flask import request, current_app, Response
+from flask import request, current_app, jsonify, Response
 from flask import send_file as flask_send_file
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -30,6 +30,7 @@ from zou.app.services import (
     names_service,
     persons_service,
     projects_service,
+    preview_file_states_service,
     preview_files_service,
     tasks_service,
     permissions_service,
@@ -193,6 +194,58 @@ def stream_movie_from_storage(
     return response
 
 
+PROCESSING_RETRY_AFTER = 5
+
+
+def wants_json_over_picture():
+    """
+    Whether the client would rather read JSON than an image. A browser
+    asks for image/* explicitly and keeps the 404 it knows how to
+    handle; a client that says Accept: application/json is told the file
+    is on its way.
+    """
+    accept = request.accept_mimetypes
+    return accept["application/json"] > accept["image/png"]
+
+
+def preview_processing_response(preview_file_id):
+    """
+    The answer for a preview file whose files are still being built: not
+    an error, and never cached.
+    """
+    response = jsonify(
+        {"status": "processing", "preview_file_id": preview_file_id}
+    )
+    response.status_code = 202
+    response.headers["Retry-After"] = str(PROCESSING_RETRY_AFTER)
+    response.cache_control.no_store = True
+    return response
+
+
+def _processing_answer(preview_file_id):
+    """
+    The answer to give for a preview file being processed, or None when
+    it is not. A JSON client is told to come back; everyone else gets the
+    404 they already handle. No storage state is recorded either way: an
+    absence that is expected is not an absence.
+
+    The 404 case is built and returned here, rather than raised as
+    FileNotFound, so it carries Cache-Control: no-store. Raising it would
+    let it surface as a bare werkzeug 404 (via PreviewFileNotFoundException
+    in the caller), which a browser is free to cache heuristically and
+    keep showing once the preview turns ready.
+    """
+    preview_file = files_service.get_preview_file_for_access(preview_file_id)
+    if preview_file["status"] != "processing":
+        return None
+    if wants_json_over_picture():
+        return preview_processing_response(preview_file_id)
+    response = jsonify(error=True, message="Preview file was not found.")
+    response.status_code = 404
+    response.cache_control.no_store = True
+    return response
+
+
 def send_movie_file(
     preview_file_id,
     as_attachment=False,
@@ -213,17 +266,32 @@ def send_movie_file(
     already did (`preview_file`). A preview file that predates the record
     is served in the default order, and the record is probed and written
     back after the response starts: the probe costs one round trip per
-    version, more than the movie read itself.
+    version, more than the movie read itself. Versions known missing are
+    skipped until the recheck delay has elapsed.
     """
     if preview_file is None:
         preview_file = files_service.get_preview_file_for_access(
             preview_file_id
         )
-    recorded_prefixes = preview_file["movie_prefixes"]
+    processing = _processing_answer(preview_file_id)
+    if processing is not None:
+        return processing
+    # .get: a dict memoized by the previous release has no such key.
+    recorded_prefixes = preview_file.get("movie_prefixes")
     prefixes = files_service.get_movie_prefixes(
         recorded_prefixes or [], lowdef
     )
-    for prefix in prefixes:
+    states = preview_file_states_service.get_file_states(preview_file_id)
+    candidates = [
+        prefix
+        for prefix in prefixes
+        if not preview_file_states_service.is_known_missing(
+            states, "movies", prefix
+        )
+    ]
+    if not candidates:
+        raise FileNotFound(f"movies-{preview_file_id}")
+    for prefix in candidates:
         try:
             response = send_storage_file(
                 file_store.get_local_movie_path,
@@ -236,10 +304,17 @@ def send_movie_file(
                 last_modified=last_modified,
                 stream_cold=True,
             )
-        except FileNotFound:
-            if prefix == prefixes[-1]:
+        except FileNotFound as exception:
+            if isinstance(exception, fs.ConfirmedFileNotFound):
+                _record_confirmed_missing(
+                    states, "movies", prefix, preview_file_id
+                )
+            if prefix == candidates[-1]:
                 raise
             continue
+        preview_file_states_service.record_file_state(
+            preview_file_id, "movies", prefix, preview_file_states_service.OK
+        )
         if recorded_prefixes is None or prefix != prefixes[0]:
             # No record yet, or one lagging behind the storage (a version
             # removed, a row imported from another instance).
@@ -289,6 +364,67 @@ def send_picture_file(
         as_attachment=as_attachment,
         download_name=download_name,
         last_modified=last_modified,
+    )
+
+
+def send_preview_picture_file(prefix, preview_file_id, **kwargs):
+    """
+    send_picture_file for a picture of a preview file, keeping its storage
+    state: a file known missing is answered 404 without asking the
+    storage, a confirmed 404 is recorded, a successful read too.
+    """
+    return _send_preview_variant(
+        "pictures",
+        prefix,
+        preview_file_id,
+        lambda: send_picture_file(prefix, preview_file_id, **kwargs),
+    )
+
+
+def send_preview_standard_file(preview_file_id, extension, **kwargs):
+    """
+    send_standard_file for a non picture, non movie preview file, keeping
+    its storage state like send_preview_picture_file.
+    """
+    return _send_preview_variant(
+        "files",
+        "previews",
+        preview_file_id,
+        lambda: send_standard_file(preview_file_id, extension, **kwargs),
+    )
+
+
+def _send_preview_variant(bucket, prefix, preview_file_id, send):
+    processing = _processing_answer(preview_file_id)
+    if processing is not None:
+        return processing
+    states = preview_file_states_service.get_file_states(preview_file_id)
+    if preview_file_states_service.is_known_missing(states, bucket, prefix):
+        raise FileNotFound(f"{prefix}-{preview_file_id}")
+    try:
+        response = send()
+    except fs.ConfirmedFileNotFound:
+        _record_confirmed_missing(states, bucket, prefix, preview_file_id)
+        raise
+    preview_file_states_service.record_file_state(
+        preview_file_id, bucket, prefix, preview_file_states_service.OK
+    )
+    return response
+
+
+def _record_confirmed_missing(states, bucket, prefix, preview_file_id):
+    """
+    A file that failed to be generated stays failed; the date is always
+    refreshed, so the short-circuit applies for another delay.
+    """
+    current = preview_file_states_service.get_state(states, bucket, prefix)
+    state = (
+        preview_file_states_service.FAILED
+        if current == preview_file_states_service.FAILED
+        else preview_file_states_service.MISSING
+    )
+    preview_file_states_service.record_file_state(
+        preview_file_id, bucket, prefix, state, refresh=True
     )
 
 
@@ -414,8 +550,8 @@ class BaseNewPreviewFilePicture:
 
     def save_picture_preview(self, instance_id, uploaded_file):
         """
-        Get uploaded picture, build thumbnails then save everything in the file
-        storage.
+        Get uploaded picture, read the metadata the response carries and
+        hand the variants over to the job queue.
         """
         tmp_folder = config.TMP_DIR
         original_tmp_path = thumbnail_utils.save_file(
@@ -423,13 +559,16 @@ class BaseNewPreviewFilePicture:
         )
         file_size = fs.get_file_size(original_tmp_path)
         width, height = thumbnail_utils.get_dimensions(original_tmp_path)
-        preview_files_service.save_variants(instance_id, original_tmp_path)
+        queued = preview_files_service.dispatch_picture_processing(
+            instance_id, original_tmp_path, no_job=self.get_no_job()
+        )
         return {
             "preview_file_id": instance_id,
             "file_size": file_size,
             "extension": "png",
             "width": width,
             "height": height,
+            "queued": queued,
         }
 
     @staticmethod
@@ -503,6 +642,12 @@ class BaseNewPreviewFilePicture:
         uploaded_file.save(file_path)
         try:
             file_store.add_file("previews", instance_id, file_path)
+            preview_file_states_service.record_file_state(
+                instance_id,
+                "files",
+                "previews",
+                preview_file_states_service.OK,
+            )
             file_size = fs.get_file_size(file_path)
             preview_files_service.update_preview_file(
                 instance_id, {"file_size": file_size}, silent=True
@@ -549,18 +694,18 @@ class BaseNewPreviewFilePicture:
         preview_file = None
         if extension in ALLOWED_PICTURE_EXTENSION:
             metadata = self.save_picture_preview(instance_id, uploaded_file)
+            data = {
+                "extension": "png",
+                "original_name": original_file_name,
+                "width": metadata["width"],
+                "height": metadata["height"],
+                "file_size": metadata["file_size"],
+            }
+            if not metadata["queued"]:
+                data["status"] = "ready"
             preview_file = preview_files_service.update_preview_file(
-                instance_id,
-                {
-                    "extension": "png",
-                    "original_name": original_file_name,
-                    "width": metadata["width"],
-                    "height": metadata["height"],
-                    "file_size": metadata["file_size"],
-                    "status": "ready",
-                },
+                instance_id, data
             )
-            tasks_service.update_preview_file_info(preview_file)
         elif extension in ALLOWED_MOVIE_EXTENSION:
             normalize = self.get_bool_parameter("normalize", "true")
             try:
@@ -1162,19 +1307,19 @@ class PreviewFileResource(BasePreviewFileResource):
                     f"Extension not allowed: {extension}"
                 )
             if extension == "png":
-                return send_picture_file(
+                return send_preview_picture_file(
                     "original", instance_id, last_modified=self.last_modified
                 )
             elif extension == "pdf":
                 mimetype = "application/pdf"
-                return send_standard_file(
+                return send_preview_standard_file(
                     instance_id,
                     extension,
-                    mimetype,
+                    mimetype=mimetype,
                     last_modified=self.last_modified,
                 )
             else:
-                return send_standard_file(
+                return send_preview_standard_file(
                     instance_id, extension, last_modified=self.last_modified
                 )
 
@@ -1223,7 +1368,7 @@ class PreviewFileDownloadResource(BasePreviewFileResource):
 
         try:
             if extension == "png":
-                return send_picture_file(
+                return send_preview_picture_file(
                     "original",
                     instance_id,
                     as_attachment=True,
@@ -1231,10 +1376,10 @@ class PreviewFileDownloadResource(BasePreviewFileResource):
                 )
             elif extension == "pdf":
                 mimetype = "application/pdf"
-                return send_standard_file(
+                return send_preview_standard_file(
                     instance_id,
                     extension,
-                    mimetype,
+                    mimetype=mimetype,
                     as_attachment=True,
                     last_modified=self.last_modified,
                 )
@@ -1246,7 +1391,7 @@ class PreviewFileDownloadResource(BasePreviewFileResource):
                     preview_file=self.preview_file,
                 )
             else:
-                return send_standard_file(
+                return send_preview_standard_file(
                     instance_id,
                     extension,
                     as_attachment=True,
@@ -1369,7 +1514,7 @@ class BasePreviewPictureResource(BasePreviewFileResource):
         self.is_allowed(instance_id)
 
         try:
-            return send_picture_file(
+            return send_preview_picture_file(
                 self.picture_type,
                 instance_id,
                 last_modified=self.last_modified,
@@ -1772,8 +1917,8 @@ class SetMainPreviewResource(MethodView, ArgsMixin):
                 raise WrongParameterException(
                     "Can't use a given frame on non movie preview"
                 )
-            preview_files_service.replace_extracted_frame_for_preview_file(
-                preview_file, frame_number
+            preview_files_service.dispatch_frame_extraction(
+                preview_file, frame_number, no_job=self.get_no_job()
             )
         entity = entities_service.update_entity_preview(
             task["entity_id"],
@@ -2317,6 +2462,12 @@ class ExtractTileFromPreview(MethodView):
         if extracted_tile_path is None:
             return {"error": "preview file binary is not available"}, 404
         file_store.add_picture("tiles", preview_file_id, extracted_tile_path)
+        preview_file_states_service.record_file_state(
+            preview_file_id,
+            "pictures",
+            "tiles",
+            preview_file_states_service.OK,
+        )
         try:
             return flask_send_file(
                 extracted_tile_path,

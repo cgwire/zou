@@ -23,6 +23,7 @@ CLI_ENV = {
     "JOB_QUEUE_NOMAD_HOST": "zou-nomad-01.zou",
     "JOB_QUEUE_NOMAD_NORMALIZE_JOB": "",
     "JOB_QUEUE_NOMAD_PLAYLIST_JOB": "zou-playlist",
+    "JOB_QUEUE_NOMAD_TILE_JOB": "zou-tile-go",
 }
 
 # API response when everything is in sync with CLI_ENV.
@@ -33,6 +34,7 @@ API_RESPONSE_SYNCED = {
     "nomad_host": {"env": "zou-nomad-01.zou", "redis": "zou-nomad-01.zou"},
     "nomad_normalize_job": {"env": "", "redis": ""},
     "nomad_playlist_job": {"env": "zou-playlist", "redis": "zou-playlist"},
+    "nomad_tile_job": {"env": "zou-tile-go", "redis": "zou-tile-go"},
     "active_users": 42,
 }
 
@@ -44,6 +46,7 @@ API_RESPONSE_DESYNC = {
     "nomad_host": {"env": "zou-nomad-01.zou", "redis": "zou-nomad-01.zou"},
     "nomad_normalize_job": {"env": "", "redis": ""},
     "nomad_playlist_job": {"env": "zou-playlist", "redis": "zou-playlist"},
+    "nomad_tile_job": {"env": "zou-tile-go", "redis": "zou-tile-go"},
     "active_users": 10,
 }
 

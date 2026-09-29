@@ -34,6 +34,11 @@ class CheckCriterionIdFormatTestCase(unittest.TestCase):
             with self.assertRaises(WrongParameterException):
                 check_criterion_id_format({field: "not-a-uuid"})
 
+    def test_trailing_characters_raise(self):
+        for field in ("id", "project_id", "episode_id"):
+            with self.assertRaises(WrongParameterException):
+                check_criterion_id_format({field: f"{self.valid_id}\n"})
+
     def test_episode_id_sentinels_pass(self):
         for sentinel in ("all", "main"):
             self.assertIsNone(

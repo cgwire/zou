@@ -7,7 +7,10 @@ import tempfile
 import time
 import zipfile
 
+from collections import Counter
+
 import ffmpeg
+import redis
 from rq.timeouts import BaseTimeoutException
 from PIL import Image
 
@@ -15,11 +18,19 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
 
 from zou.app import config
-from zou.app.stores import config_store, file_store, queue_store
+from zou.app.stores import (
+    config_store,
+    file_store,
+    queue_store,
+    redis_client,
+)
 from zou.app.stores.redis_lock import with_preview_file_lock
 
 from zou.app.models.entity import Entity
 from zou.app.models.preview_file import PreviewFile
+from zou.app.models.preview_file_storage_state import (
+    PreviewFileStorageState,
+)
 from zou.app.models.project import Project, ProjectTaskTypeLink
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.task import Task
@@ -28,6 +39,7 @@ from zou.app.services import (
     names_service,
     files_service,
     assets_service,
+    preview_file_states_service,
     shots_service,
     projects_service,
     tasks_service,
@@ -42,6 +54,7 @@ from zou.app.utils import (
 )
 from zou.app.services.exception import (
     AnnotationLockTimeoutException,
+    JobQueueDisabledException,
     AnnotationNotFoundException,
     WrongParameterException,
     PreviewFileNotFoundException,
@@ -50,13 +63,18 @@ from zou.app.services.exception import (
     EpisodeNotFoundException,
 )
 from zou.app.utils import fs
+from zou.app.utils.progress import NullProgress
 
 REMOTE_NORMALIZE_VERSION = 2
+REMOTE_TILE_VERSION = 1
 # Seconds before a missing tile sheet is built again for the same movie.
 TILE_RETRY_DELAY = 3600
 # Lower bound of a project movie bitrate in Mbit/s. The upper bound is the
 # instance high definition bitrate, MOVIE_HIGHDEF_BITRATE.
 MIN_MOVIE_BITRATE = 1
+# Held by the local tile build in progress: one ffmpeg decode at a time
+# next to the API.
+LOCAL_TILE_BUILD_LOCK_KEY = "tile-build:local"
 
 
 def get_preview_file_dimensions(project, entity=None):
@@ -332,10 +350,10 @@ def mark_broken_on_job_failure(
     job, connection, exc_type, exc_value, traceback
 ):
     """
-    RQ failure callback for the movie normalization job: mark the preview
-    file as broken and drop its temporary file. Without it, a job killed by
-    timeout or a dead worker leaves the preview file stuck on "processing"
-    forever.
+    RQ failure callback for the movie normalization and picture variant
+    jobs: mark the preview file as broken and drop its temporary file.
+    Without it, a job killed by timeout or a dead worker leaves the
+    preview file stuck on "processing" forever.
     """
     from zou.app import app as current_app
 
@@ -343,8 +361,8 @@ def mark_broken_on_job_failure(
     uploaded_movie_path = job.args[1] if len(job.args) > 1 else None
     with current_app.app_context():
         current_app.logger.error(
-            f"Normalization job failed for preview file {preview_file_id}: "
-            f"{exc_value}"
+            f"Preview processing job failed for preview file "
+            f"{preview_file_id}: {exc_value}"
         )
         if uploaded_movie_path is not None:
             _remove_temp_files(uploaded_movie_path)
@@ -424,6 +442,11 @@ def prepare_and_store_movie(
                 f"Preview file {preview_file_id} was deleted during processing"
             )
             return {"id": preview_file_id, "status": "broken"}
+        except remote_job.NomadJobHandedOver:
+            # The worker stops: the next one resumes the job and reads the
+            # upload again.
+            temp_files.remove(uploaded_movie_path)
+            raise
         except BaseTimeoutException:
             # rq raises its timeout inside the job: swallowed, the job
             # would count as successful and mark_broken_on_job_failure
@@ -444,6 +467,82 @@ def prepare_and_store_movie(
             _remove_temp_files(*temp_files)
 
 
+def dispatch_picture_processing(
+    preview_file_id, original_picture_path, no_job=False
+):
+    """
+    Build the picture variants on the job queue when one is enabled, in
+    the calling thread otherwise. Return whether the work was queued, so
+    the caller knows whether the preview file is still processing.
+
+    Like the movie pipeline, the job receives a local path: the workers
+    run on the API host, or share TMP_DIR with it.
+    """
+    if config.ENABLE_JOB_QUEUE and not no_job:
+        queue_store.job_queue.enqueue(
+            prepare_and_store_picture,
+            args=(preview_file_id, original_picture_path),
+            job_timeout=int(config.JOB_QUEUE_TIMEOUT),
+            on_failure=mark_broken_on_job_failure,
+        )
+        return True
+    prepare_and_store_picture(preview_file_id, original_picture_path)
+    return False
+
+
+def prepare_and_store_picture(preview_file_id, original_picture_path):
+    """
+    Build the variants of an uploaded picture, store them and mark the
+    preview file ready. Runs from a job as well as from a request: it
+    brings its own app context when there is none.
+    """
+    from flask import has_app_context
+    from zou.app import app
+
+    def run():
+        try:
+            save_variants(preview_file_id, original_picture_path)
+            preview_file = update_preview_file(
+                preview_file_id, {"status": "ready"}
+            )
+            tasks_service.update_preview_file_info(preview_file)
+        except PreviewFileNotFoundException:
+            # Deleted while the job waited in the queue: nothing to build.
+            app.logger.warning(
+                f"Preview file {preview_file_id} was deleted before its "
+                f"variants could be built"
+            )
+        except BaseTimeoutException:
+            # rq raises its timeout inside the job: swallowed, the job
+            # would count as successful and mark_broken_on_job_failure
+            # would never run.
+            raise
+        except Exception:
+            # Covers the inline path (no job queue, or ?no_job=true): the
+            # queued path relies on on_failure=mark_broken_on_job_failure,
+            # but that callback never runs for a call made directly from
+            # the request thread. Marking broken here first, then
+            # re-raising, keeps both paths consistent and leaves rq's
+            # failure handling (which is idempotent) intact.
+            app.logger.error(
+                f"Picture processing failed for preview file {preview_file_id}",
+                exc_info=1,
+            )
+            try:
+                set_preview_file_as_broken(preview_file_id)
+            except PreviewFileNotFoundException:
+                pass
+            raise
+        finally:
+            _remove_temp_files(original_picture_path)
+
+    if has_app_context():
+        run()
+    else:
+        with app.app_context():
+            run()
+
+
 def _process_movie(
     preview_file_id,
     uploaded_movie_path,
@@ -455,7 +554,8 @@ def _process_movie(
     The movie pipeline itself, one step after the other. Every temporary
     file it produces goes into temp_files, removed by the caller.
     """
-    if add_source_to_file_store:
+    # A job resumed after a handover stored the source already.
+    if add_source_to_file_store and not remote_job.is_resumed():
         file_store.add_movie("source", preview_file_id, uploaded_movie_path)
     _record_original_metadata(preview_file_id, uploaded_movie_path)
     fps, width, height, bitrates = _get_encoding_parameters(preview_file_id)
@@ -517,6 +617,9 @@ def _process_movie(
         encode,
         skip_high_def,
         add_source_to_file_store,
+    )
+    _record_movie_states(
+        preview_file_id, stored_movie_prefixes, remote_handles_thumbnails
     )
     preview_file_raw = files_service.get_preview_file_raw(preview_file_id)
     preview_file = update_preview_file_raw(
@@ -721,9 +824,27 @@ def _build_thumbnails_and_tile(preview_file_id, movie_path, size, temp_files):
     try:
         tile_path = movie.generate_tile(movie_path)
         file_store.add_picture("tiles", preview_file_id, tile_path)
-        os.remove(tile_path)
+        preview_file_states_service.record_file_state(
+            preview_file_id,
+            "pictures",
+            "tiles",
+            preview_file_states_service.OK,
+        )
+        # The tile is stored: a failure removing the local temp copy is
+        # not a generation failure and must not undo the "ok" just
+        # recorded above.
+        try:
+            os.remove(tile_path)
+        except OSError:
+            pass
         current_app.logger.info(f"tile created {tile_path}")
     except Exception:
+        preview_file_states_service.record_file_state(
+            preview_file_id,
+            "pictures",
+            "tiles",
+            preview_file_states_service.FAILED,
+        )
         current_app.logger.error("Failed to create tile", exc_info=1)
 
 
@@ -750,6 +871,35 @@ def _get_stored_movie_prefixes(
     if add_source_to_file_store and "source" not in prefixes:
         prefixes.insert(0, "source")
     return prefixes
+
+
+def _record_movie_states(
+    preview_file_id, stored_movie_prefixes, remote_handles_thumbnails
+):
+    """
+    Record the movie versions stored and, when a remote job built them,
+    which pictures it actually wrote: a picture it should have written
+    and did not is failed. A local build records its pictures as it
+    stores them. A version not produced is not recorded missing: another
+    writer may still bring it, only a read confirms an absence.
+    """
+    states = {
+        ("movies", prefix): preview_file_states_service.OK
+        for prefix in stored_movie_prefixes
+    }
+    if remote_handles_thumbnails:
+        pictures = [
+            key
+            for key in preview_file_states_service.MOVIE_FILES
+            if key[0] == "pictures"
+        ]
+        probed = preview_file_states_service.probe_file_states(
+            preview_file_id, "mp4", files=pictures
+        )
+        states.update(
+            preview_file_states_service.fail_missing(probed, pictures)
+        )
+    preview_file_states_service.record_file_states(preview_file_id, states)
 
 
 def is_remote_normalization_enabled():
@@ -811,6 +961,13 @@ def save_variants(preview_file_id, original_picture_path, with_original=True):
         for prefix, path in variants:
             file_store.add_picture(prefix, preview_file_id, path)
             clear_variant_from_cache(preview_file_id, prefix)
+        preview_file_states_service.record_file_states(
+            preview_file_id,
+            {
+                ("pictures", prefix): preview_file_states_service.OK
+                for prefix, _ in variants
+            },
+        )
     finally:
         # A failed upload must not leak the remaining variant files.
         _remove_temp_files(*[path for _, path in variants])
@@ -1272,20 +1429,54 @@ def extract_frame_from_preview_file(preview_file, frame_number):
     return extracted_frame_path
 
 
+def dispatch_frame_extraction(preview_file, frame_number, no_job=False):
+    """
+    Rebuild the variants of a movie preview from one of its frames, on
+    the job queue when one is enabled. Return whether it was queued.
+    """
+    if config.ENABLE_JOB_QUEUE and not no_job:
+        queue_store.job_queue.enqueue(
+            replace_extracted_frame_for_preview_file,
+            args=(preview_file, frame_number),
+            job_timeout=int(config.JOB_QUEUE_TIMEOUT),
+        )
+        return True
+    replace_extracted_frame_for_preview_file(preview_file, frame_number)
+    return False
+
+
 def replace_extracted_frame_for_preview_file(preview_file, frame_number):
     """
     Replace the preview thumbnail with given frame, so a movie can show
-    the frame the reviewer picked.
+    the frame the reviewer picked. A failure leaves the previous
+    thumbnail in place: nothing is broken, only unchanged.
     """
-    extracted_frame_path = extract_frame_from_preview_file(
-        preview_file, frame_number
-    )
-    if extracted_frame_path is None:
-        return
-    extracted_frame_path = thumbnail_utils.turn_into_thumbnail(
-        extracted_frame_path
-    )
-    save_variants(preview_file["id"], extracted_frame_path)
+    from flask import has_app_context
+    from zou.app import app
+
+    def run():
+        try:
+            extracted_frame_path = extract_frame_from_preview_file(
+                preview_file, frame_number
+            )
+            if extracted_frame_path is None:
+                return
+            extracted_frame_path = thumbnail_utils.turn_into_thumbnail(
+                extracted_frame_path
+            )
+            save_variants(preview_file["id"], extracted_frame_path)
+        except Exception:
+            app.logger.error(
+                f"Could not extract frame {frame_number} of preview file "
+                f"{preview_file['id']}",
+                exc_info=True,
+            )
+
+    if has_app_context():
+        run()
+    else:
+        with app.app_context():
+            run()
 
 
 ANNOTATED_PICTURE_EXTENSIONS = ("jpg", "jpeg", "jpe", "png")
@@ -1721,24 +1912,20 @@ def reset_picture_files_metadata():
             )
 
 
-def generate_preview_extra(
+def _build_preview_extra_query(
     project=None,
     entity_id=None,
     episodes=None,
     only_shots=False,
     only_assets=False,
-    force_regenerate_tiles=False,
-    with_tiles=False,
-    with_metadata=False,
-    with_thumbnails=False,
+    extensions=("mp4", "png"),
 ):
     """
-    Generate tiles for all movie previews and reset previews file size
-    informations of open projects.
+    The ready previews of the open projects the preview extra commands
+    work on, narrowed by project, entity, episodes and entity kind.
     """
     if episodes is None:
         episodes = []
-    print("Generating preview extras...")
     query = (
         PreviewFile.query.join(Task)
         .join(Entity)
@@ -1746,8 +1933,9 @@ def generate_preview_extra(
         .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
         .filter(ProjectStatus.name.in_(("Active", "open", "Open")))
         .filter(PreviewFile.status.not_in(("broken", "missing", "processing")))
-        .filter(PreviewFile.extension.in_(("mp4", "png")))
+        .filter(PreviewFile.extension.in_(extensions))
     )
+    project_id = None
     if project is not None:
         try:
             project_id = projects_service.get_project_by_name(project)["id"]
@@ -1759,12 +1947,9 @@ def generate_preview_extra(
         query = query.filter(Task.entity_id == entity_id)
 
     if episodes:
-        get_episode_by_name = False
-        if project is not None:
-            get_episode_by_name = True
+        get_episode_by_name = project is not None
         episode_ids = []
         for episode in episodes:
-            episode_id = None
             try:
                 episode_id = shots_service.get_episode(episode)["id"]
             except EpisodeNotFoundException as e:
@@ -1789,13 +1974,151 @@ def generate_preview_extra(
                 assets_service.get_temporal_type_ids()
             )
         )
+    return query
+
+
+def queue_missing_tiles(
+    project=None,
+    entity_id=None,
+    episodes=None,
+    only_shots=False,
+    only_assets=False,
+    limit=None,
+    force=False,
+    progress=None,
+):
+    """
+    Queue the tile build of the movies that have none, one job per movie:
+    on Nomad when a tile job is configured, on this host otherwise. The
+    command itself decodes nothing and does not wait for the builds.
+
+    The movies whose tile is recorded as stored are left out of the
+    query. The recorded state answers for the other movies it knows; the
+    rest cost one storage round trip, whose answer is recorded on the
+    way. A movie attempted within the hour is skipped unless force is
+    set. The limit caps the jobs queued, newest movies first. Return the
+    counts per outcome.
+    """
+    if not config.ENABLE_JOB_QUEUE:
+        raise JobQueueDisabledException(
+            "No job queue: tiles cannot be built in the background. "
+            "Use --with-tiles to build them in this command instead."
+        )
+    query = _build_preview_extra_query(
+        project=project,
+        entity_id=entity_id,
+        episodes=episodes,
+        only_shots=only_shots,
+        only_assets=only_assets,
+        extensions=("mp4",),
+    )
+    bucket, prefix = preview_file_states_service.TILE
+    stored_tile = PreviewFileStorageState.query.filter(
+        PreviewFileStorageState.preview_file_id == PreviewFile.id,
+        PreviewFileStorageState.bucket == bucket,
+        PreviewFileStorageState.prefix == prefix,
+        PreviewFileStorageState.state == preview_file_states_service.OK,
+    ).exists()
+    query = query.filter(~stored_tile).order_by(
+        PreviewFile.created_at.desc(), PreviewFile.id
+    )
+
+    progress = progress or NullProgress()
+    summary = Counter()
+    preview_files = query.all()
+    progress.start(len(preview_files))
+    try:
+        for preview_file in preview_files:
+            if limit is not None and summary["queued"] >= limit:
+                break
+            _queue_missing_tile(preview_file, summary, force)
+            progress.advance()
+    finally:
+        progress.stop()
+    return summary
+
+
+def _queue_missing_tile(preview_file, summary, force):
+    """
+    Queue the tile build of one movie, counting the outcome.
+    """
+    try:
+        preview_file_id = str(preview_file.id)
+    except ObjectDeletedError:
+        return
+    summary["checked"] += 1
+    stored = _has_stored_tile(preview_file_id)
+    if stored is None:
+        summary["storage_errors"] += 1
+        return
+    if stored:
+        summary["stored"] += 1
+        return
+    if force:
+        _tile_store().delete(_tile_attempt_key(preview_file_id))
+    if generate_tile_later(preview_file_id):
+        summary["queued"] += 1
+    else:
+        summary["recently_attempted"] += 1
+
+
+def _has_stored_tile(preview_file_id):
+    """
+    Whether the tile of a movie is stored, from the recorded state when
+    there is one, from the storage otherwise. None when the storage
+    could not answer: a transient failure records nothing and queues
+    nothing.
+    """
+    states = preview_file_states_service.get_file_states(preview_file_id)
+    state = preview_file_states_service.get_state(states, "pictures", "tiles")
+    if state is not None:
+        return state == preview_file_states_service.OK
+    probed = preview_file_states_service.probe_file_states(
+        preview_file_id, "mp4", files=[preview_file_states_service.TILE]
+    )
+    if not probed:
+        return None
+    preview_file_states_service.record_file_states(preview_file_id, probed)
+    return (
+        probed[preview_file_states_service.TILE]
+        == preview_file_states_service.OK
+    )
+
+
+def generate_preview_extra(
+    project=None,
+    entity_id=None,
+    episodes=None,
+    only_shots=False,
+    only_assets=False,
+    force_regenerate_tiles=False,
+    with_tiles=False,
+    with_metadata=False,
+    with_thumbnails=False,
+    progress=None,
+):
+    """
+    Generate tiles for all movie previews and reset previews file size
+    informations of open projects.
+    """
+    progress = progress or NullProgress()
+    print("Generating preview extras...")
+    query = _build_preview_extra_query(
+        project=project,
+        entity_id=entity_id,
+        episodes=episodes,
+        only_shots=only_shots,
+        only_assets=only_assets,
+    )
 
     total = query.count()
     print(f"{total} previews found.")
+    progress.start(total)
     for index, preview_file in enumerate(query.all()):
         try:
             preview_file_id = str(preview_file.id)
         except ObjectDeletedError:
+            progress.advance()
             continue
         prefix = "previews" if preview_file.extension == "mp4" else "original"
         if config.FS_BACKEND != "local":
@@ -1835,7 +2158,9 @@ def generate_preview_extra(
                     os.remove(preview_file_path)
                 except OSError:
                     pass
+        progress.advance()
 
+    progress.stop()
     print("Extra information generated.")
     return total
 
@@ -1845,21 +2170,23 @@ def generate_tile_later(preview_file_id):
     Build the missing tile sheet of a movie on the job queue. Without a
     queue nothing happens: the web process runs no ffmpeg of its own. An
     attempt younger than an hour, running or failed, is not repeated: a
-    sidecar file in TMP_DIR remembers it, so a movie ffmpeg cannot tile
-    does not cost a job per hover on the progress bar.
+    Redis key remembers it, shared by every process and kept across a
+    reboot, so a movie ffmpeg cannot tile does not cost a job per hover on
+    the progress bar.
     """
     if not config.ENABLE_JOB_QUEUE:
         return False
-    mark_path = os.path.join(config.TMP_DIR, f"tile-{preview_file_id}.mark")
     try:
-        if time.time() - os.path.getmtime(mark_path) < TILE_RETRY_DELAY:
-            return False
-    except OSError:
-        pass
-    fs.mkdir_p(config.TMP_DIR)
-    with open(mark_path, "a"):
-        pass
-    os.utime(mark_path, None)
+        is_first_attempt = _tile_store().set(
+            _tile_attempt_key(preview_file_id),
+            1,
+            nx=True,
+            ex=TILE_RETRY_DELAY,
+        )
+    except redis.RedisError:
+        return False
+    if not is_first_attempt:
+        return False
     queue_store.job_queue.enqueue(
         generate_missing_tile,
         args=(preview_file_id,),
@@ -1868,11 +2195,22 @@ def generate_tile_later(preview_file_id):
     return True
 
 
+def is_remote_tile_enabled():
+    """
+    Tile sheets are built on a remote worker when the job queue is set to
+    remote and a Nomad tile job is configured.
+    """
+    return (
+        config.ENABLE_JOB_QUEUE_REMOTE
+        and len(config_store.get_nomad_tile_job()) > 0
+    )
+
+
 def generate_missing_tile(preview_file_id):
     """
-    Build and store the tile sheet of a ready movie that has none, from
-    the first stored version of the movie. Runs under its own app
-    context: it is a job.
+    Build and store the tile sheet of a ready movie that has none: on
+    Nomad when a tile job is configured, locally otherwise. Runs under its
+    own app context: it is a job.
     """
     from zou.app import app
 
@@ -1884,23 +2222,93 @@ def generate_missing_tile(preview_file_id):
         ):
             return False
         preview_file_raw = files_service.get_preview_file_raw(preview_file_id)
-        movie_path = _retrieve_stored_movie(preview_file_raw)
+        if is_remote_tile_enabled():
+            return _run_remote_tile_job(app, preview_file_raw)
+        return _generate_missing_tile_locally(preview_file_raw)
+
+
+def _run_remote_tile_job(app, preview_file):
+    """
+    Hand the tile build over to the Nomad runner and wait for it. The
+    runner tries the recorded prefixes first, then the others.
+    """
+    recorded_prefixes = files_service.get_preview_file_data(preview_file).get(
+        files_service.MOVIE_PREFIXES_KEY
+    )
+    params = {
+        "version": str(REMOTE_TILE_VERSION),
+        "preview_file_id": str(preview_file.id),
+        "movie_prefixes": recorded_prefixes or [],
+    }
+    # A Nomad dispatch error or a timeout is transient: the tile state
+    # must stay as it was, not be recorded failed. Only a job that
+    # actually completed without producing the tile counts as failed,
+    # below.
+    result = remote_job.run_job(
+        app, config, config_store.get_nomad_tile_job(), params
+    )
+    probed = preview_file_states_service.probe_file_states(
+        preview_file.id, "mp4", files=[preview_file_states_service.TILE]
+    )
+    preview_file_states_service.record_file_states(
+        preview_file.id,
+        preview_file_states_service.fail_missing(
+            probed, [preview_file_states_service.TILE]
+        ),
+    )
+    return result
+
+
+def _generate_missing_tile_locally(preview_file):
+    """
+    Build the tile sheet on this host, one movie at a time. While another
+    build runs, give up and forget the attempt: the next 404 queues it
+    again instead of piling decodes up on the API cores.
+    """
+    store = _tile_store()
+    # A plain SET NX, not redis-py's Lock: its release runs a Lua script,
+    # which the fakeredis the tests run on does not support.
+    token = fields.gen_uuid().hex
+    if not store.set(
+        LOCAL_TILE_BUILD_LOCK_KEY,
+        token,
+        nx=True,
+        ex=int(config.JOB_QUEUE_TIMEOUT),
+    ):
+        store.delete(_tile_attempt_key(preview_file.id))
+        return False
+    try:
+        movie_path = _retrieve_stored_movie(preview_file)
         if movie_path is None:
             return False
-        _generate_tiles(file_store, preview_file_raw, movie_path, 1, 1)
+        _generate_tiles(file_store, preview_file, movie_path, 1, 1)
         return True
+    finally:
+        # Only release a lock still ours: an expired one may have been
+        # taken by another build since.
+        if store.get(LOCAL_TILE_BUILD_LOCK_KEY) == token:
+            store.delete(LOCAL_TILE_BUILD_LOCK_KEY)
+
+
+def _tile_store():
+    return redis_client.get_client(config.KV_JOB_DB_INDEX)
+
+
+def _tile_attempt_key(preview_file_id):
+    return f"tile-attempt:{preview_file_id}"
 
 
 def _retrieve_stored_movie(preview_file):
     """
-    Local path of the best stored version of a movie, HD first, or None
-    when the storage holds none of them.
+    Local path of the smallest stored version of a movie, low def first,
+    or None when the storage holds none of them. A tile is 100 pixels
+    high: the high def movie only costs a longer decode.
     """
     recorded_prefixes = files_service.get_preview_file_data(preview_file).get(
         files_service.MOVIE_PREFIXES_KEY
     )
     for prefix in files_service.get_movie_prefixes(
-        recorded_prefixes or [], False
+        recorded_prefixes or [], True
     ):
         movie_path = _retrieve_preview_file(
             config, file_store, prefix, preview_file
@@ -1969,12 +2377,31 @@ def _generate_tiles(
         ):
             tile_path = movie.generate_tile(preview_file_path)
             file_store.add_picture("tiles", preview_file.id, tile_path)
-            os.remove(tile_path)
+            preview_file_states_service.record_file_state(
+                preview_file.id,
+                "pictures",
+                "tiles",
+                preview_file_states_service.OK,
+            )
+            # The tile is stored: a failure removing the local temp copy
+            # is not a generation failure and must not undo the "ok"
+            # just recorded above.
+            try:
+                os.remove(tile_path)
+            except OSError:
+                pass
             print(
                 f"{index:0{len(str(total))}}/{total} Tile "
                 + f"generated for {preview_file.id}.",
             )
     except Exception as e:
+        if preview_file.extension == "mp4":
+            preview_file_states_service.record_file_state(
+                preview_file.id,
+                "pictures",
+                "tiles",
+                preview_file_states_service.FAILED,
+            )
         print(
             f"Failed to generate tile for preview file {preview_file.id}: {e}."
         )
@@ -2056,6 +2483,7 @@ def copy_preview_file_in_another_one(
     is_picture = original_preview_file["extension"] == "png"
 
     stored_movie_prefixes = []
+    copied_files = {}
     if is_movie:
         # The source is copied too: when the normalization is skipped it is
         # the only stored movie, and the preview routes serve it.
@@ -2070,6 +2498,9 @@ def copy_preview_file_in_another_one(
             )
             if copied:
                 stored_movie_prefixes.append(prefix)
+                copied_files[("movies", prefix)] = (
+                    preview_file_states_service.OK
+                )
 
     if is_movie or is_picture:
         prefixes = [
@@ -2082,7 +2513,7 @@ def copy_preview_file_in_another_one(
             prefixes.append("tiles")
 
         for prefix in prefixes:
-            copy_preview_file_on_storage(
+            copied = copy_preview_file_on_storage(
                 file_store.get_local_picture_path,
                 file_store.exists_picture,
                 file_store.copy_picture,
@@ -2090,8 +2521,12 @@ def copy_preview_file_in_another_one(
                 original_preview_file_id,
                 preview_file_to_update_id,
             )
+            if copied:
+                copied_files[("pictures", prefix)] = (
+                    preview_file_states_service.OK
+                )
     else:
-        copy_preview_file_on_storage(
+        copied = copy_preview_file_on_storage(
             file_store.get_local_file_path,
             file_store.exists_file,
             file_store.copy_file,
@@ -2099,6 +2534,14 @@ def copy_preview_file_in_another_one(
             original_preview_file_id,
             preview_file_to_update_id,
         )
+        if copied:
+            copied_files[("files", "previews")] = (
+                preview_file_states_service.OK
+            )
+
+    preview_file_states_service.record_file_states(
+        preview_file_to_update_id, copied_files
+    )
 
     data = {
         "extension": original_preview_file["extension"],

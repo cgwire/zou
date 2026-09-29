@@ -1,16 +1,26 @@
 import os
 
+from unittest.mock import patch
+
 from tests.base import ApiDBTestCase
 from zou.app import db
 
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.metadata_descriptor import MetadataDescriptor
-from zou.app.models.project import ProjectTaskTypeLink
+from zou.app.models.project import (
+    ProjectAssetTypeLink,
+    ProjectTaskTypeLink,
+)
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 
-from zou.app.services import assets_service, tasks_service
+from zou.app.services import (
+    assets_service,
+    index_service,
+    projects_service,
+    tasks_service,
+)
 
 
 class ImportCsvAssetsTestCase(ApiDBTestCase):
@@ -332,3 +342,109 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         self.assertEqual(error["line_number"], 3)
         self.assertEqual(error["imported_rows"], 1)
         self.assertIsNone(EntityType.get_by(name=""))
+
+    def test_import_assets_type_not_configured_for_project(self):
+        # A project with a configured asset type list never gets a new
+        # type from an import: an unknown name is a typo, not a type.
+        self.generate_fixture_asset_types()
+        projects_service.add_asset_type_setting(
+            self.project_id, self.asset_type_character.id
+        )
+        path = f"/import/csv/projects/{self.project.id}/assets"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets.csv")
+        )
+        error = self.upload_file(path, file_path_fixture, 400)
+        self.assertIn("not configured for this project", error["message"])
+        self.assertEqual(error["line_number"], 2)
+        self.assertEqual(error["imported_rows"], 0)
+        self.assertIsNone(EntityType.get_by(name="Prop"))
+        self.assertEqual(Entity.query.all(), [])
+
+    def test_import_assets_type_case_insensitive(self):
+        # The asset type creation route refuses a name already taken in
+        # another case, so the import must reuse Prop for a prop cell
+        # instead of creating a duplicate the UI could never create.
+        asset_type = EntityType.create(name="Prop")
+        path = f"/import/csv/projects/{self.project.id}/assets"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets_lowercase_type.csv")
+        )
+        self.upload_file(path, file_path_fixture)
+        self.assertIsNone(EntityType.query.filter_by(name="prop").first())
+        asset = Entity.query.one()
+        self.assertEqual(asset.entity_type_id, asset_type.id)
+
+    def test_import_assets_temporal_type(self):
+        # Shots and sequences share the entity type table with asset
+        # types: a row typed Shot used to create an entity that no asset
+        # list would ever show.
+        self.generate_fixture_asset_type()
+        path = f"/import/csv/projects/{self.project.id}/assets"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets_shot_type.csv")
+        )
+        error = self.upload_file(path, file_path_fixture, 400)
+        self.assertIn("not an asset type", error["message"])
+        self.assertEqual(Entity.query.all(), [])
+
+    def test_import_assets_type_added_to_project(self):
+        # A type that exists but is missing from the project list is added
+        # to it: the imported assets would otherwise be absent from the
+        # production filters and from the schedule.
+        self.generate_fixture_asset_types()
+        projects_service.add_asset_type_setting(
+            self.project_id, self.asset_type_character.id
+        )
+        asset_type = EntityType.create(name="Prop")
+        path = f"/import/csv/projects/{self.project.id}/assets"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets.csv")
+        )
+        self.upload_file(path, file_path_fixture)
+        self.assertEqual(len(Entity.query.all()), 3)
+        self.assertIsNotNone(
+            ProjectAssetTypeLink.query.filter_by(
+                project_id=self.project_id, asset_type_id=asset_type.id
+            ).first()
+        )
+
+    def test_import_assets_indexes_them_in_one_call(self):
+        # Waiting on the indexer for every row made a large import last
+        # longer than Kitsu waited for its answer.
+        path = f"/import/csv/projects/{self.project.id}/assets"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets.csv")
+        )
+        with patch.object(index_service, "index_asset") as index_asset:
+            with patch.object(
+                index_service, "remove_asset_index"
+            ) as remove_asset_index:
+                with patch.object(
+                    index_service, "index_assets"
+                ) as index_assets:
+                    self.upload_file(path, file_path_fixture)
+                    self.upload_file(f"{path}?update=true", file_path_fixture)
+
+        index_asset.assert_not_called()
+        remove_asset_index.assert_not_called()
+        asset_ids = {str(asset.id) for asset in Entity.query.all()}
+        self.assertEqual(index_assets.call_count, 2)
+        for call in index_assets.call_args_list:
+            self.assertEqual({str(id) for id in call.args[0]}, asset_ids)
+
+    def test_import_assets_indexes_the_rows_imported_before_a_failure(self):
+        self.link_asset_task_types_to_project()
+        path = f"/import/csv/projects/{self.project.id}/assets"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets_broken_task_status.csv")
+        )
+        with patch.object(index_service, "index_assets") as index_assets:
+            self.upload_file(path, file_path_fixture, 400)
+
+        asset_ids = {str(asset.id) for asset in Entity.query.all()}
+        self.assertEqual(len(asset_ids), 2)
+        index_assets.assert_called_once()
+        self.assertEqual(
+            {str(id) for id in index_assets.call_args.args[0]}, asset_ids
+        )

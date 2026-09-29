@@ -14,12 +14,13 @@ Two conventions matter when editing this module:
 import collections
 import uuid
 
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, any_, cast, or_
+from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.exc import StatementError, IntegrityError, DataError
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import case
 from sqlalchemy.orm import aliased, selectinload
-from sqlalchemy.orm.exc import StaleDataError
+from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
 
 from zou.app import config, db
 from zou.app.utils import events
@@ -487,8 +488,11 @@ def _attach_assignee_ids(task_dicts):
     task_ids = [task["id"] for task in task_dicts]
     links = (
         db.session.query(TaskPersonLink.task_id, TaskPersonLink.person_id)
-        .filter(TaskPersonLink.task_id.in_(task_ids))
-        .all()
+        # One array parameter: an IN list binds one parameter per task,
+        # which takes seconds on a full episode.
+        .filter(
+            TaskPersonLink.task_id == any_(cast(task_ids, ARRAY(UUID)))
+        ).all()
     )
     assignees_by_task = collections.defaultdict(list)
     for task_id, person_id in links:
@@ -1914,13 +1918,12 @@ def get_or_create_task_type(
     return task_type.serialize()
 
 
-def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
+def _get_time_spent_raw(task_id, person_id, date):
     """
-    Create a new time spent if it doesn't exist. If it exists, it update it
-    with the new duration and returns it from the database.
+    Return the time spent recorded for given task, person and date.
     """
     try:
-        time_spent = TimeSpent.get_by(
+        return TimeSpent.get_by(
             task_id=task_id,
             person_id=person_id,
             date=func.cast(date, TimeSpent.date.type),
@@ -1928,28 +1931,67 @@ def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
     except DataError:
         raise WrongDateFormatException
 
+
+def _apply_time_spent_duration(time_spent, duration, add, project_id):
+    """
+    Set the duration of an existing time spent and notify the change.
+    """
+    if add:
+        duration = time_spent.duration + duration
+    time_spent.update({"duration": duration})
+    events.emit(
+        "time-spent:update",
+        {"time_spent_id": str(time_spent.id)},
+        project_id=project_id,
+    )
+
+
+def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
+    """
+    Create a new time spent if it doesn't exist. If it exists, it update it
+    with the new duration and returns it from the database.
+    """
+    try:
+        return _create_or_update_time_spent(
+            task_id, person_id, date, duration, add
+        )
+    except ObjectDeletedError:
+        # Every commit expires the row, so reading it back after a concurrent
+        # DELETE finds nothing. The deleting request recomputes the task
+        # duration itself.
+        raise TimeSpentNotFoundException
+
+
+def _create_or_update_time_spent(task_id, person_id, date, duration, add):
+    time_spent = _get_time_spent_raw(task_id, person_id, date)
+
     task = base_service.get_instance(Task, task_id, TaskNotFoundException)
     project_id = str(task.project_id)
     if time_spent is not None:
-        if add:
-            time_spent.update({"duration": time_spent.duration + duration})
-        else:
-            time_spent.update({"duration": duration})
-        events.emit(
-            "time-spent:update",
-            {"time_spent_id": str(time_spent.id)},
-            project_id=project_id,
-        )
+        _apply_time_spent_duration(time_spent, duration, add, project_id)
     else:
-        time_spent = TimeSpent.create(
-            task_id=task_id, person_id=person_id, date=date, duration=duration
-        )
-        persons_service.update_person_last_presence(person_id)
-        events.emit(
-            "time-spent:new",
-            {"time_spent_id": str(time_spent.id)},
-            project_id=project_id,
-        )
+        try:
+            time_spent = TimeSpent.create(
+                task_id=task_id,
+                person_id=person_id,
+                date=date,
+                duration=duration,
+            )
+            persons_service.update_person_last_presence(person_id)
+            events.emit(
+                "time-spent:new",
+                {"time_spent_id": str(time_spent.id)},
+                project_id=project_id,
+            )
+        except IntegrityError:
+            # A concurrent request inserted the same (person, task, date)
+            # between the read above and this insert: time_spent_uc rejects
+            # the loser, which updates the winning row instead of 500ing.
+            # BaseMixin.create already rolled the session back.
+            time_spent = _get_time_spent_raw(task_id, person_id, date)
+            if time_spent is None:
+                raise
+            _apply_time_spent_duration(time_spent, duration, add, project_id)
 
     task.duration = sum(
         time_spent.duration
@@ -1966,14 +2008,7 @@ def delete_time_spent(task_id, person_id, date):
     """
     Delete time spent for given task, person and date.
     """
-    try:
-        time_spent = TimeSpent.get_by(
-            task_id=task_id,
-            person_id=person_id,
-            date=func.cast(date, TimeSpent.date.type),
-        )
-    except DataError:
-        raise WrongDateFormatException
+    time_spent = _get_time_spent_raw(task_id, person_id, date)
 
     if time_spent is None:
         raise TimeSpentNotFoundException

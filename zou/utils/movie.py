@@ -136,9 +136,11 @@ def generate_tile(movie_path):
     else:
         select = ""
     try:
-        ffmpeg.input(movie_path).output(
+        # One decoding thread: the tile is built next to the API.
+        ffmpeg.input(movie_path, threads=1).output(
             file_target_path,
             vf=f"{select}scale={width}:{height},tile=8x{rows}",
+            threads=1,
         ).overwrite_output().run(quiet=True)
     except ffmpeg._run.Error as e:
         log_ffmpeg_error(e, "An error occured while generating the tile.")
@@ -535,6 +537,7 @@ def concat_demuxer(in_files, output_path, *args):
     """
 
     first_layout = None
+    video_durations = {}
     for input_path in in_files:
         try:
             info = ffmpeg.probe(input_path)
@@ -579,10 +582,21 @@ def concat_demuxer(in_files, output_path, *args):
                     f"{input_path} has unexpected stream type ({stream_infos})"
                 ),
             }
+        video_durations[input_path] = next(
+            stream.get("duration")
+            for stream in streams
+            if stream["codec_type"] == "video"
+        )
 
     with tempfile.NamedTemporaryFile(mode="w") as temp:
         for input_path in in_files:
             temp.write(f"file '{input_path}'\n")
+            # The demuxer offsets the next file by the container duration,
+            # which follows the audio: AAC overshoots the last video frame
+            # by a few ms, and the CFR output fills the accumulated gap with
+            # a duplicated frame. Offset by the video duration instead.
+            if video_durations[input_path]:
+                temp.write(f"duration {video_durations[input_path]}\n")
         temp.flush()
 
         stream = ffmpeg.input(temp.name, format="concat", safe=0)
@@ -590,7 +604,9 @@ def concat_demuxer(in_files, output_path, *args):
             stream.video,
             stream.audio,
             output_path,
-            vf="select=concatdec_select",
+            # setpts: AAC priming shifts the first video frame off zero,
+            # which the CFR output pads with a duplicated frame.
+            vf="select=concatdec_select,setpts=N/FR/TB",
             af="aselect=concatdec_select,aresample=async=1",
         )
         return run_ffmpeg(stream, "-xerror")

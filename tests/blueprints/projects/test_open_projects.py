@@ -56,6 +56,90 @@ class OpenProjectRouteTestCase(ApiDBTestCase):
 
         self.assertEqual(self.first_episode_id(), str(episodes["E01"].id))
 
+    def add_descriptors(self, project_id):
+        """
+        Give the project a descriptor kept to the studio and one published
+        to clients. Returns the published one.
+        """
+        projects_service.add_metadata_descriptor(
+            project_id, "Asset", "Contractor", "string", [], False
+        )
+        return projects_service.add_metadata_descriptor(
+            project_id, "Asset", "Delivery", "string", [], True
+        )
+
+    def descriptor_ids(self, project):
+        return [descriptor["id"] for descriptor in project["descriptors"]]
+
+    def test_the_descriptors_follow_the_role_held_on_each_project(self):
+        # A listing resolves no project, so its descriptors were narrowed on
+        # the global role: a manager who is a client on a production read
+        # the ones kept to the studio.
+        client_project_id = self.project_id
+        managed_project_id = str(self.generate_fixture_project("Agent 327").id)
+        published = self.add_descriptors(client_project_id)
+        self.add_descriptors(managed_project_id)
+        manager_id = self.generate_fixture_user_manager()["id"]
+        projects_service.add_team_member(
+            client_project_id, manager_id, role="client"
+        )
+        projects_service.add_team_member(managed_project_id, manager_id)
+        self.log_in_manager()
+
+        projects = {
+            project["id"]: project
+            for project in self.get("data/projects/open")
+        }
+
+        self.assertEqual(
+            self.descriptor_ids(projects[client_project_id]),
+            [published["id"]],
+        )
+        self.assertEqual(len(projects[managed_project_id]["descriptors"]), 2)
+        # A read by its id serves the same descriptors.
+        self.assertEqual(
+            self.get(f"data/projects/{client_project_id}")["descriptors"],
+            projects[client_project_id]["descriptors"],
+        )
+
+    def test_a_client_promoted_on_a_project_lists_every_descriptor(self):
+        self.add_descriptors(self.project_id)
+        client_id = self.generate_fixture_user_client()["id"]
+        projects_service.add_team_member(
+            self.project_id, client_id, role="user"
+        )
+        self.log_in_client()
+
+        projects = self.get("data/projects/open")
+
+        self.assertEqual(len(projects[0]["descriptors"]), 2)
+
+    def test_a_demoted_vendor_lists_their_departments_descriptors(self):
+        # The manager belongs to no department: as a vendor on the project,
+        # only the descriptors limited to no department are theirs.
+        self.generate_fixture_department()
+        shared = projects_service.add_metadata_descriptor(
+            self.project_id, "Asset", "Contractor", "string", [], False
+        )
+        projects_service.add_metadata_descriptor(
+            self.project_id,
+            "Asset",
+            "Rig",
+            "string",
+            [],
+            False,
+            [str(self.department.id)],
+        )
+        manager_id = self.generate_fixture_user_manager()["id"]
+        projects_service.add_team_member(
+            self.project_id, manager_id, role="vendor"
+        )
+        self.log_in_manager()
+
+        projects = self.get("data/projects/open")
+
+        self.assertEqual(self.descriptor_ids(projects[0]), [shared["id"]])
+
     def test_get_team(self):
         """
         A manager reads the team with each member's departments and

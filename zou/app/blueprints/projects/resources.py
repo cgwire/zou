@@ -218,7 +218,7 @@ class ProductionTeamResource(MethodView, ArgsMixin):
                         example: "supervisor"
         """
         permissions_service.check_project_access(project_id)
-        role_map = projects_service.get_team_roles(project_id)
+        role_map = projects_service.get_team_roles(str(project_id))
         persons = []
         for person in projects_service.get_team_raw(project_id):
             if permissions.has_manager_permissions():
@@ -1124,7 +1124,9 @@ class ProductionMetadataDescriptorsResource(MethodView, ArgsMixin):
         Get metadata descriptors
         ---
         description: Get all metadata descriptors. It serves to describe extra
-          fields listed in the data attribute of entities.
+          fields listed in the data attribute of entities. On the role held
+          on the project, a client only gets the ones published to clients,
+          a vendor only the ones of their departments or of no department.
         tags:
           - Projects
         parameters:
@@ -1147,9 +1149,13 @@ class ProductionMetadataDescriptorsResource(MethodView, ArgsMixin):
                     type: object
         """
         permissions_service.check_project_access(project_id)
-        for_client = permissions.has_client_permissions()
+        for_client, vendor_departments = (
+            user_service.get_descriptor_visibility(
+                permissions.get_effective_role()
+            )
+        )
         return projects_service.get_metadata_descriptors(
-            project_id, for_client
+            project_id, for_client, vendor_departments
         )
 
     @jwt_required()
@@ -1340,9 +1346,17 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
               application/json:
                 schema:
                   type: object
+          403:
+            description: Descriptor kept from the role held on the project
+          404:
+            description: No descriptor of this project with this id
         """
         permissions_service.check_project_access(project_id)
-        return projects_service.get_metadata_descriptor(metadata_descriptor_id)
+        descriptor = projects_service.get_project_metadata_descriptor(
+            project_id, metadata_descriptor_id
+        )
+        permissions_service.check_metadata_descriptor_access(descriptor)
+        return descriptor
 
     @jwt_required()
     def put(self, project_id, metadata_descriptor_id):
@@ -1405,14 +1419,17 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
               application/json:
                 schema:
                   type: object
+          404:
+            description: No descriptor of this project with this id
         """
         body = validation.validate_request_body(MetadataDescriptorUpdateSchema)
+        # The rights are checked on the project of the path: a descriptor of
+        # another project must not be reachable through it.
+        descriptor = projects_service.get_project_metadata_descriptor(
+            project_id, metadata_descriptor_id
+        )
         permissions_service.check_all_departments_access(
-            project_id,
-            projects_service.get_metadata_descriptor(metadata_descriptor_id)[
-                "departments"
-            ]
-            + body.departments,
+            project_id, descriptor["departments"] + body.departments
         )
 
         if body.name is not None and len(body.name) == 0:
@@ -1456,12 +1473,16 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
         responses:
           204:
             description: Metadata descriptor deleted
+          404:
+            description: No descriptor of this project with this id
         """
+        # The rights are checked on the project of the path: a descriptor of
+        # another project must not be reachable through it.
+        descriptor = projects_service.get_project_metadata_descriptor(
+            project_id, metadata_descriptor_id
+        )
         permissions_service.check_all_departments_access(
-            project_id,
-            projects_service.get_metadata_descriptor(metadata_descriptor_id)[
-                "departments"
-            ],
+            project_id, descriptor["departments"]
         )
         projects_service.remove_metadata_descriptor(metadata_descriptor_id)
         return "", 204

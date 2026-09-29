@@ -40,6 +40,24 @@ class SendToMattermostTestCase(unittest.TestCase):
         self.assertEqual(kwargs["json"]["username"], "Kitsu - Caminandes")
         self.assertEqual(kwargs["timeout"], 30)
 
+    def test_error_log_does_not_carry_the_webhook_key(self):
+        import requests
+
+        webhook = "https://mattermost.example.com/hooks/abcdef123"
+        error = requests.ConnectionError(
+            "HTTPSConnectionPool(host='mattermost.example.com', port=443): "
+            "Max retries exceeded with url: /hooks/abcdef123"
+        )
+        with mock.patch("requests.post", side_effect=error), self.assertLogs(
+            chats.logger, "ERROR"
+        ) as logs:
+            chats.send_to_mattermost(
+                webhook, "john.doe", {"message": "m", "project_name": "p"}
+            )
+        output = "\n".join(logs.output)
+        self.assertIn("ConnectionError", output)
+        self.assertNotIn("abcdef123", output)
+
     def test_missing_webhook_or_userid_does_not_post(self):
         with mock.patch("requests.post") as post:
             chats.send_to_mattermost(None, "john.doe", {})

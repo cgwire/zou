@@ -7,8 +7,7 @@ from zou.app.models.metadata_descriptor import (
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.utils import permissions
-from zou.app.models.project import Project
-from zou.app.services import user_service
+from zou.app.services import projects_service, user_service
 
 from zou.app.services.exception import (
     WrongParameterException,
@@ -23,7 +22,9 @@ class MetadataDescriptorsResource(BaseModelsResource):
         return [MetadataDescriptor.departments]
 
     def check_read_permissions(self, options=None):
-        return not permissions.has_vendor_permissions()
+        # Every member of a production reads its descriptors, narrowed on
+        # the role held there by add_project_permission_filter.
+        return True
 
     @jwt_required()
     def get(self):
@@ -177,11 +178,19 @@ class MetadataDescriptorsResource(BaseModelsResource):
         return super().post()
 
     def add_project_permission_filter(self, query):
-        if not permissions.has_admin_permissions():
-            query = query.join(Project).filter(
-                user_service.build_related_projects_filter()
+        if permissions.has_admin_permissions():
+            return query
+        # The descriptors of each project are narrowed on the role held on
+        # it, as the descriptors route of a production narrows them: the
+        # filters of the query string cannot reach the ones left out.
+        project_ids = [
+            project["id"] for project in user_service.related_projects()
+        ]
+        return query.filter(
+            projects_service.build_metadata_descriptors_filter(
+                user_service.get_descriptor_visibilities(project_ids)
             )
-        return query
+        )
 
     def check_creation_integrity(self, data):
         """

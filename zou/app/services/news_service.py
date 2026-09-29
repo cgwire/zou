@@ -177,8 +177,10 @@ def get_last_news_for_project(
     """
     offset = (page - 1) * limit
 
+    # News take the created_at of their comment, serialized to the second,
+    # so many share it: the id keeps their order the same on every page.
     query = (
-        News.query.order_by(News.created_at.desc())
+        News.query.order_by(News.created_at.desc(), News.id.desc())
         .join(Task, News.task_id == Task.id)
         .join(Project)
         .join(Entity, Task.entity_id == Entity.id)

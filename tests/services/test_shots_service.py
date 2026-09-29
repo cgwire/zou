@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 
 from tests.base import ApiDBTestCase
 
-from zou.app.models.entity import Entity, EntityLink
+from zou.app.models.entity import Entity, EntityLink, EntityVersion
 from zou.app.models.task import Task
 from zou.app.services import (
     breakdown_service,
@@ -998,3 +998,28 @@ class FramesFromPreviewTestCase(ShotsTestCase):
         self.assertEqual(
             shots_service.get_shot(str(shot_e201.id))["nb_frames"], 1000
         )
+
+
+class VersionTestCase(ShotsTestCase):
+    """
+    The versions recorded when the frame range or the name of a shot
+    changes.
+    """
+
+    def test_an_unversioned_shot_has_no_last_version(self):
+        self.assertIsNone(
+            shots_service.get_last_shot_version_raw(self.shot.id)
+        )
+
+    def test_the_last_version_is_the_most_recent_one(self):
+        # Created out of order, so that neither the insertion order nor an
+        # ascending sort gives the expected version.
+        for day, frame_out in [(8, 110), (10, 130), (9, 120)]:
+            EntityVersion.create(
+                entity_id=self.shot.id,
+                name=self.shot.name,
+                data={"frame_out": frame_out},
+                created_at=datetime.datetime(2024, 1, day),
+            )
+        version = shots_service.get_last_shot_version_raw(self.shot.id)
+        self.assertEqual(version.data["frame_out"], 130)

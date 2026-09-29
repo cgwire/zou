@@ -12,6 +12,7 @@ from zou.app.models.person import Person
 from zou.app.services import preview_files_service
 from zou.app.stores import auth_tokens_store, file_store
 from zou.app.utils import commands
+from zou.app.utils import progress as progress_utils
 from zou.app.models.entity_type import EntityType
 from zou.app.models.plugin import Plugin
 from zou.app.models.task_type import TaskType
@@ -43,7 +44,21 @@ class CommandsTestCase(ApiDBTestCase):
         task_types = TaskType.get_all()
         entity_types = EntityType.get_all()
         self.assertEqual(len(task_types), 13)
-        self.assertEqual(len(entity_types), 8)
+        self.assertEqual(
+            sorted(entity_type.name for entity_type in entity_types),
+            [
+                "Character",
+                "Concept",
+                "Edit",
+                "Environment",
+                "Episode",
+                "FX",
+                "Prop",
+                "Scene",
+                "Sequence",
+                "Shot",
+            ],
+        )
 
     def test_init_data_creates_concept_task_type(self):
         commands.init_data()
@@ -481,3 +496,137 @@ class UpgradeDbTelemetryTestCase(ApiDBTestCase):
         self.run_upgrade_db(
             "old-rev", "head-rev", "--no-telemetry"
         ).assert_not_called()
+
+
+class ProbePreviewFilesCommandTestCase(ApiDBTestCase):
+    def test_summary_reports_missing_not_failed(self):
+        # probe_preview_files only ever yields "ok" or "missing" (see
+        # preview_file_states_service.probe_file_states): the summary it
+        # prints must say so, not "missing or failed", which the probe
+        # itself never records.
+        from collections import Counter
+
+        with patch.object(
+            commands.preview_file_states_service,
+            "probe_preview_files",
+            return_value=Counter({"pictures/tiles": 2, "movies/lowdef": 0}),
+        ):
+            output = io.StringIO()
+            with redirect_stdout(output):
+                commands.probe_preview_files()
+        printed = output.getvalue()
+        self.assertIn("pictures/tiles: 2 missing", printed)
+        self.assertNotIn("or failed", printed)
+
+
+class GeneratePreviewExtraOnlyMissingTilesTestCase(ApiDBTestCase):
+    def run_command(self, *args):
+        return CliRunner().invoke(
+            cli, ["generate-preview-extra", *args], catch_exceptions=False
+        )
+
+    def test_queued_movies_are_reported(self):
+        from collections import Counter
+
+        summary = Counter(
+            {
+                "checked": 4,
+                "queued": 2,
+                "stored": 1,
+                "recently_attempted": 1,
+                "storage_errors": 0,
+            }
+        )
+        with patch.object(
+            commands.preview_files_service,
+            "queue_missing_tiles",
+            return_value=summary,
+        ) as queue_missing_tiles:
+            result = self.run_command(
+                "--only-missing-tiles", "--force", "--limit", "10"
+            )
+        self.assertEqual(result.exit_code, 0)
+        self.assertTrue(queue_missing_tiles.call_args.kwargs["force"])
+        self.assertEqual(queue_missing_tiles.call_args.kwargs["limit"], 10)
+        self.assertIn("4 movies checked", result.output)
+        self.assertIn("2 queued", result.output)
+        self.assertIn("1 already there", result.output)
+        self.assertIn("1 skipped", result.output)
+
+    def test_tile_options_are_exclusive(self):
+        with patch.object(
+            commands.preview_files_service, "queue_missing_tiles"
+        ) as queue_missing_tiles:
+            result = self.run_command("--only-missing-tiles", "--with-tiles")
+        self.assertNotEqual(result.exit_code, 0)
+        queue_missing_tiles.assert_not_called()
+        self.assertIn("--only-missing-tiles", result.output)
+
+    def test_a_disabled_job_queue_is_reported(self):
+        from zou.app.services.exception import JobQueueDisabledException
+
+        with patch.object(
+            commands.preview_files_service,
+            "queue_missing_tiles",
+            side_effect=JobQueueDisabledException("No job queue: ..."),
+        ):
+            result = self.run_command("--only-missing-tiles")
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("No job queue", result.output)
+
+
+class ProgressOptionTestCase(ApiDBTestCase):
+    def invoke(self, *args):
+        return CliRunner().invoke(cli, list(args), catch_exceptions=False)
+
+    def reported_progress(self, mock):
+        return mock.call_args.kwargs["progress"]
+
+    def test_probe_preview_files_reports_progress_on_demand(self):
+        from collections import Counter
+
+        with patch.object(
+            commands.preview_file_states_service,
+            "probe_preview_files",
+            return_value=Counter(),
+        ) as probe:
+            self.invoke("probe-preview-files")
+            self.assertIsInstance(
+                self.reported_progress(probe), progress_utils.NullProgress
+            )
+            self.invoke("probe-preview-files", "--progress")
+            self.assertNotIsInstance(
+                self.reported_progress(probe), progress_utils.NullProgress
+            )
+
+    def test_queue_missing_tiles_reports_progress_on_demand(self):
+        from collections import Counter
+
+        with patch.object(
+            commands.preview_files_service,
+            "queue_missing_tiles",
+            return_value=Counter(),
+        ) as queue:
+            self.invoke("generate-preview-extra", "--only-missing-tiles")
+            self.assertIsInstance(
+                self.reported_progress(queue), progress_utils.NullProgress
+            )
+            self.invoke(
+                "generate-preview-extra", "--only-missing-tiles", "--progress"
+            )
+            self.assertNotIsInstance(
+                self.reported_progress(queue), progress_utils.NullProgress
+            )
+
+    def test_generate_preview_extra_reports_progress_on_demand(self):
+        with patch.object(
+            commands.preview_files_service, "generate_preview_extra"
+        ) as generate:
+            self.invoke("generate-preview-extra", "--with-tiles")
+            self.assertIsInstance(
+                self.reported_progress(generate), progress_utils.NullProgress
+            )
+            self.invoke("generate-preview-extra", "--with-tiles", "--progress")
+            self.assertNotIsInstance(
+                self.reported_progress(generate), progress_utils.NullProgress
+            )

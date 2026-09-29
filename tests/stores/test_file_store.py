@@ -250,3 +250,114 @@ class ReadMovieRangeTestCase(unittest.TestCase):
         ):
             with pytest.raises(RequestedRangeNotSatisfiable):
                 file_store.read_movie_range("lowdef", "1", "bytes=999-")
+
+
+class ExistsConfirmedTestCase(unittest.TestCase):
+    """
+    Both the S3 and the Swift flask_fs backends answer False to any
+    backend error, a transient one included: exists_confirmed must tell
+    a confirmed absence (404) apart from a failure it has to raise
+    instead of reporting as missing.
+    """
+
+    def test_local_checks_existence_directly(self):
+        from unittest.mock import patch
+
+        pictures = Mock()
+        pictures.exists.return_value = True
+        with (
+            patch.object(file_store, "pictures", pictures),
+            patch.object(file_store.config, "FS_BACKEND", "local"),
+        ):
+            self.assertTrue(
+                file_store.exists_confirmed("pictures", "tiles", "1")
+            )
+        pictures.exists.assert_called_once_with("tiles-1")
+
+    def test_s3_confirmed_missing_is_false(self):
+        from unittest.mock import patch
+
+        class ClientError(Exception):
+            response = {"ResponseMetadata": {"HTTPStatusCode": 404}}
+
+        movies = Mock()
+        movies.backend.bucket.Object.return_value.load.side_effect = (
+            ClientError()
+        )
+        with (
+            patch.object(file_store, "movies", movies),
+            patch.object(file_store.config, "FS_BACKEND", "s3"),
+        ):
+            self.assertFalse(
+                file_store.exists_confirmed("movies", "lowdef", "1")
+            )
+
+    def test_s3_transient_failure_raises(self):
+        from unittest.mock import patch
+
+        class ClientError(Exception):
+            response = {"ResponseMetadata": {"HTTPStatusCode": 503}}
+
+        movies = Mock()
+        movies.backend.bucket.Object.return_value.load.side_effect = (
+            ClientError()
+        )
+        with (
+            patch.object(file_store, "movies", movies),
+            patch.object(file_store.config, "FS_BACKEND", "s3"),
+        ):
+            with pytest.raises(ClientError):
+                file_store.exists_confirmed("movies", "lowdef", "1")
+
+    def test_swift_confirmed_missing_is_false(self):
+        from contextlib import contextmanager
+        from unittest.mock import patch
+
+        class SwiftClientException(Exception):
+            def __init__(self, http_status):
+                super().__init__(f"status {http_status}")
+                self.http_status = http_status
+
+        conn = Mock()
+        conn.head_object.side_effect = SwiftClientException(404)
+
+        @contextmanager
+        def borrow():
+            yield conn
+
+        pictures = Mock()
+        pictures.backend._borrow = borrow
+        pictures.backend.name = "pictures"
+        with (
+            patch.object(file_store, "pictures", pictures),
+            patch.object(file_store.config, "FS_BACKEND", "swift"),
+        ):
+            self.assertFalse(
+                file_store.exists_confirmed("pictures", "tiles", "1")
+            )
+
+    def test_swift_transient_failure_raises(self):
+        from contextlib import contextmanager
+        from unittest.mock import patch
+
+        class SwiftClientException(Exception):
+            def __init__(self, http_status):
+                super().__init__(f"status {http_status}")
+                self.http_status = http_status
+
+        conn = Mock()
+        conn.head_object.side_effect = SwiftClientException(503)
+
+        @contextmanager
+        def borrow():
+            yield conn
+
+        pictures = Mock()
+        pictures.backend._borrow = borrow
+        pictures.backend.name = "pictures"
+        with (
+            patch.object(file_store, "pictures", pictures),
+            patch.object(file_store.config, "FS_BACKEND", "swift"),
+        ):
+            with pytest.raises(SwiftClientException):
+                file_store.exists_confirmed("pictures", "tiles", "1")

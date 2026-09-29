@@ -1,21 +1,12 @@
 import os
 import hashlib
 
-from tests.base import ApiDBTestCase
+from tests.base import ApiDBTestCase, TEST_FOLDER
 
 from zou.app.utils import fs, thumbnail
 from zou.app.services import assets_service, persons_service, projects_service
 
 from PIL import Image
-
-# Absolute, so that the folder created and the folder written to are the
-# same one wherever pytest is launched from and however deep this file sits.
-TEST_FOLDER = os.path.join(
-    os.path.dirname(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    ),
-    "tmp",
-)
 
 
 def get_file_md5hash(file_path):

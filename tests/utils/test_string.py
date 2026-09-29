@@ -1,6 +1,7 @@
+import hashlib
 import unittest
 
-from zou.app.utils.string import strtobool
+from zou.app.utils.string import mask_secret, strtobool
 
 
 class StringTestCase(unittest.TestCase):
@@ -27,3 +28,28 @@ class StringTestCase(unittest.TestCase):
             strtobool("maybe")
         with self.assertRaises(ValueError):
             strtobool("")
+
+    def test_mask_secret_keeps_the_ends_and_a_fingerprint(self):
+        token = "xoxb-1234567890-secretsecret-abcd"
+        fingerprint = hashlib.sha256(token.encode()).hexdigest()[:8]
+        masked = mask_secret(token)
+        self.assertEqual(masked, f"xoxb********abcd (sha256:{fingerprint})")
+        self.assertNotIn("secret", masked)
+
+    def test_mask_secret_hides_short_values_entirely(self):
+        masked = mask_secret("short-token")
+        self.assertTrue(masked.startswith("******** (sha256:"))
+        self.assertNotIn("short", masked)
+
+    def test_mask_secret_keeps_only_the_host_of_a_url(self):
+        webhook = "https://user:pw@mm.example.com:8065/hooks/abcdef123456"
+        masked = mask_secret(webhook)
+        self.assertTrue(
+            masked.startswith("https://mm.example.com:8065/******** (sha256:")
+        )
+        self.assertNotIn("abcdef", masked)
+        self.assertNotIn("pw", masked)
+
+    def test_mask_secret_passes_empty_values_through(self):
+        self.assertIsNone(mask_secret(None))
+        self.assertEqual(mask_secret(""), "")

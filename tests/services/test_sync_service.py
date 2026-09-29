@@ -17,10 +17,14 @@ from zou.app.models.event import ApiEvent
 from zou.app.models.news import News
 from zou.app.models.entity_type import EntityType
 from zou.app.models.playlist import Playlist
+from zou.app.models.preview_file_storage_state import (
+    PreviewFileStorageState,
+)
 from zou.app.models.project import Project
 from zou.app.models.studio import Studio
 from zou.app.models.task_status import TaskStatus
 from zou.app.services import news_service, sync_service
+from zou.app.stores import file_store
 
 
 class EventMapTestCase(unittest.TestCase):
@@ -742,14 +746,16 @@ class DownloadFromAnotherInstanceTestCase(unittest.TestCase):
         self.saved.append((prefix, id, file_path))
 
     def download(self, exists=False, force=False, status_code=200, attemps=3):
-        def fake_download(path, file_path):
+        def fake_download(path, file_path, **kwargs):
             with open(file_path, "wb") as downloaded:
                 downloaded.write(b"content")
             return mock.Mock(status_code=status_code)
 
+        # A failed attempt waits half a second before the next one: the
+        # waits are patched out.
         with mock.patch.object(
             sync_service.gazu.client, "download", side_effect=fake_download
-        ) as downloaded:
+        ) as downloaded, mock.patch.object(sync_service.time, "sleep"):
             sync_service.download_file_from_another_instance(
                 "/pictures/thumbnails/persons/id.png",
                 self.file_path,
@@ -793,6 +799,17 @@ class DownloadFromAnotherInstanceTestCase(unittest.TestCase):
         """
         self.download(status_code=404)
         self.assertEqual(self.errors, {})
+
+    def test_does_not_wait_for_a_file_still_processing_on_the_source(self):
+        """
+        A sync has no reason to wait for a remote file to finish building:
+        it should fail (and retry the outer loop) right away rather than
+        inherit gazu's default processing budget.
+        """
+        downloaded = self.download()
+        self.assertEqual(
+            downloaded.call_args.kwargs.get("processing_timeout"), 0
+        )
 
 
 class FetchEventsTestCase(unittest.TestCase):
@@ -1117,4 +1134,46 @@ class SyncSourceMovieTestCase(ApiDBTestCase):
         self.assertIn(
             f"/movies/source/preview-files/{self.preview_file.id}.mp4",
             paths,
+        )
+
+
+class RecordSyncedPreviewStatesTestCase(ApiDBTestCase):
+    """
+    download_preview_from_another_instance runs in a ThreadPool worker
+    when the sync is multithreaded (download_files_from_another_instance
+    with multithreaded=True), which carries no Flask app context.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_asset()
+        self.generate_fixture_task()
+        self.preview_file = self.generate_fixture_preview_file()
+        self.preview_file_id = str(self.preview_file.id)
+
+    def test_records_states_when_called_without_an_app_context(self):
+        errors = []
+
+        def run():
+            try:
+                with mock.patch.object(
+                    file_store, "exists_confirmed", return_value=True
+                ):
+                    sync_service._record_synced_preview_states(
+                        self.preview_file_id, "mp4"
+                    )
+            except Exception as e:
+                errors.append(e)
+
+        thread = threading.Thread(target=run)
+        thread.start()
+        thread.join(timeout=10)
+
+        self.assertEqual(errors, [])
+        self.assertGreater(
+            PreviewFileStorageState.query.filter_by(
+                preview_file_id=self.preview_file_id
+            ).count(),
+            0,
         )

@@ -1,6 +1,7 @@
 from zou.app import config
 from zou.app.utils import emails, chats
 from zou.app.utils.email_i18n import get_email_translation
+from zou.app.utils.string import mask_secret
 
 from zou.app.services import (
     entities_service,
@@ -107,7 +108,15 @@ def send_notification(
             chat_messages[channel],
         )
         if config.ENABLE_JOB_QUEUE:
-            queue_store.job_queue.enqueue(send_to_chat, args=args)
+            # RQ logs and stores the job description, which defaults to
+            # the call with its arguments: keep the credential out of it.
+            description = (
+                f"{send_to_chat.__module__}.{send_to_chat.__name__}("
+                f"{mask_secret(args[0])!r}, {args[1]!r}, ...)"
+            )
+            queue_store.job_queue.enqueue(
+                send_to_chat, args=args, description=description
+            )
         else:
             send_to_chat(*args)
 

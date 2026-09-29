@@ -3,11 +3,17 @@ import unittest
 import orjson as json
 import os
 import ntpath
-import fakeredis
 
 from mixer.backend.flask import mixer
 
-from zou.app import app, db
+from tests.fake_stores import seed_fake_stores
+
+# Seeded before the app is built by tests/conftest.py, and again here for
+# an import without it (the plugin suites): the stores taken below must
+# never be real clients, since setUp flushes them between tests.
+seed_fake_stores()
+
+from zou.app import app, config, db
 from zou.app.models.status_automation import StatusAutomation
 from zou.app.utils import events, fields, auth, fs
 from zou.app.services import (
@@ -43,20 +49,37 @@ from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
 from zou.app.models.software import Software
 from zou.app.models.working_file import WorkingFile
-from zou.app.stores import auth_tokens_store, config_store
+from zou.app.stores import (
+    auth_tokens_store,
+    config_store,
+    redis_client,
+    redis_lock,
+)
 
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from flask import current_app
 
-TEST_FOLDER = os.path.join("tests", "tmp")
+# Absolute, so that the folder created and the folder written to are the
+# same one wherever pytest is launched from. One folder per pytest-xdist
+# worker (gw0, gw1, ...): the tests sweep it between runs, which would
+# take the files of a test running on another worker with it.
+TEST_FOLDER = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "tmp",
+    os.environ.get("PYTEST_XDIST_WORKER", "main"),
+)
 
 
 def indexer_is_up():
     """
     Tell whether an indexer is configured (INDEXER_KEY) and the
     Meilisearch instance answers, so integration tests are skipped
-    instead of erroring or hanging when it is absent.
+    instead of erroring or hanging when it is absent. In CI (the CI
+    variable the runner sets) a configured indexer that does not answer
+    is an error instead: pytest exits 0 on a run where every test
+    skipped, so the integration pass would go green having tested
+    nothing.
     """
     import requests
 
@@ -69,15 +92,21 @@ def indexer_is_up():
         f":{config.INDEXER['port']}/health"
     )
     try:
-        return requests.get(url, timeout=1).status_code == 200
+        up = requests.get(url, timeout=1).status_code == 200
     except requests.RequestException:
-        return False
+        up = False
+    if not up and os.environ.get("CI"):
+        raise RuntimeError(
+            f"INDEXER_KEY is set but Meilisearch does not answer at {url}: "
+            "the integration tests would all be skipped"
+        )
+    return up
 
 
-auth_tokens_store.revoked_tokens_store = fakeredis.FakeStrictRedis(
-    decode_responses=True
-)
-config_store.config_store = fakeredis.FakeStrictRedis(decode_responses=True)
+# The same fake instances the app was built with, so that setUp can flush
+# them.
+job_store = redis_client.get_client(config.KV_JOB_DB_INDEX)
+lock_store = redis_lock.get_redis_client()
 
 # Pre-compute the bcrypt hash once for the default test password.
 # Avoids calling bcrypt.generate_password_hash per user per test.
@@ -132,6 +161,8 @@ class ApiTestCase(unittest.TestCase):
         # tokens and config entries leak from one test to the next.
         self.addCleanup(auth_tokens_store.revoked_tokens_store.flushall)
         self.addCleanup(config_store.config_store.flushall)
+        self.addCleanup(job_store.flushall)
+        self.addCleanup(lock_store.flushall)
 
         from zou.app.utils import cache
 
@@ -1623,12 +1654,10 @@ class ApiDBTestCase(ApiTestCase):
         return file_path_fixture
 
     def get_file_path(self, filename):
-        current_path = os.path.dirname(__file__)
-        result_file_path = os.path.join(TEST_FOLDER, filename)
-        return os.path.join(current_path, "..", result_file_path)
+        return os.path.join(TEST_FOLDER, filename)
 
     def create_test_folder(self):
-        os.mkdir(TEST_FOLDER)
+        os.makedirs(TEST_FOLDER)
 
     def delete_test_folder(self):
         fs.rm_rf(TEST_FOLDER)

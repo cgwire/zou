@@ -14,6 +14,7 @@ from zou.app.mixin import ArgsMixin
 from zou.app.services.exception import WrongParameterException
 from zou.app.utils import fields
 from zou.app.services import (
+    index_service,
     shots_service,
     projects_service,
     permissions_service,
@@ -99,7 +100,9 @@ class OTIOBaseResource(MethodView, ArgsMixin):
             # handler answers 400, no server-error log.
             raise
         except Exception as e:
-            current_app.logger.error(
+            # An unparseable timeline is client input: warn and answer 400
+            # rather than reporting it as a server error.
+            current_app.logger.warning(
                 f"Import OTIO failed: {type(e).__name__}: {str(e)}"
             )
             return {
@@ -197,6 +200,28 @@ class OTIOBaseResource(MethodView, ArgsMixin):
             naming_convention,
             match_case,
         )
+        self.shot_ids_to_index = []
+        try:
+            self.import_clips(timeline, result)
+        finally:
+            # Indexed at the end, without waiting for the indexer on every
+            # clip. The shots saved before a failing clip stay imported:
+            # they are indexed too.
+            index_service.index_shots(self.shot_ids_to_index)
+            # A new import would not create the tasks of the shots created
+            # before a failing clip: they get them here.
+            for task_type in self.task_types_in_project_for_shots:
+                create_tasks(task_type.serialize(), result["created_shots"])
+
+        return result
+
+    def import_clips(self, timeline, result):
+        """
+        Create or update the shot of every clip of the timeline, and list
+        them in result.
+        """
+        import opentimelineio as otio
+
         for video_track in timeline.video_tracks():
             for track in video_track:
                 if isinstance(track, otio.schema.Clip):
@@ -269,7 +294,7 @@ class OTIOBaseResource(MethodView, ArgsMixin):
                                 track.trimmed_range().start_time.to_frames()
                             )
                     except Exception as e:
-                        current_app.logger.error(
+                        current_app.logger.warning(
                             f"Parsing frame_in failed: {type(e).__name__}: {str(e)}"
                         )
                     try:
@@ -286,7 +311,7 @@ class OTIOBaseResource(MethodView, ArgsMixin):
                                 .to_frames()
                             )
                     except Exception as e:
-                        current_app.logger.error(
+                        current_app.logger.warning(
                             f"Parsing frame_out failed: {type(e).__name__}: {str(e)}"
                         )
 
@@ -297,7 +322,7 @@ class OTIOBaseResource(MethodView, ArgsMixin):
                             track.source_range.duration.to_frames()
                         )
                     except Exception as e:
-                        current_app.logger.error(
+                        current_app.logger.warning(
                             f"Parsing nb_frames failed: {type(e).__name__}: {str(e)}"
                         )
 
@@ -305,18 +330,15 @@ class OTIOBaseResource(MethodView, ArgsMixin):
                         shot = shots_service.create_shot(
                             **future_shot_values,
                             created_by=self.current_user_id,
+                            index=False,
                         )
                         result["created_shots"].append(shot)
                     else:
                         shot = shots_service.update_shot(
-                            shot_id, future_shot_values
+                            shot_id, future_shot_values, index=False
                         )
                         result["updated_shots"].append(shot)
-
-        for task_type in self.task_types_in_project_for_shots:
-            create_tasks(task_type.serialize(), result["created_shots"])
-
-        return result
+                    self.shot_ids_to_index.append(shot["id"])
 
 
 class OTIOImportResource(OTIOBaseResource):

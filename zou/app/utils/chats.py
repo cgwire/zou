@@ -1,4 +1,6 @@
 from zou.app import config
+from zou.app.utils.string import mask_secret
+from urllib.parse import urlsplit
 import asyncio
 import logging
 
@@ -63,10 +65,16 @@ def send_to_mattermost(webhook, userid, message):
                 }
                 response = requests.post(webhook, json=payload, timeout=30)
                 response.raise_for_status()
-            except Exception:
+            except Exception as exception:
+                # The requests errors quote the webhook URL, whose path is
+                # the secret: log a redacted message, not the traceback.
+                error = str(exception).replace(webhook, mask_secret(webhook))
+                webhook_path = urlsplit(webhook).path
+                if webhook_path.strip("/"):
+                    error = error.replace(webhook_path, "/********")
                 logger.error(
-                    "Exception when sending a Mattermost notification:",
-                    exc_info=True,
+                    "Exception when sending a Mattermost notification: "
+                    f"{type(exception).__name__}: {error}"
                 )
         else:
             logger.warning("The userid of Mattermost user is not defined.")

@@ -1,4 +1,4 @@
-from sqlalchemy import cast, or_, Text
+from sqlalchemy import cast, func, or_, Text
 from sqlalchemy.exc import StatementError
 from sqlalchemy.orm import aliased
 
@@ -36,6 +36,7 @@ from zou.app.services.exception import (
     AssetNotFoundException,
     AssetInstanceNotFoundException,
     AssetTypeNotFoundException,
+    WrongParameterException,
 )
 
 
@@ -785,11 +786,31 @@ def get_asset_type(asset_type_id):
     )
 
 
+def find_asset_type_by_name(name):
+    """
+    Return the asset type matching given name as an active record, None
+    when there is none.
+
+    The match is case insensitive, to align with the asset type creation
+    route which refuses a name already taken in another case. Resolving
+    the temporal types first makes sure they exist before the lookup, so
+    a name like Shot is recognised as one instead of read as an asset
+    type.
+    """
+    temporal_type_ids = get_temporal_type_ids()
+    asset_type = EntityType.query.filter(
+        func.lower(EntityType.name) == name.lower()
+    ).first()
+    if asset_type is not None and str(asset_type.id) in temporal_type_ids:
+        raise WrongParameterException(f"{name} is not an asset type")
+    return asset_type
+
+
 def get_or_create_asset_type(name):
     """
     For a given name, get matching asset type. Create if it does not exist.
     """
-    asset_type = EntityType.get_by(name=name)
+    asset_type = find_asset_type_by_name(name)
     if asset_type is None:
         asset_type = EntityType.create(name=name)
         clear_asset_type_cache()

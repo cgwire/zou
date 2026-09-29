@@ -5,6 +5,16 @@ on:
     branches:
       - main
 
+# Two runs at once deploy staging over each other, pip uninstalling and
+# installing in the same virtualenv, and race to push the apidocs branch:
+# the later push is refused. Run them one at a time instead, and never
+# cancel one in flight, which could stop between the uninstall and the
+# install. GitHub keeps one run waiting: a newer push replaces it, which
+# loses nothing since every run installs the head of main.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   build:
     if: github.repository_owner == 'cgwire'

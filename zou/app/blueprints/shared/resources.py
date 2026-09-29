@@ -6,8 +6,8 @@ from zou.app.blueprints.previews.resources import (
     ALLOWED_FILE_EXTENSION,
     ALLOWED_PICTURE_EXTENSION,
     send_movie_file,
-    send_picture_file,
-    send_standard_file,
+    send_preview_picture_file,
+    send_preview_standard_file,
 )
 from zou.app.blueprints.shared.decorators import (
     require_valid_playlist_share_link,
@@ -714,7 +714,7 @@ class SharedPlaylistPreviewFileThumbnailResource(MethodView):
         ):
             raise permissions.PermissionDenied
         try:
-            return send_picture_file("thumbnails", preview_file_id)
+            return send_preview_picture_file("thumbnails", preview_file_id)
         except FileNotFound:
             raise PreviewFileNotFoundException
 
@@ -768,7 +768,7 @@ class SharedPlaylistPreviewFileOriginalResource(MethodView):
         ):
             raise permissions.PermissionDenied
         try:
-            return send_picture_file("original", preview_file_id)
+            return send_preview_picture_file("original", preview_file_id)
         except FileNotFound:
             raise PreviewFileNotFoundException
 
@@ -840,13 +840,13 @@ class SharedPlaylistPreviewFileExtensionResource(MethodView):
             )
         try:
             if extension == "png":
-                return send_picture_file("original", preview_file_id)
+                return send_preview_picture_file("original", preview_file_id)
             elif extension == "pdf":
-                return send_standard_file(
-                    preview_file_id, extension, "application/pdf"
+                return send_preview_standard_file(
+                    preview_file_id, extension, mimetype="application/pdf"
                 )
             else:
-                return send_standard_file(preview_file_id, extension)
+                return send_preview_standard_file(preview_file_id, extension)
         except FileNotFound:
             raise PreviewFileNotFoundException
 
@@ -900,7 +900,7 @@ class SharedPlaylistPreviewFileTileResource(MethodView):
         ):
             raise permissions.PermissionDenied
         try:
-            return send_picture_file("tiles", preview_file_id)
+            return send_preview_picture_file("tiles", preview_file_id)
         except FileNotFound:
             raise PreviewFileNotFoundException
 
@@ -952,20 +952,20 @@ class SharedPlaylistPreviewFileDownloadResource(MethodView):
         extension = preview_file["extension"]
         try:
             if extension == "png":
-                return send_picture_file(
+                return send_preview_picture_file(
                     "original", preview_file_id, as_attachment=True
                 )
             elif extension == "pdf":
-                return send_standard_file(
+                return send_preview_standard_file(
                     preview_file_id,
                     extension,
-                    "application/pdf",
+                    mimetype="application/pdf",
                     as_attachment=True,
                 )
             elif extension == "mp4":
                 return send_movie_file(preview_file_id, as_attachment=True)
             else:
-                return send_standard_file(
+                return send_preview_standard_file(
                     preview_file_id, extension, as_attachment=True
                 )
         except FileNotFound:
