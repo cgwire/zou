@@ -2,8 +2,11 @@ import datetime
 
 from unittest import mock
 
+from sqlalchemy import text
+
 from tests.base import ApiDBTestCase
 
+from zou.app import db
 from zou.app.models.comment import Comment
 from zou.app.models.entity import Entity
 from zou.app.models.task import Task
@@ -152,6 +155,73 @@ class RemoveTaskTestCase(DeletionTestCase):
         )
 
         self.assertEqual(result, [])
+
+    def generate_unassigned_tasks(self):
+        """
+        Two animation tasks with no assignee, so that a plain DELETE can
+        take either of them.
+        """
+        return [
+            str(
+                Task.create(
+                    name=name,
+                    project_id=self.project.id,
+                    task_type_id=self.task_type_animation.id,
+                    task_status_id=self.task_status.id,
+                    entity_id=self.asset.id,
+                ).id
+            )
+            for name in ["Blocking", "Polish"]
+        ]
+
+    def delete_the_other_task_first(self, task_ids):
+        """
+        Make each removal first delete the other given task straight on the
+        table, out of sight of the session, as a concurrent request does.
+        """
+        remove_task = deletion_service.remove_task
+
+        def remove_task_after_the_other(task_id, force=False):
+            for other_id in task_ids:
+                if other_id != str(task_id):
+                    db.session.execute(
+                        text("DELETE FROM task WHERE id = :task_id"),
+                        {"task_id": other_id},
+                    )
+            db.session.commit()
+            return remove_task(task_id, force=force)
+
+        return mock.patch.object(
+            deletion_service,
+            "remove_task",
+            side_effect=remove_task_after_the_other,
+        )
+
+    def test_remove_tasks_skips_a_task_deleted_meanwhile(self):
+        # Regression: every removal commits, which expired the instances
+        # left to walk, and reading the id of the deleted one raised
+        # ObjectDeletedError.
+        task_ids = self.generate_unassigned_tasks()
+
+        with self.delete_the_other_task_first(task_ids):
+            result = deletion_service.remove_tasks(
+                str(self.project.id), task_ids
+            )
+
+        self.assertEqual(result, task_ids)
+        for task_id in task_ids:
+            self.assertIsNone(Task.get(task_id))
+
+    def test_remove_tasks_for_task_type_skips_one_deleted_meanwhile(self):
+        task_ids = self.generate_unassigned_tasks()
+
+        with self.delete_the_other_task_first(task_ids):
+            deletion_service.remove_tasks_for_project_and_task_type(
+                str(self.project.id), str(self.task_type_animation.id)
+            )
+
+        for task_id in task_ids:
+            self.assertIsNone(Task.get(task_id))
 
 
 class RemovePreviewFileTestCase(DeletionTestCase):

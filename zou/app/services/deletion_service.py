@@ -98,6 +98,23 @@ def _remove_search_filters(**kw):
     user_service.clear_filter_group_cache()
 
 
+def _get_task_ids(*criterions, **kw):
+    """
+    Return the ids of the tasks matching given filters, as strings. The
+    removal loops walk these rather than ORM instances: every removal
+    commits, which expires the instances left to walk, and reading the id
+    of one that another request deleted meanwhile would raise
+    ObjectDeletedError. remove_task skips a task that is already gone.
+    """
+    return [
+        str(row[0])
+        for row in Task.query.with_entities(Task.id)
+        .filter(*criterions)
+        .filter_by(**kw)
+        .all()
+    ]
+
+
 def remove_comment(comment_id):
     """
     Remove a comment from database and everything related (notifs, news, and
@@ -412,11 +429,10 @@ def remove_tasks(project_id, task_ids):
     filter is there to facilitate right management.
     """
     task_ids = [task_id for task_id in task_ids if fields.is_valid_id(task_id)]
-    tasks = Task.query.filter(Task.project_id == project_id).filter(
-        Task.id.in_(task_ids)
-    )
-    for task in tasks:
-        remove_task(task.id, force=True)
+    for task_id in _get_task_ids(
+        Task.project_id == project_id, Task.id.in_(task_ids)
+    ):
+        remove_task(task_id, force=True)
     return task_ids
 
 
@@ -472,17 +488,21 @@ def remove_entities(project_id, entity_ids, force=False):
     return [entity_id for entity_id, _, _ in to_remove]
 
 
+def remove_tasks_for_entity(entity_id):
+    """
+    Remove fully all tasks and related for given entity.
+    """
+    for task_id in _get_task_ids(entity_id=entity_id):
+        remove_task(task_id, force=True)
+
+
 def remove_tasks_for_project_and_task_type(project_id, task_type_id):
     """
     Remove fully all tasks and related for given project and task type.
     """
-    tasks = Task.query.filter_by(
-        project_id=project_id, task_type_id=task_type_id
-    )
-    task_ids = []
-    for task in tasks:
-        remove_task(task.id, force=True)
-        task_ids.append(str(task.id))
+    task_ids = _get_task_ids(project_id=project_id, task_type_id=task_type_id)
+    for task_id in task_ids:
+        remove_task(task_id, force=True)
     return task_ids
 
 
@@ -501,13 +521,7 @@ def remove_project(project_id):
     for preview_file in preview_files:
         remove_preview_file(preview_file, force=True)
 
-    task_ids = [
-        str(row[0])
-        for row in Task.query.with_entities(Task.id)
-        .filter_by(project_id=project_id)
-        .all()
-    ]
-    for task_id in task_ids:
+    for task_id in _get_task_ids(project_id=project_id):
         remove_task(task_id, force=True)
 
     budgets = Budget.get_all_by(project_id=project_id)
@@ -681,7 +695,7 @@ def remove_episode(episode_id, force=False):
     """
     Remove an episode and all related sequences and shots.
     """
-    from zou.app.services import shots_service, assets_service, tasks_service
+    from zou.app.services import shots_service, assets_service
 
     episode = shots_service.get_episode_raw(episode_id)
     if force:
@@ -689,10 +703,7 @@ def remove_episode(episode_id, force=False):
             shots_service.remove_sequence(sequence.id, force=True)
         for asset in Entity.get_all_by(source_id=episode_id):
             assets_service.remove_asset(asset.id, force=True)
-        tasks = Task.query.filter_by(entity_id=episode_id).all()
-        for task in tasks:
-            remove_task(task.id, force=True)
-            tasks_service.clear_task_cache(str(task.id))
+        remove_tasks_for_entity(episode_id)
         Playlist.delete_all_by(episode_id=episode_id)
         ScheduleItem.delete_all_by(object_id=episode_id)
         EntityVersion.delete_all_by(entity_id=episode_id)

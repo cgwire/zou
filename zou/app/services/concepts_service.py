@@ -119,13 +119,7 @@ def remove_concept(concept_id, force=False):
             project_id=str(concept.project_id),
         )
     else:
-        # Imported here because tasks_service imports this module back.
-        from zou.app.services import tasks_service
-
-        tasks = Task.query.filter_by(entity_id=concept_id).all()
-        for task in tasks:
-            deletion_service.remove_task(task.id, force=True)
-            tasks_service.clear_task_cache(str(task.id))
+        deletion_service.remove_tasks_for_entity(concept_id)
 
         EntityVersion.delete_all_by(entity_id=concept_id)
         Subscription.delete_all_by(entity_id=concept_id)
