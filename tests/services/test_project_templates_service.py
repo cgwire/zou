@@ -477,6 +477,36 @@ class ProjectTemplateServiceTestCase(ApiDBTestCase):
             str(descriptors[0].task_type_id), str(self.task_type.id)
         )
 
+    def test_template_carries_task_type_link_bitrates(self):
+        ProjectTaskTypeLink.create(
+            project_id=self.project_id,
+            task_type_id=self.task_type_modeling.id,
+            priority=1,
+            hd_bitrate_compression=20,
+            ld_bitrate_compression=4,
+        )
+        template = project_templates_service.create_template_from_project(
+            str(self.project_id), name="With bitrates"
+        )
+        template_link = ProjectTemplateTaskTypeLink.get_by(
+            project_template_id=template["id"],
+            task_type_id=self.task_type_modeling.id,
+        )
+        self.assertEqual(template_link.hd_bitrate_compression, 20)
+        self.assertEqual(template_link.ld_bitrate_compression, 4)
+
+        target = Project.create(
+            name="Target", project_status_id=self.open_status.id
+        )
+        project_templates_service.apply_template_to_project(
+            str(target.id), template["id"]
+        )
+        link = ProjectTaskTypeLink.get_by(
+            project_id=target.id, task_type_id=self.task_type_modeling.id
+        )
+        self.assertEqual(link.hd_bitrate_compression, 20)
+        self.assertEqual(link.ld_bitrate_compression, 4)
+
     def test_create_template_from_project_does_not_copy_team(self):
         self.generate_fixture_person()
         projects_service.add_team_member(self.project_id, self.person.id)

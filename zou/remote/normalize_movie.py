@@ -102,12 +102,25 @@ def _fetch_movie_file(storage, outdir, preview_file_id):
 
 
 def _run_normalize_movie(config, movie_path):
+    # Encoding settings are optional in the payload: a web app that
+    # predates them gets the defaults of the encoder.
+    options = {
+        key: config[key]
+        for key in (
+            "highdef_bitrate",
+            "lowdef_bitrate",
+            "preset",
+            "vbv_bufsize_factor",
+        )
+        if key in config
+    }
     return normalize_movie(
         movie_path,
         config["fps"],
         config["width"],
         config["height"],
         skip_high_def=config.get("skip_high_def", False),
+        **options,
     )
 
 

@@ -45,6 +45,18 @@ class ProjectTaskTypeSchema(BaseSchema):
 
     task_type_id: str = Field(..., min_length=1)
     priority: Optional[int] = None
+    hd_bitrate_compression: Optional[int] = Field(None, ge=1)
+    ld_bitrate_compression: Optional[int] = Field(None, ge=1)
+
+    def bitrates(self):
+        """
+        The bitrates to write on the link, or None when the body did not
+        mention them: a priority-only call leaves them as they are.
+        """
+        keys = ("hd_bitrate_compression", "ld_bitrate_compression")
+        if not self.model_fields_set.intersection(keys):
+            return None
+        return {key: getattr(self, key) for key in keys}
 
 
 class ProjectTaskStatusSchema(BaseSchema):
