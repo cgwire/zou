@@ -76,6 +76,28 @@ def _remove_older_than(model, date_column, days_old):
     model.commit()
 
 
+def _remove_search_filters(**kw):
+    """
+    Delete the search filters and search filter groups matching given
+    column values. A group takes the filters it holds with it, whoever
+    owns them, as removing a single group does: they go first, since they
+    reference their group. A shared filter shows in the listing of every
+    user, so the memoized listings are dropped for all of them.
+    """
+    from zou.app.services import user_service
+
+    group_ids = SearchFilterGroup.query.with_entities(
+        SearchFilterGroup.id
+    ).filter_by(**kw)
+    SearchFilter.delete_all_by(
+        SearchFilter.search_filter_group_id.in_(group_ids)
+    )
+    SearchFilter.delete_all_by(**kw)
+    SearchFilterGroup.delete_all_by(**kw)
+    user_service.clear_filter_cache()
+    user_service.clear_filter_group_cache()
+
+
 def remove_comment(comment_id):
     """
     Remove a comment from database and everything related (notifs, news, and
@@ -524,8 +546,7 @@ def remove_project(project_id):
     Milestone.delete_all_by(project_id=project_id)
     ScheduleItem.delete_all_by(project_id=project_id)
     remove_production_schedule_versions_for_project(project_id)
-    SearchFilterGroup.delete_all_by(project_id=project_id)
-    SearchFilter.delete_all_by(project_id=project_id)
+    _remove_search_filters(project_id=project_id)
     News.query.filter(
         News.task_id == Task.id, Task.project_id == project_id
     ).delete()
@@ -595,8 +616,7 @@ def remove_person(person_id, force=True):
         ApiEvent.delete_all_by(user_id=person_id)
         Notification.delete_all_by(person_id=person_id)
         Notification.delete_all_by(author_id=person_id)
-        SearchFilterGroup.delete_all_by(person_id=person_id)
-        SearchFilter.delete_all_by(person_id=person_id)
+        _remove_search_filters(person_id=person_id)
         DesktopLoginLog.delete_all_by(person_id=person_id)
         LoginLog.delete_all_by(person_id=person_id)
         Subscription.delete_all_by(person_id=person_id)

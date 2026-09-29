@@ -9,6 +9,7 @@ from zou.app.models.entity import Entity
 from zou.app.models.task import Task
 from zou.app.models.notification import Notification
 from zou.app.models.output_file import OutputFile
+from zou.app.models.person import Person
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.event import ApiEvent
 from zou.app.models.login_log import LoginLog
@@ -17,6 +18,8 @@ from zou.app.models.production_schedule_version import (
     ProductionScheduleVersionTaskLink,
 )
 from zou.app.models.project import Project
+from zou.app.models.search_filter import SearchFilter
+from zou.app.models.search_filter_group import SearchFilterGroup
 from zou.app.models.time_spent import TimeSpent
 
 from zou.app.services import deletion_service, shots_service
@@ -372,6 +375,31 @@ class RemoveProjectTestCase(DeletionTestCase):
         self.assertIsNone(ProductionScheduleVersion.get(version_id))
         self.assertIsNone(ProductionScheduleVersion.get(derived_id))
 
+    def test_remove_project_with_a_grouped_search_filter(self):
+        # Regression: the search filter groups of the project were deleted
+        # before the filters they hold, which the foreign key refused. A
+        # group takes its filters with it, even one set on no project.
+        project_id = str(self.project.id)
+        group = SearchFilterGroup.create(
+            list_type="asset", name="Props", project_id=self.project.id
+        )
+        removed = [(SearchFilterGroup, str(group.id))]
+        for filter_project_id in [self.project.id, None]:
+            search_filter = SearchFilter.create(
+                list_type="asset",
+                name="Chairs",
+                search_query="chair",
+                project_id=filter_project_id,
+                search_filter_group_id=group.id,
+            )
+            removed.append((SearchFilter, str(search_filter.id)))
+
+        deletion_service.remove_project(project_id)
+
+        self.assertIsNone(Project.get(project_id))
+        for model, row_id in removed:
+            self.assertIsNone(model.get(row_id), model.__name__)
+
     def test_remove_project_leaves_the_other_productions_alone(self):
         """
         remove_project walks a dozen tables, each scoped to the production
@@ -405,12 +433,28 @@ class RemoveProjectTestCase(DeletionTestCase):
         )
         self.generate_fixture_output_type()
         other_output = self.generate_fixture_output_file(task=other_task)
+        # The filters held by a group are deleted through a join on the
+        # group table, scoped by the project of the group.
+        other_group = SearchFilterGroup.create(
+            list_type="asset",
+            name="Props",
+            project_id=self.project_standard.id,
+        )
+        other_filter = SearchFilter.create(
+            list_type="asset",
+            name="Chairs",
+            search_query="chair",
+            project_id=self.project_standard.id,
+            search_filter_group_id=other_group.id,
+        )
         survivors = [
             (Task, str(other_task.id)),
             (PreviewFile, str(other_preview.id)),
             (ProductionScheduleVersion, str(other_version.id)),
             (ProductionScheduleVersionTaskLink, str(other_link.id)),
             (OutputFile, str(other_output.id)),
+            (SearchFilterGroup, str(other_group.id)),
+            (SearchFilter, str(other_filter.id)),
         ]
 
         deletion_service.remove_project(str(self.project.id))
@@ -418,3 +462,57 @@ class RemoveProjectTestCase(DeletionTestCase):
         for model, row_id in survivors:
             self.assertIsNotNone(model.get(row_id), model.__name__)
         self.assertIsNotNone(Project.get(str(self.project_standard.id)))
+
+
+class RemovePersonTestCase(DeletionTestCase):
+    def generate_search_filter_group(self, person):
+        return SearchFilterGroup.create(
+            list_type="asset",
+            name="Props",
+            is_shared=True,
+            person_id=person.id,
+            project_id=self.project.id,
+        )
+
+    def generate_search_filter(self, person, group):
+        return SearchFilter.create(
+            list_type="asset",
+            name="Chairs",
+            search_query="chair",
+            is_shared=True,
+            person_id=person.id,
+            project_id=self.project.id,
+            search_filter_group_id=group.id,
+        )
+
+    def test_remove_person_with_a_grouped_search_filter(self):
+        """
+        Regression: the search filter groups of the person were deleted
+        before the filters they hold, which the foreign key refused. A
+        shared group may hold the filter of someone else: it goes with the
+        group, as when the group is removed on its own. The groups of the
+        others stay.
+        """
+        person = Person.create(first_name="Jane", last_name="Doe")
+        group = self.generate_search_filter_group(person)
+        own_filter = self.generate_search_filter(person, group)
+        other_filter = self.generate_search_filter(self.person, group)
+        other_group = self.generate_search_filter_group(self.person)
+        kept_filter = self.generate_search_filter(self.person, other_group)
+        removed = [
+            (Person, str(person.id)),
+            (SearchFilterGroup, str(group.id)),
+            (SearchFilter, str(own_filter.id)),
+            (SearchFilter, str(other_filter.id)),
+        ]
+        kept = [
+            (SearchFilterGroup, str(other_group.id)),
+            (SearchFilter, str(kept_filter.id)),
+        ]
+
+        deletion_service.remove_person(str(person.id))
+
+        for model, row_id in removed:
+            self.assertIsNone(model.get(row_id), model.__name__)
+        for model, row_id in kept:
+            self.assertIsNotNone(model.get(row_id), model.__name__)
