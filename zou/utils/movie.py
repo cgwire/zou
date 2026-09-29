@@ -255,6 +255,16 @@ def normalize_encoding(
     if vbv_bufsize_factor > 0:
         rate_control["maxrate"] = f"{bitrate}M"
         rate_control["bufsize"] = f"{bitrate * vbv_bufsize_factor}M"
+    # Pad the audio with silence to the end of the video. Sources often
+    # carry a shorter soundtrack (and the silent one add_empty_soundtrack
+    # builds ends early too): Firefox then stalls on the last frames.
+    audio_filters = {}
+    try:
+        video_duration = get_movie_duration(movie_path)
+    except (KeyError, ValueError):
+        video_duration = 0
+    if video_duration > 0:
+        audio_filters["af"] = f"apad=whole_dur={video_duration}"
     stream = ffmpeg.input(movie_path)
     stream = ffmpeg.output(
         stream.video,
@@ -280,6 +290,7 @@ def normalize_encoding(
             "setsar=1"
         ),
         **rate_control,
+        **audio_filters,
     )
     try:
         logger.info(f"ffmpeg {' '.join(stream.get_args())}")
