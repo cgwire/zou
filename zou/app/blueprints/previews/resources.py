@@ -236,7 +236,9 @@ def _processing_answer(preview_file_id):
     keep showing once the preview turns ready.
     """
     preview_file = files_service.get_preview_file_for_access(preview_file_id)
-    if preview_file["status"] != "processing":
+    # .get: an entry memoized by a version predating "status" survives a
+    # deploy for the cache TTL.
+    if preview_file.get("status") != "processing":
         return None
     if wants_json_over_picture():
         return preview_processing_response(preview_file_id)
