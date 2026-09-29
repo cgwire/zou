@@ -302,10 +302,10 @@ class LoginResource(MethodView, ArgsMixin):
             return response
         except WrongUserException:
             current_app.logger.info(f"User {email} is not registered.")
-            return {"login": False}, 400
+            return {"login": False, "message": "Wrong email or password."}, 400
         except WrongPasswordException:
             current_app.logger.info(f"User {email} gave a wrong password.")
-            return {"login": False}, 400
+            return {"login": False, "message": "Wrong email or password."}, 400
         except NoAuthStrategyConfigured:
             current_app.logger.info(
                 "Authentication strategy is not properly configured."
@@ -339,6 +339,8 @@ class LoginResource(MethodView, ArgsMixin):
                     "error": True,
                     "login": False,
                     "too_many_failed_login_attemps": True,
+                    "message": "Too many failed login attempts, "
+                    "retry in a minute.",
                 },
                 400,
             )
@@ -351,6 +353,7 @@ class LoginResource(MethodView, ArgsMixin):
                     "error": True,
                     "login": False,
                     "missing_OTP": True,
+                    "message": "A two-factor authentication code is required.",
                     "preferred_two_factor_authentication": e.preferred_two_factor_authentication,
                     "two_factor_authentication_enabled": e.two_factor_authentication_enabled,
                 },
@@ -365,6 +368,7 @@ class LoginResource(MethodView, ArgsMixin):
                     "error": True,
                     "login": False,
                     "wrong_OTP": True,
+                    "message": "Wrong two-factor authentication code.",
                 },
                 400,
             )

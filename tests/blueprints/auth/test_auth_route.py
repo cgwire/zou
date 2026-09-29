@@ -141,6 +141,7 @@ class AuthTestCase(ApiDBTestCase):
         }
         result = self.post("auth/login", credentials, 400)
         self.assertFalse(result["login"])
+        self.assertEqual(result["message"], "Wrong email or password.")
         self.assertIsNotAuthenticated(result, 422)
 
     def _fail_login(self, times):
@@ -167,6 +168,10 @@ class AuthTestCase(ApiDBTestCase):
         self._fail_login(5)
         result = self.post("auth/login", self.credentials, 400)
         self.assertTrue(result["too_many_failed_login_attemps"])
+        self.assertEqual(
+            result["message"],
+            "Too many failed login attempts, retry in a minute.",
+        )
 
         self._expire_the_lockout_window()
         self._fail_login(1)
@@ -1075,10 +1080,28 @@ class TOTPTestCase(ApiDBTestCase):
         self.app.get("auth/logout", headers=headers)
 
         # Login without TOTP should fail
-        self.post("auth/login", self.credentials, 400)
+        result = self.post("auth/login", self.credentials, 400)
+        self.assertEqual(
+            result["message"],
+            "A two-factor authentication code is required.",
+        )
+
+        # Login with a wrong TOTP should fail
+        totp = pyotp.TOTP(otp_secret)
+        result = self.post(
+            "auth/login",
+            {
+                "email": self.credentials["email"],
+                "password": self.credentials["password"],
+                "totp": str((int(totp.now()) + 1) % 1000000).zfill(6),
+            },
+            400,
+        )
+        self.assertEqual(
+            result["message"], "Wrong two-factor authentication code."
+        )
 
         # Login with TOTP
-        totp = pyotp.TOTP(otp_secret)
         response = self.post(
             "auth/login",
             {
