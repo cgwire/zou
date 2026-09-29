@@ -683,7 +683,8 @@ def _get_encoding_parameters(preview_file_id):
     The fps, the resolution and the (highdef, lowdef) bitrates the previews
     are encoded at, from the project, the entity or the task type link
     overriding them. The job can start before the upload's transaction is
-    visible to it: one retry covers that.
+    visible to it: one retry covers that. Still missing after it, the preview
+    file was deleted while the job waited.
     """
     for attempt in range(2):
         try:
@@ -695,9 +696,7 @@ def _get_encoding_parameters(preview_file_id):
             break
         except PreviewFileNotFoundException:
             if attempt == 1:
-                raise PreviewProcessingFailedException(
-                    "Data is missing from database"
-                )
+                raise
             time.sleep(2)
     fps = get_preview_file_fps(project, entity)
     width, height = get_preview_file_dimensions(project, entity)
