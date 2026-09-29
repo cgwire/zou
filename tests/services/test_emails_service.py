@@ -1,11 +1,13 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from babel import Locale
 
 from tests.base import ApiDBTestCase
 
 from zou.app.models.comment import Comment
 from zou.app.models.person import Person
-from zou.app.services import emails_service
+from zou.app import config
+from zou.app.services import emails_service, persons_service
+from zou.app.stores import queue_store
 
 MESSAGES = {
     "email_message": "Test message",
@@ -131,6 +133,40 @@ class EmailsServiceTestCase(ApiDBTestCase):
 
         self.assertEqual(to_slack.call_args[0][1:], ("U123", "Test"))
         self.assertFalse(to_discord.called)
+
+    def test_send_notification_masks_the_chat_token_in_the_job(self):
+        """
+        RQ logs and stores the job description: it must not carry the
+        chat credential, while the job still gets the real one.
+        """
+        token = "xoxb-1234567890-secretsecret-abcd"
+        organisation = persons_service.get_organisation()
+        persons_service.update_organisation(
+            organisation["id"], {"chat_token_slack": token}
+        )
+        person = self.a_person(
+            "Chatty",
+            "en_US",
+            notifications_enabled=False,
+            notifications_slack_enabled=True,
+            notifications_slack_userid="U123",
+        )
+        job_queue = MagicMock()
+
+        with patch.object(config, "ENABLE_JOB_QUEUE", True), patch.object(
+            queue_store, "job_queue", job_queue, create=True
+        ):
+            emails_service.send_notification(
+                str(person.id), "Test Subject", MESSAGES, title="Test Title"
+            )
+
+        job_queue.enqueue.assert_called_once()
+        kwargs = job_queue.enqueue.call_args.kwargs
+        self.assertEqual(kwargs["args"][0], token)
+        self.assertNotIn(token, kwargs["description"])
+        self.assertIn(
+            "send_to_slack('xoxb********abcd (sha256:", kwargs["description"]
+        )
 
     def test_send_comment_notification_uses_locale(self):
         spanish_person = self.a_person("Maria", "es_ES")
