@@ -15,6 +15,7 @@ from zou.app.models.search_filter_group import SearchFilterGroup
 from zou.app.models.task import Task
 from zou.app.services import (
     comments_service,
+    deletion_service,
     projects_service,
     tasks_service,
     user_service,
@@ -657,6 +658,23 @@ class SearchFilterGroupTestCase(SavedSearchTestCase):
             with self.assertRaises(SearchFilterGroupNotFoundException):
                 user_service.get_filter_group(group["id"])
         self.assertIsNone(SearchFilter.get(search_filter["id"]))
+
+    def test_removing_the_owner_of_a_group_drops_its_filters_everywhere(self):
+        """
+        Removing a person takes their groups with them, and the filters
+        those hold whoever owns them. The listings are memoized per person:
+        every one showing such a filter has to go.
+        """
+        with self.as_user(self.user_manager):
+            group = self.a_group(is_shared=True)
+        with self.as_user():
+            self.a_filter(is_shared=True, search_filter_group_id=group["id"])
+        # Warm the admin's listing before the removal.
+        self.assertIn("shot", self.filters_of(self.user))
+
+        deletion_service.remove_person(self.user_manager["id"])
+
+        self.assertEqual(self.filters_of(self.user), {})
 
 
 class UserVisibleEntitiesTestCase(UserContextTestCase):

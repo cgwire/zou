@@ -3,14 +3,17 @@ import datetime
 from unittest.mock import patch
 
 import pytest
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from tests.base import ApiDBTestCase
 
+from zou.app import db
 from zou.app.models.entity import Entity, EntityLink, EntityVersion
 from zou.app.models.task import Task
 from zou.app.services import (
     breakdown_service,
+    deletion_service,
     persons_service,
     shots_service,
     tasks_service,
@@ -669,6 +672,51 @@ class RemovalTestCase(ShotsTestCase):
         shot_id = str(self.shot.id)
 
         shots_service.remove_shot(shot_id, force=True)
+
+        with pytest.raises(ShotNotFoundException):
+            shots_service.get_shot(shot_id)
+        self.assertEqual(Task.query.filter_by(entity_id=shot_id).count(), 0)
+
+    def test_a_forced_removal_skips_a_task_deleted_meanwhile(self):
+        """
+        Another request may delete a task of the shot while the removal
+        walks them. Every removal commits, which expires the instances left
+        to walk: reading the id of the deleted one reloaded a missing row
+        and raised ObjectDeletedError.
+        """
+        self.generate_fixture_task_status()
+        self.generate_fixture_task_type()
+        shot_id = str(self.shot.id)
+        # No assignee, so that a plain DELETE can take either of them.
+        for task_type in [self.task_type_layout, self.task_type_animation]:
+            Task.create(
+                name=task_type.name,
+                project_id=self.project.id,
+                task_type_id=task_type.id,
+                task_status_id=self.task_status.id,
+                entity_id=self.shot.id,
+            )
+        remove_task = deletion_service.remove_task
+
+        def delete_the_other_task_first(task_id, force=False):
+            # Straight on the table, out of sight of the session, as the
+            # other request does.
+            db.session.execute(
+                text(
+                    "DELETE FROM task "
+                    "WHERE entity_id = :shot_id AND id != :task_id"
+                ),
+                {"shot_id": shot_id, "task_id": str(task_id)},
+            )
+            db.session.commit()
+            return remove_task(task_id, force=force)
+
+        with patch.object(
+            deletion_service,
+            "remove_task",
+            side_effect=delete_the_other_task_first,
+        ):
+            shots_service.remove_shot(shot_id, force=True)
 
         with pytest.raises(ShotNotFoundException):
             shots_service.get_shot(shot_id)
