@@ -1,7 +1,13 @@
 """
 RQ worker and job classes of Zou, set on the worker command line:
 
-    rq worker -w zou.app.utils.job_worker.ZouWorker -c zou.job_settings
+    rq worker --with-scheduler -w zou.app.utils.job_worker.ZouWorker \
+        -c zou.job_settings
+
+--with-scheduler is needed for the preview jobs queued again with a delay
+after an object storage outage (Keystone down): only the scheduler moves
+them back to the queue once the delay is over. Without it, those jobs
+fail at once and mark their preview broken.
 
 A stop request lets the running job end, as RQ does, except a job waiting
 on Nomad: it is queued again, with the id of the Nomad job it watches, and

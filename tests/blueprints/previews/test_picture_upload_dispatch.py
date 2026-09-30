@@ -277,6 +277,12 @@ class StorageRequeueTestCase(BasePreviewDispatchTestCase):
         )
         patcher.start()
         self.addCleanup(patcher.stop)
+        self.is_scheduler_running = preview_files_service.is_scheduler_running
+        patcher = patch.object(
+            preview_files_service, "is_scheduler_running", return_value=True
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
         self.addCleanup(
             preview_files_service._remove_temp_files,
             self.tmp_path,
@@ -358,6 +364,21 @@ class StorageRequeueTestCase(BasePreviewDispatchTestCase):
         preview_file = files_service.get_preview_file(self.preview_file_id)
         self.assertEqual(preview_file["status"], "broken")
 
+    def test_without_a_scheduler_the_preview_is_broken_at_once(self):
+        # A delayed retry is only queued again by a worker started with
+        # --with-scheduler: without one the preview would stay
+        # "processing" forever.
+        preview_files_service.is_scheduler_running.return_value = False
+        with self.assertRaises(Exception):
+            self.run_picture_job(side_effect=self.auth_failure())
+
+        preview_file = files_service.get_preview_file(self.preview_file_id)
+        self.assertEqual(preview_file["status"], "broken")
+        self.assertFalse(os.path.exists(self.pending_path))
+        self.assertNotIn(
+            preview_files_service.STORAGE_RETRIES_META_KEY, self.job.meta
+        )
+
     def test_movie_job_is_queued_again_with_its_upload_kept(self):
         from rq import Retry
 
@@ -399,12 +420,18 @@ class StorageRequeueTestCase(BasePreviewDispatchTestCase):
         import fakeredis
         from rq import Queue, get_current_job
         from rq.job import JobStatus
+        from rq.scheduler import RQScheduler
 
         from zou.app.utils.job_worker import ZouJob, ZouWorker
 
         # The real job this time, run the way a job process runs it.
         preview_files_service.get_current_job.side_effect = get_current_job
+        preview_files_service.is_scheduler_running.side_effect = (
+            self.is_scheduler_running
+        )
         connection = fakeredis.FakeStrictRedis()
+        # What a worker started with --with-scheduler holds.
+        connection.set(RQScheduler.get_locking_key("test"), 1234)
         queue = Queue("test", connection=connection, job_class=ZouJob)
         worker = ZouWorker([queue], connection=connection)
         queue.enqueue(fail_on_storage_auth, self.tmp_path)
@@ -420,3 +447,13 @@ class StorageRequeueTestCase(BasePreviewDispatchTestCase):
             job.meta[preview_files_service.STORAGE_RETRIES_META_KEY], 1
         )
         self.assertIn(job.id, queue.scheduled_job_registry.get_job_ids())
+
+    def test_scheduler_is_detected_from_its_lock(self):
+        import fakeredis
+        from rq.scheduler import RQScheduler
+
+        connection = fakeredis.FakeStrictRedis()
+        job = MagicMock(origin="test", connection=connection)
+        self.assertFalse(self.is_scheduler_running(job))
+        connection.set(RQScheduler.get_locking_key("test"), 1234)
+        self.assertTrue(self.is_scheduler_running(job))

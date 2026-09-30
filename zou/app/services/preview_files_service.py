@@ -11,7 +11,7 @@ from collections import Counter
 
 import ffmpeg
 import redis
-from rq import Retry, get_current_job
+from rq import Queue, Retry, get_current_job
 from rq.timeouts import BaseTimeoutException
 from PIL import Image
 
@@ -377,18 +377,41 @@ def _resolve_upload_path(upload_path):
     return upload_path
 
 
+def is_scheduler_running(job):
+    """
+    Tell whether a worker started with --with-scheduler serves the queue
+    of the job: a job queued again with a delay lands in the scheduled
+    registry, which only the scheduler moves back to the queue. It holds
+    a lock in Redis while running, which expires shortly after it stops.
+    """
+    try:
+        queue = Queue(job.origin, connection=job.connection)
+        return queue.scheduler_pid is not None
+    except redis.RedisError:
+        return False
+
+
 def _requeue_on_storage_failure(exc, upload_path):
     """
     Keep the upload aside and return the Retry that queues the running
     job again, when it failed on the object storage authentication and
     attempts remain. Return None otherwise: no job (inline processing),
-    another error or attempts exhausted, the caller fails as usual.
+    another error, attempts exhausted or no scheduler to queue the job
+    again after the delay, the caller fails as usual.
     """
     job = get_current_job()
     if job is None or not fs.is_auth_failure(exc):
         return None
     attempt = job.meta.get(STORAGE_RETRIES_META_KEY, 0)
     if attempt >= len(STORAGE_RETRY_INTERVALS):
+        return None
+    if not is_scheduler_running(job):
+        from zou.app import app as current_app
+
+        current_app.logger.warning(
+            "No RQ scheduler running (rq worker --with-scheduler): the "
+            "job is not queued again after the object storage failure"
+        )
         return None
     pending_path = get_pending_upload_path(upload_path)
     if upload_path != pending_path:
