@@ -86,6 +86,18 @@ def is_range_error(exception):
     return False
 
 
+def is_auth_failure(exception):
+    """
+    Tell whether a Swift operation failed because Keystone could not
+    hand out a token (a 503 on the identity service, for instance).
+    swiftclient raises it with no HTTP status and, unlike a 5xx from
+    Swift itself, never retries it.
+    """
+    return getattr(exception, "http_status", "") is None and str(
+        exception
+    ).startswith("Authorization Failure")
+
+
 class ConfirmedFileNotFound(FileNotFound):
     """
     The storage answered that the file does not exist: a 404, or a local
@@ -217,7 +229,16 @@ def fill_cache_in_background(file_path, open_file, prefix, instance_id):
             exception = download_to_file(
                 file_path, open_file, prefix, instance_id
             )
-            if exception is not None and not is_missing_file_error(exception):
+            # Keystone down is transient and the request did not depend
+            # on the fill: the next request fills the cache.
+            if is_auth_failure(exception):
+                logger.warning(
+                    f"Cache fill failed for {prefix}-{instance_id}: "
+                    f"{exception!r}"
+                )
+            elif exception is not None and not is_missing_file_error(
+                exception
+            ):
                 logger.error(
                     f"Cache fill failed for {prefix}-{instance_id}: "
                     f"{exception!r}"

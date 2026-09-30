@@ -385,7 +385,7 @@ def _requeue_on_storage_failure(exc, upload_path):
     another error or attempts exhausted, the caller fails as usual.
     """
     job = get_current_job()
-    if job is None or not file_store.is_auth_failure(exc):
+    if job is None or not fs.is_auth_failure(exc):
         return None
     attempt = job.meta.get(STORAGE_RETRIES_META_KEY, 0)
     if attempt >= len(STORAGE_RETRY_INTERVALS):

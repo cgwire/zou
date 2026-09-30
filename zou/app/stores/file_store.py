@@ -347,18 +347,6 @@ def _read(bucket, key, bucket_name):
     return data
 
 
-def is_auth_failure(exc):
-    """
-    Tell whether a Swift operation failed because Keystone could not
-    hand out a token (a 503 on the identity service, for instance).
-    swiftclient raises it with no HTTP status and, unlike a 5xx from
-    Swift itself, never retries it.
-    """
-    return getattr(exc, "http_status", "") is None and str(exc).startswith(
-        "Authorization Failure"
-    )
-
-
 def _retry_on_auth_failure(operation):
     """
     Run a storage operation again, after a growing delay, as long as it
@@ -369,7 +357,7 @@ def _retry_on_auth_failure(operation):
         try:
             return operation()
         except Exception as exc:
-            if not is_auth_failure(exc):
+            if not fs.is_auth_failure(exc):
                 raise
             logger.warning(
                 f"Swift authentication failed, retrying in {delay}s: {exc}"
