@@ -11,6 +11,7 @@ from collections import Counter
 
 import ffmpeg
 import redis
+from rq import Queue, Retry, get_current_job
 from rq.timeouts import BaseTimeoutException
 from PIL import Image
 
@@ -75,6 +76,13 @@ MIN_MOVIE_BITRATE = 1
 # Held by the local tile build in progress: one ffmpeg decode at a time
 # next to the API.
 LOCAL_TILE_BUILD_LOCK_KEY = "tile-build:local"
+# Seconds before each new attempt of a preview processing job whose
+# upload to the object storage failed on authentication (Keystone down).
+# Meanwhile the uploaded file waits in PENDING_UPLOADS_FOLDER, which the
+# TMP_DIR cleaning skips, and the preview file stays "processing".
+STORAGE_RETRY_INTERVALS = (60, 300, 900, 3600)
+STORAGE_RETRIES_META_KEY = "storage_retries"
+PENDING_UPLOADS_FOLDER = "pending-uploads"
 
 
 def get_preview_file_dimensions(project, entity=None):
@@ -346,6 +354,81 @@ def _remove_temp_files(*paths):
                 pass
 
 
+def get_pending_upload_path(upload_path):
+    """
+    Where an upload waits for the object storage to come back, under
+    TMP_DIR so that moving it there is a rename.
+    """
+    return os.path.join(
+        config.TMP_DIR, PENDING_UPLOADS_FOLDER, os.path.basename(upload_path)
+    )
+
+
+def _resolve_upload_path(upload_path):
+    """
+    A job queued again after a storage failure keeps its arguments: find
+    the upload in the pending folder when it was moved there.
+    """
+    if upload_path is None or os.path.exists(upload_path):
+        return upload_path
+    pending_path = get_pending_upload_path(upload_path)
+    if os.path.exists(pending_path):
+        return pending_path
+    return upload_path
+
+
+def is_scheduler_running(job):
+    """
+    Tell whether a worker started with --with-scheduler serves the queue
+    of the job: a job queued again with a delay lands in the scheduled
+    registry, which only the scheduler moves back to the queue. It holds
+    a lock in Redis while running, which expires shortly after it stops.
+    """
+    try:
+        queue = Queue(job.origin, connection=job.connection)
+        return queue.scheduler_pid is not None
+    except redis.RedisError:
+        return False
+
+
+def _requeue_on_storage_failure(exc, upload_path):
+    """
+    Keep the upload aside and return the Retry that queues the running
+    job again, when it failed on the object storage authentication and
+    attempts remain. Return None otherwise: no job (inline processing),
+    another error, attempts exhausted or no scheduler to queue the job
+    again after the delay, the caller fails as usual.
+    """
+    job = get_current_job()
+    if job is None or not fs.is_auth_failure(exc):
+        return None
+    attempt = job.meta.get(STORAGE_RETRIES_META_KEY, 0)
+    if attempt >= len(STORAGE_RETRY_INTERVALS):
+        return None
+    if not is_scheduler_running(job):
+        from zou.app import app as current_app
+
+        current_app.logger.warning(
+            "No RQ scheduler running (rq worker --with-scheduler): the "
+            "job is not queued again after the object storage failure"
+        )
+        return None
+    pending_path = get_pending_upload_path(upload_path)
+    if upload_path != pending_path:
+        os.makedirs(os.path.dirname(pending_path), exist_ok=True)
+        os.replace(upload_path, pending_path)
+    job.meta[STORAGE_RETRIES_META_KEY] = attempt + 1
+    # The next attempt starts over: a Nomad job dispatched by this one
+    # must not be resumed as if the source were stored.
+    job.meta.pop(remote_job.NOMAD_JOB_ID_META_KEY, None)
+    job.save_meta()
+    # Retry.max counts every retry of the job, handovers included.
+    return Retry(
+        max=(job.number_of_retries or 0) + 1,
+        interval=STORAGE_RETRY_INTERVALS[attempt],
+    )
+
+
 def mark_broken_on_job_failure(
     job, connection, exc_type, exc_value, traceback
 ):
@@ -365,7 +448,10 @@ def mark_broken_on_job_failure(
             f"{preview_file_id}: {exc_value}"
         )
         if uploaded_movie_path is not None:
-            _remove_temp_files(uploaded_movie_path)
+            _remove_temp_files(
+                uploaded_movie_path,
+                get_pending_upload_path(uploaded_movie_path),
+            )
         try:
             set_preview_file_as_broken(preview_file_id)
         except PreviewFileNotFoundException:
@@ -427,6 +513,7 @@ def prepare_and_store_movie(
     """
     from zou.app import app as current_app
 
+    uploaded_movie_path = _resolve_upload_path(uploaded_movie_path)
     temp_files = [uploaded_movie_path]
     with current_app.app_context():
         try:
@@ -453,6 +540,14 @@ def prepare_and_store_movie(
             # would never run.
             raise
         except Exception as exc:
+            retry = _requeue_on_storage_failure(exc, uploaded_movie_path)
+            if retry is not None:
+                current_app.logger.warning(
+                    f"Object storage unavailable, movie processing of "
+                    f"preview file {preview_file_id} queued again: {exc}"
+                )
+                temp_files.remove(uploaded_movie_path)
+                return retry
             if isinstance(exc, ffmpeg.Error):
                 current_app.logger.error(exc.stderr)
             current_app.logger.error(
@@ -499,9 +594,15 @@ def prepare_and_store_picture(preview_file_id, original_picture_path):
     from flask import has_app_context
     from zou.app import app
 
+    original_picture_path = _resolve_upload_path(original_picture_path)
+
     def run():
+        keep_original = False
         try:
-            save_variants(preview_file_id, original_picture_path)
+            # Kept on failure: a job queued again uploads it once more.
+            save_variants(
+                preview_file_id, original_picture_path, remove_original=False
+            )
             preview_file = update_preview_file(
                 preview_file_id, {"status": "ready"}
             )
@@ -517,7 +618,15 @@ def prepare_and_store_picture(preview_file_id, original_picture_path):
             # would count as successful and mark_broken_on_job_failure
             # would never run.
             raise
-        except Exception:
+        except Exception as exc:
+            retry = _requeue_on_storage_failure(exc, original_picture_path)
+            if retry is not None:
+                app.logger.warning(
+                    f"Object storage unavailable, picture processing of "
+                    f"preview file {preview_file_id} queued again: {exc}"
+                )
+                keep_original = True
+                return retry
             # Covers the inline path (no job queue, or ?no_job=true): the
             # queued path relies on on_failure=mark_broken_on_job_failure,
             # but that callback never runs for a call made directly from
@@ -534,13 +643,13 @@ def prepare_and_store_picture(preview_file_id, original_picture_path):
                 pass
             raise
         finally:
-            _remove_temp_files(original_picture_path)
+            if not keep_original:
+                _remove_temp_files(original_picture_path)
 
     if has_app_context():
-        run()
-    else:
-        with app.app_context():
-            run()
+        return run()
+    with app.app_context():
+        return run()
 
 
 def _process_movie(
@@ -947,9 +1056,16 @@ def _run_remote_normalize_movie(
     return result
 
 
-def save_variants(preview_file_id, original_picture_path, with_original=True):
+def save_variants(
+    preview_file_id,
+    original_picture_path,
+    with_original=True,
+    remove_original=True,
+):
     """
     Build variants of a picture file and save them in the main storage.
+    The generated variants are removed afterwards, the original too
+    unless remove_original is False: the caller then owns it.
     """
     variants = thumbnail_utils.generate_preview_variants(
         original_picture_path, preview_file_id
@@ -969,7 +1085,13 @@ def save_variants(preview_file_id, original_picture_path, with_original=True):
         )
     finally:
         # A failed upload must not leak the remaining variant files.
-        _remove_temp_files(*[path for _, path in variants])
+        _remove_temp_files(
+            *[
+                path
+                for prefix, path in variants
+                if remove_original or prefix != "original"
+            ]
+        )
 
     return variants
 

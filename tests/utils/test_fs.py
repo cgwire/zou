@@ -266,6 +266,35 @@ class FillCacheInBackgroundTestCase(unittest.TestCase):
         self.assertIn("credentials rotated", logs.output[0])
         self.assertIn("lowdef-1", logs.output[0])
 
+    def test_auth_failure_is_logged_as_warning(self):
+        # Keystone down: the request was served from the storage anyway
+        # and the next one fills the cache, no error to report.
+        from swiftclient import ClientException
+
+        def open_file(prefix, instance_id):
+            raise ClientException(
+                "Authorization Failure. Authorization failed: "
+                "Gateway Timeout (HTTP 504)"
+            )
+            yield
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            file_path = os.path.join(tmp_dir, "cache-lowdef-1.mp4")
+            with self.assertLogs("zou.app.utils.fs", level="WARNING") as logs:
+                self.assertTrue(
+                    fs.fill_cache_in_background(
+                        file_path, open_file, "lowdef", "1"
+                    )
+                )
+                for _ in range(100):
+                    if logs.records:
+                        break
+                    time.sleep(0.05)
+        self.assertEqual(
+            [record.levelname for record in logs.records], ["WARNING"]
+        )
+        self.assertIn("lowdef-1", logs.output[0])
+
     def test_concurrent_fills_are_capped(self):
         import threading
 

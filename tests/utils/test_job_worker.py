@@ -119,3 +119,73 @@ class ZouWorkerSignalsTestCase(unittest.TestCase):
         with patch("zou.app.utils.job_worker.os.kill") as kill:
             self.worker.handle_warm_shutdown_request()
         kill.assert_not_called()
+
+
+class SchedulerLastSeenTestCase(unittest.TestCase):
+    """
+    The worker records when it last saw the RQ scheduler lock of its
+    queues, for an alert to fire when no scheduler runs any more.
+    """
+
+    def setUp(self):
+        from prometheus_client import CollectorRegistry, Gauge
+
+        from zou.app.utils import job_worker
+
+        self.registry = CollectorRegistry()
+        gauge = Gauge(
+            "zou_rq_scheduler_last_seen_timestamp_seconds",
+            "test",
+            ["queue"],
+            registry=self.registry,
+        )
+        patcher = patch.object(job_worker, "SCHEDULER_LAST_SEEN", gauge)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.connection = fakeredis.FakeStrictRedis()
+        self.queue = Queue("test", connection=self.connection)
+        self.worker = ZouWorker([self.queue], connection=self.connection)
+
+    def last_seen(self):
+        return self.registry.get_sample_value(
+            "zou_rq_scheduler_last_seen_timestamp_seconds", {"queue": "test"}
+        )
+
+    def hold_scheduler_lock(self):
+        from rq.scheduler import RQScheduler
+
+        self.connection.set(RQScheduler.get_locking_key("test"), 1234)
+
+    def test_heartbeat_records_the_scheduler(self):
+        import time
+
+        self.hold_scheduler_lock()
+        before = time.time()
+        self.worker.heartbeat()
+        self.assertGreaterEqual(self.last_seen(), before)
+
+    def test_nothing_recorded_without_scheduler(self):
+        # The last value stays: the alert fires once it gets too old.
+        self.worker.heartbeat()
+        self.assertIsNone(self.last_seen())
+
+    def test_the_job_process_records_nothing(self):
+        # A fork per job would leave one metrics file per job behind.
+        self.hold_scheduler_lock()
+        with patch.object(os, "getpid", return_value=os.getpid() + 1):
+            self.worker.heartbeat()
+        self.assertIsNone(self.last_seen())
+
+    def test_redis_failure_does_not_stop_the_worker(self):
+        from unittest.mock import PropertyMock
+
+        import redis
+
+        with patch.object(
+            Queue,
+            "scheduler_pid",
+            new_callable=PropertyMock,
+            side_effect=redis.ConnectionError(),
+        ):
+            self.worker.record_scheduler_seen()
+        self.assertIsNone(self.last_seen())

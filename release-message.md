@@ -1,4 +1,25 @@
 =====================================================================================================================================
+New release information (1.0.92) - <day> (today), <month>, <date> night around 8:00 PM (GMT)
+
+Hello @everyone,
+
+Tonight, we will proceed with the release of a new version of Zou. It will be shipped with the following changes:
+
+Fixes
+Swift storage: the Keystone token is shared between the API and job
+processes through Redis, instead of each job authenticating again. Set
+`FS_SWIFT_TOKEN_CACHE_TTL` (seconds, default 3600) below the token
+lifetime of your Keystone, or to 0 to disable the sharing.
+
+A Keystone outage no longer marks the previews being processed as
+broken: their job is queued again after a delay (1 min, 5 min, 15 min,
+then 1 h). This requires rq workers started with `--with-scheduler`:
+
+    rq worker --with-scheduler -w zou.app.utils.job_worker.ZouWorker -c zou.job_settings
+
+Without a scheduler, the preview is marked broken at once, as before.
+
+=====================================================================================================================================
 New release information (1.0.86) - Friday (today), September, 25th night around 8:00 PM (GMT)
 
 Hello @everyone,
