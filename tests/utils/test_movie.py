@@ -140,6 +140,43 @@ class MovieTestCase(unittest.TestCase):
         self.assertNotIn("maxrate", calls[1])
         self.assertNotIn("bufsize", calls[1])
 
+    def get_stream_durations(self, path):
+        streams = ffmpeg.probe(path)["streams"]
+        return {
+            stream["codec_type"]: float(stream["duration"])
+            for stream in streams
+        }
+
+    def assert_audio_covers_video(self, path):
+        # Firefox stalls on the last frames when the audio ends before the
+        # video: the normalized audio must run to the end of the video.
+        durations = self.get_stream_durations(path)
+        self.assertGreaterEqual(durations["audio"], durations["video"] - 0.001)
+
+    def test_normalize_pads_short_audio(self):
+        video = str(Path(self.tmpdir) / "short_audio.mp4")
+        ffmpeg.output(
+            ffmpeg.input("testsrc=size=320x240:rate=25:duration=2", f="lavfi"),
+            ffmpeg.input("sine=duration=1.8", f="lavfi"),
+            video,
+            vcodec="libx264",
+            acodec="aac",
+            pix_fmt="yuv420p",
+        ).overwrite_output().run(quiet=True)
+
+        high, low, _ = movie.normalize_movie(video, 25, 320, 240)
+        self.assert_audio_covers_video(high)
+        self.assert_audio_covers_video(low)
+
+    def test_normalize_pads_added_soundtrack(self):
+        # The silent track added to movies without sound ends a packet short.
+        video = str(Path(self.tmpdir) / "no_audio.m4v")
+        shutil.copyfile(self.video_only_path, video)
+
+        high, low, _ = movie.normalize_movie(video, 25, 320, 240)
+        self.assert_audio_covers_video(high)
+        self.assert_audio_covers_video(low)
+
     def test_normalize_width_unspecified(self):
         filename = "test_normalize_no_width.m4v"
         video = str(Path(self.tmpdir) / filename)
