@@ -17,10 +17,36 @@ the next worker resumes the watch. The Nomad job keeps running meanwhile.
 import os
 import signal
 
+import redis
 from rq import Retry, Worker
 from rq.job import Job
 
+from zou.app import config
 from zou.app.utils import remote_job
+
+
+def _make_scheduler_last_seen_gauge():
+    """
+    Timestamp of the last time a worker saw the RQ scheduler lock of a
+    queue. "mostrecent" keeps the value of a worker that stopped: its
+    age is what the alert watches.
+    """
+    if not config.PROMETHEUS_METRICS_ENABLED:
+        return None
+    try:
+        from prometheus_client import Gauge
+
+        return Gauge(
+            "zou_rq_scheduler_last_seen_timestamp_seconds",
+            "Last time an RQ worker saw the scheduler of a queue running",
+            ["queue"],
+            multiprocess_mode="mostrecent",
+        )
+    except (ImportError, ValueError):
+        return None
+
+
+SCHEDULER_LAST_SEEN = _make_scheduler_last_seen_gauge()
 
 
 class ZouJob(Job):
@@ -40,6 +66,7 @@ class ZouJob(Job):
 class ZouWorker(Worker):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._main_pid = os.getpid()
         # The rq command line always passes a job class, rq's own by
         # default: set ours after it.
         self.job_class = ZouJob
@@ -62,4 +89,30 @@ class ZouWorker(Worker):
             try:
                 os.kill(self.horse_pid, remote_job.HANDOVER_SIGNAL)
             except ProcessLookupError:
+                pass
+
+    def heartbeat(self, *args, **kwargs):
+        """
+        Called on every dequeue timeout while idle and every job
+        monitoring interval while a job runs: record whether the
+        scheduler is alive at the same pace.
+        """
+        super().heartbeat(*args, **kwargs)
+        self.record_scheduler_seen()
+
+    def record_scheduler_seen(self):
+        """
+        Record the time for each queue whose scheduler lock is held. Not
+        from the job process: each fork would leave a metrics file of its
+        own behind.
+        """
+        if SCHEDULER_LAST_SEEN is None or os.getpid() != self._main_pid:
+            return
+        for queue in self.queues:
+            try:
+                if queue.scheduler_pid is not None:
+                    SCHEDULER_LAST_SEEN.labels(
+                        queue=queue.name
+                    ).set_to_current_time()
+            except redis.RedisError:
                 pass
