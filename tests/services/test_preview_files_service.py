@@ -206,6 +206,17 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
         )
         self.assertEqual(bitrates, (20, 4))
 
+    def test_encoding_parameters_of_a_deleted_preview_file(self):
+        # Still missing after the retry: deleted while the job waited. It
+        # must stay a PreviewFileNotFoundException, which
+        # prepare_and_store_movie logs as a warning, not an error.
+        with patch.object(preview_files_service.time, "sleep"):
+            self.assertRaises(
+                PreviewFileNotFoundException,
+                preview_files_service._get_encoding_parameters,
+                "5464d4b6-f419-4c76-8734-c6c489441177",
+            )
+
     def test_movie_bitrate_validation(self):
         preview_files_service.validate_movie_bitrate(None)
         preview_files_service.validate_movie_bitrate(20)

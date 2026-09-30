@@ -180,6 +180,24 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
             headers=self.base_headers,
         )
 
+    def test_cache_entry_without_status_is_served(self):
+        # A deploy adding "status" to get_preview_file_for_access leaves the
+        # entries memoized by the previous version in Redis for their TTL.
+        preview_file_id = self.upload_movie_preview(save_source_file=True)
+        access = files_service.get_preview_file_for_access
+
+        def previous_version_entry(preview_file_id):
+            entry = dict(access(preview_file_id))
+            del entry["status"]
+            return entry
+
+        with patch.object(
+            files_service,
+            "get_preview_file_for_access",
+            side_effect=previous_version_entry,
+        ):
+            self.assertEqual(self.get_movie(preview_file_id).status_code, 200)
+
     def test_recorded_prefixes_spare_the_storage_probe(self):
         preview_file_id = self.upload_movie_preview(save_source_file=True)
         with patch.object(file_store, "exists_movie") as exists_movie:
