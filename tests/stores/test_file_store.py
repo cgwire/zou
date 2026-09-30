@@ -361,3 +361,166 @@ class ExistsConfirmedTestCase(unittest.TestCase):
         ):
             with pytest.raises(SwiftClientException):
                 file_store.exists_confirmed("pictures", "tiles", "1")
+
+
+class AuthRetryTestCase(unittest.TestCase):
+    """
+    swiftclient never retries a failure of Keystone itself: it reaches
+    file_store as a ClientException with no HTTP status.
+    """
+
+    def setUp(self):
+        from unittest.mock import patch
+
+        patcher = patch.object(file_store.time, "sleep")
+        self.sleep = patcher.start()
+        self.addCleanup(patcher.stop)
+        self.path = os.path.join(
+            os.getcwd(), "tests", "fixtures", "thumbnails", "th01.png"
+        )
+
+    @staticmethod
+    def auth_failure():
+        import swiftclient
+
+        return swiftclient.ClientException(
+            "Authorization Failure. Authorization failed: "
+            "Service Unavailable (HTTP 503)"
+        )
+
+    def test_upload_is_retried_on_auth_failure(self):
+        bucket = Mock()
+        bucket.write.side_effect = [self.auth_failure(), None]
+        file_store._upload(bucket, "thumbnails-1", self.path, "pictures")
+        self.assertEqual(bucket.write.call_count, 2)
+        self.sleep.assert_called_once_with(file_store.AUTH_RETRY_DELAYS[0])
+        # The file is opened again: the retry sends the whole content.
+        fd = bucket.write.call_args[0][1]
+        self.assertTrue(fd.closed)
+
+    def test_upload_gives_up_after_the_last_attempt(self):
+        bucket = Mock()
+        bucket.write.side_effect = self.auth_failure()
+        with pytest.raises(Exception, match="Authorization Failure"):
+            file_store._upload(bucket, "thumbnails-1", self.path, "pictures")
+        self.assertEqual(
+            bucket.write.call_count, len(file_store.AUTH_RETRY_DELAYS) + 1
+        )
+
+    def test_other_errors_are_not_retried(self):
+        import swiftclient
+
+        bucket = Mock()
+        bucket.write.side_effect = swiftclient.ClientException(
+            "Unauthorized. Check username, password and tenant name/id."
+        )
+        with pytest.raises(swiftclient.ClientException):
+            file_store._upload(bucket, "thumbnails-1", self.path, "pictures")
+        bucket.delete.side_effect = swiftclient.ClientException(
+            "Object DELETE failed", http_status=503
+        )
+        with pytest.raises(swiftclient.ClientException):
+            file_store._delete(bucket, "thumbnails-1", "pictures")
+        self.assertEqual(bucket.write.call_count, 1)
+        self.assertEqual(bucket.delete.call_count, 1)
+        self.sleep.assert_not_called()
+
+    def test_delete_and_copy_are_retried_on_auth_failure(self):
+        bucket = Mock()
+        bucket.delete.side_effect = [self.auth_failure(), None]
+        bucket.copy.side_effect = [self.auth_failure(), None]
+        file_store._delete(bucket, "thumbnails-1", "pictures")
+        file_store._copy(bucket, "thumbnails-1", "thumbnails-2", "pictures")
+        self.assertEqual(bucket.delete.call_count, 2)
+        self.assertEqual(bucket.copy.call_count, 2)
+
+
+class SharedSwiftAuthTestCase(unittest.TestCase):
+    """
+    Against a real SwiftBackend and swiftclient.Connection, the Keystone
+    call itself stubbed out, and the Redis store the jobs share.
+    """
+
+    def setUp(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+
+        from flask_fs.backends.swift import SwiftBackend
+
+        from zou.app.stores import swift_auth_store
+
+        self.auth_calls = 0
+        test = self
+
+        def get_auth(*args, **kwargs):
+            test.auth_calls += 1
+            return "https://swift/v1/AUTH_x", f"token-{test.auth_calls}"
+
+        patcher = patch("swiftclient.client.get_auth", get_auth)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.backend = SwiftBackend(
+            "pictures",
+            SimpleNamespace(
+                user="user",
+                key="key",
+                authurl="https://keystone/v3",
+                tenant_name="tenant",
+                pool_size=1,
+            ),
+        )
+        self.store = swift_auth_store
+        self.cache_key = swift_auth_store.make_key(
+            self.backend._authurl, self.backend._user, self.backend._os_options
+        )
+        self.store.swift_auth_store.delete(self.cache_key)
+        self.addCleanup(self.store.swift_auth_store.delete, self.cache_key)
+        file_store._share_swift_auth(self.backend)
+
+    def test_token_is_shared_between_connections(self):
+        first = self.backend._new_connection()
+        self.assertEqual(first.get_auth()[1], "token-1")
+        # A connection opened by another job reuses it: no Keystone call.
+        second = self.backend._new_connection()
+        self.assertEqual(
+            (second.url, second.token), ("https://swift/v1/AUTH_x", "token-1")
+        )
+        self.assertEqual(self.auth_calls, 1)
+
+    def test_new_token_replaces_the_shared_one(self):
+        self.store.add(self.cache_key, "https://swift/v1/AUTH_x", "stale", 60)
+        conn = self.backend._new_connection()
+        self.assertEqual(conn.token, "stale")
+        # What swiftclient does on a 401: authenticate again.
+        conn.get_auth()
+        self.assertEqual(
+            self.store.get(self.cache_key),
+            ("https://swift/v1/AUTH_x", "token-1"),
+        )
+
+    def test_no_token_shared_when_ttl_is_zero(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+
+        from flask_fs.backends.swift import SwiftBackend
+
+        backend = SwiftBackend(
+            "pictures",
+            SimpleNamespace(user="user", key="key", authurl="url"),
+        )
+        original = backend._new_connection
+        with patch.object(file_store.config, "FS_SWIFT_TOKEN_CACHE_TTL", 0):
+            file_store._share_swift_auth(backend)
+        self.assertEqual(backend._new_connection, original)
+
+    def test_redis_failure_falls_back_to_keystone(self):
+        import redis
+        from unittest.mock import patch
+
+        with patch.object(
+            self.store.swift_auth_store,
+            "get",
+            side_effect=redis.ConnectionError(),
+        ):
+            conn = self.backend._new_connection()
+        self.assertIsNone(conn.token)

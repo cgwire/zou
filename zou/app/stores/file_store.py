@@ -1,3 +1,4 @@
+import logging
 import os
 import time
 import flask_fs
@@ -8,7 +9,10 @@ from zou.app import config
 from flask_fs.backends.local import LocalBackend
 from werkzeug.exceptions import RequestedRangeNotSatisfiable
 
+from zou.app.stores import swift_auth_store
 from zou.app.utils import fs
+
+logger = logging.getLogger(__name__)
 
 # ----------------------------------------------------------------------
 # Module state
@@ -19,6 +23,10 @@ movies = None
 files = None
 
 RANGE_CHUNK_SIZE = 1024 * 1024
+
+# Seconds to wait before each new attempt of a storage operation that
+# failed because Keystone could not hand out a token.
+AUTH_RETRY_DELAYS = (1, 2, 4)
 
 
 # ----------------------------------------------------------------------
@@ -250,6 +258,51 @@ def configure_storages(app):
     files = make_storage("files")
 
     flask_fs.init_app(app, *[pictures, movies, files])
+    if config.FS_BACKEND == "swift":
+        for storage in (pictures, movies, files):
+            _share_swift_auth(storage.backend)
+
+
+def _share_swift_auth(backend):
+    """
+    Make the connections of a Swift backend reuse the Keystone token
+    shared through Redis, and share the one they obtain when there is
+    none or Swift refuses it (swiftclient authenticates again on a 401).
+    Every RQ job runs in a fork of its own, so the connection pool of
+    flask_fs never outlives a job: without this, each job asks Keystone
+    for a new token. Private flask_fs members, flask-fs2 being pinned at
+    0.8.2 (see _read_swift_range).
+    """
+    import swiftclient
+
+    ttl = config.FS_SWIFT_TOKEN_CACHE_TTL
+    if ttl <= 0:
+        return
+    cache_key = swift_auth_store.make_key(
+        backend._authurl, backend._user, backend._os_options
+    )
+
+    class SharedTokenConnection(swiftclient.Connection):
+        def get_auth(self):
+            url, token = super().get_auth()
+            swift_auth_store.add(cache_key, url, token, ttl)
+            return url, token
+
+    def new_connection():
+        url, token = swift_auth_store.get(cache_key)
+        return SharedTokenConnection(
+            user=backend._user,
+            key=backend._key,
+            authurl=backend._authurl,
+            auth_version=backend._auth_version,
+            os_options=dict(backend._os_options),
+            timeout=backend._timeout,
+            retries=backend._retries,
+            preauthurl=url,
+            preauthtoken=token,
+        )
+
+    backend._new_connection = new_connection
 
 
 def clear_bucket(bucket):
@@ -294,10 +347,44 @@ def _read(bucket, key, bucket_name):
     return data
 
 
+def is_auth_failure(exc):
+    """
+    Tell whether a Swift operation failed because Keystone could not
+    hand out a token (a 503 on the identity service, for instance).
+    swiftclient raises it with no HTTP status and, unlike a 5xx from
+    Swift itself, never retries it.
+    """
+    return getattr(exc, "http_status", "") is None and str(exc).startswith(
+        "Authorization Failure"
+    )
+
+
+def _retry_on_auth_failure(operation):
+    """
+    Run a storage operation again, after a growing delay, as long as it
+    fails on authentication and attempts remain. A single Keystone
+    hiccup would otherwise mark the preview file being stored as broken.
+    """
+    for delay in AUTH_RETRY_DELAYS:
+        try:
+            return operation()
+        except Exception as exc:
+            if not is_auth_failure(exc):
+                raise
+            logger.warning(
+                f"Swift authentication failed, retrying in {delay}s: {exc}"
+            )
+            time.sleep(delay)
+    return operation()
+
+
 def _upload(bucket, key, path, bucket_name):
-    with _measure("upload", bucket_name, byte_count=_safe_size(path)):
-        with open(path, "rb") as fd:
-            return bucket.write(key, fd)
+    def upload():
+        with _measure("upload", bucket_name, byte_count=_safe_size(path)):
+            with open(path, "rb") as fd:
+                return bucket.write(key, fd)
+
+    return _retry_on_auth_failure(upload)
 
 
 def _exists(bucket, key, bucket_name):
@@ -351,13 +438,19 @@ def exists_confirmed(bucket_name, prefix, id):
 
 
 def _delete(bucket, key, bucket_name):
-    with _measure("delete", bucket_name):
-        return bucket.delete(key)
+    def delete():
+        with _measure("delete", bucket_name):
+            return bucket.delete(key)
+
+    return _retry_on_auth_failure(delete)
 
 
 def _copy(bucket, key, target, bucket_name):
-    with _measure("copy", bucket_name):
-        return bucket.copy(key, target)
+    def copy():
+        with _measure("copy", bucket_name):
+            return bucket.copy(key, target)
+
+    return _retry_on_auth_failure(copy)
 
 
 def _read_chunks(bucket, key):

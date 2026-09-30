@@ -177,6 +177,10 @@ FS_SWIFT_AES256_KEY = os.getenv("FS_SWIFT_AES256_KEY")
 FS_SWIFT_POOL_SIZE = int(os.getenv("FS_SWIFT_POOL_SIZE", 20))
 FS_SWIFT_TIMEOUT = int(os.getenv("FS_SWIFT_TIMEOUT", 60))
 FS_SWIFT_RETRIES = int(os.getenv("FS_SWIFT_RETRIES", 5))
+# Seconds a Keystone token is shared through Redis between processes (every
+# RQ job runs in a fork of its own): 0 authenticates on every new connection.
+# Keep it below the token lifetime set on the Keystone side.
+FS_SWIFT_TOKEN_CACHE_TTL = int(os.getenv("FS_SWIFT_TOKEN_CACHE_TTL", 3600))
 # What to do when the ETag returned by Swift does not match the uploaded
 # content: "log", "raise" or "raise_and_delete" (see flask-fs2 SwiftBackend).
 FS_SWIFT_ETAG_MISMATCH_POLICY = os.getenv(
