@@ -1318,6 +1318,32 @@ def get_project_roles():
     }
 
 
+def get_team_project_roles():
+    """
+    Return a dict mapping the id of every project of the current user's
+    teams to the role they hold there: the role set on their team link,
+    or their global role where the link sets none. A listing resolves no
+    project, so a role check would read the global role for every row
+    listed: the role held on the project of each row is read instead. An
+    admin keeps the global role, as in the project access check, and gets
+    an empty dict.
+    """
+    if permissions.has_admin_permissions():
+        return {}
+    current_user = persons_service.get_current_user()
+    project_roles = {}
+    for link in ProjectPersonLink.query.filter(
+        ProjectPersonLink.person_id == current_user["id"]
+    ):
+        role = getattr(link.role, "code", link.role)
+        if role in (None, "admin"):
+            # An admin slot is invalid data, which the role checks read as
+            # the global role too.
+            role = current_user["role"]
+        project_roles[str(link.project_id)] = role
+    return project_roles
+
+
 def get_context():
     """
     Build everything the client needs on login in one payload: projects,

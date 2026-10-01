@@ -1,4 +1,5 @@
 from flask_jwt_extended import jwt_required
+from sqlalchemy import or_
 
 from zou.app.models.playlist import Playlist
 from zou.app.models.build_job import BuildJob
@@ -41,8 +42,33 @@ class PlaylistsResource(BaseModelsResource):
     def add_project_permission_filter(self, query):
         if permissions.has_admin_permissions():
             return query
-        if permissions.has_client_permissions():
-            query = query.filter(Playlist.for_client)
+        # Each playlist follows the role held on its own project: on the
+        # ones where the user is a client, only the playlists shared with
+        # clients are listed, as the playlists route of a production does,
+        # and on the ones where they are a vendor, none, as a playlist read
+        # refuses them there.
+        project_roles = user_service.get_team_project_roles()
+        client_project_ids = [
+            project_id
+            for project_id, role in project_roles.items()
+            if role == "client"
+        ]
+        vendor_project_ids = [
+            project_id
+            for project_id, role in project_roles.items()
+            if role == "vendor"
+        ]
+        if vendor_project_ids:
+            query = query.filter(
+                Playlist.project_id.not_in(vendor_project_ids)
+            )
+        if client_project_ids:
+            query = query.filter(
+                or_(
+                    Playlist.for_client,
+                    Playlist.project_id.not_in(client_project_ids),
+                )
+            )
         return query.filter(
             user_service.build_team_exists_filter(Playlist.project_id)
         )
@@ -55,7 +81,9 @@ class PlaylistsResource(BaseModelsResource):
         tags:
           - Crud
         description: Retrieve all playlists. Supports filtering via query
-          parameters and pagination.
+          parameters and pagination. On a production where the user is a
+          client, only the playlists shared with clients are listed, and
+          none on a production where they are a vendor.
         parameters:
           - in: query
             name: page
