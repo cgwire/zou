@@ -257,6 +257,27 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
             403,
         )
 
+    def test_a_created_descriptor_lists_its_departments(self):
+        # Kitsu stores the created descriptor as returned: without its
+        # departments, the department filter of its entity lists crashed.
+        self.generate_fixture_department()
+        department_id = str(self.department.id)
+        descriptor = self.post(
+            self.descriptors_path(),
+            {
+                "entity_type": "Asset",
+                "name": "Rig",
+                "data_type": "string",
+                "departments": [department_id],
+            },
+        )
+        self.assertEqual(descriptor["departments"], [department_id])
+        descriptor = self.post(
+            self.descriptors_path(),
+            {"entity_type": "Asset", "name": "Layout", "data_type": "string"},
+        )
+        self.assertEqual(descriptor["departments"], [])
+
     def test_update_metadata_descriptor(self):
         descriptor = self.post(
             self.descriptors_path(),
@@ -289,6 +310,28 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
             {"name": "Team", "data_type": "list"},
             403,
         )
+
+    def test_an_updated_descriptor_lists_its_new_departments(self):
+        self.generate_fixture_department()
+        descriptor = projects_service.add_metadata_descriptor(
+            self.project_id,
+            "Asset",
+            "Rig",
+            "string",
+            [],
+            False,
+            [str(self.department.id)],
+        )
+        department_id = str(self.department_animation.id)
+        descriptor = self.put(
+            self.descriptors_path(descriptor),
+            {
+                "name": "Rig",
+                "data_type": "string",
+                "departments": [department_id],
+            },
+        )
+        self.assertEqual(descriptor["departments"], [department_id])
 
     def test_delete_metadata_descriptor(self):
         descriptor = projects_service.add_metadata_descriptor(

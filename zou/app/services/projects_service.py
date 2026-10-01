@@ -1035,7 +1035,7 @@ def add_metadata_descriptor(
         project_id=project_id,
     )
     clear_project_cache(project_id)
-    return descriptor.serialize()
+    return descriptor.serialize(relations=True)
 
 
 def get_metadata_descriptors(
@@ -1138,7 +1138,7 @@ def update_metadata_descriptor(metadata_descriptor_id, changes):
         project_id=descriptor.project_id,
     )
     clear_project_cache(str(descriptor.project_id))
-    return descriptor.serialize()
+    return descriptor.serialize(relations=True)
 
 
 def reorder_metadata_descriptors(project_id, entity_type, descriptor_ids):
