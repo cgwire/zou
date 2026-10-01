@@ -110,8 +110,8 @@ class ProjectPlaylistsResource(MethodView, ArgsMixin):
                         description: Project unique identifier
                         example: b35b7fb5-df86-5776-b181-68564193d36
         """
-        permissions_service.block_access_to_vendor()
         permissions_service.check_project_access(project_id)
+        permissions_service.block_access_to_vendor()
         page = self.get_page()
         sort_by = self.get_sort_by()
         task_type_id = self.get_text_parameter("task_type_id")
@@ -186,8 +186,8 @@ class EpisodePlaylistsResource(MethodView, ArgsMixin):
                         description: Episode unique identifier
                         example: b35b7fb5-df86-5776-b181-68564193d36
         """
-        permissions_service.block_access_to_vendor()
         permissions_service.check_project_access(project_id)
+        permissions_service.block_access_to_vendor()
         page = self.get_page()
         sort_by = self.get_sort_by()
         task_type_id = self.get_text_parameter("task_type_id")
@@ -266,8 +266,8 @@ class ProjectPlaylistResource(MethodView):
           404:
             description: No playlist of this project with this id
         """
-        permissions_service.block_access_to_vendor()
         permissions_service.check_project_access(project_id)
+        permissions_service.block_access_to_vendor()
         playlist = playlists_service.get_project_playlist(
             project_id, playlist_id
         )

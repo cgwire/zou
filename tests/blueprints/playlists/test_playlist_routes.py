@@ -559,8 +559,7 @@ class ProjectPlaylistReadTestCase(ApiDBTestCase):
     def read_as(self, user, role=None):
         """
         Join the production, with a role of one's own on it if given, and
-        log in. flask.g outlives the requests of a test, and this route
-        reads the role before it resolves the project: the role resolved
+        log in. flask.g outlives the requests of a test: the role resolved
         for the previous caller goes, as between two real requests.
         """
         projects_service.add_team_member(
@@ -569,6 +568,15 @@ class ProjectPlaylistReadTestCase(ApiDBTestCase):
         self.log_in(user["email"])
         g.pop("project_role", None)
         return user
+
+    def get_afresh(self, path, code=200):
+        """
+        Get given path as a request of its own: flask.g outlives the
+        requests of a test, so a gate run before the production is resolved
+        would read the role the previous request left there.
+        """
+        g.pop("project_role", None)
+        return self.get(path, code)
 
     def test_a_playlist_of_another_production_is_not_found_here(self):
         """
@@ -635,3 +643,48 @@ class ProjectPlaylistReadTestCase(ApiDBTestCase):
                         self.get(self.playlist_path(playlist))["id"],
                         playlist["id"],
                     )
+
+    def test_a_vendor_by_project_role_reads_no_playlist_here(self):
+        """
+        The vendor gate of the playlist routes of a production ran before
+        the production was resolved, so on the global role: a client or an
+        artist made vendor there listed and opened its playlists, internal
+        ones included, which the CRUD read refuses them.
+        """
+        vendors = {
+            "client made vendor": self.generate_fixture_user_client,
+            "artist made vendor": self.generate_fixture_user_cg_artist,
+        }
+        for reason, fixture in vendors.items():
+            with self.subTest(reason=reason):
+                self.read_as(fixture(), role="vendor")
+
+                self.get_afresh(
+                    f"/data/projects/{self.project_id}/playlists", 403
+                )
+                self.get_afresh(
+                    f"/data/projects/{self.project_id}/episodes/main"
+                    "/playlists",
+                    403,
+                )
+                for playlist in (self.internal, self.for_client):
+                    self.get_afresh(self.playlist_path(playlist), 403)
+
+    def test_a_vendor_made_artist_reads_the_playlists_here(self):
+        """
+        The other way round: a vendor made artist on a production is no
+        vendor there, as the CRUD read of a playlist already found.
+        """
+        self.read_as(self.generate_fixture_user_vendor(), role="user")
+
+        names = {
+            playlist["name"]
+            for playlist in self.get_afresh(
+                f"/data/projects/{self.project_id}/playlists"
+            )
+        }
+        self.assertEqual(names, {"Internal", "For client"})
+        self.assertEqual(
+            self.get_afresh(self.playlist_path(self.internal))["id"],
+            self.internal["id"],
+        )
