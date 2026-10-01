@@ -29,6 +29,7 @@ from zou.app.services import (
     edits_service,
     entities_service,
     persons_service,
+    playlists_service,
     projects_service,
     shots_service,
     tasks_service,
@@ -808,6 +809,20 @@ def check_playlist_read_access(playlist):
     if permissions.has_client_permissions() and not playlist["for_client"]:
         raise permissions.PermissionDenied
     return True
+
+
+def check_playlist_room_access(playlist_id):
+    """
+    Raise a PermissionDenied exception if the current user may not join the
+    review room of given playlist, and a PlaylistNotFoundException if there
+    is no such playlist. The room shows the shot and the preview on screen
+    and the annotations drawn during the review, so it follows the playlist
+    routes: every member of the production joins it, a client only when
+    the playlist is shared with clients, and a vendor never.
+    """
+    playlist = playlists_service.get_playlist(playlist_id)
+    check_playlist_read_access(playlist)
+    return block_access_to_vendor()
 
 
 def check_playlist_update_access(playlist):

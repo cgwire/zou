@@ -30,8 +30,7 @@ from zou.app.utils.redis import get_redis_url
 
 app = create_app()
 
-from zou.app.services.playlists_service import get_playlist
-from zou.app.services.permissions_service import check_project_access
+from zou.app.services.permissions_service import check_playlist_room_access
 
 server_stats = {"nb_connections": 0}
 rooms_data = {}
@@ -54,12 +53,12 @@ socketio.init_app(app, message_queue=redis_url, async_mode="gevent")
 
 def _check_room_access(playlist_id):
     """
-    Check that the current user has access to the given playlist.
-    Returns True if access is granted, False otherwise.
+    Check that the current user may join the review room of the given
+    playlist (see check_playlist_room_access). Returns True if access is
+    granted, False otherwise.
     """
     try:
-        playlist = get_playlist(playlist_id)
-        check_project_access(playlist["project_id"])
+        check_playlist_room_access(playlist_id)
         return True
     except Exception:
         return False
