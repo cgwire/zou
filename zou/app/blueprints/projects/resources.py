@@ -1251,6 +1251,13 @@ class ProductionMetadataDescriptorsResource(MethodView, ArgsMixin):
                       type: string
                       description: Metadata descriptor data type
                       example: "string"
+                    departments:
+                      type: array
+                      description: Departments the descriptor is limited to
+                      items:
+                        type: string
+                        format: uuid
+                      example: ["a24a6ea4-ce75-4665-a070-57453082c25"]
           400:
             description: Invalid parameters
         """
