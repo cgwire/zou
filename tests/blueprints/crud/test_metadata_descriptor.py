@@ -131,6 +131,15 @@ class MetadataTestCase(ApiDBTestCase):
         data = {"data_type": "wrongdatatype"}
         self.put(f"data/metadata-descriptors/{descriptor['id']}", data, 400)
 
+    def test_an_updated_descriptor_lists_its_departments(self):
+        self.generate_fixture_department()
+        department_id = str(self.department.id)
+        descriptor = self.put(
+            f"data/metadata-descriptors/{self.meta_descriptor.id}",
+            {"departments": [department_id]},
+        )
+        self.assertEqual(descriptor["departments"], [department_id])
+
     def test_delete_metadadescriptor(self):
         descriptors = self.get("data/metadata-descriptors")
         self.assertEqual(len(descriptors), 1)
