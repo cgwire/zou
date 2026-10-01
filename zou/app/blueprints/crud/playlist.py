@@ -243,7 +243,6 @@ class PlaylistResource(BaseModelResource):
 
     def check_read_permissions(self, playlist):
         permissions_service.check_playlist_read_access(playlist)
-        permissions_service.block_access_to_vendor()
 
     @jwt_required()
     def get(self, instance_id):

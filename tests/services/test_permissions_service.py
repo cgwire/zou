@@ -1113,6 +1113,33 @@ class PlaylistAccessTestCase(PermissionsTestCase):
                 )
             )
 
+    def test_an_artist_made_vendor_reads_no_playlist(self):
+        """
+        The read check keeps the vendors out itself, on the role held on
+        the production, rather than leave the gate to each of its callers.
+        """
+        self.join_team(self.a_user("artist"), role="vendor")
+
+        with self.as_role("artist"):
+            with self.denied():
+                permissions_service.check_playlist_read_access(
+                    self.a_playlist(for_client=True)
+                )
+
+    def test_a_vendor_made_artist_reads_every_playlist(self):
+        """
+        The gate runs once the production is resolved, on the role held
+        there rather than on the global one.
+        """
+        self.join_team(self.a_user("vendor"), role="user")
+
+        with self.as_role("vendor"):
+            self.assertTrue(
+                permissions_service.check_playlist_read_access(
+                    self.a_playlist()
+                )
+            )
+
     def test_a_non_member_reads_no_playlist(self):
         self.a_user("manager")
 

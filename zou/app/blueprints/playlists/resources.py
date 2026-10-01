@@ -267,6 +267,8 @@ class ProjectPlaylistResource(MethodView):
             description: No playlist of this project with this id
         """
         permissions_service.check_project_access(project_id)
+        # Refused before the id is looked up, so that a vendor never learns
+        # which playlist ids belong to the production.
         permissions_service.block_access_to_vendor()
         playlist = playlists_service.get_project_playlist(
             project_id, playlist_id
