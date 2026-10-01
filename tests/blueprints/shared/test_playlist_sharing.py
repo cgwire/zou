@@ -1,3 +1,6 @@
+import json
+import uuid
+
 import pytest
 
 from tests.base import ApiDBTestCase
@@ -9,6 +12,8 @@ from zou.app.models.playlist_share_link import PlaylistShareLink
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
+from zou.app.services import entities_service
+from zou.app.services import playlist_sharing_service
 from zou.app.services import preview_file_states_service as states_service
 from zou.app.stores import file_store
 
@@ -334,6 +339,237 @@ class SharedPlaylistReadTestCase(PlaylistSharingTestCase):
         self.assertIn("project", result)
         self.assertIn("task_types", result)
         self.assertIn("task_statuses", result)
+
+
+class SharedRevisionTestCase(PlaylistSharingTestCase):
+    """
+    The revisions of a shot a guest reads. The shot has two positions of
+    revision 1 and a revision 2 on its animation task, and a preview on
+    its layout task. The playlist positions revision 1.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_shot()
+        # generate_fixture_shot_task repoints self.shot_task at the task it
+        # creates, so keep each one.
+        self.animation_task = self.generate_fixture_shot_task()
+        self.layout_task = self.generate_fixture_shot_task(
+            name="Layout", task_type_id=self.task_type_layout.id
+        )
+        animation_task_id = self.animation_task.id
+        self.pinned = self.generate_fixture_preview_file(
+            task_id=animation_task_id
+        )
+        self.pinned_position_2 = self.generate_fixture_preview_file(
+            name="main-position-2", position=2, task_id=animation_task_id
+        )
+        self.revision_2 = self.generate_fixture_preview_file(
+            revision=2, task_id=animation_task_id
+        )
+        self.layout_preview = self.generate_fixture_preview_file(
+            task_id=self.layout_task.id
+        )
+        self.pinned_annotations = [
+            {"time": 0, "drawing": {"objects": [{"id": "pinned-stroke"}]}}
+        ]
+        self.pinned.update({"annotations": self.pinned_annotations})
+        self.revision_2.update(
+            {
+                "annotations": [
+                    {
+                        "time": 0,
+                        "drawing": {"objects": [{"id": "hidden-stroke"}]},
+                    }
+                ]
+            }
+        )
+        self.pin(self.entry(self.pinned))
+
+    def entry(self, preview=None):
+        """
+        A playlist entry of the shot in the builder format, positioned on
+        given preview, or on none.
+        """
+        entry = {"entity_id": str(self.shot.id)}
+        if preview is not None:
+            entry["preview_file_id"] = str(preview.id)
+        return entry
+
+    def pin(self, *entries):
+        PlaylistModel.get(self.playlist["id"]).update({"shots": list(entries)})
+
+    def guest_get(self, suffix=""):
+        """
+        Read the shared playlist, or one of its routes, the way a viewer
+        does: through a fresh link and with no token at all.
+        """
+        link = self.post(self.share_path(), {}, 201)
+        response = self.app.get(self.shared_path(link["token"], suffix))
+        self.assertEqual(response.status_code, 200)
+        return response.json
+
+    def test_a_guest_sees_no_other_revision(self):
+        """
+        A share link hands over the revision the playlist positions. Each
+        shot also carried every revision of every task type of its entity,
+        annotations included, for a revision switcher a guest does not
+        have, while the file routes refuse to serve them.
+        """
+        payload = json.dumps(self.guest_get())
+
+        hidden = (
+            self.revision_2,
+            self.layout_preview,
+            self.layout_task,
+            self.task_type_layout,
+        )
+        for row in hidden:
+            self.assertNotIn(str(row.id), payload)
+        self.assertNotIn("hidden-stroke", payload)
+
+    def test_the_other_guest_routes_read_the_same_revisions(self):
+        """
+        The guest routes that check a comment or an attachment against the
+        playlist of the link read it through get_shared_playlist, which
+        still returned every revision.
+        """
+        link = self.post(self.share_path(), {}, 201)
+        payload = json.dumps(
+            playlist_sharing_service.get_shared_playlist(link["token"]),
+            default=str,
+        )
+
+        for row in (self.revision_2, self.layout_preview):
+            self.assertNotIn(str(row.id), payload)
+        self.assertNotIn("hidden-stroke", payload)
+
+    def test_a_guest_keeps_the_positioned_revision(self):
+        """
+        The player reads the positioned revision from the preview_file
+        fields, with its other positions and its annotations. The revision
+        list stays, empty: the player reads it on every shot.
+        """
+        (shot,) = self.guest_get()["shots"]
+
+        self.assertEqual(shot["preview_file_id"], str(self.pinned.id))
+        self.assertEqual(shot["preview_file_revision"], 1)
+        self.assertEqual(
+            shot["preview_file_task_id"], str(self.animation_task.id)
+        )
+        self.assertEqual(shot["preview_file_extension"], "mp4")
+        self.assertEqual(
+            shot["preview_file_annotations"], self.pinned_annotations
+        )
+        self.assertEqual(
+            [preview["id"] for preview in shot["preview_file_previews"]],
+            [str(self.pinned_position_2.id)],
+        )
+        self.assertEqual(
+            shot["preview_file_task_type"]["id"],
+            str(self.task_type_animation.id),
+        )
+        self.assertEqual((shot["name"], shot["parent_name"]), ("P01", "S01"))
+        self.assertEqual(shot["preview_files"], {})
+
+    def test_a_guest_sees_no_preview_of_another_task_of_the_type(self):
+        """
+        An entity can hold several tasks of one task type. The positions
+        of a revision are grouped per task type, so the positioned revision
+        also listed the preview of the same number on the other task,
+        which the file routes refuse to serve.
+        """
+        # Created after the positioned revision, so it groups under it.
+        retake_task = self.generate_fixture_shot_task(name="Retake")
+        retake_preview = self.generate_fixture_preview_file(
+            task_id=retake_task.id
+        )
+
+        (shot,) = self.guest_get()["shots"]
+
+        self.assertEqual(
+            [preview["id"] for preview in shot["preview_file_previews"]],
+            [str(self.pinned_position_2.id)],
+        )
+        self.assertNotIn(str(retake_preview.id), json.dumps(shot))
+        self.assertNotIn(str(retake_task.id), json.dumps(shot))
+
+    def test_each_entry_of_a_repeated_entity_keeps_its_own_revision(self):
+        """
+        An entity can be listed several times, positioned on another
+        preview each time, and every entry received the same revision
+        list, which named the previews of the other entries.
+        """
+        self.pin(self.entry(self.pinned), self.entry(self.layout_preview))
+
+        animation_entry, layout_entry = self.guest_get()["shots"]
+
+        self.assertEqual(
+            animation_entry["preview_file_id"], str(self.pinned.id)
+        )
+        self.assertEqual(
+            layout_entry["preview_file_id"], str(self.layout_preview.id)
+        )
+        self.assertNotIn(
+            str(self.layout_preview.id), json.dumps(animation_entry)
+        )
+        for preview in (self.pinned, self.pinned_position_2):
+            self.assertNotIn(str(preview.id), json.dumps(layout_entry))
+        for entry in (animation_entry, layout_entry):
+            self.assertNotIn(str(self.revision_2.id), json.dumps(entry))
+
+    def test_an_entry_without_a_live_position_exposes_no_revision(self):
+        """
+        An entry added before the entity had any preview, positioned on a
+        preview deleted since, or stored in the legacy shape with a task
+        and no preview, gets no positioned revision, and its revision list
+        still named every revision of the entity.
+        """
+        cases = {
+            "added before any preview existed": self.entry(),
+            "positioned on a preview deleted since": {
+                "entity_id": str(self.shot.id),
+                "preview_file_id": str(uuid.uuid4()),
+            },
+            "stored in the legacy shape": {
+                "id": str(self.shot.id),
+                "preview_file_task_id": str(self.animation_task.id),
+            },
+        }
+        previews = (
+            self.pinned,
+            self.pinned_position_2,
+            self.revision_2,
+            self.layout_preview,
+        )
+        for reason, entry in cases.items():
+            with self.subTest(reason=reason):
+                self.pin(entry)
+
+                (shot,) = self.guest_get()["shots"]
+
+                self.assertNotIn("preview_file_id", shot)
+                payload = json.dumps(shot)
+                for preview in previews:
+                    self.assertNotIn(str(preview.id), payload)
+
+    def test_the_context_lists_no_entity(self):
+        """
+        The context listed each entity of the playlist with its main
+        preview, which can be a revision the link does not share. The
+        player reads the names off the shots.
+        """
+        entities_service.update_entity_preview(
+            str(self.shot.id), str(self.revision_2.id)
+        )
+
+        context = self.guest_get("/context")
+
+        self.assertNotIn("entities", context)
+        self.assertNotIn(str(self.revision_2.id), json.dumps(context))
+        self.assertEqual(context["project"]["id"], str(self.project.id))
+        self.assertIn("task_types", context)
+        self.assertIn("task_statuses", context)
 
 
 class GuestTestCase(PlaylistSharingTestCase):
