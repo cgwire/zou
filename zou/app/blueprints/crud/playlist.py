@@ -214,7 +214,7 @@ class PlaylistResource(BaseModelResource):
         BaseModelResource.__init__(self, Playlist)
 
     def check_read_permissions(self, playlist):
-        permissions_service.check_project_access(playlist["project_id"])
+        permissions_service.check_playlist_read_access(playlist)
         permissions_service.block_access_to_vendor()
 
     @jwt_required()
@@ -225,7 +225,8 @@ class PlaylistResource(BaseModelResource):
         tags:
           - Crud
         description: Retrieve a playlist by its ID and return it as a JSON
-          object. Supports including relations. Requires project access.
+          object. Supports including relations. Requires project access,
+          and a client reads the playlists shared with clients only.
           Vendor access is blocked.
         parameters:
           - in: path

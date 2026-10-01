@@ -793,6 +793,23 @@ def check_playlist_access(playlist, supervisor_access=False):
     return True
 
 
+def check_playlist_read_access(playlist):
+    """
+    Raise a PermissionDenied exception if the current user may not read
+    given playlist with the role held on its project: every member of the
+    production watches its playlists, a client only the ones shared with
+    clients, as the playlists of a production are listed to them. A
+    playlist with no for_client flag is internal, as in that listing.
+    Broader than check_playlist_access on purpose, which keeps the
+    downloads and the build jobs from artists. The project is resolved
+    here, before the role is read.
+    """
+    check_project_access(playlist["project_id"])
+    if permissions.has_client_permissions() and not playlist["for_client"]:
+        raise permissions.PermissionDenied
+    return True
+
+
 def check_playlist_update_access(playlist):
     """
     Allow manager with project access, or supervisor of the project who

@@ -261,9 +261,17 @@ class ProjectPlaylistResource(MethodView):
                       items:
                         type: object
                         example: [{"id": "uuid", "preview_file_id": "uuid"}]
+          403:
+            description: Playlist kept from the role held on the project
+          404:
+            description: No playlist of this project with this id
         """
         permissions_service.block_access_to_vendor()
         permissions_service.check_project_access(project_id)
+        playlist = playlists_service.get_project_playlist(
+            project_id, playlist_id
+        )
+        permissions_service.check_playlist_read_access(playlist)
         # The web client loads annotations on demand, so omit the heavy
         # annotation blobs from this payload.
         return playlists_service.get_playlist_with_preview_file_revisions(

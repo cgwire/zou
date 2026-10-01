@@ -998,8 +998,8 @@ class DepartmentAccessTestCase(PermissionsTestCase):
 
 class PlaylistAccessTestCase(PermissionsTestCase):
     """
-    Who sees and who edits a playlist. Both checks take the playlist as a
-    dict rather than an id, so they are driven directly here.
+    Who sees, who reads, and who edits a playlist. The checks take the
+    playlist as a dict rather than an id, so they are driven directly here.
     """
 
     def a_playlist(self, for_client=False, created_by=None):
@@ -1054,6 +1054,71 @@ class PlaylistAccessTestCase(PermissionsTestCase):
         with self.as_role("manager"):
             with self.denied():
                 permissions_service.check_playlist_access(self.a_playlist())
+
+    def test_the_team_reads_every_playlist(self):
+        """
+        Reading a playlist is broader than seeing it: an artist watches
+        the playlists of their production, which check_playlist_access
+        keeps from them.
+        """
+        for role in ("manager", "supervisor", "artist"):
+            with self.subTest(role=role):
+                self.join_team(self.a_user(role))
+
+                with self.as_role(role):
+                    self.assertTrue(
+                        permissions_service.check_playlist_read_access(
+                            self.a_playlist()
+                        )
+                    )
+
+    def test_a_client_reads_only_the_playlists_shared_with_clients(self):
+        self.join_team(self.a_user("client"))
+
+        with self.as_role("client"):
+            self.assertTrue(
+                permissions_service.check_playlist_read_access(
+                    self.a_playlist(for_client=True)
+                )
+            )
+            # A playlist with no flag at all is internal.
+            for for_client in (False, None):
+                with self.denied():
+                    permissions_service.check_playlist_read_access(
+                        self.a_playlist(for_client=for_client)
+                    )
+
+    def test_an_artist_made_client_reads_no_internal_playlist(self):
+        """
+        A role set on the team link replaces the global one, so the client
+        rule reads the role held on the project of the playlist.
+        """
+        self.join_team(self.a_user("artist"), role="client")
+
+        with self.as_role("artist"):
+            with self.denied():
+                permissions_service.check_playlist_read_access(
+                    self.a_playlist()
+                )
+
+    def test_a_client_made_artist_reads_every_playlist(self):
+        self.join_team(self.a_user("client"), role="user")
+
+        with self.as_role("client"):
+            self.assertTrue(
+                permissions_service.check_playlist_read_access(
+                    self.a_playlist()
+                )
+            )
+
+    def test_a_non_member_reads_no_playlist(self):
+        self.a_user("manager")
+
+        with self.as_role("manager"):
+            with self.denied():
+                permissions_service.check_playlist_read_access(
+                    self.a_playlist(for_client=True)
+                )
 
     def test_a_manager_of_the_team_updates_any_playlist(self):
         self.join_team(self.a_user("manager"))

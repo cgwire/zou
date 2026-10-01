@@ -1,3 +1,5 @@
+from flask import g
+
 from tests.base import ApiDBTestCase
 
 from zou.app.models.build_job import BuildJob
@@ -5,6 +7,7 @@ from zou.app.models.notification import Notification
 from zou.app.models.person import Person
 from zou.app.models.playlist import Playlist
 from zou.app.services import projects_service, tasks_service
+from zou.app.utils import fields
 
 
 class PlaylistRoutesTestCase(ApiDBTestCase):
@@ -532,3 +535,103 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
         ).all()
         self.assertEqual(len(notifications), 1)
         self.assertEqual(str(notifications[0].playlist_id), playlist_id)
+
+
+class ProjectPlaylistReadTestCase(ApiDBTestCase):
+    """
+    Reading one playlist through the route of a production, which holds
+    an internal playlist and one shared with clients.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project()
+        self.project_id = str(self.project.id)
+        self.internal = self.generate_fixture_playlist("Internal")
+        self.for_client = self.generate_fixture_playlist(
+            "For client", for_client=True
+        )
+
+    def playlist_path(self, playlist, project_id=None):
+        project_id = project_id or self.project_id
+        return f"/data/projects/{project_id}/playlists/{playlist['id']}"
+
+    def read_as(self, user, role=None):
+        """
+        Join the production, with a role of one's own on it if given, and
+        log in. flask.g outlives the requests of a test, and this route
+        reads the role before it resolves the project: the role resolved
+        for the previous caller goes, as between two real requests.
+        """
+        projects_service.add_team_member(
+            self.project_id, user["id"], role=role
+        )
+        self.log_in(user["email"])
+        g.pop("project_role", None)
+        return user
+
+    def test_a_playlist_of_another_production_is_not_found_here(self):
+        """
+        The playlist id comes from the client next to a production it may
+        access: the rights were checked on that production, and a playlist
+        of any other one was served through it, to an admin as to a member
+        of both.
+        """
+        other_project_id = str(self.generate_fixture_project_standard().id)
+        elsewhere = self.generate_fixture_playlist(
+            "Elsewhere", project_id=other_project_id
+        )
+        here = self.playlist_path(elsewhere)
+        there = self.playlist_path(elsewhere, other_project_id)
+
+        self.get_404(here)
+        self.assertEqual(self.get(there)["id"], elsewhere["id"])
+        # Nor is an id of no playlist, or one that is no id at all.
+        self.get_404(self.playlist_path({"id": fields.gen_uuid()}))
+        self.get_404(self.playlist_path({"id": "not-an-id"}))
+
+        manager = self.read_as(self.generate_fixture_user_manager())
+        projects_service.add_team_member(other_project_id, manager["id"])
+        self.get_404(here)
+        self.assertEqual(self.get(there)["id"], elsewhere["id"])
+
+    def test_a_client_opens_the_shared_playlists_only(self):
+        self.read_as(self.generate_fixture_user_client())
+
+        self.get(self.playlist_path(self.internal), 403)
+        self.assertEqual(
+            self.get(self.playlist_path(self.for_client))["id"],
+            self.for_client["id"],
+        )
+
+    def test_a_client_by_project_role_opens_the_shared_ones_only(self):
+        """
+        The rule reads the role held on the production, which the access
+        check resolves first: a global artist made client there is one.
+        """
+        self.read_as(self.generate_fixture_user_cg_artist(), role="client")
+
+        self.get(self.playlist_path(self.internal), 403)
+        self.get(self.playlist_path(self.for_client))
+
+    def test_the_team_opens_every_playlist(self):
+        """
+        Reading a playlist is broader than downloading it: an artist
+        watches the playlists of their production, and so does a client
+        made artist there.
+        """
+        team = {
+            "manager": (self.generate_fixture_user_manager, None),
+            "supervisor": (self.generate_fixture_user_supervisor, None),
+            "artist": (self.generate_fixture_user_cg_artist, None),
+            "client made artist": (self.generate_fixture_user_client, "user"),
+        }
+        for reason, (fixture, role) in team.items():
+            with self.subTest(reason=reason):
+                self.read_as(fixture(), role=role)
+
+                for playlist in (self.internal, self.for_client):
+                    self.assertEqual(
+                        self.get(self.playlist_path(playlist))["id"],
+                        playlist["id"],
+                    )

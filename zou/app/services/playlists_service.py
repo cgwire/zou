@@ -13,6 +13,7 @@ from zipfile import ZipFile
 
 from slugify import slugify
 from sqlalchemy import or_
+from sqlalchemy.exc import StatementError
 from sqlalchemy.orm import defer, joinedload
 
 from zou.app import config
@@ -542,6 +543,33 @@ def get_playlist(playlist_id):
     Return given playlist as a dict.
     """
     return get_playlist_raw(playlist_id).serialize()
+
+
+def get_project_playlist(project_id, playlist_id):
+    """
+    Return the id, the project and the client flag of given playlist,
+    provided it belongs to given project: what a read check needs, without
+    the shots, which the caller loads afterwards. The id comes from the
+    client next to a project it may access: a playlist of another project
+    is not found, nor an id that is not one.
+    """
+    try:
+        playlist = (
+            Playlist.query.with_entities(Playlist.for_client)
+            .filter(
+                Playlist.id == playlist_id, Playlist.project_id == project_id
+            )
+            .first()
+        )
+    except StatementError:
+        raise PlaylistNotFoundException()
+    if playlist is None:
+        raise PlaylistNotFoundException()
+    return {
+        "id": str(playlist_id),
+        "project_id": str(project_id),
+        "for_client": playlist.for_client,
+    }
 
 
 def add_entity_to_playlist(playlist_id, entity_id, preview_file_id=None):

@@ -1,3 +1,5 @@
+from flask import g
+
 from tests.base import ApiDBTestCase
 from zou.app import app
 
@@ -98,6 +100,56 @@ class PlaylistTestCase(ApiDBTestCase):
         self.project.save()
         self.log_in_vendor()
         self.get("data/playlists", 403)
+
+    def test_crud_get_hides_internal_playlists_from_clients(self):
+        internal = self.generate_fixture_playlist("Internal")
+        for_client = self.generate_fixture_playlist(
+            "For client", for_client=True
+        )
+        client = self.generate_fixture_user_client()
+        projects_service.add_team_member(self.project_id, client["id"])
+        self.log_in_client()
+
+        self.get(f"data/playlists/{internal['id']}", 403)
+        self.assertEqual(
+            self.get(f"data/playlists/{for_client['id']}")["id"],
+            for_client["id"],
+        )
+
+    def test_crud_get_follows_the_project_role_of_a_client(self):
+        internal = self.generate_fixture_playlist("Internal")
+        for_client = self.generate_fixture_playlist(
+            "For client", for_client=True
+        )
+        artist = self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            self.project_id, artist["id"], role="client"
+        )
+        self.log_in_cg_artist()
+
+        self.get(f"data/playlists/{internal['id']}", 403)
+        self.get(f"data/playlists/{for_client['id']}")
+
+    def test_crud_get_lets_the_team_read_internal_playlists(self):
+        internal = self.generate_fixture_playlist("Internal")
+        team = {
+            "manager": self.generate_fixture_user_manager,
+            "supervisor": self.generate_fixture_user_supervisor,
+            "artist": self.generate_fixture_user_cg_artist,
+        }
+        for role, fixture in team.items():
+            with self.subTest(role=role):
+                user = fixture()
+                projects_service.add_team_member(self.project_id, user["id"])
+                self.log_in(user["email"])
+                # flask.g outlives the requests of a test: the role resolved
+                # for the previous member goes, as between real requests.
+                g.pop("project_role", None)
+
+                self.assertEqual(
+                    self.get(f"data/playlists/{internal['id']}")["id"],
+                    internal["id"],
+                )
 
     def test_get_playlists_by_task_type(self):
         self.generate_fixture_department()
