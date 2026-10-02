@@ -59,6 +59,7 @@ class ImportShotgunTaskTestCase(ShotgunTestCase):
         self.assertEqual(note["shotgun_id"], self.sg_note["id"])
         self.assertEqual(note["object_id"], str(task.id))
         self.assertEqual(note["person_id"], str(person.id))
+        self.assertEqual(note["checklist"], [])
         self.assertEqual(
             note["created_at"][:19], self.sg_note["created_at"][:19]
         )

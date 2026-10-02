@@ -1,5 +1,6 @@
 from tests.base import ApiDBTestCase
 
+from zou.app import db
 from zou.app.models.comment import Comment
 from zou.app.services import projects_service, tasks_service
 
@@ -44,6 +45,7 @@ class CommentTestCase(ApiDBTestCase):
         }
         self.comment = self.post("data/comments", data)
         self.assertIsNotNone(self.comment["id"])
+        self.assertEqual(self.comment["checklist"], [])
 
         comments = self.get("data/comments")
         self.assertEqual(len(comments), 4)
@@ -56,6 +58,11 @@ class CommentTestCase(ApiDBTestCase):
         self.assertEqual(data["text"], comment_again["text"])
         comment_id = fields.gen_uuid()
         self.put_404(f"data/comments/{comment_id}", data)
+
+    def test_update_comment_with_a_null_checklist(self):
+        comment_id = self.comments[0]["id"]
+        self.put(f"data/comments/{comment_id}", {"checklist": None})
+        self.assertEqual(Comment.get(comment_id).checklist, [])
 
     def log_in_team_artist(self):
         # A team member who wrote none of the comments.
@@ -114,7 +121,10 @@ class CommentTestCase(ApiDBTestCase):
         comment_id = self.comments[0]["id"]
         self.log_in_team_artist()
         self.put(f"data/comments/{comment_id}", {"checklist": []})
-        Comment.get(comment_id).update({"checklist": None})
+        # Older rows hold a null checklist, which the model no longer
+        # writes.
+        Comment.query.filter_by(id=comment_id).update({"checklist": None})
+        db.session.commit()
         self.put(f"data/comments/{comment_id}", {"checklist": []}, 403)
 
     def test_assigned_artist_can_tick_a_checklist(self):
