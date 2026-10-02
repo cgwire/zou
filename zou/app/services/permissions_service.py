@@ -29,6 +29,7 @@ from zou.app.services import (
     edits_service,
     entities_service,
     persons_service,
+    playlists_service,
     projects_service,
     shots_service,
     tasks_service,
@@ -791,6 +792,37 @@ def check_playlist_access(playlist, supervisor_access=False):
     if not is_allowed:
         raise permissions.PermissionDenied
     return True
+
+
+def check_playlist_read_access(playlist):
+    """
+    Raise a PermissionDenied exception if the current user may not read
+    given playlist with the role held on its project: every member of the
+    production but its vendors watches its playlists, a client only the
+    ones shared with clients, as the playlists of a production are listed
+    to them. A playlist with no for_client flag is internal, as in that
+    listing. Broader than check_playlist_access on purpose, which keeps
+    the downloads and the build jobs from artists. The project is resolved
+    here, before the role is read.
+    """
+    check_project_access(playlist["project_id"])
+    block_access_to_vendor()
+    if permissions.has_client_permissions() and not playlist["for_client"]:
+        raise permissions.PermissionDenied
+    return True
+
+
+def check_playlist_room_access(playlist_id):
+    """
+    Raise a PermissionDenied exception if the current user may not join the
+    review room of given playlist, and a PlaylistNotFoundException if there
+    is no such playlist. The room shows the shot and the preview on screen
+    and the annotations drawn during the review, so it follows the playlist
+    routes: every member of the production joins it, a client only when
+    the playlist is shared with clients, and a vendor never.
+    """
+    playlist = playlists_service.get_playlist(playlist_id)
+    return check_playlist_read_access(playlist)
 
 
 def check_playlist_update_access(playlist):

@@ -40,9 +40,10 @@ class SharedPlaylistResource(MethodView):
         """
         Get shared playlist
         ---
-        description: Retrieve a playlist with preview file revisions for a
-          secret share link. No JWT; the path token (and optional query
-          password) is the credential.
+        description: Retrieve a playlist for a secret share link, each shot
+          with the revision the playlist positions on it and no other. No
+          JWT; the path token (and optional query password) is the
+          credential.
         tags:
           - Playlists
         parameters:
@@ -60,15 +61,15 @@ class SharedPlaylistResource(MethodView):
             description: Password when the link is protected
         responses:
           200:
-            description: Playlist with preview file revisions and enriched shots
+            description: Playlist with the positioned revision of each shot
+              and enriched shots
             content:
               application/json:
                 schema:
                   type: object
         """
-        share_link = g.playlist_share_link
-        playlist = playlists_service.get_playlist_with_preview_file_revisions(
-            share_link["playlist_id"]
+        playlist = playlist_sharing_service.get_share_link_playlist(
+            g.playlist_share_link
         )
         return playlist_sharing_service.enrich_shots_with_entity_info(playlist)
 

@@ -334,6 +334,13 @@ class MetadataDescriptorResource(BaseModelResource):
                       data_type:
                         type: string
                         example: number
+                      departments:
+                        type: array
+                        description: Departments the descriptor is limited to
+                        items:
+                          type: string
+                          format: uuid
+                        example: ["a24a6ea4-ce75-4665-a070-57453082c25"]
                       project_id:
                         type: string
                         format: uuid
@@ -387,3 +394,9 @@ class MetadataDescriptorResource(BaseModelResource):
             if data["data_type"] not in types:
                 raise WrongParameterException("Invalid data_type")
         return data
+
+    def serialize_update_response(self, instance):
+        """
+        List the departments, as the reads do.
+        """
+        return instance.serialize(relations=True)

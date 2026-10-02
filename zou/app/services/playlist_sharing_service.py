@@ -157,9 +157,19 @@ def get_shared_playlist(token):
     always fail for those playlists.
     """
     share_link = validate_share_token(token)
-    return playlists_service.get_playlist_with_preview_file_revisions(
+    return get_share_link_playlist(share_link)
+
+
+def get_share_link_playlist(share_link):
+    """
+    Return the playlist of a validated share link as the link shares it:
+    with the preview-file enrichment, and on each shot the revision the
+    playlist positions and no other (see hide_other_revisions).
+    """
+    playlist = playlists_service.get_playlist_with_preview_file_revisions(
         share_link["playlist_id"]
     )
+    return hide_other_revisions(playlist)
 
 
 def is_preview_file_in_shared_playlist(token, preview_file_id):
@@ -610,6 +620,30 @@ def _apply_task_styling_to_shot(
         shot["task_status_color"] = color
 
 
+def hide_other_revisions(playlist_dict):
+    """
+    Empty the revision list of each shot of a playlist served through a
+    share link. The link shares the revision the playlist positions, which
+    the preview_file fields carry with the other positions of that
+    revision: the revisions of every task type of the entity, annotations
+    included, are for the revision switcher of the team only. The list
+    stays an object, which the player reads on every shot, and each shot
+    gets its own. The positions of a revision are grouped per task type,
+    so they also hold the preview of the same number on another task of
+    that type, which the link does not share either.
+    """
+    for shot in playlist_dict.get("shots") or []:
+        shot["preview_files"] = {}
+        if "preview_file_previews" in shot:
+            task_id = shot.get("preview_file_task_id")
+            shot["preview_file_previews"] = [
+                preview
+                for preview in shot["preview_file_previews"]
+                if preview.get("task_id") == task_id
+            ]
+    return playlist_dict
+
+
 def enrich_shots_with_entity_info(playlist_dict):
     """
     Augment each shot entry in the playlist with `name` and `parent_name`
@@ -742,8 +776,9 @@ def get_guest_for_share_link(guest_id, share_link):
 def get_shared_playlist_context(token):
     """
     Return the minimal project context needed to display a shared
-    playlist: task types, task statuses, and entity names referenced
-    by the playlist.
+    playlist: the project, its task types, and its task statuses. No
+    entity is listed: the shots of the playlist carry their names, and the
+    main preview of an entity can be a revision the link does not share.
     """
     share_link = validate_share_token(token)
     playlist = playlists_service.get_playlist(share_link["playlist_id"])
@@ -752,23 +787,6 @@ def get_shared_playlist_context(token):
 
     task_types = projects_service.get_project_task_types(project_id)
     task_statuses = projects_service.get_project_task_statuses(project_id)
-
-    # Collect entity names from playlist shots
-    entity_names = {}
-    for shot_entry in playlist.get("shots", []):
-        entity_id = shot_entry.get("entity_id")
-        if entity_id and entity_id not in entity_names:
-            try:
-                from zou.app.services import entities_service
-
-                entity = entities_service.get_entity(entity_id)
-                entity_names[entity_id] = {
-                    "id": entity_id,
-                    "name": entity.get("name", ""),
-                    "preview_file_id": entity.get("preview_file_id"),
-                }
-            except Exception:
-                pass
 
     return {
         "project": {
@@ -804,7 +822,6 @@ def get_shared_playlist_context(token):
             }
             for ts in task_statuses
         ],
-        "entities": list(entity_names.values()),
     }
 
 

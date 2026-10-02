@@ -16,6 +16,7 @@ from zou.app.services import (
     tasks_service,
 )
 
+from zou.app.services.exception import PlaylistNotFoundException
 from zou.app.utils import permissions
 
 UNKNOWN = "00000000-0000-0000-0000-000000000000"
@@ -998,8 +999,9 @@ class DepartmentAccessTestCase(PermissionsTestCase):
 
 class PlaylistAccessTestCase(PermissionsTestCase):
     """
-    Who sees and who edits a playlist. Both checks take the playlist as a
-    dict rather than an id, so they are driven directly here.
+    Who sees, who reads, and who edits a playlist. The checks take the
+    playlist as a dict rather than an id, so they are driven directly here,
+    except the review room one, which loads the playlist by its id.
     """
 
     def a_playlist(self, for_client=False, created_by=None):
@@ -1054,6 +1056,164 @@ class PlaylistAccessTestCase(PermissionsTestCase):
         with self.as_role("manager"):
             with self.denied():
                 permissions_service.check_playlist_access(self.a_playlist())
+
+    def test_the_team_reads_every_playlist(self):
+        """
+        Reading a playlist is broader than seeing it: an artist watches
+        the playlists of their production, which check_playlist_access
+        keeps from them.
+        """
+        for role in ("manager", "supervisor", "artist"):
+            with self.subTest(role=role):
+                self.join_team(self.a_user(role))
+
+                with self.as_role(role):
+                    self.assertTrue(
+                        permissions_service.check_playlist_read_access(
+                            self.a_playlist()
+                        )
+                    )
+
+    def test_a_client_reads_only_the_playlists_shared_with_clients(self):
+        self.join_team(self.a_user("client"))
+
+        with self.as_role("client"):
+            self.assertTrue(
+                permissions_service.check_playlist_read_access(
+                    self.a_playlist(for_client=True)
+                )
+            )
+            # A playlist with no flag at all is internal.
+            for for_client in (False, None):
+                with self.denied():
+                    permissions_service.check_playlist_read_access(
+                        self.a_playlist(for_client=for_client)
+                    )
+
+    def test_an_artist_made_client_reads_no_internal_playlist(self):
+        """
+        A role set on the team link replaces the global one, so the client
+        rule reads the role held on the project of the playlist.
+        """
+        self.join_team(self.a_user("artist"), role="client")
+
+        with self.as_role("artist"):
+            with self.denied():
+                permissions_service.check_playlist_read_access(
+                    self.a_playlist()
+                )
+
+    def test_a_client_made_artist_reads_every_playlist(self):
+        self.join_team(self.a_user("client"), role="user")
+
+        with self.as_role("client"):
+            self.assertTrue(
+                permissions_service.check_playlist_read_access(
+                    self.a_playlist()
+                )
+            )
+
+    def test_an_artist_made_vendor_reads_no_playlist(self):
+        """
+        The read check keeps the vendors out itself, on the role held on
+        the production, rather than leave the gate to each of its callers.
+        """
+        self.join_team(self.a_user("artist"), role="vendor")
+
+        with self.as_role("artist"):
+            with self.denied():
+                permissions_service.check_playlist_read_access(
+                    self.a_playlist(for_client=True)
+                )
+
+    def test_a_vendor_made_artist_reads_every_playlist(self):
+        """
+        The gate runs once the production is resolved, on the role held
+        there rather than on the global one.
+        """
+        self.join_team(self.a_user("vendor"), role="user")
+
+        with self.as_role("vendor"):
+            self.assertTrue(
+                permissions_service.check_playlist_read_access(
+                    self.a_playlist()
+                )
+            )
+
+    def test_a_non_member_reads_no_playlist(self):
+        self.a_user("manager")
+
+        with self.as_role("manager"):
+            with self.denied():
+                permissions_service.check_playlist_read_access(
+                    self.a_playlist(for_client=True)
+                )
+
+    def test_a_client_joins_the_review_room_of_shared_playlists_only(self):
+        """
+        The review room of the event stream checked the project access
+        only: a client joined the room of an internal playlist. Artists and
+        supervisors keep joining it. tests/misc/test_event_stream_rooms.py
+        checks that the room runs this check.
+        """
+        internal = self.generate_fixture_playlist("Internal")
+        shared = self.generate_fixture_playlist("Shared", for_client=True)
+        for role in ("client", "artist", "supervisor"):
+            self.join_team(self.a_user(role))
+
+        def join(playlist):
+            return permissions_service.check_playlist_room_access(
+                playlist["id"]
+            )
+
+        with self.as_role("client"):
+            with self.denied():
+                join(internal)
+            self.assertTrue(join(shared))
+        for role in ("artist", "supervisor"):
+            with self.subTest(role=role), self.as_role(role):
+                self.assertTrue(join(internal))
+
+    def test_no_one_joins_the_review_room_of_a_missing_playlist(self):
+        self.join_team(self.a_user("artist"))
+
+        with self.as_role("artist"):
+            with self.assertRaises(PlaylistNotFoundException):
+                permissions_service.check_playlist_room_access(UNKNOWN)
+
+    def test_a_vendor_of_the_team_joins_no_review_room(self):
+        """
+        Every playlist route refuses a vendor. The review room let any
+        member of the production in, vendors included.
+        """
+        shared = self.generate_fixture_playlist("Shared", for_client=True)
+        self.join_team(self.a_user("vendor"))
+
+        with self.as_role("vendor"):
+            with self.denied():
+                permissions_service.check_playlist_room_access(shared["id"])
+
+    def test_an_artist_made_vendor_joins_no_review_room(self):
+        """
+        The vendor rule reads the role held on the production of the
+        playlist, which the read check resolves first, as the playlist
+        routes do.
+        """
+        internal = self.generate_fixture_playlist("Internal")
+        self.join_team(self.a_user("artist"), role="vendor")
+
+        with self.as_role("artist"):
+            with self.denied():
+                permissions_service.check_playlist_room_access(internal["id"])
+
+    def test_a_vendor_made_artist_joins_the_review_room(self):
+        internal = self.generate_fixture_playlist("Internal")
+        self.join_team(self.a_user("vendor"), role="user")
+
+        with self.as_role("vendor"):
+            self.assertTrue(
+                permissions_service.check_playlist_room_access(internal["id"])
+            )
 
     def test_a_manager_of_the_team_updates_any_playlist(self):
         self.join_team(self.a_user("manager"))

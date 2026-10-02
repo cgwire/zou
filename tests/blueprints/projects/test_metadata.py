@@ -99,6 +99,8 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         second_project = self.generate_fixture_project(name="Second Project")
         second_project_id = str(second_project.id)
         closed_project_id = str(self.project_closed.id)
+        self.generate_fixture_department()
+        department_id = str(self.department.id)
 
         created = self.post(
             "data/metadata-descriptors/all-projects",
@@ -106,11 +108,14 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
                 "entity_type": "Project",
                 "name": "Delivery code",
                 "data_type": "string",
+                "departments": [department_id],
             },
             201,
         )
         # Both open projects, the closed one is left out.
         self.assertEqual(len(created), 2)
+        for descriptor in created:
+            self.assertEqual(descriptor["departments"], [department_id])
         for project_id in (first_project_id, second_project_id):
             descriptors = self.get(
                 f"data/projects/{project_id}/metadata-descriptors"
@@ -131,9 +136,12 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
                 "entity_type": "Project",
                 "name": "Ship code",
                 "data_type": "string",
+                "departments": [],
             },
         )
         self.assertEqual(len(updated), 2)
+        for descriptor in updated:
+            self.assertEqual(descriptor["departments"], [])
 
         self.post(
             "actions/metadata-descriptors/all-projects/reorder",
