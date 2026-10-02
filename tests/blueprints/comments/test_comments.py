@@ -268,9 +268,9 @@ class CommentRoutesTestCase(CommentTestCase):
 
 class ClientVisibleCommentTestCase(CommentTestCase):
     """
-    What a client is shown of a comment. Studio authors and editors
-    are hidden from them, their own peers are not, and a comment
-    not flagged for_client does not reach them at all.
+    What a client is shown of a comment: its author, its editor and the
+    authors of its replies, studio members included, while a comment not
+    flagged for_client does not reach them at all.
     """
 
     def put_the_client_in_the_team(self):
@@ -289,10 +289,9 @@ class ClientVisibleCommentTestCase(CommentTestCase):
             },
         )
 
-    def test_reply_author_hidden_from_client(self):
+    def test_reply_author_shown_to_client(self):
         """
-        Studio members' identities must not be exposed to clients on
-        replies, matching the comment author behavior.
+        A studio replier is named to the client, like the comment author.
         """
         self.put_the_client_in_the_team()
         comment = self.comment_for_client()
@@ -305,13 +304,13 @@ class ClientVisibleCommentTestCase(CommentTestCase):
             str(self.task.id), is_client=True
         )
         target = next(c for c in comments if c["id"] == comment["id"])
-        self.assertIsNone(target["replies"][0]["person"])
+        replier = target["replies"][0]["person"]
+        self.assertEqual(replier["id"], str(self.user["id"]))
+        self.assertEqual(replier["full_name"], "John Did")
 
-    def test_comment_author_hidden_from_client_in_list(self):
+    def test_comment_author_shown_to_client_in_list(self):
         """
-        The comment list must not embed a studio author for a client,
-        matching the single-comment and reply author behavior, while the
-        comment content stays visible.
+        The comment list embeds a studio author for a client too.
         """
         self.put_the_client_in_the_team()
         comment = self.comment_for_client()
@@ -323,7 +322,8 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         target = next(c for c in comments if c["id"] == comment["id"])
         self.assertTrue(target["for_client"])
         self.assertEqual(target["text"], "Visible to client")
-        self.assertIsNone(target["person"])
+        self.assertEqual(target["person"]["id"], str(self.user["id"]))
+        self.assertEqual(target["person"]["full_name"], "John Did")
 
     def test_client_author_embedded_for_client_in_list(self):
         """
@@ -347,10 +347,9 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         self.assertEqual(target["person"]["id"], client_id)
         self.assertEqual(target["person"]["role"], "client")
 
-    def test_comment_author_hidden_from_client(self):
+    def test_comment_author_shown_to_client(self):
         """
-        The single-comment endpoint must not embed a studio author for a
-        client, matching the reply author behavior.
+        The single-comment endpoint embeds a studio author for a client too.
         """
         self.put_the_client_in_the_team()
         comment = self.comment_for_client()
@@ -358,7 +357,7 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         self.log_in_client()
         result = self.get(f"/data/comments/{comment['id']}")
         self.assertEqual(result["text"], "Visible to client")
-        self.assertIsNone(result["person"])
+        self.assertEqual(result["person"]["id"], str(self.user["id"]))
 
     def test_internal_comment_forbidden_for_client(self):
         """
@@ -378,10 +377,10 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         self.log_in_client()
         self.get(f"/data/comments/{comment['id']}", 403)
 
-    def test_editor_hidden_from_client_in_list(self):
+    def test_editor_shown_to_client_in_list(self):
         """
-        A studio editor identity must not leak to clients in the comment
-        list, matching the comment author behavior.
+        A studio editor stays in the comment list of a client, like the
+        author.
         """
         self.put_the_client_in_the_team()
         comment = self.comment_for_client()
@@ -394,8 +393,8 @@ class ClientVisibleCommentTestCase(CommentTestCase):
             str(self.task.id), is_client=True
         )
         target = next(c for c in comments if c["id"] == comment["id"])
-        self.assertIsNone(target["editor"])
-        self.assertIsNone(target["editor_id"])
+        self.assertEqual(target["editor"]["id"], str(self.person.id))
+        self.assertEqual(target["editor_id"], str(self.person.id))
 
     def test_client_editor_kept_in_list(self):
         """
@@ -415,10 +414,9 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         self.assertEqual(target["editor"]["id"], client_id)
         self.assertEqual(target["editor"]["role"], "client")
 
-    def test_editor_hidden_from_client(self):
+    def test_editor_shown_to_client(self):
         """
-        The single-comment endpoint must not expose a studio editor to a
-        client, matching the comment author behavior.
+        The single-comment endpoint keeps a studio editor for a client.
         """
         self.put_the_client_in_the_team()
         comment = self.comment_for_client()
@@ -428,7 +426,7 @@ class ClientVisibleCommentTestCase(CommentTestCase):
 
         self.log_in_client()
         result = self.get(f"/data/comments/{comment['id']}")
-        self.assertIsNone(result["editor_id"])
+        self.assertEqual(result["editor_id"], str(self.person.id))
 
     def test_comment_without_for_client_hidden_from_client(self):
         """

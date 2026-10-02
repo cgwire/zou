@@ -764,7 +764,7 @@ def get_comments(task_id, is_client=False, is_manager=False):
             comment["attachment_files"] = attachment_file_map.get(
                 comment["id"], []
             )
-        embed_reply_authors(comments, is_client=is_client)
+        embed_reply_authors(comments)
 
     if is_client:
         tmp_comments = []
@@ -782,14 +782,6 @@ def get_comments(task_id, is_client=False, is_manager=False):
             person = persons_map.get(comment["person_id"], {})
             is_author = comment["person_id"] == current_user["id"]
             is_author_client = person.get("role") == "client"
-            # Hide studio members' identities from clients, like replies.
-            if not is_author_client:
-                comment["person"] = None
-            # Hide the editor identity too when a studio member edited it.
-            editor = comment.get("editor")
-            if editor and editor.get("role") != "client":
-                comment["editor"] = None
-                comment["editor_id"] = None
             is_for_client = comment.get("for_client", False)
             is_allowed = (
                 is_for_client
@@ -853,13 +845,9 @@ def _prepare_query(task_id, is_client, is_manager):
     return query
 
 
-def embed_reply_authors(comments, is_client=False):
+def embed_reply_authors(comments):
     """
     Attach a minimal author to each reply so guest repliers render too.
-
-    For clients, only client authors are embedded to keep studio members'
-    identities hidden, matching the comment author behavior.
-
     """
     reply_person_ids = {
         reply.get("person_id")
@@ -872,10 +860,7 @@ def embed_reply_authors(comments, is_client=False):
     persons_map = persons_service.get_short_persons_map(list(reply_person_ids))
     for comment in comments:
         for reply in comment.get("replies") or []:
-            author = persons_map.get(reply.get("person_id"))
-            if is_client and author and author.get("role") != "client":
-                author = None
-            reply["person"] = author
+            reply["person"] = persons_map.get(reply.get("person_id"))
 
 
 def _run_task_comments_query(query):

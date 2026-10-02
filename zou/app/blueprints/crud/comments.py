@@ -344,21 +344,11 @@ class CommentResource(BaseModelResource):
     def clean_get_result(self, result):
         is_client = permissions.has_client_permissions()
         # Embed the author so guest commenters render with a name and avatar.
-        # Keep studio members' identities hidden from clients, matching the
-        # reply author behavior.
         if result.get("person_id"):
-            author = persons_service.get_short_person(result["person_id"])
-            if is_client and author.get("role") != "client":
-                author = None
-            result["person"] = author
-        # Hide the editor identity from clients when a studio member edited
-        # the comment, matching the author behavior.
-        editor_id = result.get("editor_id")
-        if is_client and editor_id and editor_id != result.get("person_id"):
-            editor = persons_service.get_short_person(editor_id)
-            if editor.get("role") != "client":
-                result["editor_id"] = None
-        tasks_service.embed_reply_authors([result], is_client=is_client)
+            result["person"] = persons_service.get_short_person(
+                result["person_id"]
+            )
+        tasks_service.embed_reply_authors([result])
         if (
             "attachment_files" in result
             and len(result["attachment_files"]) > 0
