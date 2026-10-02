@@ -1,13 +1,17 @@
 import datetime
 import uuid
 
-from zou.app.utils import auth, events
+from sqlalchemy import or_
 
+from zou.app.utils import auth, events, fields
+
+from zou.app.models.comment import Comment
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.person import Person
 from zou.app.models.playlist import Playlist
 from zou.app.models.playlist_share_link import PlaylistShareLink
+from zou.app.models.preview_file import PreviewFile
 from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
@@ -395,9 +399,10 @@ def delete_guest_comment(comment_id, guest_id, token):
 
 def _serialize_enriched_comment(comment_id):
     """
-    Return a comment dict with `attachment_files` expanded to full objects
-    (same shape as `_run_task_comments_query`'s output), so the shared client
-    can render filenames/sizes without extra lookups.
+    Return a comment dict with `attachment_files` expanded to objects (id,
+    name, extension and size), so the shared client can render filenames
+    and sizes without extra lookups, and with the authors of its replies,
+    as the comment list gives them.
     """
     from zou.app.models.attachment_file import AttachmentFile
 
@@ -408,6 +413,7 @@ def _serialize_enriched_comment(comment_id):
             AttachmentFile.id.in_(ids)
         ).all()
         comment["attachment_files"] = [af.present() for af in attachments]
+    tasks_service.embed_reply_authors([comment])
     return comment
 
 
@@ -498,13 +504,16 @@ def remove_guest_comment_attachment(
 def get_shared_task_comments(task_id):
     """
     Return comments visible in the shared context for a task: those flagged
-    `for_client=True` plus those posted by a guest. Bypasses
+    `for_client=True` plus those posted by a guest, with their attachment
+    files and the authors of their replies. Bypasses
     tasks_service.get_comments which requires a JWT-authenticated current
     user.
     """
     from zou.app.services.tasks_service import (
+        _build_attachment_map_for_comments,
         _prepare_query,
         _run_task_comments_query,
+        embed_reply_authors,
     )
 
     query = _prepare_query(task_id, is_client=True, is_manager=False)
@@ -525,7 +534,81 @@ def get_shared_task_comments(task_id):
         if comment.get("person"):
             comment["person"]["is_guest"] = is_guest_author
         visible.append(comment)
+
+    if visible:
+        attachment_file_map = _build_attachment_map_for_comments(
+            [comment["id"] for comment in visible]
+        )
+        for comment in visible:
+            comment["attachment_files"] = attachment_file_map.get(
+                comment["id"], []
+            )
+        embed_reply_authors(visible)
     return visible
+
+
+def _get_shown_task_ids(share_link):
+    """
+    Return the ids of the tasks whose comments the page of a share link
+    lists, as the comment list reads them off the enriched shots: the
+    task of the positioned preview when it belongs to an entity of the
+    playlist, the task the shot names otherwise. Reads the shots alone,
+    without the preview revisions the enrichment loads.
+    """
+    playlist = Playlist.get(share_link["playlist_id"])
+    shots = (playlist.shots if playlist is not None else None) or []
+    entity_ids = [
+        shot.get("id") or shot.get("shot_id") or shot.get("entity_id")
+        for shot in shots
+    ]
+    preview_file_ids = [
+        shot["preview_file_id"]
+        for shot in shots
+        if fields.is_valid_id(shot.get("preview_file_id"))
+    ]
+    positioned = {}
+    if preview_file_ids:
+        positioned = {
+            str(preview_file_id): str(task_id)
+            for preview_file_id, task_id in PreviewFile.query.join(Task)
+            .filter(PreviewFile.id.in_(preview_file_ids))
+            .filter(Task.entity_id.in_([e for e in entity_ids if e]))
+            .with_entities(PreviewFile.id, PreviewFile.task_id)
+        }
+    task_ids = {
+        positioned.get(
+            str(shot.get("preview_file_id")), shot.get("preview_file_task_id")
+        )
+        for shot in shots
+    }
+    task_ids.discard(None)
+    return task_ids
+
+
+def is_person_shown_by_share_link(share_link, person_id):
+    """
+    Tell whether the page of a validated share link shows given person: as
+    the author of a comment it lists (flagged for the client or posted by a
+    guest), or of a reply to one. Every avatar of the page asks.
+    """
+    task_ids = _get_shown_task_ids(share_link)
+    if not task_ids:
+        return False
+    rows = (
+        Comment.query.join(Person, Comment.person_id == Person.id)
+        .filter(Comment.object_id.in_(task_ids))
+        .filter(or_(Comment.for_client.is_(True), Person.is_guest.is_(True)))
+        .with_entities(Comment.person_id, Comment.replies)
+        .all()
+    )
+    person_id = str(person_id)
+    return any(
+        str(author_id) == person_id
+        or any(
+            str(reply.get("person_id")) == person_id for reply in replies or []
+        )
+        for author_id, replies in rows
+    )
 
 
 # Entity types for which "parent" is a parent record (shot/seq/episode/…).
