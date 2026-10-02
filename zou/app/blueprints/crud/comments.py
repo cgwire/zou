@@ -443,6 +443,12 @@ class CommentResource(BaseModelResource):
             if permissions.has_manager_permissions():
                 return True
 
+            # The update answers with the whole comment and records its
+            # editor, so a comment out of reading reach stays out of reach.
+            permissions_service.check_comment_access(
+                instance["id"], comment=instance
+            )
+
             change_pinned = (
                 "pinned" in data.keys()
                 and data["pinned"] != instance["pinned"]
