@@ -1,9 +1,10 @@
 import json
+import os
 import uuid
 
 import pytest
 
-from tests.base import ApiDBTestCase
+from tests.base import ApiDBTestCase, TEST_FOLDER
 
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.person import Person
@@ -18,6 +19,7 @@ from zou.app.services import entities_service
 from zou.app.services import playlist_sharing_service
 from zou.app.services import preview_file_states_service as states_service
 from zou.app.stores import file_store
+from zou.app.utils import fs
 
 # Share-link passwords are hashed with bcrypt; the verification path must
 # not be patched to always-True here.
@@ -1092,6 +1094,103 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
             json={"guest_id": guest["id"]},
         )
         self.assertEqual(response.status_code, 404)
+
+
+class SharedAvatarTestCase(PlaylistSharingTestCase):
+    """
+    The avatars a link serves: those of the people its page shows, the
+    authors of the comments it lists and of their replies, and nobody else.
+    """
+
+    def tearDown(self):
+        super().tearDown()
+        fs.rm_rf(TEST_FOLDER)
+
+    def give_an_avatar(self, person_id):
+        self.upload_file(
+            f"/pictures/thumbnails/persons/{person_id}",
+            self.get_fixture_file_path(os.path.join("thumbnails", "th01.png")),
+        )
+
+    def get_avatar(self, link, person_id):
+        return self.app.get(
+            self.shared_path(
+                link["token"], f"/pictures/thumbnails/persons/{person_id}.png"
+            )
+        )
+
+    def new_comment(self, text, for_client=False):
+        return comments_service.new_comment(
+            str(self.task.id),
+            str(self.task_status.id),
+            str(self.person.id),
+            text,
+            for_client=for_client,
+        )
+
+    def test_a_link_serves_the_avatars_of_the_people_it_shows(self):
+        comment = self.new_comment("Looks good", for_client=True)
+        comments_service.reply_comment(
+            comment["id"], "Thanks", person_id=str(self.user["id"])
+        )
+        self.give_an_avatar(self.person.id)
+        self.give_an_avatar(self.user["id"])
+        link = self.post(self.share_path(), {"can_comment": True}, 201)
+        self.log_out()
+
+        for person_id in (self.person.id, self.user["id"]):
+            response = self.get_avatar(link, person_id)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.mimetype, "image/png")
+
+    def test_a_playlist_built_in_kitsu_serves_the_avatars(self):
+        # The playlist builder stores the positioned preview of a shot, not
+        # its task.
+        preview_file = PreviewFile.create(
+            name="preview.mov",
+            revision=1,
+            extension="mp4",
+            task_id=self.task.id,
+            person_id=self.person.id,
+        )
+        PlaylistModel.get(self.playlist["id"]).update(
+            {
+                "shots": [
+                    {
+                        "id": str(self.asset.id),
+                        "entity_id": str(self.asset.id),
+                        "preview_file_id": str(preview_file.id),
+                    }
+                ]
+            }
+        )
+        self.new_comment("Looks good", for_client=True)
+        self.give_an_avatar(self.person.id)
+        link = self.post(self.share_path(), {"can_comment": True}, 201)
+        self.log_out()
+
+        self.assertEqual(
+            self.get_avatar(link, self.person.id).status_code, 200
+        )
+
+    def test_a_link_keeps_the_other_avatars(self):
+        self.new_comment("Studio only")
+        self.give_an_avatar(self.person.id)
+        link = self.post(self.share_path(), {"can_comment": True}, 201)
+        self.log_out()
+
+        self.assertEqual(
+            self.get_avatar(link, self.person.id).status_code, 404
+        )
+
+    def test_a_shown_person_without_avatar_answers_404(self):
+        self.new_comment("Looks good", for_client=True)
+        link = self.post(self.share_path(), {"can_comment": True}, 201)
+        self.log_out()
+
+        self.assertEqual(
+            self.get_avatar(link, self.person.id).status_code, 404
+        )
 
 
 class SharedFileServingTestCase(PlaylistSharingTestCase):

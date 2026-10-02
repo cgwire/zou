@@ -6,6 +6,7 @@ from zou.app.blueprints.previews.resources import (
     ALLOWED_FILE_EXTENSION,
     ALLOWED_PICTURE_EXTENSION,
     send_movie_file,
+    send_picture_file,
     send_preview_picture_file,
     send_preview_standard_file,
 )
@@ -22,6 +23,7 @@ from zou.app.blueprints.shared.schemas import (
 from zou.app.services import (
     comments_service,
     files_service,
+    persons_service,
     playlist_sharing_service,
     playlists_service,
     preview_files_service,
@@ -29,10 +31,11 @@ from zou.app.services import (
 )
 from zou.app.services.exception import (
     AttachmentFileNotFoundException,
+    PersonNotFoundException,
     PreviewFileNotFoundException,
     WrongParameterException,
 )
-from zou.app.utils import permissions, validation
+from zou.app.utils import date_helpers, permissions, validation
 
 
 class SharedPlaylistResource(MethodView):
@@ -719,6 +722,60 @@ class SharedPlaylistPreviewFileThumbnailResource(MethodView):
             raise permissions.PermissionDenied
         try:
             return send_preview_picture_file("thumbnails", preview_file_id)
+        except FileNotFound:
+            raise PreviewFileNotFoundException
+
+
+class SharedPlaylistPersonThumbnailResource(MethodView):
+    @require_valid_playlist_share_link()
+    def get(self, token, person_id):
+        """
+        Get shared person avatar
+        ---
+        description: Serve the avatar of a person the page of the share link
+          shows, as the author of a comment it lists or of a reply to one.
+        tags:
+          - Playlists
+        parameters:
+          - in: path
+            name: token
+            required: true
+            schema:
+              type: string
+            description: Share link token
+          - in: path
+            name: person_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            description: Person unique identifier
+        responses:
+          200:
+            description: Avatar image
+            content:
+              image/png:
+                schema:
+                  type: string
+                  format: binary
+          404:
+            description: Person not shown by this link, or without avatar
+        """
+        if not playlist_sharing_service.is_person_shown_by_share_link(
+            g.playlist_share_link, person_id
+        ):
+            raise PersonNotFoundException
+        person = persons_service.get_person(person_id)
+        if not person["has_avatar"]:
+            raise PersonNotFoundException
+        try:
+            return send_picture_file(
+                "thumbnails",
+                person_id,
+                last_modified=date_helpers.get_datetime_from_string(
+                    person["updated_at"]
+                ),
+            )
         except FileNotFound:
             raise PreviewFileNotFoundException
 
