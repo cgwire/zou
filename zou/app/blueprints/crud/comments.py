@@ -481,19 +481,6 @@ class CommentResource(BaseModelResource):
                     )
                     or (not is_supervisor and not is_assigned)
                 )
-                and (
-                    len(data["checklist"]) == len(instance["checklist"])
-                    and all(
-                        all(
-                            (
-                                k == "checked"
-                                or data["checklist"][i].get(k) == c[k]
-                            )
-                            for k in c.keys()
-                        )
-                        for i, c in enumerate(instance["checklist"])
-                    )
-                )
             ):
                 raise permissions.PermissionDenied
 
