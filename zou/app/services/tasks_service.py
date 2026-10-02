@@ -880,9 +880,11 @@ def embed_reply_authors(comments, is_client=False):
 
 def _run_task_comments_query(query):
     """
-    Execute a comment query and hydrate each comment with its mentions,
-    acknowledgements, previews and attachments, in a fixed number of
-    queries whatever the number of comments.
+    Execute a comment query and return the comments with their author,
+    editor and task status, plus their ids. Acknowledgements, mentions,
+    department mentions, previews, attachments and reply authors are left
+    to the callers, which add the ones they serve in a fixed number of
+    queries.
     """
     comment_ids = []
     comments = []
