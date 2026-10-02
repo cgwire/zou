@@ -28,6 +28,7 @@ from zou.app.services import (
     tasks_service,
 )
 from zou.app.services.exception import (
+    AttachmentFileNotFoundException,
     PreviewFileNotFoundException,
     WrongParameterException,
 )
@@ -458,6 +459,8 @@ class SharedPlaylistAttachmentFileResource(MethodView):
             )
         except playlist_sharing_service.GuestCommentNotFound:
             return {"error": "Attachment not found"}, 404
+        except FileNotFound:
+            raise AttachmentFileNotFoundException
 
 
 class SharedPlaylistAnnotationsResource(MethodView):

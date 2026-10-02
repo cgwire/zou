@@ -987,6 +987,36 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
         listed = next(c for c in comments if c["id"] == visible["id"])
         self.assertEqual(listed["attachment_files"], [])
 
+    def test_a_missing_attachment_file_answers_404(self):
+        """
+        The page of the link loads every picture, sound and movie its
+        comment list names: a file gone from the storage is not found, as
+        on the studio route, rather than a server error.
+        """
+        comment = comments_service.new_comment(
+            str(self.task.id),
+            str(self.task_status.id),
+            str(self.person.id),
+            "See the reference",
+            for_client=True,
+        )
+        attachment = AttachmentFile.create(
+            name="reference.png",
+            extension="png",
+            mimetype="image/png",
+            comment_id=comment["id"],
+        )
+        link = self.post(self.share_path(), {"can_comment": True}, 201)
+        self.log_out()
+
+        response = self.app.get(
+            self.shared_path(
+                link["token"],
+                f"/attachment-files/{attachment.id}/file/reference.png",
+            )
+        )
+        self.assertEqual(response.status_code, 404)
+
     def test_guest_removes_own_attachment(self):
         link, guest, comment = self._guest_comment()
         attachment = self._attach_to_guest_comment(link, guest, comment)[
