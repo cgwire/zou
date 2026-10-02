@@ -513,6 +513,15 @@ def get_day_offs_for_month(year, month, person_ids=None):
     return get_day_offs_between(start, end, person_ids=person_ids)
 
 
+def get_day_offs_for_year(year, person_ids=None):
+    """
+    Get all day off entries for given year, restricted to given persons
+    when some are given.
+    """
+    start, end = _last_day_of(date_helpers.get_year_interval(year))
+    return get_day_offs_between(start, end, person_ids=person_ids)
+
+
 def get_person_day_offs_for_week(person_id, year, week):
     """
     Get all day off entries for given person, year and week.
