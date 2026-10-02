@@ -851,6 +851,20 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
         )
         self.assertEqual(result["text"], "Second thought")
 
+    def test_an_edited_comment_keeps_naming_its_repliers(self):
+        link, guest, comment = self._guest_comment()
+        comments_service.reply_comment(
+            comment["id"], "Noted", person_id=str(self.user["id"])
+        )
+
+        result = self.put(
+            self.shared_path(link["token"], f"/comments/{comment['id']}"),
+            {"guest_id": guest["id"], "text": "Second thought"},
+        )
+
+        replier = result["replies"][0]["person"]
+        self.assertEqual(replier["id"], str(self.user["id"]))
+
     def test_guest_deletes_own_comment(self):
         link, guest, comment = self._guest_comment()
         path = f"/shared/playlists/{link['token']}/comments/{comment['id']}"
@@ -986,6 +1000,27 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
         )
         listed = next(c for c in comments if c["id"] == visible["id"])
         self.assertEqual(listed["attachment_files"], [])
+
+    def test_the_comment_list_names_the_repliers(self):
+        comment = comments_service.new_comment(
+            str(self.task.id),
+            str(self.task_status.id),
+            str(self.person.id),
+            "Looks good",
+            for_client=True,
+        )
+        comments_service.reply_comment(
+            comment["id"], "Thanks", person_id=str(self.user["id"])
+        )
+        link = self.post(self.share_path(), {"can_comment": True}, 201)
+        self.log_out()
+
+        comments = self.get(self.shared_path(link["token"], "/comments"))
+
+        listed = next(c for c in comments if c["id"] == comment["id"])
+        replier = listed["replies"][0]["person"]
+        self.assertEqual(replier["id"], str(self.user["id"]))
+        self.assertEqual(replier["full_name"], "John Did")
 
     def test_a_missing_attachment_file_answers_404(self):
         """
