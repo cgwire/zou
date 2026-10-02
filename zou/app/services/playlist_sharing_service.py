@@ -397,7 +397,8 @@ def _serialize_enriched_comment(comment_id):
     """
     Return a comment dict with `attachment_files` expanded to objects (id,
     name, extension and size), so the shared client can render filenames
-    and sizes without extra lookups.
+    and sizes without extra lookups, and with the authors of its replies,
+    as the comment list gives them.
     """
     from zou.app.models.attachment_file import AttachmentFile
 
@@ -408,6 +409,7 @@ def _serialize_enriched_comment(comment_id):
             AttachmentFile.id.in_(ids)
         ).all()
         comment["attachment_files"] = [af.present() for af in attachments]
+    tasks_service.embed_reply_authors([comment])
     return comment
 
 
@@ -499,13 +501,15 @@ def get_shared_task_comments(task_id):
     """
     Return comments visible in the shared context for a task: those flagged
     `for_client=True` plus those posted by a guest, with their attachment
-    files. Bypasses tasks_service.get_comments which requires a
-    JWT-authenticated current user.
+    files and the authors of their replies. Bypasses
+    tasks_service.get_comments which requires a JWT-authenticated current
+    user.
     """
     from zou.app.services.tasks_service import (
         _build_attachment_map_for_comments,
         _prepare_query,
         _run_task_comments_query,
+        embed_reply_authors,
     )
 
     query = _prepare_query(task_id, is_client=True, is_manager=False)
@@ -535,6 +539,7 @@ def get_shared_task_comments(task_id):
             comment["attachment_files"] = attachment_file_map.get(
                 comment["id"], []
             )
+        embed_reply_authors(visible)
     return visible
 
 
