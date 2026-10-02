@@ -462,6 +462,96 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         self.assertFalse(result["for_client"])
 
 
+class ClientThreadReplyTestCase(CommentTestCase):
+    """
+    Who answers in a thread the client sees: the client is shown the name
+    and avatar of each replier, so only the production managers answer
+    there for the studio, whoever wrote the comment. The clients keep
+    their own rules.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_user_cg_artist()
+        self.generate_fixture_user_manager()
+        self.generate_fixture_user_supervisor()
+        project_id = str(self.project.id)
+        for person in (
+            self.user_cg_artist,
+            self.user_manager,
+            self.user_supervisor,
+        ):
+            projects_service.add_team_member(project_id, person["id"])
+        projects_service.add_team_member(project_id, self.user_client["id"])
+        tasks_service.assign_task(str(self.task.id), self.user_cg_artist["id"])
+
+    def new_comment(self, person_id, for_client=False):
+        comment = comments_service.new_comment(
+            self.task.id, self.task_status.id, person_id, "A note"
+        )
+        if for_client:
+            Comment.get(comment["id"]).update({"for_client": True})
+            tasks_service.clear_comment_cache(comment["id"])
+        return comment
+
+    def reply(self, comment, code):
+        return self.post(
+            f"/data/tasks/{self.task.id}/comments/{comment['id']}/reply",
+            {"text": "An answer"},
+            code,
+        )
+
+    def test_artist_cannot_reply_to_a_comment_for_the_client(self):
+        internal = self.new_comment(self.user["id"])
+        for_client = self.new_comment(self.user["id"], for_client=True)
+        self.log_in_cg_artist()
+        # The artist answers on the internal comment of the same task: the
+        # refusal comes from the client thread rule.
+        self.reply(internal, 200)
+        self.reply(for_client, 403)
+
+    def test_artist_cannot_reply_to_a_client(self):
+        comment = self.new_comment(self.user_client["id"])
+        self.log_in_cg_artist()
+        self.reply(comment, 403)
+
+    def test_manager_replies_in_a_client_thread(self):
+        self.log_in_manager()
+        self.reply(self.new_comment(self.user["id"], for_client=True), 200)
+        self.reply(self.new_comment(self.user_client["id"]), 200)
+
+    def test_artist_cannot_reply_to_their_comment_for_the_client(self):
+        internal = self.new_comment(self.user_cg_artist["id"])
+        for_client = self.new_comment(
+            self.user_cg_artist["id"], for_client=True
+        )
+        self.log_in_cg_artist()
+        self.reply(internal, 200)
+        self.reply(for_client, 403)
+
+    def test_supervisor_cannot_reply_to_a_comment_for_the_client(self):
+        internal = self.new_comment(self.user["id"])
+        for_client = self.new_comment(self.user["id"], for_client=True)
+        self.log_in_supervisor()
+        self.reply(internal, 200)
+        self.reply(for_client, 403)
+
+    def test_demoted_manager_cannot_reply_in_their_client_thread(self):
+        projects_service.update_team_member_role(
+            str(self.project.id), self.user_manager["id"], "user"
+        )
+        comment = self.new_comment(self.user_manager["id"], for_client=True)
+        self.log_in_manager()
+        # The author goes through no access check, and still answers as
+        # the role they hold on the production.
+        self.reply(comment, 403)
+
+    def test_client_replies_in_a_client_thread(self):
+        self.log_in_client()
+        self.reply(self.new_comment(self.user["id"], for_client=True), 200)
+        self.reply(self.new_comment(self.user_client["id"]), 200)
+
+
 class MoveCommentTestCase(CommentTestCase):
     """
     Moving a comment from one task to another. Both tasks must belong
