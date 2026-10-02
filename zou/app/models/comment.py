@@ -1,5 +1,6 @@
 from sqlalchemy_utils import UUIDType
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import validates
 
 from zou.app import db
 from zou.app.models.serializer import SerializerMixin
@@ -88,7 +89,7 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
     text = db.Column(db.Text())
     data = db.Column(JSONB)
     replies = db.Column(JSONB, default=[])
-    checklist = db.Column(JSONB)
+    checklist = db.Column(JSONB, default=[])
     pinned = db.Column(db.Boolean)
     for_client = db.Column(db.Boolean(), default=False)
     links = db.Column(db.ARRAY(db.String()))
@@ -174,6 +175,14 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
 
     def __repr__(self):
         return f"<Comment of {self.object_id}>"
+
+    @validates("checklist")
+    def validate_checklist(self, key, value):
+        """
+        Store a missing checklist as an empty list, the shape every reader
+        expects: an update, an import or a sync may send a null one.
+        """
+        return [] if value is None else value
 
     def set_preview_files(self, preview_file_ids):
         from zou.app.models.preview_file import PreviewFile
