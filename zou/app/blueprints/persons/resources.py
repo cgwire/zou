@@ -1425,20 +1425,59 @@ class DayOffForMonthResource(MethodView, ArgsMixin):
                   items:
                     type: object
         """
-        readable = permissions_service.get_day_off_readable_person_ids()
-        if readable is None:
-            return time_spents_service.get_day_offs_for_month(year, month)
-        day_offs = time_spents_service.get_day_offs_for_month(
-            year, month, person_ids=list(readable.keys())
+        return _readable_day_offs(
+            time_spents_service.get_day_offs_for_month, year, month
         )
-        return [
-            (
-                day_off
-                if readable[day_off["person_id"]]
-                else _dates_only(day_off)
-            )
-            for day_off in day_offs
-        ]
+
+
+class DayOffForYearResource(MethodView, ArgsMixin):
+    @jwt_required()
+    def get(self, year):
+        """
+        Get day offs for year
+        ---
+        description: Return all day off recorded for given year, for
+          everybody the caller may read. Admins get them all, managers and
+          supervisors get the ones of the team of their productions, the
+          latter without description, everybody else gets their own only.
+        tags:
+          - Persons
+        parameters:
+          - in: path
+            name: year
+            required: true
+            schema:
+              type: integer
+            description: Year to get day offs for
+            example: 2022
+        responses:
+          200:
+            description: All day off recorded for given year
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+        """
+        return _readable_day_offs(
+            time_spents_service.get_day_offs_for_year, year
+        )
+
+
+def _readable_day_offs(list_period, *period):
+    """
+    The day offs of the period, scoped to the persons the caller may read,
+    with the descriptions of the ones the caller may read in full.
+    """
+    readable = permissions_service.get_day_off_readable_person_ids()
+    if readable is None:
+        return list_period(*period)
+    day_offs = list_period(*period, person_ids=list(readable.keys()))
+    return [
+        day_off if readable[day_off["person_id"]] else _dates_only(day_off)
+        for day_off in day_offs
+    ]
 
 
 class PersonWeekDayOffResource(MethodView, ArgsMixin):

@@ -181,10 +181,10 @@ class PersonRoutesTestCase(ApiDBTestCase):
 
     def test_the_studio_wide_month_lists_what_the_caller_may_read(self):
         """
-        /data/persons/day-offs/<year>/<month> holds the leave of everybody
-        for an admin, of oneself for an artist, of the team of one's
-        productions for a manager, and of the supervised part of it, dates
-        only, for a supervisor.
+        /data/persons/day-offs/<year> and its month hold the leave of
+        everybody for an admin, of oneself for an artist, of the team of
+        one's productions for a manager, and of the supervised part of it,
+        dates only, for a supervisor.
         """
         DayOff.create(
             date="2024-06-10",
@@ -199,13 +199,23 @@ class PersonRoutesTestCase(ApiDBTestCase):
             person_id=manager["id"],
             description="Moving",
         )
-        path = "/data/persons/day-offs/2024/06"
+        paths = [
+            "/data/persons/day-offs/2024",
+            "/data/persons/day-offs/2024/06",
+        ]
 
         def what_each_person_shows():
-            return {
-                day_off["person_id"]: day_off.get("description", "dates only")
-                for day_off in self.get(path)
-            }
+            shown = [
+                {
+                    day_off["person_id"]: day_off.get(
+                        "description", "dates only"
+                    )
+                    for day_off in self.get(path)
+                }
+                for path in paths
+            ]
+            self.assertEqual(shown[0], shown[1])
+            return shown[0]
 
         self.assertEqual(
             what_each_person_shows(),
@@ -250,12 +260,14 @@ class PersonRoutesTestCase(ApiDBTestCase):
             "its month": f"{base}/month/2024/06",
             "its year": f"{base}/year/2024",
             "the studio wide month": "/data/persons/day-offs/2024/06",
+            "the studio wide year": "/data/persons/day-offs/2024",
         }
         misses = {
             "the week before": f"{base}/week/2024/23",
             "the month before": f"{base}/month/2024/05",
             "the year before": f"{base}/year/2023",
             "the studio wide month before": "/data/persons/day-offs/2024/05",
+            "the studio wide year before": "/data/persons/day-offs/2023",
         }
         for period, path in holds.items():
             with self.subTest(holds=period):

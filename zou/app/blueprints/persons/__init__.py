@@ -5,6 +5,7 @@ from zou.app.blueprints.persons.resources import (
     DateTimeSpentsResource,
     DayOffResource,
     DayOffForMonthResource,
+    DayOffForYearResource,
     DesktopLoginsResource,
     InvitePersonResource,
     ResetPasswordLinkResource,
@@ -78,6 +79,7 @@ routes = [
         "/data/persons/time-spents/day-table/<year>/<month>",
         TimeSpentMonthResource,
     ),
+    ("/data/persons/day-offs/<year>", DayOffForYearResource),
     ("/data/persons/day-offs/<year>/<month>", DayOffForMonthResource),
     (
         "/data/persons/<person_id>/day-offs/week/<year>/<week>",
