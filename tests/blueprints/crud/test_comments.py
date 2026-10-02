@@ -82,19 +82,33 @@ class CommentTestCase(ApiDBTestCase):
             self.put(f"data/comments/{comment_id}", {"checklist": change}, 403)
         self.assertEqual(Comment.get(comment_id).checklist, checklist)
 
-    def test_client_cannot_change_a_checklist(self):
-        comment_id = self.comments[0]["id"]
+    def log_in_team_client(self):
         self.generate_fixture_user_client()
         projects_service.add_team_member(
             self.project.id, self.user_client["id"]
         )
         self.log_in_client()
+
+    def test_client_cannot_change_a_checklist(self):
+        comment_id = self.comments[0]["id"]
+        # A comment the client reads, so the refusal below comes from the
+        # checklist rule.
+        Comment.get(comment_id).update({"for_client": True})
+        self.log_in_team_client()
         self.put(f"data/comments/{comment_id}", {"checklist": []})
         self.put(
             f"data/comments/{comment_id}",
             {"checklist": [{"text": "Looks good", "checked": True}]},
             403,
         )
+
+    def test_client_cannot_update_a_comment_it_cannot_read(self):
+        comment_id = self.comments[0]["id"]
+        self.log_in_team_client()
+        # Even an empty change answered with the internal comment, and made
+        # the client its editor.
+        self.put(f"data/comments/{comment_id}", {}, 403)
+        self.assertIsNone(Comment.get(comment_id).editor_id)
 
     def test_update_null_checklist_as_unassigned_artist(self):
         comment_id = self.comments[0]["id"]
