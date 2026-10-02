@@ -5,6 +5,7 @@ import pytest
 
 from tests.base import ApiDBTestCase
 
+from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.person import Person
 from zou.app.models.playlist import Playlist
 from zou.app.models.playlist import Playlist as PlaylistModel
@@ -12,6 +13,7 @@ from zou.app.models.playlist_share_link import PlaylistShareLink
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
+from zou.app.services import comments_service
 from zou.app.services import entities_service
 from zou.app.services import playlist_sharing_service
 from zou.app.services import preview_file_states_service as states_service
@@ -904,6 +906,86 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
         result = self._attach_to_guest_comment(link, guest, comment)
         self.assertEqual(len(result["attachment_files"]), 1)
         self.assertEqual(result["attachment_files"][0]["name"], "th01.png")
+
+    def test_the_comment_list_carries_guest_attachments(self):
+        """
+        The list is what the page reloads from: an attachment missing there
+        vanished from the comment, although its download route serves it.
+        """
+        link, guest, comment = self._guest_comment()
+        attachment = self._attach_to_guest_comment(link, guest, comment)[
+            "attachment_files"
+        ][0]
+
+        comments = self.get(self.shared_path(link["token"], "/comments"))
+
+        listed = next(c for c in comments if c["id"] == comment["id"])
+        self.assertEqual(
+            [a["id"] for a in listed["attachment_files"]], [attachment["id"]]
+        )
+        self.assertEqual(listed["attachment_files"][0]["name"], "th01.png")
+
+    def test_the_comment_list_carries_client_comment_attachments(self):
+        comment = comments_service.new_comment(
+            str(self.task.id),
+            str(self.task_status.id),
+            str(self.person.id),
+            "See the reference",
+            for_client=True,
+        )
+        attachment = AttachmentFile.create(
+            name="reference.png",
+            extension="png",
+            mimetype="image/png",
+            comment_id=comment["id"],
+        )
+        link = self.post(self.share_path(), {"can_comment": True}, 201)
+        self.log_out()
+
+        comments = self.get(self.shared_path(link["token"], "/comments"))
+
+        listed = next(c for c in comments if c["id"] == comment["id"])
+        self.assertEqual(
+            [a["id"] for a in listed["attachment_files"]],
+            [str(attachment.id)],
+        )
+
+    def test_the_comment_list_leaves_internal_attachments_out(self):
+        """
+        Only the comments the link shows bring their files: the attachment
+        of an internal comment on the same task stays with the studio.
+        """
+        internal = comments_service.new_comment(
+            str(self.task.id),
+            str(self.task_status.id),
+            str(self.person.id),
+            "Studio only",
+        )
+        internal_attachment = AttachmentFile.create(
+            name="internal.png",
+            extension="png",
+            mimetype="image/png",
+            comment_id=internal["id"],
+        )
+        visible = comments_service.new_comment(
+            str(self.task.id),
+            str(self.task_status.id),
+            str(self.person.id),
+            "Looks good",
+            for_client=True,
+        )
+        link = self.post(self.share_path(), {"can_comment": True}, 201)
+        self.log_out()
+
+        comments = self.get(self.shared_path(link["token"], "/comments"))
+
+        self.assertNotIn(internal["id"], [c["id"] for c in comments])
+        self.assertNotIn(
+            str(internal_attachment.id),
+            [a["id"] for c in comments for a in c["attachment_files"]],
+        )
+        listed = next(c for c in comments if c["id"] == visible["id"])
+        self.assertEqual(listed["attachment_files"], [])
 
     def test_guest_removes_own_attachment(self):
         link, guest, comment = self._guest_comment()

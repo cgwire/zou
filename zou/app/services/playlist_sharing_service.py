@@ -395,9 +395,9 @@ def delete_guest_comment(comment_id, guest_id, token):
 
 def _serialize_enriched_comment(comment_id):
     """
-    Return a comment dict with `attachment_files` expanded to full objects
-    (same shape as `_run_task_comments_query`'s output), so the shared client
-    can render filenames/sizes without extra lookups.
+    Return a comment dict with `attachment_files` expanded to objects (id,
+    name, extension and size), so the shared client can render filenames
+    and sizes without extra lookups.
     """
     from zou.app.models.attachment_file import AttachmentFile
 
@@ -498,11 +498,12 @@ def remove_guest_comment_attachment(
 def get_shared_task_comments(task_id):
     """
     Return comments visible in the shared context for a task: those flagged
-    `for_client=True` plus those posted by a guest. Bypasses
-    tasks_service.get_comments which requires a JWT-authenticated current
-    user.
+    `for_client=True` plus those posted by a guest, with their attachment
+    files. Bypasses tasks_service.get_comments which requires a
+    JWT-authenticated current user.
     """
     from zou.app.services.tasks_service import (
+        _build_attachment_map_for_comments,
         _prepare_query,
         _run_task_comments_query,
     )
@@ -525,6 +526,15 @@ def get_shared_task_comments(task_id):
         if comment.get("person"):
             comment["person"]["is_guest"] = is_guest_author
         visible.append(comment)
+
+    if visible:
+        attachment_file_map = _build_attachment_map_for_comments(
+            [comment["id"] for comment in visible]
+        )
+        for comment in visible:
+            comment["attachment_files"] = attachment_file_map.get(
+                comment["id"], []
+            )
     return visible
 
 
