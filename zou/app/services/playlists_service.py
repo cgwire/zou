@@ -804,8 +804,6 @@ def build_playlist_zip_file(playlist):
     tmp_file_paths = retrieve_playlist_tmp_files(previews, full=True)
 
     zip_file_path = get_playlist_zip_file_path(playlist)
-    if os.path.exists(zip_file_path):
-        os.remove(zip_file_path)
     with ZipFile(zip_file_path, "w") as zip:
         for file_path, file_name in tmp_file_paths:
             zip.write(file_path, file_name)
@@ -1086,9 +1084,11 @@ def get_playlist_movie_file_path(build_job):
 
 def get_playlist_zip_file_path(playlist):
     """
-    Build file path for the archive file matching given playlist.
+    Build a file path for an archive of given playlist. Unique per call:
+    concurrent downloads of a playlist each remove their own archive once
+    sent.
     """
-    zip_file_name = f"{playlist['id']}.zip"
+    zip_file_name = f"{playlist['id']}-{fields.gen_uuid()}.zip"
     return os.path.join(config.TMP_DIR, zip_file_name)
 
 
