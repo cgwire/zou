@@ -335,7 +335,7 @@ def get_person_by_email(email, unsafe=False, relations=False):
 def get_person_by_sso_identity(protocol, issuer, subject):
     """
     Return the person bound to given identity as a dictionary. The protocol
-    names the pair of columns the identity is stored in ("oidc").
+    names the pair of columns the identity is stored in ("oidc", "saml").
     """
     person = Person.get_by(
         **{

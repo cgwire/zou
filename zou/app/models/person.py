@@ -80,10 +80,12 @@ SENSITIVE_FIELDS = [
     # right now. An admin can still clear it, writes are unaffected.
     "login_failed_attemps",
     "last_login_failed",
-    # The identity an account signs in with through SSO: only the
-    # callback and an admin unlinking an account have a use for it.
+    # The identities an account signs in with through SSO: only the
+    # callbacks and an admin unlinking an account have a use for them.
     "oidc_issuer",
     "oidc_subject",
+    "saml_issuer",
+    "saml_subject",
 ]
 
 
@@ -248,6 +250,8 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     ldap_uid = db.Column(db.String(60), unique=True, default=None)
     oidc_issuer = db.Column(db.Text(), nullable=True)
     oidc_subject = db.Column(db.String(255), nullable=True)
+    saml_issuer = db.Column(db.Text(), nullable=True)
+    saml_subject = db.Column(db.String(255), nullable=True)
 
     departments = db.relationship(
         "Department",
@@ -267,6 +271,9 @@ class Person(db.Model, BaseMixin, SerializerMixin):
         ),
         db.UniqueConstraint(
             "oidc_issuer", "oidc_subject", name="person_oidc_identity_uc"
+        ),
+        db.UniqueConstraint(
+            "saml_issuer", "saml_subject", name="person_saml_identity_uc"
         ),
     )
 

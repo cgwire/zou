@@ -42,7 +42,7 @@ from zou.app.services import (
 )
 
 from zou.app.utils.flask_utils import is_from_browser
-from zou.app.utils.saml import saml_client_for
+from zou.app.utils.saml import get_subject_from_ava, saml_client_for
 from zou.app.utils import oidc
 
 from zou.app.stores import auth_tokens_store
@@ -1023,18 +1023,24 @@ class SAMLSSOResource(MethodView, ArgsMixin):
             else:
                 del person_info["country"]
         try:
-            user = persons_service.get_person_by_email(email)
-            for k, v in person_info.items():
-                if user.get(k) != v:
-                    persons_service.update_person(
-                        user["id"], person_info, bypass_protected_accounts=True
-                    )
-                    break
-        except PersonNotFoundException:
-            random_password = auth.encrypt_password(secrets.token_urlsafe(48))
-            user = persons_service.create_person(
-                email, random_password, **person_info
+            user = self.get_person(authn_response, email, person_info)
+        except (
+            PersonNotFoundException,
+            SSOIdentityMismatchException,
+            PersonInProtectedAccounts,
+        ):
+            current_app.logger.warning(
+                "SAML sign-in refused: the account is not bound to this "
+                "identity.",
+                extra={"email": email},
             )
+            return SSO_REFUSED, 400
+        for k, v in person_info.items():
+            if user.get(k) != v:
+                persons_service.update_person(
+                    user["id"], person_info, bypass_protected_accounts=True
+                )
+                break
 
         response = make_response(
             redirect(f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}")
@@ -1069,6 +1075,36 @@ class SAMLSSOResource(MethodView, ArgsMixin):
             events_service.create_login_log(user["id"], ip_address, "web")
 
         return response
+
+    def get_person(self, authn_response, email, person_info):
+        """
+        Return the person to sign in. With SAML_SUBJECT_ATTRIBUTE set, it is
+        the one bound to the issuer and subject of the assertion: the NameID
+        email is mutable, it only finds the account on the first login.
+        Without it, SAML carries no stable id and the email is all there is.
+        """
+        if not config.SAML_SUBJECT_ATTRIBUTE:
+            try:
+                return persons_service.get_person_by_email(email)
+            except PersonNotFoundException:
+                random_password = auth.encrypt_password(
+                    secrets.token_urlsafe(48)
+                )
+                return persons_service.create_person(
+                    email, random_password, **person_info
+                )
+        issuer = authn_response.issuer()
+        subject = get_subject_from_ava(authn_response.ava)
+        if not issuer or not subject:
+            # An assertion without the attribute is refused, not matched by
+            # email: dropping it would otherwise be a way around the binding.
+            raise PersonNotFoundException()
+        try:
+            return persons_service.get_person_by_sso_identity(
+                "saml", issuer, subject
+            )
+        except PersonNotFoundException:
+            return link_sso_person("saml", issuer, subject, email, person_info)
 
 
 class SAMLLoginResource(MethodView, ArgsMixin):

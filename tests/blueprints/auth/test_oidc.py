@@ -397,14 +397,24 @@ class OIDCIdentityFieldsTestCase(ApiDBTestCase):
     def test_identity_is_not_serialized(self):
         self.link_artist()
         person = self.get(f"data/persons/{self.artist_id}")
-        self.assertNotIn("oidc_issuer", person)
-        self.assertNotIn("oidc_subject", person)
+        for field in (
+            "oidc_issuer",
+            "oidc_subject",
+            "saml_issuer",
+            "saml_subject",
+        ):
+            self.assertNotIn(field, person)
 
     def test_user_cannot_change_own_identity(self):
         self.link_artist()
         self.log_in_cg_artist()
-        self.put(f"data/persons/{self.artist_id}", {"oidc_subject": "admin"})
-        self.assertEqual(Person.get(self.artist_id).oidc_subject, "artist")
+        self.put(
+            f"data/persons/{self.artist_id}",
+            {"oidc_subject": "admin", "saml_subject": "admin"},
+        )
+        person = Person.get(self.artist_id)
+        self.assertEqual(person.oidc_subject, "artist")
+        self.assertIsNone(person.saml_subject)
 
     def test_admin_can_unlink_an_account(self):
         self.link_artist()
