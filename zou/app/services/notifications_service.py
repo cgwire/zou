@@ -1,4 +1,4 @@
-from sqlalchemy.exc import StatementError
+from sqlalchemy.exc import IntegrityError, StatementError
 from sqlalchemy.sql import func
 
 from zou.app.models.project import Project, ProjectPersonLink
@@ -312,9 +312,17 @@ def subscribe_to_task(person_id, task_id):
     """
     subscription = get_task_subscription_raw(person_id, task_id)
     if subscription is None:
-        subscription = Subscription.create(
-            person_id=person_id, task_id=task_id
-        )
+        try:
+            subscription = Subscription.create(
+                person_id=person_id, task_id=task_id
+            )
+        except IntegrityError:
+            # A concurrent request subscribed the same person between the
+            # read above and this insert: subscription_task_uc rejects the
+            # loser, which returns the winning row.
+            subscription = get_task_subscription_raw(person_id, task_id)
+            if subscription is None:
+                raise
     cache.cache.delete_memoized(is_person_subscribed, person_id, task_id)
     return subscription.serialize()
 
