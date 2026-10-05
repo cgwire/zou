@@ -545,7 +545,7 @@ def get_projects(name=None):
     )
 
     if name is not None:
-        query = query.filter(Project.name == name)
+        query = query.filter(func.lower(Project.name) == name.lower())
 
     return fields.serialize_value(query.all())
 
@@ -555,10 +555,10 @@ def get_project_by_name(project_name):
     Get the project of given name among those the current user belongs to,
     case insensitive. Raises an exception if none matches.
     """
-    for project in get_projects():
-        if project["name"].lower() == project_name.lower():
-            return project
-    raise ProjectNotFoundException()
+    projects = get_projects(name=project_name)
+    if not projects:
+        raise ProjectNotFoundException()
+    return projects[0]
 
 
 def get_filters():
