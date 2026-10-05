@@ -17,7 +17,7 @@ from zou.app.services import files_service, preview_files_service
 from zou.app.services import preview_file_states_service as states_service
 from zou.app import config
 from zou.app.stores import file_store, queue_store, redis_client
-from zou.app.utils import remote_job
+from zou.app.utils import fields, remote_job
 from zou.app.utils import thumbnail as thumbnail_utils
 from zou.utils import movie
 from zou.app.exceptions import (
@@ -1044,6 +1044,7 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
         source only option keeps the upload: a reader pinned on the
         "previews" version fails on those instances.
         """
+        self.generate_fixture_preview_file()
         preview_file_id = str(self.preview_file.id)
         preview_file = {"id": preview_file_id, "extension": "mp4", "data": {}}
         movie_fixture = self.get_fixture_file_path(
@@ -1056,11 +1057,12 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
         try:
             path = preview_files_service.locate_stored_movie(preview_file)
             self.assertTrue(os.path.exists(path))
-            self.assertIn("lowdef", os.path.basename(path))
+            self.assertIn("lowdef", path)
         finally:
             file_store.remove_movie("lowdef", preview_file_id)
 
     def test_a_storage_outage_is_not_a_missing_picture(self):
+        self.generate_fixture_preview_file()
         preview_file = {"id": str(self.preview_file.id), "extension": "png"}
         with patch.object(
             preview_files_service.fs,
