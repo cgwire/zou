@@ -2613,7 +2613,7 @@ def _apply_open_tasks_filters(query, filters):
         query = query.filter(TaskStatus.id == filters.task_status_id)
 
     if filters.person_id is not None:
-        if person_id == "unassigned":
+        if filters.person_id == "unassigned":
             query = query.filter(Task.assignees == None)
         else:
             query = query.filter(
