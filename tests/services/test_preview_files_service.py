@@ -1061,6 +1061,47 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
         finally:
             file_store.remove_movie("lowdef", preview_file_id)
 
+    def test_locate_stored_movie_keeps_a_transient_failure(self):
+        # Only an absence the store confirmed sends the reader to the next
+        # version: a hiccup on the high def movie must not hand out the
+        # low def one, whose size would be recorded as the preview's.
+        self.generate_fixture_preview_file()
+        preview_file = {
+            "id": str(self.preview_file.id),
+            "extension": "mp4",
+            "data": {},
+        }
+        with patch.object(
+            preview_files_service.fs,
+            "get_file_path_and_file",
+            side_effect=preview_files_service.fs.FileNotFound("previews-x"),
+        ) as get_file:
+            with self.assertRaises(preview_files_service.fs.FileNotFound):
+                preview_files_service.locate_stored_movie(preview_file)
+        self.assertEqual(get_file.call_count, 1)
+
+    def test_preview_extra_keeps_the_metadata_on_a_transient_failure(self):
+        movie_fixture = self.get_fixture_file_path(
+            os.path.join("videos", "test_preview_tiles.mp4")
+        )
+        self.generate_fixture_preview_file()
+        self.preview_file.update({"width": 1920, "height": 1080})
+
+        def high_def_hiccup(config, get_path, open_file, prefix, *args, **kw):
+            if prefix == "previews":
+                raise preview_files_service.fs.FileNotFound("previews-x")
+            return movie_fixture
+
+        with patch.object(
+            preview_files_service.fs,
+            "get_file_path_and_file",
+            side_effect=high_def_hiccup,
+        ):
+            preview_files_service.generate_preview_extra(with_metadata=True)
+        preview_file = PreviewFile.get(self.preview_file.id)
+        self.assertEqual(preview_file.width, 1920)
+        self.assertEqual(preview_file.height, 1080)
+
     def test_a_storage_outage_is_not_a_missing_picture(self):
         self.generate_fixture_preview_file()
         preview_file = {"id": str(self.preview_file.id), "extension": "png"}

@@ -53,6 +53,12 @@ def _fetch_input(storage, outdir, input_id):
             # attempt must not take for a fetched movie.
             if os.path.exists(file_path):
                 os.remove(file_path)
+            logger.warning(
+                "Movie %s not read from %s (%s), trying the next version",
+                input_id,
+                prefix,
+                error,
+            )
             last_error = error
     raise last_error
 

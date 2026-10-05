@@ -2256,12 +2256,24 @@ def generate_preview_extra(
             )
         try:
             preview_file_path = None
-            for prefix in prefixes:
+            if preview_file.extension == "mp4":
+                try:
+                    preview_file_path = locate_stored_movie(
+                        {
+                            "id": preview_file_id,
+                            "data": files_service.get_preview_file_data(
+                                preview_file
+                            ),
+                        }
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to get preview file {preview_file_id}: {e}."
+                    )
+            else:
                 preview_file_path = _retrieve_preview_file(
-                    config, file_store, prefix, preview_file
+                    config, file_store, "original", preview_file
                 )
-                if preview_file_path is not None:
-                    break
             if with_tiles:
                 _generate_tiles(
                     file_store,
@@ -2466,7 +2478,10 @@ def locate_stored_movie(preview_file, lowdef=False):
     """
     Local path of a stored version of the movie of given preview file dict,
     fetched from the store when needed. Raises PreviewFileNotFoundException
-    when the store holds none of the versions.
+    when the store holds none of the versions. Only an absence the store
+    confirmed moves on to the next version: a transient failure is raised
+    as is, a caller recording the size of the movie would otherwise store
+    the one of the low def version.
     """
     preview_file_id = str(preview_file["id"])
     for prefix in get_stored_movie_prefixes(preview_file, lowdef):
@@ -2479,7 +2494,7 @@ def locate_stored_movie(preview_file, lowdef=False):
                 preview_file_id,
                 "mp4",
             )
-        except fs.FileNotFound:
+        except fs.ConfirmedFileNotFound:
             continue
     raise PreviewFileNotFoundException(
         f"No stored movie for preview file {preview_file_id}."

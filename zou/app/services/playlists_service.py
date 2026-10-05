@@ -773,7 +773,9 @@ def retrieve_playlist_tmp_files(preview_files, full=False, tmp_dir=None):
 def _retrieve_playlist_movie(preview_file):
     """
     Local path of the movie of given preview, whichever version the
-    normalization settings left in the store.
+    normalization settings left in the store. Only a confirmed absence
+    moves on to the next version: a transient failure must not build the
+    playlist from the low def movie.
     """
     last_error = None
     for prefix in preview_files_service.get_stored_movie_prefixes(
@@ -788,7 +790,7 @@ def _retrieve_playlist_movie(preview_file):
                 preview_file["id"],
                 "mp4",
             )
-        except fs.FileNotFound as error:
+        except fs.ConfirmedFileNotFound as error:
             last_error = error
     raise last_error
 

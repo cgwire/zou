@@ -734,6 +734,20 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
             shutil.rmtree(tmp_dir, ignore_errors=True)
             file_store.remove_movie("lowdef", preview["id"])
 
+    def test_a_transient_failure_does_not_switch_movie_version(self):
+        # Only a confirmed absence sends the build to the next version: a
+        # storage hiccup must not concatenate the low def movie instead.
+        self.generate_fixture_preview_files()
+        preview = self.preview_file_1.serialize()
+        with patch.object(
+            playlists_service.fs,
+            "get_file_path_and_file",
+            side_effect=playlists_service.fs.FileNotFound("previews-x"),
+        ) as get_file:
+            with self.assertRaises(playlists_service.fs.FileNotFound):
+                playlists_service._retrieve_playlist_movie(preview)
+        self.assertEqual(get_file.call_count, 1)
+
     def test_a_failed_concatenation_is_logged(self):
         # The log call used to hand a tuple to two placeholders: the
         # logging module reported its own error and the trace was lost.
