@@ -5,6 +5,7 @@ from sqlalchemy.exc import ProgrammingError
 
 from tests.base import ApiDBTestCase
 from zou.app import config
+from zou.app.services import persons_service
 from zou.app.stores import config_store
 
 TEST_TOKEN = "test-admin-token"
@@ -125,8 +126,9 @@ class ConfigCheckTestCase(ApiDBTestCase):
         error = ProgrammingError(
             "stmt", {}, Exception('relation "person" does not exist')
         )
-        with patch("zou.app.blueprints.admin.resources.Person") as mock_person:
-            mock_person.query.filter.return_value.count.side_effect = error
+        with patch.object(
+            persons_service, "count_active_users", side_effect=error
+        ):
             response = self.app.get(
                 "admin/config/check",
                 headers={"Authorization": f"Bearer {TEST_TOKEN}"},
