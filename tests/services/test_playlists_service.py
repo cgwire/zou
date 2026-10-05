@@ -5,6 +5,7 @@ import tempfile
 from contextlib import contextmanager
 from datetime import datetime
 from unittest.mock import MagicMock, patch
+from zipfile import ZipFile
 
 from tests.base import ApiDBTestCase
 
@@ -747,6 +748,30 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
             with self.assertRaises(playlists_service.fs.FileNotFound):
                 playlists_service._retrieve_playlist_movie(preview)
         self.assertEqual(get_file.call_count, 1)
+
+    def test_playlist_zip_keeps_the_previews_sharing_a_name(self):
+        tmp_dir = tempfile.mkdtemp()
+        copies = []
+        for index in range(2):
+            path = os.path.join(tmp_dir, f"{index:04d}_render.mp4")
+            with open(path, "w") as copy:
+                copy.write(str(index))
+            copies.append((path, "render.mp4"))
+        playlist = {"id": "zip-names", "shots": []}
+        try:
+            with patch.object(
+                playlists_service,
+                "retrieve_playlist_tmp_files",
+                return_value=copies,
+            ):
+                zip_path = playlists_service.build_playlist_zip_file(playlist)
+            with ZipFile(zip_path) as archive:
+                self.assertEqual(
+                    archive.namelist(), ["render.mp4", "0001_render.mp4"]
+                )
+            os.remove(zip_path)
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
 
     def test_a_failed_concatenation_is_logged(self):
         # The log call used to hand a tuple to two placeholders: the

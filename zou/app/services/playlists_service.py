@@ -844,8 +844,14 @@ def build_playlist_zip_file(playlist):
         )
 
         zip_file_path = get_playlist_zip_file_path(playlist)
+        file_names = set()
         with ZipFile(zip_file_path, "w") as zip:
             for file_path, file_name in tmp_file_paths:
+                if file_name in file_names:
+                    # Two entries of the same name: the extraction would
+                    # keep one. The copy name carries its index.
+                    file_name = os.path.basename(file_path)
+                file_names.add(file_name)
                 zip.write(file_path, file_name)
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
