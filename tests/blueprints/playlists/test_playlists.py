@@ -1,3 +1,5 @@
+import os
+
 from flask import g
 
 from tests.base import ApiDBTestCase
@@ -376,6 +378,20 @@ class PlaylistTestCase(ApiDBTestCase):
             {"for_entity": "banana"},
             400,
         )
+
+    def test_concurrent_zip_builds_keep_their_own_file(self):
+        # Two downloads of the same playlist: the second build must not
+        # remove the archive the first one is about to send.
+        playlist = self.generate_fixture_playlist("Playlist 1")
+        first_path = playlists_service.build_playlist_zip_file(playlist)
+        second_path = playlists_service.build_playlist_zip_file(playlist)
+        try:
+            self.assertNotEqual(first_path, second_path)
+            self.assertTrue(os.path.exists(first_path))
+        finally:
+            for path in (first_path, second_path):
+                if os.path.exists(path):
+                    os.remove(path)
 
     def test_download_playlist(self):
         self.generate_fixture_playlist("Playlist 1", for_client=False)
