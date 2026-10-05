@@ -181,9 +181,10 @@ class NotificationTestCase(UserContextTestCase):
 
     def test_the_bell_reads_the_comments_in_a_fixed_number_of_queries(self):
         """
-        The comment, its previews and the entity name of every row used to
-        be read one by one: a bell of a hundred notifications cost two
-        hundred queries on a listing the clients poll.
+        The comment, its previews, its mentions, and the entity name of
+        every row used to be read one by one: a bell of a hundred
+        notifications cost hundreds of queries on a listing the clients
+        poll.
         """
 
         def count_queries(action):
@@ -200,12 +201,16 @@ class NotificationTestCase(UserContextTestCase):
                 event.remove(engine, "before_cursor_execute", record)
             return len(statements)
 
+        # Count a second read each time: the first one fills the memoized
+        # lookups (the person logging in, the organisation, the entity
+        # types), and those misses would offset queries made per row.
         self.a_comment(text="One")
+        self.assertEqual(len(self.bell()), 1)
         one = count_queries(self.bell)
         for text in ["Two", "Three", "Four", "Five", "Six"]:
             self.a_comment(text=text)
-        six = count_queries(self.bell)
         self.assertEqual(len(self.bell()), 6)
+        six = count_queries(self.bell)
         self.assertEqual(six, one)
 
     def test_the_bell_is_bounded_by_dates(self):

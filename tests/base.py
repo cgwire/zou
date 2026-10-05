@@ -382,13 +382,12 @@ class ApiDBTestCase(ApiTestCase):
       Pushing a fresh application context instead looks tidier and is
       wrong, since the session is scoped to it and every row the fixtures
       hold comes back detached.
-    - An exception raised in setUp leaves the transaction open, and the
-      next class blocks on the truncation instead of failing. A hanging
-      suite usually means a broken setUp, not a slow test. The quiet way
-      to break setUp is to give a helper of your own a name this class
+    - An exception raised in setUp still rolls the transaction back: the
+      rollback is a cleanup, which unittest runs after a failed setUp, so
+      the test fails instead of blocking the next one. The quiet way to
+      break setUp is to give a helper of your own a name this class
       already uses: setUp calls log_in itself, so redefining it with
-      another signature raises before a single fixture exists, and the
-      failure shows up as the next class hanging.
+      another signature raises before a single fixture exists.
     """
 
     # Schema is created once per session in conftest.py.
@@ -424,16 +423,18 @@ class ApiDBTestCase(ApiTestCase):
             factory, current_app._get_current_object
         )
         db.session = self._db_session
+        # unittest skips tearDown when setUp fails, not the cleanups: a
+        # transaction left open keeps the fixture rows it wrote, and the
+        # next test inserting the same fixtures waits for it forever.
+        self.addCleanup(self.release_db_transaction)
 
         self.generate_fixture_user()
         self.log_in_admin()
 
-    def tearDown(self):
+    def release_db_transaction(self):
         """
-        Configure application after each test.
         Rollback transaction to return database to its original state.
         """
-        super().tearDown()
         if not self._db_transaction._deactivated_from_connection:
             self._db_transaction.rollback()
         self._db_connection.close()

@@ -158,7 +158,7 @@ def reset_entry_index(
     if documents:
         indexing.index_documents(index, documents)
         total += len(documents)
-    logger.info(total, f"{index_name} indexed")
+    logger.info("%s %s indexed", total, index_name)
     return entries
 
 

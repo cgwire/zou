@@ -1080,9 +1080,9 @@ def get_last_notifications(
 def _load_notification_context(notifications):
     """
     Load in a fixed number of queries what the notification rows point at:
-    the comments with their previews, the playlists with their project, the
-    full names of the entities. Reading them per row cost up to three
-    queries per notification on a listing the clients poll.
+    the comments with their previews and mentions, the playlists with their
+    project, the full names of the entities. Reading them per row cost up
+    to five queries per notification on a listing the clients poll.
     """
     comment_ids = set()
     playlist_ids = set()
@@ -1103,7 +1103,9 @@ def _load_notification_context(notifications):
         comments = {
             str(comment.id): comment
             for comment in Comment.query.options(
-                selectinload(Comment.previews)
+                selectinload(Comment.previews),
+                selectinload(Comment.mentions),
+                selectinload(Comment.department_mentions),
             ).filter(Comment.id.in_(list(comment_ids)))
         }
 

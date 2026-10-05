@@ -91,21 +91,22 @@ class ImportOTIOEdlTestCase(ApiDBTestCase):
         """
         EDL and XML exports often leave the clip name empty and only fill
         the media reference. Deriving the name from it used to unpack a
-        string into two variables and fail the whole import.
+        string into two variables and fail the whole import. The media
+        follows the default naming convention, as every clip must.
         """
         import opentimelineio as otio
 
         clip = otio.schema.Clip(
             name="",
             media_reference=otio.schema.ExternalReference(
-                target_url="/renders/sc010.mov"
+                target_url="/renders/TestProject_SQ010-sc010.mov"
             ),
             source_range=otio.opentime.TimeRange(
                 otio.opentime.RationalTime(0, 25),
                 otio.opentime.RationalTime(10, 25),
             ),
         )
-        clip.media_reference.name = "sc010.mov"
+        clip.media_reference.name = "TestProject_SQ010-sc010.mov"
         track = otio.schema.Track(kind=otio.schema.TrackKind.Video)
         track.append(clip)
         timeline = otio.schema.Timeline(name="cut")

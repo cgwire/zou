@@ -6,6 +6,7 @@ from zou.app import db
 from zou.app.models.project import Project
 from zou.app.models.project import ProjectPersonLink
 from zou.app.models.person import Person
+from zou.app.services import projects_service
 
 from zou.app.blueprints.source.shotgun.base import (
     BaseImportShotgunResource,
@@ -49,8 +50,12 @@ class ImportShotgunProjectConnectionsResource(BaseImportShotgunResource):
             person = Person.get_by(shotgun_id=data["person_shotgun_id"])
 
             if project is not None and person is not None:
-                project.team.append(person)
-                project.save()
+                # Through the service, which drops the cached team and tells
+                # the clients: the new member would wait for the cache
+                # otherwise.
+                projects_service.add_team_member(
+                    str(project.id), str(person.id)
+                )
                 # Record the Shotgun id on the link so the next import and
                 # the removal route find it instead of duplicating it.
                 link = ProjectPersonLink.query.filter_by(
@@ -84,8 +89,11 @@ class ImportRemoveShotgunProjectConnectionResource(
         ).first()
 
     def delete_instance(self, instance):
-        db.session.delete(instance)
-        db.session.commit()
+        # Through the service, which drops the cached team and tells the
+        # clients: the removed member would keep their access otherwise.
+        projects_service.remove_team_member(
+            str(instance.project_id), str(instance.person_id)
+        )
         return True
 
     @jwt_required()

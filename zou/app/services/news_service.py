@@ -176,6 +176,7 @@ def get_last_news_for_project(
     Return last 50 news for given project. Add related information to make it
     displayable.
     """
+    filters = filters or NewsFilters()
     offset = (page - 1) * limit
 
     # News take the created_at of their comment, serialized to the second,
@@ -195,7 +196,7 @@ def get_last_news_for_project(
     if entity_id is not None:
         query = query.filter(Entity.id == entity_id)
 
-    query = _apply_news_filters(query, filters or NewsFilters())
+    query = _apply_news_filters(query, filters)
 
     total, nb_pages = _get_news_total(query, limit)
 
@@ -277,7 +278,7 @@ def get_last_news_for_project(
     for news in result:
         news["person"] = author_map.get(news["author_id"])
 
-    if only_preview:
+    if filters.only_preview:
         task_ids = [
             news["task_id"] for news in result if news["task_id"] is not None
         ]

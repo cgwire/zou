@@ -7,6 +7,7 @@ from sqlalchemy.exc import StatementError
 from werkzeug.exceptions import NotFound
 
 from zou.app.models.data_import_error import DataImportError
+from zou.app.utils import permissions
 
 
 class ShotgunImportErrorsResource(MethodView):
@@ -20,6 +21,7 @@ class ShotgunImportErrorsResource(MethodView):
         """
         Get shotgun import errors
         """
+        permissions.check_admin_permissions()
         criterions = {"source": "shotgun"}
         import_errors = DataImportError.query.filter_by(**criterions).all()
         return DataImportError.serialize_list(import_errors)
@@ -30,6 +32,7 @@ class ShotgunImportErrorsResource(MethodView):
         """
         Create shotgun import error
         """
+        permissions.check_admin_permissions()
         error = DataImportError(event_data=request.json, source="shotgun")
         error.save()
         return error.serialize(), 201
@@ -45,6 +48,7 @@ class ShotgunImportErrorResource(MethodView):
         """
         Delete shotgun import error
         """
+        permissions.check_admin_permissions()
         try:
             error = DataImportError.get(error_id)
         except StatementError:

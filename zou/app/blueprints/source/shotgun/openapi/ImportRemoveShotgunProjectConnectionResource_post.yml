@@ -31,10 +31,5 @@ responses:
               type: boolean
               description: Whether the removal was successful
               example: true
-            removed_instance_id:
-              type: string
-              format: uuid
-              description: ID of the removed connection, if found
-              example: a24a6ea4-ce75-4665-a070-57453082c250
   400:
     description: Invalid request body or instance not found

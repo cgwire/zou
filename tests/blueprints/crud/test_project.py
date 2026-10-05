@@ -118,10 +118,12 @@ class ProjectTestCase(ApiDBTestCase):
         data = {
             "name": "Cosmos Landromat 2",
             "preview_background_files": [background_id],
-            "preview_background_file_id": background_id,
+            "default_preview_background_file_id": background_id,
         }
         project = self.post("data/projects", data)
-        self.assertEqual(project["preview_background_file_id"], background_id)
+        self.assertEqual(
+            project["default_preview_background_file_id"], background_id
+        )
         project_again = self.get(
             f"data/projects/{project['id']}?relations=true"
         )
@@ -129,7 +131,9 @@ class ProjectTestCase(ApiDBTestCase):
             project_again["preview_background_files"], [background_id]
         )
 
-        # The default must be one of the files attached to the project.
+        # The default must be one of the files attached to the project. The
+        # payloads get a new name: a taken one would refuse them on its own.
+        data["name"] = "Cosmos Landromat 3"
         data["preview_background_files"] = []
         self.post("data/projects", data, 400)
         del data["preview_background_files"]

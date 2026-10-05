@@ -151,20 +151,25 @@ class ImportRemoveShotgunBaseResource(MethodView):
         self.delete_func = delete_func
         self.entity_type_id = entity_type_id
 
+    def check_permissions(self):
+        return permissions.check_admin_permissions()
+
     @jwt_required()
     @swag_from("openapi/ImportRemoveShotgunBaseResource_post.yml")
     def post(self):
         """
         Remove shotgun resource
         """
+        self.check_permissions()
         sg_model = request.json
         instance = self.get_instance(sg_model)
 
         if instance is not None:
-            result = {
-                "removed_instance_id": str(instance.id),
-                "success": self.delete_instance(instance),
-            }
+            result = {}
+            # A bare link table such as ProjectPersonLink has no id.
+            if hasattr(instance, "id"):
+                result["removed_instance_id"] = str(instance.id)
+            result["success"] = self.delete_instance(instance)
         else:
             result = {"success": True}
 

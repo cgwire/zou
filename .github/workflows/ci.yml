@@ -65,6 +65,10 @@ jobs:
       Test Python ${{ matrix.python-version }} / PG ${{ matrix.pg-version }} 🐍
     needs: setup
     runs-on: ubuntu-latest
+    # A job takes about seven minutes. A stuck one would hold its runner
+    # for the six hours GitHub allows, and every run of the organization
+    # shares twenty runners.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
