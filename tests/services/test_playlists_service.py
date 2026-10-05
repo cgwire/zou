@@ -773,6 +773,25 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
+    def test_a_build_without_tmp_dir_still_ends_its_job(self):
+        # The working directory was created before the try: a full or
+        # missing TMP_DIR left the job "running" for ever.
+        with (
+            patch.object(
+                playlists_service.tempfile,
+                "mkdtemp",
+                side_effect=OSError("No space left on device"),
+            ),
+            patch.object(
+                playlists_service, "end_build_job", return_value={}
+            ) as end_build_job,
+        ):
+            with self.assertRaises(Exception):
+                playlists_service.build_playlist_movie_file(
+                    {"id": "playlist"}, {"id": "job"}, [], None, False, False
+                )
+        end_build_job.assert_called_once()
+
     def test_a_failed_concatenation_is_logged(self):
         # The log call used to hand a tuple to two placeholders: the
         # logging module reported its own error and the trace was lost.

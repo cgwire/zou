@@ -868,10 +868,11 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
     from zou.app import app
 
     with app.app_context():
-        tmp_dir = tempfile.mkdtemp(
-            prefix="playlist-build-", dir=config.TMP_DIR
-        )
+        tmp_dir = None
         try:
+            tmp_dir = tempfile.mkdtemp(
+                prefix="playlist-build-", dir=config.TMP_DIR
+            )
             previews = playlist_previews(shots, only_movies=True)
             movie_file_path = get_playlist_movie_file_path(job)
 
@@ -934,7 +935,8 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
 
         # exception will be logged by rq
         finally:
-            shutil.rmtree(tmp_dir, ignore_errors=True)
+            if tmp_dir is not None:
+                shutil.rmtree(tmp_dir, ignore_errors=True)
             if not handed_over:
                 job = end_build_job(playlist, job, success, message)
 
