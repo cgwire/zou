@@ -50,8 +50,12 @@ class ImportShotgunProjectConnectionsResource(BaseImportShotgunResource):
             person = Person.get_by(shotgun_id=data["person_shotgun_id"])
 
             if project is not None and person is not None:
-                project.team.append(person)
-                project.save()
+                # Through the service, which drops the cached team and tells
+                # the clients: the new member would wait for the cache
+                # otherwise.
+                projects_service.add_team_member(
+                    str(project.id), str(person.id)
+                )
                 # Record the Shotgun id on the link so the next import and
                 # the removal route find it instead of duplicating it.
                 link = ProjectPersonLink.query.filter_by(

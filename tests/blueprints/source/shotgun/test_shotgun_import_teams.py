@@ -61,6 +61,27 @@ class ImportShotgunProjectConnectionsTestCase(ShotgunTestCase):
         self.assertEqual(project["name"], "Agent327")
         self.assertEqual(len(project["team"]), 1)
 
+    def test_import_project_connection_refreshes_the_team(self):
+        self.load_fixture("persons")
+        self.load_fixture("projects")
+        projects = sorted(self.get("data/projects"), key=lambda x: x["name"])
+        project_id = projects[0]["id"]
+        # Cache the team before the import adds a member to it.
+        project = projects_service.get_project(project_id, relations=True)
+        self.assertEqual(len(project["team"]), 0)
+
+        sg_project_persons = {
+            "id": 1,
+            "project": {"type": "Project", "id": 1, "name": "Agent327"},
+            "user": {"type": "HumanUser", "id": 1, "name": "Jhon Doe"},
+            "type": "ProjectUserConnection",
+        }
+        self.post(
+            "/import/shotgun/project-connections", [sg_project_persons], 200
+        )
+        project = projects_service.get_project(project_id, relations=True)
+        self.assertEqual(len(project["team"]), 1)
+
     def test_remove_project_connection(self):
         """
         The removal route looked the link up through BaseMixin.get_by,
