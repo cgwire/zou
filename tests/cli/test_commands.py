@@ -2,8 +2,10 @@ import datetime
 import io
 import json as stdlib_json
 from contextlib import redirect_stdout
+import unittest
 from unittest.mock import MagicMock, patch
 
+from alembic.script import ScriptDirectory
 from click.testing import CliRunner
 
 from tests.base import ApiDBTestCase
@@ -17,7 +19,7 @@ from zou.app.utils import progress as progress_utils
 from zou.app.models.entity_type import EntityType
 from zou.app.models.plugin import Plugin
 from zou.app.models.task_type import TaskType
-from zou.cli import cli
+from zou.cli import _get_alembic_config, cli
 
 
 def totimestamp(dt, epoch=datetime.datetime(1970, 1, 1)):
@@ -687,3 +689,15 @@ class ProgressOptionTestCase(ApiDBTestCase):
             self.assertNotIsInstance(
                 self.reported_progress(generate), progress_utils.NullProgress
             )
+
+
+class MigrationGraphTestCase(unittest.TestCase):
+    def test_the_migrations_have_a_single_head(self):
+        """
+        upgrade-db asks Alembic for the head and stops when there are
+        several. Two migrations written on the same parent broke the
+        deployment after #1243, while this suite, which builds its schema
+        from the models, stayed green.
+        """
+        heads = ScriptDirectory.from_config(_get_alembic_config()).get_heads()
+        self.assertEqual(len(heads), 1, heads)
