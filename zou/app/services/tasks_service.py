@@ -1955,10 +1955,11 @@ def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
         return _create_or_update_time_spent(
             task_id, person_id, date, duration, add
         )
-    except ObjectDeletedError:
-        # Every commit expires the row, so reading it back after a concurrent
-        # DELETE finds nothing. The deleting request recomputes the task
-        # duration itself.
+    except (ObjectDeletedError, StaleDataError):
+        # A concurrent DELETE removed the row: before the UPDATE, it matches
+        # nothing (StaleDataError); after a commit, reading the expired row
+        # back finds nothing (ObjectDeletedError). The deleting request
+        # recomputes the task duration itself.
         raise TimeSpentNotFoundException
 
 
