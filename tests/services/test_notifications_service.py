@@ -1,9 +1,12 @@
 from unittest.mock import patch
 
+from sqlalchemy.exc import IntegrityError
+
 from tests.base import ApiDBTestCase
 
 from zou.app.models.notification import Notification
 from zou.app.models.person import Person
+from zou.app.models.subscription import Subscription
 from zou.app.services import (
     comments_service,
     notifications_service,
@@ -150,6 +153,34 @@ class SubscriptionTestCase(NotificationsTestCase):
         second = notifications_service.subscribe_to_task(
             self.outsider_id, self.task_dict["id"]
         )
+        self.assertEqual(first["id"], second["id"])
+
+    def test_subscribe_to_task_losing_the_insert_race(self):
+        # Two concurrent subscriptions: the loser reads before the winner
+        # commits, so subscription_task_uc rejects its insert. It must get
+        # the winning row back instead of a 500. The rejection is simulated:
+        # a real one rolls back the transaction holding the fixtures.
+        first = notifications_service.subscribe_to_task(
+            self.outsider_id, self.task_dict["id"]
+        )
+        read_subscription = notifications_service.get_task_subscription_raw
+        reads = []
+
+        def stale_first_read(*args, **kwargs):
+            reads.append(None)
+            if len(reads) == 1:
+                return None
+            return read_subscription(*args, **kwargs)
+
+        rejected = IntegrityError("INSERT", {}, Exception("subscription_uc"))
+        with patch.object(
+            notifications_service,
+            "get_task_subscription_raw",
+            stale_first_read,
+        ), patch.object(Subscription, "create", side_effect=rejected):
+            second = notifications_service.subscribe_to_task(
+                self.outsider_id, self.task_dict["id"]
+            )
         self.assertEqual(first["id"], second["id"])
 
     def test_unsubscribe_from_task(self):

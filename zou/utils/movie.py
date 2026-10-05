@@ -124,7 +124,9 @@ def generate_tile(movie_path):
     video_track = get_video_track(movie_path, "generate_tile")
     duration = get_movie_duration(video_track=video_track)
     fps = get_movie_fps(video_track=video_track)
-    duration_in_frames = int(duration * fps)
+    # round, not int: a probed duration a hair under the frame count
+    # (64.9999 for 65 frames) would drop the last frame (#1248).
+    duration_in_frames = round(duration * fps)
     rows = min(math.ceil(duration_in_frames / 8), 480)
     ratio = get_movie_display_aspect_ratio(video_track=video_track)
     height = 100

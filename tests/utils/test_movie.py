@@ -92,6 +92,26 @@ class MovieTestCase(unittest.TestCase):
         finally:
             os.remove(tile_path)
 
+    def test_generate_tile_keeps_every_frame_of_a_short_duration(self):
+        # cgwire/zou#1248: a probed duration a hair under the frame count
+        # must not drop the last frame. 41 frames need 6 rows of 8.
+        clip_path = str(Path(self.tmpdir) / "41_frames.m4v")
+        ffmpeg.input(
+            "testsrc=size=320x240:rate=25", f="lavfi", t=41 / 25
+        ).output(
+            clip_path, vcodec="mpeg4", pix_fmt="yuv420p", an=None
+        ).overwrite_output().run(
+            quiet=True
+        )
+        with patch.object(
+            movie, "get_movie_duration", return_value=41 / 25 - 1e-9
+        ):
+            tile_path = movie.generate_tile(clip_path)
+        try:
+            self.assertEqual(Image.open(tile_path).size[1], 600)
+        finally:
+            os.remove(tile_path)
+
     def test_get_movie_size(self):
         width, height = movie.get_movie_size(self.video_only_path)
         self.assertEqual(width, 320)

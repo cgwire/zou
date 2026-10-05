@@ -639,6 +639,31 @@ class TimeSpentTestCase(TaskTestCase):
                 3600,
             )
 
+    def test_update_time_spent_deleted_by_a_concurrent_request(self):
+        # The row is read, then a concurrent DELETE removes it before the
+        # UPDATE: that must answer 404, not 500.
+        tasks_service.create_or_update_time_spent(
+            self.task_id, self.person_id, "2017-09-23", 3600
+        )
+        read_time_spent = tasks_service._get_time_spent_raw
+
+        def read_then_delete(*args, **kwargs):
+            time_spent = read_time_spent(*args, **kwargs)
+            db.session.execute(text("DELETE FROM time_spent"))
+            return time_spent
+
+        with mock.patch.object(
+            tasks_service, "_get_time_spent_raw", read_then_delete
+        ):
+            self.assertRaises(
+                TimeSpentNotFoundException,
+                tasks_service.create_or_update_time_spent,
+                self.task_id,
+                self.person_id,
+                "2017-09-23",
+                7200,
+            )
+
     def test_the_task_duration_follows_its_time_spents(self):
         # The duration of the task is the sum of its time spents, and it is
         # read through the memoized task.
