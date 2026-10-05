@@ -300,8 +300,10 @@ def import_person(email, data, department_ids=None, update=False):
         person = Person.create(email=email, password=None, **data)
     elif update:
         person.update(data)
-    if (created or update) and department_ids is not None:
-        person.set_departments(department_ids)
+    if created or update:
+        if department_ids is not None:
+            person.set_departments(department_ids)
+        clear_person_cache()
     index_service.index_person(person)
     return person.serialize_safe()
 
