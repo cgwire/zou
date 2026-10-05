@@ -138,7 +138,7 @@ class ShotRoutesTestCase(ApiDBTestCase):
         The studio filter used to expand into one EXISTS per member of the
         studio; a studio without members then matched every task.
         """
-        studio = Studio.create(name="Paris")
+        studio = Studio.create(name="Paris", color="#000000")
         self.person.update({"studio_id": studio.id})
         self.a_shot_closed_on("2024-06-12")
         path = (
@@ -149,7 +149,7 @@ class ShotRoutesTestCase(ApiDBTestCase):
         result = self.get(f"{path}&studio_id={studio.id}")
         self.assertEqual(result["total"]["day"]["frames"], {"2024-06-12": 100})
 
-        empty_studio = Studio.create(name="Empty")
+        empty_studio = Studio.create(name="Empty", color="#000000")
         result = self.get(f"{path}&studio_id={empty_studio.id}")
         self.assertEqual(result, {})
 
