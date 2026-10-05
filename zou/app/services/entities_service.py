@@ -46,6 +46,7 @@ TEMPORAL_ENTITY_TYPE_NAMES = [
     "Scene",
     "Edit",
     "Concept",
+    "ConceptFolder",
     "Episode",
 ]
 

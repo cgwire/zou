@@ -71,7 +71,8 @@ def clear_asset_type_cache(asset_type_id=None):
 def get_temporal_type_ids():
     """
     Return the ids of the entity types that are not asset types: everything
-    positioned in time (shot, sequence, episode, edit, scene, concept).
+    positioned in time (shot, sequence, episode, edit, scene, concept) and
+    the folders the concepts are sorted in.
     """
     shot_type = shots_service.get_shot_type()
     scene_type = shots_service.get_scene_type()
@@ -79,6 +80,7 @@ def get_temporal_type_ids():
     episode_type = shots_service.get_episode_type()
     edit_type = edits_service.get_edit_type()
     concept_type = concepts_service.get_concept_type()
+    concept_folder_type = concepts_service.get_concept_folder_type()
 
     return [
         shot_type["id"],
@@ -87,6 +89,7 @@ def get_temporal_type_ids():
         edit_type["id"],
         scene_type["id"],
         concept_type["id"],
+        concept_folder_type["id"],
     ]
 
 

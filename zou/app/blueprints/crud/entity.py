@@ -1,5 +1,6 @@
 from flasgger import swag_from
 import copy
+import re
 
 from flask import current_app
 from flask_jwt_extended import jwt_required
@@ -54,9 +55,12 @@ class EntityEventMixin(object):
                 shots_service.clear_shot_cache(instance_id)
             if type_name == "asset":
                 assets_service.clear_asset_cache(instance_id)
+        # ConceptFolder gives concept-folder:update and concept_folder_id,
+        # the names the concept folder routes emit.
+        words = [word.lower() for word in re.findall("[A-Z][a-z]*", type_name)]
         events.emit(
-            f"{type_name.lower()}:{event_name}",
-            {f"{type_name.lower()}_id": instance_id},
+            f"{'-'.join(words)}:{event_name}",
+            {f"{'_'.join(words)}_id": instance_id},
             project_id=entity_dict["project_id"],
         )
 

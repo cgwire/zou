@@ -15,7 +15,11 @@ from zou.app.services import (
 
 from zou.app.mixin import ArgsMixin
 from zou.app.utils import query, permissions, validation
-from zou.app.blueprints.concepts.schemas import NewConceptSchema
+from zou.app.blueprints.concepts.schemas import (
+    ConceptFolderSchema,
+    MoveConceptsSchema,
+    NewConceptSchema,
+)
 
 
 class ConceptResource(MethodView, ArgsMixin):
@@ -180,5 +184,84 @@ class ProjectConceptsResource(MethodView, ArgsMixin):
             description=body.description,
             entity_concept_links=body.entity_concept_links,
             created_by=persons_service.get_current_user()["id"],
+            parent_id=body.parent_id,
         )
         return concept, 201
+
+
+class ProjectConceptFoldersResource(MethodView):
+    @jwt_required()
+    @swag_from("openapi/ProjectConceptFoldersResource_get.yml")
+    def get(self, project_id):
+        """
+        Get project concept folders
+        """
+        projects_service.get_project(project_id)
+        permissions_service.check_project_access(project_id)
+        if (
+            permissions.has_vendor_permissions()
+            or permissions.has_client_permissions()
+        ):
+            raise permissions.PermissionDenied
+        return concepts_service.get_concept_folders_for_project(project_id)
+
+    @jwt_required()
+    @swag_from("openapi/ProjectConceptFoldersResource_post.yml")
+    def post(self, project_id):
+        """
+        Create concept folder
+        """
+        body = validation.validate_request_body(ConceptFolderSchema)
+        projects_service.get_project(project_id)
+        permissions_service.check_supervisor_project_access(project_id)
+        concept_folder = concepts_service.create_concept_folder(
+            project_id,
+            body.name,
+            created_by=persons_service.get_current_user()["id"],
+        )
+        return concept_folder, 201
+
+
+class ConceptFolderResource(MethodView):
+    @jwt_required()
+    @swag_from("openapi/ConceptFolderResource_put.yml")
+    def put(self, concept_folder_id):
+        """
+        Rename concept folder
+        """
+        body = validation.validate_request_body(ConceptFolderSchema)
+        concept_folder = concepts_service.get_concept_folder(concept_folder_id)
+        permissions_service.check_supervisor_project_access(
+            concept_folder["project_id"]
+        )
+        return concepts_service.update_concept_folder(
+            concept_folder_id, body.name
+        )
+
+    @jwt_required()
+    @swag_from("openapi/ConceptFolderResource_delete.yml")
+    def delete(self, concept_folder_id):
+        """
+        Delete concept folder
+        """
+        concept_folder = concepts_service.get_concept_folder(concept_folder_id)
+        permissions_service.check_supervisor_project_access(
+            concept_folder["project_id"]
+        )
+        concepts_service.remove_concept_folder(concept_folder_id)
+        return "", 204
+
+
+class MoveConceptsResource(MethodView):
+    @jwt_required()
+    @swag_from("openapi/MoveConceptsResource_post.yml")
+    def post(self, project_id):
+        """
+        Move concepts to a concept folder
+        """
+        body = validation.validate_request_body(MoveConceptsSchema)
+        projects_service.get_project(project_id)
+        permissions_service.check_supervisor_project_access(project_id)
+        return concepts_service.move_concepts(
+            project_id, body.concept_ids, body.concept_folder_id
+        )

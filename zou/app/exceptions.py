@@ -39,6 +39,10 @@ class ConceptNotFoundException(NotFound):
     pass
 
 
+class ConceptFolderNotFoundException(NotFound):
+    pass
+
+
 class SceneNotFoundException(NotFound):
     pass
 
