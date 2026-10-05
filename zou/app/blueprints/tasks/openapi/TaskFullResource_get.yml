@@ -1,0 +1,80 @@
+Get task full
+---
+description: Return a task with many information. Includes full details
+  for assignees, task type, and task status.
+tags:
+- Tasks
+parameters:
+  - in: path
+    name: task_id
+    required: true
+    schema:
+      type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+responses:
+    200:
+        description: Task with full information
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  example: SH010 Animation
+                task_type_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c250
+                task_status_id:
+                  type: string
+                  format: uuid
+                  example: c24a6ea4-ce75-4665-a070-57453082c250
+                entity_id:
+                  type: string
+                  format: uuid
+                  example: d24a6ea4-ce75-4665-a070-57453082c250
+                project_id:
+                  type: string
+                  format: uuid
+                  example: e24a6ea4-ce75-4665-a070-57453082c250
+                assignees:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        example: f24a6ea4-ce75-4665-a070-57453082c250
+                      first_name:
+                        type: string
+                        example: John
+                      last_name:
+                        type: string
+                        example: Doe
+                task_type:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                      example: b24a6ea4-ce75-4665-a070-57453082c250
+                    name:
+                      type: string
+                      example: Animation
+                task_status:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                      example: c24a6ea4-ce75-4665-a070-57453082c250
+                    name:
+                      type: string
+                      example: In Progress

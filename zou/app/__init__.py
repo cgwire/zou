@@ -21,7 +21,7 @@ from zou.app import swagger as swagger_module
 from zou.app.swagger import configure_openapi_route
 from zou.app.stores import auth_tokens_store, config_store, file_store
 from zou.app.indexer import indexing
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     ModelWithRelationsDeletionException,
     PersonNotFoundException,
     PreviewProcessingFailedException,
@@ -29,7 +29,7 @@ from zou.app.services.exception import (
     WrongIdFormatException,
     WrongParameterException,
     WrongTaskTypeForEntityException,
-    UnactiveUserException,
+    InactiveUserException,
 )
 
 from zou.app.utils import cache, fs, monitoring
@@ -233,7 +233,7 @@ def configure_auth(app):
             current_app.logger.error(
                 f"Identity {identity.id} is not active anymore"
             )
-            raise UnactiveUserException
+            raise InactiveUserException
 
     @jwt.token_in_blocklist_loader
     def check_if_token_is_revoked(_, payload):

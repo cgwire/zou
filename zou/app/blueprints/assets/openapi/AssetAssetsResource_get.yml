@@ -1,0 +1,42 @@
+Get linked assets
+---
+description: Retrieve all assets that are linked to a specific asset through casting relationships
+tags:
+  - Assets
+parameters:
+  - in: path
+    name: asset_id
+    required: true
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the asset
+responses:
+  200:
+    description: List of linked assets successfully retrieved
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Linked asset unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                description: Linked asset name
+                example: "Character Name"
+              project_id:
+                type: string
+                format: uuid
+                description: Project identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              entity_type_id:
+                type: string
+                format: uuid
+                description: Asset type identifier
+                example: c46c80c6-e097-6887-c292-79675204e470

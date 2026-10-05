@@ -1,0 +1,22 @@
+Download preview movie
+---
+description: Download a movie preview file as attachment.
+tags:
+  - Previews
+parameters:
+  - in: path
+    name: instance_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Preview file unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+responses:
+  200:
+    description: Movie preview downloaded as attachment
+    content:
+      video/mp4:
+        schema:
+          type: string
+          format: binary

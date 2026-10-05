@@ -71,3 +71,21 @@ class TimeSpentTestCase(ApiDBTestCase):
         time_spents = self.get("data/time-spents")
         self.assertEqual(len(time_spents), 2)
         self.delete_404(f"data/time-spents/{fields.gen_uuid()}")
+
+    def test_filter_by_date_range(self):
+        # The three fixtures sit on January 1st, 2nd and 3rd.
+        time_spents = self.get(
+            "data/time-spents?start_date=2024-01-01&end_date=2024-01-02"
+        )
+        self.assertEqual(len(time_spents), 2)
+        self.assertEqual(
+            {ts["date"] for ts in time_spents}, {"2024-01-01", "2024-01-02"}
+        )
+        time_spents = self.get(
+            "data/time-spents?start_date=2024-02-01&end_date=2024-02-28"
+        )
+        self.assertEqual(time_spents, [])
+
+    def test_date_range_needs_both_bounds(self):
+        self.get("data/time-spents?start_date=2024-01-01", 400)
+        self.get("data/time-spents?end_date=2024-01-01", 400)

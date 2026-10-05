@@ -2,7 +2,7 @@ from tests.base import ApiDBTestCase
 
 from zou.app.models.entity import Entity
 from zou.app.services import assets_service, breakdown_service
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     AssetNotFoundException,
     AssetTypeNotFoundException,
 )
@@ -95,22 +95,6 @@ class AssetListTestCase(AssetsTestCase):
         self.assertEqual(
             [asset["id"] for asset in assets], [str(created_in.id)]
         )
-
-    def test_get_full_assets(self):
-        """
-        Ordered by production, then asset type, then asset name. Character
-        sorts before Props, so the rabbit comes first whatever the order
-        the rows were created in.
-        """
-        self.a_character()
-
-        assets = assets_service.get_full_assets()
-
-        self.assertEqual(
-            [(asset["asset_type_name"], asset["name"]) for asset in assets],
-            [("Character", "Rabbit"), ("Props", "Tree")],
-        )
-        self.assertEqual(assets[0]["project_name"], self.project.name)
 
     def test_get_assets_and_tasks(self):
         self.a_character()
@@ -253,21 +237,6 @@ class AssetTypeTestCase(AssetsTestCase):
             AssetTypeNotFoundException,
             assets_service.get_asset_type,
             str(self.shot_type.id),
-        )
-
-    def test_get_asset_type_by_name(self):
-        asset_type = assets_service.get_asset_type_by_name(
-            self.asset_type.name
-        )
-        self.assertDictEqual(
-            asset_type, self.asset_type.serialize(obj_type="AssetType")
-        )
-
-    def test_get_asset_type_by_name_of_a_temporal_type(self):
-        self.assertRaises(
-            AssetTypeNotFoundException,
-            assets_service.get_asset_type_by_name,
-            "Shot",
         )
 
     def test_get_or_create_asset_type(self):
@@ -518,27 +487,6 @@ class AssetWriteTestCase(AssetsTestCase):
         assets_service.get_asset(asset_id)
         assets_service.cancel_asset(asset_id)
         self.assertTrue(assets_service.get_asset(asset_id)["canceled"])
-
-    def test_add_asset_link(self):
-        character = self.a_character()
-        assets_service.add_asset_link(self.asset.id, character.id)
-        asset = assets_service.get_asset(self.asset.id, relations=True)
-        self.assertEqual(asset["entities_out"], [str(character.id)])
-
-    def test_add_asset_link_twice(self):
-        character = self.a_character()
-        assets_service.add_asset_link(self.asset.id, character.id)
-        assets_service.add_asset_link(self.asset.id, character.id)
-        self.assertEqual(
-            len(Entity.get(self.asset.id).entities_out),
-            1,
-        )
-
-    def test_remove_asset_link(self):
-        character = self.a_character()
-        assets_service.add_asset_link(self.asset.id, character.id)
-        assets_service.remove_asset_link(self.asset.id, character.id)
-        self.assertEqual(Entity.get(self.asset.id).entities_out, [])
 
 
 class SharedAssetTestCase(AssetsTestCase):

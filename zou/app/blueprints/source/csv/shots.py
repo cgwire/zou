@@ -1,15 +1,14 @@
+from flasgger import swag_from
 from zou.app.blueprints.source.csv.base import (
     BaseCsvProjectImportResource,
     RowException,
 )
 
-from zou.app.models.entity import Entity
-from zou.app.models.project import ProjectTaskTypeLink
-from zou.app.models.task_type import TaskType
 from zou.app.services import (
+    entities_service,
+    index_service,
     shots_service,
     projects_service,
-    index_service,
     persons_service,
 )
 from zou.app.services.tasks_service import (
@@ -21,76 +20,14 @@ from zou.app.services.tasks_service import (
     get_task_type,
 )
 from zou.app.services.comments_service import create_comment
-from zou.app.services.exception import WrongParameterException
-from zou.app.utils import events
+from zou.app.exceptions import WrongParameterException
 
 
 class ShotsCsvImportResource(BaseCsvProjectImportResource):
+    @swag_from("openapi/ShotsCsvImportResource_post.yml")
     def post(self, project_id):
         """
         Import shots csv
-        ---
-        tags:
-          - Import
-        description: Import project shots from a CSV file. Creates or updates
-          shots based on CSV rows. Supports sequences, episodes, and task
-          status updates.
-        consumes:
-          - multipart/form-data
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: update
-            required: false
-            schema:
-              type: boolean
-            default: false
-            example: false
-            description: Whether to update existing shots
-          - in: formData
-            name: file
-            type: file
-            required: true
-            description: CSV file with shot data
-        responses:
-            201:
-              description: Shots imported successfully
-              content:
-                application/json:
-                  schema:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: SH010
-                        project_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        parent_id:
-                          type: string
-                          format: uuid
-                          example: c24a6ea4-ce75-4665-a070-57453082c25
-                        nb_frames:
-                          type: integer
-                          example: 120
-                        description:
-                          type: string
-                          example: Shot description
-            400:
-              description: Invalid CSV format or missing required columns
         """
         return super().post(project_id)
 
@@ -106,9 +43,9 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         # instances would be expired by every row commit.
         self.task_types_in_project_for_shots = [
             task_type.serialize()
-            for task_type in TaskType.query.join(ProjectTaskTypeLink)
-            .filter(ProjectTaskTypeLink.project_id == project_id)
-            .filter(TaskType.for_entity == "Shot")
+            for task_type in projects_service.get_project_task_types_raw(
+                project_id, "Shot"
+            )
         ]
         self.task_statuses = {
             status["id"]: [status[n].lower() for n in ("name", "short_name")]
@@ -257,7 +194,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
             "entity_type_id": shot_type["id"],
         }
 
-        entity = Entity.get_by(**shot_values)
+        entity = entities_service.find_entity_raw(**shot_values)
 
         shot_new_values = {}
 
@@ -325,29 +262,28 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         tasks_update = self.get_tasks_update(row)
 
         if entity is None:
-            entity = Entity.create(
-                **{**shot_values, **shot_new_values},
+            shot = shots_service.create_shot(
+                project_id,
+                sequence_id,
+                shot_name,
+                data=shot_new_values.get("data"),
+                nb_frames=shot_new_values.get("nb_frames", 0),
+                description=shot_new_values.get("description"),
                 created_by=self.current_user_id,
+                index=False,
             )
-
+            entity = entities_service.get_entity_raw(shot["id"])
             self.shot_ids_to_index.append(entity.id)
-            events.emit(
-                "shot:new", {"shot_id": str(entity.id)}, project_id=project_id
-            )
 
             self.create_and_update_tasks(
                 tasks_update, entity, shot_creation=True
             )
 
         elif self.is_update:
-            entity.update(shot_new_values)
-
-            self.shot_ids_to_index.append(entity.id)
-            events.emit(
-                "shot:update",
-                {"shot_id": str(entity.id)},
-                project_id=project_id,
+            shots_service.update_shot(
+                str(entity.id), shot_new_values, index=False
             )
+            self.shot_ids_to_index.append(entity.id)
 
             self.create_and_update_tasks(
                 tasks_update, entity, shot_creation=False

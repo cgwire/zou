@@ -145,6 +145,21 @@ class CommentRoutesTestCase(CommentTestCase):
         tasks_service.clear_task_status_cache(str(status.id))
         return str(status.id)
 
+    def test_comment_many_refuses_a_malformed_body(self):
+        path = f"/actions/projects/{self.project.id}/tasks/comment-many"
+        self.post(path, {"object_id": str(self.task.id)}, 400)
+        self.post(
+            path,
+            [
+                {
+                    "object_id": "not-a-uuid",
+                    "task_status_id": str(self.task_status.id),
+                    "comment": "note",
+                }
+            ],
+            400,
+        )
+
     def test_batch_comment_tasks_refuses_a_status_closed_to_artists(self):
         """
         is_artist_allowed is read off the role the caller holds on the

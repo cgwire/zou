@@ -1,0 +1,20 @@
+Delete production schedule version task link
+---
+tags:
+  - Crud
+description: Delete a production schedule version task link
+  by its ID. Returns empty response on success. Requires
+  manager access to the project.
+parameters:
+  - in: path
+    name: instance_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+responses:
+    204:
+      description: Task link deleted successfully
+    400:
+      description: Integrity error or cannot delete

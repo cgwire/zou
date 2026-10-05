@@ -1,0 +1,57 @@
+Get done tasks
+---
+description: Retrieve tasks currently assigned to the current user with
+  status marked as done. Returns only tasks from open projects.
+tags:
+- User
+responses:
+    200:
+      description: Finished tasks currently assigned to current user
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Task unique identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                name:
+                  type: string
+                  description: Task name
+                  example: "Completed Task"
+                task_type_id:
+                  type: string
+                  format: uuid
+                  description: Task type identifier
+                  example: c46c80c6-e097-6887-c292-79675204e470
+                task_status_id:
+                  type: string
+                  format: uuid
+                  description: Task status identifier
+                  example: d57d91d7-f108-7998-d403-80786315f580
+                assigner_id:
+                  type: string
+                  format: uuid
+                  description: Person who assigned the task
+                  example: e68e02e8-0219-8009-e514-918974260690
+                assignees:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  description: List of assigned person identifiers
+                  example: ["f79f13f9-1320-9010-f625-a09008537180"]
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: "2023-01-01T12:00:00Z"
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Last update timestamp
+                  example: "2023-01-01T12:30:00Z"

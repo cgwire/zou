@@ -1,0 +1,41 @@
+Get chat details
+---
+description: Retrieve chat information and messages for a specific entity.
+  Returns chat metadata including participants and all associated messages.
+tags:
+  - Chat
+parameters:
+  - in: path
+    name: entity_id
+    description: ID of the entity related to the chat
+    type: string
+    format: uuid
+    required: true
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+responses:
+  200:
+    description: Chat information successfully retrieved
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Chat unique identifier
+            entity_id:
+              type: string
+              format: uuid
+              description: Entity ID this chat is associated with
+            participants:
+              type: array
+              items:
+                type: string
+                format: uuid
+              description: List of participant user IDs
+            messages:
+              type: array
+              items:
+                type: object
+              description: Array of chat messages

@@ -3,7 +3,7 @@ from tests.base import ApiDBTestCase
 from zou.app import config
 from zou.app.models.person import Person
 from zou.app.services import persons_service, tasks_service
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     PersonInProtectedAccounts,
     PersonNotFoundException,
     WrongParameterException,
@@ -60,13 +60,6 @@ class PersonReadTestCase(PersonsTestCase):
         )
         self.assertRaises(
             PersonNotFoundException, persons_service.get_person_raw, None
-        )
-
-    def test_get_person_of_a_deleted_person(self):
-        persons_service.get_person(self.person_id)
-        persons_service.delete_person(self.person_id)
-        self.assertRaises(
-            PersonNotFoundException, persons_service.get_person, self.person_id
         )
 
     def test_get_person_hides_the_credentials(self):
@@ -319,6 +312,50 @@ class PersonListTestCase(PersonsTestCase):
         self.assertNotIn(
             guest_id,
             [person["id"] for person in persons_service.get_active_persons()],
+        )
+
+    def test_count_active_users_leaves_out_bots_and_guests(self):
+        before = persons_service.count_active_users()
+        persons_service.create_person(
+            "bot@example.com", None, "Bot", "Account", is_bot=True
+        )
+        self.a_guest()
+        self.assertEqual(persons_service.count_active_users(), before)
+        persons_service.create_person(
+            "human@example.com", None, "Human", "Account"
+        )
+        self.assertEqual(persons_service.count_active_users(), before + 1)
+
+    def test_import_person_creates_then_updates_on_demand(self):
+        self.generate_fixture_department()
+        department_id = str(self.department.id)
+        data = {"first_name": "Ada", "last_name": "Lovelace"}
+
+        person = persons_service.import_person(
+            "ada@example.com", data, [department_id]
+        )
+        self.assertEqual(person["first_name"], "Ada")
+        self.assertEqual(
+            persons_service.get_person(person["id"], relations=True)[
+                "departments"
+            ],
+            [department_id],
+        )
+
+        # Without update, an existing account is left alone.
+        person = persons_service.import_person(
+            "ada@example.com", {"first_name": "Augusta"}, None
+        )
+        self.assertEqual(person["first_name"], "Ada")
+        person = persons_service.import_person(
+            "ada@example.com", {"first_name": "Augusta"}, [], update=True
+        )
+        self.assertEqual(person["first_name"], "Augusta")
+        self.assertEqual(
+            persons_service.get_person(person["id"], relations=True)[
+                "departments"
+            ],
+            [],
         )
 
     def test_get_all_raw_active_persons(self):
@@ -590,21 +627,6 @@ class PersonWriteTestCase(PersonsTestCase):
         new_password = auth.encrypt_password("newpassword")
         persons_service.update_password(self.person_email, new_password)
         self.assertEqual(Person.get(self.person_id).password, new_password)
-
-    def test_delete_person(self):
-        person = persons_service.create_person(
-            "todelete@test.com",
-            auth.encrypt_password("pass"),
-            "Delete",
-            "Me",
-        )
-        result = persons_service.delete_person(person["id"])
-        self.assertEqual(result["id"], person["id"])
-        self.assertRaises(
-            PersonNotFoundException,
-            persons_service.get_person,
-            person["id"],
-        )
 
     def test_add_to_department(self):
         department_id = str(self.department.id)

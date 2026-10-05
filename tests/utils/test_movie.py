@@ -11,8 +11,6 @@ from unittest.mock import patch
 
 import ffmpeg
 
-from unittest.mock import patch
-
 from zou.utils import movie
 
 
@@ -111,6 +109,53 @@ class MovieTestCase(unittest.TestCase):
             self.assertEqual(Image.open(tile_path).size[1], 600)
         finally:
             os.remove(tile_path)
+
+    def test_save_file_keeps_the_dotted_extension(self):
+        from werkzeug.datastructures import FileStorage
+
+        with open(self.video_only_path, "rb") as source:
+            uploaded = FileStorage(source, filename="clip.webm")
+            saved_path = movie.save_file(self.tmpdir, "abc", uploaded)
+        self.assertEqual(os.path.basename(saved_path), "abc.webm.tmp")
+        self.assertTrue(os.path.exists(saved_path))
+
+    def test_empty_soundtrack_path_keeps_the_container(self):
+        # A four letter extension used to be read as "tmp" then as the
+        # whole path prefix, which sent ffmpeg to a folder that does not
+        # exist.
+        self.assertEqual(
+            movie.get_empty_soundtrack_path("/tmp/zou/abc.mov.tmp"),
+            "/tmp/zou/abc.mov.tmp_empty_audio.mov",
+        )
+        self.assertEqual(
+            movie.get_empty_soundtrack_path("/tmp/zou/abc.mp4"),
+            "/tmp/zou/abc.mp4_empty_audio.mp4",
+        )
+        # WebM refuses the aac track: the output goes to an mp4 container.
+        self.assertEqual(
+            movie.get_empty_soundtrack_path("/tmp/zou/abc.webm.tmp"),
+            "/tmp/zou/abc.webm.tmp_empty_audio.mp4",
+        )
+        self.assertEqual(
+            movie.get_empty_soundtrack_path("/tmp/zou/abc"),
+            "/tmp/zou/abc_empty_audio.mp4",
+        )
+
+    def test_soundtrack_of_a_webm_upload(self):
+        webm_path = str(Path(self.tmpdir) / "clip.webm.tmp")
+        ffmpeg.input(
+            "testsrc=size=320x240:rate=25:duration=1", f="lavfi"
+        ).output(
+            webm_path, vcodec="libvpx", pix_fmt="yuv420p", an=None, f="webm"
+        ).overwrite_output().run(
+            quiet=True
+        )
+        self.assertFalse(movie.has_soundtrack(webm_path))
+
+        ret, _, _ = movie.add_empty_soundtrack(webm_path)
+
+        self.assertEqual(ret, 0)
+        self.assertTrue(movie.has_soundtrack(webm_path))
 
     def test_get_movie_size(self):
         width, height = movie.get_movie_size(self.video_only_path)

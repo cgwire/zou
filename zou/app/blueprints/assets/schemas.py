@@ -35,6 +35,16 @@ class AssetInstanceSchema(BaseSchema):
     description: Optional[str] = None
 
 
+class CastingEntrySchema(BaseSchema):
+    """
+    One asset of a casting list: the asset and how many times it appears.
+    """
+
+    asset_id: UUID
+    nb_occurences: int = Field(default=1, ge=0)
+    label: str = ""
+
+
 class SetSharedAssetsSchema(BaseSchema):
     """
     Body for setting shared status on assets.

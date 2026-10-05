@@ -1,0 +1,68 @@
+Add preview to comment
+---
+tags:
+- Tasks
+description: Add a preview to a comment by uploading a file in multipart
+  form data.
+parameters:
+  - in: path
+    name: task_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+  - in: path
+    name: comment_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+  - in: path
+    name: preview_file_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+requestBody:
+  required: true
+  content:
+    multipart/form-data:
+      schema:
+        type: object
+        properties:
+          file:
+            type: string
+            format: binary
+            description: Preview file to upload
+responses:
+    201:
+      description: Preview added to comment
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              comment_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              task_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              revision:
+                type: integer
+                example: 2
+              person_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+    400:
+      description: Bad request

@@ -1,0 +1,86 @@
+Get last entity output files
+---
+description: Retrieve the last revisions of output files for a given
+  entity grouped by output type and file name. Returns the most
+  recent version of each output file.
+tags:
+- Files
+parameters:
+  - in: path
+    name: entity_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Entity unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+  - in: query
+    name: output_type_id
+    required: false
+    schema:
+      type: string
+      format: uuid
+    description: Filter by output type
+    example: b35b7fb5-df86-5776-b181-68564193d360
+  - in: query
+    name: task_type_id
+    required: false
+    schema:
+      type: string
+      format: uuid
+    description: Filter by task type
+    example: c46c80c6-e097-6887-c292-79675204e470
+  - in: query
+    name: representation
+    required: false
+    schema:
+      type: string
+    description: Filter by representation
+    example: "mp4"
+  - in: query
+    name: file_status_id
+    required: false
+    schema:
+      type: string
+      format: uuid
+    description: Filter by file status
+    example: d57d91d7-f108-7998-d403-80786315f580
+  - in: query
+    name: name
+    required: false
+    schema:
+      type: string
+    description: Filter by file name
+    example: "main"
+responses:
+  200:
+    description: Last revisions of output files grouped by output type and file name
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Output file unique identifier
+                example: e68e02e8-0219-8009-e514-918974260690
+              name:
+                type: string
+                description: Output file name
+                example: "main"
+              revision:
+                type: integer
+                description: Output file revision
+                example: 2
+              path:
+                type: string
+                description: Output file path
+                example: "/project/asset/output/main_v002.mp4"
+              updated_at:
+                type: string
+                format: date-time
+                description: Last update timestamp
+                example: "2023-01-01T12:00:00Z"

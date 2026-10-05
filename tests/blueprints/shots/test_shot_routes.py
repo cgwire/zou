@@ -1,4 +1,7 @@
+import datetime
 from tests.base import ApiDBTestCase
+
+from zou.app.models.studio import Studio
 
 from zou.app.services import tasks_service
 from zou.app.utils import fields
@@ -98,6 +101,57 @@ class ShotRoutesTestCase(ApiDBTestCase):
                 result[entry]["day"]["frames"], {"2024-06-12": 100}
             )
             self.assertEqual(result[entry]["month"]["count"], {"2024-06": 1})
+
+    def test_weighted_quotas_spread_the_shot_over_its_working_days(self):
+        """
+        Without time spents, the frames are spread evenly over the business
+        days between the wip date and the feedback date. The cursor used to
+        start at the feedback date, which pushed the whole shot past it.
+        """
+        self.shot.update({"nb_frames": 100})
+        tasks_service.assign_task(str(self.shot_task.id), str(self.person.id))
+        self.shot_task.update(
+            {
+                "real_start_date": datetime.datetime(2024, 6, 3, 10, 0),
+                "end_date": datetime.datetime(2024, 6, 7, 10, 0),
+            }
+        )
+
+        result = self.get(
+            f"/data/projects/{self.project.id}"
+            f"/quotas/{self.task_type_animation.id}?count_mode=weighted"
+        )
+
+        self.assertEqual(
+            result["total"]["day"]["frames"],
+            {
+                "2024-06-03": 20,
+                "2024-06-04": 20,
+                "2024-06-05": 20,
+                "2024-06-06": 20,
+                "2024-06-07": 20,
+            },
+        )
+
+    def test_get_project_quotas_of_a_studio(self):
+        """
+        The studio filter used to expand into one EXISTS per member of the
+        studio; a studio without members then matched every task.
+        """
+        studio = Studio.create(name="Paris")
+        self.person.update({"studio_id": studio.id})
+        self.a_shot_closed_on("2024-06-12")
+        path = (
+            f"/data/projects/{self.project.id}"
+            f"/quotas/{self.task_type_animation.id}?count_mode=feedback"
+        )
+
+        result = self.get(f"{path}&studio_id={studio.id}")
+        self.assertEqual(result["total"]["day"]["frames"], {"2024-06-12": 100})
+
+        empty_studio = Studio.create(name="Empty")
+        result = self.get(f"{path}&studio_id={empty_studio.id}")
+        self.assertEqual(result, {})
 
     def test_get_project_person_quotas(self):
         """

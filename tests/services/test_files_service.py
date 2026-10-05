@@ -11,7 +11,7 @@ from zou.app.models.file_status import FileStatus
 from zou.app.models.software import Software
 from zou.app.models.working_file import WorkingFile
 from zou.app.services import deletion_service, files_service
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     EntryAlreadyExistsException,
     OutputFileNotFoundException,
     OutputTypeNotFoundException,
@@ -32,18 +32,18 @@ class DefaultFileStatusTestCase(ApiDBTestCase):
 
     def setUp(self):
         super().setUp()
-        cache.cache.delete_memoized(files_service.get_default_status)
+        cache.cache.delete_memoized(files_service.get_default_file_status)
 
     def test_the_default_status_is_created_on_first_read(self):
         self.assertEqual(FileStatus.query.count(), 0)
 
-        file_status = files_service.get_default_status()
+        file_status = files_service.get_default_file_status()
 
         self.assertEqual(
             file_status["name"], app.config["DEFAULT_FILE_STATUS"]
         )
         self.assertEqual(FileStatus.query.count(), 1)
-        self.assertEqual(files_service.get_default_status(), file_status)
+        self.assertEqual(files_service.get_default_file_status(), file_status)
 
 
 class FilesTestCase(ApiDBTestCase):
@@ -407,7 +407,7 @@ class OutputFileTestCase(FilesTestCase):
         self.assertEqual(len(captured), 1)
 
     def test_an_entity_with_no_output_file_has_no_last_revision(self):
-        from zou.app.services.exception import NoOutputFileException
+        from zou.app.exceptions import NoOutputFileException
 
         self.assertRaises(
             NoOutputFileException,
@@ -777,7 +777,7 @@ class PreviewFileTestCase(FilesTestCase):
         files_service.get_preview_file(preview_file_id)
         files_service.get_preview_file_for_access(preview_file_id)
 
-        files_service.remove_preview_file(preview_file_id)
+        files_service.remove_preview_file_row(preview_file_id)
 
         for get in [
             files_service.get_preview_file,
@@ -791,7 +791,7 @@ class PreviewFileTestCase(FilesTestCase):
     def test_a_removed_preview_is_announced(self):
         self.generate_fixture_preview_file()
         captured = self.capture_events("preview-file:delete")
-        files_service.remove_preview_file(self.preview_file.id)
+        files_service.remove_preview_file_row(self.preview_file.id)
         self.assertEqual(len(captured), 1)
 
     def test_a_deleted_preview_stops_being_downloadable(self):

@@ -1,7 +1,7 @@
 from tests.base import ApiDBTestCase
 
 from zou.app.models.hardware_item import HardwareItem
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     DepartmentNotFoundException,
     SoftwareNotFoundException,
     HardwareItemNotFoundException,

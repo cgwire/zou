@@ -154,6 +154,19 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
         self.assertEqual(by_type[tt2], 1)
         self.assertEqual(by_type[tt1], 2)
 
+    def test_reorder_routes_refuse_a_body_without_the_id_list(self):
+        template = self.post("/data/project-templates", {"name": "Empty"})
+        self.post(
+            f"/actions/project-templates/{template['id']}/task-types/reorder",
+            {"task_type_ids": "not-a-list"},
+            400,
+        )
+        self.post(
+            f"/actions/project-templates/{template['id']}/task-statuses/reorder",
+            [],
+            400,
+        )
+
     def test_task_status_reorder_route_preserves_roles(self):
         template = self._create_template()
         ts1 = str(self.task_status.id)

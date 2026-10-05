@@ -1,0 +1,40 @@
+Get asset type
+---
+description: Retrieve detailed information about a specific asset type including metadata and configuration
+tags:
+  - Assets
+parameters:
+  - in: path
+    name: asset_type_id
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+    required: true
+    description: Unique identifier of the asset type
+responses:
+  200:
+    description: Given asset type
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Asset type unique identifier
+              example: c46c80c6-e097-6887-c292-79675204e470
+            name:
+              type: string
+              description: Asset type name
+              example: "Character"
+            created_at:
+              type: string
+              format: date-time
+              description: Creation timestamp
+              example: "2023-01-01T12:00:00Z"
+            updated_at:
+              type: string
+              format: date-time
+              description: Last update timestamp
+              example: "2023-01-01T12:30:00Z"

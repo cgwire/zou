@@ -1,0 +1,19 @@
+        Export time spents csv
+        ---
+        tags:
+          - Export
+        description: Export time spent records as CSV file. Includes time
+          spent entries for open projects with project, person, entity,
+          task type, date, and duration information.
+        produces:
+          - text/csv
+        responses:
+            200:
+              description: Time spents exported as CSV successfully
+              content:
+                text/csv:
+                  schema:
+                    type: string
+                  example: "Project,Person,Entity Type Name,Entity,Task Type,Date,Time spent
+Project A,John Doe,Shot,SH010,Animation,2024-01-15,480"
+        

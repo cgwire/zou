@@ -1,0 +1,46 @@
+Get episodes and tasks
+---
+tags:
+- Shots
+description: Get episodes and their related tasks.
+  Optionally filter by project.
+parameters:
+  - in: query
+    name: project_id
+    required: False
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+responses:
+    200:
+        description: All episodes
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c250
+                  name:
+                    type: string
+                    example: EP01
+                  project_id:
+                    type: string
+                    format: uuid
+                    example: b24a6ea4-ce75-4665-a070-57453082c250
+                  tasks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          example: c24a6ea4-ce75-4665-a070-57453082c250
+                        name:
+                          type: string
+                          example: EP01 Layout

@@ -1,0 +1,31 @@
+Delete comment reply
+---
+description: Delete a specific reply from a comment.
+ Only the reply author or administrators can delete replies.
+tags:
+  - Comments
+parameters:
+  - in: path
+    name: task_id
+    required: true
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the task
+  - in: path
+    name: comment_id
+    required: true
+    type: string
+    format: uuid
+    example: b35b7fb5-df86-5776-b181-68564193d360
+    description: Unique identifier of the comment
+  - in: path
+    name: reply_id
+    required: true
+    type: string
+    format: uuid
+    example: c46c80c6-e097-6887-c292-79675204e470
+    description: Unique identifier of the reply
+responses:
+  200:
+    description: Reply successfully deleted

@@ -1,3 +1,4 @@
+from flasgger import swag_from
 import datetime
 import ipaddress
 
@@ -27,11 +28,11 @@ from zou.app.blueprints.persons.schemas import (
     AddToDepartmentSchema,
     ChangePasswordSchema,
 )
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     DepartmentNotFoundException,
     WrongDateFormatException,
     WrongParameterException,
-    UnactiveUserException,
+    InactiveUserException,
     TwoFactorAuthenticationNotEnabledException,
     PersonInProtectedAccounts,
 )
@@ -98,48 +99,10 @@ def _shape_day_offs(day_offs, with_description):
 class DesktopLoginsResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/DesktopLoginsResource_get.yml")
     def get(self, person_id):
         """
         Get desktop login logs
-        ---
-        description: Retrieve desktop login logs for a person. Desktop login
-          logs can only be created by current user.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Person unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: Desktop login logs for the person
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        description: Log entry unique identifier
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      person_id:
-                        type: string
-                        format: uuid
-                        description: Person unique identifier
-                        example: b35b7fb5-df86-5776-b181-68564193d36
-                      date:
-                        type: string
-                        format: date-time
-                        description: Login date and time
-                        example: "2022-07-12T10:30:00Z"
         """
         current_user = persons_service.get_current_user()
         if (
@@ -152,61 +115,10 @@ class DesktopLoginsResource(MethodView, ArgsMixin):
         return persons_service.get_desktop_login_logs(person_id)
 
     @jwt_required()
+    @swag_from("openapi/DesktopLoginsResource_post.yml")
     def post(self, person_id):
         """
         Create desktop login log
-        ---
-        description: Add a new log entry for desktop logins for a person.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Person unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - date
-                properties:
-                  date:
-                    type: string
-                    format: date
-                    description: Login date
-                    example: "2022-07-12"
-        responses:
-          201:
-            description: Desktop login log entry created
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Log entry unique identifier
-                      example: a24a6ea4-ce75-4665-a070-57453082c25
-                    person_id:
-                      type: string
-                      format: uuid
-                      description: Person unique identifier
-                      example: b35b7fb5-df86-5776-b181-68564193d36
-                    date:
-                      type: string
-                      format: date-time
-                      description: Login date and time
-                      example: "2022-07-12T10:30:00Z"
-          400:
-            description: Invalid date format
         """
         body = validation.validate_request_body(DesktopLoginCreateSchema)
         date = (
@@ -232,33 +144,10 @@ class DesktopLoginsResource(MethodView, ArgsMixin):
 class PresenceLogsResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/PresenceLogsResource_get.yml")
     def get(self, month_date):
         """
         Get presence logs
-        ---
-        description: Return a CSV file containing the presence logs based on a
-          daily basis for the given month.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: month_date
-            required: true
-            schema:
-              type: string
-              format: date
-            description: Month in YYYY-MM format
-            example: "2022-07"
-        responses:
-          200:
-            description: CSV file containing the presence logs based on daily basis
-            content:
-              text/csv:
-                schema:
-                  type: string
-                  format: binary
-          400:
-            description: Invalid date format
         """
         permissions.check_admin_permissions()
         try:
@@ -274,71 +163,10 @@ class PresenceLogsResource(MethodView):
 class TimeSpentsResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/TimeSpentsResource_get.yml")
     def get(self, person_id):
         """
         Get time spents
-        ---
-        description: Get all time spents for the given person. Optionally can
-          accept date range parameters.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Person unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: start_date
-            required: false
-            schema:
-              type: string
-              format: date
-            description: Start date for date range filter
-            example: "2022-07-01"
-          - in: query
-            name: end_date
-            required: false
-            schema:
-              type: string
-              format: date
-            description: End date for date range filter
-            example: "2022-07-31"
-        responses:
-          200:
-            description: All time spents for the given person
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        description: Time spent unique identifier
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      person_id:
-                        type: string
-                        format: uuid
-                        description: Person unique identifier
-                        example: b35b7fb5-df86-5776-b181-68564193d36
-                      duration:
-                        type: number
-                        format: float
-                        description: Time spent duration in hours
-                        example: 8.5
-                      date:
-                        type: string
-                        format: date
-                        description: Date of time spent entry
-                        example: "2022-07-12"
-          400:
-            description: Invalid date range parameters
         """
         permissions_service.check_person_is_not_bot(person_id)
         permissions.check_admin_permissions()
@@ -366,62 +194,10 @@ class TimeSpentsResource(MethodView, ArgsMixin):
 class DateTimeSpentsResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/DateTimeSpentsResource_get.yml")
     def get(self, person_id, date):
         """
         Get time spents for date
-        ---
-        description: Get time spents for given person and specific date.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Person unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: date
-            required: true
-            schema:
-              type: string
-              format: date
-            description: Date to get time spents for
-            example: "2022-07-12"
-        responses:
-          200:
-            description: Time spents for given person and date
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        description: Time spent unique identifier
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      person_id:
-                        type: string
-                        format: uuid
-                        description: Person unique identifier
-                        example: b35b7fb5-df86-5776-b181-68564193d36
-                      duration:
-                        type: number
-                        format: float
-                        description: Time spent duration in hours
-                        example: 8.5
-                      date:
-                        type: string
-                        format: date
-                        description: Date of time spent entry
-                        example: "2022-07-12"
-          400:
-            description: Wrong date format
         """
         permissions_service.check_person_is_not_bot(person_id)
         project_ids, department_ids = (
@@ -441,59 +217,10 @@ class DateTimeSpentsResource(MethodView):
 class DayOffResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/DayOffResource_get.yml")
     def get(self, person_id, date):
         """
         Get day off
-        ---
-        description: Get day off object for given person and date.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Person unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: date
-            required: true
-            schema:
-              type: string
-              format: date
-            description: Date to get day off for
-            example: "2022-07-12"
-        responses:
-          200:
-            description: Day off object for given person and date
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Day off unique identifier
-                      example: a24a6ea4-ce75-4665-a070-57453082c25
-                    person_id:
-                      type: string
-                      format: uuid
-                      description: Person unique identifier
-                      example: b35b7fb5-df86-5776-b181-68564193d36
-                    date:
-                      type: string
-                      format: date
-                      description: Day off date
-                      example: "2022-07-12"
-                    type:
-                      type: string
-                      description: Day off type
-                      example: "vacation"
-          400:
-            description: Wrong date format
         """
         with_description = _check_day_off_read_access(person_id)
         try:
@@ -524,48 +251,10 @@ class PersonDurationTimeSpentsResource(MethodView, ArgsMixin):
 class PersonYearTimeSpentsResource(PersonDurationTimeSpentsResource):
 
     @jwt_required()
+    @swag_from("openapi/PersonYearTimeSpentsResource_get.yml")
     def get(self, person_id, year):
         """
         Get year time spents
-        ---
-        description: Get aggregated time spents for given person and year.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Person unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: year
-            required: true
-            schema:
-              type: integer
-            description: Year to get aggregated time spents for
-            example: 2022
-        responses:
-          200:
-            description: Aggregated time spents for given person and year
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    total_duration:
-                      type: number
-                      format: float
-                      description: Total duration in hours
-                      example: 2080.5
-                    year:
-                      type: integer
-                      description: Year
-                      example: 2022
-          400:
-            description: Wrong date format
         """
         permissions_service.check_person_is_not_bot(person_id)
         try:
@@ -581,61 +270,10 @@ class PersonYearTimeSpentsResource(PersonDurationTimeSpentsResource):
 class PersonMonthTimeSpentsResource(PersonDurationTimeSpentsResource):
 
     @jwt_required()
+    @swag_from("openapi/PersonMonthTimeSpentsResource_get.yml")
     def get(self, person_id, year, month):
         """
         Get month time spents
-        ---
-        description: Get aggregated time spents for given person and month.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Person unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: year
-            required: true
-            schema:
-              type: integer
-            description: Year to get aggregated time spents for
-            example: 2022
-          - in: path
-            name: month
-            required: true
-            schema:
-              type: integer
-            description: Month to get aggregated time spents for
-            example: 7
-            minimum: 1
-            maximum: 12
-        responses:
-          200:
-            description: Aggregated time spents for given person and month
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    total_duration:
-                      type: number
-                      format: float
-                      description: Total duration in hours
-                      example: 173.5
-                    year:
-                      type: integer
-                      description: Year
-                      example: 2022
-                    month:
-                      type: integer
-                      description: Month
-                      example: 7
-          400:
-            description: Wrong date format
         """
         permissions_service.check_person_is_not_bot(person_id)
         try:
@@ -652,47 +290,10 @@ class PersonMonthTimeSpentsResource(PersonDurationTimeSpentsResource):
 class PersonMonthAllTimeSpentsResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/PersonMonthAllTimeSpentsResource_get.yml")
     def get(self, person_id, year, month):
         """
         Get all month time spents
-        ---
-        description: Get all time spents for a given person and month.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Person unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: year
-            required: true
-            schema:
-              type: integer
-            description: Year to get time spents for
-            example: 2022
-          - in: path
-            name: month
-            required: true
-            schema:
-              type: integer
-            description: Month to get time spents for
-            example: 7
-            minimum: 1
-            maximum: 12
-        responses:
-          200:
-            description: All time spents for the given person and month
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
         """
         permissions_service.check_person_is_not_bot(person_id)
         permissions_service.check_person_access(person_id)
@@ -708,61 +309,10 @@ class PersonMonthAllTimeSpentsResource(MethodView):
 class PersonWeekTimeSpentsResource(PersonDurationTimeSpentsResource):
 
     @jwt_required()
+    @swag_from("openapi/PersonWeekTimeSpentsResource_get.yml")
     def get(self, person_id, year, week):
         """
         Get week time spents
-        ---
-        description: Get aggregated time spents for given person and week.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Person unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: year
-            required: true
-            schema:
-              type: integer
-            description: Year to get aggregated time spents for
-            example: 2022
-          - in: path
-            name: week
-            required: true
-            schema:
-              type: integer
-            description: Week number to get aggregated time spents for
-            example: 35
-            minimum: 1
-            maximum: 52
-        responses:
-          200:
-            description: Aggregated time spents for given person and week
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    total_duration:
-                      type: number
-                      format: float
-                      description: Total duration in hours
-                      example: 40.0
-                    year:
-                      type: integer
-                      description: Year
-                      example: 2022
-                    week:
-                      type: integer
-                      description: Week number
-                      example: 35
-          400:
-            description: Wrong date format
         """
         permissions_service.check_person_is_not_bot(person_id)
         try:
@@ -779,74 +329,10 @@ class PersonWeekTimeSpentsResource(PersonDurationTimeSpentsResource):
 class PersonDayTimeSpentsResource(PersonDurationTimeSpentsResource):
 
     @jwt_required()
+    @swag_from("openapi/PersonDayTimeSpentsResource_get.yml")
     def get(self, person_id, year, month, day):
         """
         Get day time spents
-        ---
-        description: Get aggregated time spents for given person and day.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Person unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: year
-            required: true
-            schema:
-              type: integer
-            description: Year to get aggregated time spents for
-            example: 2022
-          - in: path
-            name: month
-            required: true
-            schema:
-              type: integer
-            description: Month to get aggregated time spents for
-            example: 7
-            minimum: 1
-            maximum: 12
-          - in: path
-            name: day
-            required: true
-            schema:
-              type: integer
-            description: Day to get aggregated time spents for
-            example: 12
-            minimum: 1
-            maximum: 31
-        responses:
-          200:
-            description: Aggregated time spents for given person and day
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    total_duration:
-                      type: number
-                      format: float
-                      description: Total duration in hours
-                      example: 8.5
-                    year:
-                      type: integer
-                      description: Year
-                      example: 2022
-                    month:
-                      type: integer
-                      description: Month
-                      example: 7
-                    day:
-                      type: integer
-                      description: Day
-                      example: 12
-          400:
-            description: Wrong date format
         """
         permissions_service.check_person_is_not_bot(person_id)
         try:
@@ -917,57 +403,10 @@ class PersonMonthQuotaShotsResource(MethodView, PersonQuotaMixin):
         )
 
     @jwt_required()
+    @swag_from("openapi/PersonMonthQuotaShotsResource_get.yml")
     def get(self, person_id, year, month):
         """
         Get month quota shots
-        ---
-        description: Get ended shots used for quota calculation of this month.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Person unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: year
-            required: true
-            schema:
-              type: integer
-            description: Year to get quota shots for
-            example: 2022
-          - in: path
-            name: month
-            required: true
-            schema:
-              type: integer
-            description: Month to get quota shots for
-            example: 7
-            minimum: 1
-            maximum: 12
-          - in: query
-            name: count_mode
-            required: false
-            schema:
-              type: string
-              enum: [weighted, weighteddone, feedback, done]
-            description: Count mode for quota calculation
-            example: weighted
-        responses:
-          200:
-            description: Ended shots used for quota calculation of this month
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-          400:
-            description: Wrong date format or invalid count mode
         """
         return super().get(person_id, year, month)
 
@@ -980,57 +419,10 @@ class PersonWeekQuotaShotsResource(MethodView, PersonQuotaMixin):
         )
 
     @jwt_required()
+    @swag_from("openapi/PersonWeekQuotaShotsResource_get.yml")
     def get(self, person_id, year, week):
         """
         Get week quota shots
-        ---
-        description: Get ended shots used for quota calculation of this week.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Person unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: year
-            required: true
-            schema:
-              type: integer
-            description: Year to get quota shots for
-            example: 2022
-          - in: path
-            name: week
-            required: true
-            schema:
-              type: integer
-            description: Week number to get quota shots for
-            example: 35
-            minimum: 1
-            maximum: 52
-          - in: query
-            name: count_mode
-            required: false
-            schema:
-              type: string
-              enum: [weighted, weighteddone, feedback, done]
-            description: Count mode for quota calculation
-            example: weighted
-        responses:
-          200:
-            description: Ended shots used for quota calculation of this week
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-          400:
-            description: Wrong date format or invalid count mode
         """
         return super().get(person_id, year, week)
 
@@ -1043,66 +435,10 @@ class PersonDayQuotaShotsResource(MethodView, PersonQuotaMixin):
         )
 
     @jwt_required()
+    @swag_from("openapi/PersonDayQuotaShotsResource_get.yml")
     def get(self, person_id, year, month, day):
         """
         Get day quota shots
-        ---
-        description: Get ended shots used for quota calculation of this day.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Person unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: year
-            required: true
-            schema:
-              type: integer
-            description: Year to get quota shots for
-            example: 2022
-          - in: path
-            name: month
-            required: true
-            schema:
-              type: integer
-            description: Month to get quota shots for
-            example: 7
-            minimum: 1
-            maximum: 12
-          - in: path
-            name: day
-            required: true
-            schema:
-              type: integer
-            description: Day to get quota shots for
-            example: 12
-            minimum: 1
-            maximum: 31
-          - in: query
-            name: count_mode
-            required: false
-            schema:
-              type: string
-              enum: [weighted, weighteddone, feedback, done]
-            description: Count mode for quota calculation
-            example: weighted
-        responses:
-          200:
-            description: Ended shots used for quota calculation of this day
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-          400:
-            description: Wrong date format or invalid count mode
         """
         return super().get(person_id, year, month, day)
 
@@ -1158,38 +494,10 @@ class TimeSpentDurationResource(MethodView, ArgsMixin):
 class TimeSpentMonthResource(TimeSpentDurationResource):
 
     @jwt_required()
+    @swag_from("openapi/TimeSpentMonthResource_get.yml")
     def get(self, year, month):
         """
         Get time spent month table
-        ---
-        description: Return a table giving time spent by user and by day for
-          given year and month.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: year
-            required: true
-            schema:
-              type: integer
-            description: Year to get time spent table for
-            example: 2022
-          - in: path
-            name: month
-            required: true
-            schema:
-              type: integer
-            description: Month to get time spent table for
-            example: 7
-            minimum: 1
-            maximum: 12
-        responses:
-          200:
-            description: Table giving time spent by user and by day for given year and month
-            content:
-              application/json:
-                schema:
-                  type: object
         """
         try:
             return time_spents_service.get_day_table(
@@ -1202,21 +510,10 @@ class TimeSpentMonthResource(TimeSpentDurationResource):
 class TimeSpentYearsResource(TimeSpentDurationResource):
 
     @jwt_required()
+    @swag_from("openapi/TimeSpentYearsResource_get.yml")
     def get(self):
         """
         Get time spent years table
-        ---
-        description: Return a table giving time spent by user and by month for
-          all years.
-        tags:
-          - Persons
-        responses:
-          200:
-            description: Table giving time spent by user and by month for all years
-            content:
-              application/json:
-                schema:
-                  type: object
         """
         return time_spents_service.get_year_table(
             **self.get_person_project_department_arguments()
@@ -1226,29 +523,10 @@ class TimeSpentYearsResource(TimeSpentDurationResource):
 class TimeSpentMonthsResource(TimeSpentDurationResource):
 
     @jwt_required()
+    @swag_from("openapi/TimeSpentMonthsResource_get.yml")
     def get(self, year):
         """
         Get time spent months table
-        ---
-        description: Return a table giving time spent by user and by month for
-          given year.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: year
-            required: true
-            schema:
-              type: integer
-            description: Year to get time spent table for
-            example: 2022
-        responses:
-          200:
-            description: Table giving time spent by user and by month for given year
-            content:
-              application/json:
-                schema:
-                  type: object
         """
         return time_spents_service.get_month_table(
             year, **self.get_person_project_department_arguments()
@@ -1258,29 +536,10 @@ class TimeSpentMonthsResource(TimeSpentDurationResource):
 class TimeSpentWeekResource(TimeSpentDurationResource):
 
     @jwt_required()
+    @swag_from("openapi/TimeSpentWeekResource_get.yml")
     def get(self, year):
         """
         Get time spent weeks table
-        ---
-        description: Return a table giving time spent by user and by week for
-          given year.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: year
-            required: true
-            schema:
-              type: integer
-            description: Year to get time spent table for
-            example: 2022
-        responses:
-          200:
-            description: Table giving time spent by user and by week for given year
-            content:
-              application/json:
-                schema:
-                  type: object
         """
         return time_spents_service.get_week_table(
             year, **self.get_person_project_department_arguments()
@@ -1290,39 +549,10 @@ class TimeSpentWeekResource(TimeSpentDurationResource):
 class InvitePersonResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/InvitePersonResource_get.yml")
     def get(self, person_id):
         """
         Invite person
-        ---
-        description: Sends an email to given person to invite him or her to
-          connect to Kitsu.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Person unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: Email sent successfully
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    success:
-                      type: boolean
-                      description: Success flag
-                      example: true
-                    message:
-                      type: string
-                      description: Success message
-                      example: "Email sent"
         """
         permissions_service.check_person_is_not_bot(person_id)
         permissions.check_admin_permissions()
@@ -1333,40 +563,10 @@ class InvitePersonResource(MethodView):
 class ResetPasswordLinkResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/ResetPasswordLinkResource_post.yml")
     def post(self, person_id):
         """
         Get a password reset link
-        ---
-        description: Return the password reset link for the given person. It is
-          the same link as the one embedded in the password recovery email, so
-          an admin can share it manually (for instance when email delivery is
-          not configured). An already pending reset token is reused so a link
-          shared earlier stays valid; a new one is generated otherwise.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Person unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: Password reset link generated
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    reset_password_link:
-                      type: string
-                      description: Link to follow to choose a new password
-          400:
-            description: User is a protected account or another admin who
-              already has a password
         """
         permissions_service.check_person_is_not_bot(person_id)
         permissions.check_admin_permissions()
@@ -1388,42 +588,10 @@ class ResetPasswordLinkResource(MethodView):
 class DayOffForMonthResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/DayOffForMonthResource_get.yml")
     def get(self, year, month):
         """
         Get day offs for month
-        ---
-        description: Return all day off recorded for given month, for
-          everybody the caller may read. Admins get them all, managers and
-          supervisors get the ones of the team of their productions, the
-          latter without description, everybody else gets their own only.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: year
-            required: true
-            schema:
-              type: integer
-            description: Year to get day offs for
-            example: 2022
-          - in: path
-            name: month
-            required: true
-            schema:
-              type: integer
-            description: Month to get day offs for
-            example: 7
-            minimum: 1
-            maximum: 12
-        responses:
-          200:
-            description: All day off recorded for given month
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
         """
         return _readable_day_offs(
             time_spents_service.get_day_offs_for_month, year, month
@@ -1432,33 +600,10 @@ class DayOffForMonthResource(MethodView, ArgsMixin):
 
 class DayOffForYearResource(MethodView, ArgsMixin):
     @jwt_required()
+    @swag_from("openapi/DayOffForYearResource_get.yml")
     def get(self, year):
         """
         Get day offs for year
-        ---
-        description: Return all day off recorded for given year, for
-          everybody the caller may read. Admins get them all, managers and
-          supervisors get the ones of the team of their productions, the
-          latter without description, everybody else gets their own only.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: year
-            required: true
-            schema:
-              type: integer
-            description: Year to get day offs for
-            example: 2022
-        responses:
-          200:
-            description: All day off recorded for given year
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
         """
         return _readable_day_offs(
             time_spents_service.get_day_offs_for_year, year
@@ -1483,47 +628,10 @@ def _readable_day_offs(list_period, *period):
 class PersonWeekDayOffResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/PersonWeekDayOffResource_get.yml")
     def get(self, person_id, year, week):
         """
         Get person week day offs
-        ---
-        description: Return all day off recorded for given week and person.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Person unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: year
-            required: true
-            schema:
-              type: integer
-            description: Year to get day offs for
-            example: 2022
-          - in: path
-            name: week
-            required: true
-            schema:
-              type: integer
-            description: Week number to get day offs for
-            example: 35
-            minimum: 1
-            maximum: 52
-        responses:
-          200:
-            description: All day off recorded for given week and person
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
         """
         with_description = _check_day_off_read_access(person_id)
         return _shape_day_offs(
@@ -1537,47 +645,10 @@ class PersonWeekDayOffResource(MethodView, ArgsMixin):
 class PersonMonthDayOffResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/PersonMonthDayOffResource_get.yml")
     def get(self, person_id, year, month):
         """
         Get person month day offs
-        ---
-        description: Return all day off recorded for given month and person.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Person unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: year
-            required: true
-            schema:
-              type: integer
-            description: Year to get day offs for
-            example: 2022
-          - in: path
-            name: month
-            required: true
-            schema:
-              type: integer
-            description: Month to get day offs for
-            example: 7
-            minimum: 1
-            maximum: 12
-        responses:
-          200:
-            description: All day off recorded for given month and person
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
         """
         with_description = _check_day_off_read_access(person_id)
         return _shape_day_offs(
@@ -1591,38 +662,10 @@ class PersonMonthDayOffResource(MethodView, ArgsMixin):
 class PersonYearDayOffResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/PersonYearDayOffResource_get.yml")
     def get(self, person_id, year):
         """
         Get person year day offs
-        ---
-        description: Return all day off recorded for given year and person.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Person unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: year
-            required: true
-            schema:
-              type: integer
-            description: Year to get day offs for
-            example: 2022
-        responses:
-          200:
-            description: All day off recorded for given year and person
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
         """
         with_description = _check_day_off_read_access(person_id)
         return _shape_day_offs(
@@ -1634,31 +677,10 @@ class PersonYearDayOffResource(MethodView, ArgsMixin):
 class PersonDayOffResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/PersonDayOffResource_get.yml")
     def get(self, person_id):
         """
         Get person day offs
-        ---
-        description: Return all day offs recorded for given person.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Person unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: All day off recorded for given person
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
         """
         with_description = _check_day_off_read_access(person_id)
         return _shape_day_offs(
@@ -1670,56 +692,10 @@ class PersonDayOffResource(MethodView, ArgsMixin):
 class AddToDepartmentResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/AddToDepartmentResource_post.yml")
     def post(self, person_id):
         """
         Add person to department
-        ---
-        description: Add a user to given department.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Person unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - department_id
-                properties:
-                  department_id:
-                    type: string
-                    format: uuid
-                    description: Department unique identifier
-                    example: b35b7fb5-df86-5776-b181-68564193d36
-        responses:
-          201:
-            description: User added to given department
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Person unique identifier
-                      example: a24a6ea4-ce75-4665-a070-57453082c25
-                    department_id:
-                      type: string
-                      format: uuid
-                      description: Department unique identifier
-                      example: b35b7fb5-df86-5776-b181-68564193d36
-          400:
-            description: Invalid department ID
         """
         permissions.check_admin_permissions()
         body = validation.validate_request_body(AddToDepartmentSchema)
@@ -1738,33 +714,10 @@ class AddToDepartmentResource(MethodView, ArgsMixin):
 class RemoveFromDepartmentResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/RemoveFromDepartmentResource_delete.yml")
     def delete(self, person_id, department_id):
         """
         Remove person from department
-        ---
-        description: Remove a user from given department.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Person unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: department_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Department unique identifier
-            example: b35b7fb5-df86-5776-b181-68564193d36
-        responses:
-          204:
-            description: User removed from given department
         """
         permissions.check_admin_permissions()
         try:
@@ -1780,73 +733,10 @@ class RemoveFromDepartmentResource(MethodView, ArgsMixin):
 class ChangePasswordForPersonResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/ChangePasswordForPersonResource_post.yml")
     def post(self, person_id):
         """
         Change person password
-        ---
-        description: Allow admin to change password for given user.
-          An admin can't change another admin's existing password, but can
-          set the initial password of a newly created admin. The new password
-          requires a confirmation to ensure that the admin didn't make a
-          mistake by typing the new password.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Person unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - password
-                  - password_2
-                properties:
-                  password:
-                    type: string
-                    format: password
-                    description: New password
-                    example: "newSecurePassword123"
-                  password_2:
-                    type: string
-                    format: password
-                    description: Password confirmation
-                    example: "newSecurePassword123"
-        responses:
-          200:
-            description: Password changed successfully
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    success:
-                      type: boolean
-                      description: Success flag
-                      example: true
-          400:
-            description: Invalid password or inactive user
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    error:
-                      type: boolean
-                      description: Error flag
-                      example: true
-                    message:
-                      type: string
-                      description: Error message
-                      example: "Password is too short."
         """
         permissions_service.check_person_is_not_bot(person_id)
         permissions.check_admin_permissions()
@@ -1883,7 +773,7 @@ class ChangePasswordForPersonResource(MethodView, ArgsMixin):
             )
         except auth.PasswordTooShortException:
             return {"error": True, "message": "Password is too short."}, 400
-        except UnactiveUserException:
+        except InactiveUserException:
             return {"error": True, "message": "User is unactive."}, 400
         except PersonInProtectedAccounts as exception:
             return (
@@ -1898,51 +788,12 @@ class ChangePasswordForPersonResource(MethodView, ArgsMixin):
 class DisableTwoFactorAuthenticationPersonResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from(
+        "openapi/DisableTwoFactorAuthenticationPersonResource_delete.yml"
+    )
     def delete(self, person_id):
         """
         Disable two factor authentication
-        ---
-        description: Allow admin to disable two factor authentication for given
-          user. An admin can't disable two factor authentication for other
-          admins.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Person unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: Two factor authentication disabled successfully
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    success:
-                      type: boolean
-                      description: Success flag
-                      example: true
-          400:
-            description: Inactive user or two factor authentication not enabled
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    error:
-                      type: boolean
-                      description: Error flag
-                      example: true
-                    message:
-                      type: string
-                      description: Error message
-                      example: "User is unactive."
         """
         permissions_service.check_person_is_not_bot(person_id)
         permissions.check_admin_permissions()
@@ -1973,7 +824,7 @@ class DisableTwoFactorAuthenticationPersonResource(MethodView, ArgsMixin):
             )
             return {"success": True}
 
-        except UnactiveUserException:
+        except InactiveUserException:
             return {"error": True, "message": "User is unactive."}, 400
         except TwoFactorAuthenticationNotEnabledException:
             return {
@@ -1984,26 +835,10 @@ class DisableTwoFactorAuthenticationPersonResource(MethodView, ArgsMixin):
 
 class ClearAvatarPersonResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/ClearAvatarPersonResource_delete.yml")
     def delete(self, person_id):
         """
         Clear person avatar
-        ---
-        description: Set has_avatar flag to False for current user and remove
-          its avatar file.
-        tags:
-          - Persons
-        parameters:
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Person unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          204:
-            description: Avatar file deleted
         """
         permissions.check_admin_permissions()
         persons_service.clear_avatar(person_id)

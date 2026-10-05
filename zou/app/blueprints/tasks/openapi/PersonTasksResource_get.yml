@@ -1,0 +1,53 @@
+Get person open tasks
+---
+tags:
+- Tasks
+description: List tasks assigned to a person where the status is not
+  done.
+parameters:
+  - in: path
+    name: person_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+responses:
+    200:
+      description: Tasks assigned to user that are not done
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  example: SH010 Animation
+                task_type_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c250
+                task_status_id:
+                  type: string
+                  format: uuid
+                  example: c24a6ea4-ce75-4665-a070-57453082c250
+                entity_id:
+                  type: string
+                  format: uuid
+                  example: d24a6ea4-ce75-4665-a070-57453082c250
+                project_id:
+                  type: string
+                  format: uuid
+                  example: e24a6ea4-ce75-4665-a070-57453082c250
+                assignees:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  example: ["f24a6ea4-ce75-4665-a070-57453082c250"]

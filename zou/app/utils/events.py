@@ -1,14 +1,32 @@
+import logging
 from collections import OrderedDict
 
 from flask import current_app
+from flask_jwt_extended import current_user
 
 from zou.app.stores import publisher_store
 from zou.app.models.event import ApiEvent
 from zou.app.utils import fields
 
+logger = logging.getLogger(__name__)
+
+
 handlers = {}
 
+# Called with the event name once it is stored. This is how a service
+# reacts to the write path without this module importing the services:
+# events_service registers the invalidation of its name list here.
+save_hooks = []
+
 publisher_store.init()
+
+
+def add_save_hook(hook):
+    """
+    Run given callable, with the event name, each time an event is stored.
+    """
+    if hook not in save_hooks:
+        save_hooks.append(hook)
 
 
 def register(event, name, handler, app=None):
@@ -21,7 +39,7 @@ def register(event, name, handler, app=None):
         handlers[event] = OrderedDict()
 
     if app is None:
-        print(f"Handler [{event} -> {name} registered]")
+        logger.info(f"Handler [{event} -> {name} registered]")
     else:
         app.logger.info(f"Handler [{event} -> {name} registered]")
     handlers[event][name] = handler
@@ -99,12 +117,9 @@ def save_event(event, data, project_id=None):
     Store event information in the database.
     """
     try:
-        from zou.app.services.persons_service import (
-            get_current_user_raw,
-        )
-
-        person = get_current_user_raw()
-        person_id = person.id
+        # The identity loaded by the JWT callback; outside a request, or
+        # without a token, the proxy raises and the event has no author.
+        person_id = current_user.id
     except Exception:
         person_id = None
 
@@ -115,17 +130,13 @@ def save_event(event, data, project_id=None):
         name=event, data=data, user_id=person_id, project_id=project_id
     )
 
-    try:
-        from zou.app.services.events_service import (
-            invalidate_event_names_cache,
-        )
-
-        invalidate_event_names_cache(event)
-    except Exception:
-        # Refreshing the name list must never break the write path: an
-        # unreachable cache only means the log filters stay stale until the
-        # entry expires.
-        current_app.logger.warning(
-            "Could not invalidate the event name list cache.", exc_info=1
-        )
+    for hook in save_hooks:
+        try:
+            hook(event)
+        except Exception:
+            # A hook must never break the write path: an unreachable cache
+            # only means the log filters stay stale until the entry expires.
+            current_app.logger.warning(
+                f"Event save hook {hook.__name__} failed.", exc_info=1
+            )
     return api_event

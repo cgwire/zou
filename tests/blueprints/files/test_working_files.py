@@ -250,6 +250,12 @@ class WorkingFilesTestCase(ApiDBTestCase):
         with open(fixture, "rb") as f:
             self.assertEqual(response.data, f.read())
 
+    def test_a_working_file_without_binary_is_a_404(self):
+        # The storage lookup used to sit outside the try, so a missing
+        # binary surfaced as a 500.
+        working_file = self.generate_fixture_working_file()
+        self.get(f"/data/working-files/{working_file.id}/file", 404)
+
     def test_working_file_needs_task_access(self):
         working_file = self.generate_fixture_working_file()
         path = f"/data/working-files/{working_file.id}/file"

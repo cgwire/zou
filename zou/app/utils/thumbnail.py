@@ -9,7 +9,7 @@ from pathlib import Path
 from PIL import Image, ImageCms, ImageFile, UnidentifiedImageError
 
 from zou.app import config
-from zou.app.services.exception import WrongParameterException
+from zou.app.exceptions import WrongParameterException
 from zou.app.utils import fs
 
 logger = logging.getLogger(__name__)
@@ -283,10 +283,17 @@ def generate_preview_variants(original_path, instance_id):
     ]
 
     result = []
+    # Derived from the original path, which carries its own unique suffix:
+    # two concurrent generations for the same preview (a double click on
+    # "set as thumbnail", a CLI pass during an upload) must not write and
+    # remove each other's files.
+    folder_path = os.path.dirname(original_path)
+    original_name = os.path.basename(original_path)
     for picture_data in variants:
         picture_type, size = picture_data
-        folder_path = os.path.dirname(original_path)
-        picture_path = os.path.join(folder_path, f"{picture_type}-{file_name}")
+        picture_path = os.path.join(
+            folder_path, f"{picture_type}-{original_name}"
+        )
         shutil.copyfile(original_path, picture_path)
         turn_into_thumbnail(picture_path, size)
         result.append((picture_type, picture_path))

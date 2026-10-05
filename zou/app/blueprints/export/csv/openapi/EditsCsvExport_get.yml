@@ -1,0 +1,26 @@
+        Export edits csv
+        ---
+        tags:
+          - Export
+        description: Export project edits as CSV file. Includes edit
+          information, task statuses, assignments, and metadata.
+        produces:
+          - text/csv
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c250
+        responses:
+            200:
+              description: Edits exported as CSV successfully
+              content:
+                text/csv:
+                  schema:
+                    type: string
+                  example: "Project,Episode,Name,Description,Time Spent
+Project A,EP01,Edit_001,Description,8.75"
+        

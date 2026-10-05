@@ -1,0 +1,27 @@
+Get shared playlist context
+---
+description: Return minimal project and playlist context needed to
+  render the shared playlist UI. Optional `password` query param when
+  the link is protected.
+tags:
+  - Playlists
+parameters:
+  - in: path
+    name: token
+    required: true
+    schema:
+      type: string
+    description: Share link token
+  - in: query
+    name: password
+    required: false
+    schema:
+      type: string
+    description: Password when the link is protected
+responses:
+  200:
+    description: Context payload for the share page
+    content:
+      application/json:
+        schema:
+          type: object

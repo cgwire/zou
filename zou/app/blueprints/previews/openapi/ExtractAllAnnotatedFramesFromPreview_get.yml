@@ -1,0 +1,30 @@
+Extract all annotated frames from preview as a zip
+---
+description: Build a zip archive with one PNG per annotation —
+  for movies, the extracted frame at the annotation's time; for
+  pictures, a copy of the picture with the annotation rendered.
+  Returns 400 if the preview has no annotations.
+tags:
+  - Previews
+parameters:
+  - in: path
+    name: preview_file_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Preview file unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+responses:
+  200:
+    description: Zip archive of annotated frames
+    content:
+      application/zip:
+        schema:
+          type: string
+          format: binary
+  400:
+    description: Preview has no annotations or unsupported
+      extension
+  404:
+    description: Preview file binary is not available

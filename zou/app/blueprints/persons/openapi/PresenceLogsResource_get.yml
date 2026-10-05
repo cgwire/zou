@@ -1,0 +1,25 @@
+Get presence logs
+---
+description: Return a CSV file containing the presence logs based on a
+  daily basis for the given month.
+tags:
+  - Persons
+parameters:
+  - in: path
+    name: month_date
+    required: true
+    schema:
+      type: string
+      format: date
+    description: Month in YYYY-MM format
+    example: "2022-07"
+responses:
+  200:
+    description: CSV file containing the presence logs based on daily basis
+    content:
+      text/csv:
+        schema:
+          type: string
+          format: binary
+  400:
+    description: Invalid date format

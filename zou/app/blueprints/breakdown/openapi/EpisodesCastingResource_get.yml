@@ -1,0 +1,46 @@
+Get episodes casting
+---
+description: Retrieve the casting information for all episodes in a specific project.
+tags:
+  - Breakdown
+parameters:
+  - in: path
+    name: project_id
+    required: true
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the project
+responses:
+  200:
+    description: Episodes casting information successfully retrieved
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              episode_id:
+                type: string
+                format: uuid
+                description: Episode unique identifier
+                example: d57d91d7-f108-7998-d403-80786315f580
+              episode_name:
+                type: string
+                description: Episode name
+                example: "Episode 01"
+              casting:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    asset_id:
+                      type: string
+                      format: uuid
+                      description: Asset identifier
+                      example: c46c80c6-e097-6887-c292-79675204e470
+                    asset_name:
+                      type: string
+                      description: Asset name
+                      example: "Main Character"

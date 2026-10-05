@@ -10,12 +10,12 @@ from zou.app import app
 from zou.app.models.person import Person, SENSITIVE_FIELDS
 from zou.app.stores import auth_tokens_store
 from zou.app.services import persons_service, auth_service
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     MissingOTPException,
     NoAuthStrategyConfigured,
-    TooMuchLoginFailedAttemps,
+    TooManyLoginFailedAttempts,
     TwoFactorAuthenticationNotEnabledException,
-    UnactiveUserException,
+    InactiveUserException,
     UserCantConnectDueToNoFallback,
     WrongPasswordException,
     WrongUserException,
@@ -119,7 +119,7 @@ class CheckAuthTestCase(AuthTestCase):
     def test_an_inactive_person(self):
         self.person.update({"active": False})
         persons_service.clear_person_cache()
-        self.assertRaises(UnactiveUserException, self.authenticate)
+        self.assertRaises(InactiveUserException, self.authenticate)
 
     def test_no_password_auth_strategy(self):
         app.config["AUTH_STRATEGY"] = "auth_local_no_password"
@@ -159,7 +159,7 @@ class CheckAuthTestCase(AuthTestCase):
         persons_service.clear_person_cache()
 
         self.assertRaises(WrongPasswordException, self.authenticate, "wrong")
-        self.assertRaises(UnactiveUserException, self.authenticate)
+        self.assertRaises(InactiveUserException, self.authenticate)
 
     def test_unactive_user_is_checked_before_the_second_factor(self):
         # Below the 2FA block, the check would let MissingOTPException go
@@ -169,7 +169,7 @@ class CheckAuthTestCase(AuthTestCase):
         self.person.update({"active": False, "totp_enabled": True})
         persons_service.clear_person_cache()
 
-        self.assertRaises(UnactiveUserException, self.authenticate)
+        self.assertRaises(InactiveUserException, self.authenticate)
 
     def test_check_auth_works_on_a_copy(self):
         """
@@ -224,7 +224,7 @@ class LoginLockoutTestCase(AuthTestCase):
         Put the account at the ceiling, as a burst of wrong passwords
         would.
         """
-        auth_service.update_login_failed_attemps(
+        auth_service.update_login_failed_attempts(
             self.person_id,
             auth_service.MAX_LOGIN_FAILED_ATTEMPS,
             date_helpers.get_utc_now_datetime(),
@@ -245,7 +245,7 @@ class LoginLockoutTestCase(AuthTestCase):
         self.lock()
         persons_service.clear_person_cache()
         # Even with the right password: that is the whole point.
-        self.assertRaises(TooMuchLoginFailedAttemps, self.authenticate)
+        self.assertRaises(TooManyLoginFailedAttempts, self.authenticate)
 
     def test_an_elapsed_window_reopens_the_account(self):
         """
@@ -254,7 +254,7 @@ class LoginLockoutTestCase(AuthTestCase):
         address could hold it shut at one request a minute, the owner
         included. Rearming costs a fresh burst.
         """
-        auth_service.update_login_failed_attemps(
+        auth_service.update_login_failed_attempts(
             self.person_id,
             auth_service.MAX_LOGIN_FAILED_ATTEMPS,
             date_helpers.get_utc_now_datetime()
@@ -274,7 +274,7 @@ class LoginLockoutTestCase(AuthTestCase):
         account for another minute, so anyone knowing an address holds it
         closed at one request a minute.
         """
-        auth_service.update_login_failed_attemps(
+        auth_service.update_login_failed_attempts(
             self.person_id,
             auth_service.MAX_LOGIN_FAILED_ATTEMPS,
             date_helpers.get_utc_now_datetime()
@@ -292,7 +292,7 @@ class LoginLockoutTestCase(AuthTestCase):
         """
         The rows that predate the date column carry a count and no date.
         """
-        auth_service.update_login_failed_attemps(
+        auth_service.update_login_failed_attempts(
             self.person_id, auth_service.MAX_LOGIN_FAILED_ATTEMPS
         )
         Person.get(self.person_id).update({"last_login_failed": None})
@@ -306,8 +306,8 @@ class LoginLockoutTestCase(AuthTestCase):
         self,
     ):
         moment = date_helpers.get_utc_now_datetime()
-        auth_service.update_login_failed_attemps(self.person_id, 3, moment)
-        auth_service.update_login_failed_attemps(self.person_id, 0)
+        auth_service.update_login_failed_attempts(self.person_id, 3, moment)
+        auth_service.update_login_failed_attempts(self.person_id, 0)
         self.assertIsNotNone(Person.get(self.person_id).last_login_failed)
 
 

@@ -19,7 +19,7 @@ from zou.app.services import (
     tasks_service,
 )
 from zou.app.utils import fields
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     EpisodeNotFoundException,
     ModelWithRelationsDeletionException,
     SceneNotFoundException,
@@ -219,7 +219,21 @@ class LookupTestCase(ShotsTestCase):
         self.assertRaises(
             SequenceNotFoundException,
             shots_service.get_sequence_from_shot,
-            orphan,
+            orphan.serialize(),
+        )
+
+    def test_a_sequence_outside_any_episode_leads_to_no_episode(self):
+        # Entity.get(None) returns None rather than raising, so the missing
+        # parent used to surface as an AttributeError.
+        flat = Entity.create(
+            name="SQFLAT",
+            project_id=self.project.id,
+            entity_type_id=self.sequence_type.id,
+        )
+        self.assertRaises(
+            EpisodeNotFoundException,
+            shots_service.get_episode_from_sequence,
+            flat.serialize(),
         )
 
     def test_an_episode_is_read_by_name_inside_its_production(self):
@@ -310,14 +324,6 @@ class ListingTestCase(ShotsTestCase):
 
         self.assertEqual([shot["name"] for shot in shots], ["A01", "P01"])
         self.assertDictEqual(shots[1], shot_dict)
-
-    def test_the_episodes_are_listed_by_id(self):
-        self.generate_fixture_episode("E02")
-        episode_map = shots_service.get_episode_map()
-        self.assertEqual(len(episode_map.keys()), 2)
-        self.assertEqual(
-            episode_map[str(self.episode.id)]["name"], self.episode.name
-        )
 
     def test_the_shots_are_listed_with_their_tasks(self):
         self.generate_shot_task()

@@ -1,3 +1,4 @@
+from flasgger import swag_from
 import slugify
 
 import os
@@ -33,7 +34,7 @@ from zou.app.services import (
     permissions_service,
     user_service,
 )
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     BuildJobNotFoundException,
     PlaylistShareLinkNotFoundException,
 )
@@ -46,69 +47,10 @@ from zou.utils.movie import EncodingParameters
 class ProjectPlaylistsResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/ProjectPlaylistsResource_get.yml")
     def get(self, project_id):
         """
         Get project playlists
-        ---
-        description: Retrieve all playlists related to given project. Result is
-          paginated and can be sorted.
-        tags:
-          - Playlists
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: page
-            required: false
-            schema:
-              type: integer
-            description: Page number for pagination
-            example: 1
-          - in: query
-            name: sort_by
-            required: false
-            schema:
-              type: string
-            description: Field to sort by
-            example: updated_at
-          - in: query
-            name: task_type_id
-            required: false
-            schema:
-              type: string
-              format: uuid
-            description: Task type unique identifier to filter by
-            example: b35b7fb5-df86-5776-b181-68564193d36
-        responses:
-          200:
-            description: All playlists related to given project
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        description: Playlist unique identifier
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      name:
-                        type: string
-                        description: Playlist name
-                        example: "Review Playlist"
-                      project_id:
-                        type: string
-                        format: uuid
-                        description: Project unique identifier
-                        example: b35b7fb5-df86-5776-b181-68564193d36
         """
         permissions_service.check_project_access(project_id)
         permissions_service.block_access_to_vendor()
@@ -127,64 +69,10 @@ class ProjectPlaylistsResource(MethodView, ArgsMixin):
 class EpisodePlaylistsResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/EpisodePlaylistsResource_get.yml")
     def get(self, project_id, episode_id):
         """
         Get episode playlists
-        ---
-        description: Retrieve all playlists related to given episode. The full
-          list is returned because the number of playlists in an episode is not
-          that big.
-        tags:
-          - Playlists
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: episode_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Episode unique identifier or special value (main, all)
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: for_entity
-            required: false
-            schema:
-              type: string
-            description: Only list playlists of this entity type (asset,
-              shot, sequence, edit, episode)
-            example: shot
-        responses:
-          200:
-            description: All playlists related to given episode
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        description: Playlist unique identifier
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      name:
-                        type: string
-                        description: Playlist name
-                        example: "Review Playlist"
-                      episode_id:
-                        type: string
-                        format: uuid
-                        description: Episode unique identifier
-                        example: b35b7fb5-df86-5776-b181-68564193d36
         """
         permissions_service.check_project_access(project_id)
         permissions_service.block_access_to_vendor()
@@ -208,63 +96,10 @@ class EpisodePlaylistsResource(MethodView, ArgsMixin):
 class ProjectPlaylistResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/ProjectPlaylistResource_get.yml")
     def get(self, project_id, playlist_id):
         """
         Get playlist
-        ---
-        description: Retrieve a specific playlist by ID with preview file
-          revisions.
-        tags:
-          - Playlists
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: playlist_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Playlist unique identifier
-            example: b35b7fb5-df86-5776-b181-68564193d36
-        responses:
-          200:
-            description: Playlist details with preview file revisions
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Playlist unique identifier
-                      example: a24a6ea4-ce75-4665-a070-57453082c25
-                    name:
-                      type: string
-                      description: Playlist name
-                      example: "Review Playlist"
-                    project_id:
-                      type: string
-                      format: uuid
-                      description: Project unique identifier
-                      example: b35b7fb5-df86-5776-b181-68564193d36
-                    shots:
-                      type: array
-                      description: List of shots with preview file revisions
-                      items:
-                        type: object
-                        example: [{"id": "uuid", "preview_file_id": "uuid"}]
-          403:
-            description: Playlist kept from the role held on the project
-          404:
-            description: No playlist of this project with this id
         """
         permissions_service.check_project_access(project_id)
         # Refused before the id is looked up, so that a vendor never learns
@@ -284,95 +119,24 @@ class ProjectPlaylistResource(MethodView):
 class EntityPreviewsResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/EntityPreviewsResource_get.yml")
     def get(self, entity_id):
         """
         Get entity previews
-        ---
-        description: Retrieve all previews related to a given entity. It sends
-          them as a dict. Keys are related task type ids and values are arrays
-          of preview for this task type.
-        tags:
-          - Playlists
-        parameters:
-          - in: path
-            name: entity_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Entity unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: All previews related to given entity grouped by task type
-            content:
-              application/json:
-                schema:
-                  type: object
-                  additionalProperties:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          description: Preview file unique identifier
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          description: Preview file name
-                          example: "preview_v001.png"
         """
         entity = entities_service.get_entity(entity_id)
         permissions_service.check_project_access(entity["project_id"])
         permissions_service.check_entity_access(entity_id)
-        return playlists_service.get_preview_files_for_entity(entity_id)
+        return playlists_service.get_entity_previews_by_task_type(entity_id)
 
 
 class PlaylistAddEntityResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/PlaylistAddEntityResource_post.yml")
     def post(self, playlist_id):
         """
         Add entity to playlist
-        ---
-        description: Atomically add a single entity to the given playlist.
-        tags:
-          - Playlists
-        parameters:
-          - in: path
-            name: playlist_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Playlist unique identifier
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - entity_id
-                properties:
-                  entity_id:
-                    type: string
-                    format: uuid
-                    description: Entity unique identifier to add to playlist
-                  preview_file_id:
-                    type: string
-                    format: uuid
-                    nullable: true
-                    description: Optional preview file identifier associated to the entity
-        responses:
-          200:
-            description: Updated playlist
-            content:
-              application/json:
-                schema:
-                  type: object
         """
         playlist = playlists_service.get_playlist(playlist_id)
         permissions_service.check_playlist_update_access(playlist)
@@ -389,58 +153,10 @@ class PlaylistAddEntityResource(MethodView, ArgsMixin):
 class PlaylistAddEntitiesResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/PlaylistAddEntitiesResource_post.yml")
     def post(self, playlist_id):
         """
         Add entities to playlist
-        ---
-        description: Atomically add several (entity, preview) couples to the
-          given playlist in a single database write. A playlist entry is the
-          couple, so the same entity may be added several times with
-          different previews; only exact duplicate couples are skipped. When
-          a couple has no preview_file_id, the entity's latest preview
-          (highest revision, restricted to the playlist task type when one is
-          set) is used.
-        tags:
-          - Playlists
-        parameters:
-          - in: path
-            name: playlist_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Playlist unique identifier
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - entities
-                properties:
-                  entities:
-                    type: array
-                    items:
-                      type: object
-                      required:
-                        - entity_id
-                      properties:
-                        entity_id:
-                          type: string
-                          format: uuid
-                        preview_file_id:
-                          type: string
-                          format: uuid
-                          nullable: true
-                    description: Entity/preview couples to add to the playlist
-        responses:
-          200:
-            description: Updated playlist
-            content:
-              application/json:
-                schema:
-                  type: object
         """
         playlist = playlists_service.get_playlist(playlist_id)
         permissions_service.check_playlist_update_access(playlist)
@@ -461,53 +177,10 @@ class PlaylistAddEntitiesResource(MethodView, ArgsMixin):
 class PlaylistDownloadResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/PlaylistDownloadResource_get.yml")
     def get(self, playlist_id, build_job_id):
         """
         Download playlist build
-        ---
-        description: Download given playlist build as MP4 file.
-        tags:
-          - Playlists
-        parameters:
-          - in: path
-            name: playlist_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Playlist unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: build_job_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Build job unique identifier
-            example: b35b7fb5-df86-5776-b181-68564193d36
-        responses:
-          200:
-            description: Playlist build downloaded as MP4 file
-            content:
-              video/mp4:
-                schema:
-                  type: string
-                  format: binary
-          400:
-            description: Build not finished, need to retry later
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    error:
-                      type: boolean
-                      description: Error flag
-                      example: true
-                    message:
-                      type: string
-                      description: Error message
-                      example: "Build is not finished"
         """
         permissions_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
@@ -550,52 +223,10 @@ class PlaylistDownloadResource(MethodView):
 class BuildPlaylistMovieResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/BuildPlaylistMovieResource_get.yml")
     def get(self, playlist_id):
         """
         Build playlist movie
-        ---
-        description: Build given playlist as MP4 movie. Starts a build job that
-          processes the playlist shots into a video file.
-        tags:
-          - Playlists
-        parameters:
-          - in: path
-            name: playlist_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Playlist unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: full
-            required: false
-            schema:
-              type: boolean
-            description: Whether to build full quality movie
-            example: true
-        responses:
-          200:
-            description: Build job created for playlist movie
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Build job unique identifier
-                      example: a24a6ea4-ce75-4665-a070-57453082c25
-                    status:
-                      type: string
-                      description: Build job status
-                      example: "pending"
-                    created_at:
-                      type: string
-                      format: date-time
-                      description: Build job creation timestamp
-                      example: "2022-07-12T10:30:00Z"
         """
         playlist = playlists_service.get_playlist(playlist_id)
         permissions_service.check_manager_project_access(
@@ -661,31 +292,10 @@ class BuildPlaylistMovieResource(MethodView, ArgsMixin):
 class PlaylistZipDownloadResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/PlaylistZipDownloadResource_get.yml")
     def get(self, playlist_id):
         """
         Download playlist zip
-        ---
-        description: Download given playlist as ZIP file containing all preview
-          files.
-        tags:
-          - Playlists
-        parameters:
-          - in: path
-            name: playlist_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Playlist unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: Playlist downloaded as ZIP file
-            content:
-              application/zip:
-                schema:
-                  type: string
-                  format: binary
         """
         permissions_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
@@ -722,52 +332,10 @@ class PlaylistZipDownloadResource(MethodView):
 class BuildJobResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/BuildJobResource_get.yml")
     def get(self, playlist_id, build_job_id):
         """
         Get build job
-        ---
-        description: Retrieve build job related to given playlist.
-        tags:
-          - Playlists
-        parameters:
-          - in: path
-            name: playlist_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Playlist unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: build_job_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Build job unique identifier
-            example: b35b7fb5-df86-5776-b181-68564193d36
-        responses:
-          200:
-            description: Build job related to given playlist
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Build job unique identifier
-                      example: a24a6ea4-ce75-4665-a070-57453082c25
-                    status:
-                      type: string
-                      description: Build job status
-                      example: "succeeded"
-                    created_at:
-                      type: string
-                      format: date-time
-                      description: Build job creation timestamp
-                      example: "2022-07-12T10:30:00Z"
         """
         permissions_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
@@ -778,33 +346,10 @@ class BuildJobResource(MethodView):
         return build_job
 
     @jwt_required()
+    @swag_from("openapi/BuildJobResource_delete.yml")
     def delete(self, playlist_id, build_job_id):
         """
         Delete build job
-        ---
-        description: Remove given build job related to given playlist.
-        tags:
-          - Playlists
-        parameters:
-          - in: path
-            name: playlist_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Playlist unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: build_job_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Build job unique identifier
-            example: b35b7fb5-df86-5776-b181-68564193d36
-        responses:
-          204:
-            description: Build job removed successfully
         """
         permissions_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
@@ -819,47 +364,10 @@ class BuildJobResource(MethodView):
 class ProjectBuildJobsResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/ProjectBuildJobsResource_get.yml")
     def get(self, project_id):
         """
         Get project build jobs
-        ---
-        description: Retrieve all build jobs related to given project. It's
-          mainly used for synchronisation purpose.
-        tags:
-          - Playlists
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: All build jobs related to given project
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        description: Build job unique identifier
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      status:
-                        type: string
-                        description: Build job status
-                        example: "succeeded"
-                      created_at:
-                        type: string
-                        format: date-time
-                        description: Build job creation timestamp
-                        example: "2022-07-12T10:30:00Z"
         """
         permissions.check_admin_permissions()
         projects_service.get_project(project_id)
@@ -869,47 +377,10 @@ class ProjectBuildJobsResource(MethodView):
 class ProjectAllPlaylistsResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/ProjectAllPlaylistsResource_get.yml")
     def get(self, project_id):
         """
         Get all project playlists
-        ---
-        description: Retrieve all playlists related to given project. It's
-          mainly used for synchronisation purpose.
-        tags:
-          - Playlists
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: All playlists related to given project
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        description: Playlist unique identifier
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      name:
-                        type: string
-                        description: Playlist name
-                        example: "Review Playlist"
-                      project_id:
-                        type: string
-                        format: uuid
-                        description: Project unique identifier
-                        example: b35b7fb5-df86-5776-b181-68564193d36
         """
         permissions.check_admin_permissions()
         projects_service.get_project(project_id)
@@ -920,75 +391,10 @@ class ProjectAllPlaylistsResource(MethodView, ArgsMixin):
 class TempPlaylistResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/TempPlaylistResource_post.yml")
     def post(self, project_id):
         """
         Generate temp playlist
-        ---
-        description: Generate a temporary playlist from task IDs. It's mainly
-          used for synchronisation purpose.
-        tags:
-          - Playlists
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: sort
-            required: false
-            schema:
-              type: boolean
-            description: Whether to sort the playlist
-            example: true
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  task_ids:
-                    type: array
-                    items:
-                      type: string
-                      format: uuid
-                    description: List of task unique identifiers
-                    example: ["a24a6ea4-ce75-4665-a070-57453082c25"]
-                  entity_ids:
-                    type: array
-                    items:
-                      type: string
-                      format: uuid
-                    description: >
-                      List of entity unique identifiers, each contributing
-                      the task holding its current preview (or its first
-                      task with a preview)
-                    example: ["a24a6ea4-ce75-4665-a070-57453082c25"]
-        responses:
-          200:
-            description: Temporary playlist generated
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        description: Preview file unique identifier
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      name:
-                        type: string
-                        description: Preview file name
-                        example: "preview_v001.png"
-          400:
-            description: Invalid task IDs
         """
         permissions_service.check_project_access(project_id)
         body = validation.validate_request_body(TempPlaylistCreateSchema)
@@ -1011,51 +417,10 @@ class TempPlaylistResource(MethodView, ArgsMixin):
 class NotifyClientsResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/NotifyClientsResource_post.yml")
     def post(self, playlist_id):
         """
         Notify clients playlist ready
-        ---
-        description: Notify clients that given playlist is ready for review.
-        tags:
-          - Playlists
-        parameters:
-          - in: path
-            name: playlist_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Playlist unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: false
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  studio_id:
-                    type: string
-                    format: uuid
-                    description: Studio unique identifier to notify
-                    example: b35b7fb5-df86-5776-b181-68564193d36
-                  department_id:
-                    type: string
-                    format: uuid
-                    description: Department unique identifier to notify
-                    example: c46c8gc6-eg97-6887-c292-79675204e47
-        responses:
-          200:
-            description: Clients notified successfully
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    status:
-                      type: string
-                      description: Notification status
-                      example: "success"
         """
         playlist = playlists_service.get_playlist(playlist_id)
         permissions_service.check_manager_project_access(
@@ -1079,7 +444,11 @@ class PlaylistShareLinksResource(MethodView):
     """
 
     @jwt_required()
+    @swag_from("openapi/PlaylistShareLinksResource_get.yml")
     def get(self, playlist_id):
+        """
+        List the share links of a playlist
+        """
         permissions.check_manager_permissions()
         playlist = playlists_service.get_playlist(playlist_id)
         permissions_service.check_manager_project_access(
@@ -1090,7 +459,11 @@ class PlaylistShareLinksResource(MethodView):
         )
 
     @jwt_required()
+    @swag_from("openapi/PlaylistShareLinksResource_post.yml")
     def post(self, playlist_id):
+        """
+        Create a share link for a playlist
+        """
         permissions.check_manager_permissions()
         playlist = playlists_service.get_playlist(playlist_id)
         permissions_service.check_manager_project_access(
@@ -1114,7 +487,11 @@ class PlaylistShareLinkResource(MethodView):
     """
 
     @jwt_required()
+    @swag_from("openapi/PlaylistShareLinkResource_delete.yml")
     def delete(self, playlist_id, token):
+        """
+        Revoke a share link
+        """
         permissions.check_manager_permissions()
         playlist = playlists_service.get_playlist(playlist_id)
         permissions_service.check_manager_project_access(
@@ -1142,59 +519,10 @@ class PlaylistShareLinkInviteResource(MethodView):
     """
 
     @jwt_required()
+    @swag_from("openapi/PlaylistShareLinkInviteResource_post.yml")
     def post(self, playlist_id, token):
         """
         Invite reviewers to a shared playlist
-        ---
-        description: Send the share URL by email to a list of recipients
-          (raw emails and/or existing person ids).
-        tags:
-          - Playlists
-        parameters:
-          - in: path
-            name: playlist_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-          - in: path
-            name: token
-            required: true
-            schema:
-              type: string
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  emails:
-                    type: array
-                    items:
-                      type: string
-                      format: email
-                  person_ids:
-                    type: array
-                    items:
-                      type: string
-                      format: uuid
-                  message:
-                    type: string
-        responses:
-          200:
-            description: Invitations dispatched
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    sent:
-                      type: array
-                      items:
-                        type: string
-          400:
-            description: One of the supplied emails is invalid
         """
         permissions.check_manager_permissions()
         playlist = playlists_service.get_playlist(playlist_id)

@@ -1,3 +1,4 @@
+from flasgger import swag_from
 from flask import request, current_app
 from flask_jwt_extended import jwt_required
 
@@ -20,9 +21,12 @@ from zou.app.services import (
     notifications_service,
     persons_service,
 )
-from zou.app.utils import events, permissions
+from zou.app.utils import events, fields, permissions
 
-from zou.app.services.exception import WrongTaskTypeForEntityException
+from zou.app.exceptions import (
+    WrongParameterException,
+    WrongTaskTypeForEntityException,
+)
 
 from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
 
@@ -43,80 +47,10 @@ class TasksResource(BaseModelsResource, ArgsMixin):
         return True
 
     @jwt_required()
+    @swag_from("openapi/TasksResource_get.yml")
     def get(self):
         """
         Get tasks
-        ---
-        tags:
-          - Crud
-        description: Retrieve all tasks. Supports filtering via query
-          parameters and pagination. Includes project permission filtering
-          for non-admin users. Vendor users only see assigned tasks.
-        parameters:
-          - in: query
-            name: page
-            required: false
-            schema:
-              type: integer
-            example: 1
-            description: Page number for pagination
-          - in: query
-            name: limit
-            required: false
-            schema:
-              type: integer
-            example: 50
-            description: Number of results per page
-          - in: query
-            name: relations
-            required: false
-            schema:
-              type: boolean
-            default: false
-            example: false
-            description: Whether to include relations
-          - in: query
-            name: episode_id
-            required: false
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-            description: Filter tasks by episode ID
-        responses:
-            200:
-              description: Tasks retrieved successfully
-              content:
-                application/json:
-                  schema:
-                    oneOf:
-                      - type: array
-                        items:
-                          type: object
-                      - type: object
-                        properties:
-                          data:
-                            type: array
-                            items:
-                              type: object
-                            example: []
-                          total:
-                            type: integer
-                            example: 100
-                          nb_pages:
-                            type: integer
-                            example: 2
-                          limit:
-                            type: integer
-                            example: 50
-                          offset:
-                            type: integer
-                            example: 0
-                          page:
-                            type: integer
-                            example: 1
-            400:
-              description: Invalid filter format or query error
         """
         return super().get()
 
@@ -150,6 +84,12 @@ class TasksResource(BaseModelsResource, ArgsMixin):
 
         episode_id = options.get("episode_id", None)
         if episode_id is not None:
+            # Bound as a raw value into the join below: the driver would
+            # reject a malformed id on execution, as a 500.
+            if not fields.is_valid_id(episode_id):
+                raise WrongParameterException(
+                    f"Invalid UUID format for episode_id: {episode_id}"
+                )
             Sequence = aliased(Entity)
             query = (
                 query.join(Entity, Task.entity_id == Entity.id)
@@ -160,75 +100,27 @@ class TasksResource(BaseModelsResource, ArgsMixin):
         return query
 
     @jwt_required()
+    @swag_from("openapi/TasksResource_post.yml")
     def post(self):
         """
         Create task
-        ---
-        tags:
-          - Crud
-        description: Create a task with data provided in the request
-          body. JSON format is expected. The task type must match the
-          entity type.
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - task_type_id
-                  - entity_id
-                properties:
-                  task_type_id:
-                    type: string
-                    format: uuid
-                    example: a24a6ea4-ce75-4665-a070-57453082c25
-                  entity_id:
-                    type: string
-                    format: uuid
-                    example: b24a6ea4-ce75-4665-a070-57453082c25
-                  assignees:
-                    type: array
-                    items:
-                      type: string
-                      format: uuid
-                    example: ["c24a6ea4-ce75-4665-a070-57453082c25"]
-        responses:
-            201:
-              description: Task created successfully
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: d24a6ea4-ce75-4665-a070-57453082c25
-                      task_type_id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      entity_id:
-                        type: string
-                        format: uuid
-                        example: b24a6ea4-ce75-4665-a070-57453082c25
-                      assignees:
-                        type: array
-                        items:
-                          type: string
-                          format: uuid
-                        example: ["c24a6ea4-ce75-4665-a070-57453082c25"]
-            400:
-              description: Task type does not match entity type or task already exists
         """
         try:
             data = request.json
+            if not isinstance(data, dict):
+                raise WrongParameterException("A JSON object is expected.")
+            for key in ("task_type_id", "entity_id"):
+                if not fields.is_valid_id(data.get(key)):
+                    raise WrongParameterException(
+                        f"A valid {key} is required."
+                    )
             # task.name is NOT NULL; default it like create_task() does so a
             # client omitting it gets a task instead of an IntegrityError.
             data["name"] = data.get("name") or "main"
             is_assignees = "assignees" in data
             assignees = None
+            if is_assignees and not isinstance(data["assignees"], list):
+                raise WrongParameterException("assignees must be a list.")
 
             task_type = tasks_service.get_task_type(data["task_type_id"])
             entity = entities_service.get_entity(data["entity_id"])
@@ -281,162 +173,18 @@ class TaskResource(BaseModelResource, ArgsMixin):
         permissions_service.check_entity_access(task["entity_id"])
 
     @jwt_required()
+    @swag_from("openapi/TaskResource_get.yml")
     def get(self, instance_id):
         """
         Get task
-        ---
-        tags:
-          - Crud
-        description: Retrieve a task by its ID and return it as a JSON
-          object. Supports including relations. Requires project and
-          entity access.
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: relations
-            required: false
-            schema:
-              type: boolean
-            default: true
-            example: true
-            description: Whether to include relations
-        responses:
-            200:
-              description: Task retrieved successfully
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      task_type_id:
-                        type: string
-                        format: uuid
-                        example: b24a6ea4-ce75-4665-a070-57453082c25
-                      entity_id:
-                        type: string
-                        format: uuid
-                        example: c24a6ea4-ce75-4665-a070-57453082c25
-                      project_id:
-                        type: string
-                        format: uuid
-                        example: d24a6ea4-ce75-4665-a070-57453082c25
-                      task_status_id:
-                        type: string
-                        format: uuid
-                        example: e24a6ea4-ce75-4665-a070-57453082c25
-                      assignees:
-                        type: array
-                        items:
-                          type: string
-                          format: uuid
-                        example: ["f24a6ea4-ce75-4665-a070-57453082c25"]
-                      created_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-            400:
-              description: Invalid ID format or query error
         """
         return super().get(instance_id)
 
     @jwt_required()
+    @swag_from("openapi/TaskResource_put.yml")
     def put(self, instance_id):
         """
         Update task
-        ---
-        tags:
-          - Crud
-        description: Update a task with data provided in the request
-          body. JSON format is expected. Requires supervisor access.
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  task_status_id:
-                    type: string
-                    format: uuid
-                    example: b24a6ea4-ce75-4665-a070-57453082c25
-                  assignees:
-                    type: array
-                    items:
-                      type: string
-                      format: uuid
-                    example: ["c24a6ea4-ce75-4665-a070-57453082c25"]
-                  duration:
-                    type: number
-                    example: 8.5
-        responses:
-            200:
-              description: Task updated successfully
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      task_type_id:
-                        type: string
-                        format: uuid
-                        example: b24a6ea4-ce75-4665-a070-57453082c25
-                      entity_id:
-                        type: string
-                        format: uuid
-                        example: c24a6ea4-ce75-4665-a070-57453082c25
-                      project_id:
-                        type: string
-                        format: uuid
-                        example: d24a6ea4-ce75-4665-a070-57453082c25
-                      task_status_id:
-                        type: string
-                        format: uuid
-                        example: e24a6ea4-ce75-4665-a070-57453082c25
-                      assignees:
-                        type: array
-                        items:
-                          type: string
-                          format: uuid
-                        example: ["f24a6ea4-ce75-4665-a070-57453082c25"]
-                      duration:
-                        type: number
-                        example: 8.5
-                      created_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T11:00:00Z"
-            400:
-              description: Invalid data format or validation error
         """
         return super().put(instance_id)
 
@@ -487,35 +235,10 @@ class TaskResource(BaseModelResource, ArgsMixin):
         return instance_dict
 
     @jwt_required()
+    @swag_from("openapi/TaskResource_delete.yml")
     def delete(self, instance_id):
         """
         Delete task
-        ---
-        tags:
-          - Crud
-        description: Delete a task by its ID. Returns empty response on
-          success. May require force flag if task has associated data.
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: force
-            required: false
-            schema:
-              type: boolean
-            default: false
-            example: false
-            description: Force deletion even if task has associated data
-        responses:
-            204:
-              description: Task deleted successfully
-            400:
-              description: Integrity error or cannot delete
         """
         force = self.get_force()
 

@@ -11,7 +11,8 @@ from tests.base import ApiDBTestCase
 from zou.app.models.person import Person
 from zou.app.services import preview_files_service
 from zou.app.stores import auth_tokens_store, file_store
-from zou.app.utils import commands
+from zou.app.services import commands_service as commands
+from zou.app.utils import fields
 from zou.app.utils import progress as progress_utils
 from zou.app.models.entity_type import EntityType
 from zou.app.models.plugin import Plugin
@@ -166,11 +167,11 @@ class RenormalizeMoviePreviewFilesTestCase(ApiDBTestCase):
             "get_local_movie_path",
             return_value=missing_path,
         ), patch(
-            "zou.app.utils.commands.shutil.copyfile"
+            "zou.app.services.commands_service.shutil.copyfile"
         ), patch(
-            "zou.app.utils.commands.config.FS_BACKEND", "local"
+            "zou.app.services.commands_service.config.FS_BACKEND", "local"
         ), patch(
-            "zou.app.utils.commands.config.ENABLE_JOB_QUEUE", False
+            "zou.app.services.commands_service.config.ENABLE_JOB_QUEUE", False
         ), patch.object(
             preview_files_service, "prepare_and_store_movie"
         ) as mock_prepare:
@@ -303,6 +304,28 @@ class RenormalizeMoviePreviewFilesTestCase(ApiDBTestCase):
         self.assertIn(self.preview_file_id, seen_ids)
         self.assertNotIn(non_mp4_id, seen_ids)
 
+    def test_project_id_filter_joins_the_task(self):
+        # PreviewFile has no project column: the filter used to read one
+        # and raise before any row was looked at.
+        seen_ids = []
+
+        def fake_exists(prefix, pid):
+            seen_ids.append(pid)
+            return False
+
+        buf = io.StringIO()
+        with redirect_stdout(buf), patch.object(
+            file_store, "exists_movie", side_effect=fake_exists
+        ), patch.object(preview_files_service, "prepare_and_store_movie"):
+            commands.renormalize_movie_preview_files(
+                all_broken=True, project_id=str(self.project.id)
+            )
+            commands.renormalize_movie_preview_files(
+                all_broken=True, project_id=fields.gen_uuid()
+            )
+
+        self.assertEqual(seen_ids, [self.preview_file_id])
+
     def test_cli_accepts_repeated_preview_file_id_option(self):
         runner = CliRunner()
         with patch.object(
@@ -323,6 +346,35 @@ class RenormalizeMoviePreviewFilesTestCase(ApiDBTestCase):
         mock_cmd.assert_called_once()
         args, kwargs = mock_cmd.call_args
         self.assertEqual(args[0], ("id1", "id2"))
+
+
+class SyncCommandsTestCase(ApiDBTestCase):
+    def test_page_size_reaches_the_sync_service(self):
+        from zou.app.services import sync_service
+
+        with patch.object(sync_service, "init"), patch.object(
+            sync_service, "run_last_events_sync"
+        ) as events_sync, patch.object(
+            sync_service, "run_last_events_files"
+        ) as files_sync, redirect_stdout(
+            io.StringIO()
+        ):
+            commands.import_last_changes_from_another_instance(
+                "http://source", "login", "password", minutes=5, limit=7
+            )
+            commands.import_last_file_changes_from_another_instance(
+                "http://source", "login", "password", minutes=5, limit=9
+            )
+        events_sync.assert_called_once_with(minutes=5, limit=7)
+        files_sync.assert_called_once_with(minutes=5, limit=9)
+
+    def test_clean_tasks_data_requires_a_project_id(self):
+        runner = CliRunner()
+        with patch.object(commands, "reset_tasks_data") as reset:
+            result = runner.invoke(cli, ["clean-tasks-data"])
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("--project-id", result.output)
+        reset.assert_not_called()
 
 
 class CreateAdminCommandTestCase(ApiDBTestCase):
@@ -563,7 +615,7 @@ class GeneratePreviewExtraOnlyMissingTilesTestCase(ApiDBTestCase):
         self.assertIn("--only-missing-tiles", result.output)
 
     def test_a_disabled_job_queue_is_reported(self):
-        from zou.app.services.exception import JobQueueDisabledException
+        from zou.app.exceptions import JobQueueDisabledException
 
         with patch.object(
             commands.preview_files_service,

@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from sqlalchemy.orm import aliased
+from sqlalchemy.orm import aliased, selectinload
 from sqlalchemy import func, or_, and_
 from sqlalchemy.exc import DataError
 
@@ -9,6 +9,7 @@ from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.notification import Notification
 from zou.app.models.person import Person
+from zou.app.models.playlist import Playlist
 from zou.app.models.project import Project, ProjectPersonLink
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.subscription import Subscription
@@ -24,7 +25,6 @@ from zou.app.services import (
     names_service,
     permissions_service,
     persons_service,
-    playlists_service,
     plugins_service,
     projects_service,
     shots_service,
@@ -32,11 +32,12 @@ from zou.app.services import (
     tasks_service,
     files_service,
 )
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     SearchFilterNotFoundException,
     SearchFilterGroupNotFoundException,
     NotificationNotFoundException,
     WrongParameterException,
+    ProjectNotFoundException,
 )
 from zou.app.utils import cache, fields, permissions, events
 
@@ -66,7 +67,7 @@ def clear_filter_group_cache(user_id=None):
     _clear_user_scoped_cache(get_user_filter_groups, user_id)
 
 
-def clear_project_cache():
+def clear_open_projects_cache():
     """
     Drop the memoized open project list.
     """
@@ -93,14 +94,8 @@ def _deny_sharing_without_manager_access(data, instance):
     if (
         data.get("is_shared", None) is not None
         and instance.is_shared != data["is_shared"]
-        and (
-            data.get("project_id", None) is None
-            or (
-                data["project_id"] is not None
-                and not permissions_service.has_manager_project_access(
-                    data["project_id"]
-                )
-            )
+        and not permissions_service.can_share_filter(
+            data.get("project_id", None)
         )
     ):
         data["is_shared"] = False
@@ -113,7 +108,7 @@ def _get_own_or_as_admin(model, instance_id, current_user):
     when nothing matches, the caller raises.
     """
     instance = model.get_by(id=instance_id, person_id=current_user["id"])
-    if instance is None and current_user["role"] == "admin":
+    if instance is None and permissions.has_admin_permissions():
         instance = model.get_by(id=instance_id)
     return instance
 
@@ -122,8 +117,7 @@ def build_assignee_filter():
     """
     Query filter for task to retrieve only tasks assigned to current user.
     """
-    current_user = persons_service.get_current_user_raw()
-    return Task.assignees.contains(current_user)
+    return persons_service.build_assignee_filter()
 
 
 def build_team_filter():
@@ -551,9 +545,20 @@ def get_projects(name=None):
     )
 
     if name is not None:
-        query = query.filter(Project.name == name)
+        query = query.filter(func.lower(Project.name) == name.lower())
 
     return fields.serialize_value(query.all())
+
+
+def get_project_by_name(project_name):
+    """
+    Get the project of given name among those the current user belongs to,
+    case insensitive. Raises an exception if none matches.
+    """
+    projects = get_projects(name=project_name)
+    if not projects:
+        raise ProjectNotFoundException()
+    return projects[0]
 
 
 def get_filters():
@@ -643,11 +648,7 @@ def create_filter(
     Add a new search filter to the database.
     """
     current_user = persons_service.get_current_user()
-
-    if project_id is None or (
-        project_id is not None
-        and not permissions_service.has_manager_project_access(project_id)
-    ):
+    if not permissions_service.can_share_filter(project_id):
         is_shared = False
 
     if search_filter_group_id is not None:
@@ -829,10 +830,7 @@ def create_filter_group(
     Add a new search filter group to the database.
     """
     current_user = persons_service.get_current_user()
-    if project_id is None or (
-        project_id is not None
-        and not permissions_service.has_manager_project_access(project_id)
-    ):
+    if not permissions_service.can_share_filter(project_id):
         is_shared = False
 
     if department_id is not None:
@@ -1051,6 +1049,97 @@ def get_last_notifications(
         )
     )
 
+    query = _filter_notifications(
+        query,
+        notification_id,
+        after,
+        before,
+        task_type_id,
+        task_status_id,
+        notification_type,
+        read,
+        watching,
+    )
+
+    try:
+        # The query is lazy: a date the driver refuses raises here, not
+        # while the filters are being stacked above.
+        notifications = query.limit(100).all()
+    except DataError:
+        raise WrongParameterException("Wrong date format for after or before.")
+
+    context = _load_notification_context(notifications)
+    for row in notifications:
+        result.append(
+            _serialize_notification(row, is_current_user_artist, context)
+        )
+
+    return result
+
+
+def _load_notification_context(notifications):
+    """
+    Load in a fixed number of queries what the notification rows point at:
+    the comments with their previews, the playlists with their project, the
+    full names of the entities. Reading them per row cost up to three
+    queries per notification on a listing the clients poll.
+    """
+    comment_ids = set()
+    playlist_ids = set()
+    entity_ids = set()
+    for row in notifications:
+        notification = row[0]
+        comment_id = row[4]
+        task_entity_id = row[8]
+        if comment_id is not None:
+            comment_ids.add(comment_id)
+        if notification.playlist_id is not None:
+            playlist_ids.add(notification.playlist_id)
+        elif task_entity_id is not None:
+            entity_ids.add(task_entity_id)
+
+    comments = {}
+    if comment_ids:
+        comments = {
+            str(comment.id): comment
+            for comment in Comment.query.options(
+                selectinload(Comment.previews)
+            ).filter(Comment.id.in_(list(comment_ids)))
+        }
+
+    playlists = {}
+    if playlist_ids:
+        for playlist, project_name in (
+            Playlist.query.join(Project, Project.id == Playlist.project_id)
+            .filter(Playlist.id.in_(list(playlist_ids)))
+            .with_entities(Playlist, Project.name)
+            .all()
+        ):
+            playlists[str(playlist.id)] = (playlist, project_name)
+
+    return {
+        "comments": comments,
+        "playlists": playlists,
+        "entity_names": names_service.get_full_entity_names(
+            [str(entity_id) for entity_id in entity_ids]
+        ),
+    }
+
+
+def _filter_notifications(
+    query,
+    notification_id,
+    after,
+    before,
+    task_type_id,
+    task_status_id,
+    notification_type,
+    read,
+    watching,
+):
+    """
+    Narrow the notification listing to the criteria the caller gave.
+    """
     if notification_id is not None:
         query = query.filter(Notification.id == notification_id)
 
@@ -1083,15 +1172,17 @@ def get_last_notifications(
             query = query.filter(Subscription.id != None)
         else:
             query = query.filter(Subscription.id == None)
+    return query
 
-    try:
-        # The query is lazy: a date the driver refuses raises here, not
-        # while the filters are being stacked above.
-        notifications = query.limit(100).all()
-    except DataError:
-        raise WrongParameterException("Wrong date format for after or before.")
 
-    for (
+def _serialize_notification(row, is_current_user_artist, context):
+    """
+    Build the notification dict of one row of the listing query, with the
+    entity or playlist it points at and the text of the comment or reply
+    that raised it, read from the context _load_notification_context
+    built. A client comment is blanked for an artist.
+    """
+    (
         notification,
         project_id,
         project_name,
@@ -1103,98 +1194,95 @@ def get_last_notifications(
         task_entity_id,
         subscription_id,
         role,
-    ) in notifications:
-        full_entity_name, episode_id, entity_preview_file_id = "", None, None
-        playlist_id = notification.playlist_id
-        playlist_name = ""
-        playlist_for_entity = ""
-        playlist_is_for_all = False
-        if notification.playlist_id is None:
-            full_entity_name, episode_id, entity_preview_file_id = (
-                names_service.get_full_entity_name(task_entity_id)
+    ) = row
+
+    full_entity_name, episode_id, entity_preview_file_id = "", None, None
+    playlist_id = notification.playlist_id
+    playlist_name = ""
+    playlist_for_entity = ""
+    playlist_is_for_all = False
+    if notification.playlist_id is None:
+        full_entity_name, episode_id, entity_preview_file_id = context[
+            "entity_names"
+        ].get(str(task_entity_id), ("", None, None))
+    else:
+        playlist, project_name = context["playlists"][
+            str(notification.playlist_id)
+        ]
+        episode_id = playlist.episode_id
+        project_id = playlist.project_id
+        playlist_name = playlist.name
+        playlist_for_entity = playlist.for_entity
+        playlist_is_for_all = playlist.is_for_all
+
+    preview_file_id = None
+    mentions = []
+    department_mentions = []
+    reply_mentions = []
+    reply_department_mentions = []
+    comment = context["comments"].get(str(comment_id))
+    if comment is not None:
+        if len(comment.previews) > 0:
+            preview_file_id = comment.previews[0].id
+        mentions = comment.mentions or []
+        department_mentions = comment.department_mentions or []
+
+    reply_text = ""
+    if notification.type in ["reply", "reply-mention"]:
+        reply = next(
+            (
+                reply
+                for reply in comment_replies
+                if reply["id"] == str(notification.reply_id)
+            ),
+            None,
+        )
+        if reply is not None:
+            reply_text = reply["text"]
+            reply_mentions = reply.get("mentions", []) or []
+            reply_department_mentions = (
+                reply.get("department_mentions", []) or []
             )
         else:
-            playlist = playlists_service.get_playlist(notification.playlist_id)
-            episode_id = playlist.get("episode_id", None)
-            project = projects_service.get_project(playlist["project_id"])
-            project_id = project["id"]
-            project_name = project["name"]
-            playlist_name = playlist["name"]
-            playlist_for_entity = playlist["for_entity"]
-            playlist_is_for_all = playlist["is_for_all"]
+            reply_mentions = []
+            reply_department_mentions = []
 
-        preview_file_id = None
-        mentions = []
-        department_mentions = []
-        reply_mentions = []
-        reply_department_mentions = []
-        if comment_id is not None:
-            comment = Comment.get(comment_id)
-            if len(comment.previews) > 0:
-                preview_file_id = comment.previews[0].id
-            mentions = comment.mentions or []
-            department_mentions = comment.department_mentions or []
-
+    if role == "client" and is_current_user_artist:
+        comment_text = ""
         reply_text = ""
-        if notification.type in ["reply", "reply-mention"]:
-            reply = next(
-                (
-                    reply
-                    for reply in comment_replies
-                    if reply["id"] == str(notification.reply_id)
-                ),
-                None,
-            )
-            if reply is not None:
-                reply_text = reply["text"]
-                reply_mentions = reply.get("mentions", []) or []
-                reply_department_mentions = (
-                    reply.get("department_mentions", []) or []
-                )
-            else:
-                reply_mentions = []
-                reply_department_mentions = []
 
-        if role == "client" and is_current_user_artist:
-            comment_text = ""
-            reply_text = ""
-
-        result.append(
-            fields.serialize_dict(
-                {
-                    "id": notification.id,
-                    "type": "Notification",
-                    "notification_type": notification.type,
-                    "author_id": notification.author_id,
-                    "comment_id": notification.comment_id,
-                    "task_id": notification.task_id,
-                    "task_type_id": task_type_id,
-                    "task_status_id": task_status_id,
-                    "mentions": mentions,
-                    "department_mentions": department_mentions,
-                    "reply_mentions": reply_mentions,
-                    "reply_department_mentions": reply_department_mentions,
-                    "preview_file_id": preview_file_id,
-                    "project_id": project_id,
-                    "project_name": project_name,
-                    "comment_text": comment_text,
-                    "reply_text": reply_text,
-                    "created_at": notification.created_at,
-                    "read": notification.read,
-                    "change": notification.change,
-                    "full_entity_name": full_entity_name,
-                    "episode_id": episode_id,
-                    "entity_preview_file_id": entity_preview_file_id,
-                    "subscription_id": subscription_id,
-                    "playlist_id": playlist_id,
-                    "playlist_name": playlist_name,
-                    "playlist_for_entity": playlist_for_entity,
-                    "playlist_is_for_all": playlist_is_for_all,
-                }
-            )
-        )
-
-    return result
+    return fields.serialize_dict(
+        {
+            "id": notification.id,
+            "type": "Notification",
+            "notification_type": notification.type,
+            "author_id": notification.author_id,
+            "comment_id": notification.comment_id,
+            "task_id": notification.task_id,
+            "task_type_id": task_type_id,
+            "task_status_id": task_status_id,
+            "mentions": mentions,
+            "department_mentions": department_mentions,
+            "reply_mentions": reply_mentions,
+            "reply_department_mentions": reply_department_mentions,
+            "preview_file_id": preview_file_id,
+            "project_id": project_id,
+            "project_name": project_name,
+            "comment_text": comment_text,
+            "reply_text": reply_text,
+            "created_at": notification.created_at,
+            "read": notification.read,
+            "change": notification.change,
+            "full_entity_name": full_entity_name,
+            "episode_id": episode_id,
+            "entity_preview_file_id": entity_preview_file_id,
+            "subscription_id": subscription_id,
+            "playlist_id": playlist_id,
+            "playlist_name": playlist_name,
+            "playlist_for_entity": playlist_for_entity,
+            "playlist_is_for_all": playlist_is_for_all,
+        }
+    )
 
 
 def mark_notifications_as_read():

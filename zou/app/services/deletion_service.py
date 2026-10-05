@@ -1,3 +1,15 @@
+"""
+Cascading removals: what goes with a task, a preview, an entity, an episode
+or a whole project.
+
+This is the top of the service layers, above the entity services (assets,
+shots, edits, concepts) that call remove_task for their force branch. Those
+services are imported inside the functions that need them rather than at
+module level: importing them here at module level would close the cycle
+they open by importing this module.
+"""
+
+import logging
 import datetime
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
@@ -42,7 +54,7 @@ from zou.app.stores import file_store
 from zou.app import config
 
 from zou.app.services import base_service, files_service
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     ProjectNotFoundException,
     AttachmentFileNotFoundException,
     CommentNotFoundException,
@@ -53,6 +65,8 @@ from zou.app.services.exception import (
     PreviewFileNotFoundException,
 )
 
+logger = logging.getLogger(__name__)
+
 
 def _remove_quietly(remove_from_store, prefix, file_id):
     """
@@ -62,7 +76,9 @@ def _remove_quietly(remove_from_store, prefix, file_id):
     try:
         remove_from_store(prefix, file_id)
     except Exception:
-        pass
+        logger.warning(
+            f"Stored file {prefix}-{file_id} could not be removed.", exc_info=1
+        )
 
 
 def _remove_older_than(model, date_column, days_old):
@@ -293,8 +309,6 @@ def remove_preview_file(preview_file, force=False):
     # The download routes read their whole authorization off the memoized
     # serialization: left in place, it keeps handing out the task the
     # permission is checked against, and the file goes on being served.
-    from zou.app.services import files_service
-
     files_service.clear_preview_file_cache(preview_file_id)
 
     # Remove the physical files only once the DB row is gone: if the
@@ -411,7 +425,15 @@ def clear_movie_files(preview_file_id):
     """
     for movie_type in files_service.MOVIE_PREFIXES:
         _remove_quietly(file_store.remove_movie, movie_type, preview_file_id)
-    for image_type in ["thumbnails", "thumbnails-square", "previews", "tiles"]:
+    # The movie pipeline also stores the first frame as the "original"
+    # picture, next to the thumbnails cut from it.
+    for image_type in [
+        "original",
+        "thumbnails",
+        "thumbnails-square",
+        "previews",
+        "tiles",
+    ]:
         _remove_quietly(file_store.remove_picture, image_type, preview_file_id)
 
 

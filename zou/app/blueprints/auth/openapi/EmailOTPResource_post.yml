@@ -1,0 +1,23 @@
+Enable email OTP
+---
+description: Enable email OTP (One-Time Password) authentication.
+  It requires verification code sent to email.
+tags:
+    - Authentication
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          email_otp:
+            type: string
+            description: Email OTP verification code
+        required:
+          - email_otp
+responses:
+  200:
+    description: Email OTP enabled
+  400:
+    description: Email OTP already enabled or verification failed

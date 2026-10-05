@@ -1,0 +1,66 @@
+Get playlist
+---
+tags:
+  - Crud
+description: Retrieve a playlist by its ID and return it as a JSON
+  object. Supports including relations. Requires project access,
+  and a client reads the playlists shared with clients only.
+  Vendor access is blocked.
+parameters:
+  - in: path
+    name: instance_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+  - in: query
+    name: relations
+    required: false
+    schema:
+      type: boolean
+    default: true
+    example: true
+    description: Whether to include relations
+responses:
+    200:
+      description: Playlist retrieved successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: Playlist Name
+              project_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              episode_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              task_type_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              shots:
+                type: array
+                items:
+                  type: object
+                example: []
+              created_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T10:30:00Z"
+              updated_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T10:30:00Z"
+    400:
+      description: Invalid ID format or query error

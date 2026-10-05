@@ -1,0 +1,53 @@
+Get month time spents
+---
+description: Get aggregated time spents for given person and month.
+tags:
+  - Persons
+parameters:
+  - in: path
+    name: person_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Person unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+  - in: path
+    name: year
+    required: true
+    schema:
+      type: integer
+    description: Year to get aggregated time spents for
+    example: 2022
+  - in: path
+    name: month
+    required: true
+    schema:
+      type: integer
+    description: Month to get aggregated time spents for
+    example: 7
+    minimum: 1
+    maximum: 12
+responses:
+  200:
+    description: Aggregated time spents for given person and month
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            total_duration:
+              type: number
+              format: float
+              description: Total duration in hours
+              example: 173.5
+            year:
+              type: integer
+              description: Year
+              example: 2022
+            month:
+              type: integer
+              description: Month
+              example: 7
+  400:
+    description: Wrong date format

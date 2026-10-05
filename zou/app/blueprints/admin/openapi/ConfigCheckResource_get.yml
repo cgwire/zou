@@ -1,0 +1,44 @@
+Compare the environment and the stored configuration
+---
+description: Return, for each setting kept in Redis (user limit, default
+  timezone and locale, Nomad host), the value of the environment and the
+  stored value, plus the number of active human accounts. Meant for the
+  operator; the route only exists when ADMIN_TOKEN is set and expects it
+  as a bearer token.
+tags:
+  - Admin
+security: []
+parameters:
+  - in: header
+    name: Authorization
+    required: true
+    schema:
+      type: string
+    example: Bearer <ADMIN_TOKEN>
+responses:
+  200:
+    description: Configuration comparison
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            user_limit:
+              type: object
+              properties:
+                env:
+                  type: integer
+                redis:
+                  type: string
+                  nullable: true
+            default_timezone:
+              type: object
+            default_locale:
+              type: object
+            nomad_host:
+              type: object
+            active_users:
+              type: integer
+              nullable: true
+  403:
+    description: Missing or wrong admin token

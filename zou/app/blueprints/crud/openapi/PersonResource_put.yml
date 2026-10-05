@@ -1,0 +1,119 @@
+Update person
+---
+tags:
+  - Crud
+description: Update a person with data provided in the request
+  body. JSON format is expected. Users can only update themselves
+  unless they have admin permissions. Non-admins cannot change
+  certain protected fields. Validates role, contract_type,
+  two_factor_authentication, email, and expiration_date. Checks
+  user limit when activating non-bot users. Protected accounts
+  have restrictions.
+parameters:
+  - in: path
+    name: instance_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          first_name:
+            type: string
+            example: Jane
+          last_name:
+            type: string
+            example: Smith
+          email:
+            type: string
+            format: email
+            example: jane.smith@example.com
+          password:
+            type: string
+            example: newsecurepassword123
+          role:
+            type: string
+            example: manager
+            description: Admin only
+          active:
+            type: boolean
+            example: true
+            description: Admin only
+          contract_type:
+            type: string
+            example: freelance
+          two_factor_authentication:
+            type: string
+            example: totp
+          expiration_date:
+            type: string
+            format: date
+            example: "2025-12-31"
+            description: Person or admin only
+          country:
+            type: string
+            description: ISO 3166-1 alpha-2 country code (nullable)
+            example: FR
+responses:
+    200:
+      description: Person updated successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              first_name:
+                type: string
+                example: Jane
+              last_name:
+                type: string
+                example: Smith
+              email:
+                type: string
+                format: email
+                example: jane.smith@example.com
+              role:
+                type: string
+                example: manager
+              active:
+                type: boolean
+                example: true
+              contract_type:
+                type: string
+                example: freelance
+              two_factor_authentication:
+                type: string
+                example: totp
+              departments:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                example: []
+              country:
+                type: string
+                description: ISO 3166-1 alpha-2 country code (nullable)
+                example: FR
+              access_token:
+                type: string
+                example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9
+              created_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T10:30:00Z"
+              updated_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T11:00:00Z"
+    400:
+      description: Invalid data format or validation error or user limit reached or protected account restriction

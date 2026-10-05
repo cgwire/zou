@@ -1,0 +1,72 @@
+Create chat message
+---
+description: Create a new chat message for a specific entity.
+  Supports both JSON and form data with optional file attachments.
+  Only chat participants can send messages.
+tags:
+  - Chat
+parameters:
+  - in: path
+    name: entity_id
+    description: ID of the entity related to the chat
+    type: string
+    format: uuid
+    required: true
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          message:
+            type: string
+            description: Message content to send
+            example: Hello, world!
+        required:
+          - message
+    multipart/form-data:
+      schema:
+        type: object
+        properties:
+          message:
+            type: string
+            description: Message content to send
+            example: Hello, world!
+          files:
+            type: array
+            items:
+              type: string
+              format: binary
+            description: Files to attach to the message
+        required:
+          - message
+responses:
+  201:
+    description: Chat message successfully created
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Created message unique identifier
+            message:
+              type: string
+              description: Message content
+            person_id:
+              type: string
+              format: uuid
+              description: ID of the message sender
+            created_at:
+              type: string
+              format: date-time
+              description: Message creation timestamp
+            attachments:
+              type: array
+              items:
+                type: object
+              description: Array of attached files

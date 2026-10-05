@@ -1,0 +1,55 @@
+Get news item
+---
+description: Retrieves detailed information about a specific news item
+  from a givenproject.
+tags:
+  - News
+parameters:
+  - in: path
+    name: project_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the project
+  - in: path
+    name: news_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the news item
+responses:
+  '200':
+    description: News item successfully retrieved
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Unique news item identifier
+            title:
+              type: string
+              description: News item title
+            content:
+              type: string
+              description: News item content
+            created_at:
+              type: string
+              format: date-time
+              description: Creation timestamp
+            author_id:
+              type: string
+              format: uuid
+              description: Author's user ID
+            project_id:
+              type: string
+              format: uuid
+              description: Project identifier
+  404:
+    description: News item or project not found

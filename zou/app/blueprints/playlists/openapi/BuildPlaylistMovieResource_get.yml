@@ -1,0 +1,44 @@
+Build playlist movie
+---
+description: Build given playlist as MP4 movie. Starts a build job that
+  processes the playlist shots into a video file.
+tags:
+  - Playlists
+parameters:
+  - in: path
+    name: playlist_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Playlist unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+  - in: query
+    name: full
+    required: false
+    schema:
+      type: boolean
+    description: Whether to build full quality movie
+    example: true
+responses:
+  200:
+    description: Build job created for playlist movie
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Build job unique identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            status:
+              type: string
+              description: Build job status
+              example: "pending"
+            created_at:
+              type: string
+              format: date-time
+              description: Build job creation timestamp
+              example: "2022-07-12T10:30:00Z"

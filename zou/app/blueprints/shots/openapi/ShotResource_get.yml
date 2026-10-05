@@ -1,0 +1,42 @@
+Get shot
+---
+tags:
+- Shots
+description: Get a shot by id. Returns full shot data. Use this to fetch
+  a single shot with all fields needed by the UI.
+parameters:
+  - in: path
+    name: shot_id
+    required: True
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+responses:
+    200:
+        description: Shot found and returned
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  example: SH010
+                project_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c250
+                parent_id:
+                  type: string
+                  format: uuid
+                  example: c24a6ea4-ce75-4665-a070-57453082c250
+                nb_frames:
+                  type: integer
+                  example: 120
+                data:
+                  type: object
+                  example: {"camera": "camA", "cut_in": 1001}

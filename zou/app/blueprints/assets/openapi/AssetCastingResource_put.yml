@@ -1,0 +1,67 @@
+Update asset casting
+---
+description: Modify the casting relationships for a specific asset by updating which shots or sequences use this asset.
+tags:
+  - Assets
+parameters:
+  - in: path
+    name: asset_id
+    required: true
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the asset
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        description: Casting data to update
+        properties:
+          casting:
+            type: array
+            items:
+              type: object
+              properties:
+                entity_id:
+                  type: string
+                  format: uuid
+                  description: Entity identifier to cast
+                  example: d57d91d7-f108-7998-d403-80786315f580
+                entity_type:
+                  type: string
+                  description: Entity type (shot/sequence)
+                  example: "shot"
+responses:
+  200:
+    description: Asset casting successfully updated
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            asset_id:
+              type: string
+              format: uuid
+              description: Asset unique identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            casting:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    description: Casting entry unique identifier
+                    example: b35b7fb5-df86-5776-b181-68564193d360
+                  entity_id:
+                    type: string
+                    format: uuid
+                    description: Entity identifier
+                    example: d57d91d7-f108-7998-d403-80786315f580
+                  entity_name:
+                    type: string
+                    description: Entity name
+                    example: "SH001"

@@ -1,3 +1,4 @@
+from flasgger import swag_from
 import os
 import unicodedata
 from urllib.parse import quote
@@ -44,7 +45,7 @@ from zou.app.utils import (
     thumbnail as thumbnail_utils,
     date_helpers,
 )
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     PreviewBackgroundFileNotFoundException,
     PreviewFileNotFoundException,
     PreviewFileReuploadNotAllowedException,
@@ -454,7 +455,19 @@ def send_storage_file(
     """
     file_size = None
     try:
-        if prefix in ["movies", "original", "preview-backgrounds"]:
+        # The recorded file_size is the one of the normalized movie, the
+        # "previews" version (a "movies" prefix never existed): the low
+        # def and source versions have their own sizes. For a movie it
+        # only guards the cache copy of an object store: the local store
+        # has no copy to go stale, and the size lags behind the file
+        # while a movie is renormalized, which would flag the high def
+        # version as missing.
+        is_cached_movie = (
+            prefix == "previews"
+            and extension == "mp4"
+            and config.FS_BACKEND != "local"
+        )
+        if is_cached_movie or prefix in ["original", "preview-backgrounds"]:
             if prefix == "preview-backgrounds":
                 preview_file = files_service.get_preview_background_file(
                     preview_file_id
@@ -777,55 +790,10 @@ class CreatePreviewFilePictureResource(
 ):
 
     @jwt_required()
+    @swag_from("openapi/CreatePreviewFilePictureResource_post.yml")
     def post(self, instance_id):
         """
         Create preview file
-        ---
-        description: Main resource to add a preview. It stores the preview file
-          and generates three picture files (thumbnails) matching preview when
-          it's possible, a square thumbnail, a rectangle thumbnail and a
-          midsize file.
-        tags:
-          - Previews
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Preview file unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: file
-            required: true
-            type: file
-            description: Preview file to upload
-        responses:
-          201:
-            description: Preview file added successfully
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Preview file unique identifier
-                      example: a24a6ea4-ce75-4665-a070-57453082c25
-                    extension:
-                      type: string
-                      description: File extension
-                      example: "png"
-                    file_size:
-                      type: integer
-                      description: File size in bytes
-                      example: 1024000
-          400:
-            description: Wrong file format or invalid upload
-          500:
-            description: Movie preview processing failed (server-side)
         """
         self.is_allowed(instance_id)
 
@@ -961,46 +929,10 @@ class BaseBatchComment(BaseNewPreviewFilePicture, ArgsMixin):
 class AddTaskBatchCommentResource(BaseBatchComment, MethodView):
 
     @jwt_required()
+    @swag_from("openapi/AddTaskBatchCommentResource_post.yml")
     def post(self, task_id):
         """
         Add task batch comments
-        ---
-        description: Creates new comments for given task. Each comment requires
-          a text, a task_status and a person as arguments. Can include preview
-          files and attachments.
-        tags:
-          - Comments
-        parameters:
-          - in: path
-            name: task_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Task unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            multipart/form-data:
-              schema:
-                type: object
-                required:
-                  - comments
-                properties:
-                  comments:
-                    type: string
-                    description: JSON string containing array of comments
-                    example: '[{"text": "Good work", "task_status_id": "uuid"}]'
-        responses:
-          201:
-            description: New comments created
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
         """
         return self.process_comments(task_id)
 
@@ -1008,37 +940,10 @@ class AddTaskBatchCommentResource(BaseBatchComment, MethodView):
 class AddTasksBatchCommentResource(BaseBatchComment, MethodView):
 
     @jwt_required()
+    @swag_from("openapi/AddTasksBatchCommentResource_post.yml")
     def post(self):
         """
         Add tasks batch comments
-        ---
-        description: Creates new comments for given tasks. Each comment requires
-          a task_id, text, a task_status and a person as arguments. Can include
-          preview files and attachments.
-        tags:
-          - Comments
-        requestBody:
-          required: true
-          content:
-            multipart/form-data:
-              schema:
-                type: object
-                required:
-                  - comments
-                properties:
-                  comments:
-                    type: string
-                    description: JSON string containing array of comments
-                    example: '[{"task_id": "uuid", "text": "Good work", "task_status_id": "uuid"}]'
-        responses:
-          201:
-            description: New comments created
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
         """
         return self.process_comments()
 
@@ -1069,32 +974,10 @@ class PreviewFileMovieResource(BasePreviewFileResource):
     """
 
     @jwt_required()
+    @swag_from("openapi/PreviewFileMovieResource_get.yml")
     def get(self, instance_id):
         """
         Get preview movie
-        ---
-        description: Download a movie preview file. Falls back to the low
-          definition version then to the uploaded source when the full
-          quality one was not produced.
-        tags:
-          - Previews
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Preview file unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: Movie preview downloaded
-            content:
-              video/mp4:
-                schema:
-                  type: string
-                  format: binary
         """
         self.is_allowed(instance_id)
 
@@ -1118,32 +1001,10 @@ class PreviewFileLowMovieResource(BasePreviewFileResource):
     """
 
     @jwt_required()
+    @swag_from("openapi/PreviewFileLowMovieResource_get.yml")
     def get(self, instance_id):
         """
         Get preview lowdef movie
-        ---
-        description: Download a low definition movie preview file. Falls back
-          to full quality then to the uploaded source if the low definition
-          version is not available.
-        tags:
-          - Previews
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Preview file unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: Low definition movie preview downloaded
-            content:
-              video/mp4:
-                schema:
-                  type: string
-                  format: binary
         """
         self.is_allowed(instance_id)
 
@@ -1170,32 +1031,10 @@ class PreviewFileSourceMovieResource(BasePreviewFileResource):
     """
 
     @jwt_required()
+    @swag_from("openapi/PreviewFileSourceMovieResource_get.yml")
     def get(self, instance_id):
         """
         Get preview source movie
-        ---
-        description: Download the movie as it was uploaded, without any
-          normalization. Answers a 404 when the source was not kept. Mainly
-          meant for the synchronisation between two instances.
-        tags:
-          - Previews
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Preview file unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: Source movie preview downloaded
-            content:
-              video/mp4:
-                schema:
-                  type: string
-                  format: binary
         """
         self.is_allowed(instance_id)
 
@@ -1217,30 +1056,10 @@ class PreviewFileMovieDownloadResource(BasePreviewFileResource):
     """
 
     @jwt_required()
+    @swag_from("openapi/PreviewFileMovieDownloadResource_get.yml")
     def get(self, instance_id):
         """
         Download preview movie
-        ---
-        description: Download a movie preview file as attachment.
-        tags:
-          - Previews
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Preview file unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: Movie preview downloaded as attachment
-            content:
-              video/mp4:
-                schema:
-                  type: string
-                  format: binary
         """
         self.is_allowed(instance_id)
 
@@ -1265,37 +1084,10 @@ class PreviewFileResource(BasePreviewFileResource):
     """
 
     @jwt_required()
+    @swag_from("openapi/PreviewFileResource_get.yml")
     def get(self, instance_id, extension):
         """
         Get preview file
-        ---
-        description: Download a generic file preview by extension.
-        tags:
-          - Previews
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Preview file unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: extension
-            required: true
-            schema:
-              type: string
-            description: File extension
-            example: png
-        responses:
-          200:
-            description: Generic file preview downloaded
-            content:
-              application/octet-stream:
-                schema:
-                  type: string
-                  format: binary
         """
         self.is_allowed(instance_id)
 
@@ -1339,30 +1131,10 @@ class PreviewFileDownloadResource(BasePreviewFileResource):
     """
 
     @jwt_required()
+    @swag_from("openapi/PreviewFileDownloadResource_get.yml")
     def get(self, instance_id):
         """
         Download preview file
-        ---
-        description: Download a generic file preview as attachment.
-        tags:
-          - Previews
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Preview file unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: Generic file preview downloaded as attachment
-            content:
-              application/octet-stream:
-                schema:
-                  type: string
-                  format: binary
         """
         self.is_allowed(instance_id)
 
@@ -1435,30 +1207,10 @@ class AttachmentThumbnailResource(MethodView):
         return True
 
     @jwt_required()
+    @swag_from("openapi/AttachmentThumbnailResource_get.yml")
     def get(self, attachment_file_id):
         """
         Get attachment thumbnail
-        ---
-        description: Download the thumbnail representing given attachment file.
-        tags:
-          - Previews
-        parameters:
-          - in: path
-            name: attachment_file_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Attachment file unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: Attachment thumbnail downloaded
-            content:
-              image/png:
-                schema:
-                  type: string
-                  format: binary
         """
         self.is_allowed(attachment_file_id)
 
@@ -1488,30 +1240,10 @@ class BasePreviewPictureResource(BasePreviewFileResource):
         self.picture_type = picture_type
 
     @jwt_required()
+    @swag_from("openapi/BasePreviewPictureResource_get.yml")
     def get(self, instance_id):
         """
         Get preview thumbnail
-        ---
-        description: Download a thumbnail for a preview file.
-        tags:
-          - Previews
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Preview file unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: Preview thumbnail downloaded
-            content:
-              image/png:
-                schema:
-                  type: string
-                  format: binary
         """
         self.is_allowed(instance_id)
 
@@ -1564,33 +1296,10 @@ class PreviewFileTileResource(BasePreviewPictureResource):
         BasePreviewPictureResource.__init__(self, "tiles")
 
     @jwt_required()
+    @swag_from("openapi/PreviewFileTileResource_get.yml")
     def get(self, instance_id):
         """
         Get the tile sheet of a movie preview
-        ---
-        description: Download the tile sheet of a movie preview file. A
-                     ready movie without one gets it built in the
-                     background for the next request.
-        tags:
-          - Previews
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Preview file unique identifier
-        responses:
-          200:
-            description: Tile sheet downloaded
-            content:
-              image/png:
-                schema:
-                  type: string
-                  format: binary
-          404:
-            description: No tile sheet stored for this preview file
         """
         try:
             return super().get(instance_id)
@@ -1659,39 +1368,10 @@ class BaseThumbnailResource(MethodView):
         )
 
     @jwt_required()
+    @swag_from("openapi/BaseThumbnailResource_post.yml")
     def post(self, instance_id):
         """
         Create thumbnail
-        ---
-        description: Create a thumbnail for given object instance.
-        tags:
-          - Previews
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Object instance unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: file
-            required: true
-            type: file
-            description: Image file to use as thumbnail
-        responses:
-          201:
-            description: Thumbnail created successfully
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    thumbnail_path:
-                      type: string
-                      description: URL path to the thumbnail
-                      example: "/api/thumbnails/persons/uuid"
         """
         self.is_exist(instance_id)
         self.check_allowed_to_post(instance_id)
@@ -1728,30 +1408,10 @@ class BaseThumbnailResource(MethodView):
         return {"thumbnail_path": thumbnail_url_path}, 201
 
     @jwt_required()
+    @swag_from("openapi/BaseThumbnailResource_get.yml")
     def get(self, instance_id):
         """
         Get thumbnail
-        ---
-        description: Download the thumbnail linked to given object instance.
-        tags:
-          - Previews
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Object instance unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: Thumbnail downloaded
-            content:
-              image/png:
-                schema:
-                  type: string
-                  format: binary
         """
         self.is_exist(instance_id)
         self.check_allowed_to_get(instance_id)
@@ -1859,50 +1519,10 @@ class SetMainPreviewResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
+    @swag_from("openapi/SetMainPreviewResource_put.yml")
     def put(self, preview_file_id):
         """
         Set main preview
-        ---
-        description: Set given preview as main preview of the related entity.
-          This preview will be used to illustrate the entity.
-        tags:
-          - Previews
-        parameters:
-          - in: path
-            name: preview_file_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Preview file unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: frame_number
-            required: false
-            schema:
-              type: integer
-            description: Frame number for movie previews
-            example: 120
-        responses:
-          200:
-            description: Preview set as main preview
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Entity unique identifier
-                      example: a24a6ea4-ce75-4665-a070-57453082c25
-                    preview_file_id:
-                      type: string
-                      format: uuid
-                      description: Preview file unique identifier
-                      example: b35b7fb5-df86-5776-b181-68564193d36
-          400:
-            description: Cannot use frame number on non-movie preview
         """
         body = validation_utils.validate_request_body(PreviewFileUploadSchema)
         frame_number = body.frame_number
@@ -1935,50 +1555,10 @@ class UpdatePreviewPositionResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
+    @swag_from("openapi/UpdatePreviewPositionResource_put.yml")
     def put(self, preview_file_id):
         """
         Update preview position
-        ---
-        description: Allow to change orders of previews for a single revision.
-        tags:
-          - Previews
-        parameters:
-          - in: path
-            name: preview_file_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Preview file unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: false
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  position:
-                    type: integer
-                    description: New position for the preview
-                    example: 2
-        responses:
-          200:
-            description: Preview position updated
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Preview file unique identifier
-                      example: a24a6ea4-ce75-4665-a070-57453082c25
-                    position:
-                      type: integer
-                      description: Preview position
-                      example: 2
         """
         body = validation_utils.validate_request_body(
             PreviewFilePositionSchema
@@ -1993,70 +1573,10 @@ class UpdatePreviewPositionResource(MethodView, ArgsMixin):
 class UpdateAnnotationsResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/UpdateAnnotationsResource_put.yml")
     def put(self, preview_file_id):
         """
         Update preview annotations
-        ---
-        description: Allow to modify the annotations stored at the preview level.
-          Modifications are applied via three fields, additions to give all the
-          annotations that need to be added, updates that list annotations that
-          needs to be modified, and deletions to list the IDs of annotations that
-          needs to be removed.
-        tags:
-          - Previews
-        parameters:
-          - in: path
-            name: preview_file_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Preview file unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  additions:
-                    type: array
-                    description: Annotations to add
-                    items:
-                      type: object
-                    example: [{"type": "drawing", "x": 100, "y": 200}]
-                  updates:
-                    type: array
-                    description: Annotations to update
-                    items:
-                      type: object
-                    example: [{"id": "uuid", "x": 150, "y": 250}]
-                  deletions:
-                    type: array
-                    description: Annotation IDs to remove
-                    items:
-                      type: string
-                      format: uuid
-                    example: ["a24a6ea4-ce75-4665-a070-57453082c25"]
-        responses:
-          200:
-            description: Preview annotations updated
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Preview file unique identifier
-                      example: a24a6ea4-ce75-4665-a070-57453082c25
-                    annotations:
-                      type: array
-                      description: Updated annotations
-                      items:
-                        type: object
         """
         preview_file = files_service.get_preview_file(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
@@ -2099,47 +1619,10 @@ class RunningPreviewFiles(MethodView, ArgsMixin):
     """
 
     @jwt_required()
+    @swag_from("openapi/RunningPreviewFiles_get.yml")
     def get(self):
         """
         Get running preview files
-        ---
-        description: Retrieve all preview files from open productions with
-          states equal to processing or broken.
-        tags:
-          - Previews
-        parameters:
-          - in: query
-            name: cursor_preview_file_id
-            required: false
-            type: string
-            format: uuid
-            description: ID of the last preview file from previous page for cursor-based pagination
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: limit
-            required: false
-            type: integer
-            description: Maximum number of preview files to return
-            example: 100
-        responses:
-          200:
-            description: All preview files from open productions with processing or broken states
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        description: Preview file unique identifier
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      status:
-                        type: string
-                        description: Preview file status
-                        example: "processing"
         """
         permissions.check_admin_permissions()
         args = self.get_args(
@@ -2170,38 +1653,10 @@ class ExtractFrameFromPreview(MethodView, ArgsMixin):
     """
 
     @jwt_required()
+    @swag_from("openapi/ExtractFrameFromPreview_get.yml")
     def get(self, preview_file_id):
         """
         Extract frame from preview
-        ---
-        description: Extract a frame from a preview file movie. Frame number can
-          be specified as query parameter, defaults to 0.
-        tags:
-          - Previews
-        parameters:
-          - in: path
-            name: preview_file_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Preview file unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: frame_number
-            required: false
-            schema:
-              type: integer
-            description: Frame number to extract
-            example: 120
-        responses:
-          200:
-            description: Extracted frame as PNG image
-            content:
-              image/png:
-                schema:
-                  type: string
-                  format: binary
         """
         args = self.get_args([("frame_number", 0, False, int)])
         preview_file = files_service.get_preview_file(preview_file_id)
@@ -2233,46 +1688,10 @@ class ExtractAnnotatedFrameFromPreview(MethodView):
     """
 
     @jwt_required()
+    @swag_from("openapi/ExtractAnnotatedFrameFromPreview_get.yml")
     def get(self, preview_file_id):
         """
         Extract annotated frame from preview
-        ---
-        description: Extract a frame from a movie preview, or the picture
-          itself from a picture preview, and overlay the matching
-          annotation on it. `frame_number` is required for movies and
-          ignored for pictures. Returns 400 if no annotation is recorded.
-        tags:
-          - Previews
-        parameters:
-          - in: path
-            name: preview_file_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Preview file unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: frame_number
-            required: false
-            schema:
-              type: integer
-              minimum: 1
-            description: Frame number to extract (movies only, 1-based)
-            example: 120
-        responses:
-          200:
-            description: Composited frame as PNG image
-            content:
-              image/png:
-                schema:
-                  type: string
-                  format: binary
-          400:
-            description: No annotation, missing frame_number on movie, or
-              unsupported extension
-          404:
-            description: Preview file binary is not available
         """
         args = validation_utils.validate_request_body(
             ExtractAnnotatedFrameSchema
@@ -2336,38 +1755,10 @@ class ExtractAllAnnotatedFramesFromPreview(MethodView):
     """
 
     @jwt_required()
+    @swag_from("openapi/ExtractAllAnnotatedFramesFromPreview_get.yml")
     def get(self, preview_file_id):
         """
         Extract all annotated frames from preview as a zip
-        ---
-        description: Build a zip archive with one PNG per annotation —
-          for movies, the extracted frame at the annotation's time; for
-          pictures, a copy of the picture with the annotation rendered.
-          Returns 400 if the preview has no annotations.
-        tags:
-          - Previews
-        parameters:
-          - in: path
-            name: preview_file_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Preview file unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: Zip archive of annotated frames
-            content:
-              application/zip:
-                schema:
-                  type: string
-                  format: binary
-          400:
-            description: Preview has no annotations or unsupported
-              extension
-          404:
-            description: Preview file binary is not available
         """
         return _serve_annotated_frames_bundle(
             preview_file_id,
@@ -2384,38 +1775,10 @@ class ExtractAllAnnotatedFramesAsPdfFromPreview(MethodView):
     """
 
     @jwt_required()
+    @swag_from("openapi/ExtractAllAnnotatedFramesAsPdfFromPreview_get.yml")
     def get(self, preview_file_id):
         """
         Extract all annotated frames from preview as a PDF
-        ---
-        description: Build a multi-page PDF with one page per annotation
-          — for movies, the extracted frame at the annotation's time; for
-          pictures, a copy of the picture with the annotation rendered.
-          Returns 400 if the preview has no annotations.
-        tags:
-          - Previews
-        parameters:
-          - in: path
-            name: preview_file_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Preview file unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: PDF document with annotated frames as pages
-            content:
-              application/pdf:
-                schema:
-                  type: string
-                  format: binary
-          400:
-            description: Preview has no annotations or unsupported
-              extension
-          404:
-            description: Preview file binary is not available
         """
         return _serve_annotated_frames_bundle(
             preview_file_id,
@@ -2431,30 +1794,10 @@ class ExtractTileFromPreview(MethodView):
     """
 
     @jwt_required()
+    @swag_from("openapi/ExtractTileFromPreview_get.yml")
     def get(self, preview_file_id):
         """
         Extract tile from preview
-        ---
-        description: Extract a tile from a preview file movie.
-        tags:
-          - Previews
-        parameters:
-          - in: path
-            name: preview_file_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Preview file unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: Extracted tile as PNG image
-            content:
-              image/png:
-                schema:
-                  type: string
-                  format: binary
         """
         preview_file = files_service.get_preview_file(preview_file_id)
         permissions_service.check_task_access(preview_file["task_id"])
@@ -2489,51 +1832,10 @@ class CreatePreviewBackgroundFileResource(MethodView):
     """
 
     @jwt_required()
+    @swag_from("openapi/CreatePreviewBackgroundFileResource_post.yml")
     def post(self, instance_id):
         """
         Create preview background file
-        ---
-        description: Main resource to add a preview background file. It stores
-          the preview background file and generates a rectangle thumbnail.
-        tags:
-          - Previews
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Preview background file unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: file
-            required: true
-            type: file
-            description: HDR file to upload
-        responses:
-          201:
-            description: Preview background file added successfully
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Preview background file unique identifier
-                      example: a24a6ea4-ce75-4665-a070-57453082c25
-                    extension:
-                      type: string
-                      description: File extension
-                      example: "hdr"
-                    file_size:
-                      type: integer
-                      description: File size in bytes
-                      example: 2048000
-          400:
-            description: Wrong file format or error saving file
         """
         self.check_permissions(instance_id)
 
@@ -2636,7 +1938,7 @@ class CreatePreviewBackgroundFileResource(MethodView):
                     os.remove(preview_background_path)
                 if thumbnail_path and os.path.exists(thumbnail_path):
                     os.remove(thumbnail_path)
-            except Exception:
+            except OSError:
                 pass
 
     def emit_preview_background_file_event(self, preview_background_file):
@@ -2662,37 +1964,10 @@ class PreviewBackgroundFileResource(MethodView):
     """
 
     @jwt_required()
+    @swag_from("openapi/PreviewBackgroundFileResource_get.yml")
     def get(self, instance_id, extension):
         """
         Get preview background file
-        ---
-        description: Download a preview background file.
-        tags:
-          - Previews
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Preview background file unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: extension
-            required: true
-            schema:
-              type: string
-            description: File extension
-            example: hdr
-        responses:
-          200:
-            description: Preview background file downloaded
-            content:
-              image/vnd.radiance:
-                schema:
-                  type: string
-                  format: binary
         """
         preview_background_file = files_service.get_preview_background_file(
             instance_id
@@ -2732,5 +2007,14 @@ class PreviewBackgroundFileThumbnailResource(BaseThumbnailResource):
     def check_allowed_to_get(self, preview_background_file_id):
         return True
 
+    @jwt_required()
     def post(self, preview_background_file_id):
-        raise AttributeError("Method not allowed")
+        """
+        Uploads are not allowed on the display url.
+        """
+        # Raising AttributeError here used to surface as an anonymous 500.
+        return {
+            "error": True,
+            "message": "Preview backgrounds are uploaded through "
+            "/pictures/preview-background-files/<preview_background_file_id>.",
+        }, 405

@@ -27,7 +27,7 @@ from zou.app.services import (
     preview_files_service,
     shots_service,
 )
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     ProjectNotFoundException,
     MetadataDescriptorNotFoundException,
     DepartmentNotFoundException,
@@ -426,7 +426,7 @@ def get_or_create_open_status():
     """
     Return open status. If it does not exist, it creates it.
     """
-    return get_or_create_status("Open")
+    return get_or_create_project_status("Open")
 
 
 @cache.memoize_function(480)
@@ -434,7 +434,7 @@ def get_open_status():
     """
     Return open status. If it does not exist, it creates it.
     """
-    return get_or_create_status("Open")
+    return get_or_create_project_status("Open")
 
 
 @cache.memoize_function(120)
@@ -442,10 +442,10 @@ def get_closed_status():
     """
     Return closed status. If it does not exist, it creates it.
     """
-    return get_or_create_status("Closed")
+    return get_or_create_project_status("Closed")
 
 
-def get_or_create_status(name):
+def get_or_create_project_status(name):
     """
     Return given status. If it does not exist, it creates it.
     """
@@ -464,21 +464,9 @@ def save_project_status(project_statuses):
     filtered_satuses = (x for x in project_statuses if x is not None)
 
     for status in filtered_satuses:
-        project_status = get_or_create_status(status)
+        project_status = get_or_create_project_status(status)
         result.append(project_status)
     return result
-
-
-def get_or_create_project(name):
-    """
-    Get project which match given name. Create it if it does not exist.
-    """
-    project = Project.get_by(name=name)
-    if project is None:
-        open_status = get_or_create_open_status()
-        project = Project(name=name, project_status_id=open_status["id"])
-        project.save()
-    return project.serialize()
 
 
 def get_project_raw(project_id):
@@ -1487,6 +1475,25 @@ def set_project_task_status_link_priorities(project_id, task_status_ids):
             links.append(link.serialize())
     _notify_project_settings_change(project_id)
     return links
+
+
+def get_project_task_types_raw(project_id, for_entity=None):
+    """
+    Task types configured on given project as active records, narrowed to
+    the ones of an entity kind when for_entity is given. for_entity was
+    added nullable in 2018 and only ever backfilled for shots, so a task
+    type predating it reads NULL and means "Asset", the model default.
+    """
+    query = TaskType.query.join(ProjectTaskTypeLink).filter(
+        ProjectTaskTypeLink.project_id == project_id
+    )
+    if for_entity == "Asset":
+        query = query.filter(
+            or_(TaskType.for_entity == "Asset", TaskType.for_entity.is_(None))
+        )
+    elif for_entity is not None:
+        query = query.filter(TaskType.for_entity == for_entity)
+    return query.all()
 
 
 def get_project_task_types(project_id):

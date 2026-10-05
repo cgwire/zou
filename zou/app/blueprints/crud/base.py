@@ -23,6 +23,7 @@ matching error handler. Integrity/statement errors are caught here and
 returned as sanitized 400s (see build_db_error_message).
 """
 
+from flasgger import swag_from
 import datetime
 import math
 import orjson as json
@@ -38,7 +39,7 @@ from sqlalchemy import types as sa_types
 
 from zou.app.mixin import ArgsMixin
 from zou.app.utils import events, fields, permissions, query
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     WrongParameterException,
 )
 
@@ -94,6 +95,8 @@ class BaseModelsResource(MethodView, ArgsMixin):
     def paginated_entries(self, query, page, limit=None, relations=False):
         total = query.count()
         limit = limit or current_app.config["NB_RECORDS_PER_PAGE"]
+        if limit < 1:
+            raise WrongParameterException("limit must be a positive integer.")
         offset = (page - 1) * limit
 
         nb_pages = int(math.ceil(total / float(limit)))
@@ -240,80 +243,10 @@ class BaseModelsResource(MethodView, ArgsMixin):
         return instance.serialize(relations=True)
 
     @jwt_required()
+    @swag_from("openapi/BaseModelsResource_get.yml")
     def get(self):
         """
         Get models
-        ---
-        tags:
-          - Crud
-        description: Retrieve all entries for the given model. Supports
-          filtering via query parameters and pagination.
-        parameters:
-          - in: query
-            name: page
-            required: false
-            schema:
-              type: integer
-            example: 1
-            description: Page number for pagination
-          - in: query
-            name: limit
-            required: false
-            schema:
-              type: integer
-            example: 50
-            description: Number of results per page
-          - in: query
-            name: relations
-            required: false
-            schema:
-              type: boolean
-            default: false
-            example: false
-            description: Whether to include relations
-          - in: query
-            name: fields
-            required: false
-            schema:
-              type: string
-            example: first_name,last_name
-            description: Comma-separated list of attributes to return for
-              each entry (id and type are always included). Unknown names
-              are ignored.
-        responses:
-            200:
-              description: Models retrieved successfully
-              content:
-                application/json:
-                  schema:
-                    oneOf:
-                      - type: array
-                        items:
-                          type: object
-                      - type: object
-                        properties:
-                          data:
-                            type: array
-                            items:
-                              type: object
-                            example: []
-                          total:
-                            type: integer
-                            example: 100
-                          nb_pages:
-                            type: integer
-                            example: 2
-                          limit:
-                            type: integer
-                            example: 50
-                          offset:
-                            type: integer
-                            example: 0
-                          page:
-                            type: integer
-                            example: 1
-            400:
-              description: Invalid filter format or query error
         """
         try:
             query = self.model.query
@@ -351,64 +284,26 @@ class BaseModelsResource(MethodView, ArgsMixin):
                         result = fields.pick_fields(result, field_names)
                     return result
         except StatementError as exception:
-            if hasattr(exception, "message"):
-                return (
-                    {
-                        "error": True,
-                        "message": f"One of the value of the filter has not the proper format: {exception.message}",
-                    },
-                    400,
-                )
-            else:
-                raise exception
+            # A filter value the driver refuses (an int column given a
+            # word, a malformed date) surfaces here, on execution. The raw
+            # text carries the statement and its bound values, so only the
+            # sanitized message reaches the client.
+            current_app.logger.info(str(exception))
+            return (
+                {
+                    "error": True,
+                    "message": build_db_error_message(exception),
+                },
+                400,
+            )
         except permissions.PermissionDenied:
             raise
 
     @jwt_required()
+    @swag_from("openapi/BaseModelsResource_post.yml")
     def post(self):
         """
         Create model
-        ---
-        tags:
-          - Crud
-        description: Create a new model instance with data provided in the
-          request body. JSON format is expected. The model performs validation
-          automatically when instantiated.
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  name:
-                    type: string
-                    example: Model Name
-        responses:
-            201:
-              description: Model created successfully
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      name:
-                        type: string
-                        example: Model Name
-                      created_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-            400:
-              description: Invalid data format or validation error
         """
         try:
             data = request.json
@@ -528,55 +423,10 @@ class BaseModelResource(MethodView, ArgsMixin):
         return data
 
     @jwt_required()
+    @swag_from("openapi/BaseModelResource_get.yml")
     def get(self, instance_id):
         """
         Get model
-        ---
-        tags:
-          - Crud
-        description: Retrieve a model instance by its ID and return it as a
-          JSON object. Supports including relations.
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: relations
-            required: false
-            schema:
-              type: boolean
-            default: true
-            example: true
-            description: Whether to include relations
-        responses:
-            200:
-              description: Model retrieved successfully
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      name:
-                        type: string
-                        example: Model Name
-                      created_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-            400:
-              description: Invalid ID format or query error
         """
         relations = self.get_bool_parameter("relations", "true")
         try:
@@ -608,58 +458,10 @@ class BaseModelResource(MethodView, ArgsMixin):
         return instance_dict
 
     @jwt_required()
+    @swag_from("openapi/BaseModelResource_put.yml")
     def put(self, instance_id):
         """
         Update model
-        ---
-        tags:
-          - Crud
-        description: Update a model instance with data provided in the
-          request body. JSON format is expected. Model performs validation
-          automatically when fields are modified.
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  name:
-                    type: string
-                    example: Updated Model Name
-        responses:
-            200:
-              description: Model updated successfully
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      name:
-                        type: string
-                        example: Updated Model Name
-                      created_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T11:00:00Z"
-            400:
-              description: Invalid data format or validation error
         """
         try:
             data = self.get_arguments()
@@ -688,27 +490,10 @@ class BaseModelResource(MethodView, ArgsMixin):
             return {"message": build_db_error_message(exception)}, 400
 
     @jwt_required()
+    @swag_from("openapi/BaseModelResource_delete.yml")
     def delete(self, instance_id):
         """
         Delete model
-        ---
-        tags:
-          - Crud
-        description: Delete a model instance by its ID. Returns empty
-          response on success.
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            204:
-              description: Model deleted successfully
-            400:
-              description: Integrity error or cannot delete
         """
         instance = self.get_model_or_404(instance_id)
 

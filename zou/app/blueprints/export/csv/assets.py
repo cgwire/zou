@@ -1,3 +1,4 @@
+from flasgger import swag_from
 from flask.views import MethodView
 from flask import request
 from flask_jwt_extended import jwt_required
@@ -16,32 +17,10 @@ from zou.app.utils import csv_utils, query
 
 class AssetsCsvExport(MethodView):
     @jwt_required()
+    @swag_from("openapi/AssetsCsvExport_get.yml")
     def get(self, project_id):
         """
         Export assets csv
-        ---
-        tags:
-          - Export
-        description: Export project assets as CSV file. Includes asset
-          information, task statuses, assignments, and metadata.
-        produces:
-          - text/csv
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-              description: Assets exported as CSV successfully
-              content:
-                text/csv:
-                  schema:
-                    type: string
-                  example: "Project,Type,Name,Description,Time Spent\nProject A,Character,Asset1,Description,10.50"
         """
         project = projects_service.get_project(project_id)
         self.check_permissions(project["id"])

@@ -22,8 +22,10 @@ from zou.app.services import (
     projects_service,
     tasks_service,
 )
-from zou.app.services.exception import (
+from zou.app.exceptions import (
+    EpisodeNotFoundException,
     MalformedFileTreeException,
+    SequenceNotFoundException,
     WrongFileTreeFileException,
     WrongPathFormatException,
     TaskNotFoundException,
@@ -116,7 +118,7 @@ def get_working_file_name(
     working templates have no <OutputType> token to fill.
     """
     entity = entities_service.get_entity(task["entity_id"])
-    project = get_project(entity)
+    project = get_project_of_entity(entity)
     tree = get_tree_from_project(project)
 
     file_name = get_file_name_root(
@@ -147,7 +149,7 @@ def get_output_file_name(
     its project. An output covering several elements gets a _[1-N] suffix, the
     range notation the DCCs expand into one file per element.
     """
-    project = get_project(entity)
+    project = get_project_of_entity(entity)
     tree = get_tree_from_project(project)
 
     file_name = get_file_name_root(
@@ -183,7 +185,7 @@ def get_instance_file_name(
     instance sits in.
     """
     asset = entities_service.get_entity(asset_instance["asset_id"])
-    project = get_project(temporal_entity)
+    project = get_project_of_entity(temporal_entity)
     tree = get_tree_from_project(project)
 
     file_name = get_file_name_root(
@@ -219,7 +221,7 @@ def get_working_folder_path(
     separator of the target platform.
     """
     entity = entities_service.get_entity(task["entity_id"])
-    project = get_project(entity)
+    project = get_project_of_entity(entity)
     tree = get_tree_from_project(project)
     root_path = get_root_path(tree, mode, sep)
     style = tree[mode]["folder_path"].get("style", "")
@@ -254,7 +256,7 @@ def get_output_folder_path(
     Render the output folder of given entity, same way as the working one but
     with the output tokens: task type, output type and representation.
     """
-    project = get_project(entity)
+    project = get_project_of_entity(entity)
     tree = get_tree_from_project(project)
     root_path = get_root_path(tree, mode, sep)
     style = tree[mode]["folder_path"].get("style", "")
@@ -293,7 +295,7 @@ def get_instance_folder_path(
     can give instances a layout of their own.
     """
     asset = entities_service.get_entity(asset_instance["asset_id"])
-    project = get_project(temporal_entity)
+    project = get_project_of_entity(temporal_entity)
     tree = get_tree_from_project(project)
     root_path = get_root_path(tree, mode, sep)
     style = tree[mode]["folder_path"].get("style", "")
@@ -318,7 +320,7 @@ def get_instance_folder_path(
     return join_path(root_path, folder_path, "")
 
 
-def get_project(entity):
+def get_project_of_entity(entity):
     """
     Return the project given entity belongs to.
     """
@@ -615,7 +617,7 @@ def get_folder_from_project(entity, field="name"):
     Value of the <Project> token: read on the project of given entity, not on
     the entity.
     """
-    project = get_project(entity)
+    project = get_project_of_entity(entity)
     return project[field]
 
 
@@ -718,13 +720,20 @@ def get_folder_from_episode(entity, field="name"):
         episode = entity
     else:
         if shots_service.is_shot(entity) or shots_service.is_scene(entity):
-            sequence = shots_service.get_sequence_from_shot(entity)
+            try:
+                sequence = shots_service.get_sequence_from_shot(entity)
+            except SequenceNotFoundException:
+                sequence = None
         elif shots_service.is_sequence(entity):
             sequence = entity
-        # An entity that is none of those (an asset) has no sequence to
-        # walk up from, and falls back below like a missing episode does.
+        # An entity that is none of those (an asset), a shot without a
+        # sequence or a sequence without an episode (a production that is
+        # not a tv show) has nothing to walk up to, and falls back below.
         if sequence is not None:
-            episode = shots_service.get_episode_from_sequence(sequence)
+            try:
+                episode = shots_service.get_episode_from_sequence(sequence)
+            except EpisodeNotFoundException:
+                episode = None
 
     try:
         episode_name = episode[field]

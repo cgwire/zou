@@ -1,4 +1,5 @@
 from zou.app import config
+from zou.app.exceptions import EpisodeNotFoundException
 from zou.app.utils import emails, chats
 from zou.app.utils.email_i18n import get_email_translation
 from zou.app.utils.string import mask_secret
@@ -354,7 +355,7 @@ def send_playlist_ready_notification(person_id, author_id, playlist):
     episode = None
     try:
         episode = shots_service.get_episode(playlist["episode_id"])
-    except Exception:
+    except EpisodeNotFoundException:
         pass
 
     if _is_notified(person):

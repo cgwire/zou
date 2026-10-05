@@ -3,7 +3,7 @@ import datetime
 import pytz
 from babel.dates import format_datetime
 from dateutil import relativedelta
-from zou.app.services.exception import WrongDateFormatException
+from zou.app.exceptions import WrongDateFormatException
 
 
 def get_now():
@@ -55,8 +55,10 @@ def get_today_string_with_timezone(timezone):
     """
     Get today date in string format with timezone applied.
     """
+    # Start from the current instant: a bare date is taken as midnight UTC
+    # and lands on the previous day once converted west of UTC.
     return get_simple_string_with_timezone_from_date(
-        datetime.date.today(), timezone
+        datetime.datetime.now(tz=datetime.timezone.utc), timezone
     )
 
 

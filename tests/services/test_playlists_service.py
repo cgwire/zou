@@ -1,20 +1,24 @@
 import os
+import shutil
+import tempfile
 
 from contextlib import contextmanager
 from datetime import datetime
 from unittest.mock import MagicMock, patch
+from zipfile import ZipFile
 
 from tests.base import ApiDBTestCase
 
 from zou.app import config, db
 from zou.app.models.build_job import BuildJob
 from zou.app.models.playlist import Playlist
+from zou.app.stores import file_store
 from zou.app.services import (
     playlists_service,
     entities_service,
     projects_service,
 )
-from zou.app.services.exception import PlaylistLockTimeoutException
+from zou.app.exceptions import PlaylistLockTimeoutException
 from zou.app.utils import fields, fs, remote_job
 from zou.utils import movie
 from zou.utils.movie import EncodingParameters
@@ -320,7 +324,9 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
     def test_get_preview_files_for_task(self):
         self.generate_fixture_preview_files()
         task_id = self.task.id
-        preview_files = playlists_service.get_preview_files_for_task(task_id)
+        preview_files = playlists_service.get_preview_files_for_task_raw(
+            task_id
+        )
         self.assertEqual(len(preview_files), 2)
         self.assertEqual(preview_files[0]["revision"], 2)
 
@@ -423,13 +429,6 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         names = sorted(playlist["name"] for playlist in playlists)
         self.assertEqual(names, ["Playlist 1", "Playlist 3", "Playlist 4"])
         self.assertNotIn(elsewhere.name, names)
-
-    def test_get_playlist_file_name(self):
-        playlist = self.generate_fixture_playlists()
-        self.assertEqual(
-            playlists_service.get_playlist_file_name(playlist),
-            "cosmos-landromat-playlist-4",
-        )
 
     def test_start_and_end_build_job(self):
         """
@@ -659,6 +658,161 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
             )
 
         self.assertFalse(os.path.exists(movie_file_path))
+
+    def test_build_playlist_job_mails_the_finished_build(self):
+        # The job dict handed to the queue says "running" for ever: the
+        # status to test is the one the build returns.
+        self.generate_fixture_preview_files()
+        self.generate_fixture_playlists()
+        playlist = self.playlist.serialize()
+        job = playlists_service.start_build_job(playlist)
+        finished = {**job, "status": "succeeded"}
+
+        with (
+            patch.object(
+                playlists_service,
+                "build_playlist_movie_file",
+                return_value=finished,
+            ),
+            patch.object(playlists_service.emails, "send_email") as send_email,
+        ):
+            playlists_service.build_playlist_job(
+                playlist, job, [], None, self.user["email"], False, False
+            )
+
+        send_email.assert_called_once()
+        self.assertIn(job["id"], send_email.call_args.args[1])
+
+    def test_playlist_tmp_copies_keep_their_own_file(self):
+        """
+        Two previews of a playlist may carry the same display name (the
+        original file name option): their local copies used to overwrite
+        each other, and pile up in TMP_DIR.
+        """
+        self.generate_fixture_preview_files()
+        movie_fixture = self.get_fixture_file_path(
+            os.path.join("videos", "test_preview_tiles.mp4")
+        )
+        previews = [
+            self.preview_file_1.serialize(),
+            self.preview_file_2.serialize(),
+        ]
+        for preview in previews:
+            file_store.add_movie("previews", preview["id"], movie_fixture)
+        tmp_dir = tempfile.mkdtemp()
+        try:
+            with patch.object(
+                playlists_service.names_service,
+                "get_preview_file_name",
+                return_value="render.mp4",
+            ):
+                copies = playlists_service.retrieve_playlist_tmp_files(
+                    previews, tmp_dir=tmp_dir
+                )
+            paths = [path for path, _ in copies]
+            self.assertEqual(len(set(paths)), 2)
+            self.assertTrue(all(path.startswith(tmp_dir) for path in paths))
+            self.assertEqual([name for _, name in copies], ["render.mp4"] * 2)
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            for preview in previews:
+                file_store.remove_movie("previews", preview["id"])
+
+    def test_a_movie_stored_as_low_def_only_is_found(self):
+        self.generate_fixture_preview_files()
+        movie_fixture = self.get_fixture_file_path(
+            os.path.join("videos", "test_preview_tiles.mp4")
+        )
+        preview = self.preview_file_1.serialize()
+        file_store.add_movie("lowdef", preview["id"], movie_fixture)
+        tmp_dir = tempfile.mkdtemp()
+        try:
+            path, _ = playlists_service.retrieve_playlist_tmp_file(
+                preview, tmp_dir
+            )
+            self.assertTrue(os.path.exists(path))
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            file_store.remove_movie("lowdef", preview["id"])
+
+    def test_a_transient_failure_does_not_switch_movie_version(self):
+        # Only a confirmed absence sends the build to the next version: a
+        # storage hiccup must not concatenate the low def movie instead.
+        self.generate_fixture_preview_files()
+        preview = self.preview_file_1.serialize()
+        with patch.object(
+            playlists_service.fs,
+            "get_file_path_and_file",
+            side_effect=playlists_service.fs.FileNotFound("previews-x"),
+        ) as get_file:
+            with self.assertRaises(playlists_service.fs.FileNotFound):
+                playlists_service._retrieve_playlist_movie(preview)
+        self.assertEqual(get_file.call_count, 1)
+
+    def test_playlist_zip_keeps_the_previews_sharing_a_name(self):
+        tmp_dir = tempfile.mkdtemp()
+        copies = []
+        for index in range(2):
+            path = os.path.join(tmp_dir, f"{index:04d}_render.mp4")
+            with open(path, "w") as copy:
+                copy.write(str(index))
+            copies.append((path, "render.mp4"))
+        playlist = {"id": "zip-names", "shots": []}
+        try:
+            with patch.object(
+                playlists_service,
+                "retrieve_playlist_tmp_files",
+                return_value=copies,
+            ):
+                zip_path = playlists_service.build_playlist_zip_file(playlist)
+            with ZipFile(zip_path) as archive:
+                self.assertEqual(
+                    archive.namelist(), ["render.mp4", "0001_render.mp4"]
+                )
+            os.remove(zip_path)
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+    def test_a_build_without_tmp_dir_still_ends_its_job(self):
+        # The working directory was created before the try: a full or
+        # missing TMP_DIR left the job "running" for ever.
+        with (
+            patch.object(
+                playlists_service.tempfile,
+                "mkdtemp",
+                side_effect=OSError("No space left on device"),
+            ),
+            patch.object(
+                playlists_service, "end_build_job", return_value={}
+            ) as end_build_job,
+        ):
+            with self.assertRaises(Exception):
+                playlists_service.build_playlist_movie_file(
+                    {"id": "playlist"}, {"id": "job"}, [], None, False, False
+                )
+        end_build_job.assert_called_once()
+
+    def test_a_failed_concatenation_is_logged(self):
+        # The log call used to hand a tuple to two placeholders: the
+        # logging module reported its own error and the trace was lost.
+        from zou.app import app
+
+        def broken_mode(*args, **kwargs):
+            raise RuntimeError("ffmpeg exploded")
+
+        with self.assertLogs(app.logger, level="ERROR") as logs:
+            success, _ = playlists_service._run_concatenation(
+                {"id": "pl-1"},
+                {"id": "job-1"},
+                [],
+                "/tmp/out.mp4",
+                None,
+                broken_mode,
+            )
+        self.assertFalse(success)
+        self.assertTrue(
+            any("Unable to build playlist" in line for line in logs.output)
+        )
 
     def test_an_entity_is_added_with_the_preview_it_names(self):
         self.generate_fixture_preview_files()

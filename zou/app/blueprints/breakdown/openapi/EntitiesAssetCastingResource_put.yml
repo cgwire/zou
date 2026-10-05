@@ -1,0 +1,61 @@
+Cast one asset in several entities
+---
+description: Set how given asset is cast in each given entity
+  (shots, assets or episodes of the project). Unlike the full
+  casting update, the other assets of each entity are left
+  untouched, so concurrent editors cannot erase each other's
+  work. A nb_occurences of 0 removes the asset from the casting.
+tags:
+  - Breakdown
+parameters:
+  - in: path
+    name: project_id
+    required: true
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the project
+  - in: path
+    name: asset_id
+    required: true
+    type: string
+    format: uuid
+    example: c46c80c6-e097-6887-c292-79675204e470
+    description: Unique identifier of the asset to cast
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - entity_ids
+        properties:
+          entity_ids:
+            type: array
+            items:
+              type: string
+              format: uuid
+            description: Entities to cast the asset in
+          nb_occurences:
+            type: integer
+            description: Number of occurences, 0 removes the
+              asset from the casting, omit to keep the current
+              one (1 on a new link)
+          label:
+            type: string
+            description: Casting label, omit to keep the
+              current one
+responses:
+  200:
+    description: Map of entity ids to their updated casting
+    content:
+      application/json:
+        schema:
+          type: object
+  400:
+    description: Empty selection or negative number of occurences
+  403:
+    description: Not a manager of the project
+  404:
+    description: Unknown asset or entity

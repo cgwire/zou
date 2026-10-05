@@ -10,6 +10,15 @@ Order matters. A role can be set per project, and ``permissions`` resolves it
 from ``flask.g``, which only ``check_belong_to_project``, ``check_project_access``
 and ``resolve_project_role`` populate. Any ``has_*``/``check_*`` role helper
 called before one of those silently reads the global role.
+
+Where a rule lives:
+
+- ``zou.app.utils.permissions``: the role of the request (admin, manager,
+  supervisor, user, client, vendor) and the ``require_*`` decorators.
+- this module: every rule that needs a row (project membership, task and
+  entity access, playlist and comment ownership, filter sharing).
+- ``user_service``: no rule of its own; it scopes listings to the projects
+  of the caller with the helpers above.
 """
 
 from flask import g
@@ -450,6 +459,15 @@ def has_manager_project_access(project_id):
         check_belong_to_project(project_id)
         and permissions.has_manager_permissions()
     )
+
+
+def can_share_filter(project_id):
+    """
+    Return true if the current user may share a search filter or a filter
+    group on given project: sharing is a per project manager privilege, and
+    a filter without a project cannot be shared at all.
+    """
+    return project_id is not None and has_manager_project_access(project_id)
 
 
 def check_entities_belong_to_project(entity_ids, project_id):

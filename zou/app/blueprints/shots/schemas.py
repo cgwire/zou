@@ -5,7 +5,7 @@ Pydantic schemas for request body validation in the shots blueprint.
 from typing import Optional
 from uuid import UUID
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from zou.app.utils.validation import BaseSchema
 
@@ -51,6 +51,23 @@ class NewSceneSchema(BaseSchema):
 
     name: str = Field(..., min_length=1, description="Scene name")
     sequence_id: Optional[UUID] = None
+
+
+class UpdateShotSchema(BaseSchema):
+    """
+    Body of the shot update route. The typed columns are checked, any
+    other column of the entity passes through; the read only and
+    relation fields are dropped by the route.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    name: Optional[str] = Field(default=None, min_length=1)
+    description: Optional[str] = None
+    nb_frames: Optional[int] = None
+    data: Optional[dict] = None
+    parent_id: Optional[UUID] = None
+    canceled: Optional[bool] = None
 
 
 class AddShotToSceneSchema(BaseSchema):

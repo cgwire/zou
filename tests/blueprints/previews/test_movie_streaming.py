@@ -67,6 +67,27 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data, movie_content)
 
+    def test_a_lagging_recorded_size_does_not_hide_a_local_movie(self):
+        # The local store has no cache copy to go stale, and the recorded
+        # size lags behind the file while a movie is renormalized: the
+        # mismatch used to flag the high def version as missing.
+        preview_file_id = self.upload_movie_preview()
+        for prefix in files_service.MOVIE_PREFIXES:
+            if file_store.exists_movie(prefix, preview_file_id):
+                file_store.remove_movie(prefix, preview_file_id)
+        file_store.add_movie("previews", preview_file_id, self.movie_path)
+        preview_files_service.update_preview_file(
+            preview_file_id, {"file_size": 1}, silent=True
+        )
+        files_service.clear_preview_file_cache(preview_file_id)
+
+        response = self.app.get(
+            f"/movies/originals/preview-files/{preview_file_id}.mp4",
+            headers=self.base_headers,
+        )
+        self.assertEqual(response.status_code, 200)
+        file_store.remove_movie("previews", preview_file_id)
+
     def test_download_original_movie(self):
         preview_file_id = self.upload_movie_preview()
         response = self.app.get(

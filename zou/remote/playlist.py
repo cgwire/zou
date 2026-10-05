@@ -26,23 +26,51 @@ from zou.utils.movie import (
 logger = setup_logging()
 
 
+# Storage prefixes a movie may sit under, best first: the normalization
+# settings decide which versions exist (SKIP_NORMALIZATION_HIGHDEF keeps
+# lowdef only, SKIP_NORMALIZATION_FULL with PREVIEW_SAVE_SOURCE_FILE keeps
+# the source only).
+MOVIE_PREFIXES = ["previews", "lowdef", "source"]
+
+
+def _fetch_input(storage, outdir, input_id):
+    """
+    Fetch one movie from the object storage, whichever version it holds.
+    """
+    last_error = None
+    for prefix in MOVIE_PREFIXES:
+        filename = f"cache-{prefix}-{input_id}.mp4"
+        file_path = os.path.join(outdir, filename)
+        try:
+            return (
+                get_file_from_storage(
+                    storage, file_path, make_key(prefix, input_id)
+                ),
+                filename,
+            )
+        except Exception as error:
+            # A failed read leaves an empty file behind, which the next
+            # attempt must not take for a fetched movie.
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            logger.warning(
+                "Movie %s not read from %s (%s), trying the next version",
+                input_id,
+                prefix,
+                error,
+            )
+            last_error = error
+    raise last_error
+
+
 def _fetch_inputs(storage, outdir, preview_file_ids):
     """
     Fetch inputs from object storage, return a list of local paths
     """
-    input_paths = []
-    for input_id in preview_file_ids:
-        filename = f"cache-previews-{input_id}.mp4"
-        file_path = os.path.join(outdir, filename)
-        input_paths.append(
-            (
-                get_file_from_storage(
-                    storage, file_path, make_key("previews", input_id)
-                ),
-                filename,
-            )
-        )
-    return input_paths
+    return [
+        _fetch_input(storage, outdir, input_id)
+        for input_id in preview_file_ids
+    ]
 
 
 def _run_build_playlist(input_paths, output_movie_path, enc_params, full):

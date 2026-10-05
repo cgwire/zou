@@ -1,3 +1,4 @@
+import logging
 import copy
 import math
 import os
@@ -16,6 +17,7 @@ from rq.timeouts import BaseTimeoutException
 from PIL import Image
 
 from sqlalchemy.orm import aliased
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
 
 from zou.app import config
@@ -53,7 +55,7 @@ from zou.app.utils import (
     remote_job,
     thumbnail as thumbnail_utils,
 )
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     AnnotationLockTimeoutException,
     JobQueueDisabledException,
     AnnotationNotFoundException,
@@ -65,6 +67,9 @@ from zou.app.services.exception import (
 )
 from zou.app.utils import fs
 from zou.app.utils.progress import NullProgress
+
+logger = logging.getLogger(__name__)
+
 
 REMOTE_NORMALIZE_VERSION = 2
 REMOTE_TILE_VERSION = 1
@@ -283,13 +288,16 @@ def update_preview_file(preview_file_id, data, silent=False):
     """
     Update given preview file and notify the clients, unless silent.
     """
+    # Job workers may hit a transient database error right after the
+    # request that created the row committed; that is what the retries
+    # are for. A row that is not there will not appear in six seconds.
     try:
         preview_file = files_service.get_preview_file_raw(preview_file_id)
-    except Exception:
+    except OperationalError:
         try:
             time.sleep(1)
             preview_file = files_service.get_preview_file_raw(preview_file_id)
-        except Exception:
+        except OperationalError:
             time.sleep(5)
             preview_file = files_service.get_preview_file_raw(preview_file_id)
     return update_preview_file_raw(preview_file, data, silent=silent)
@@ -1529,14 +1537,7 @@ def extract_frame_from_preview_file(preview_file, frame_number):
         raise PreviewFileNotFoundException
 
     if preview_file["extension"] == "mp4":
-        preview_file_path = fs.get_file_path_and_file(
-            config,
-            file_store.get_local_movie_path,
-            file_store.open_movie,
-            "previews",
-            preview_file["id"],
-            "mp4",
-        )
+        preview_file_path = locate_stored_movie(preview_file)
     else:
         raise PreviewFileNotFoundException
 
@@ -1691,7 +1692,9 @@ def _copy_picture_preview_to_temp_png(preview_file):
             preview_file["id"],
             preview_file["extension"],
         )
-    except Exception:
+    except fs.FileNotFound:
+        # Only an absent binary answers None (the routes turn it into a
+        # 404). A storage outage or a bug must surface as what it is.
         return None
     fd, temp_path = tempfile.mkstemp(suffix=".png")
     os.close(fd)
@@ -1936,14 +1939,8 @@ def extract_tile_from_preview_file(preview_file):
         # Imported via sync-push: metadata only. Skip silently.
         return None
     if preview_file["extension"] == "mp4":
-        preview_file_path = fs.get_file_path_and_file(
-            config,
-            file_store.get_local_movie_path,
-            file_store.open_movie,
-            "previews",
-            preview_file["id"],
-            "mp4",
-        )
+        # A tile is 100 pixels high: the low def movie is enough.
+        preview_file_path = locate_stored_movie(preview_file, lowdef=True)
         extracted_tile_path = movie.generate_tile(preview_file_path)
         return extracted_tile_path
     else:
@@ -1971,13 +1968,12 @@ def reset_movie_files_metadata():
     """
     for preview_file in _get_preview_files_to_reset("mp4"):
         try:
-            preview_file_path = fs.get_file_path_and_file(
-                config,
-                file_store.get_local_movie_path,
-                file_store.open_movie,
-                "previews",
-                str(preview_file.id),
-                "mp4",
+            preview_file_path = locate_stored_movie(
+                {
+                    "id": str(preview_file.id),
+                    "extension": "mp4",
+                    "data": files_service.get_preview_file_data(preview_file),
+                }
             )
             file_size = os.path.getsize(preview_file_path)
             width, height = movie.get_movie_size(preview_file_path)
@@ -1991,11 +1987,11 @@ def reset_movie_files_metadata():
                     "duration": duration,
                 },
             )
-            print(
+            logger.info(
                 f"Size information stored for preview file {preview_file.id}",
             )
         except Exception as e:
-            print(
+            logger.warning(
                 f"Failed to store information for preview file {preview_file.id}: {e}"
             )
 
@@ -2024,11 +2020,11 @@ def reset_picture_files_metadata():
                     "file_size": file_size,
                 },
             )
-            print(
+            logger.info(
                 f"Size information stored for preview file {preview_file.id}",
             )
         except Exception as e:
-            print(
+            logger.warning(
                 f"Failed to store information for preview file {preview_file.id}: {e}"
             )
 
@@ -2223,7 +2219,7 @@ def generate_preview_extra(
     informations of open projects.
     """
     progress = progress or NullProgress()
-    print("Generating preview extras...")
+    logger.info("Generating preview extras...")
     query = _build_preview_extra_query(
         project=project,
         entity_id=entity_id,
@@ -2233,7 +2229,7 @@ def generate_preview_extra(
     )
 
     total = query.count()
-    print(f"{total} previews found.")
+    logger.info(f"{total} previews found.")
     progress.start(total)
     for index, preview_file in enumerate(query.all()):
         try:
@@ -2241,18 +2237,43 @@ def generate_preview_extra(
         except ObjectDeletedError:
             progress.advance()
             continue
-        prefix = "previews" if preview_file.extension == "mp4" else "original"
+        if preview_file.extension == "mp4":
+            prefixes = get_stored_movie_prefixes(
+                {"data": files_service.get_preview_file_data(preview_file)}
+            )
+        else:
+            prefixes = ["original"]
         if config.FS_BACKEND != "local":
-            preview_file_already_in_cache = os.path.isfile(
-                os.path.join(
-                    config.TMP_DIR,
-                    f"cache-{prefix}-{preview_file_id}.{preview_file.extension}",
+            preview_file_already_in_cache = any(
+                os.path.isfile(
+                    os.path.join(
+                        config.TMP_DIR,
+                        f"cache-{prefix}-{preview_file_id}"
+                        f".{preview_file.extension}",
+                    )
                 )
+                for prefix in prefixes
             )
         try:
-            preview_file_path = _retrieve_preview_file(
-                config, file_store, prefix, preview_file
-            )
+            preview_file_path = None
+            if preview_file.extension == "mp4":
+                try:
+                    preview_file_path = locate_stored_movie(
+                        {
+                            "id": preview_file_id,
+                            "data": files_service.get_preview_file_data(
+                                preview_file
+                            ),
+                        }
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to get preview file {preview_file_id}: {e}."
+                    )
+            else:
+                preview_file_path = _retrieve_preview_file(
+                    config, file_store, "original", preview_file
+                )
             if with_tiles:
                 _generate_tiles(
                     file_store,
@@ -2276,13 +2297,14 @@ def generate_preview_extra(
                 and not preview_file_already_in_cache
             ):
                 try:
-                    os.remove(preview_file_path)
+                    if preview_file_path is not None:
+                        os.remove(preview_file_path)
                 except OSError:
                     pass
         progress.advance()
 
     progress.stop()
-    print("Extra information generated.")
+    logger.info("Extra information generated.")
     return total
 
 
@@ -2439,6 +2461,46 @@ def _retrieve_stored_movie(preview_file):
     return None
 
 
+def get_stored_movie_prefixes(preview_file, lowdef=False):
+    """
+    Storage prefixes to try for the movie of given preview file dict, best
+    first. The normalization settings decide which versions exist
+    (SKIP_NORMALIZATION_HIGHDEF keeps lowdef only, SKIP_NORMALIZATION_FULL
+    with PREVIEW_SAVE_SOURCE_FILE keeps the source only), so no reader may
+    assume the "previews" one.
+    """
+    data = preview_file.get("data") or {}
+    recorded = data.get(files_service.MOVIE_PREFIXES_KEY) or []
+    return files_service.get_movie_prefixes(recorded, lowdef)
+
+
+def locate_stored_movie(preview_file, lowdef=False):
+    """
+    Local path of a stored version of the movie of given preview file dict,
+    fetched from the store when needed. Raises PreviewFileNotFoundException
+    when the store holds none of the versions. Only an absence the store
+    confirmed moves on to the next version: a transient failure is raised
+    as is, a caller recording the size of the movie would otherwise store
+    the one of the low def version.
+    """
+    preview_file_id = str(preview_file["id"])
+    for prefix in get_stored_movie_prefixes(preview_file, lowdef):
+        try:
+            return fs.get_file_path_and_file(
+                config,
+                file_store.get_local_movie_path,
+                file_store.open_movie,
+                prefix,
+                preview_file_id,
+                "mp4",
+            )
+        except fs.ConfirmedFileNotFound:
+            continue
+    raise PreviewFileNotFoundException(
+        f"No stored movie for preview file {preview_file_id}."
+    )
+
+
 def _retrieve_preview_file(config, file_store, prefix, preview_file):
     """
     Fetch a preview binary from the store to a local path, whichever
@@ -2462,7 +2524,7 @@ def _retrieve_preview_file(config, file_store, prefix, preview_file):
             preview_file.extension,
         )
     except Exception as e:
-        print(f"Failed to get preview file {preview_file.id}: {e}.")
+        logger.warning(f"Failed to get preview file {preview_file.id}: {e}.")
         return None
     return preview_file_path
 
@@ -2478,11 +2540,13 @@ def _generate_thumbnails(preview_file, preview_file_path, total, index):
         save_variants(
             preview_file.id, original_picture_path, with_original=False
         )
-        print(
+        logger.info(
             f"{index:0{len(str(total))}}/{total} Thumbnails generated for {preview_file.id}.",
         )
     except Exception as e:
-        print(f"Failed to generate thumbnails for {preview_file.id}: {e}.")
+        logger.warning(
+            f"Failed to generate thumbnails for {preview_file.id}: {e}."
+        )
 
 
 def _generate_tiles(
@@ -2511,7 +2575,7 @@ def _generate_tiles(
                 os.remove(tile_path)
             except OSError:
                 pass
-            print(
+            logger.info(
                 f"{index:0{len(str(total))}}/{total} Tile "
                 + f"generated for {preview_file.id}.",
             )
@@ -2523,7 +2587,7 @@ def _generate_tiles(
                 "tiles",
                 preview_file_states_service.FAILED,
             )
-        print(
+        logger.warning(
             f"Failed to generate tile for preview file {preview_file.id}: {e}."
         )
 
@@ -2555,11 +2619,11 @@ def _reset_preview_file_metadata(
                 "duration": duration,
             },
         )
-        print(
+        logger.info(
             f"{index:0{len(str(total))}}/{total} Size information stored for {preview_file.id}.",
         )
     except Exception as e:
-        print(
+        logger.warning(
             f"Failed to store information for preview file {preview_file.id}: {e}.",
         )
 

@@ -1,0 +1,49 @@
+Create custom action
+---
+tags:
+  - Crud
+description: Create a new custom action with data provided in the
+  request body. JSON format is expected.
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - name
+        properties:
+          name:
+            type: string
+            example: Custom Action Name
+          url_pattern:
+            type: string
+            example: "/api/actions/{id}"
+responses:
+    201:
+      description: Custom action created successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: Custom Action Name
+              url_pattern:
+                type: string
+                example: "/api/actions/{id}"
+              created_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T10:30:00Z"
+              updated_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T10:30:00Z"
+    400:
+      description: Invalid data format or validation error

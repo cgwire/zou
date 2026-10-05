@@ -1,3 +1,4 @@
+import logging
 from babel.core import UnknownLocaleError
 from flask_jwt_extended.exceptions import NoAuthorizationError
 from jwt import ExpiredSignatureError
@@ -5,7 +6,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 from flask_fs.errors import FileNotFound
 
 from zou.app import config
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     ModelWithRelationsDeletionException,
     TwoFactorAuthenticationRequiredException,
     WrongIdFormatException,
@@ -15,6 +16,9 @@ from zou.app.services.exception import (
 from zou.app.utils import permissions
 from zou import __version__ as zou_version
 
+logger = logging.getLogger(__name__)
+
+
 if config.SENTRY_ENABLED:
     try:
         import sentry_sdk
@@ -22,14 +26,14 @@ if config.SENTRY_ENABLED:
         from sentry_sdk.integrations.rq import RqIntegration
         from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
     except ModuleNotFoundError:
-        print("sentry_sdk module not found.")
+        logger.warning("sentry_sdk module not found.")
 
 if config.PROMETHEUS_METRICS_ENABLED:
     try:
         import prometheus_flask_exporter
         import prometheus_flask_exporter.multiprocess
     except ModuleNotFoundError:
-        print("prometheus_flask_exporter not found.")
+        logger.warning("prometheus_flask_exporter not found.")
 
 
 def init_monitoring(app):

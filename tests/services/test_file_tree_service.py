@@ -6,7 +6,7 @@ from tests.base import ApiDBTestCase
 
 from zou.app.models.entity import Entity
 from zou.app.services import file_tree_service, files_service
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     MalformedFileTreeException,
     TaskNotFoundException,
     WrongFileTreeFileException,
@@ -89,7 +89,9 @@ class TreeLookupTestCase(FileTreeTestCase):
         )
 
     def test_the_production_of_an_entity_is_read_off_the_entity(self):
-        project = file_tree_service.get_project(self.asset.serialize())
+        project = file_tree_service.get_project_of_entity(
+            self.asset.serialize()
+        )
         self.assertEqual(project["name"], self.project.name)
 
     def test_the_root_path_is_the_mountpoint_and_the_root(self):
@@ -457,6 +459,36 @@ class WorkingPathTestCase(FileTreeTestCase):
                 self.shot_task.serialize(), revision=3
             ),
             "cosmos_landromat_s01_p01_animation_v003",
+        )
+
+    def test_an_episode_token_falls_back_on_a_flat_production(self):
+        """
+        A template carrying <Episode> on a production whose sequences hang
+        from no episode resolves the token to e001 instead of failing on
+        the missing parent.
+        """
+        flat_sequence = Entity.create(
+            name="SQ01",
+            project_id=self.project.id,
+            entity_type_id=self.sequence_type.id,
+        )
+        flat_shot = Entity.create(
+            name="P002",
+            project_id=self.project.id,
+            entity_type_id=self.shot_type.id,
+            parent_id=flat_sequence.id,
+        )
+        flat_task = self.generate_fixture_shot_task(
+            name="flat", shot_id=flat_shot.id
+        )
+        tree = copy.deepcopy(self.project.file_tree)
+        tree["working"]["folder_path"][
+            "shot"
+        ] = "<Project>/<Episode>/<Sequence>/<Shot>/<TaskType>"
+        self.project.update({"file_tree": tree})
+        self.assertEqual(
+            file_tree_service.get_working_folder_path(flat_task.serialize()),
+            "/simple/productions/cosmos_landromat/e001/sq01/p002/animation",
         )
 
     def test_the_path_of_a_scene_task(self):

@@ -12,6 +12,8 @@ Two conventions matter when editing this module:
 """
 
 import collections
+import dataclasses
+from typing import Optional
 import uuid
 
 from sqlalchemy import and_, any_, cast, or_
@@ -23,6 +25,7 @@ from sqlalchemy.orm import aliased, selectinload
 from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
 
 from zou.app import config, db
+from zou.app.stores import redis_lock
 from zou.app.utils import events
 
 from zou.app.models.attachment_file import AttachmentFile
@@ -60,7 +63,7 @@ from zou.app.utils import (
 )
 
 
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     CommentNotFoundException,
     EpisodeNotFoundException,
     PersonNotFoundException,
@@ -128,8 +131,8 @@ def clear_task_cache(task_id):
     """
     Drop every memoized serialization of given task.
     """
-    cache.cache.delete_memoized(get_task, task_id)
-    cache.cache.delete_memoized(get_task, task_id, True)
+    cache.cache.delete_memoized(_get_task_cached, str(task_id), False)
+    cache.cache.delete_memoized(_get_task_cached, str(task_id), True)
 
 
 def clear_comment_cache(comment_id):
@@ -177,16 +180,16 @@ def get_to_review_status():
     """
     Return the task status previews are set to on upload.
     """
-    return get_or_create_status(config.TO_REVIEW_TASK_STATUS, "pndng")
+    return get_or_create_task_status(config.TO_REVIEW_TASK_STATUS, "pndng")
 
 
 @cache.memoize_function(120)
-def get_default_status(for_concept=False):
+def get_default_task_status(for_concept=False):
     """
     Return the task status new tasks start on.
     """
     if for_concept:
-        return get_or_create_status(
+        return get_or_create_task_status(
             "Neutral",
             "neutral",
             "#CCCCCC",
@@ -194,7 +197,9 @@ def get_default_status(for_concept=False):
             for_concept=True,
         )
     else:
-        return get_or_create_status("Todo", "todo", "#f5f5f5", is_default=True)
+        return get_or_create_task_status(
+            "Todo", "todo", "#f5f5f5", is_default=True
+        )
 
 
 def get_task_status_raw(task_status_id):
@@ -296,11 +301,19 @@ def get_task_raw(task_id):
 
 
 @cache.memoize_function(120)
+def _get_task_cached(task_id, relations):
+    return get_task_raw(task_id).serialize(relations=relations)
+
+
 def get_task(task_id, relations=False):
     """
     Get task matching given id as a dictionary.
+
+    The id is normalized to a string before it reaches the cache: a UUID
+    and its string form would otherwise be two entries, and only the string
+    one is ever invalidated by clear_task_cache.
     """
-    return get_task_raw(task_id).serialize(relations=relations)
+    return _get_task_cached(str(task_id), bool(relations))
 
 
 def get_task_by_shotgun_id(shotgun_id):
@@ -662,6 +675,7 @@ def get_task_types_for_entity(entity_id):
         TaskType.query.join(Task)
         .join(Entity)
         .filter(Entity.id == entity_id)
+        .distinct()
         .all()
     )
     return fields.serialize_models(task_types)
@@ -722,7 +736,7 @@ def get_next_position(task_id, revision):
     return len(preview_files) + 1
 
 
-def get_time_spents(task_id, date=None):
+def get_time_spents_for_task(task_id, date=None):
     """
     Return time spents for given task.
     """
@@ -1591,7 +1605,7 @@ def create_tasks(task_type, entities):
     ).all()
     existing_entity_ids = {str(task.entity_id) for task in existing_tasks}
 
-    task_status = get_default_status(
+    task_status = get_default_task_status(
         for_concept=entities[0]["entity_type_id"]
         == concepts_service.get_concept_type()["id"]
     )
@@ -1697,7 +1711,7 @@ def create_tasks_for_entity(entity, task_types=None):
         ).all()
     }
 
-    task_status = get_default_status(
+    task_status = get_default_task_status(
         for_concept=entity["entity_type_id"]
         == concepts_service.get_concept_type()["id"]
     )
@@ -1727,7 +1741,7 @@ def create_task(task_type, entity, name="main"):
     """
     Create a new task for given task type and entity.
     """
-    task_status = get_default_status(
+    task_status = get_default_task_status(
         for_concept=entity["entity_type_id"]
         == concepts_service.get_concept_type()["id"]
     )
@@ -1811,7 +1825,7 @@ def update_task(task_id, data):
     return task.serialize()
 
 
-def get_or_create_status(
+def get_or_create_task_status(
     name,
     short_name="",
     color="#f5f5f5",
@@ -2166,26 +2180,34 @@ def add_preview_file_to_comment(comment_id, person_id, task_id, revision=None):
     news = News.get_by(comment_id=comment_id)
     task = Task.get(comment.object_id)
     project_id = str(task.project_id)
-    position = 1
-    if revision is None and len(comment.previews) == 0:
-        revision = get_next_preview_revision(task_id)
-    elif revision is None:
-        revision = comment.previews[0].revision
-        position = get_next_position(task_id, revision)
-    else:
-        if len(comment.previews) == 0:
-            check_revision_is_unique_for_task(task_id, revision)
-        position = get_next_position(task_id, revision)
-    if position > 1:
-        project = projects_service.get_project(project_id)
-        if project.get("is_single_preview_per_revision"):
-            raise TooManyPreviewFilesException(
-                "Only one preview file is allowed per revision for this "
-                "project."
-            )
-    preview_file = files_service.create_preview_file_raw(
-        str(uuid.uuid4())[:13], revision, task_id, person_id, position=position
-    )
+    # The next revision and position are read then written: two uploads
+    # on the same task at once would pick the same ones, and nothing in
+    # the schema refuses that. The lock serializes them per task.
+    with redis_lock.with_lock(f"preview_revision_lock:{task_id}"):
+        position = 1
+        if revision is None and len(comment.previews) == 0:
+            revision = get_next_preview_revision(task_id)
+        elif revision is None:
+            revision = comment.previews[0].revision
+            position = get_next_position(task_id, revision)
+        else:
+            if len(comment.previews) == 0:
+                check_revision_is_unique_for_task(task_id, revision)
+            position = get_next_position(task_id, revision)
+        if position > 1:
+            project = projects_service.get_project(project_id)
+            if project.get("is_single_preview_per_revision"):
+                raise TooManyPreviewFilesException(
+                    "Only one preview file is allowed per revision for this "
+                    "project."
+                )
+        preview_file = files_service.create_preview_file_raw(
+            str(uuid.uuid4())[:13],
+            revision,
+            task_id,
+            person_id,
+            position=position,
+        )
     events.emit(
         "preview-file:new",
         {
@@ -2368,7 +2390,7 @@ def reset_task_data(task_id):
     end_date = None
     done_date = None
     entity = entities_service.get_entity(task.entity_id)
-    task_status_id = get_default_status(
+    task_status_id = get_default_task_status(
         for_concept=entity["entity_type_id"]
         == concepts_service.get_concept_type()["id"]
     )["id"]
@@ -2485,8 +2507,8 @@ def get_persons_tasks_dates(
     for person_id, min_date, max_date in query.all():
         entries[str(person_id)] = {
             "person_id": str(person_id),
-            "min_date": str(min_date),
-            "max_date": str(max_date),
+            "min_date": fields.serialize_value(min_date),
+            "max_date": fields.serialize_value(max_date),
             "busy_periods": [],
         }
 
@@ -2535,86 +2557,97 @@ def _merge_date_intervals(intervals):
     return [(start, end) for start, end in merged]
 
 
-def _apply_open_tasks_filters(
-    query,
-    task_type_id=None,
-    task_status_id=None,
-    project_id=None,
-    person_id=None,
-    studio_id=None,
-    department_id=None,
-    start_date=None,
-    due_date=None,
-    priority=None,
-):
+@dataclasses.dataclass
+class OpenTasksFilters:
+    """
+    Criteria of the open task listings: the listing, its stats and the
+    burndown read the same object so the three queries always agree on
+    which tasks are in the pool.
+    """
+
+    task_type_id: Optional[str] = None
+    task_status_id: Optional[str] = None
+    project_id: Optional[str] = None
+    person_id: Optional[str] = None
+    studio_id: Optional[str] = None
+    department_id: Optional[str] = None
+    start_date: Optional[str] = None
+    due_date: Optional[str] = None
+    priority: Optional[int] = None
+
+    @classmethod
+    def from_args(cls, args):
+        """
+        Build the filters from the parsed query arguments of a route.
+        """
+        return cls(
+            **{
+                field.name: args.get(field.name)
+                for field in dataclasses.fields(cls)
+            }
+        )
+
+
+def _apply_open_tasks_filters(query, filters):
     """
     Apply the open tasks pool scoping and filters. Shared by the listing,
     its stats and the burndown aggregates so the three queries always
     agree on which tasks are in the pool.
     """
-    if project_id is not None and permissions_service.check_project_access(
-        project_id
+    if (
+        filters.project_id is not None
+        and permissions_service.check_project_access(filters.project_id)
     ):
-        query = query.filter(Project.id == project_id)
+        query = query.filter(Project.id == filters.project_id)
     elif permissions.has_admin_permissions():
         query = query.filter(ProjectStatus.name == "Open")
     else:
         query = query.filter(user_service.build_related_projects_filter())
 
-    if task_type_id is not None:
-        query = query.filter(TaskType.id == task_type_id)
+    if filters.task_type_id is not None:
+        query = query.filter(TaskType.id == filters.task_type_id)
     else:
         query = query.filter(TaskType.for_entity != "Concept")
 
-    if task_status_id is not None:
-        query = query.filter(TaskStatus.id == task_status_id)
+    if filters.task_status_id is not None:
+        query = query.filter(TaskStatus.id == filters.task_status_id)
 
-    if person_id is not None:
+    if filters.person_id is not None:
         if person_id == "unassigned":
             query = query.filter(Task.assignees == None)
         else:
             query = query.filter(
-                Task.assignees.any(Person.id.in_(person_id.split(",")))
+                Task.assignees.any(Person.id.in_(filters.person_id.split(",")))
             )
 
-    if studio_id is not None:
-        query = query.filter(Task.assignees.any(studio_id=studio_id))
+    if filters.studio_id is not None:
+        query = query.filter(Task.assignees.any(studio_id=filters.studio_id))
 
-    if department_id is not None:
+    if filters.department_id is not None:
         query = query.filter(
-            Task.assignees.any(Person.departments.any(id=department_id))
+            Task.assignees.any(
+                Person.departments.any(id=filters.department_id)
+            )
         )
 
-    if start_date is not None:
+    if filters.start_date is not None:
         query = query.filter(
-            Task.start_date >= func.cast(start_date, Task.start_date.type)
+            Task.start_date
+            >= func.cast(filters.start_date, Task.start_date.type)
         )
 
-    if due_date is not None:
+    if filters.due_date is not None:
         query = query.filter(
-            Task.due_date <= func.cast(due_date, Task.due_date.type)
+            Task.due_date <= func.cast(filters.due_date, Task.due_date.type)
         )
 
-    if priority is not None:
-        query = query.filter(TaskType.priority == priority)
+    if filters.priority is not None:
+        query = query.filter(TaskType.priority == filters.priority)
 
     return query
 
 
-def get_open_tasks(
-    task_type_id=None,
-    task_status_id=None,
-    project_id=None,
-    person_id=None,
-    studio_id=None,
-    department_id=None,
-    start_date=None,
-    due_date=None,
-    priority=None,
-    order_by=None,
-    limit=200,
-    page=None,
-):
+def get_open_tasks(filters, order_by=None, limit=200, page=None):
     """
     Return all tasks matching given filters from open projects.
     """
@@ -2678,19 +2711,8 @@ def get_open_tasks(
         TaskType.name,
     )
 
-    filters = {
-        "task_type_id": task_type_id,
-        "task_status_id": task_status_id,
-        "project_id": project_id,
-        "person_id": person_id,
-        "studio_id": studio_id,
-        "department_id": department_id,
-        "start_date": start_date,
-        "due_date": due_date,
-        "priority": priority,
-    }
-    query = _apply_open_tasks_filters(query, **filters)
-    query_stats = _apply_open_tasks_filters(query_stats, **filters)
+    query = _apply_open_tasks_filters(query, filters)
+    query_stats = _apply_open_tasks_filters(query_stats, filters)
 
     limit = max(limit, 1)
     if page is not None and int(page) > 0:
@@ -2796,17 +2818,7 @@ def _fold_done_rows_before(done_rows, window_start):
     ] + [row for row in done_rows if row[0] > window_start]
 
 
-def get_open_tasks_burndown(
-    task_type_id=None,
-    task_status_id=None,
-    project_id=None,
-    person_id=None,
-    studio_id=None,
-    department_id=None,
-    start_date=None,
-    due_date=None,
-    priority=None,
-):
+def get_open_tasks_burndown(filters):
     """
     Return burndown aggregates for tasks matching given filters from open
     projects: totals, schedule bounds and the amount of tasks done per day.
@@ -2832,18 +2844,7 @@ def get_open_tasks_burndown(
         .join(ProjectStatus, ProjectStatus.id == Project.project_status_id)
     )
 
-    query = _apply_open_tasks_filters(
-        query,
-        task_type_id=task_type_id,
-        task_status_id=task_status_id,
-        project_id=project_id,
-        person_id=person_id,
-        studio_id=studio_id,
-        department_id=department_id,
-        start_date=start_date,
-        due_date=due_date,
-        priority=priority,
-    )
+    query = _apply_open_tasks_filters(query, filters)
 
     tasks = query.subquery()
 

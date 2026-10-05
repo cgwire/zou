@@ -1,0 +1,54 @@
+Create project task type link
+---
+tags:
+  - Crud
+description: Create a link between a project and a task type.
+  Sets the priority of the task type within the project.
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - project_id
+          - task_type_id
+        properties:
+          project_id:
+            type: string
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c250
+          task_type_id:
+            type: string
+            format: uuid
+            example: b24a6ea4-ce75-4665-a070-57453082c250
+          priority:
+            type: integer
+            default: 1
+            example: 1
+            description: Priority of the task type in the project
+responses:
+    201:
+      description: Project task type link created successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              project_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              task_type_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              priority:
+                type: integer
+                example: 1
+    400:
+      description: Invalid project or task type

@@ -1,0 +1,46 @@
+Get asset instances
+---
+description: Retrieve all asset instances that are instantiated inside a specific asset.
+tags:
+  - Assets
+parameters:
+  - in: path
+    name: asset_id
+    required: true
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the asset
+responses:
+  200:
+    description: List of asset instances successfully retrieved
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Asset instance unique identifier
+                example: f79f13f9-1320-9110-f625-029085371700
+              asset_id:
+                type: string
+                format: uuid
+                description: Parent asset identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              target_asset_id:
+                type: string
+                format: uuid
+                description: Target asset identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              number:
+                type: string
+                description: Instance number
+                example: "001"
+              description:
+                type: string
+                description: Instance description
+                example: "Main character instance"

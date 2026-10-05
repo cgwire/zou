@@ -1,0 +1,47 @@
+Create preview file
+---
+description: Main resource to add a preview. It stores the preview file
+  and generates three picture files (thumbnails) matching preview when
+  it's possible, a square thumbnail, a rectangle thumbnail and a
+  midsize file.
+tags:
+  - Previews
+parameters:
+  - in: path
+    name: instance_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Preview file unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+  - in: formData
+    name: file
+    required: true
+    type: file
+    description: Preview file to upload
+responses:
+  201:
+    description: Preview file added successfully
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Preview file unique identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            extension:
+              type: string
+              description: File extension
+              example: "png"
+            file_size:
+              type: integer
+              description: File size in bytes
+              example: 1024000
+  400:
+    description: Wrong file format or invalid upload
+  500:
+    description: Movie preview processing failed (server-side)

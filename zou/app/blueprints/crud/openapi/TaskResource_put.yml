@@ -1,0 +1,81 @@
+Update task
+---
+tags:
+  - Crud
+description: Update a task with data provided in the request
+  body. JSON format is expected. Requires supervisor access.
+parameters:
+  - in: path
+    name: instance_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          task_status_id:
+            type: string
+            format: uuid
+            example: b24a6ea4-ce75-4665-a070-57453082c250
+          assignees:
+            type: array
+            items:
+              type: string
+              format: uuid
+            example: ["c24a6ea4-ce75-4665-a070-57453082c250"]
+          duration:
+            type: number
+            example: 8.5
+responses:
+    200:
+      description: Task updated successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              task_type_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              entity_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              project_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              task_status_id:
+                type: string
+                format: uuid
+                example: e24a6ea4-ce75-4665-a070-57453082c250
+              assignees:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                example: ["f24a6ea4-ce75-4665-a070-57453082c250"]
+              duration:
+                type: number
+                example: 8.5
+              created_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T10:30:00Z"
+              updated_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T11:00:00Z"
+    400:
+      description: Invalid data format or validation error

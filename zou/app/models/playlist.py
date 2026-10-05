@@ -34,6 +34,7 @@ class Playlist(db.Model, BaseMixin, SerializerMixin):
         UUIDType(binary=False),
         db.ForeignKey("person.id"),
         nullable=True,
+        index=True,
     )
 
     __table_args__ = (

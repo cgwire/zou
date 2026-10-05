@@ -1,5 +1,6 @@
 # -*- coding: UTF-8 -*-
 import datetime
+import uuid
 
 from unittest import mock
 
@@ -10,6 +11,7 @@ from sqlalchemy.orm.exc import StaleDataError
 from tests.base import ApiDBTestCase
 
 from zou.app import db
+from zou.app.stores import redis_lock
 from zou.app.models.comment import Comment
 from zou.app.models.studio import Studio
 from zou.app.models.task import Task
@@ -24,7 +26,7 @@ from zou.app.services import (
 )
 from zou.app.utils import fields
 
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     RevisionAlreadyExistsException,
     StudioNotFoundException,
     TaskNotFoundException,
@@ -87,7 +89,7 @@ class TaskCreationTestCase(TaskTestCase):
     def test_create_task(self):
         shot = self.shot.serialize()
         task_type = self.task_type.serialize()
-        status = tasks_service.get_default_status()
+        status = tasks_service.get_default_task_status()
 
         task = tasks_service.create_task(task_type, shot)
 
@@ -101,7 +103,7 @@ class TaskCreationTestCase(TaskTestCase):
         shot = self.shot.serialize()
         shot_2 = self.generate_fixture_shot("S02").serialize()
         task_type = self.task_type.serialize()
-        status = tasks_service.get_default_status()
+        status = tasks_service.get_default_task_status()
 
         tasks = tasks_service.create_tasks(task_type, [shot, shot_2])
 
@@ -249,6 +251,16 @@ class TaskUpdateTestCase(TaskTestCase):
 
 
 class TaskReaderTestCase(TaskTestCase):
+    def test_get_task_cache_is_keyed_by_the_string_id(self):
+        # A UUID and its string used to be two cache entries, and only the
+        # string one was ever dropped by clear_task_cache.
+        tasks_service.get_task(uuid.UUID(self.task_id))
+        self.task.update({"name": "renamed"})
+        tasks_service.clear_task_cache(self.task_id)
+        self.assertEqual(
+            tasks_service.get_task(uuid.UUID(self.task_id))["name"], "renamed"
+        )
+
     def test_get_task(self):
         self.assertRaises(
             TaskNotFoundException, tasks_service.get_task, "wrong-id"
@@ -477,6 +489,11 @@ class TaskTypeReaderTestCase(TaskTestCase):
         self.assertEqual(len(task_types), 1)
         self.assertEqual(task_types[0]["id"], str(self.task_type.id))
 
+        # Two tasks of the same type on the entity name the type once.
+        self.generate_fixture_task(name="Second")
+        task_types = tasks_service.get_task_types_for_entity(self.asset.id)
+        self.assertEqual(len(task_types), 1)
+
     def test_get_task_types_for_shot(self):
         task_types = tasks_service.get_task_types_for_shot(self.shot.id)
         self.assertEqual(len(task_types), 1)
@@ -552,7 +569,7 @@ class PersonTaskTestCase(TaskTestCase):
             tasks_service.get_person_done_tasks(self.user["id"], projects), []
         )
 
-        done_status = tasks_service.get_or_create_status(
+        done_status = tasks_service.get_or_create_task_status(
             "Done", "done", "#22d160", is_done=True
         )
         tasks_service.update_task(
@@ -710,12 +727,14 @@ class TimeSpentTestCase(TaskTestCase):
                 duration=duration,
             )
 
-        time_spents = tasks_service.get_time_spents(self.task_id)
+        time_spents = tasks_service.get_time_spents_for_task(self.task_id)
         self.assertEqual(time_spents["total"], 18000)
         self.assertEqual(len(time_spents[self.person_id]), 1)
         self.assertEqual(len(time_spents[user_id]), 2)
 
-        one_day = tasks_service.get_time_spents(self.task_id, first_day)
+        one_day = tasks_service.get_time_spents_for_task(
+            self.task_id, first_day
+        )
         self.assertEqual(one_day["total"], 10800)
         self.assertEqual(len(one_day[user_id]), 1)
 
@@ -761,6 +780,20 @@ class CommentReaderTestCase(TaskTestCase):
                 "id"
             ],
             self.comment["id"],
+        )
+
+    def test_a_preview_added_to_a_comment_takes_the_task_lock(self):
+        # The next revision and position are read then written: two
+        # uploads at once on the same task would pick the same ones.
+        comment_id = self.generate_fixture_comment()["id"]
+        with mock.patch.object(
+            redis_lock, "with_lock", wraps=redis_lock.with_lock
+        ) as with_lock:
+            tasks_service.add_preview_file_to_comment(
+                comment_id, self.person_id, self.task_id
+            )
+        with_lock.assert_called_once_with(
+            f"preview_revision_lock:{self.task_id}"
         )
 
     def test_a_preview_added_to_a_comment_drops_its_cache(self):
@@ -906,7 +939,7 @@ class GetOrCreateTaskTypeTestCase(ApiDBTestCase):
 
 class TaskStatusTestCase(ApiDBTestCase):
     """
-    The statuses a studio works with. get_or_create_status names them by
+    The statuses a studio works with. get_or_create_task_status names them by
     short name, so asking for a second long name of an existing short one
     returns the first.
     """
@@ -920,25 +953,25 @@ class TaskStatusTestCase(ApiDBTestCase):
         self.generate_fixture_task_status_to_review()
 
     def test_get_status(self):
-        task_status = tasks_service.get_or_create_status(
+        task_status = tasks_service.get_or_create_task_status(
             "WIP", "wip", is_wip=True
         )
         self.assertEqual(task_status["name"], "WIP")
 
     def test_get_wip_status(self):
-        task_status = tasks_service.get_or_create_status(
+        task_status = tasks_service.get_or_create_task_status(
             "Work In Progress", "wip", "#3273dc", is_wip=True
         )
         self.assertEqual(task_status["name"], "WIP")
 
     def test_get_done_status(self):
-        task_status = tasks_service.get_or_create_status(
+        task_status = tasks_service.get_or_create_task_status(
             "Done", "done", "#22d160", is_done=True
         )
         self.assertEqual(task_status["name"], "Done")
 
     def test_get_todo_status(self):
-        task_status = tasks_service.get_default_status()
+        task_status = tasks_service.get_default_task_status()
         self.assertEqual(task_status["is_default"], True)
 
     def test_get_to_review_status(self):
@@ -951,7 +984,7 @@ class TaskStatusTestCase(ApiDBTestCase):
         # too.
         tasks_service.get_task_statuses()
 
-        task_status = tasks_service.get_or_create_status(
+        task_status = tasks_service.get_or_create_task_status(
             "Omitted", "omt", "#22d160"
         )
 

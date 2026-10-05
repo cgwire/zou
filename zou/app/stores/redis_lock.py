@@ -2,28 +2,24 @@
 Redis-based distributed lock: thin wrapper around redis-py's native Lock.
 """
 
+import logging
 import redis
 from contextlib import contextmanager
 
 from zou.app import config
+from zou.app.stores import redis_client
+
+logger = logging.getLogger(__name__)
 
 
 def get_redis_client():
     """
-    Redis client for locking; same config as cache. Returns None if Redis unavailable.
+    The shared Redis client of the memoization database, where the locks
+    live. Opening a client and pinging it on every lock cost two round
+    trips per annotation save; the shared client connects lazily and is
+    reused. The tests replace this function with a fake store.
     """
-    try:
-        client = redis.StrictRedis(
-            host=config.KEY_VALUE_STORE["host"],
-            port=config.KEY_VALUE_STORE["port"],
-            db=config.MEMOIZE_DB_INDEX,
-            password=config.KEY_VALUE_STORE["password"],
-            decode_responses=True,
-        )
-        client.ping()
-        return client
-    except (redis.ConnectionError, redis.TimeoutError, Exception):
-        return None
+    return redis_client.get_client(config.MEMOIZE_DB_INDEX)
 
 
 @contextmanager
@@ -39,17 +35,24 @@ def with_lock(lock_key, timeout=30, wait_timeout=35):
     if client is None:
         yield True
         return
-    lock = client.lock(
-        lock_key, timeout=timeout, blocking_timeout=wait_timeout
-    )
-    acquired = lock.acquire()
+    try:
+        lock = client.lock(
+            lock_key, timeout=timeout, blocking_timeout=wait_timeout
+        )
+        acquired = lock.acquire()
+    except (redis.ConnectionError, redis.TimeoutError):
+        # Degraded mode: the operation proceeds without distributed
+        # serialization rather than failing on an unreachable Redis.
+        logger.warning(f"Redis unreachable, running {lock_key} unlocked.")
+        yield True
+        return
     try:
         yield acquired
     finally:
         if acquired:
             try:
                 lock.release()
-            except redis.exceptions.LockError:
+            except (redis.exceptions.LockError, redis.ConnectionError):
                 pass
 
 

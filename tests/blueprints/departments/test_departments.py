@@ -1,7 +1,7 @@
 from tests.base import ApiDBTestCase
 
 from zou.app.models.hardware_item import HardwareItem
-from zou.app.services import departments_service
+from zou.app.services import departments_service, persons_service
 
 
 class DepartmentRoutesTestCase(ApiDBTestCase):
@@ -39,6 +39,24 @@ class DepartmentRoutesTestCase(ApiDBTestCase):
         )
         self.assertEqual(len(software_list), 1)
         self.assertEqual(software_list[0]["name"], "Blender")
+
+    def test_get_software_of_department(self):
+        # The handler called a service function that does not exist and
+        # took one path parameter where the route gives two: 500 whatever
+        # the ids.
+        departments_service.add_software_to_department(
+            str(self.department.id), str(self.software.id)
+        )
+        result = self.get(
+            f"/data/departments/{self.department.id}"
+            f"/software-licenses/{self.software.id}"
+        )
+        self.assertEqual(result["id"], str(self.software.id))
+        self.get(
+            f"/data/departments/{self.department_animation.id}"
+            f"/software-licenses/{self.software.id}",
+            404,
+        )
 
     def test_delete_software_from_department(self):
         departments_service.add_software_to_department(
@@ -94,3 +112,36 @@ class DepartmentRoutesTestCase(ApiDBTestCase):
             str(self.department.id)
         )
         self.assertEqual(result, [])
+
+    # --- Person routes ---
+
+    def test_get_department_persons(self):
+        person = self.generate_fixture_person()
+        persons_service.add_to_department(
+            str(self.department.id), str(person.id)
+        )
+        result = self.get(f"/data/departments/{self.department.id}/persons")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["id"], str(person.id))
+        self.assertEqual(result[0]["departments"], [str(self.department.id)])
+
+    def test_get_department_persons_empty(self):
+        self.generate_fixture_person()
+        result = self.get(f"/data/departments/{self.department.id}/persons")
+        self.assertEqual(result, [])
+
+    def test_get_department_persons_excludes_other_departments(self):
+        person = self.generate_fixture_person()
+        persons_service.add_to_department(
+            str(self.department.id), str(person.id)
+        )
+        result = self.get(
+            f"/data/departments/{self.department_animation.id}/persons"
+        )
+        self.assertEqual(result, [])
+
+    def test_get_department_persons_unknown_department(self):
+        self.get(
+            "/data/departments/8d1ea9e5-4e4c-4e4c-8b2e-4e4c8b2e4e4c/persons",
+            404,
+        )

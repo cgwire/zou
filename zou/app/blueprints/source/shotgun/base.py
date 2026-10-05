@@ -1,3 +1,4 @@
+from flasgger import swag_from
 from flask import request, current_app
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -9,7 +10,7 @@ from zou.app.blueprints.source.shotgun.exception import (
 
 from zou.app.services import assets_service, shots_service, tasks_service
 
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     AssetNotFoundException,
     EpisodeNotFoundException,
     SceneNotFoundException,
@@ -26,64 +27,10 @@ class BaseImportShotgunResource(MethodView):
         MethodView.__init__(self)
 
     @jwt_required()
+    @swag_from("openapi/BaseImportShotgunResource_post.yml")
     def post(self):
         """
         Import shotgun resource
-        ---
-        tags:
-          - Import
-        description: Import Shotgun resources. Send a list of Shotgun entries
-          in the JSON body. Returns created or updated resources.
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: integer
-                      example: 12345
-                      description: Shotgun ID of the entry
-                    code:
-                      type: string
-                      example: SH010
-                    name:
-                      type: string
-                      example: Shot name
-              example:
-                - id: 12345
-                  code: SH010
-                  name: Shot name
-        responses:
-            200:
-              description: Resources imported successfully
-              content:
-                application/json:
-                  schema:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: Imported resource
-                        created_at:
-                          type: string
-                          format: date-time
-                          example: "2024-01-15T10:30:00Z"
-                        updated_at:
-                          type: string
-                          format: date-time
-                          example: "2024-01-15T11:00:00Z"
-            400:
-              description: Invalid request body or data format error
         """
         results = []
         self.sg_entries = request.json
@@ -205,48 +152,10 @@ class ImportRemoveShotgunBaseResource(MethodView):
         self.entity_type_id = entity_type_id
 
     @jwt_required()
+    @swag_from("openapi/ImportRemoveShotgunBaseResource_post.yml")
     def post(self):
         """
         Remove shotgun resource
-        ---
-        tags:
-          - Import
-        description: Remove a Shotgun resource from the database. Provide the
-          Shotgun entry ID in the JSON body.
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - id
-                properties:
-                  id:
-                    type: integer
-                    example: 12345
-                    description: Shotgun ID of the entry to remove
-              example:
-                id: 12345
-        responses:
-            200:
-              description: Removal result returned
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      success:
-                        type: boolean
-                        example: true
-                        description: Whether the removal was successful
-                      removed_instance_id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                        description: ID of the removed instance, if found
-            400:
-              description: Invalid request body or instance not found
         """
         sg_model = request.json
         instance = self.get_instance(sg_model)

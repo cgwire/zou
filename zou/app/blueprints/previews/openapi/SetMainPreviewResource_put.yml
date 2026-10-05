@@ -1,0 +1,42 @@
+Set main preview
+---
+description: Set given preview as main preview of the related entity.
+  This preview will be used to illustrate the entity.
+tags:
+  - Previews
+parameters:
+  - in: path
+    name: preview_file_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Preview file unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+  - in: query
+    name: frame_number
+    required: false
+    schema:
+      type: integer
+    description: Frame number for movie previews
+    example: 120
+responses:
+  200:
+    description: Preview set as main preview
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Entity unique identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            preview_file_id:
+              type: string
+              format: uuid
+              description: Preview file unique identifier
+              example: b35b7fb5-df86-5776-b181-68564193d360
+  400:
+    description: Cannot use frame number on non-movie preview

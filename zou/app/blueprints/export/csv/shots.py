@@ -1,3 +1,4 @@
+from flasgger import swag_from
 from flask.views import MethodView
 from flask import request
 from flask_jwt_extended import jwt_required
@@ -16,32 +17,10 @@ from zou.app.utils import csv_utils, query
 
 class ShotsCsvExport(MethodView):
     @jwt_required()
+    @swag_from("openapi/ShotsCsvExport_get.yml")
     def get(self, project_id):
         """
         Export shots csv
-        ---
-        tags:
-          - Export
-        description: Export project shots as CSV file. Includes shot
-          information, frames, task statuses, assignments, and metadata.
-        produces:
-          - text/csv
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-              description: Shots exported as CSV successfully
-              content:
-                text/csv:
-                  schema:
-                    type: string
-                  example: "Project,Episode,Sequence,Name,Description,Time Spent,Frames,Frame In,Frame Out,FPS\nProject A,EP01,SQ01,SH010,Description,5.25,120,1001,1120,24"
         """
         project = projects_service.get_project(project_id)
         self.check_permissions(project["id"])

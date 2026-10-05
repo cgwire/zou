@@ -3,6 +3,8 @@ import logging
 
 import orjson as json
 import os
+import shutil
+import tempfile
 import zlib
 
 from flask import current_app
@@ -47,7 +49,7 @@ from zou.app.services import (
     templates_service,
 )
 
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     BuildJobNotFoundException,
     PlaylistLockTimeoutException,
     PlaylistNotFoundException,
@@ -325,7 +327,7 @@ def set_preview_files_for_entities(playlist_dict, with_annotations=True):
     # can hold thousands of revisions, and hydrating that many ORM instances
     # was the bulk of the query time. We also skip the heavy JSONB blobs `data`
     # (never used) and `annotations` (only when the caller asked for them). This
-    # mirrors get_preview_files_for_entity().
+    # mirrors get_entity_previews_by_task_type().
     preview_columns = [
         PreviewFile.id,
         PreviewFile.revision,
@@ -403,7 +405,7 @@ def set_preview_files_for_entities(playlist_dict, with_annotations=True):
     return (playlist_dict, preview_file_map)
 
 
-def get_preview_files_for_entity(entity_id):
+def get_entity_previews_by_task_type(entity_id):
     """
     Get all preview files available for given shot.
     """
@@ -737,10 +739,15 @@ def playlist_previews(shots, only_movies=False):
     return result
 
 
-def retrieve_playlist_tmp_files(preview_files, full=False):
+def retrieve_playlist_tmp_files(preview_files, full=False, tmp_dir=None):
     """
-    Retrieve all files for a given playlist into the temporary folder.
+    Retrieve all files for a given playlist into the temporary folder. The
+    copies land in tmp_dir, which the caller owns and removes once done:
+    they used to pile up in TMP_DIR and two previews sharing an upload name
+    overwrote each other.
     """
+    if tmp_dir is None:
+        tmp_dir = config.TMP_DIR
     file_paths = []
     for preview_file in preview_files:
         if full:
@@ -752,46 +759,75 @@ def retrieve_playlist_tmp_files(preview_files, full=False):
             )
             for preview_file in sub_preview_files:
                 tmp_file_path, file_name = retrieve_playlist_tmp_file(
-                    preview_file
+                    preview_file, tmp_dir, len(file_paths)
                 )
                 file_paths.append((tmp_file_path, file_name))
         else:
-            tmp_file_path, file_name = retrieve_playlist_tmp_file(preview_file)
+            tmp_file_path, file_name = retrieve_playlist_tmp_file(
+                preview_file, tmp_dir, len(file_paths)
+            )
             file_paths.append((tmp_file_path, file_name))
     return file_paths
 
 
-def retrieve_playlist_tmp_file(preview_file):
+def _retrieve_playlist_movie(preview_file):
+    """
+    Local path of the movie of given preview, whichever version the
+    normalization settings left in the store. Only a confirmed absence
+    moves on to the next version: a transient failure must not build the
+    playlist from the low def movie.
+    """
+    last_error = None
+    for prefix in preview_files_service.get_stored_movie_prefixes(
+        preview_file
+    ):
+        try:
+            return fs.get_file_path_and_file(
+                config,
+                file_store.get_local_movie_path,
+                file_store.open_movie,
+                prefix,
+                preview_file["id"],
+                "mp4",
+            )
+        except fs.ConfirmedFileNotFound as error:
+            last_error = error
+    raise last_error
+
+
+def retrieve_playlist_tmp_file(preview_file, tmp_dir=None, index=0):
     """
     Download one preview of a playlist to the temp folder, so ffmpeg can
-    concatenate it locally.
+    concatenate it locally. The copy is prefixed by its index so that two
+    previews carrying the same display name keep their own file.
     """
-    if preview_file["extension"] == "mp4":
-        get_path_func = file_store.get_local_movie_path
-        open_func = file_store.open_movie
-        prefix = "previews"
-    elif preview_file["extension"] == "png":
-        get_path_func = file_store.get_local_picture_path
-        open_func = file_store.open_picture
-        prefix = "original"
-    else:
-        get_path_func = file_store.get_local_file_path
-        open_func = file_store.open_file
-        prefix = "previews"
-
+    if tmp_dir is None:
+        tmp_dir = config.TMP_DIR
     # Same cache entry as the preview routes, written the same way: a
     # download interrupted halfway must not leave a truncated file that
     # the next build would concatenate as is.
-    file_path = fs.get_file_path_and_file(
-        config,
-        get_path_func,
-        open_func,
-        prefix,
-        preview_file["id"],
-        preview_file["extension"],
-    )
+    if preview_file["extension"] == "mp4":
+        file_path = _retrieve_playlist_movie(preview_file)
+    elif preview_file["extension"] == "png":
+        file_path = fs.get_file_path_and_file(
+            config,
+            file_store.get_local_picture_path,
+            file_store.open_picture,
+            "original",
+            preview_file["id"],
+            "png",
+        )
+    else:
+        file_path = fs.get_file_path_and_file(
+            config,
+            file_store.get_local_file_path,
+            file_store.open_file,
+            "previews",
+            preview_file["id"],
+            preview_file["extension"],
+        )
     file_name = names_service.get_preview_file_name(preview_file["id"])
-    tmp_file_path = os.path.join(config.TMP_DIR, file_name)
+    tmp_file_path = os.path.join(tmp_dir, f"{index:04d}_{file_name}")
     copyfile(file_path, tmp_file_path)
     return tmp_file_path, file_name
 
@@ -801,12 +837,24 @@ def build_playlist_zip_file(playlist):
     Build a zip for all files for a given playlist into the temporary folder.
     """
     previews = playlist_previews(playlist["shots"])
-    tmp_file_paths = retrieve_playlist_tmp_files(previews, full=True)
+    tmp_dir = tempfile.mkdtemp(prefix="playlist-zip-", dir=config.TMP_DIR)
+    try:
+        tmp_file_paths = retrieve_playlist_tmp_files(
+            previews, full=True, tmp_dir=tmp_dir
+        )
 
-    zip_file_path = get_playlist_zip_file_path(playlist)
-    with ZipFile(zip_file_path, "w") as zip:
-        for file_path, file_name in tmp_file_paths:
-            zip.write(file_path, file_name)
+        zip_file_path = get_playlist_zip_file_path(playlist)
+        file_names = set()
+        with ZipFile(zip_file_path, "w") as zip:
+            for file_path, file_name in tmp_file_paths:
+                if file_name in file_names:
+                    # Two entries of the same name: the extraction would
+                    # keep one. The copy name carries its index.
+                    file_name = os.path.basename(file_path)
+                file_names.add(file_name)
+                zip.write(file_path, file_name)
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
     return zip_file_path
 
 
@@ -820,7 +868,11 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
     from zou.app import app
 
     with app.app_context():
+        tmp_dir = None
         try:
+            tmp_dir = tempfile.mkdtemp(
+                prefix="playlist-build-", dir=config.TMP_DIR
+            )
             previews = playlist_previews(shots, only_movies=True)
             movie_file_path = get_playlist_movie_file_path(job)
 
@@ -829,7 +881,9 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
                     # Only a local build reads the previews here: the
                     # remote runner fetches them itself, falling back on
                     # the other versions and on a placeholder.
-                    tmp_file_paths = retrieve_playlist_tmp_files(previews)
+                    tmp_file_paths = retrieve_playlist_tmp_files(
+                        previews, tmp_dir=tmp_dir
+                    )
                     success = False
                     demuxer_message = None
                     if not full:
@@ -881,6 +935,8 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
 
         # exception will be logged by rq
         finally:
+            if tmp_dir is not None:
+                shutil.rmtree(tmp_dir, ignore_errors=True)
             if not handed_over:
                 job = end_build_job(playlist, job, success, message)
 
@@ -919,7 +975,8 @@ def _run_concatenation(
         with app.app_context():
             app.logger.error(
                 "Unable to build playlist %r using %s",
-                (playlist["id"], mode.__qualname__),
+                playlist["id"],
+                mode.__qualname__,
                 exc_info=1,
             )
     return success, message
@@ -1017,7 +1074,9 @@ def build_playlist_job(playlist, job, shots, params, email, full, remote):
     Build playlist file (concatenate all movie previews). This function is
     aimed at being run as a job in a job queue.
     """
-    build_playlist_movie_file(playlist, job, shots, params, full, remote)
+    # The job dict handed to the queue still says "running": the status
+    # to test is the one end_build_job returns.
+    job = build_playlist_movie_file(playlist, job, shots, params, full, remote)
 
     # Just in case, since rq jobs which encounter an error raise an
     # exception in order to be flagged as failed.
@@ -1065,15 +1124,6 @@ def get_playlist_download_context_name(project, playlist):
     return context_name
 
 
-def get_playlist_file_name(playlist):
-    """
-    Build file name for the movie file matching given playlist.
-    """
-    project = projects_service.get_project(playlist["project_id"])
-    download_name = f"{slugify(project['name'])}_{slugify(playlist['name'])}"
-    return slugify(download_name)
-
-
 def get_playlist_movie_file_path(build_job):
     """
     Build file path for the movie file matching given playlist.
@@ -1108,12 +1158,14 @@ def get_build_job(build_job_id):
     return get_build_job_raw(build_job_id).serialize()
 
 
-def remove_playlist(playlist_id):
+def remove_playlist_dependents(playlist_dict):
     """
-    Remove given playlist from database (and delete related build jobs).
+    Delete what hangs off given playlist: its notifications, its build jobs
+    (with their movie files) and its share links. The one cascade both the
+    service and the CRUD route run, so a dependent added here is gone from
+    both.
     """
-    playlist = get_playlist_raw(playlist_id)
-    playlist_dict = playlist.serialize()
+    playlist_id = playlist_dict["id"]
     notifications = Notification.query.filter_by(playlist_id=playlist_id).all()
     for notification in notifications:
         notification.delete()
@@ -1125,6 +1177,15 @@ def remove_playlist(playlist_id):
     ).all()
     for share_link in share_links:
         share_link.delete()
+
+
+def remove_playlist(playlist_id):
+    """
+    Remove given playlist from database (and delete related build jobs).
+    """
+    playlist = get_playlist_raw(playlist_id)
+    playlist_dict = playlist.serialize()
+    remove_playlist_dependents(playlist_dict)
     playlist.delete()
     events.emit(
         "playlist:delete",
@@ -1258,7 +1319,7 @@ def generate_playlisted_entity_from_task(task_id, task_type_links):
         playlisted_entity = get_base_asset_for_playlist(entity, task_id)
 
     task_type_id = task["task_type_id"]
-    preview_files = get_preview_files_for_entity(entity["id"])
+    preview_files = get_entity_previews_by_task_type(entity["id"])
 
     preview_file = None
     if task_type_id in preview_files and len(preview_files[task_type_id]) > 0:
@@ -1401,7 +1462,7 @@ def get_base_asset_for_playlist(entity, task_id):
     )
 
 
-def get_preview_files_for_task(task_id):
+def get_preview_files_for_task_raw(task_id):
     """
     Return all preview file active records for given task.
     """

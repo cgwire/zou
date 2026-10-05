@@ -64,6 +64,10 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
         self.assertIsInstance(result, list)
         person_ids = [entry["person_id"] for entry in result]
         self.assertIn(str(self.person.id), person_ids)
+        # Tasks without dates give a null, not the string "None".
+        for entry in result:
+            self.assertNotEqual(entry["min_date"], "None")
+            self.assertNotEqual(entry["max_date"], "None")
 
     def test_get_persons_task_dates_as_manager(self):
         # A manager who is a team member of the project sees its persons.

@@ -47,8 +47,11 @@ def save_file(tmp_folder, instance_id, file_to_save):
     Save given flask file in given path. This function should only be used for
     temporary storage.
     """
-    extension = file_to_save.filename[-4:]
-    file_name = instance_id + extension.lower() + ".tmp"
+    # The last four characters are not the extension: "clip.webm" gave
+    # "webm" without its dot, and the path lost the extension the later
+    # steps rebuild their temporary names from.
+    extension = os.path.splitext(file_to_save.filename or "")[1].lower()
+    file_name = f"{instance_id}{extension}.tmp"
     file_path = os.path.join(tmp_folder, file_name)
     file_to_save.save(file_path)
     return file_path
@@ -395,11 +398,25 @@ def normalize_movie(
     return file_target_path, low_file_target_path, err
 
 
+def get_empty_soundtrack_path(file_path):
+    """
+    Path of the temporary output add_empty_soundtrack writes for given movie,
+    with the same container extension so ffmpeg picks the right muxer. A
+    trailing .tmp (the upload marker) is looked through, not taken as the
+    extension.
+    """
+    base_path = file_path[:-4] if file_path.endswith(".tmp") else file_path
+    extension = os.path.splitext(base_path)[1].lstrip(".").lower() or "mp4"
+    if extension == "webm":
+        # WebM only takes Vorbis or Opus audio: the aac track goes into an
+        # mp4 container instead, which the retry below re-encodes the
+        # video for when the muxer refuses it as is.
+        extension = "mp4"
+    return f"{file_path}_empty_audio.{extension}"
+
+
 def add_empty_soundtrack(file_path, try_count=1):
-    extension = file_path.split(".")[-1]
-    if extension == "tmp":
-        extension = file_path.split(".")[-2]
-    tmp_file_path = file_path + "_empty_audio." + extension
+    tmp_file_path = get_empty_soundtrack_path(file_path)
 
     with contextlib.suppress(FileNotFoundError):
         os.remove(tmp_file_path)
@@ -450,7 +467,9 @@ def add_empty_soundtrack(file_path, try_count=1):
         # Hack needed to fix duration after adding empty soundtrack due to a
         # bug in ffmpeg which adds duplicated frames at the end of the movie.
         if duration is not None and duration != new_duration:
-            tmp_file_path_trim = file_path + "_empty_audio_trim." + extension
+            tmp_file_path_trim = tmp_file_path.replace(
+                "_empty_audio.", "_empty_audio_trim."
+            )
             stream = ffmpeg.input(tmp_file_path)
             stream = ffmpeg.output(
                 stream.video,

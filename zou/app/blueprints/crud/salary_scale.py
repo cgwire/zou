@@ -1,8 +1,9 @@
+from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
 
-from zou.app.services.exception import WrongParameterException
+from zou.app.exceptions import WrongParameterException
 
 from zou.app.models.department import Department
 from zou.app.models.salary_scale import SalaryScale
@@ -19,44 +20,10 @@ class SalaryScalesResource(BaseModelsResource):
         raise WrongParameterException("Salary scales cannot be created")
 
     @jwt_required()
+    @swag_from("openapi/SalaryScalesResource_get.yml")
     def get(self):
         """
         Get salary scales
-        ---
-        tags:
-          - Crud
-        description: Retrieve all salary scale entries. Automatically
-          creates missing combinations of department, position, and
-          seniority.
-        responses:
-            200:
-              description: Salary scales retrieved successfully
-              content:
-                application/json:
-                  schema:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        department_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        position:
-                          type: string
-                          example: artist
-                        seniority:
-                          type: string
-                          example: junior
-                        rate:
-                          type: number
-                          example: 50.0
-            400:
-              description: Query error
         """
         self.check_read_permissions()
         query = self.model.query
@@ -101,155 +68,25 @@ class SalaryScaleResource(BaseModelResource):
         self.protected_fields.append("department_id")
 
     @jwt_required()
+    @swag_from("openapi/SalaryScaleResource_get.yml")
     def get(self, instance_id):
         """
         Get salary scale
-        ---
-        tags:
-          - Crud
-        description: Retrieve a salary scale by its ID and return it as
-          a JSON object. Supports including relations.
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: relations
-            required: false
-            schema:
-              type: boolean
-            default: true
-            example: true
-            description: Whether to include relations
-        responses:
-            200:
-              description: Salary scale retrieved successfully
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      department_id:
-                        type: string
-                        format: uuid
-                        example: b24a6ea4-ce75-4665-a070-57453082c25
-                      position:
-                        type: string
-                        example: artist
-                      seniority:
-                        type: string
-                        example: junior
-                      rate:
-                        type: number
-                        example: 50.0
-                      created_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-            400:
-              description: Invalid ID format or query error
         """
         return super().get(instance_id)
 
     @jwt_required()
+    @swag_from("openapi/SalaryScaleResource_put.yml")
     def put(self, instance_id):
         """
         Update salary scale
-        ---
-        tags:
-          - Crud
-        description: Update a salary scale with data provided in the
-          request body. JSON format is expected. Department ID cannot
-          be changed.
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  rate:
-                    type: number
-                    example: 55.0
-        responses:
-            200:
-              description: Salary scale updated successfully
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      department_id:
-                        type: string
-                        format: uuid
-                        example: b24a6ea4-ce75-4665-a070-57453082c25
-                      position:
-                        type: string
-                        example: artist
-                      seniority:
-                        type: string
-                        example: junior
-                      rate:
-                        type: number
-                        example: 55.0
-                      created_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T11:00:00Z"
-            400:
-              description: Invalid data format or validation error
         """
         return super().put(instance_id)
 
     @jwt_required()
+    @swag_from("openapi/SalaryScaleResource_delete.yml")
     def delete(self, instance_id):
         """
         Delete salary scale
-        ---
-        tags:
-          - Crud
-        description: Delete a salary scale by its ID. Returns empty
-          response on success.
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            204:
-              description: Salary scale deleted successfully
-            400:
-              description: Integrity error or cannot delete
         """
         return super().delete(instance_id)

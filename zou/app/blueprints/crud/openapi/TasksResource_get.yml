@@ -1,0 +1,72 @@
+Get tasks
+---
+tags:
+  - Crud
+description: Retrieve all tasks. Supports filtering via query
+  parameters and pagination. Includes project permission filtering
+  for non-admin users. Vendor users only see assigned tasks.
+parameters:
+  - in: query
+    name: page
+    required: false
+    schema:
+      type: integer
+    example: 1
+    description: Page number for pagination
+  - in: query
+    name: limit
+    required: false
+    schema:
+      type: integer
+    example: 50
+    description: Number of results per page
+  - in: query
+    name: relations
+    required: false
+    schema:
+      type: boolean
+    default: false
+    example: false
+    description: Whether to include relations
+  - in: query
+    name: episode_id
+    required: false
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Filter tasks by episode ID
+responses:
+    200:
+      description: Tasks retrieved successfully
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - type: array
+                items:
+                  type: object
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  total:
+                    type: integer
+                    example: 100
+                  nb_pages:
+                    type: integer
+                    example: 2
+                  limit:
+                    type: integer
+                    example: 50
+                  offset:
+                    type: integer
+                    example: 0
+                  page:
+                    type: integer
+                    example: 1
+    400:
+      description: Invalid filter format or query error

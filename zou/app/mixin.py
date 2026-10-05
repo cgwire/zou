@@ -1,7 +1,7 @@
 from flask import request
 
 from zou.app.utils import date_helpers, fields
-from zou.app.services.exception import WrongParameterException
+from zou.app.exceptions import WrongParameterException
 
 
 class ArgsMixin(object):
@@ -44,7 +44,7 @@ class ArgsMixin(object):
                 elif len(descriptor) == 2:
                     name, default = descriptor
                 elif len(descriptor) == 1:
-                    name = descriptor
+                    name = descriptor[0]
                 else:
                     raise ValueError
             elif isinstance(descriptor, str):

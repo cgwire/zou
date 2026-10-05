@@ -21,7 +21,7 @@ from zou.app.services import (
     shots_service,
     tasks_service,
 )
-from zou.app.services.exception import AssetNotFoundException
+from zou.app.exceptions import AssetNotFoundException
 
 from flask import current_app
 
@@ -905,7 +905,7 @@ def get_entity_link_raw(entity_in_id, entity_out_id):
     return link
 
 
-def get_entity_link(entity_in_id, entity_out_id):
+def get_entity_link_between(entity_in_id, entity_out_id):
     """
     Get link matching given entities.
     """

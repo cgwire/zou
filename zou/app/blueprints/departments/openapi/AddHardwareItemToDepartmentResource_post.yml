@@ -1,0 +1,59 @@
+Add hardware item to department
+---
+description: Associate a hardware item with a specific department.
+  This allows the department to use the specified hardware in budget
+  forecasting.
+tags:
+  - Departments
+parameters:
+  - in: path
+    name: department_id
+    required: true
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the department
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - hardware_item_id
+        properties:
+          hardware_item_id:
+            type: string
+            format: uuid
+            description: Hardware item identifier to add to department
+            example: b35b7fb5-df86-5776-b181-68564193d360
+responses:
+  201:
+    description: Hardware item successfully added to department
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Hardware department link unique identifier
+              example: c46c80c6-e097-6887-c292-79675204e470
+            department_id:
+              type: string
+              format: uuid
+              description: Department identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            hardware_item_id:
+              type: string
+              format: uuid
+              description: Hardware item identifier
+              example: b35b7fb5-df86-5776-b181-68564193d360
+            created_at:
+              type: string
+              format: date-time
+              description: Creation timestamp
+              example: "2023-01-01T12:00:00Z"
+    400:
+        description: Hardware item ID matches no hardware item

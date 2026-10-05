@@ -1,0 +1,53 @@
+Set asset type assets shared
+---
+description: Share or unshare all assets for a specific project and asset type.
+tags:
+  - Assets
+parameters:
+  - in: path
+    name: project_id
+    required: true
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the project
+  - in: path
+    name: asset_type_id
+    required: true
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the asset type
+requestBody:
+  required: false
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          is_shared:
+            type: boolean
+            description: Whether to share or unshare the assets
+            example: true
+responses:
+  200:
+    description: Asset type assets shared status successfully updated
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            updated_count:
+              type: integer
+              description: Number of assets updated
+              example: 3
+            project_id:
+              type: string
+              format: uuid
+              description: Project identifier
+              example: b35b7fb5-df86-5776-b181-68564193d360
+            asset_type_id:
+              type: string
+              format: uuid
+              description: Asset type identifier
+              example: c46c80c6-e097-6887-c292-79675204e470

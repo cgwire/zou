@@ -1,0 +1,24 @@
+Get preview lowdef movie
+---
+description: Download a low definition movie preview file. Falls back
+  to full quality then to the uploaded source if the low definition
+  version is not available.
+tags:
+  - Previews
+parameters:
+  - in: path
+    name: instance_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Preview file unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+responses:
+  200:
+    description: Low definition movie preview downloaded
+    content:
+      video/mp4:
+        schema:
+          type: string
+          format: binary

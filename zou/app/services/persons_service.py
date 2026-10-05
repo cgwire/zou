@@ -15,6 +15,8 @@ from zou.app.models.department import Department
 from zou.app.models.desktop_login_log import DesktopLoginLog
 from zou.app.models.organisation import Organisation
 from zou.app.models.person import Person
+from zou.app.models.studio import Studio
+from zou.app.models.task import Task
 from zou.app.models.time_spent import TimeSpent
 
 from zou.app import config, file_store, db
@@ -27,7 +29,7 @@ from zou.app.services import (
     templates_service,
 )
 from zou.app.stores import auth_tokens_store
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     OrganisationNotFoundException,
     PersonNotFoundException,
     PersonInProtectedAccounts,
@@ -254,6 +256,56 @@ def get_short_persons_map(person_ids):
     return {str(row.id): build_short_person(row) for row in rows}
 
 
+def get_persons_raw():
+    """
+    Every person as an active record, bots and inactive accounts included.
+    """
+    return Person.query.all()
+
+
+def count_active_users():
+    """
+    Number of active human accounts, the figure the user limit applies to.
+    """
+    return Person.query.filter(
+        Person.active,
+        Person.is_bot.isnot(True),
+        Person.is_guest.isnot(True),
+    ).count()
+
+
+def get_studio_raw_by_name(name):
+    """
+    Return the studio of given name as an active record, or None.
+    """
+    return Studio.get_by(name=name)
+
+
+def get_department_raw_by_name(name):
+    """
+    Return the department of given name as an active record, or None.
+    """
+    return Department.get_by(name=name)
+
+
+def import_person(email, data, department_ids=None, update=False):
+    """
+    Create the person of given email from the columns of an import file,
+    or update it when update is set and it exists. Departments are set
+    when given. Return the safe serialization of the person.
+    """
+    person = Person.get_by(email=email, is_bot=False)
+    created = person is None
+    if created:
+        person = Person.create(email=email, password=None, **data)
+    elif update:
+        person.update(data)
+    if (created or update) and department_ids is not None:
+        person.set_departments(department_ids)
+    index_service.index_person(person)
+    return person.serialize_safe()
+
+
 def get_person_by_email_raw(email):
     """
     Return person that matches given email as an active record.
@@ -318,6 +370,15 @@ def get_current_user_fido_devices():
     Return FIDO device names for the current user.
     """
     return current_user.fido_devices()
+
+
+def build_assignee_filter():
+    """
+    Query filter for tasks assigned to the current user. Lives here, at the
+    bottom of the service layers, so the entity services can scope a
+    listing without reaching up into user_service.
+    """
+    return Task.assignees.contains(get_current_user_raw())
 
 
 def get_current_user_raw():
@@ -534,22 +595,6 @@ def update_person(person_id, data, bypass_protected_accounts=False):
         }
     else:
         return person.serialize()
-
-
-def delete_person(person_id):
-    """
-    Delete person entry from database.
-    """
-    person = base_service.get_instance(
-        Person, person_id, PersonNotFoundException
-    )
-    person_dict = person.serialize()
-    person.delete()
-    index_service.remove_person_index(person_id)
-    events.emit("person:delete", {"person_id": person_id})
-    clear_person_cache()
-    logger.info("Person deleted", extra={"person_id": str(person_id)})
-    return person_dict
 
 
 def get_desktop_login_logs(person_id):
@@ -912,7 +957,10 @@ def clear_avatar(person_id):
         try:
             file_store.remove_picture("thumbnails", person_id)
         except Exception:
-            pass
+            logger.warning(
+                f"The avatar file of person {person_id} could not be removed.",
+                exc_info=1,
+            )
     return person.serialize()
 
 

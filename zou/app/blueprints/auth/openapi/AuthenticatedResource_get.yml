@@ -1,0 +1,12 @@
+Check authentication status
+---
+description: Returns information if the user is authenticated.
+  It can be used by third party tools, especially browser frontend,
+  to know if current user is still logged in.
+tags:
+    - Authentication
+responses:
+  200:
+    description: User authenticated
+  401:
+    description: Person not found

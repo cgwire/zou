@@ -1,0 +1,63 @@
+Update status automation
+---
+tags:
+  - Crud
+description: Update a status automation with data provided in
+  the request body. JSON format is expected.
+parameters:
+  - in: path
+    name: instance_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          field_name:
+            type: string
+            example: ready_for
+          field_value:
+            type: string
+            example: approved
+responses:
+    200:
+      description: Status automation updated successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              source_task_status_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              target_task_status_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              field_name:
+                type: string
+                example: ready_for
+              field_value:
+                type: string
+                example: approved
+              created_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T10:30:00Z"
+              updated_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T11:00:00Z"
+    400:
+      description: Invalid data format or validation error

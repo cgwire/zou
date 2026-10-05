@@ -127,7 +127,10 @@ class NotificationRecipientTestCase(NotificationsTestCase):
         """
         asset_task = self.generate_fixture_task().serialize(relations=True)
         self.assertEqual(
-            notifications_service.get_sequence_subscriptions(asset_task), []
+            notifications_service.get_sequence_subscriptions_for_task(
+                asset_task
+            ),
+            [],
         )
 
 
@@ -567,19 +570,6 @@ class CommentNotificationTestCase(NotificationsTestCase):
 
         self.assertEqual(self.kinds(), [("reply", self.admin_id)])
 
-    def test_delete_notifications_for_comment(self):
-        notifications_service.create_notification(
-            self.assignee_id,
-            comment_id=self.comment["id"],
-            author_id=self.comment["person_id"],
-            task_id=self.comment["object_id"],
-        )
-        result = notifications_service.delete_notifications_for_comment(
-            self.comment["id"]
-        )
-        self.assertEqual(len(result), 1)
-        self.assertEqual(Notification.get_all(), [])
-
     def test_get_last_notifications(self):
         notifications_service.create_notification(
             self.assignee_id,
@@ -589,10 +579,10 @@ class CommentNotificationTestCase(NotificationsTestCase):
             type="comment",
         )
         self.assertEqual(
-            len(notifications_service.get_last_notifications()), 1
+            len(notifications_service.get_recent_notifications()), 1
         )
         self.assertEqual(
-            notifications_service.get_last_notifications(
+            notifications_service.get_recent_notifications(
                 notification_type="assignation"
             ),
             [],

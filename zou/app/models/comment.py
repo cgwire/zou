@@ -110,7 +110,7 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
         index=True,
     )
     preview_file_id = db.Column(
-        UUIDType(binary=False), db.ForeignKey("preview_file.id")
+        UUIDType(binary=False), db.ForeignKey("preview_file.id"), index=True
     )
     previews = db.relationship(
         "PreviewFile",

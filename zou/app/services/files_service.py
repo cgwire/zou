@@ -1,3 +1,4 @@
+import logging
 import itertools
 from operator import itemgetter
 
@@ -20,7 +21,7 @@ from zou.app.services.base_service import (
     get_or_create_instance_by_name,
 )
 
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     WorkingFileNotFoundException,
     OutputFileNotFoundException,
     OutputTypeNotFoundException,
@@ -38,6 +39,9 @@ from zou.app.utils import cache, fields, fs, events, query as query_utils
 from sqlalchemy import desc, func
 from sqlalchemy.exc import StatementError, IntegrityError
 from sqlalchemy.sql.expression import and_
+
+logger = logging.getLogger(__name__)
+
 
 MOVIE_PREFIXES = ["previews", "lowdef", "source"]
 LOWDEF_MOVIE_PREFIXES = ["lowdef", "previews", "source"]
@@ -116,7 +120,7 @@ def _apply_output_file_filters(
 
 
 @cache.memoize_function(240)
-def get_default_status():
+def get_default_file_status():
     """
     Return default file status to set on a file when it is created.
     """
@@ -356,7 +360,7 @@ def create_new_output_revision(
         except NoOutputFileException:
             revision = 1
 
-    file_status_id = file_status_id or get_default_status()["id"]
+    file_status_id = file_status_id or get_default_file_status()["id"]
 
     try:
         output_file = OutputFile.get_by(
@@ -874,6 +878,10 @@ def _is_movie_stored(prefix, preview_file_id):
     try:
         return file_store.exists_movie(prefix, preview_file_id)
     except Exception:
+        logger.warning(
+            f"Could not check the store for {prefix}-{preview_file_id}.",
+            exc_info=1,
+        )
         return False
 
 
@@ -1106,10 +1114,11 @@ def get_output_files_for_output_type_and_asset_instance(
     return OutputFile.serialize_list(output_files)
 
 
-def remove_preview_file(preview_file_id):
+def remove_preview_file_row(preview_file_id):
     """
-    Delete a preview file row and tell the clients. The stored binaries
-    are the business of deletion_service.
+    Delete a preview file row and tell the clients, nothing else: no
+    stored binary, no task or entity pointing at it. The whole cascade is
+    deletion_service.remove_preview_file, which this name stays apart from.
     """
     preview_file = get_preview_file_raw(preview_file_id)
     preview_file.delete()

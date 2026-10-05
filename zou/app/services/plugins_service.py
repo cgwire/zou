@@ -1,3 +1,4 @@
+import logging
 import importlib
 import semver
 import shutil
@@ -16,6 +17,8 @@ from zou.app.utils.plugins import (
     clone_git_repo,
     download_zip_url,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def install_plugin(path, force=False):
@@ -56,28 +59,32 @@ def install_plugin(path, force=False):
         if plugin is not None:
             current = semver.Version.parse(plugin.version)
             new = semver.Version.parse(str(manifest.version))
-            print(
+            logger.info(
                 f"[Plugins] Upgrading {manifest.id}"
                 f" from {current} to {new}..."
             )
             if not force and new <= current:
-                print(
+                logger.warning(
                     f"⚠️  [Plugins] Version {new} is not newer"
                     f" than {current}."
                 )
             plugin.update(manifest.to_model_dict())
-            print(f"[Plugins] Plugin {manifest.id} upgraded.")
+            logger.info(f"[Plugins] Plugin {manifest.id} upgraded.")
         else:
-            print(f"[Plugins] Installing plugin {manifest.id}...")
+            logger.info(f"[Plugins] Installing plugin {manifest.id}...")
             plugin = Plugin.create(**manifest.to_model_dict())
-            print(f"[Plugins] Plugin {manifest.id} installed.")
+            logger.info(f"[Plugins] Plugin {manifest.id} installed.")
 
-        print(f"[Plugins] Running database migrations for {manifest.id}...")
+        logger.info(
+            f"[Plugins] Running database migrations for {manifest.id}..."
+        )
         plugin_path = install_plugin_files(
             path, Path(config.PLUGIN_FOLDER) / manifest.id
         )
         run_plugin_migrations(plugin_path, plugin)
-        print(f"[Plugins] Database migrations for {manifest.id} applied.")
+        logger.info(
+            f"[Plugins] Database migrations for {manifest.id} applied."
+        )
 
         # Re-query plugin instance after migrations
         # (Alembic operations may have detached it from the session)
@@ -88,7 +95,7 @@ def install_plugin(path, force=False):
         print_added_routes(plugin.plugin_id, plugin_path)
         return plugin.serialize()
     except Exception:
-        print(
+        logger.warning(
             "❌ [Plugins] An error occurred while installing/updating plugin"
         )
         raise
@@ -102,7 +109,7 @@ def uninstall_plugin(plugin_id):
     Uninstall a plugin: call pre/post uninstall hooks, downgrade
     migrations, remove files, delete from database and remove folder.
     """
-    print(f"[Plugins] Uninstalling plugin {plugin_id}...")
+    logger.warning(f"[Plugins] Uninstalling plugin {plugin_id}...")
     plugin_path = Path(config.PLUGIN_FOLDER) / plugin_id
 
     # A plugin left in a broken state (missing or invalid manifest) must stay
@@ -111,7 +118,11 @@ def uninstall_plugin(plugin_id):
     try:
         manifest = PluginManifest.from_plugin_path(plugin_path)
     except Exception:
-        pass
+        logger.warning(
+            f"Plugin {plugin_id} has no readable manifest, uninstalling "
+            "without its hooks.",
+            exc_info=1,
+        )
 
     _run_plugin_hook(plugin_id, plugin_path, "pre_uninstall", manifest)
 
@@ -129,7 +140,7 @@ def uninstall_plugin(plugin_id):
     if not installed:
         raise ValueError(f"Plugin '{plugin_id}' is not installed.")
 
-    print(f"[Plugins] Plugin {plugin_id} uninstalled.")
+    logger.info(f"[Plugins] Plugin {plugin_id} uninstalled.")
     return True
 
 
@@ -151,7 +162,7 @@ def _import_plugin_module(plugin_id, plugin_path):
             return sys.modules[plugin_id]
         return importlib.import_module(plugin_id)
     except ImportError as e:
-        print(f"⚠️  [Plugins] Could not import plugin module: {e}")
+        logger.warning(f"⚠️  [Plugins] Could not import plugin module: {e}")
         return None
     except Exception:
         # Import can fail on reinstall (e.g. SQLAlchemy table already
@@ -177,27 +188,29 @@ def _run_plugin_hook(plugin_id, plugin_path, hook_name, *args):
 
         hook = getattr(plugin_module, hook_name, None)
         if hook is not None:
-            print(f"[Plugins] Running {hook_name} for {plugin_id}...")
+            logger.info(f"[Plugins] Running {hook_name} for {plugin_id}...")
             hook(*args)
-            print(f"[Plugins] {hook_name} for {plugin_id} completed.")
+            logger.warning(f"[Plugins] {hook_name} for {plugin_id} completed.")
     except Exception as e:
-        print(f"⚠️  [Plugins] {hook_name} failed for {plugin_id}: {e}")
+        logger.warning(
+            f"⚠️  [Plugins] {hook_name} failed for {plugin_id}: {e}"
+        )
 
 
 def print_added_routes(plugin_id, plugin_path):
     """
     Print the added routes for a plugin.
     """
-    print(f"[Plugins] Routes added by {plugin_id}:")
+    logger.info(f"[Plugins] Routes added by {plugin_id}:")
 
     plugin_module = _import_plugin_module(plugin_id, plugin_path)
     if plugin_module is not None and hasattr(plugin_module, "routes"):
         for route in plugin_module.routes:
-            print(f"  - /api/plugins/{plugin_id}{route[0]}")
+            logger.info(f"  - /api/plugins/{plugin_id}{route[0]}")
     else:
-        print("  (No routes variable found in plugin)")
+        logger.info("  (No routes variable found in plugin)")
 
-    print("--------------------------------")
+    logger.info("--------------------------------")
 
 
 def get_plugins():

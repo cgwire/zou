@@ -1,0 +1,53 @@
+Create production schedule version
+---
+tags:
+  - Crud
+description: Create a new production schedule version with data
+  provided in the request body. JSON format is expected.
+  Requires manager access to the project.
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - name
+          - project_id
+        properties:
+          name:
+            type: string
+            example: Schedule Version 1
+          project_id:
+            type: string
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c250
+responses:
+    201:
+      description: Production schedule version created successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: Schedule Version 1
+              project_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              created_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T10:30:00Z"
+              updated_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T10:30:00Z"
+    400:
+      description: Invalid data format or validation error

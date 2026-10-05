@@ -16,7 +16,7 @@ from zou.app.utils import cache, events, fs, thumbnail
 from zou.app.stores import file_store
 
 from zou.app.services import base_service, names_service, persons_service
-from zou.app.services.exception import ChatNotFoundException
+from zou.app.exceptions import ChatNotFoundException
 
 
 def clear_chat_message_cache(chat_message_id):

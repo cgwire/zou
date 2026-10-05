@@ -1,3 +1,4 @@
+from flasgger import swag_from
 import datetime
 
 import psutil
@@ -20,26 +21,10 @@ from zou.app.utils import date_helpers, permissions
 
 
 class IndexResource(MethodView):
+    @swag_from("openapi/IndexResource_get.yml")
     def get(self):
         """
         Get API name and version
-        ---
-        tags:
-          - Index
-        responses:
-          '200':
-            description: API name and version
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    api:
-                      type: string
-                      example: "Zou"
-                    version:
-                      type: string
-                      example: "0.20.0"
         """
         return {"api": config.APP_NAME, "version": __version__}
 
@@ -65,9 +50,10 @@ class BaseStatusResource(MethodView):
 
     def _check_database(self):
         try:
-            projects_service.get_or_create_status("Open")
+            projects_service.get_or_create_project_status("Open")
             return True
         except Exception:
+            app.logger.warning("Database probe failed.", exc_info=1)
             return False
 
     def _check_key_value_store(self):
@@ -91,7 +77,8 @@ class BaseStatusResource(MethodView):
                 timeout=5,
             )
             return True
-        except Exception:
+        except Exception as exception:
+            app.logger.warning(f"Event stream probe failed: {exception}")
             return False
 
     def _check_job_queue(self):
@@ -118,47 +105,16 @@ class BaseStatusResource(MethodView):
             return True
         except indexing.IndexerNotInitializedError:
             return False
-        except Exception:
+        except Exception as exception:
+            app.logger.warning(f"Indexer probe failed: {exception}")
             return False
 
 
 class StatusResource(BaseStatusResource):
+    @swag_from("openapi/StatusResource_get.yml")
     def get(self):
         """
         Get status of the API services
-         ---
-         description: Get status of the database, key value store, event stream, job queue, indexer
-         tags:
-           - Index
-         responses:
-           '200':
-             description: Status of the API services
-             content:
-               application/json:
-                 schema:
-                   type: object
-                   properties:
-                     name:
-                       type: string
-                       example: "Zou"
-                     version:
-                       type: string
-                       example: "0.20.0"
-                     database-up:
-                       type: boolean
-                       example: true
-                     key-value-store-up:
-                       type: boolean
-                       example: true
-                     event-stream-up:
-                       type: boolean
-                       example: true
-                     job-queue-up:
-                       type: boolean
-                       example: true
-                     indexer-up:
-                       type: boolean
-                       example: true
         """
         (
             api_name,
@@ -182,66 +138,10 @@ class StatusResource(BaseStatusResource):
 
 
 class StatusResourcesResource(BaseStatusResource):
+    @swag_from("openapi/StatusResourcesResource_get.yml")
     def get(self):
         """
         Get resource usage stats
-        ---
-        description: Get CPU usage for each core, memory repartition and number of jobs in the job queue.
-        tags:
-          - Index
-        responses:
-          '200':
-            description: CPU, memory and jobs stats
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    date:
-                      type: string
-                      format: date-time
-                      example: "2023-12-07T10:30:00.000Z"
-                    cpu:
-                      type: object
-                      properties:
-                        percent:
-                          type: array
-                          items:
-                            type: number
-                          example: [25.5, 30.2, 28.1]
-                        loadavg:
-                          type: object
-                          properties:
-                            "last 1 min":
-                              type: number
-                              example: 0.75
-                            "last 5 min":
-                              type: number
-                              example: 0.82
-                            "last 10 min":
-                              type: number
-                              example: 0.78
-                    memory:
-                      type: object
-                      properties:
-                        total:
-                          type: integer
-                          example: 8589934592
-                        used:
-                          type: integer
-                          example: 4294967296
-                        available:
-                          type: integer
-                          example: 4294967296
-                        percent:
-                          type: number
-                          example: 50.0
-                    jobs:
-                      type: object
-                      properties:
-                        running_jobs:
-                          type: integer
-                          example: 3
         """
         return {
             "date": datetime.datetime.now().isoformat(),
@@ -281,28 +181,10 @@ class StatusResourcesResource(BaseStatusResource):
 
 
 class TxtStatusResource(BaseStatusResource):
+    @swag_from("openapi/TxtStatusResource_get.yml")
     def get(self):
         """
         Get status of the API services as text
-        ---
-        description: Get status of the database, key value store, event stream, job queue, the indexer as a text.
-        tags:
-          - Index
-        responses:
-          '200':
-            description: API name, version and status as txt
-            content:
-              text/plain:
-                schema:
-                  type: string
-                  example: |
-                    name: Zou
-                    version: 0.20.0
-                    database-up: up
-                    event-stream-up: up
-                    key-value-store-up: up
-                    job-queue-up: up
-                    indexer-up: up
         """
         (
             api_name,
@@ -326,40 +208,10 @@ indexer-up: {"up" if is_indexer_up else "down"}
 
 
 class InfluxStatusResource(BaseStatusResource):
+    @swag_from("openapi/InfluxStatusResource_get.yml")
     def get(self):
         """
         Get status of the API services for InfluxDB
-        ---
-        description: Get status of the database, key value store, event stream, job queue, indexer as a JSON object.
-        tags:
-          - Index
-        responses:
-          '200':
-            description: Status of database, key value, event stream, job queue and time
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    database-up:
-                      type: integer
-                      example: 1
-                    key-value-store-up:
-                      type: integer
-                      example: 1
-                    event-stream-up:
-                      type: integer
-                      example: 1
-                    job-queue-up:
-                      type: integer
-                      example: 1
-                    indexer-up:
-                      type: integer
-                      example: 1
-                    time:
-                      type: number
-                      format: float
-                      example: 1701948600.123
         """
         (
             _,
@@ -385,36 +237,10 @@ class InfluxStatusResource(BaseStatusResource):
 
 class StatsResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/StatsResource_get.yml")
     def get(self):
         """
         Get usage stats
-        ---
-        description: Get the amount of projects, assets, shots, tasks, and persons.
-        tags:
-          - Index
-        responses:
-          '200':
-            description: Main stats
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    projects:
-                      type: integer
-                      example: 15
-                    assets:
-                      type: integer
-                      example: 1250
-                    shots:
-                      type: integer
-                      example: 890
-                    tasks:
-                      type: integer
-                      example: 5670
-                    persons:
-                      type: integer
-                      example: 45
         """
         if not permissions.has_admin_permissions():
             raise permissions.PermissionDenied
@@ -422,54 +248,10 @@ class StatsResource(MethodView):
 
 
 class ConfigResource(MethodView):
+    @swag_from("openapi/ConfigResource_get.yml")
     def get(self):
         """
         Get the configuration of the Kitsu instance
-        ---
-        description: The configuration includes self-hosted status, Crisp token, indexer configuration, SAML status, and dark theme status.
-        tags:
-          - Index
-        responses:
-          '200':
-            description: Configuration object
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    is_self_hosted:
-                      type: boolean
-                      example: true
-                    crisp_token:
-                      type: string
-                      example: "abc123def456"
-                    dark_theme_by_default:
-                      type: boolean
-                      example: false
-                    indexer_configured:
-                      type: boolean
-                      example: true
-                    saml_enabled:
-                      type: boolean
-                      example: false
-                    saml_idp_name:
-                      type: string
-                      example: "My Company SSO"
-                    default_locale:
-                      type: string
-                      example: "en_US"
-                    default_timezone:
-                      type: string
-                      example: "UTC"
-                    sentry:
-                      type: object
-                      properties:
-                        dsn:
-                          type: string
-                          example: "https://example@sentry.io/123456"
-                        sampleRate:
-                          type: number
-                          example: 0.1
         """
         organisation = persons_service.get_organisation()
         conf = {
@@ -494,24 +276,10 @@ class ConfigResource(MethodView):
 
 
 class TestEventsResource(MethodView):
+    @swag_from("openapi/TestEventsResource_get.yml")
     def get(self):
         """
         Generate a test event
-        ---
-        description: Generate a `main:test` event to test the event stream with the Python client or similar.
-        tags:
-          - Index
-        responses:
-          '200':
-            description: Success flag
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    success:
-                      type: boolean
-                      example: true
         """
         from zou.app.utils import events
 

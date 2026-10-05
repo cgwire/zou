@@ -6,7 +6,7 @@ from zou.app.utils.validation import (
     _format_validation_errors,
     validate_request_body,
 )
-from zou.app.services.exception import WrongParameterException
+from zou.app.exceptions import WrongParameterException
 
 
 class SampleSchema(BaseModel):

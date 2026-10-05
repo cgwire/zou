@@ -1,0 +1,42 @@
+Update preview position
+---
+description: Allow to change orders of previews for a single revision.
+tags:
+  - Previews
+parameters:
+  - in: path
+    name: preview_file_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Preview file unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+requestBody:
+  required: false
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          position:
+            type: integer
+            description: New position for the preview
+            example: 2
+responses:
+  200:
+    description: Preview position updated
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Preview file unique identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            position:
+              type: integer
+              description: Preview position
+              example: 2

@@ -1,0 +1,92 @@
+Update filter group
+---
+description: Update an existing filter group if it is owned by the
+  current user. Allows modification of filter group properties.
+tags:
+- User
+parameters:
+  - in: path
+    name: filter_group_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Filter group unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            description: Filter group name
+            example: "Updated Filter Group"
+          color:
+            type: string
+            description: Filter group color
+            example: "#00FF00"
+          is_shared:
+            type: boolean
+            description: Whether to share this filter group
+            example: true
+          project_id:
+            type: string
+            format: uuid
+            description: Project identifier
+            example: b35b7fb5-df86-5776-b181-68564193d360
+          department_id:
+            type: string
+            format: uuid
+            description: Department identifier
+            example: c46c80c6-e097-6887-c292-79675204e470
+responses:
+    200:
+      description: Filter group updated successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Filter group unique identifier
+                example: d57d91d7-f108-7998-d403-80786315f580
+              name:
+                type: string
+                description: Filter group name
+                example: "Updated Filter Group"
+              color:
+                type: string
+                description: Filter group color
+                example: "#00FF00"
+              list_type:
+                type: string
+                description: List type
+                example: "todo"
+              entity_type:
+                type: string
+                description: Entity type
+                example: "Asset"
+              project_id:
+                type: string
+                format: uuid
+                description: Project identifier
+                example: e68e02e8-0219-8009-e514-918974260690
+              is_shared:
+                type: boolean
+                description: Whether filter group is shared
+                example: true
+              created_at:
+                type: string
+                format: date-time
+                description: Creation timestamp
+                example: "2023-01-01T12:00:00Z"
+              updated_at:
+                type: string
+                format: date-time
+                description: Last update timestamp
+                example: "2023-01-01T12:30:00Z"

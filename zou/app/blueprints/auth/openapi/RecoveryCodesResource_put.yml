@@ -1,0 +1,30 @@
+Generate recovery codes
+---
+description: Generate new recovery codes for two-factor authentication.
+  It requires two-factor authentication verification.
+tags:
+    - Authentication
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          totp:
+            type: string
+            description: TOTP verification code
+          email_otp:
+            type: string
+            description: Email OTP verification code
+          fido_authentication_response:
+            type: object
+            description: FIDO authentication response
+          recovery_code:
+            type: string
+            description: Recovery code for two-factor authentication
+responses:
+  200:
+    description: New recovery codes generated
+  400:
+    description: No two-factor authentication enabled or verification failed

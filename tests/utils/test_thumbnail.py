@@ -1,3 +1,4 @@
+import math
 import unittest
 import os
 
@@ -7,7 +8,7 @@ from werkzeug.datastructures import FileStorage
 
 from tests.base import TEST_FOLDER
 
-from zou.app.services.exception import WrongParameterException
+from zou.app.exceptions import WrongParameterException
 from zou.app.utils import thumbnail, fs
 
 
@@ -142,21 +143,32 @@ class ThumbnailTestCase(unittest.TestCase):
         file_name = thumbnail.get_file_name(preview_id)
         original_path = os.path.join(TEST_FOLDER, file_name)
         fs.copyfile(file_path_fixture, original_path)
-        thumbnail.generate_preview_variants(original_path, preview_id)
-
-        file_path = os.path.join(TEST_FOLDER, f"previews-{preview_id}.png")
-        self.assertTrue(os.path.exists(file_path))
-        self.assertTrue(Image.open(file_path).size, thumbnail.PREVIEW_SIZE)
-
-        file_path = os.path.join(TEST_FOLDER, f"thumbnails-{preview_id}.png")
-        self.assertTrue(os.path.exists(file_path))
-        self.assertTrue(Image.open(file_path).size, thumbnail.RECTANGLE_SIZE)
-
-        file_path = os.path.join(
-            TEST_FOLDER, f"thumbnails-square-{preview_id}.png"
+        variants = dict(
+            thumbnail.generate_preview_variants(original_path, preview_id)
         )
-        self.assertTrue(os.path.exists(file_path))
-        self.assertTrue(Image.open(file_path).size, thumbnail.SQUARE_SIZE)
+
+        # The preview keeps the picture ratio at the target width; the
+        # thumbnails are cut to fixed frames.
+        original_width, original_height = Image.open(original_path).size
+        preview_width = thumbnail.PREVIEW_SIZE[0]
+        expected_sizes = {
+            "previews": (
+                preview_width,
+                math.ceil(preview_width * original_height / original_width),
+            ),
+            "thumbnails": thumbnail.RECTANGLE_SIZE,
+            "thumbnails-square": thumbnail.SQUARE_SIZE,
+        }
+        for picture_type, size in expected_sizes.items():
+            file_path = variants[picture_type]
+            self.assertTrue(os.path.exists(file_path))
+            self.assertEqual(Image.open(file_path).size, size)
+            # Named after the original file, which carries the unique part
+            # of the name: two generations for the same preview never share
+            # a path.
+            self.assertEqual(
+                os.path.basename(file_path), f"{picture_type}-{file_name}"
+            )
 
     def test_to_srgb(self):
         profile = ImageCms.ImageCmsProfile(

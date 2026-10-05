@@ -1,0 +1,57 @@
+Add software license to department
+---
+description: Associate a software license with a specific department.
+  This allows the department to use the specified software in budget
+  forecasting.
+tags:
+  - Departments
+parameters:
+  - in: path
+    name: department_id
+    required: true
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the department
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - software_id
+        properties:
+          software_id:
+            type: string
+            format: uuid
+            description: Software identifier to add to department
+            example: b35b7fb5-df86-5776-b181-68564193d360
+responses:
+  201:
+    description: Software license successfully added to department
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Software license department link unique identifier
+              example: c46c80c6-e097-6887-c292-79675204e470
+            department_id:
+              type: string
+              format: uuid
+              description: Department identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            software_id:
+              type: string
+              format: uuid
+              description: Software license identifier
+              example: b35b7fb5-df86-5776-b181-68564193d360
+            created_at:
+              type: string
+              format: date-time
+              description: Creation timestamp
+              example: "2023-01-01T12:00:00Z"

@@ -1,3 +1,4 @@
+from flasgger import swag_from
 from zou.app.blueprints.export.csv.base import BaseCsvExport
 from flask_jwt_extended import jwt_required
 
@@ -10,24 +11,10 @@ class ProjectsCsvExport(BaseCsvExport):
         BaseCsvExport.__init__(self)
 
     @jwt_required()
+    @swag_from("openapi/ProjectsCsvExport_get.yml")
     def get(self):
         """
         Export projects csv
-        ---
-        tags:
-          - Export
-        description: Export projects as CSV file. Includes project name
-          and status information.
-        produces:
-          - text/csv
-        responses:
-            200:
-              description: Projects exported as CSV successfully
-              content:
-                text/csv:
-                  schema:
-                    type: string
-                  example: "Name,Status\nProject A,Active\nProject B,Open"
         """
         return super().get()
 

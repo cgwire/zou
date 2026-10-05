@@ -1,0 +1,67 @@
+Create asset tasks
+---
+tags:
+- Tasks
+description: Create tasks for assets. Provide a list of asset IDs in
+  the JSON body, or omit for all assets in the project.
+parameters:
+  - in: path
+    name: project_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+  - in: path
+    name: task_type_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: array
+        items:
+          type: string
+          format: uuid
+        description: List of asset IDs to create tasks for
+      example: ["b24a6ea4-ce75-4665-a070-57453082c250"]
+responses:
+    201:
+      description: Tasks created for assets
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  example: Asset Modeling
+                task_type_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c250
+                task_status_id:
+                  type: string
+                  format: uuid
+                  example: c24a6ea4-ce75-4665-a070-57453082c250
+                entity_id:
+                  type: string
+                  format: uuid
+                  example: d24a6ea4-ce75-4665-a070-57453082c250
+                project_id:
+                  type: string
+                  format: uuid
+                  example: e24a6ea4-ce75-4665-a070-57453082c250
+    400:
+      description: Bad request

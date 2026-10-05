@@ -26,6 +26,7 @@ class PlaylistShareLink(db.Model, BaseMixin, SerializerMixin):
         UUIDType(binary=False),
         db.ForeignKey("person.id"),
         nullable=False,
+        index=True,
     )
     expiration_date = db.Column(db.DateTime, nullable=True)
     is_active = db.Column(db.Boolean(), default=True, nullable=False)

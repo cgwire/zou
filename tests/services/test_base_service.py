@@ -6,7 +6,7 @@ from zou.app.services import base_service
 from zou.app.models.entity import Entity
 from zou.app.models.output_type import OutputType
 from zou.app.models.project import Project
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     AssetNotFoundException,
     ProjectNotFoundException,
 )

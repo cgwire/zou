@@ -1,0 +1,23 @@
+Delete a metadata descriptor from all accessible projects
+---
+description: Remove every metadata descriptor sharing the given field
+  name across the open projects the user can access. Replaces one
+  delete request per project.
+tags:
+  - Projects
+parameters:
+  - in: path
+    name: field_name
+    required: true
+    schema:
+      type: string
+  - in: query
+    name: entity_type
+    required: true
+    schema:
+      type: string
+responses:
+  200:
+    description: Removed descriptor ids
+  400:
+    description: Invalid parameters

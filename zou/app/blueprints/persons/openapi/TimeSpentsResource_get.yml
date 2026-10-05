@@ -1,0 +1,63 @@
+Get time spents
+---
+description: Get all time spents for the given person. Optionally can
+  accept date range parameters.
+tags:
+  - Persons
+parameters:
+  - in: path
+    name: person_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Person unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+  - in: query
+    name: start_date
+    required: false
+    schema:
+      type: string
+      format: date
+    description: Start date for date range filter
+    example: "2022-07-01"
+  - in: query
+    name: end_date
+    required: false
+    schema:
+      type: string
+      format: date
+    description: End date for date range filter
+    example: "2022-07-31"
+responses:
+  200:
+    description: All time spents for the given person
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Time spent unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              person_id:
+                type: string
+                format: uuid
+                description: Person unique identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              duration:
+                type: number
+                format: float
+                description: Time spent duration in hours
+                example: 8.5
+              date:
+                type: string
+                format: date
+                description: Date of time spent entry
+                example: "2022-07-12"
+  400:
+    description: Invalid date range parameters

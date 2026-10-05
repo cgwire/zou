@@ -1,0 +1,9 @@
+Refresh access token
+---
+description: Tokens are considered outdated every two weeks.
+  This route allows to extend their lifetime before they get outdated.
+tags:
+    - Authentication
+responses:
+  200:
+    description: Access Token

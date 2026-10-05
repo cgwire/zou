@@ -21,7 +21,7 @@ from zou.app.services import (
     persons_service,
     tasks_service,
 )
-from zou.app.utils import fields
+from zou.app.utils import date_helpers, fields
 
 
 class CommentsTestCase(ApiDBTestCase):
@@ -220,6 +220,20 @@ class StatusChangeTestCase(CommentsTestCase):
             wip_status, self.task.serialize(), comment
         )
         self.assertIsNotNone(task["real_start_date"])
+        # Stored naive, in UTC, like every other datetime of the schema: an
+        # aware value would be shifted by the database session timezone.
+        real_start_date = tasks_service.get_task_raw(
+            self.task.id
+        ).real_start_date
+        self.assertIsNone(real_start_date.tzinfo)
+        self.assertLess(
+            abs(
+                (
+                    real_start_date - date_helpers.get_utc_now_datetime()
+                ).total_seconds()
+            ),
+            60,
+        )
 
     def test_a_comment_older_than_the_last_one_does_not_move_the_task(self):
         """

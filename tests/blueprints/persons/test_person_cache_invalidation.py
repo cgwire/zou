@@ -4,7 +4,7 @@ from tests.base import ApiDBTestCase
 
 from zou.app.models.person import Person
 from zou.app.services import persons_service
-from zou.app.services.exception import PersonNotFoundException
+from zou.app.exceptions import PersonNotFoundException
 
 
 class PersonCacheInvalidationTestCase(ApiDBTestCase):

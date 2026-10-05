@@ -1,0 +1,18 @@
+Delete filter
+---
+description: Delete a specific filter if it is owned by the current
+  user.
+tags:
+- User
+parameters:
+  - in: path
+    name: filter_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Filter unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+responses:
+    204:
+      description: Filter deleted successfully

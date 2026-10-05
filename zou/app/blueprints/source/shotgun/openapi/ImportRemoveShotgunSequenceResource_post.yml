@@ -1,0 +1,40 @@
+Remove shotgun sequence
+---
+description: Remove a Shotgun sequence from the database. Provide the
+  Shotgun entry ID in the JSON body.
+tags:
+  - Import
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - id
+        properties:
+          id:
+            type: integer
+            description: Shotgun ID of the sequence to remove
+            example: 12345
+      example:
+        id: 12345
+responses:
+  200:
+    description: Removal result returned
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+              description: Whether the removal was successful
+              example: true
+            removed_instance_id:
+              type: string
+              format: uuid
+              description: ID of the removed sequence, if found
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+  400:
+    description: Invalid request body or instance not found

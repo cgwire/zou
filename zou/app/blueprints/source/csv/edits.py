@@ -1,17 +1,16 @@
+from flasgger import swag_from
 from zou.app.blueprints.source.csv.base import (
     BaseCsvProjectImportResource,
     RowException,
 )
-from zou.app.models.project import ProjectTaskTypeLink
-from zou.app.models.task_type import TaskType
 
 from zou.app.services import (
     edits_service,
+    entities_service,
     projects_service,
     shots_service,
     persons_service,
 )
-from zou.app.models.entity import Entity
 from zou.app.services.tasks_service import (
     create_task,
     create_tasks,
@@ -20,73 +19,14 @@ from zou.app.services.tasks_service import (
     get_task_type,
 )
 from zou.app.services.comments_service import create_comment
-from zou.app.services.exception import WrongParameterException
-from zou.app.utils import events
+from zou.app.exceptions import WrongParameterException
 
 
 class EditsCsvImportResource(BaseCsvProjectImportResource):
+    @swag_from("openapi/EditsCsvImportResource_post.yml")
     def post(self, project_id):
         """
         Import edits csv
-        ---
-        tags:
-          - Import
-        description: Import project edits from a CSV file. Creates or updates
-          edits based on CSV rows. Supports metadata descriptors and task
-          status updates.
-        consumes:
-          - multipart/form-data
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: update
-            required: false
-            schema:
-              type: boolean
-            default: false
-            example: false
-            description: Whether to update existing edits
-          - in: formData
-            name: file
-            type: file
-            required: true
-            description: CSV file with edit data
-        responses:
-            201:
-              description: Edits imported successfully
-              content:
-                application/json:
-                  schema:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: Edit_001
-                        project_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        parent_id:
-                          type: string
-                          format: uuid
-                          example: c24a6ea4-ce75-4665-a070-57453082c25
-                        description:
-                          type: string
-                          example: Edit description
-            400:
-              description: Invalid CSV format or missing required columns
         """
         return super().post(project_id)
 
@@ -104,9 +44,7 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
                 episode["name"]: episode["id"] for episode in episodes
             }
         self.task_types_in_project_for_edits = (
-            TaskType.query.join(ProjectTaskTypeLink)
-            .filter(ProjectTaskTypeLink.project_id == project_id)
-            .filter(TaskType.for_entity == "Edit")
+            projects_service.get_project_task_types_raw(project_id, "Edit")
         )
         self.task_statuses = {
             status["id"]: [status[n].lower() for n in ("name", "short_name")]
@@ -191,7 +129,9 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
 
     def import_row(self, row, project_id):
         edit_name = row["Name"]
-        episode_name = row.get("Episode", None)
+        # An empty cell reads as "" with DictReader: it means no episode,
+        # not an episode named "".
+        episode_name = (row.get("Episode") or "").strip() or None
         episode_id = None
 
         if self.is_tv_show:
@@ -216,7 +156,7 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
             "parent_id": episode_id,
         }
 
-        entity = Entity.get_by(**edit_values)
+        entity = entities_service.find_entity_raw(**edit_values)
 
         edit_new_values = {}
 
@@ -231,27 +171,22 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
         tasks_update = self.get_tasks_update(row)
 
         if entity is None:
-            entity = Entity.create(
-                **{**edit_values, **edit_new_values},
+            edit = edits_service.create_edit(
+                project_id,
+                edit_name,
+                data=edit_new_values["data"],
+                description=edit_new_values.get("description", ""),
+                parent_id=episode_id,
                 created_by=self.current_user_id,
             )
-            events.emit(
-                "edit:new",
-                {"edit_id": str(entity.id), "episode_id": episode_id},
-                project_id=project_id,
-            )
+            entity = entities_service.get_entity_raw(edit["id"])
 
             self.create_and_update_tasks(
                 tasks_update, entity, edit_creation=True
             )
 
         elif self.is_update:
-            entity.update(edit_new_values)
-            events.emit(
-                "edit:update",
-                {"edit_id": str(entity.id), "episode_id": episode_id},
-                project_id=project_id,
-            )
+            edits_service.update_edit(str(entity.id), edit_new_values)
 
             self.create_and_update_tasks(
                 tasks_update, entity, edit_creation=False

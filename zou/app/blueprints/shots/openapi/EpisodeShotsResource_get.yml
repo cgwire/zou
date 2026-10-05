@@ -1,0 +1,38 @@
+Get episode shots
+---
+tags:
+- Shots
+description: Get shots for an episode. Supports including relations via
+  query params.
+parameters:
+  - in: path
+    name: episode_id
+    required: True
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+responses:
+    200:
+        description: All shots related to given episode
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c250
+                  name:
+                    type: string
+                    example: SH010
+                  project_id:
+                    type: string
+                    format: uuid
+                    example: b24a6ea4-ce75-4665-a070-57453082c250
+                  parent_id:
+                    type: string
+                    format: uuid
+                    example: c24a6ea4-ce75-4665-a070-57453082c250
