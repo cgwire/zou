@@ -457,11 +457,17 @@ def send_storage_file(
     try:
         # The recorded file_size is the one of the normalized movie, the
         # "previews" version (a "movies" prefix never existed): the low
-        # def and source versions have their own sizes.
-        if (prefix == "previews" and extension == "mp4") or prefix in [
-            "original",
-            "preview-backgrounds",
-        ]:
+        # def and source versions have their own sizes. For a movie it
+        # only guards the cache copy of an object store: the local store
+        # has no copy to go stale, and the size lags behind the file
+        # while a movie is renormalized, which would flag the high def
+        # version as missing.
+        is_cached_movie = (
+            prefix == "previews"
+            and extension == "mp4"
+            and config.FS_BACKEND != "local"
+        )
+        if is_cached_movie or prefix in ["original", "preview-backgrounds"]:
             if prefix == "preview-backgrounds":
                 preview_file = files_service.get_preview_background_file(
                     preview_file_id
