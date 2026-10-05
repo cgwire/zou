@@ -1,12 +1,14 @@
 OIDC SSO callback
 ---
 description: Handle the OIDC SSO callback. Exchanges the authorization
-  code, validates the ID token, then logs in the matching user
-  (creating one on first login when none exists).
+  code, validates the ID token, then logs in the person bound to the
+  token issuer and subject. On first login, the person holding the token
+  email is bound to them, or created when none exists.
 tags:
     - Authentication
 responses:
   302:
     description: Login successful, redirect to home page
   400:
-    description: OIDC not enabled or email not verified
+    description: OIDC not enabled, email not verified or account bound
+      to another identity

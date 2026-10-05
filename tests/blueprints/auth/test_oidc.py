@@ -1,12 +1,18 @@
+import time
+
 from unittest import mock
 
+from authlib.oidc.core import CodeIDToken
 from flask_jwt_extended import create_access_token as real_create_access_token
 
 from tests.base import ApiDBTestCase
 
 from zou.app import config
-from zou.app.services import persons_service
+from zou.app.models.person import Person
+from zou.app.services import auth_service, persons_service
 from zou.app.utils import oidc
+
+ISSUER = "https://idp.example.com"
 
 
 class OIDCClaimMappingTestCase(ApiDBTestCase):
@@ -62,6 +68,33 @@ class OIDCClaimMappingTestCase(ApiDBTestCase):
             self.assertTrue(oidc.is_email_verified({"email_verified": True}))
             self.assertFalse(oidc.is_email_verified({"email_verified": False}))
 
+    def validate_id_token(self, audience):
+        client = mock.Mock()
+        client.load_server_metadata.return_value = {"issuer": ISSUER}
+        with mock.patch.object(config, "OIDC_CLIENT_ID", "kitsu"):
+            options = oidc.get_id_token_claims_options(client)
+        now = int(time.time())
+        payload = {
+            "iss": ISSUER,
+            "sub": "jane",
+            "aud": audience,
+            "azp": "kitsu",
+            "exp": now + 60,
+            "iat": now,
+        }
+        CodeIDToken(
+            payload, {}, options=options, params={"client_id": "kitsu"}
+        ).validate()
+
+    def test_id_token_for_our_client_is_accepted(self):
+        self.validate_id_token("kitsu")
+
+    def test_id_token_for_another_client_is_rejected(self):
+        # The error class depends on the Authlib version.
+        self.assertRaisesRegex(
+            Exception, "aud", self.validate_id_token, "another-app"
+        )
+
 
 class OIDCCallbackTestCase(ApiDBTestCase):
     """Tests for the OIDC callback: provisioning, linking and 2FA gating."""
@@ -72,6 +105,7 @@ class OIDCCallbackTestCase(ApiDBTestCase):
         self._enforce_2fa = config.ENFORCE_2FA
         self._skip_2fa = config.OIDC_SKIP_2FA
         self._require_email_verified = config.OIDC_REQUIRE_EMAIL_VERIFIED
+        self._protected_accounts = config.PROTECTED_ACCOUNTS
         config.OIDC_ENABLED = True
         config.ENFORCE_2FA = False
         config.OIDC_SKIP_2FA = False
@@ -82,19 +116,46 @@ class OIDCCallbackTestCase(ApiDBTestCase):
         config.ENFORCE_2FA = self._enforce_2fa
         config.OIDC_SKIP_2FA = self._skip_2fa
         config.OIDC_REQUIRE_EMAIL_VERIFIED = self._require_email_verified
+        config.PROTECTED_ACCOUNTS = self._protected_accounts
         super().tearDown()
 
-    def mock_client(self, claims):
-        """Return a mock OIDC client yielding the given claims as userinfo."""
+    def mock_client(self, claims, userinfo=None):
+        """
+        Return a mock OIDC client yielding the given claims as the ID token
+        claims. A provider always sends ``iss`` and ``sub``, so they get a
+        default value, one subject per email.
+        """
+        claims = {
+            "iss": ISSUER,
+            "sub": f"sub-of-{claims.get('email')}",
+            **claims,
+        }
         client = mock.Mock()
+        client.load_server_metadata.return_value = {"issuer": ISSUER}
         client.authorize_access_token.return_value = {"userinfo": claims}
+        if userinfo is not None:
+            client.userinfo.return_value = userinfo
         return client
 
-    def call_callback(self, claims):
-        with mock.patch.object(
-            oidc, "get_oidc_client", return_value=self.mock_client(claims)
-        ):
+    def call_callback(self, claims, userinfo=None):
+        client = self.mock_client(claims, userinfo)
+        with mock.patch.object(oidc, "get_oidc_client", return_value=client):
             return self.app.get("auth/oidc/callback")
+
+    def sign_in(self, claims):
+        """
+        Run the callback and return the id of the person who got a session,
+        or None when the sign-in was refused.
+        """
+        with mock.patch.object(
+            auth_service,
+            "create_auth_tokens",
+            wraps=auth_service.create_auth_tokens,
+        ) as create_tokens:
+            self.call_callback(claims)
+        if not create_tokens.called:
+            return None
+        return create_tokens.call_args.args[0]
 
     def test_disabled_returns_400(self):
         config.OIDC_ENABLED = False
@@ -222,3 +283,133 @@ class OIDCCallbackTestCase(ApiDBTestCase):
             }
         )
         self.assertNotIn("requires_2fa_setup", additional_claims)
+
+    def test_returning_user_is_found_by_subject_not_by_email(self):
+        claims = {"sub": "jane", "email_verified": True}
+        person_id = self.sign_in({**claims, "email": "jane@example.com"})
+        self.assertIsNotNone(person_id)
+        # The provider renamed her: same subject, new email.
+        self.assertEqual(
+            self.sign_in({**claims, "email": "jane.doe@example.com"}),
+            person_id,
+        )
+        self.assertRaises(
+            Exception,
+            persons_service.get_person_by_email,
+            "jane.doe@example.com",
+        )
+
+    def test_returning_user_needs_no_email_claim(self):
+        person_id = self.sign_in(
+            {
+                "sub": "jane",
+                "email": "jane@example.com",
+                "email_verified": True,
+            }
+        )
+        self.assertEqual(self.sign_in({"sub": "jane"}), person_id)
+
+    def test_other_subject_with_same_email_is_rejected(self):
+        self.generate_fixture_person()
+        claims = {
+            "email": self.person.email,
+            "email_verified": True,
+            "given_name": "Mallory",
+        }
+        self.assertEqual(
+            self.sign_in({**claims, "sub": "owner", "given_name": "John"}),
+            str(self.person.id),
+        )
+        response = self.call_callback({**claims, "sub": "mallory"})
+        self.assertEqual(response.status_code, 400)
+        self.assertIsNone(self.sign_in({**claims, "sub": "mallory"}))
+        self.assertEqual(Person.get(self.person.id).first_name, "John")
+
+    def test_protected_account_is_not_linked_by_email(self):
+        self.generate_fixture_person()
+        config.PROTECTED_ACCOUNTS = [self.person.email]
+        claims = {"email": self.person.email, "email_verified": True}
+        self.assertEqual(self.call_callback(claims).status_code, 400)
+        self.assertIsNone(self.sign_in(claims))
+        self.assertIsNone(Person.get(self.person.id).oidc_subject)
+
+    def test_account_is_linked_again_when_the_issuer_changes(self):
+        claims = {"email": "jane@example.com", "email_verified": True}
+        person_id = self.sign_in({**claims, "sub": "jane"})
+        new_identity = {
+            **claims,
+            "iss": "https://new-idp.example.com",
+            "sub": "0042",
+        }
+        self.assertEqual(self.sign_in(new_identity), person_id)
+        self.assertEqual(self.sign_in(new_identity), person_id)
+
+    def test_missing_subject_returns_400(self):
+        response = self.call_callback(
+            {"sub": "", "email": "nosub@example.com", "email_verified": True}
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertRaises(
+            Exception, persons_service.get_person_by_email, "nosub@example.com"
+        )
+
+    def test_userinfo_of_another_subject_is_ignored(self):
+        claims = {
+            "sub": "jane",
+            "email": "jane@example.com",
+            "email_verified": True,
+        }
+        self.call_callback(
+            claims, userinfo={"sub": "mallory", "given_name": "Mallory"}
+        )
+        person = persons_service.get_person_by_email("jane@example.com")
+        self.assertEqual(person["first_name"], "")
+        self.call_callback(
+            claims, userinfo={"sub": "jane", "given_name": "Jane"}
+        )
+        person = persons_service.get_person_by_email("jane@example.com")
+        self.assertEqual(person["first_name"], "Jane")
+
+    def test_id_token_audience_is_checked(self):
+        client = self.mock_client(
+            {"email": "jane@example.com", "email_verified": True}
+        )
+        with mock.patch.object(oidc, "get_oidc_client", return_value=client):
+            self.app.get("auth/oidc/callback")
+        client.authorize_access_token.assert_called_once_with(
+            claims_options=oidc.get_id_token_claims_options(client)
+        )
+
+
+class OIDCIdentityFieldsTestCase(ApiDBTestCase):
+    """The stored identity is neither readable nor writable by its owner."""
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_user_cg_artist()
+        self.artist_id = str(self.user_cg_artist["id"])
+
+    def link_artist(self):
+        persons_service.link_sso_identity(
+            self.artist_id, "oidc", ISSUER, "artist"
+        )
+
+    def test_identity_is_not_serialized(self):
+        self.link_artist()
+        person = self.get(f"data/persons/{self.artist_id}")
+        self.assertNotIn("oidc_issuer", person)
+        self.assertNotIn("oidc_subject", person)
+
+    def test_user_cannot_change_own_identity(self):
+        self.link_artist()
+        self.log_in_cg_artist()
+        self.put(f"data/persons/{self.artist_id}", {"oidc_subject": "admin"})
+        self.assertEqual(Person.get(self.artist_id).oidc_subject, "artist")
+
+    def test_admin_can_unlink_an_account(self):
+        self.link_artist()
+        self.put(
+            f"data/persons/{self.artist_id}",
+            {"oidc_issuer": None, "oidc_subject": None},
+        )
+        self.assertIsNone(Person.get(self.artist_id).oidc_subject)

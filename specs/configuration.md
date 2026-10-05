@@ -91,7 +91,7 @@ Used when `AUTH_STRATEGY=auth_remote_ldap` and by `zou sync-with-ldap-server`. T
 
 ## OIDC
 
-OpenID Connect single sign-on. When enabled, a "Login with <provider>" button is shown on the login page; users are redirected to the provider, and on return a matching Kitsu account is found by email (or created on first login).
+OpenID Connect single sign-on. When enabled, a "Login with <provider>" button is shown on the login page; users are redirected to the provider, and on return the Kitsu account bound to their identity is signed in, see [Account binding](#account-binding).
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -128,6 +128,18 @@ provider uses non-standard claim names, overriding the `OIDC_*_CLAIM` variables.
 > OIDC requires Flask's signed-cookie session to carry the `state`/`nonce`/PKCE
 > values between `/auth/oidc/login` and `/auth/oidc/callback`, so `SECRET_KEY`
 > must be set (it already is in any standard deployment).
+
+
+## Account binding
+
+An email is mutable and set by the administrators of the identity provider, so it does not prove who is signing in. OIDC accounts are bound to the stable identity the provider asserts: the issuer and subject of the ID token (`iss` and `sub`). SAML accounts are still matched by email.
+
+On the first login of an identity, the account holding its email is bound to it, or created when there is none. From then on the email is no longer used:
+
+- another identity carrying the same email is refused;
+- an account listed in `PROTECTED_ACCOUNTS` is never bound through its email;
+- an administrator unbinds an account by setting `oidc_issuer` and `oidc_subject` to `null` on the person (`PUT /data/persons/<id>`), which lets the next login bind it again;
+- when the provider is replaced (new issuer), accounts are bound again through their email.
 
 ## Redis
 

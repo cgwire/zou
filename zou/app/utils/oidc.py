@@ -40,6 +40,19 @@ def get_email_from_claims(claims):
     return claims.get(config.OIDC_EMAIL_CLAIM)
 
 
+def get_id_token_claims_options(client):
+    """
+    Return the claims the ID token must match: the issuer of the discovery
+    document and our client id as audience. Authlib only checks the issuer
+    by default, and stops checking it as soon as options are given.
+    """
+    metadata = client.load_server_metadata()
+    return {
+        "iss": {"essential": True, "values": [metadata["issuer"]]},
+        "aud": {"essential": True, "values": [config.OIDC_CLIENT_ID]},
+    }
+
+
 def is_email_verified(claims):
     """
     Return whether the email can be trusted.
