@@ -320,11 +320,16 @@ class RenormalizeMoviePreviewFilesTestCase(ApiDBTestCase):
             commands.renormalize_movie_preview_files(
                 all_broken=True, project_id=str(self.project.id)
             )
-            commands.renormalize_movie_preview_files(
-                all_broken=True, project_id=fields.gen_uuid()
-            )
+            # The run above marked the preview as missing. The command
+            # exits on an empty selection, and the app teardown then rolls
+            # the test transaction back: this call has to come last.
+            with self.assertRaises(SystemExit):
+                commands.renormalize_movie_preview_files(
+                    all_missing=True, project_id=fields.gen_uuid()
+                )
 
         self.assertEqual(seen_ids, [self.preview_file_id])
+        self.assertIn("No preview files found.", buf.getvalue())
 
     def test_cli_accepts_repeated_preview_file_id_option(self):
         runner = CliRunner()
