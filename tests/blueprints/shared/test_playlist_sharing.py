@@ -1,10 +1,12 @@
 import json
+import os
 import uuid
 
 import pytest
 
-from tests.base import ApiDBTestCase
+from tests.base import ApiDBTestCase, TEST_FOLDER
 
+from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.person import Person
 from zou.app.models.playlist import Playlist
 from zou.app.models.playlist import Playlist as PlaylistModel
@@ -12,10 +14,12 @@ from zou.app.models.playlist_share_link import PlaylistShareLink
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
+from zou.app.services import comments_service
 from zou.app.services import entities_service
 from zou.app.services import playlist_sharing_service
 from zou.app.services import preview_file_states_service as states_service
 from zou.app.stores import file_store
+from zou.app.utils import fs
 
 # Share-link passwords are hashed with bcrypt; the verification path must
 # not be patched to always-True here.
@@ -849,6 +853,20 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
         )
         self.assertEqual(result["text"], "Second thought")
 
+    def test_an_edited_comment_keeps_naming_its_repliers(self):
+        link, guest, comment = self._guest_comment()
+        comments_service.reply_comment(
+            comment["id"], "Noted", person_id=str(self.user["id"])
+        )
+
+        result = self.put(
+            self.shared_path(link["token"], f"/comments/{comment['id']}"),
+            {"guest_id": guest["id"], "text": "Second thought"},
+        )
+
+        replier = result["replies"][0]["person"]
+        self.assertEqual(replier["id"], str(self.user["id"]))
+
     def test_guest_deletes_own_comment(self):
         link, guest, comment = self._guest_comment()
         path = f"/shared/playlists/{link['token']}/comments/{comment['id']}"
@@ -905,6 +923,137 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
         self.assertEqual(len(result["attachment_files"]), 1)
         self.assertEqual(result["attachment_files"][0]["name"], "th01.png")
 
+    def test_the_comment_list_carries_guest_attachments(self):
+        """
+        The list is what the page reloads from: an attachment missing there
+        vanished from the comment, although its download route serves it.
+        """
+        link, guest, comment = self._guest_comment()
+        attachment = self._attach_to_guest_comment(link, guest, comment)[
+            "attachment_files"
+        ][0]
+
+        comments = self.get(self.shared_path(link["token"], "/comments"))
+
+        listed = next(c for c in comments if c["id"] == comment["id"])
+        self.assertEqual(
+            [a["id"] for a in listed["attachment_files"]], [attachment["id"]]
+        )
+        self.assertEqual(listed["attachment_files"][0]["name"], "th01.png")
+
+    def test_the_comment_list_carries_client_comment_attachments(self):
+        comment = comments_service.new_comment(
+            str(self.task.id),
+            str(self.task_status.id),
+            str(self.person.id),
+            "See the reference",
+            for_client=True,
+        )
+        attachment = AttachmentFile.create(
+            name="reference.png",
+            extension="png",
+            mimetype="image/png",
+            comment_id=comment["id"],
+        )
+        link = self.post(self.share_path(), {"can_comment": True}, 201)
+        self.log_out()
+
+        comments = self.get(self.shared_path(link["token"], "/comments"))
+
+        listed = next(c for c in comments if c["id"] == comment["id"])
+        self.assertEqual(
+            [a["id"] for a in listed["attachment_files"]],
+            [str(attachment.id)],
+        )
+
+    def test_the_comment_list_leaves_internal_attachments_out(self):
+        """
+        Only the comments the link shows bring their files: the attachment
+        of an internal comment on the same task stays with the studio.
+        """
+        internal = comments_service.new_comment(
+            str(self.task.id),
+            str(self.task_status.id),
+            str(self.person.id),
+            "Studio only",
+        )
+        internal_attachment = AttachmentFile.create(
+            name="internal.png",
+            extension="png",
+            mimetype="image/png",
+            comment_id=internal["id"],
+        )
+        visible = comments_service.new_comment(
+            str(self.task.id),
+            str(self.task_status.id),
+            str(self.person.id),
+            "Looks good",
+            for_client=True,
+        )
+        link = self.post(self.share_path(), {"can_comment": True}, 201)
+        self.log_out()
+
+        comments = self.get(self.shared_path(link["token"], "/comments"))
+
+        self.assertNotIn(internal["id"], [c["id"] for c in comments])
+        self.assertNotIn(
+            str(internal_attachment.id),
+            [a["id"] for c in comments for a in c["attachment_files"]],
+        )
+        listed = next(c for c in comments if c["id"] == visible["id"])
+        self.assertEqual(listed["attachment_files"], [])
+
+    def test_the_comment_list_names_the_repliers(self):
+        comment = comments_service.new_comment(
+            str(self.task.id),
+            str(self.task_status.id),
+            str(self.person.id),
+            "Looks good",
+            for_client=True,
+        )
+        comments_service.reply_comment(
+            comment["id"], "Thanks", person_id=str(self.user["id"])
+        )
+        link = self.post(self.share_path(), {"can_comment": True}, 201)
+        self.log_out()
+
+        comments = self.get(self.shared_path(link["token"], "/comments"))
+
+        listed = next(c for c in comments if c["id"] == comment["id"])
+        replier = listed["replies"][0]["person"]
+        self.assertEqual(replier["id"], str(self.user["id"]))
+        self.assertEqual(replier["full_name"], "John Did")
+
+    def test_a_missing_attachment_file_answers_404(self):
+        """
+        The page of the link loads every picture, sound and movie its
+        comment list names: a file gone from the storage is not found, as
+        on the studio route, rather than a server error.
+        """
+        comment = comments_service.new_comment(
+            str(self.task.id),
+            str(self.task_status.id),
+            str(self.person.id),
+            "See the reference",
+            for_client=True,
+        )
+        attachment = AttachmentFile.create(
+            name="reference.png",
+            extension="png",
+            mimetype="image/png",
+            comment_id=comment["id"],
+        )
+        link = self.post(self.share_path(), {"can_comment": True}, 201)
+        self.log_out()
+
+        response = self.app.get(
+            self.shared_path(
+                link["token"],
+                f"/attachment-files/{attachment.id}/file/reference.png",
+            )
+        )
+        self.assertEqual(response.status_code, 404)
+
     def test_guest_removes_own_attachment(self):
         link, guest, comment = self._guest_comment()
         attachment = self._attach_to_guest_comment(link, guest, comment)[
@@ -945,6 +1094,103 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
             json={"guest_id": guest["id"]},
         )
         self.assertEqual(response.status_code, 404)
+
+
+class SharedAvatarTestCase(PlaylistSharingTestCase):
+    """
+    The avatars a link serves: those of the people its page shows, the
+    authors of the comments it lists and of their replies, and nobody else.
+    """
+
+    def tearDown(self):
+        super().tearDown()
+        fs.rm_rf(TEST_FOLDER)
+
+    def give_an_avatar(self, person_id):
+        self.upload_file(
+            f"/pictures/thumbnails/persons/{person_id}",
+            self.get_fixture_file_path(os.path.join("thumbnails", "th01.png")),
+        )
+
+    def get_avatar(self, link, person_id):
+        return self.app.get(
+            self.shared_path(
+                link["token"], f"/pictures/thumbnails/persons/{person_id}.png"
+            )
+        )
+
+    def new_comment(self, text, for_client=False):
+        return comments_service.new_comment(
+            str(self.task.id),
+            str(self.task_status.id),
+            str(self.person.id),
+            text,
+            for_client=for_client,
+        )
+
+    def test_a_link_serves_the_avatars_of_the_people_it_shows(self):
+        comment = self.new_comment("Looks good", for_client=True)
+        comments_service.reply_comment(
+            comment["id"], "Thanks", person_id=str(self.user["id"])
+        )
+        self.give_an_avatar(self.person.id)
+        self.give_an_avatar(self.user["id"])
+        link = self.post(self.share_path(), {"can_comment": True}, 201)
+        self.log_out()
+
+        for person_id in (self.person.id, self.user["id"]):
+            response = self.get_avatar(link, person_id)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.mimetype, "image/png")
+
+    def test_a_playlist_built_in_kitsu_serves_the_avatars(self):
+        # The playlist builder stores the positioned preview of a shot, not
+        # its task.
+        preview_file = PreviewFile.create(
+            name="preview.mov",
+            revision=1,
+            extension="mp4",
+            task_id=self.task.id,
+            person_id=self.person.id,
+        )
+        PlaylistModel.get(self.playlist["id"]).update(
+            {
+                "shots": [
+                    {
+                        "id": str(self.asset.id),
+                        "entity_id": str(self.asset.id),
+                        "preview_file_id": str(preview_file.id),
+                    }
+                ]
+            }
+        )
+        self.new_comment("Looks good", for_client=True)
+        self.give_an_avatar(self.person.id)
+        link = self.post(self.share_path(), {"can_comment": True}, 201)
+        self.log_out()
+
+        self.assertEqual(
+            self.get_avatar(link, self.person.id).status_code, 200
+        )
+
+    def test_a_link_keeps_the_other_avatars(self):
+        self.new_comment("Studio only")
+        self.give_an_avatar(self.person.id)
+        link = self.post(self.share_path(), {"can_comment": True}, 201)
+        self.log_out()
+
+        self.assertEqual(
+            self.get_avatar(link, self.person.id).status_code, 404
+        )
+
+    def test_a_shown_person_without_avatar_answers_404(self):
+        self.new_comment("Looks good", for_client=True)
+        link = self.post(self.share_path(), {"can_comment": True}, 201)
+        self.log_out()
+
+        self.assertEqual(
+            self.get_avatar(link, self.person.id).status_code, 404
+        )
 
 
 class SharedFileServingTestCase(PlaylistSharingTestCase):

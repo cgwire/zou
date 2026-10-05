@@ -1,6 +1,8 @@
 from tests.base import ApiDBTestCase
 
+from zou.app import db
 from zou.app.models.comment import Comment
+from zou.app.services import projects_service, tasks_service
 
 from zou.app.utils import fields
 
@@ -43,6 +45,7 @@ class CommentTestCase(ApiDBTestCase):
         }
         self.comment = self.post("data/comments", data)
         self.assertIsNotNone(self.comment["id"])
+        self.assertEqual(self.comment["checklist"], [])
 
         comments = self.get("data/comments")
         self.assertEqual(len(comments), 4)
@@ -55,6 +58,86 @@ class CommentTestCase(ApiDBTestCase):
         self.assertEqual(data["text"], comment_again["text"])
         comment_id = fields.gen_uuid()
         self.put_404(f"data/comments/{comment_id}", data)
+
+    def test_update_comment_with_a_null_checklist(self):
+        comment_id = self.comments[0]["id"]
+        self.put(f"data/comments/{comment_id}", {"checklist": None})
+        self.assertEqual(Comment.get(comment_id).checklist, [])
+
+    def log_in_team_artist(self):
+        # A team member who wrote none of the comments.
+        self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            self.project.id, self.user_cg_artist["id"]
+        )
+        self.log_in_cg_artist()
+
+    def test_unassigned_artist_cannot_change_a_checklist(self):
+        checklist = [{"text": "Fix the hands", "checked": False}]
+        comment_id = self.comments[0]["id"]
+        Comment.get(comment_id).update({"checklist": checklist})
+        self.log_in_team_artist()
+        # Sent unchanged, the checklist goes through: the refusals below
+        # come from the checklist rule, not from the project check.
+        self.put(f"data/comments/{comment_id}", {"checklist": checklist})
+        for change in (
+            [{"text": "Fix the hands", "checked": True}],
+            [{"text": "Looks good", "checked": True}],
+            checklist + [{"text": "And the feet", "checked": False}],
+            [],
+        ):
+            self.put(f"data/comments/{comment_id}", {"checklist": change}, 403)
+        self.assertEqual(Comment.get(comment_id).checklist, checklist)
+
+    def log_in_team_client(self):
+        self.generate_fixture_user_client()
+        projects_service.add_team_member(
+            self.project.id, self.user_client["id"]
+        )
+        self.log_in_client()
+
+    def test_client_cannot_change_a_checklist(self):
+        comment_id = self.comments[0]["id"]
+        # A comment the client reads, so the refusal below comes from the
+        # checklist rule.
+        Comment.get(comment_id).update({"for_client": True})
+        self.log_in_team_client()
+        self.put(f"data/comments/{comment_id}", {"checklist": []})
+        self.put(
+            f"data/comments/{comment_id}",
+            {"checklist": [{"text": "Looks good", "checked": True}]},
+            403,
+        )
+
+    def test_client_cannot_update_a_comment_it_cannot_read(self):
+        comment_id = self.comments[0]["id"]
+        self.log_in_team_client()
+        # Even an empty change answered with the internal comment, and made
+        # the client its editor.
+        self.put(f"data/comments/{comment_id}", {}, 403)
+        self.assertIsNone(Comment.get(comment_id).editor_id)
+
+    def test_update_null_checklist_as_unassigned_artist(self):
+        comment_id = self.comments[0]["id"]
+        self.log_in_team_artist()
+        self.put(f"data/comments/{comment_id}", {"checklist": []})
+        # Older rows hold a null checklist, which the model no longer
+        # writes.
+        Comment.query.filter_by(id=comment_id).update({"checklist": None})
+        db.session.commit()
+        self.put(f"data/comments/{comment_id}", {"checklist": []}, 403)
+
+    def test_assigned_artist_can_tick_a_checklist(self):
+        comment_id = self.comments[0]["id"]
+        Comment.get(comment_id).update(
+            {"checklist": [{"text": "Fix the hands", "checked": False}]}
+        )
+        self.generate_fixture_user_cg_artist()
+        tasks_service.assign_task(str(self.task.id), self.user_cg_artist["id"])
+        self.log_in_team_artist()
+        ticked = [{"text": "Fix the hands", "checked": True}]
+        self.put(f"data/comments/{comment_id}", {"checklist": ticked})
+        self.assertEqual(Comment.get(comment_id).checklist, ticked)
 
     def test_delete_comment(self):
         comments = self.get("data/comments")

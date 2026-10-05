@@ -645,6 +645,24 @@ class CommentManyTasksResource(MethodView):
         return allowed_comments
 
 
+def _is_client_thread(comment, task_id):
+    """
+    Tell whether the client sees the thread of given comment: flagged for
+    them, or written by a client (the guests of a share link are clients).
+    """
+    if comment.get("for_client"):
+        return True
+    if not comment.get("person_id"):
+        return False
+    task = tasks_service.get_task(task_id)
+    return (
+        permissions_service.get_project_role(
+            comment["person_id"], task["project_id"]
+        )
+        == "client"
+    )
+
+
 class ReplyCommentResource(MethodView, ArgsMixin):
 
     @jwt_required()
@@ -653,7 +671,9 @@ class ReplyCommentResource(MethodView, ArgsMixin):
         Reply to comment
         ---
         description: Add a reply to a specific comment. The reply will be added
-          to the comment's replies list.
+          to the comment's replies list. In a thread the client sees (comment
+          flagged for the client, or written by a client), only the
+          production managers and the clients can reply.
         tags:
           - Comments
         parameters:
@@ -731,6 +751,20 @@ class ReplyCommentResource(MethodView, ArgsMixin):
                     == "client"
                 ):
                     raise permissions.PermissionDenied()
+        else:
+            # The author goes through no access check: resolve their role
+            # on the production for the rule below.
+            permissions_service.resolve_project_role(
+                tasks_service.get_task(task_id)["project_id"]
+            )
+        if (
+            not permissions.has_manager_permissions()
+            and not permissions.has_client_permissions()
+            and _is_client_thread(comment, task_id)
+        ):
+            # The client sees who answers there, by name and avatar: the
+            # production managers answer for the studio.
+            raise permissions.PermissionDenied()
 
         body = validation.validate_request_body(CommentReplySchema)
         files = request.files
