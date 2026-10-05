@@ -68,7 +68,7 @@ responses:
               first_episode_id:
                 type: string
                 format: uuid
-                example: c24a6ea4-ce75-4665-a070-57453082c25
+                example: c24a6ea4-ce75-4665-a070-57453082c250
               created_at:
                 type: string
                 format: date-time
