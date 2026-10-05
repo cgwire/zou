@@ -13,7 +13,7 @@ from zou.app.services import (
     tasks_service,
     user_service,
 )
-from zou.app.utils import permissions
+from zou.app.utils import fields, permissions
 from zou.app.exceptions import WrongParameterException
 
 
@@ -95,6 +95,29 @@ class ProductionScheduleVersionResource(BaseModelResource):
             project_id=instance_dict["project_id"]
         )
 
+    def check_delete_permissions(self, instance_dict):
+        return permissions_service.check_manager_project_access(
+            project_id=instance_dict["project_id"]
+        )
+
+    def post_update(self, instance_dict, data):
+        schedule_service.clear_production_schedule_version_cache(
+            instance_dict["id"]
+        )
+        return instance_dict
+
+    def pre_delete(self, instance_dict):
+        schedule_service.detach_production_schedule_version(
+            instance_dict["id"]
+        )
+        return instance_dict
+
+    def post_delete(self, instance_dict):
+        schedule_service.clear_production_schedule_version_cache(
+            instance_dict["id"]
+        )
+        return instance_dict
+
 
 class ProductionScheduleVersionTaskLinksResource(BaseModelsResource):
     def __init__(self):
@@ -113,6 +136,24 @@ class ProductionScheduleVersionTaskLinksResource(BaseModelsResource):
             or permissions.has_client_permissions()
         ):
             raise permissions.PermissionDenied
+
+    def apply_filters(self, query, options):
+        # A task link has no project_id column, so the generic filters drop
+        # the parameter the read check was granted on: scope the rows to
+        # that project through their version.
+        query = super().apply_filters(query, options)
+        if "project_id" in options:
+            if not fields.is_valid_id(options["project_id"]):
+                raise WrongParameterException("Invalid project_id.")
+            link = ProductionScheduleVersionTaskLink
+            query = query.join(
+                ProductionScheduleVersion,
+                ProductionScheduleVersion.id
+                == link.production_schedule_version_id,
+            ).filter(
+                ProductionScheduleVersion.project_id == options["project_id"]
+            )
+        return query
 
     @jwt_required()
     @swag_from("openapi/ProductionScheduleVersionTaskLinksResource_get.yml")

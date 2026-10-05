@@ -7,6 +7,7 @@ from sqlalchemy import Text, and_, cast, delete, func, literal, select, update
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.milestone import Milestone
+from zou.app.models.project import Project
 from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.task import Task, TaskPersonLink
 from zou.app.models.task_type import TaskType
@@ -350,6 +351,40 @@ def get_production_schedule_version_task_links(
         )
 
     return fields.serialize_models(query.all(), relations=relations)
+
+
+def detach_production_schedule_version(production_schedule_version_id):
+    """
+    Clear the references other rows keep to given production schedule
+    version before it is deleted, memoized copies included: the versions
+    copied from it and the project it was applied to.
+    """
+    derived_ids = [
+        str(row.id)
+        for row in ProductionScheduleVersion.query.with_entities(
+            ProductionScheduleVersion.id
+        )
+        .filter_by(production_schedule_from=production_schedule_version_id)
+        .all()
+    ]
+    if derived_ids:
+        ProductionScheduleVersion.query.filter(
+            ProductionScheduleVersion.id.in_(derived_ids)
+        ).update({"production_schedule_from": None}, synchronize_session=False)
+        db.session.commit()
+        for derived_id in derived_ids:
+            clear_production_schedule_version_cache(derived_id)
+
+    project_ids = [
+        str(row.id)
+        for row in Project.query.with_entities(Project.id)
+        .filter_by(from_schedule_version_id=production_schedule_version_id)
+        .all()
+    ]
+    for project_id in project_ids:
+        projects_service.update_project(
+            project_id, {"from_schedule_version_id": None}
+        )
 
 
 def update_production_schedule_version(production_schedule_version_id, data):

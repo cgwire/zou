@@ -202,6 +202,7 @@ class Project(db.Model, BaseMixin, SerializerMixin):
             "production_schedule_version.id",
             name="project_from_schedule_version_id_fkey",
             use_alter=True,
+            ondelete="SET NULL",
         ),
         index=True,
         nullable=True,

@@ -597,9 +597,9 @@ def remove_project(project_id):
 def remove_production_schedule_versions_for_project(project_id):
     """
     Delete production schedule versions of a project together with their
-    task links. Done explicitly because the project FK on
-    production_schedule_version is not guaranteed to cascade on every
-    deployed database, and the table self-references through
+    task links. Done explicitly because, until migration d7a3e5b1c9f2, the
+    databases initialized from the squashed migration had no delete rule on
+    the keys of these tables, and the table self-references through
     ``production_schedule_from``.
     """
     version_ids = [

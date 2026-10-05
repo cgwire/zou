@@ -19,7 +19,7 @@ class ProductionScheduleVersion(db.Model, BaseMixin, SerializerMixin):
     )
     production_schedule_from = db.Column(
         UUIDType(binary=False),
-        db.ForeignKey("production_schedule_version.id"),
+        db.ForeignKey("production_schedule_version.id", ondelete="SET NULL"),
         index=True,
         nullable=True,
     )
