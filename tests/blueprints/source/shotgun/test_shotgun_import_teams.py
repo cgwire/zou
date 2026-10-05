@@ -78,7 +78,6 @@ class ImportShotgunProjectConnectionsTestCase(ShotgunTestCase):
             "/import/shotgun/remove/project-connection", {"id": 3}, 200
         )
         self.assertTrue(result["success"])
-        projects_service.clear_project_cache(agent["id"])
         agent = projects_service.get_project(agent["id"], relations=True)
         self.assertEqual(len(agent["team"]), 1)
 

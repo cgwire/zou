@@ -165,10 +165,11 @@ class ImportRemoveShotgunBaseResource(MethodView):
         instance = self.get_instance(sg_model)
 
         if instance is not None:
-            result = {
-                "removed_instance_id": str(instance.id),
-                "success": self.delete_instance(instance),
-            }
+            result = {}
+            # A bare link table such as ProjectPersonLink has no id.
+            if hasattr(instance, "id"):
+                result["removed_instance_id"] = str(instance.id)
+            result["success"] = self.delete_instance(instance)
         else:
             result = {"success": True}
 
