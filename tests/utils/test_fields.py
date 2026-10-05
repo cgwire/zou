@@ -11,6 +11,13 @@ from zou.app.models.task import Task
 
 
 class FieldsTestCase(unittest.TestCase):
+    def test_serialize_value_keeps_the_fraction_of_a_round_second(self):
+        round_second = datetime.datetime(2026, 10, 5, 17, 0, 9)
+        self.assertEqual(
+            fields.serialize_value(round_second, milliseconds=True),
+            "2026-10-05T17:00:09.000000",
+        )
+
     def test_serialize_value(self):
         now = datetime.datetime.now()
         self.assertEqual(

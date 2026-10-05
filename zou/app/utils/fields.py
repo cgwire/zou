@@ -27,7 +27,9 @@ def serialize_value(value, milliseconds=False):
     """
     if isinstance(value, datetime.datetime):
         if milliseconds:
-            return value.isoformat()
+            # isoformat() drops the fraction of a round second, which the
+            # cursor listings then fail to parse back.
+            return value.isoformat(timespec="microseconds")
         else:
             return value.replace(microsecond=0).isoformat()
     if isinstance(value, datetime.date):
