@@ -470,7 +470,7 @@ def clone_git_repo(git_url, temp_dir=None):
             capture_output=True,
             timeout=300,
         )
-        logger.warning(f"[Plugins] Successfully cloned {git_url}")
+        logger.info(f"[Plugins] Successfully cloned {git_url}")
         return clone_path
     except subprocess.CalledProcessError as e:
         error_msg = e.stderr.decode() if e.stderr else str(e)

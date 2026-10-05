@@ -109,7 +109,7 @@ def uninstall_plugin(plugin_id):
     Uninstall a plugin: call pre/post uninstall hooks, downgrade
     migrations, remove files, delete from database and remove folder.
     """
-    logger.warning(f"[Plugins] Uninstalling plugin {plugin_id}...")
+    logger.info(f"[Plugins] Uninstalling plugin {plugin_id}...")
     plugin_path = Path(config.PLUGIN_FOLDER) / plugin_id
 
     # A plugin left in a broken state (missing or invalid manifest) must stay
@@ -190,7 +190,7 @@ def _run_plugin_hook(plugin_id, plugin_path, hook_name, *args):
         if hook is not None:
             logger.info(f"[Plugins] Running {hook_name} for {plugin_id}...")
             hook(*args)
-            logger.warning(f"[Plugins] {hook_name} for {plugin_id} completed.")
+            logger.info(f"[Plugins] {hook_name} for {plugin_id} completed.")
     except Exception as e:
         logger.warning(
             f"⚠️  [Plugins] {hook_name} failed for {plugin_id}: {e}"
