@@ -6,6 +6,9 @@ line-length = 79
 # packages under plugins/, which are separate test suites with their own
 # conftest and are run from their own directory.
 testpaths = ["tests"]
+# A test still running after five minutes is stuck: dump the stack of
+# every thread, so the log tells where.
+faulthandler_timeout = 300
 markers = [
     "integration: needs an external service (e.g. a running Meilisearch)",
     "real_bcrypt: assert on password verification, keep the real bcrypt",
