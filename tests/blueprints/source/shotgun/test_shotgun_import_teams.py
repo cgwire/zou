@@ -87,3 +87,8 @@ class ImportShotgunProjectConnectionsTestCase(ShotgunTestCase):
             "/import/shotgun/remove/project-connection", {"id": 999}, 200
         )
         self.assertTrue(result["success"])
+
+    def test_remove_project_connection_needs_an_admin(self):
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        self.post("/import/shotgun/remove/project-connection", {"id": 3}, 403)
