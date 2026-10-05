@@ -15,7 +15,7 @@ DB_DATABASE=zoudb-test py.test tests/path/to/test_file.py -v
 All tests inherit from `ApiDBTestCase` (`tests/base.py`), which provides:
 
 - **Schema management**: `conftest.py` creates tables once per session; `setUpClass` truncates between test classes
-- **Transaction isolation**: Each test runs in a transaction that is rolled back in `tearDown`
+- **Transaction isolation**: Each test runs in a transaction that is rolled back in a cleanup registered by `setUp`, which unittest also runs when `setUp` fails
 - **Admin login**: `setUp` creates an admin user and logs in automatically
 - **HTTP helpers**: `get()`, `post()`, `put()`, `delete()` send requests and assert status codes
 - **404 helpers**: `get_404()`, `put_404()`, `delete_404()` assert 404 responses
