@@ -82,6 +82,16 @@ class MovieTestCase(unittest.TestCase):
 
         """
 
+    def test_generate_tile_when_the_duration_is_underestimated(self):
+        # A short reported duration makes the tile filter emit a second
+        # sheet: the image2 muxer refuses to write it to a single file.
+        with patch.object(movie, "get_movie_duration", return_value=1.0):
+            tile_path = movie.generate_tile(self.video_only_path)
+        try:
+            self.assertEqual(Image.open(tile_path).size[1], 400)
+        finally:
+            os.remove(tile_path)
+
     def test_get_movie_size(self):
         width, height = movie.get_movie_size(self.video_only_path)
         self.assertEqual(width, 320)

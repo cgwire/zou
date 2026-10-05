@@ -136,10 +136,15 @@ def generate_tile(movie_path):
     else:
         select = ""
     try:
-        # One decoding thread: the tile is built next to the API.
+        # One decoding thread: the tile is built next to the API. The
+        # duration can be underestimated, so the filter emits a second,
+        # partial sheet: keep the first one, the muxer refuses to write
+        # two frames to a plain filename.
         ffmpeg.input(movie_path, threads=1).output(
             file_target_path,
             vf=f"{select}scale={width}:{height},tile=8x{rows}",
+            vframes=1,
+            update=1,
             threads=1,
         ).overwrite_output().run(quiet=True)
     except ffmpeg._run.Error as e:
