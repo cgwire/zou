@@ -5,6 +5,7 @@ from tests.base import ApiDBTestCase
 
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.task import Task
+from zou.app.services import persons_service
 
 
 class ImportCsvTaskTypeEstimationsTestCase(ApiDBTestCase):
@@ -112,3 +113,75 @@ class ImportCsvTaskTypeEstimationsTestCase(ApiDBTestCase):
             "2024-03-08",
         )
         self.assertIsNone(Task.get(second_task.id).start_date)
+
+    def import_estimations(self, content):
+        """
+        Import CSV content on the asset task type and return the fixture task
+        as stored afterwards.
+        """
+        path = (
+            f"/import/csv/projects/{self.project.id}"
+            f"/task-types/{self.task_type.id}/estimations"
+        )
+        self.upload_file(path, self.write_csv(content))
+        return Task.get(self.task.id)
+
+    def display_durations_in_hours(self, hours_by_day=8):
+        organisation = persons_service.get_organisation()
+        persons_service.update_organisation(
+            organisation["id"],
+            {"format_duration_in_hours": True, "hours_by_day": hours_by_day},
+        )
+
+    def test_import_estimation_in_days(self):
+        # Durations display in days by default: 1.5 days at 8 hours a day
+        # are 720 minutes, spread over two business days from a Monday.
+        self.generate_fixture_task()
+        task = self.import_estimations(
+            "Parent,Entity,Estimation,Start date\n"
+            "Props,Tree,1.5,2024-01-08\n"
+        )
+        self.assertEqual(task.estimation, 720)
+        self.assertEqual(task.due_date.strftime("%Y-%m-%d"), "2024-01-09")
+
+    def test_import_estimation_in_hours(self):
+        """
+        An organisation that displays durations in hours sees and exports
+        its estimations in hours, so the import reads them in hours too.
+        """
+        self.generate_fixture_task()
+        self.display_durations_in_hours()
+        task = self.import_estimations(
+            "Parent,Entity,Estimation,Start date\n"
+            "Props,Tree,12,2024-01-08\n"
+        )
+        self.assertEqual(task.estimation, 720)
+        self.assertEqual(task.due_date.strftime("%Y-%m-%d"), "2024-01-09")
+
+    def test_import_estimation_in_hours_unrounded(self):
+        """
+        Kitsu stores the hours typed in its lists unrounded and exports them
+        with two decimals: rounded to whole minutes, 0.66 hours would come
+        back as 40 minutes, shown as 0.67.
+        """
+        self.generate_fixture_task()
+        self.display_durations_in_hours()
+        task = self.import_estimations(
+            "Parent,Entity,Estimation\nProps,Tree,0.66\n"
+        )
+        self.assertAlmostEqual(task.estimation, 39.6)
+
+    def test_import_estimation_in_hours_of_whole_days(self):
+        """
+        22.8 hours at 7.6 hours a day divide into 3.0000000000000004 days
+        in floating point: the due date must still be the third business
+        day.
+        """
+        self.generate_fixture_task()
+        self.display_durations_in_hours(hours_by_day=7.6)
+        task = self.import_estimations(
+            "Parent,Entity,Estimation,Start date\n"
+            "Props,Tree,22.8,2024-01-08\n"
+        )
+        self.assertEqual(task.estimation, 1368)
+        self.assertEqual(task.due_date.strftime("%Y-%m-%d"), "2024-01-10")
