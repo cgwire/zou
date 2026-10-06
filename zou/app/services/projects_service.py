@@ -890,18 +890,28 @@ def _migrate_metadata_field_name(model, old_key, new_key, *, use_no_commit):
 
 def _entity_query_for_descriptor_entity_type(descriptor):
     """
-    Entities whose `data` may hold values for this descriptor (non-Project).
+    Entities whose `data` may hold values for this descriptor (neither
+    Project nor Task). A field name is unique per entity type only, so the
+    query keeps the entities of the descriptor type: every asset type for
+    Asset, the type of that name for a shot, scene, sequence, episode or
+    edit column, none for any other name.
     """
     query = Entity.query.filter(Entity.project_id == descriptor.project_id)
-    if descriptor.entity_type == "Shot":
-        shot_type = shots_service.get_shot_type()
-        return query.filter(Entity.entity_type_id == shot_type["id"])
     if descriptor.entity_type == "Asset":
         return query.filter(assets_service.build_asset_type_filter())
-    if descriptor.entity_type == "Edit":
-        edit_type = edits_service.get_edit_type()
-        return query.filter(Entity.entity_type_id == edit_type["id"])
-    return query
+    if descriptor.entity_type == "Shot":
+        entity_type = shots_service.get_shot_type()
+    elif descriptor.entity_type == "Scene":
+        entity_type = shots_service.get_scene_type()
+    elif descriptor.entity_type == "Sequence":
+        entity_type = shots_service.get_sequence_type()
+    elif descriptor.entity_type == "Episode":
+        entity_type = shots_service.get_episode_type()
+    elif descriptor.entity_type == "Edit":
+        entity_type = edits_service.get_edit_type()
+    else:
+        return query.filter(false())
+    return query.filter(Entity.entity_type_id == entity_type["id"])
 
 
 def _task_query_for_descriptor(descriptor):
@@ -960,8 +970,9 @@ def _migrate_descriptor_field_rename(descriptor, new_field_name):
 
 def _remove_stored_values_for_metadata_descriptor(descriptor):
     """
-    Remove descriptor field values from Project.data (Project type) or from
-    all Entity.data rows in the project (other types).
+    Remove descriptor field values from Project.data (Project type), from
+    the Task.data rows of its task type (Task type) or from the Entity.data
+    rows of its entity type (other types).
     """
     if descriptor.entity_type == "Project":
         project = get_project_raw(descriptor.project_id)
@@ -971,7 +982,7 @@ def _remove_stored_values_for_metadata_descriptor(descriptor):
         for task in _task_query_for_descriptor(descriptor).all():
             _strip_metadata_field_from_model_data(task, descriptor.field_name)
         return
-    for entity in Entity.get_all_by(project_id=descriptor.project_id):
+    for entity in _entity_query_for_descriptor_entity_type(descriptor).all():
         _strip_metadata_field_from_model_data(entity, descriptor.field_name)
 
 

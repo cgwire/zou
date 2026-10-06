@@ -481,6 +481,35 @@ class ProjectMetadataDescriptorTestCase(ApiDBTestCase):
             False,
         )
 
+    def generate_entity_of_each_type(self):
+        """
+        One entity of each type a column can describe, keyed by that type.
+        """
+        self.generate_fixture_asset()
+        self.generate_fixture_episode()
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+        self.generate_fixture_scene()
+        self.generate_fixture_edit()
+        return {
+            "Asset": self.asset,
+            "Shot": self.shot,
+            "Scene": self.scene,
+            "Sequence": self.sequence,
+            "Episode": self.episode,
+            "Edit": self.edit,
+        }
+
+    def stored_data(self, entities):
+        """
+        The data each of given entities holds in the database, keyed like
+        them.
+        """
+        return {
+            entity_type: Entity.get(entity.id).data
+            for entity_type, entity in entities.items()
+        }
+
     def test_add_asset_metadata_descriptor(self):
         descriptor = self.add("Is Outdoor")
         self.assertIsNotNone(MetadataDescriptor.get(descriptor["id"]))
@@ -577,6 +606,81 @@ class ProjectMetadataDescriptorTestCase(ApiDBTestCase):
         self.assertEqual(descriptors, [])
         asset = Entity.get(asset.id)
         self.assertNotIn("contractor", asset.data)
+
+    def test_remove_metadata_descriptor_keeps_the_other_types_values(self):
+        # A field name is unique per entity type only: each type may have
+        # its own Difficulty column, and removing one of them must leave
+        # the values of the others in place.
+        entities = self.generate_entity_of_each_type()
+        for entity_type in entities:
+            with self.subTest(entity_type=entity_type):
+                for other_type, entity in entities.items():
+                    entity.update({"data": {"difficulty": other_type}})
+                descriptor = self.add("Difficulty", entity_type)
+
+                projects_service.remove_metadata_descriptor(descriptor["id"])
+
+                self.assertEqual(
+                    self.stored_data(entities),
+                    {
+                        other_type: (
+                            {}
+                            if other_type == entity_type
+                            else {"difficulty": other_type}
+                        )
+                        for other_type in entities
+                    },
+                )
+
+    def test_rename_metadata_descriptor_keeps_the_other_types_values(self):
+        # A rename moves the values of its own type only: the other types
+        # keep theirs under the old field name.
+        entities = self.generate_entity_of_each_type()
+        for entity_type in entities:
+            with self.subTest(entity_type=entity_type):
+                for other_type, entity in entities.items():
+                    entity.update({"data": {"difficulty": other_type}})
+                descriptor = self.add("Difficulty", entity_type)
+
+                projects_service.update_metadata_descriptor(
+                    descriptor["id"], {"name": "Complexity"}
+                )
+
+                self.assertEqual(
+                    self.stored_data(entities),
+                    {
+                        other_type: (
+                            {"complexity": other_type}
+                            if other_type == entity_type
+                            else {"difficulty": other_type}
+                        )
+                        for other_type in entities
+                    },
+                )
+
+    def test_remove_metadata_descriptor_of_an_unlisted_type(self):
+        # The admin CRUD route takes any entity type. No entity list shows
+        # such a column, so removing it strips no value.
+        entities = self.generate_entity_of_each_type()
+        for entity_type, entity in entities.items():
+            entity.update({"data": {"difficulty": entity_type}})
+        descriptor = MetadataDescriptor.create(
+            project_id=self.project.id,
+            entity_type="Concept",
+            name="Difficulty",
+            data_type="string",
+            field_name="difficulty",
+        )
+
+        projects_service.remove_metadata_descriptor(str(descriptor.id))
+
+        self.assertEqual(
+            self.stored_data(entities),
+            {
+                entity_type: {"difficulty": entity_type}
+                for entity_type in entities
+            },
+        )
 
     def test_reorder_metadata_descriptors(self):
         # Zone and Angle are created in the order that contradicts their
