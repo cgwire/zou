@@ -80,6 +80,12 @@ SENSITIVE_FIELDS = [
     # right now. An admin can still clear it, writes are unaffected.
     "login_failed_attemps",
     "last_login_failed",
+    # The identities an account signs in with through SSO: only the
+    # callbacks and an admin unlinking an account have a use for them.
+    "oidc_issuer",
+    "oidc_subject",
+    "saml_issuer",
+    "saml_subject",
 ]
 
 
@@ -242,6 +248,10 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     expiration_date = db.Column(db.Date(), nullable=True)
     is_generated_from_ldap = db.Column(db.Boolean(), default=False)
     ldap_uid = db.Column(db.String(60), unique=True, default=None)
+    oidc_issuer = db.Column(db.Text(), nullable=True)
+    oidc_subject = db.Column(db.String(255), nullable=True)
+    saml_issuer = db.Column(db.Text(), nullable=True)
+    saml_subject = db.Column(db.String(255), nullable=True)
 
     departments = db.relationship(
         "Department",
@@ -258,6 +268,12 @@ class Person(db.Model, BaseMixin, SerializerMixin):
             is_bot,
             unique=True,
             postgresql_where=is_bot.isnot(True),
+        ),
+        db.UniqueConstraint(
+            "oidc_issuer", "oidc_subject", name="person_oidc_identity_uc"
+        ),
+        db.UniqueConstraint(
+            "saml_issuer", "saml_subject", name="person_saml_identity_uc"
         ),
     )
 

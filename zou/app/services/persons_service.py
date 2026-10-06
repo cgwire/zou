@@ -32,6 +32,7 @@ from zou.app.stores import auth_tokens_store
 from zou.app.exceptions import (
     OrganisationNotFoundException,
     PersonNotFoundException,
+    SSOIdentityMismatchException,
     PersonInProtectedAccounts,
     WrongParameterException,
 )
@@ -329,6 +330,43 @@ def get_person_by_email(email, unsafe=False, relations=False):
         return person.serialize(relations=relations)
     else:
         return person.serialize_safe(relations=relations)
+
+
+def get_person_by_sso_identity(protocol, issuer, subject):
+    """
+    Return the person bound to given identity as a dictionary. The protocol
+    names the pair of columns the identity is stored in ("oidc", "saml").
+    """
+    person = Person.get_by(
+        **{
+            f"{protocol}_issuer": issuer,
+            f"{protocol}_subject": subject,
+            "is_bot": False,
+        }
+    )
+    if person is None:
+        raise PersonNotFoundException()
+    return person.serialize_safe()
+
+
+def link_sso_identity(person_id, protocol, issuer, subject):
+    """
+    Bind given identity to given person. A person already bound to another
+    subject of the same issuer keeps it: the email that led here is not a
+    proof of who is signing in. Another issuer means the provider was
+    replaced, so the binding follows it.
+    """
+    person = Person.get(person_id)
+    if (
+        getattr(person, f"{protocol}_issuer") == issuer
+        and getattr(person, f"{protocol}_subject") != subject
+    ):
+        raise SSOIdentityMismatchException()
+    return update_person(
+        person_id,
+        {f"{protocol}_issuer": issuer, f"{protocol}_subject": subject},
+        bypass_protected_accounts=True,
+    )
 
 
 @cache.memoize_function(120)

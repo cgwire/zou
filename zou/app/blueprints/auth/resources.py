@@ -42,7 +42,7 @@ from zou.app.services import (
 )
 
 from zou.app.utils.flask_utils import is_from_browser
-from zou.app.utils.saml import saml_client_for
+from zou.app.utils.saml import get_subject_from_ava, saml_client_for
 from zou.app.utils import oidc
 
 from zou.app.stores import auth_tokens_store
@@ -55,6 +55,8 @@ from zou.app.exceptions import (
     MissingOTPException,
     NoAuthStrategyConfigured,
     NoTwoFactorAuthenticationEnabled,
+    SSOIdentityMismatchException,
+    PersonInProtectedAccounts,
     PersonNotFoundException,
     TooManyLoginFailedAttempts,
     TOTPAlreadyEnabledException,
@@ -951,6 +953,31 @@ class RecoveryCodesResource(MethodView, ArgsMixin):
             )
 
 
+SSO_REFUSED = {
+    "error": "This account cannot be signed in to with this identity. "
+    "Ask an administrator."
+}
+
+
+def link_sso_person(protocol, issuer, subject, email, create_info):
+    """
+    First login of an identity: bind it to the person holding its email,
+    created when there is none. A protected account is never reached this
+    way, an administrator binds it explicitly.
+    """
+    try:
+        user = persons_service.get_person_by_email(email)
+        if user["email"] in config.PROTECTED_ACCOUNTS:
+            raise PersonInProtectedAccounts()
+    except PersonNotFoundException:
+        random_password = auth.encrypt_password(secrets.token_urlsafe(48))
+        user = persons_service.create_person(
+            email, random_password, **create_info
+        )
+    persons_service.link_sso_identity(user["id"], protocol, issuer, subject)
+    return user
+
+
 class SAMLSSOResource(MethodView, ArgsMixin):
     @swag_from("openapi/SAMLSSOResource_post.yml")
     def post(self):
@@ -996,18 +1023,24 @@ class SAMLSSOResource(MethodView, ArgsMixin):
             else:
                 del person_info["country"]
         try:
-            user = persons_service.get_person_by_email(email)
-            for k, v in person_info.items():
-                if user.get(k) != v:
-                    persons_service.update_person(
-                        user["id"], person_info, bypass_protected_accounts=True
-                    )
-                    break
-        except PersonNotFoundException:
-            random_password = auth.encrypt_password(secrets.token_urlsafe(48))
-            user = persons_service.create_person(
-                email, random_password, **person_info
+            user = self.get_person(authn_response, email, person_info)
+        except (
+            PersonNotFoundException,
+            SSOIdentityMismatchException,
+            PersonInProtectedAccounts,
+        ):
+            current_app.logger.warning(
+                "SAML sign-in refused: the account is not bound to this "
+                "identity.",
+                extra={"email": email},
             )
+            return SSO_REFUSED, 400
+        for k, v in person_info.items():
+            if user.get(k) != v:
+                persons_service.update_person(
+                    user["id"], person_info, bypass_protected_accounts=True
+                )
+                break
 
         response = make_response(
             redirect(f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}")
@@ -1042,6 +1075,36 @@ class SAMLSSOResource(MethodView, ArgsMixin):
             events_service.create_login_log(user["id"], ip_address, "web")
 
         return response
+
+    def get_person(self, authn_response, email, person_info):
+        """
+        Return the person to sign in. With SAML_SUBJECT_ATTRIBUTE set, it is
+        the one bound to the issuer and subject of the assertion: the NameID
+        email is mutable, it only finds the account on the first login.
+        Without it, SAML carries no stable id and the email is all there is.
+        """
+        if not config.SAML_SUBJECT_ATTRIBUTE:
+            try:
+                return persons_service.get_person_by_email(email)
+            except PersonNotFoundException:
+                random_password = auth.encrypt_password(
+                    secrets.token_urlsafe(48)
+                )
+                return persons_service.create_person(
+                    email, random_password, **person_info
+                )
+        issuer = authn_response.issuer()
+        subject = get_subject_from_ava(authn_response.ava)
+        if not issuer or not subject:
+            # An assertion without the attribute is refused, not matched by
+            # email: dropping it would otherwise be a way around the binding.
+            raise PersonNotFoundException()
+        try:
+            return persons_service.get_person_by_sso_identity(
+                "saml", issuer, subject
+            )
+        except PersonNotFoundException:
+            return link_sso_person("saml", issuer, subject, email, person_info)
 
 
 class SAMLLoginResource(MethodView, ArgsMixin):
@@ -1102,18 +1165,37 @@ class OIDCCallbackResource(MethodView, ArgsMixin):
         if not config.OIDC_ENABLED:
             return {"error": "OIDC is not enabled."}, 400
 
+        client = oidc.get_oidc_client()
         try:
-            token = oidc.get_oidc_client().authorize_access_token()
+            token = client.authorize_access_token(
+                claims_options=oidc.get_id_token_claims_options(client)
+            )
         except Exception:
             current_app.logger.exception("OIDC token exchange failed.")
             return {"error": "OIDC authentication failed."}, 400
         claims = token.get("userinfo") or {}
 
-        email = oidc.get_email_from_claims(claims)
-        if not email:
-            return {"error": "No email claim returned by the provider."}, 400
-        if not oidc.is_email_verified(claims):
-            return {"error": "Email address is not verified."}, 400
+        issuer = claims.get("iss")
+        subject = claims.get("sub")
+        if not issuer or not subject:
+            return {"error": "OIDC authentication failed."}, 400
+
+        # The email claim is mutable and set by the provider's
+        # administrators: it only finds the account on the first login,
+        # then the issuer and subject, which never change, identify it.
+        try:
+            user = persons_service.get_person_by_sso_identity(
+                "oidc", issuer, subject
+            )
+        except PersonNotFoundException:
+            user = None
+            email = oidc.get_email_from_claims(claims)
+            if not email:
+                return {
+                    "error": "No email claim returned by the provider."
+                }, 400
+            if not oidc.is_email_verified(claims):
+                return {"error": "Email address is not verified."}, 400
 
         # Some providers (notably Azure AD/Entra ID) omit name claims from the
         # ID token and only expose them on the userinfo endpoint. Fetch it as a
@@ -1121,8 +1203,11 @@ class OIDCCallbackResource(MethodView, ArgsMixin):
         # failure here must not block an otherwise valid login.
         if not oidc.map_claims(claims):
             try:
-                userinfo = oidc.get_oidc_client().userinfo(token=token)
-                claims = {**userinfo, **claims}
+                userinfo = client.userinfo(token=token)
+                # OIDC Core 5.3.2: a response for another subject must
+                # not be used.
+                if userinfo.get("sub") == subject:
+                    claims = {**userinfo, **claims}
             except Exception:
                 current_app.logger.exception(
                     "OIDC userinfo fetch failed; proceeding without it."
@@ -1130,22 +1215,27 @@ class OIDCCallbackResource(MethodView, ArgsMixin):
 
         person_info = oidc.map_claims(claims)
 
-        try:
-            user = persons_service.get_person_by_email(email)
-            for k, v in person_info.items():
-                if user.get(k) != v:
-                    persons_service.update_person(
-                        user["id"], person_info, bypass_protected_accounts=True
-                    )
-                    break
-        except PersonNotFoundException:
-            random_password = auth.encrypt_password(secrets.token_urlsafe(48))
+        if user is None:
             # first_name/last_name are required by create_person; default them
             # in case the provider did not return the corresponding claims.
             create_info = {"first_name": "", "last_name": "", **person_info}
-            user = persons_service.create_person(
-                email, random_password, **create_info
-            )
+            try:
+                user = link_sso_person(
+                    "oidc", issuer, subject, email, create_info
+                )
+            except (SSOIdentityMismatchException, PersonInProtectedAccounts):
+                current_app.logger.warning(
+                    "OIDC sign-in refused: the account is not bound to "
+                    "this identity.",
+                    extra={"email": email, "issuer": issuer},
+                )
+                return SSO_REFUSED, 400
+        for k, v in person_info.items():
+            if user.get(k) != v:
+                persons_service.update_person(
+                    user["id"], person_info, bypass_protected_accounts=True
+                )
+                break
 
         response = make_response(
             redirect(f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}")

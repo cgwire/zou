@@ -91,6 +91,10 @@ class PersonNotFoundException(NotFound):
     pass
 
 
+class SSOIdentityMismatchException(Forbidden):
+    pass
+
+
 class TimeSpentNotFoundException(NotFound):
     pass
 

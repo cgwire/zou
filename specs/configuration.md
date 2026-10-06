@@ -88,10 +88,11 @@ Used when `AUTH_STRATEGY=auth_remote_ldap` and by `zou sync-with-ldap-server`. T
 | `SAML_IDP_NAME` | (none) | Display name shown on the SAML login button |
 | `SAML_METADATA_URL` | (none) | Identity provider metadata URL |
 | `SAML_SKIP_2FA` | false | SAML sessions skip the 2FA setup gate (the identity provider handles MFA) |
+| `SAML_SUBJECT_ATTRIBUTE` | (none) | Assertion attribute holding the provider's stable user id (an LDAP `uid`, an `objectGUID`). When set, accounts are bound to it, see [Account binding](#account-binding). When unset, accounts are matched by the NameID email on every login. |
 
 ## OIDC
 
-OpenID Connect single sign-on. When enabled, a "Login with <provider>" button is shown on the login page; users are redirected to the provider, and on return a matching Kitsu account is found by email (or created on first login).
+OpenID Connect single sign-on. When enabled, a "Login with <provider>" button is shown on the login page; users are redirected to the provider, and on return the Kitsu account bound to their identity is signed in, see [Account binding](#account-binding).
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -128,6 +129,24 @@ provider uses non-standard claim names, overriding the `OIDC_*_CLAIM` variables.
 > OIDC requires Flask's signed-cookie session to carry the `state`/`nonce`/PKCE
 > values between `/auth/oidc/login` and `/auth/oidc/callback`, so `SECRET_KEY`
 > must be set (it already is in any standard deployment).
+
+
+## Account binding
+
+An email is mutable and set by the administrators of the identity provider, so it does not prove who is signing in. Accounts are bound to the stable identity the provider asserts:
+
+- OIDC: the issuer and subject of the ID token (`iss` and `sub`), always;
+- SAML: the IdP entity id and the `SAML_SUBJECT_ATTRIBUTE` attribute, only when that variable is set.
+
+On the first login of an identity, the account holding its email is bound to it, or created when there is none. From then on the email is no longer used:
+
+- another identity carrying the same email is refused;
+- an account listed in `PROTECTED_ACCOUNTS` is never bound through its email;
+- an administrator unbinds an account by setting `oidc_issuer` and `oidc_subject` (or `saml_issuer` and `saml_subject`) to `null` on the person (`PUT /data/persons/<id>`), which lets the next login bind it again;
+- when the provider is replaced (new issuer), accounts are bound again through their email;
+- with `SAML_SUBJECT_ATTRIBUTE` set, an assertion without the attribute is refused.
+
+OIDC and SAML identities are stored separately: an account may hold one of each.
 
 ## Redis
 

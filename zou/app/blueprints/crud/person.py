@@ -303,6 +303,10 @@ class PersonResource(BaseModelResource, ArgsMixin):
             data.pop("last_login_failed", None)
             data.pop("is_generated_from_ldap", None)
             data.pop("ldap_uid", None)
+            data.pop("oidc_issuer", None)
+            data.pop("oidc_subject", None)
+            data.pop("saml_issuer", None)
+            data.pop("saml_subject", None)
             data.pop("last_presence", None)
             data.pop("studio_id", None)
 
