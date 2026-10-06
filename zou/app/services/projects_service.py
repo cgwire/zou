@@ -973,6 +973,37 @@ def _migrate_descriptor_field_rename(descriptor, new_field_name):
     Entity.commit()
 
 
+def _check_metadata_descriptor_rename(descriptor, name, field_name):
+    """
+    Refuse a new name longer than the name or field name column holds, or
+    that another descriptor of the same project, entity type and task type,
+    the scope of the unique indexes, holds as its name or as its field
+    name. The update of the descriptor would fail on it once the stored
+    values moved to the new key, overwriting any value already there.
+    """
+    columns = MetadataDescriptor.__table__.c
+    if (
+        len(name) > columns.name.type.length
+        or len(field_name) > columns.field_name.type.length
+    ):
+        raise WrongParameterException("Metadata descriptor name is too long.")
+    query = MetadataDescriptor.query.filter(
+        MetadataDescriptor.id != descriptor.id,
+        MetadataDescriptor.project_id == descriptor.project_id,
+        MetadataDescriptor.entity_type == descriptor.entity_type,
+        or_(
+            MetadataDescriptor.name == name,
+            MetadataDescriptor.field_name == field_name,
+        ),
+    )
+    if descriptor.task_type_id is not None:
+        query = query.filter(
+            MetadataDescriptor.task_type_id == descriptor.task_type_id
+        )
+    if query.first() is not None:
+        raise WrongParameterException("Metadata descriptor already exists.")
+
+
 def _remove_stored_values_for_metadata_descriptor(descriptor):
     """
     Remove descriptor field values from Project.data (Project type), from
@@ -1111,14 +1142,10 @@ def is_metadata_descriptor_visible(
 
 def update_metadata_descriptor(metadata_descriptor_id, changes):
     """
-    Update metadata descriptor information for given id.
+    Update metadata descriptor information for given id. Whatever can
+    refuse the changes runs before a rename moves the stored values.
     """
     descriptor = get_metadata_descriptor_raw(metadata_descriptor_id)
-
-    if "name" in changes and len(changes["name"]) > 0:
-        changes["field_name"] = slugify.slugify(changes["name"], separator="_")
-        if descriptor.field_name != changes["field_name"]:
-            _migrate_descriptor_field_rename(descriptor, changes["field_name"])
 
     if "departments" in changes:
         if not changes["departments"]:
@@ -1134,6 +1161,14 @@ def update_metadata_descriptor(metadata_descriptor_id, changes):
             raise DepartmentNotFoundException()
 
         changes["departments"] = departments_objects
+
+    if "name" in changes and len(changes["name"]) > 0:
+        changes["field_name"] = slugify.slugify(changes["name"], separator="_")
+        _check_metadata_descriptor_rename(
+            descriptor, changes["name"], changes["field_name"]
+        )
+        if descriptor.field_name != changes["field_name"]:
+            _migrate_descriptor_field_rename(descriptor, changes["field_name"])
 
     descriptor.update(changes)
     events.emit(
@@ -1307,11 +1342,18 @@ def update_metadata_descriptor_on_projects(
 ):
     """
     Update every metadata descriptor sharing the given field name and entity
-    type across the given projects. Returns the list of updated descriptors.
+    type across the given projects. A new name is checked on every project
+    first, so that a refusal leaves them all unchanged. Returns the list of
+    updated descriptors.
     """
     descriptors = _find_descriptors_by_field(
         project_ids, entity_type, field_name
     )
+    name = changes.get("name")
+    if name:
+        new_field_name = slugify.slugify(name, separator="_")
+        for descriptor in descriptors:
+            _check_metadata_descriptor_rename(descriptor, name, new_field_name)
     return [
         update_metadata_descriptor(str(descriptor.id), dict(changes))
         for descriptor in descriptors

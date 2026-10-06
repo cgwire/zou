@@ -11,6 +11,7 @@ from zou.app.services import (
     projects_service,
 )
 from zou.app.exceptions import (
+    DepartmentNotFoundException,
     MetadataDescriptorNotFoundException,
     ProjectNotFoundException,
     WrongParameterException,
@@ -469,7 +470,7 @@ class ProjectMetadataDescriptorTestCase(ApiDBTestCase):
     def names_and_positions(self, descriptors):
         return [(d["name"], d["position"]) for d in descriptors]
 
-    def add(self, name, entity_type="Asset", choices=None):
+    def add(self, name, entity_type="Asset", choices=None, task_type_id=None):
         """
         A string descriptor of given name, the shape all these tests want.
         """
@@ -480,6 +481,7 @@ class ProjectMetadataDescriptorTestCase(ApiDBTestCase):
             "list" if choices else "string",
             choices or [],
             False,
+            task_type_id=task_type_id,
         )
 
     def generate_entity_of_each_type(self):
@@ -657,6 +659,193 @@ class ProjectMetadataDescriptorTestCase(ApiDBTestCase):
                         )
                         for other_type in entities
                     },
+                )
+
+    def test_rename_metadata_descriptor_onto_another_column_is_refused(self):
+        # A rename onto the name or the field name of another column moved
+        # the values onto its key, overwriting them, before the unique
+        # index failed: both columns lost their values.
+        self.generate_fixture_asset()
+        difficulty = self.add("Difficulty")
+        self.add("Complexity")
+        self.asset.update(
+            {"data": {"difficulty": "hard", "complexity": "low"}}
+        )
+        for name in ("Complexity", "COMPLEXITY"):
+            with self.subTest(name=name):
+                with self.assertRaises(WrongParameterException):
+                    projects_service.update_metadata_descriptor(
+                        difficulty["id"], {"name": name}
+                    )
+                self.assertEqual(
+                    Entity.get(self.asset.id).data,
+                    {"difficulty": "hard", "complexity": "low"},
+                )
+                self.assertEqual(
+                    MetadataDescriptor.get(difficulty["id"]).field_name,
+                    "difficulty",
+                )
+
+    def test_rename_metadata_descriptor_onto_the_name_of_a_column(self):
+        # A column renamed through the admin CRUD route keeps its field
+        # name, so its name alone can collide: the values moved before the
+        # name index failed.
+        self.generate_fixture_asset()
+        difficulty = self.add("Difficulty")
+        MetadataDescriptor.create(
+            project_id=self.project.id,
+            entity_type="Asset",
+            name="Weight",
+            data_type="string",
+            field_name="legacy_weight",
+        )
+        self.asset.update(
+            {"data": {"difficulty": "hard", "legacy_weight": "heavy"}}
+        )
+        with self.assertRaises(WrongParameterException):
+            projects_service.update_metadata_descriptor(
+                difficulty["id"], {"name": "Weight"}
+            )
+        self.assertEqual(
+            Entity.get(self.asset.id).data,
+            {"difficulty": "hard", "legacy_weight": "heavy"},
+        )
+
+    def test_rename_metadata_descriptor_next_to_columns_of_other_scopes(self):
+        # A case change keeps the column's own field name, and a column of
+        # another type or of another production does not block the rename.
+        self.generate_fixture_asset()
+        self.asset.update({"data": {"difficulty": "hard"}})
+        difficulty = self.add("Difficulty")
+        self.add("Weight", "Shot")
+        other_project = self.generate_fixture_project(name="Other Project")
+        projects_service.add_metadata_descriptor(
+            other_project.id, "Asset", "Complexity", "string", [], False
+        )
+        for name, field_name in (
+            ("DIFFICULTY", "difficulty"),
+            ("Weight", "weight"),
+            ("Complexity", "complexity"),
+        ):
+            with self.subTest(name=name):
+                descriptor = projects_service.update_metadata_descriptor(
+                    difficulty["id"], {"name": name}
+                )
+                self.assertEqual(descriptor["field_name"], field_name)
+                self.assertEqual(
+                    Entity.get(self.asset.id).data, {field_name: "hard"}
+                )
+
+    def test_rename_task_metadata_descriptor_within_its_task_type(self):
+        # Task columns are unique per task type: a column of the same task
+        # type refuses the rename, a column of another one does not.
+        task = self.generate_fixture_task()
+        layer = self.add("Layer", "Task", task_type_id=self.task_type.id)
+        self.add("Pass", "Task", task_type_id=self.task_type.id)
+        self.add("Note", "Task", task_type_id=self.task_type_modeling.id)
+        task.update({"data": {"layer": "bg", "pass": "beauty"}})
+
+        with self.assertRaises(WrongParameterException):
+            projects_service.update_metadata_descriptor(
+                layer["id"], {"name": "Pass"}
+            )
+        self.assertEqual(
+            Task.get(task.id).data, {"layer": "bg", "pass": "beauty"}
+        )
+
+        projects_service.update_metadata_descriptor(
+            layer["id"], {"name": "Note"}
+        )
+        self.assertEqual(
+            Task.get(task.id).data, {"note": "bg", "pass": "beauty"}
+        )
+
+    def test_rename_metadata_descriptor_with_a_malformed_department(self):
+        # The departments are resolved before the values move: a malformed
+        # id failed the request once the rename was committed on the data.
+        self.generate_fixture_asset()
+        self.asset.update({"data": {"difficulty": "hard"}})
+        difficulty = self.add("Difficulty")
+        with self.assertRaises(DepartmentNotFoundException):
+            projects_service.update_metadata_descriptor(
+                difficulty["id"],
+                {"name": "Complexity", "departments": ["not-a-uuid"]},
+            )
+        self.assertEqual(
+            Entity.get(self.asset.id).data, {"difficulty": "hard"}
+        )
+
+    def test_rename_metadata_descriptor_to_a_name_too_long(self):
+        # The name and field name columns hold 120 characters: a longer
+        # name, or a name whose slug is longer, failed the update of the
+        # descriptor once the values had moved to the new key. A Chinese
+        # character slugifies to about five letters.
+        self.generate_fixture_asset()
+        self.asset.update({"data": {"difficulty": "hard"}})
+        difficulty = self.add("Difficulty")
+        for name in ("A" * 121, "\u955c" * 31):
+            with self.subTest(name=name):
+                with self.assertRaises(WrongParameterException):
+                    projects_service.update_metadata_descriptor(
+                        difficulty["id"], {"name": name}
+                    )
+                self.assertEqual(
+                    Entity.get(self.asset.id).data, {"difficulty": "hard"}
+                )
+
+    def test_rename_metadata_descriptor_on_projects_checks_them_all_first(
+        self,
+    ):
+        # The projects renamed before the one holding the new name kept the
+        # rename. Each project holds that column in turn, so that one of
+        # the runs reaches the other project first, whatever order the
+        # query returns them in.
+        first_project = self.project
+        second_project = self.generate_fixture_project(name="Second Project")
+        projects = (first_project, second_project)
+        project_ids = [str(project.id) for project in projects]
+        for index, colliding in enumerate(projects):
+            with self.subTest(colliding=index):
+                old_field = f"code_{index}"
+                new_name = f"Label {index}"
+                new_field = f"label_{index}"
+                for project in projects:
+                    projects_service.add_metadata_descriptor(
+                        project.id,
+                        "Project",
+                        f"Code {index}",
+                        "string",
+                        [],
+                        False,
+                    )
+                    project.update({"data": {old_field: "old"}})
+                projects_service.add_metadata_descriptor(
+                    colliding.id, "Project", new_name, "string", [], False
+                )
+                colliding.update(
+                    {"data": {old_field: "old", new_field: "kept"}}
+                )
+
+                with self.assertRaises(WrongParameterException):
+                    projects_service.update_metadata_descriptor_on_projects(
+                        project_ids, "Project", old_field, {"name": new_name}
+                    )
+
+                for project in projects:
+                    field_names = [
+                        descriptor["field_name"]
+                        for descriptor in (
+                            projects_service.get_metadata_descriptors(
+                                project.id
+                            )
+                        )
+                    ]
+                    self.assertIn(old_field, field_names)
+                    self.assertEqual(
+                        Project.get(project.id).data.get(old_field), "old"
+                    )
+                self.assertEqual(
+                    Project.get(colliding.id).data.get(new_field), "kept"
                 )
 
     def test_remove_metadata_descriptor_of_an_unlisted_type(self):

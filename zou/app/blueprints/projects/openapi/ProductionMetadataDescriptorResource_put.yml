@@ -56,5 +56,8 @@ responses:
       application/json:
         schema:
           type: object
+  400:
+    description: Empty name, invalid data type, or a name taken by another
+      column of the same type or too long
   404:
     description: No descriptor of this project with this id

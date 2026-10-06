@@ -307,6 +307,62 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         asset = self.get(f"data/entities/{self.asset_id}")
         self.assertEqual(asset["data"].get("team"), "contractor 1")
 
+    def test_rename_onto_another_column_is_refused(self):
+        # The values moved onto the key of the other column, overwriting
+        # its values, before the unique index failed the request (500).
+        difficulty = self._new_descriptor("Difficulty")
+        self._new_descriptor("Complexity")
+        self.asset.update(
+            {"data": {"difficulty": "hard", "complexity": "low"}}
+        )
+
+        self.put(
+            self.descriptors_path(difficulty),
+            {"name": "Complexity", "data_type": "string"},
+            400,
+        )
+
+        asset = self.get(f"data/entities/{self.asset_id}")
+        self.assertEqual(
+            asset["data"], {"difficulty": "hard", "complexity": "low"}
+        )
+
+    def test_all_projects_rename_onto_a_column_of_one_project_is_refused(
+        self,
+    ):
+        # The projects reached before the one holding the new name kept the
+        # rename, and that one lost the values of its column (500).
+        first_project_id = str(self.project_id)
+        second_project_id = str(
+            self.generate_fixture_project(name="Second Project").id
+        )
+        for project_id in (first_project_id, second_project_id):
+            projects_service.add_metadata_descriptor(
+                project_id, "Project", "Delivery code", "string", [], False
+            )
+        projects_service.add_metadata_descriptor(
+            second_project_id, "Project", "Ship code", "string", [], False
+        )
+
+        self.put(
+            "data/metadata-descriptors/all-projects/delivery_code",
+            {
+                "entity_type": "Project",
+                "name": "Ship code",
+                "data_type": "string",
+                "departments": [],
+            },
+            400,
+        )
+
+        for project_id in (first_project_id, second_project_id):
+            descriptors = self.get(
+                f"data/projects/{project_id}/metadata-descriptors"
+            )
+            self.assertIn(
+                "delivery_code", [d["field_name"] for d in descriptors]
+            )
+
     def test_unallowed_update_metadata_descriptor(self):
         descriptor = projects_service.add_metadata_descriptor(
             self.project_id, "Asset", "Contractor", "string", [], False
