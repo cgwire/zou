@@ -993,14 +993,13 @@ def clear_avatar(person_id):
     # dropping one, otherwise the other connected clients keep asking for
     # a picture that no longer exists.
     events.emit("person:update", {"person_id": str(person_id)})
-    if config.REMOVE_FILES:
-        try:
-            file_store.remove_picture("thumbnails", person_id)
-        except Exception:
-            logger.warning(
-                f"The avatar file of person {person_id} could not be removed.",
-                exc_info=1,
-            )
+    try:
+        file_store.remove_picture("thumbnails", person_id)
+    except Exception:
+        logger.warning(
+            f"The avatar file of person {person_id} could not be removed.",
+            exc_info=1,
+        )
     return person.serialize()
 
 

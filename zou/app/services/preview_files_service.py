@@ -45,6 +45,7 @@ from zou.app.services import (
     preview_file_states_service,
     shots_service,
     projects_service,
+    stored_files_service,
     tasks_service,
 )
 from zou.utils import movie
@@ -877,6 +878,7 @@ def _encode_on_remote_worker(
     """
     from zou.app import app as current_app
 
+    _record_remote_normalize_writes(preview_file_id, encode, skip_high_def)
     result = _run_remote_normalize_movie(
         current_app,
         preview_file_id,
@@ -909,6 +911,24 @@ def _encode_on_remote_worker(
     if config.FS_BACKEND != "local":
         temp_files.append(movie_path)
     return movie_path
+
+
+def _record_remote_normalize_writes(preview_file_id, encode, skip_high_def):
+    """
+    Register the files the remote worker may store, before it runs: the
+    objects a failed job leaves behind are known too. The tile is in:
+    its build may fail without failing the job, a row without its object
+    is harmless.
+    """
+    written = [
+        ("pictures", prefix, preview_file_id)
+        for prefix in ["thumbnails", "thumbnails-square", "previews", "tiles"]
+    ]
+    if encode:
+        written.append(("movies", "lowdef", preview_file_id))
+        if not skip_high_def:
+            written.append(("movies", "previews", preview_file_id))
+    stored_files_service.record_remote_writes(written)
 
 
 def _read_movie_metadata(movie_path):
@@ -2423,6 +2443,9 @@ def _run_remote_tile_job(app, preview_file):
     # must stay as it was, not be recorded failed. Only a job that
     # actually completed without producing the tile counts as failed,
     # below.
+    stored_files_service.record_remote_writes(
+        [(*preview_file_states_service.TILE, str(preview_file.id))]
+    )
     result = remote_job.run_job(
         app, config, config_store.get_nomad_tile_job(), params
     )
@@ -2665,6 +2688,7 @@ def _reset_preview_file_metadata(
 
 
 def copy_preview_file_on_storage(
+    bucket_name,
     get_path_func,
     exists_func,
     copy_func,
@@ -2680,6 +2704,11 @@ def copy_preview_file_on_storage(
         file_path = get_path_func(prefix, original_preview_file_id)
         other_file_path = get_path_func(prefix, preview_file_to_update_id)
         if os.path.exists(file_path):
+            # Recorded before the copy, as file_store._copy does: a target
+            # key marked deleted must be revived before it is written.
+            stored_files_service.record_write(
+                bucket_name, prefix, preview_file_to_update_id
+            )
             os.makedirs(os.path.dirname(other_file_path), exist_ok=True)
             shutil.copyfile(file_path, other_file_path)
             return True
@@ -2710,6 +2739,7 @@ def copy_preview_file_in_another_one(
         # the only stored movie, and the preview routes serve it.
         for prefix in files_service.MOVIE_PREFIXES:
             copied = copy_preview_file_on_storage(
+                "movies",
                 file_store.get_local_movie_path,
                 file_store.exists_movie,
                 file_store.copy_movie,
@@ -2735,6 +2765,7 @@ def copy_preview_file_in_another_one(
 
         for prefix in prefixes:
             copied = copy_preview_file_on_storage(
+                "pictures",
                 file_store.get_local_picture_path,
                 file_store.exists_picture,
                 file_store.copy_picture,
@@ -2748,6 +2779,7 @@ def copy_preview_file_in_another_one(
                 )
     else:
         copied = copy_preview_file_on_storage(
+            "files",
             file_store.get_local_file_path,
             file_store.exists_file,
             file_store.copy_file,

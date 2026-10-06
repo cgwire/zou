@@ -169,8 +169,9 @@ def delete_chat_message(chat_message_id):
 
     for attachment in message.attachment_files:
         attachment_file_id = str(attachment.id)
-        file_store.remove_file("attachments", attachment_file_id)
-        file_store.remove_picture("thumbnails", attachment_file_id)
+        # Chat attachments are removed whatever REMOVE_FILES says.
+        file_store.remove_file("attachments", attachment_file_id, force=True)
+        file_store.remove_picture("thumbnails", attachment_file_id, force=True)
         attachment.delete()
 
     message.delete()
