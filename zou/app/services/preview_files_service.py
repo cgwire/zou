@@ -328,9 +328,16 @@ def update_preview_file_raw(preview_file, data, silent=False):
     files_service.clear_preview_file_cache(preview_file_id)
     if not silent:
         task = Task.get(preview_file.task_id)
+        event_data = {"preview_file_id": preview_file_id}
+        # The clients wait for the status to ask again for the pictures a
+        # job builds in the background. A metadata refresh of a ready
+        # preview leaves it out: the maintenance commands refresh them all,
+        # and every client would fetch every picture again.
+        if "status" in data or preview_file.status == "processing":
+            event_data["status"] = preview_file.status
         events.emit(
             "preview-file:update",
-            {"preview_file_id": preview_file_id},
+            event_data,
             project_id=str(task.project_id),
         )
     return preview_file.serialize()

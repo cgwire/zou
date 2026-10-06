@@ -96,6 +96,45 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
             "broken",
         )
 
+    def test_update_preview_file_announces_its_status(self):
+        # The clients hold back the pictures of a processing preview until
+        # an update tells them it is ready.
+        preview_file_id = str(
+            self.generate_fixture_preview_file(status="processing").id
+        )
+        captured = self.capture_events("preview-file:update")
+
+        preview_files_service.update_preview_file(
+            preview_file_id, {"status": "ready"}
+        )
+        preview_files_service.set_preview_file_as_broken(preview_file_id)
+
+        statuses = [event["status"] for event in captured]
+        self.assertEqual(statuses, ["ready", "broken"])
+        # A Choice compares equal to its code: only its type tells it apart.
+        self.assertEqual([type(status) for status in statuses], [str, str])
+
+    def test_update_preview_file_announces_a_status_that_matters(self):
+        # The metadata commands refresh every ready preview: their events
+        # leave the status out. The upload request still tells a preview
+        # processing.
+        ready_id = str(self.generate_fixture_preview_file(status="ready").id)
+        processing_id = str(
+            self.generate_fixture_preview_file(
+                revision=2, status="processing"
+            ).id
+        )
+        captured = self.capture_events("preview-file:update")
+
+        preview_files_service.update_preview_file(ready_id, {"width": 1920})
+        preview_files_service.update_preview_file(
+            processing_id, {"original_name": "frame"}
+        )
+
+        self.assertEqual(
+            [event.get("status") for event in captured], [None, "processing"]
+        )
+
     def test_update_preview_file_raw_deleted_midflight_raises_not_found(self):
         """
         When the row is deleted by another process mid-update, base.update()
