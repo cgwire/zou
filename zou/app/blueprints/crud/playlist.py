@@ -7,6 +7,7 @@ from zou.app.services import (
     permissions_service,
     persons_service,
     playlists_service,
+    preview_files_service,
     user_service,
 )
 from zou.app.exceptions import WrongParameterException
@@ -101,6 +102,8 @@ class PlaylistsResource(BaseModelsResource):
             data["task_type_id"]
         ):
             data["task_type_id"] = None
+        if isinstance(data.get("shots"), list):
+            preview_files_service.unpin_foreign_preview_files(data["shots"])
         data["created_by"] = persons_service.get_current_user()["id"]
         return data
 
@@ -145,15 +148,20 @@ class PlaylistResource(BaseModelResource):
     def pre_update(self, instance_dict, data):
         _check_for_entity(data)
         if "shots" in data:
+            # An entry without preview is served without the key, and the
+            # client saves it back that way: keep it, with no preview.
             shots = [
                 {
-                    "entity_id": shot.get("entity_id", shot.get("id", "")),
-                    "preview_file_id": shot["preview_file_id"],
+                    "entity_id": shot.get("entity_id") or shot.get("id"),
+                    "preview_file_id": shot.get("preview_file_id"),
                 }
                 for shot in data["shots"]
-                if "preview_file_id" in shot
+                if isinstance(shot, dict)
+                and (shot.get("entity_id") or shot.get("id"))
             ]
-            data["shots"] = shots
+            data["shots"] = preview_files_service.unpin_foreign_preview_files(
+                shots
+            )
         return data
 
     def check_delete_permissions(self, playlist):

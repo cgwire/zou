@@ -32,9 +32,10 @@ class CacheTestCase(unittest.TestCase):
 
     @cache.memoize_function(50)
     def memoized_function3(self, entity_id):
-        import random
-
-        return f"{entity_id}-{random.randrange(1, 50)}"
+        # A recomputed value must differ from the cached one: count the
+        # calls, a random draw repeats one time in 49.
+        self.called += 1
+        return f"{entity_id}-{self.called}"
 
     def test_memoize_normalizes_uuid_arguments(self):
         entity_id = uuid.uuid4()
