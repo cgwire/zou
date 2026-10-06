@@ -334,7 +334,8 @@ def get_entity(entity_id):
 def update_entity_preview(entity_id, preview_file_id):
     """
     Update given entity main preview. If entity or preview is not found, it
-    raises an exception.
+    raises an exception. The entity returned carries the status of that
+    preview, as the event does.
     """
     entity = Entity.get(entity_id)
     if entity is None:
@@ -349,10 +350,22 @@ def update_entity_preview(entity_id, preview_file_id):
         entity.update({"preview_file_id": preview_file.id})
     except IntegrityError:
         raise PreviewFileNotFoundException
+    # Read after the commit, so that a job that made the preview ready in
+    # the meantime is seen. The column alone: reading preview_file now
+    # would load its annotations again.
+    preview_file_status = fields.serialize_value(
+        PreviewFile.query.with_entities(PreviewFile.status)
+        .filter(PreviewFile.id == preview_file_id)
+        .scalar()
+    )
     clear_entity_cache(entity_id)
     events.emit(
         "preview-file:set-main",
-        {"entity_id": entity_id, "preview_file_id": preview_file_id},
+        {
+            "entity_id": entity_id,
+            "preview_file_id": preview_file_id,
+            "preview_file_status": preview_file_status,
+        },
         project_id=str(entity.project_id),
     )
     entity_type = EntityType.get(entity.entity_type_id)
@@ -369,7 +382,7 @@ def update_entity_preview(entity_id, preview_file_id):
     shots_service.clear_shot_cache(entity_id)
     shots_service.clear_episode_cache(entity_id)
     shots_service.clear_sequence_cache(entity_id)
-    return entity.serialize()
+    return {**entity.serialize(), "preview_file_status": preview_file_status}
 
 
 def get_for_entity_from_task(task):
