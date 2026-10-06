@@ -148,13 +148,16 @@ class PlaylistResource(BaseModelResource):
     def pre_update(self, instance_dict, data):
         _check_for_entity(data)
         if "shots" in data:
+            # An entry without preview is served without the key, and the
+            # client saves it back that way: keep it, with no preview.
             shots = [
                 {
-                    "entity_id": shot.get("entity_id", shot.get("id", "")),
-                    "preview_file_id": shot["preview_file_id"],
+                    "entity_id": shot.get("entity_id") or shot.get("id"),
+                    "preview_file_id": shot.get("preview_file_id"),
                 }
                 for shot in data["shots"]
-                if "preview_file_id" in shot
+                if isinstance(shot, dict)
+                and (shot.get("entity_id") or shot.get("id"))
             ]
             data["shots"] = preview_files_service.unpin_foreign_preview_files(
                 shots

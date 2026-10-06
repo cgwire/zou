@@ -436,6 +436,27 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
             [None, self.foreign_preview_file_id, None],
         )
 
+    def test_update_playlist_keeps_an_entry_without_preview(self):
+        # Such an entry is served without the preview_file_id key: a client
+        # saving back the shots it read must not lose it.
+        self.generate_fixture_playlist(
+            "Playlist with an entry without preview"
+        )
+        result = self.put(
+            f"data/playlists/{self.playlist.id}",
+            {
+                "shots": [
+                    {"entity_id": str(self.shot.id)},
+                    {"entity_id": None, "id": str(self.shot.id)},
+                    {"preview_file_id": None},
+                ]
+            },
+        )
+        self.assertEqual(
+            result["shots"],
+            [{"entity_id": str(self.shot.id), "preview_file_id": None}] * 2,
+        )
+
     def test_add_entities_to_playlist_uses_playlist_task_type(self):
         # The shot has a preview on its animation task (from setUp)...
         self.generate_fixture_preview_file(
