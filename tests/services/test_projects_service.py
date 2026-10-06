@@ -793,6 +793,21 @@ class ProjectMetadataDescriptorTestCase(ApiDBTestCase):
                     Entity.get(self.asset.id).data, {"difficulty": "hard"}
                 )
 
+    def test_update_metadata_descriptor_without_a_name(self):
+        # A body may leave the name out: the update keeps the column name
+        # instead of failing on it with a 500, and applies the rest. An
+        # empty name left the column without one.
+        difficulty = self.add("Difficulty")
+        for name in (None, ""):
+            with self.subTest(name=name):
+                descriptor = projects_service.update_metadata_descriptor(
+                    difficulty["id"],
+                    {"name": name, "for_client": True, "data_type": "string"},
+                )
+                self.assertEqual(descriptor["name"], "Difficulty")
+                self.assertEqual(descriptor["field_name"], "difficulty")
+                self.assertTrue(descriptor["for_client"])
+
     def test_rename_metadata_descriptor_commits_the_values_with_it(self):
         # The moved values wait for the commit of the descriptor update, so
         # that a failure of that update rolls them back too. A real failure

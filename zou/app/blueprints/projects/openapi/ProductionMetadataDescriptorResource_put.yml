@@ -30,7 +30,7 @@ requestBody:
         properties:
           name:
             type: string
-            description: Name of the metadata descriptor
+            description: Name of the metadata descriptor, kept when left out
             example: "Custom Field"
           for_client:
             type: string

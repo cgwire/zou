@@ -1136,6 +1136,9 @@ def update_metadata_descriptor(metadata_descriptor_id, changes):
     leaves them under their old key.
     """
     descriptor = get_metadata_descriptor_raw(metadata_descriptor_id)
+    if not changes.get("name"):
+        # Without a new name, the column keeps its own.
+        changes.pop("name", None)
 
     if "departments" in changes:
         if not changes["departments"]:
@@ -1152,7 +1155,7 @@ def update_metadata_descriptor(metadata_descriptor_id, changes):
 
         changes["departments"] = departments_objects
 
-    if "name" in changes and len(changes["name"]) > 0:
+    if "name" in changes:
         changes["field_name"] = slugify.slugify(changes["name"], separator="_")
         _check_metadata_descriptor_rename(
             descriptor, changes["name"], changes["field_name"]

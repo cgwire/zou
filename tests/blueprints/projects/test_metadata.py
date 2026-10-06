@@ -307,6 +307,17 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         asset = self.get(f"data/entities/{self.asset_id}")
         self.assertEqual(asset["data"].get("team"), "contractor 1")
 
+    def test_update_metadata_descriptor_without_a_name(self):
+        # The name of the body is optional: leaving it out keeps the name
+        # of the column instead of failing with a 500.
+        descriptor = self._new_descriptor("Difficulty")
+        updated = self.put(
+            self.descriptors_path(descriptor),
+            {"data_type": "string", "for_client": True},
+        )
+        self.assertEqual(updated["name"], "Difficulty")
+        self.assertTrue(updated["for_client"])
+
     def test_rename_onto_another_column_is_refused(self):
         # The values moved onto the key of the other column, overwriting
         # its values, before the unique index failed the request (500).
