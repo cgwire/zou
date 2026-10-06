@@ -1059,7 +1059,7 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
             self.assertTrue(os.path.exists(path))
             self.assertIn("lowdef", path)
         finally:
-            file_store.remove_movie("lowdef", preview_file_id)
+            file_store.remove_movie("lowdef", preview_file_id, force=True)
 
     def test_locate_stored_movie_keeps_a_transient_failure(self):
         # Only an absence the store confirmed sends the reader to the next
@@ -2304,7 +2304,7 @@ class PreviewFileWritesRecordStatesTestCase(PreviewFileTestCase):
         with patch.object(
             preview_files_service,
             "copy_preview_file_on_storage",
-            side_effect=lambda _p, _e, _c, prefix, *_: prefix != "source",
+            side_effect=lambda _b, _p, _e, _c, prefix, *_: prefix != "source",
         ):
             preview_files_service.copy_preview_file_in_another_one(
                 self.preview_file_id, str(target.id)

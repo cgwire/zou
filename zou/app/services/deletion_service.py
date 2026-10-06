@@ -68,13 +68,14 @@ from zou.app.exceptions import (
 logger = logging.getLogger(__name__)
 
 
-def _remove_quietly(remove_from_store, prefix, file_id):
+def _remove_quietly(remove_from_store, prefix, file_id, force=False):
     """
-    Remove a stored file, ignoring a failure: the database row is already
-    gone, a leftover object in the store must not fail the deletion.
+    Mark a stored file deleted, ignoring a failure: the database row is
+    already gone, a leftover object in the store must not fail the
+    deletion.
     """
     try:
-        remove_from_store(prefix, file_id)
+        remove_from_store(prefix, file_id, force=force)
     except Exception:
         logger.warning(
             f"Stored file {prefix}-{file_id} could not be removed.", exc_info=1
@@ -311,15 +312,16 @@ def remove_preview_file(preview_file, force=False):
     # permission is checked against, and the file goes on being served.
     files_service.clear_preview_file_cache(preview_file_id)
 
-    # Remove the physical files only once the DB row is gone: if the
-    # delete fails, the row must not end up pointing at missing files.
-    if config.REMOVE_FILES or force:
-        if extension == "png":
-            clear_picture_files(preview_file_id)
-        elif extension == "mp4":
-            clear_movie_files(preview_file_id)
-        else:
-            clear_generic_files(preview_file_id)
+    # Mark the physical files deleted only once the DB row is gone: if
+    # the delete fails, the row must not end up pointing at missing files.
+    # They are always marked, REMOVE_FILES and force only decide whether
+    # the purge removes them.
+    if extension == "png":
+        clear_picture_files(preview_file_id, force=force)
+    elif extension == "mp4":
+        clear_movie_files(preview_file_id, force=force)
+    else:
+        clear_generic_files(preview_file_id, force=force)
 
     # Update last preview file uploaded on task
     if task.last_preview_file_id == preview_file.id:
@@ -385,64 +387,90 @@ def remove_attachment_file(attachment_file):
     """
     from zou.app.services import comments_service
 
-    if config.REMOVE_FILES:
-        file_store.remove_file("attachments", str(attachment_file.id))
+    _remove_quietly(file_store.remove_file, "attachments", attachment_file.id)
     attachment_dict = attachment_file.serialize()
     attachment_file.delete()
     comments_service.clear_attachment_file_cache(attachment_dict["id"])
     return attachment_dict
 
 
+def _remove_files_quietly(files, force=False):
+    """
+    Mark deleted the given (bucket, prefix, id) stored files at once,
+    ignoring a failure, see _remove_quietly.
+    """
+    try:
+        file_store.remove_files(files, force=force)
+    except Exception:
+        logger.warning(
+            f"Stored files {files} could not be removed.", exc_info=1
+        )
+
+
 def clear_preview_background_files(preview_background_id, force=False):
     """
-    Remove all files related to given preview background file.
+    Mark deleted all files related to given preview background file.
     """
-    if config.REMOVE_FILES or force:
-        for image_type in ["thumbnails", "preview-backgrounds"]:
-            _remove_quietly(
-                file_store.remove_picture, image_type, preview_background_id
-            )
+    _remove_files_quietly(
+        [
+            ("pictures", image_type, str(preview_background_id))
+            for image_type in ["thumbnails", "preview-backgrounds"]
+        ],
+        force=force,
+    )
 
 
-def clear_picture_files(preview_file_id):
+def clear_picture_files(preview_file_id, force=False):
     """
-    Remove all files related to given preview file, supposing the original file
-    was a picture.
+    Mark deleted all files related to given preview file, supposing the
+    original file was a picture.
     """
-    for image_type in [
-        "original",
-        "thumbnails",
-        "thumbnails-square",
-        "previews",
-    ]:
-        _remove_quietly(file_store.remove_picture, image_type, preview_file_id)
+    _remove_files_quietly(
+        [
+            ("pictures", image_type, str(preview_file_id))
+            for image_type in [
+                "original",
+                "thumbnails",
+                "thumbnails-square",
+                "previews",
+            ]
+        ],
+        force=force,
+    )
 
 
-def clear_movie_files(preview_file_id):
+def clear_movie_files(preview_file_id, force=False):
     """
-    Remove all files related to given preview file, supposing the original file
-    was a movie.
+    Mark deleted all files related to given preview file, supposing the
+    original file was a movie.
     """
-    for movie_type in files_service.MOVIE_PREFIXES:
-        _remove_quietly(file_store.remove_movie, movie_type, preview_file_id)
+    files = [
+        ("movies", movie_type, str(preview_file_id))
+        for movie_type in files_service.MOVIE_PREFIXES
+    ]
     # The movie pipeline also stores the first frame as the "original"
     # picture, next to the thumbnails cut from it.
-    for image_type in [
-        "original",
-        "thumbnails",
-        "thumbnails-square",
-        "previews",
-        "tiles",
-    ]:
-        _remove_quietly(file_store.remove_picture, image_type, preview_file_id)
+    files += [
+        ("pictures", image_type, str(preview_file_id))
+        for image_type in [
+            "original",
+            "thumbnails",
+            "thumbnails-square",
+            "previews",
+            "tiles",
+        ]
+    ]
+    _remove_files_quietly(files, force=force)
 
 
-def clear_generic_files(preview_file_id):
+def clear_generic_files(preview_file_id, force=False):
     """
-    Remove all files related to given preview file, supposing the original file
-    was a generic file.
+    Mark deleted all files related to given preview file, supposing the
+    original file was a generic file.
     """
-    _remove_quietly(file_store.remove_file, "previews", preview_file_id)
+    _remove_files_quietly(
+        [("files", "previews", str(preview_file_id))], force=force
+    )
 
 
 def remove_tasks(project_id, task_ids):

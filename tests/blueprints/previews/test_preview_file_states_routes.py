@@ -79,7 +79,9 @@ class PreviewFileStatesRoutesTestCase(ApiDBTestCase):
         self.assertEqual(self.state("pictures", "tiles"), "ok")
 
     def test_missing_picture_is_recorded_then_short_circuited(self):
-        file_store.remove_picture("thumbnails", self.preview_file_id)
+        file_store.remove_picture(
+            "thumbnails", self.preview_file_id, force=True
+        )
         self.assertEqual(self.get_picture("thumbnails").status_code, 404)
         self.assertEqual(self.state("pictures", "thumbnails"), "missing")
 
@@ -111,7 +113,9 @@ class PreviewFileStatesRoutesTestCase(ApiDBTestCase):
             "thumbnails",
             states_service.FAILED,
         )
-        file_store.remove_picture("thumbnails", self.preview_file_id)
+        file_store.remove_picture(
+            "thumbnails", self.preview_file_id, force=True
+        )
         self.age_states(3601)
 
         self.assertEqual(self.get_picture("thumbnails").status_code, 404)
@@ -185,7 +189,7 @@ class PreviewFileStatesRoutesTestCase(ApiDBTestCase):
     def test_known_missing_tile_still_queues_its_build(self):
         attempt_key = f"tile-attempt:{self.preview_file_id}"
         redis_client.get_client(config.KV_JOB_DB_INDEX).delete(attempt_key)
-        file_store.remove_picture("tiles", self.preview_file_id)
+        file_store.remove_picture("tiles", self.preview_file_id, force=True)
         self.assertEqual(self.get_tile().status_code, 404)
         self.assertEqual(self.state("pictures", "tiles"), "missing")
 
@@ -266,7 +270,9 @@ class PreviewFileStatesRoutesTestCase(ApiDBTestCase):
         self.assertIsNone(self.state("movies", "previews"))
 
     def test_a_missing_file_still_answers_404_and_is_recorded(self):
-        file_store.remove_picture("thumbnails", self.preview_file_id)
+        file_store.remove_picture(
+            "thumbnails", self.preview_file_id, force=True
+        )
         response = self.app.get(
             f"/pictures/thumbnails/preview-files/{self.preview_file_id}.png",
             headers={

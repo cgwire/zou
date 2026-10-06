@@ -716,7 +716,7 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
             for preview in previews:
-                file_store.remove_movie("previews", preview["id"])
+                file_store.remove_movie("previews", preview["id"], force=True)
 
     def test_a_movie_stored_as_low_def_only_is_found(self):
         self.generate_fixture_preview_files()
@@ -733,7 +733,7 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
             self.assertTrue(os.path.exists(path))
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
-            file_store.remove_movie("lowdef", preview["id"])
+            file_store.remove_movie("lowdef", preview["id"], force=True)
 
     def test_a_transient_failure_does_not_switch_movie_version(self):
         # Only a confirmed absence sends the build to the next version: a

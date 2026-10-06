@@ -25,7 +25,7 @@ from zou.app.models.search_filter import SearchFilter
 from zou.app.models.search_filter_group import SearchFilterGroup
 from zou.app.models.time_spent import TimeSpent
 
-from zou.app.services import deletion_service, shots_service
+from zou.app.services import deletion_service
 from zou.app.utils import date_helpers
 from zou.app.exceptions import (
     CommentNotFoundException,
@@ -238,14 +238,14 @@ class RemovePreviewFileTestCase(DeletionTestCase):
         # The movie pipeline stores the first frame as the "original"
         # picture, which used to be left behind in the store.
         with mock.patch.object(
-            deletion_service.file_store, "remove_picture"
-        ) as remove_picture, mock.patch.object(
-            deletion_service.file_store, "remove_movie"
-        ):
+            deletion_service.file_store, "remove_files"
+        ) as remove_files:
             deletion_service.clear_movie_files("some-id")
-        removed = {call.args[0] for call in remove_picture.call_args_list}
-        self.assertIn("original", removed)
-        self.assertIn("tiles", removed)
+        remove_files.assert_called_once()
+        removed = set(remove_files.call_args.args[0])
+        self.assertIn(("pictures", "original", "some-id"), removed)
+        self.assertIn(("pictures", "tiles", "some-id"), removed)
+        self.assertIn(("movies", "lowdef", "some-id"), removed)
 
     def test_remove_preview_file_keeps_files_when_db_delete_fails(self):
         self.generate_fixture_preview_file()

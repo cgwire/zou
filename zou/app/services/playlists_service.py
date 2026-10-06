@@ -43,6 +43,7 @@ from zou.app.services import (
     preview_files_service,
     projects_service,
     shots_service,
+    stored_files_service,
     tasks_service,
     names_service,
     persons_service,
@@ -1005,6 +1006,9 @@ def _run_remote_job_build_playlist(
         "full": str(full).lower(),
     }
     nomad_job = config_store.get_nomad_playlist_job()
+    stored_files_service.record_remote_writes(
+        [("movies", "playlists", job["id"])]
+    )
     remote_job.run_job(app, config, nomad_job, params)
 
     # Warm the cache the download route reads, right away. Written aside
@@ -1204,13 +1208,12 @@ def _remove_build_job_impl(playlist, job_dict):
     movie_file_path = get_playlist_movie_file_path(job_dict)
     if os.path.exists(movie_file_path):
         os.remove(movie_file_path)
-    if config.REMOVE_FILES:
-        try:
-            file_store.remove_movie("playlists", build_job_id)
-        except Exception:
-            current_app.logger.error(
-                f"Playlist file can't be deleted: {build_job_id}"
-            )
+    try:
+        file_store.remove_movie("playlists", build_job_id)
+    except Exception:
+        current_app.logger.error(
+            f"Playlist file can't be deleted: {build_job_id}"
+        )
     job = BuildJob.get(build_job_id)
     if job is not None:
         job.delete()

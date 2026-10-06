@@ -380,10 +380,21 @@ def _retry_on_auth_failure(operation):
     return operation()
 
 
-def _upload(bucket, key, path, bucket_name):
-    with _measure("upload", bucket_name, byte_count=_safe_size(path)):
+def _registry():
+    # Imported late: the services import the file store.
+    from zou.app.services import stored_files_service
+
+    return stored_files_service
+
+
+def _upload(bucket, prefix, id, path, bucket_name):
+    size = _safe_size(path)
+    # Recorded first: a key marked deleted is revived before the new
+    # object lands, so that a purge running meanwhile cannot remove it.
+    _registry().record_write(bucket_name, prefix, id, size=size)
+    with _measure("upload", bucket_name, byte_count=size):
         with open(path, "rb") as fd:
-            return bucket.write(key, fd)
+            return bucket.write(make_key(prefix, id), fd)
 
 
 def _exists(bucket, key, bucket_name):
@@ -436,14 +447,88 @@ def exists_confirmed(bucket_name, prefix, id):
         return True
 
 
-def _delete(bucket, key, bucket_name):
-    with _measure("delete", bucket_name):
-        return bucket.delete(key)
+def remove_files(files, force=False):
+    """
+    Mark the given (bucket name, prefix, id) objects deleted in the
+    stored file registry, and remove them right away when REMOVE_FILES
+    or force is set: two registry transactions, whatever the number of
+    objects. Without them, the objects stay in the storage until a purge
+    is allowed to remove them. If the registry cannot be reached, the
+    objects are removed without it; the first failure is raised once
+    they have all been tried.
+    """
+    marked = _registry().mark_deleted(files, force=force)
+    if not (config.REMOVE_FILES or force):
+        return
+    if marked is not None:
+        _registry().purge(files, _remove_registered_object)
+        return
+    error = None
+    for bucket_name, prefix, id in files:
+        try:
+            _remove_object(bucket_name, make_key(prefix, id))
+        except Exception as exc:
+            error = error or exc
+    if error is not None:
+        raise error
 
 
-def _copy(bucket, key, target, bucket_name):
+def _delete(bucket_name, prefix, id, force=False):
+    remove_files([(bucket_name, prefix, id)], force=force)
+
+
+def _delete_exact(bucket, key):
+    """
+    Remove the object of this exact key. Storage.delete removes every
+    object whose key starts with the given one on S3 (and GridFS): fine
+    for a UUID-suffixed key, a trap for anything else.
+    """
+    backend = bucket.backend
+    if config.FS_BACKEND == "s3":
+        backend.bucket.Object(key).delete()
+    elif config.FS_BACKEND == "swift":
+        # Private pool member, see _read_swift_range.
+        with backend._borrow() as conn:
+            conn.delete_object(backend.name, key)
+    else:
+        backend.delete(key)
+
+
+def _remove_object(bucket_name, key):
+    """
+    Remove an object, a missing one counting as removed.
+    """
+    try:
+        with _measure("delete", bucket_name):
+            _delete_exact(_bucket_by_name(bucket_name), key)
+    except Exception as exc:
+        if not fs.is_missing_file_error(exc):
+            raise
+
+
+def _remove_registered_object(bucket_name, prefix, id):
+    _remove_object(bucket_name, make_key(prefix, id))
+
+
+def purge(bucket_name, prefix, id):
+    """
+    Remove an object marked deleted from the storage, and record it in
+    the registry. The registry locks the row meanwhile and leaves alone
+    an object written again since it was marked. A failure is recorded
+    for the purge job to try again, it never raises. Return whether the
+    object was removed.
+    """
+    removed = _registry().purge(
+        [(bucket_name, prefix, id)], _remove_registered_object
+    )
+    return (bucket_name, make_key(prefix, id)) in removed
+
+
+def _copy(bucket, prefix, id, new_prefix, new_id, bucket_name):
+    # Recorded first, see _upload.
+    _registry().record_write(bucket_name, new_prefix, new_id)
     with _measure("copy", bucket_name):
-        return bucket.copy(key, target)
+        return bucket.copy(make_key(prefix, id), make_key(new_prefix, new_id))
 
 
 def _read_chunks(bucket, key):
@@ -591,7 +676,7 @@ def read_movie_range(prefix, id, range_header=None):
 
 
 def add_picture(prefix, id, path):
-    return _upload(pictures, make_key(prefix, id), path, "pictures")
+    return _upload(pictures, prefix, id, path, "pictures")
 
 
 def get_picture(prefix, id):
@@ -611,8 +696,8 @@ def exists_picture(prefix, id):
     return _exists(pictures, make_key(prefix, id), "pictures")
 
 
-def remove_picture(prefix, id):
-    return _delete(pictures, make_key(prefix, id), "pictures")
+def remove_picture(prefix, id, force=False):
+    return _delete("pictures", prefix, id, force=force)
 
 
 def get_local_picture_path(prefix, id):
@@ -620,12 +705,7 @@ def get_local_picture_path(prefix, id):
 
 
 def copy_picture(prefix, id, new_prefix, new_id):
-    return _copy(
-        pictures,
-        make_key(prefix, id),
-        make_key(new_prefix, new_id),
-        "pictures",
-    )
+    return _copy(pictures, prefix, id, new_prefix, new_id, "pictures")
 
 
 # ----------------------------------------------------------------------
@@ -634,7 +714,7 @@ def copy_picture(prefix, id, new_prefix, new_id):
 
 
 def add_movie(prefix, id, path):
-    return _upload(movies, make_key(prefix, id), path, "movies")
+    return _upload(movies, prefix, id, path, "movies")
 
 
 def get_movie(prefix, id):
@@ -654,8 +734,8 @@ def exists_movie(prefix, id):
     return _exists(movies, make_key(prefix, id), "movies")
 
 
-def remove_movie(prefix, id):
-    return _delete(movies, make_key(prefix, id), "movies")
+def remove_movie(prefix, id, force=False):
+    return _delete("movies", prefix, id, force=force)
 
 
 def get_local_movie_path(prefix, id):
@@ -663,12 +743,7 @@ def get_local_movie_path(prefix, id):
 
 
 def copy_movie(prefix, id, new_prefix, new_id):
-    return _copy(
-        movies,
-        make_key(prefix, id),
-        make_key(new_prefix, new_id),
-        "movies",
-    )
+    return _copy(movies, prefix, id, new_prefix, new_id, "movies")
 
 
 # ----------------------------------------------------------------------
@@ -677,7 +752,7 @@ def copy_movie(prefix, id, new_prefix, new_id):
 
 
 def add_file(prefix, id, path):
-    return _upload(files, make_key(prefix, id), path, "files")
+    return _upload(files, prefix, id, path, "files")
 
 
 def get_file(prefix, id):
@@ -697,8 +772,8 @@ def exists_file(prefix, id):
     return _exists(files, make_key(prefix, id), "files")
 
 
-def remove_file(prefix, id):
-    return _delete(files, make_key(prefix, id), "files")
+def remove_file(prefix, id, force=False):
+    return _delete("files", prefix, id, force=force)
 
 
 def get_local_file_path(prefix, id):
@@ -706,9 +781,4 @@ def get_local_file_path(prefix, id):
 
 
 def copy_file(prefix, id, new_prefix, new_id):
-    return _copy(
-        files,
-        make_key(prefix, id),
-        make_key(new_prefix, new_id),
-        "files",
-    )
+    return _copy(files, prefix, id, new_prefix, new_id, "files")

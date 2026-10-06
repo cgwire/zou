@@ -1222,7 +1222,10 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
             tmp_path = tmp.name
         file_store.add_file("previews", str(preview_file.id), tmp_path)
         self.addCleanup(
-            file_store.remove_file, "previews", str(preview_file.id)
+            file_store.remove_file,
+            "previews",
+            str(preview_file.id),
+            force=True,
         )
 
         PlaylistModel.get(self.playlist["id"]).update(
@@ -1327,7 +1330,9 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
             tmp.write(sibling_payload)
             tmp_path = tmp.name
         file_store.add_file("previews", str(sibling.id), tmp_path)
-        self.addCleanup(file_store.remove_file, "previews", str(sibling.id))
+        self.addCleanup(
+            file_store.remove_file, "previews", str(sibling.id), force=True
+        )
 
         link = self.post(
             self.share_path(),
@@ -1392,7 +1397,10 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
             tmp_path = tmp.name
         file_store.add_file("previews", str(preview_file.id), tmp_path)
         self.addCleanup(
-            file_store.remove_file, "previews", str(preview_file.id)
+            file_store.remove_file,
+            "previews",
+            str(preview_file.id),
+            force=True,
         )
 
         PlaylistModel.get(self.playlist["id"]).update(
@@ -1473,7 +1481,10 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
             tmp_path = tmp.name
         file_store.add_picture("original", str(preview_file.id), tmp_path)
         self.addCleanup(
-            file_store.remove_picture, "original", str(preview_file.id)
+            file_store.remove_picture,
+            "original",
+            str(preview_file.id),
+            force=True,
         )
         PlaylistModel.get(self.playlist["id"]).update(
             {
