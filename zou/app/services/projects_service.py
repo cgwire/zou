@@ -871,20 +871,17 @@ def _save_project(project):
     return project.serialize()
 
 
-def _migrate_metadata_field_name(model, old_key, new_key, *, use_no_commit):
+def _migrate_metadata_field_name(model, old_key, new_key):
     """
-    Move a value from old_key to new_key in model.data. No-op if old_key
-    is absent. Returns whether an update was applied.
+    Move a value from old_key to new_key in model.data, without committing.
+    No-op if old_key is absent. Returns whether an update was applied.
     """
     metadata = fields.serialize_value(model.data) or {}
     value = metadata.pop(old_key, None)
     if value is None:
         return False
     metadata[new_key] = value
-    if use_no_commit:
-        model.update_no_commit({"data": metadata})
-    else:
-        model.update({"data": metadata})
+    model.update_no_commit({"data": metadata})
     return True
 
 
@@ -942,35 +939,26 @@ def _strip_metadata_field_from_model_data(model, field_name):
 def _migrate_descriptor_field_rename(descriptor, new_field_name):
     """
     Apply a metadata field rename to Project.data or matching Entity rows.
+    Nothing is committed: the caller commits the moved values with the
+    descriptor, so a failed update of the descriptor rolls them back too.
     """
     if descriptor.entity_type == "Project":
         project = get_project_raw(descriptor.project_id)
         _migrate_metadata_field_name(
-            project,
-            descriptor.field_name,
-            new_field_name,
-            use_no_commit=False,
+            project, descriptor.field_name, new_field_name
         )
         return
     if descriptor.entity_type == "Task":
         for task in _task_query_for_descriptor(descriptor).all():
             _migrate_metadata_field_name(
-                task,
-                descriptor.field_name,
-                new_field_name,
-                use_no_commit=True,
+                task, descriptor.field_name, new_field_name
             )
-        Task.commit()
         return
     entities = _entity_query_for_descriptor_entity_type(descriptor).all()
     for entity in entities:
         _migrate_metadata_field_name(
-            entity,
-            descriptor.field_name,
-            new_field_name,
-            use_no_commit=True,
+            entity, descriptor.field_name, new_field_name
         )
-    Entity.commit()
 
 
 def _check_metadata_descriptor_rename(descriptor, name, field_name):
@@ -1143,7 +1131,9 @@ def is_metadata_descriptor_visible(
 def update_metadata_descriptor(metadata_descriptor_id, changes):
     """
     Update metadata descriptor information for given id. Whatever can
-    refuse the changes runs before a rename moves the stored values.
+    refuse the changes runs before a rename moves the stored values, and
+    the moved values are committed with the descriptor: a failed update
+    leaves them under their old key.
     """
     descriptor = get_metadata_descriptor_raw(metadata_descriptor_id)
 

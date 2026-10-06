@@ -793,6 +793,50 @@ class ProjectMetadataDescriptorTestCase(ApiDBTestCase):
                     Entity.get(self.asset.id).data, {"difficulty": "hard"}
                 )
 
+    def test_rename_metadata_descriptor_commits_the_values_with_it(self):
+        # The moved values wait for the commit of the descriptor update, so
+        # that a failure of that update rolls them back too. A real failure
+        # cannot run here: each test runs in one transaction, which the
+        # rollback would end, fixtures included. So no commit may carry the
+        # moved values before the descriptor holds its new field name. Other
+        # commits can come first: the asset query creates the entity types
+        # the fixtures lack, such as Concept.
+        from unittest import mock
+        from zou.app import db
+
+        task = self.generate_fixture_task()
+        for entity_type, task_type_id, model, row_id in (
+            ("Asset", None, Entity, self.asset.id),
+            ("Task", self.task_type.id, Task, task.id),
+            ("Project", None, Project, self.project.id),
+        ):
+            with self.subTest(entity_type=entity_type):
+                difficulty = self.add(
+                    "Difficulty", entity_type, task_type_id=task_type_id
+                )
+                model.get(row_id).update({"data": {"difficulty": "hard"}})
+                descriptor = MetadataDescriptor.get(difficulty["id"])
+                commit = db.session.commit
+                commits = []
+
+                def record_commit():
+                    moved = "complexity" in (model.get(row_id).data or {})
+                    commits.append((descriptor.field_name, moved))
+                    commit()
+
+                with mock.patch.object(
+                    db.session, "commit", side_effect=record_commit
+                ):
+                    projects_service.update_metadata_descriptor(
+                        difficulty["id"], {"name": "Complexity"}
+                    )
+
+                self.assertIn(("complexity", True), commits)
+                self.assertNotIn(("difficulty", True), commits)
+                self.assertEqual(
+                    model.get(row_id).data, {"complexity": "hard"}
+                )
+
     def test_rename_metadata_descriptor_on_projects_checks_them_all_first(
         self,
     ):
