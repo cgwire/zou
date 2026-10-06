@@ -1505,6 +1505,42 @@ def get_preview_files_for_entity(entity_id):
     return [preview_file.present() for preview_file in query.all()]
 
 
+def unpin_foreign_preview_files(shots):
+    """
+    Unset the preview file of the playlist entries it does not belong to,
+    unknown ones included: the entry would play another entity's preview.
+    Entries are dicts holding an entity_id (or id) and a preview_file_id,
+    other values are left as they are. A kept preview id is written in
+    lowercase, the form the playlist reads match.
+    """
+    entries = [shot for shot in shots if isinstance(shot, dict)]
+    preview_file_ids = {
+        str(shot["preview_file_id"]).lower()
+        for shot in entries
+        if shot.get("preview_file_id")
+        and fields.is_valid_id(shot["preview_file_id"])
+    }
+    entity_ids = {}
+    if preview_file_ids:
+        rows = (
+            PreviewFile.query.join(Task, Task.id == PreviewFile.task_id)
+            .filter(PreviewFile.id.in_(preview_file_ids))
+            .with_entities(PreviewFile.id, Task.entity_id)
+            .all()
+        )
+        entity_ids = {
+            str(preview_file_id): str(entity_id)
+            for preview_file_id, entity_id in rows
+        }
+    for shot in entries:
+        if shot.get("preview_file_id"):
+            preview_file_id = str(shot["preview_file_id"]).lower()
+            entity_id = str(shot.get("entity_id") or shot.get("id")).lower()
+            is_own = entity_ids.get(preview_file_id) == entity_id
+            shot["preview_file_id"] = preview_file_id if is_own else None
+    return shots
+
+
 def get_last_preview_file_for_task(task_id):
     """
     Get last preview published for given task.

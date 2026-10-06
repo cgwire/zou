@@ -142,10 +142,20 @@ class PlaylistAddEntityResource(MethodView, ArgsMixin):
         permissions_service.check_playlist_update_access(playlist)
 
         body = validation.validate_request_body(AddEntityToPlaylistSchema)
+        [entity] = preview_files_service.unpin_foreign_preview_files(
+            [
+                {
+                    "entity_id": str(body.entity_id),
+                    "preview_file_id": (
+                        str(body.preview_file_id)
+                        if body.preview_file_id
+                        else None
+                    ),
+                }
+            ]
+        )
         updated_playlist = playlists_service.add_entity_to_playlist(
-            playlist_id,
-            str(body.entity_id),
-            str(body.preview_file_id) if body.preview_file_id else None,
+            playlist_id, entity["entity_id"], entity["preview_file_id"]
         )
         return updated_playlist
 
@@ -162,13 +172,16 @@ class PlaylistAddEntitiesResource(MethodView, ArgsMixin):
         permissions_service.check_playlist_update_access(playlist)
 
         body = validation.validate_request_body(AddEntitiesToPlaylistSchema)
-        entities = [
-            {
-                "entity_id": entity.entity_id,
-                "preview_file_id": entity.preview_file_id,
-            }
-            for entity in body.entities
-        ]
+        # A preview of another entity is replaced by the entity's latest.
+        entities = preview_files_service.unpin_foreign_preview_files(
+            [
+                {
+                    "entity_id": entity.entity_id,
+                    "preview_file_id": entity.preview_file_id,
+                }
+                for entity in body.entities
+            ]
+        )
         return playlists_service.add_entities_to_playlist(
             playlist_id, entities
         )

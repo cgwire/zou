@@ -7,6 +7,7 @@ from zou.app.services import (
     permissions_service,
     persons_service,
     playlists_service,
+    preview_files_service,
     user_service,
 )
 from zou.app.exceptions import WrongParameterException
@@ -101,6 +102,8 @@ class PlaylistsResource(BaseModelsResource):
             data["task_type_id"]
         ):
             data["task_type_id"] = None
+        if isinstance(data.get("shots"), list):
+            preview_files_service.unpin_foreign_preview_files(data["shots"])
         data["created_by"] = persons_service.get_current_user()["id"]
         return data
 
@@ -153,7 +156,9 @@ class PlaylistResource(BaseModelResource):
                 for shot in data["shots"]
                 if "preview_file_id" in shot
             ]
-            data["shots"] = shots
+            data["shots"] = preview_files_service.unpin_foreign_preview_files(
+                shots
+            )
         return data
 
     def check_delete_permissions(self, playlist):

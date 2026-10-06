@@ -313,6 +313,129 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
             result["shots"][0]["preview_file_id"], latest_preview_file_id
         )
 
+    def generate_fixture_foreign_preview_file(self):
+        """
+        Give SH01 a preview, then return SH02 with a preview of its own.
+        """
+        self.generate_fixture_preview_file(
+            revision=1, task_id=self.shot_task.id
+        )
+        self.own_preview_file_id = str(self.preview_file.id)
+        self.first_shot_id = str(self.shot.id)
+        other_shot = self.generate_fixture_shot("SH02")
+        other_task = self.generate_fixture_shot_task(shot_id=other_shot.id)
+        self.generate_fixture_preview_file(revision=1, task_id=other_task.id)
+        self.foreign_preview_file_id = str(self.preview_file.id)
+        return str(other_shot.id)
+
+    def test_add_entities_to_playlist_replaces_a_foreign_preview(self):
+        # A preview of another entity would play that entity in the entry:
+        # the entity's latest preview is taken instead.
+        self.generate_fixture_foreign_preview_file()
+        self.generate_fixture_playlist("Add Entities Playlist")
+        result = self.post(
+            f"/actions/playlists/{self.playlist.id}/add-entities",
+            {
+                "entities": [
+                    {
+                        "entity_id": self.first_shot_id,
+                        "preview_file_id": self.foreign_preview_file_id,
+                    }
+                ]
+            },
+            200,
+        )
+        self.assertEqual(
+            result["shots"][0]["preview_file_id"], self.own_preview_file_id
+        )
+
+    def test_add_entity_to_playlist_replaces_a_foreign_preview(self):
+        self.generate_fixture_foreign_preview_file()
+        self.generate_fixture_playlist("Add Entity Playlist")
+        result = self.post(
+            f"/actions/playlists/{self.playlist.id}/add-entity",
+            {
+                "entity_id": self.first_shot_id,
+                "preview_file_id": self.foreign_preview_file_id,
+            },
+            200,
+        )
+        self.assertEqual(
+            result["shots"][0]["preview_file_id"], self.own_preview_file_id
+        )
+
+    def test_create_playlist_unpins_a_foreign_preview(self):
+        self.generate_fixture_foreign_preview_file()
+        created = self.post(
+            "data/playlists/",
+            {
+                "name": "Playlist created with a foreign pin",
+                "project_id": self.project_id,
+                "for_entity": "shot",
+                "shots": [
+                    {
+                        "entity_id": self.first_shot_id,
+                        "preview_file_id": self.foreign_preview_file_id,
+                    },
+                    {
+                        "entity_id": self.first_shot_id,
+                        "preview_file_id": self.own_preview_file_id,
+                    },
+                ],
+            },
+            201,
+        )
+        self.assertEqual(
+            [shot["preview_file_id"] for shot in created["shots"]],
+            [None, self.own_preview_file_id],
+        )
+
+    def test_update_playlist_keeps_an_own_pin_written_in_uppercase(self):
+        # The playlist reads match the lowercase form of the preview ids.
+        self.generate_fixture_foreign_preview_file()
+        self.generate_fixture_playlist("Playlist with an uppercase pin")
+        result = self.put(
+            f"data/playlists/{self.playlist.id}",
+            {
+                "shots": [
+                    {
+                        "entity_id": self.first_shot_id,
+                        "preview_file_id": self.own_preview_file_id.upper(),
+                    }
+                ]
+            },
+        )
+        self.assertEqual(
+            result["shots"][0]["preview_file_id"], self.own_preview_file_id
+        )
+
+    def test_update_playlist_unpins_a_foreign_preview(self):
+        other_shot_id = self.generate_fixture_foreign_preview_file()
+        self.generate_fixture_playlist("Playlist with a foreign pin")
+        result = self.put(
+            f"data/playlists/{self.playlist.id}",
+            {
+                "shots": [
+                    {
+                        "entity_id": self.first_shot_id,
+                        "preview_file_id": self.foreign_preview_file_id,
+                    },
+                    {
+                        "entity_id": other_shot_id,
+                        "preview_file_id": self.foreign_preview_file_id,
+                    },
+                    {
+                        "entity_id": self.first_shot_id,
+                        "preview_file_id": "not-an-id",
+                    },
+                ]
+            },
+        )
+        self.assertEqual(
+            [shot["preview_file_id"] for shot in result["shots"]],
+            [None, self.foreign_preview_file_id, None],
+        )
+
     def test_add_entities_to_playlist_uses_playlist_task_type(self):
         # The shot has a preview on its animation task (from setUp)...
         self.generate_fixture_preview_file(
