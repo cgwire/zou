@@ -52,6 +52,7 @@ class CommandsTestCase(ApiDBTestCase):
             [
                 "Character",
                 "Concept",
+                "ConceptFolder",
                 "Edit",
                 "Environment",
                 "Episode",

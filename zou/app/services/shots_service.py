@@ -1200,7 +1200,8 @@ def get_last_shot_version_raw(shot_id):
 def get_base_entity_type_name(entity_dict):
     """
     Return the entity type name of given entity, as the API names it:
-    Shot, Sequence, Episode, Edit, Concept, or Asset for everything else.
+    Shot, Sequence, Episode, Edit, Concept, ConceptFolder, or Asset for
+    everything else.
     """
     type_name = "Asset"
     if is_shot(entity_dict):
@@ -1215,6 +1216,8 @@ def get_base_entity_type_name(entity_dict):
         type_name = "Scene"
     elif concepts_service.is_concept(entity_dict):
         type_name = "Concept"
+    elif concepts_service.is_concept_folder(entity_dict):
+        type_name = "ConceptFolder"
 
     return type_name
 

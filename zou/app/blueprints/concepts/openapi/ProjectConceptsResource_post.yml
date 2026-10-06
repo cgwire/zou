@@ -40,6 +40,11 @@ requestBody:
               format: uuid
             description: List of entity concept link identifiers
             example: ["b35b7fb5-df86-5776-b181-68564193d360", "c46c80c6-e097-6887-c292-79675204e470"]
+          parent_id:
+            type: string
+            format: uuid
+            description: Concept folder of the project to create the concept in
+            example: e68e02e8-a219-8009-e514-91897426a691
 responses:
   201:
     description: Concept successfully created

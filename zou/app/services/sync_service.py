@@ -434,6 +434,7 @@ def push_project_data(
         "Sequence",
         "Asset",
         "Shot",
+        "ConceptFolder",
         "Concept",
     ):
         entity_type = EntityType.get_by(name=entity_type_name)
@@ -2139,7 +2140,15 @@ def _tgt_asset(project_id):
     """
     Assets are entities whose type is not one of the structural types.
     """
-    structural = ["Episode", "Sequence", "Shot", "Concept", "Edit", "Scene"]
+    structural = [
+        "Episode",
+        "Sequence",
+        "Shot",
+        "Concept",
+        "ConceptFolder",
+        "Edit",
+        "Scene",
+    ]
 
     def count():
         structural_ids = [
