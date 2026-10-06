@@ -1,5 +1,6 @@
 from tests.base import ApiDBTestCase
 
+from zou.app.models.entity import Entity
 from zou.app.services import concepts_service
 from zou.app.exceptions import ConceptNotFoundException
 
@@ -135,6 +136,23 @@ class ConceptsServiceTestCase(ApiDBTestCase):
             tasks_by_concept,
             {concept["id"]: [str(task.id)], bare["id"]: []},
         )
+
+    def test_get_concepts_and_tasks_carries_the_preview_status(self):
+        concept, task = self.a_concept_with_a_task("Concept Processing")
+        bare = self.a_concept("Concept Bare")
+        preview_file = self.generate_fixture_preview_file(
+            status="processing", task_id=task.id
+        )
+        Entity.get(concept["id"]).update({"preview_file_id": preview_file.id})
+
+        result = concepts_service.get_concepts_and_tasks()
+
+        statuses = {held["id"]: held["preview_file_status"] for held in result}
+        self.assertEqual(
+            statuses, {concept["id"]: "processing", bare["id"]: None}
+        )
+        # A raw Choice compares equal to its code but is sent as its label.
+        self.assertIsInstance(statuses[concept["id"]], str)
 
     def test_get_full_concept(self):
         concept = self.a_concept("Concept Full")
