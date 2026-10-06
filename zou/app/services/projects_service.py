@@ -890,13 +890,17 @@ def _migrate_metadata_field_name(model, old_key, new_key, *, use_no_commit):
 
 def _entity_query_for_descriptor_entity_type(descriptor):
     """
-    Entities whose `data` may hold values for this descriptor (neither
+    Entities whose `data` holds a value for this descriptor (neither
     Project nor Task). A field name is unique per entity type only, so the
     query keeps the entities of the descriptor type: every asset type for
     Asset, the type of that name for a shot, scene, sequence, episode or
-    edit column, none for any other name.
+    edit column, none for any other name. Rows without the key are left
+    out: a removal rewrites only the rows it changes.
     """
-    query = Entity.query.filter(Entity.project_id == descriptor.project_id)
+    query = Entity.query.filter(
+        Entity.project_id == descriptor.project_id,
+        Entity.data.has_key(descriptor.field_name),
+    )
     if descriptor.entity_type == "Asset":
         return query.filter(assets_service.build_asset_type_filter())
     if descriptor.entity_type == "Shot":
@@ -916,11 +920,12 @@ def _entity_query_for_descriptor_entity_type(descriptor):
 
 def _task_query_for_descriptor(descriptor):
     """
-    Tasks whose `data` may hold values for this Task descriptor.
+    Tasks whose `data` holds a value for this Task descriptor.
     """
     return Task.query.filter(
         Task.project_id == descriptor.project_id,
         Task.task_type_id == descriptor.task_type_id,
+        Task.data.has_key(descriptor.field_name),
     )
 
 

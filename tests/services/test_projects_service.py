@@ -4,6 +4,7 @@ from zou.app.models.entity import Entity
 from zou.app.models.project import Project
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.project_status import ProjectStatus
+from zou.app.models.task import Task
 from zou.app.services import (
     breakdown_service,
     deletion_service,
@@ -681,6 +682,45 @@ class ProjectMetadataDescriptorTestCase(ApiDBTestCase):
                 for entity_type in entities
             },
         )
+
+    def test_remove_metadata_descriptor_leaves_the_rows_without_value(self):
+        # Only the rows holding a value are rewritten: the other shots keep
+        # their modification date.
+        filled = self.generate_fixture_shot()
+        empty = self.generate_fixture_shot("P02")
+        descriptor = self.add("Difficulty", "Shot")
+        filled.update({"data": {"difficulty": "hard"}})
+        updated_at = Entity.get(empty.id).updated_at
+
+        projects_service.remove_metadata_descriptor(descriptor["id"])
+
+        self.assertEqual(Entity.get(filled.id).data, {})
+        self.assertEqual(Entity.get(empty.id).updated_at, updated_at)
+
+    def test_remove_task_metadata_descriptor_leaves_the_tasks_without_value(
+        self,
+    ):
+        # Same for a Task column: the tasks without a value keep their
+        # modification date.
+        filled = self.generate_fixture_task()
+        empty = self.generate_fixture_task("Second")
+        descriptor = projects_service.add_metadata_descriptor(
+            self.project.id,
+            "Task",
+            "Difficulty",
+            "string",
+            [],
+            False,
+            task_type_id=self.task_type.id,
+        )
+        filled.update({"data": {"difficulty": "hard"}})
+        empty.update({"data": {"other": "value"}})
+        updated_at = Task.get(empty.id).updated_at
+
+        projects_service.remove_metadata_descriptor(descriptor["id"])
+
+        self.assertEqual(Task.get(filled.id).data, {})
+        self.assertEqual(Task.get(empty.id).updated_at, updated_at)
 
     def test_reorder_metadata_descriptors(self):
         # Zone and Angle are created in the order that contradicts their
