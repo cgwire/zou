@@ -39,10 +39,11 @@ zou/
 tests/
 ├── base.py                  # ApiDBTestCase with fixture generators
 ├── conftest.py              # Schema create/drop per session
-├── models/                  # CRUD model tests
+├── blueprints/<feature>/    # Route-level tests (CRUD ones in crud/)
+├── models/                  # BaseMixin tests
 ├── services/                # Service function tests
 ├── utils/                   # Utility tests
-└── <feature>/               # Route-level tests per blueprint
+└── misc/                    # Static contract checks (imports, OpenAPI…)
 specs/                       # Detailed architecture specs (for reference)
 ```
 
