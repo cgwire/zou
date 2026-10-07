@@ -141,14 +141,17 @@ def remove_comment(comment_id):
     if comment is None:
         raise CommentNotFoundException
 
+    from zou.app.services import news_service
+
     task = Task.get(comment.object_id)
     notifications = Notification.query.filter_by(comment_id=comment.id)
     for notification in notifications:
         notification.delete()
 
-    news_list = News.query.filter_by(comment_id=comment.id)
-    for news in news_list:
-        news.delete()
+    news_service.delete_news(
+        News.get_all_by(comment_id=comment.id),
+        str(task.project_id) if task is not None else None,
+    )
 
     if comment.preview_file_id is not None:
         preview_file = PreviewFile.get(comment.preview_file_id)
@@ -184,11 +187,12 @@ def remove_task(task_id, force=False):
     Remove given task. Force deletion if the task has some comments and files
     related. This will lead to the deletion of all of them.
     """
-    from zou.app.services import tasks_service
+    from zou.app.services import news_service, tasks_service
 
     task = Task.get(task_id)
     if task is None:
         return None
+    project_id = str(task.project_id)
     if force:
         working_files = WorkingFile.query.filter_by(task_id=task_id)
         for working_file in working_files:
@@ -204,9 +208,9 @@ def remove_task(task_id, force=False):
             notifications = Notification.query.filter_by(comment_id=comment.id)
             for notification in notifications:
                 notification.delete()
-            news_list = News.query.filter_by(comment_id=comment.id)
-            for news in news_list:
-                news.delete()
+            news_service.delete_news(
+                News.get_all_by(comment_id=comment.id), project_id
+            )
             comment.delete()
 
         subscriptions = Subscription.query.filter_by(task_id=task_id)
@@ -225,9 +229,7 @@ def remove_task(task_id, force=False):
         for notification in notifications:
             notification.delete()
 
-        news_list = News.query.filter_by(task_id=task.id)
-        for news in news_list:
-            news.delete()
+        news_service.delete_news(News.get_all_by(task_id=task.id), project_id)
 
     task.delete()
     tasks_service.clear_task_cache(task_id)

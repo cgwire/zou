@@ -157,16 +157,22 @@ def delete_news_for_comment(comment_id):
     news_list = News.get_all_by(comment_id=comment_id)
     if len(news_list) > 0:
         task = tasks_service.get_task(news_list[0].task_id)
-        for news in news_list:
-            news_id = str(news.id)
-            news.delete()
-            cache.cache.delete_memoized(get_news, task["project_id"], news_id)
-            events.emit(
-                "news:delete",
-                {"news_id": news_id},
-                project_id=task["project_id"],
-            )
+        delete_news(news_list, task["project_id"])
     return fields.serialize_list(news_list)
+
+
+def delete_news(news_list, project_id=None):
+    """
+    Delete given news rows, drop them from the get_news cache and announce
+    each removal. Without a project, the cache entry cannot be addressed and
+    the event goes out unscoped.
+    """
+    for news in news_list:
+        news_id = str(news.id)
+        news.delete()
+        if project_id is not None:
+            cache.cache.delete_memoized(get_news, str(project_id), news_id)
+        events.emit("news:delete", {"news_id": news_id}, project_id=project_id)
 
 
 def get_last_news_for_project(

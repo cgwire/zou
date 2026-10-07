@@ -25,7 +25,7 @@ from zou.app.models.search_filter import SearchFilter
 from zou.app.models.search_filter_group import SearchFilterGroup
 from zou.app.models.time_spent import TimeSpent
 
-from zou.app.services import deletion_service
+from zou.app.services import deletion_service, news_service
 from zou.app.utils import date_helpers
 from zou.app.exceptions import (
     CommentNotFoundException,
@@ -85,6 +85,31 @@ class RemoveCommentTestCase(DeletionTestCase):
 
         self.assertIsNone(PreviewFile.get(self.preview_file.id))
 
+    def test_remove_comment_drops_its_news_from_cache_and_listeners(self):
+        """
+        The single-news route reads through a memoized get_news, and the
+        news feed of the clients only learns of a removal through
+        news:delete.
+        """
+        self.generate_fixture_comment()
+        news = news_service.create_news_for_task_and_comment(
+            self.task.serialize(), self.comment
+        )
+        project_id = str(self.project.id)
+        self.assertEqual(
+            len(news_service.get_news(project_id, news["id"])["data"]), 1
+        )
+        captured = self.capture_events("news:delete")
+
+        deletion_service.remove_comment(self.comment["id"])
+
+        self.assertEqual(
+            news_service.get_news(project_id, news["id"])["data"], []
+        )
+        self.assertEqual(
+            [event["news_id"] for event in captured], [news["id"]]
+        )
+
     def test_remove_comment_not_found(self):
         with self.assertRaises(CommentNotFoundException):
             deletion_service.remove_comment(UNKNOWN)
@@ -114,6 +139,19 @@ class RemoveTaskTestCase(DeletionTestCase):
 
         self.assertEqual(result["id"], task_id)
         self.assertIsNone(Task.get(task_id))
+
+    def test_remove_task_force_announces_its_news(self):
+        self.generate_fixture_comment()
+        news = news_service.create_news_for_task_and_comment(
+            self.task.serialize(), self.comment
+        )
+        captured = self.capture_events("news:delete")
+
+        deletion_service.remove_task(str(self.task.id), force=True)
+
+        self.assertEqual(
+            [event["news_id"] for event in captured], [news["id"]]
+        )
 
     def test_remove_tasks_for_project_and_task_type(self):
         """
