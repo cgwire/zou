@@ -266,6 +266,8 @@ class ConfigResource(MethodView):
             "default_locale": persons_service.get_default_locale(),
             "default_timezone": persons_service.get_default_timezone(),
             "enforce_2fa": config.ENFORCE_2FA,
+            "movie_highdef_bitrate": config.MOVIE_HIGHDEF_BITRATE,
+            "movie_lowdef_bitrate": config.MOVIE_LOWDEF_BITRATE,
         }
         if config.SENTRY_KITSU_ENABLED:
             conf["sentry"] = {

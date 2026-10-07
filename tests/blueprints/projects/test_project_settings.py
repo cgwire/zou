@@ -113,6 +113,26 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
                 "ld_bitrate_compression": 12,
             },
         )
+        # A link high def below the low def it inherits is fine: the
+        # encoder caps that low def.
+        self.put(
+            f"/data/projects/{self.project_id}", {"ld_bitrate_compression": 6}
+        )
+        self.post(
+            path,
+            {
+                "task_type_id": task_type_id,
+                "hd_bitrate_compression": 4,
+                "ld_bitrate_compression": None,
+            },
+        )
+        link = ProjectTaskTypeLink.get_by(
+            project_id=self.project_id, task_type_id=task_type_id
+        )
+        self.assertEqual(
+            (link.hd_bitrate_compression, link.ld_bitrate_compression),
+            (4, None),
+        )
 
     def test_delete_project_task_type(self):
         self.post(

@@ -488,6 +488,16 @@ class ProjectTemplateServiceTestCase(ApiDBTestCase):
         self.assertEqual(link.hd_bitrate_compression, 20)
         self.assertEqual(link.ld_bitrate_compression, 4)
 
+    def test_template_keeps_the_unset_bitrates_of_its_project(self):
+        self.project.update(
+            {"hd_bitrate_compression": None, "ld_bitrate_compression": None}
+        )
+        template = project_templates_service.create_template_from_project(
+            str(self.project_id), name="Instance bitrates"
+        )
+        self.assertIsNone(template["hd_bitrate_compression"])
+        self.assertIsNone(template["ld_bitrate_compression"])
+
     def test_create_template_from_project_does_not_copy_team(self):
         self.generate_fixture_person()
         projects_service.add_team_member(self.project_id, self.person.id)

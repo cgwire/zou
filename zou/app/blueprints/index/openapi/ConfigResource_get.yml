@@ -35,6 +35,14 @@ responses:
             default_timezone:
               type: string
               example: "UTC"
+            movie_highdef_bitrate:
+              type: integer
+              description: Default bitrate of the high definition movies in Mbit/s, also the highest a production or task type can set
+              example: 28
+            movie_lowdef_bitrate:
+              type: integer
+              description: Default bitrate of the low definition movies in Mbit/s
+              example: 6
             sentry:
               type: object
               properties:

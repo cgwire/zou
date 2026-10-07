@@ -39,6 +39,9 @@ class ProjectTemplateTestCase(ApiDBTestCase):
         self.assertIsNotNone(template["id"])
         self.assertEqual(template["name"], "Animated Series")
         self.assertEqual(template["fps"], "24")
+        # Unset, the bitrates follow the instance ones.
+        self.assertIsNone(template["hd_bitrate_compression"])
+        self.assertIsNone(template["ld_bitrate_compression"])
 
         templates = self.get("data/project-templates")
         self.assertEqual(len(templates), 4)

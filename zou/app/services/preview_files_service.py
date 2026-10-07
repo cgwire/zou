@@ -190,27 +190,31 @@ def validate_movie_bitrate(bitrate):
 
 def validate_movie_bitrates(data, current=None, inherited=None):
     """
-    Check the hd_bitrate_compression and ld_bitrate_compression of a
-    settings change: each within bounds, and the low definition one never
-    above the high definition one it goes with. A bitrate absent from data
-    keeps its value in current, the object being changed; a bitrate left
-    to None comes from inherited, the level the object falls back on.
+    Check the hd_bitrate_compression and ld_bitrate_compression a settings
+    change sets: each within bounds, and a low definition one never above
+    the high definition bitrate the movies will get. That one resolves as
+    the encoder does: data, then current (the object being changed) for a
+    bitrate absent from data, then inherited (the level the object falls
+    back on), then the config. Bitrates the change leaves as they are, sent
+    back or not, are not checked: the encoder caps them, as it caps an
+    unset low definition bitrate.
     """
     current = current or {}
-    inherited = inherited or {}
-    resolved = {}
-    for key in ("hd_bitrate_compression", "ld_bitrate_compression"):
-        value = data[key] if key in data else current.get(key)
-        if value is None:
-            value = inherited.get(key)
-        validate_movie_bitrate(value)
-        resolved[key] = value
-    hd = resolved["hd_bitrate_compression"] or config.MOVIE_HIGHDEF_BITRATE
-    ld = resolved["ld_bitrate_compression"]
-    if ld is not None and ld > hd:
+    changes = {
+        key: data[key]
+        for key in ("hd_bitrate_compression", "ld_bitrate_compression")
+        if key in data and data[key] != current.get(key)
+    }
+    for bitrate in changes.values():
+        validate_movie_bitrate(bitrate)
+    lowdef = changes.get("ld_bitrate_compression")
+    if lowdef is None:
+        return
+    highdef, _ = get_movie_bitrates(inherited or {}, {**current, **data})
+    if lowdef > highdef:
         raise WrongParameterException(
-            f"The low definition bitrate ({ld}) cannot exceed the high "
-            f"definition one ({hd})."
+            f"The low definition bitrate ({lowdef}) cannot exceed the high "
+            f"definition one ({highdef})."
         )
 
 
@@ -227,8 +231,9 @@ def get_movie_bitrates(project, task_type_link=None):
     ):
         value = (task_type_link or {}).get(key) or project.get(key)
         bitrates.append(value or default)
-    # Settings are validated on write, but a project bitrate lowered later
-    # can leave a link above it: the encoder never exceeds the ceilings.
+    # Writes only check the bitrates they change: a stored or inherited one
+    # can exceed a ceiling lowered since, or a low definition one its high
+    # definition one. The encoder never exceeds the ceilings.
     highdef = min(bitrates[0], config.MOVIE_HIGHDEF_BITRATE)
     lowdef = min(bitrates[1], highdef)
     return highdef, lowdef
