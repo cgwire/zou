@@ -349,7 +349,12 @@ class RefreshTokenResource(MethodView):
         user = persons_service.get_current_user()
         additional_claims = {"identity_type": "person"}
 
-        if app.config["ENFORCE_2FA"]:
+        # The refresh token carries the claims of the login: an SSO session
+        # allowed to skip 2FA must not get restricted on refresh, and the
+        # new access token keeps the claim.
+        if get_jwt().get("skip_2fa_setup"):
+            additional_claims["skip_2fa_setup"] = True
+        elif app.config["ENFORCE_2FA"]:
             user_unsafe = persons_service.get_current_user(unsafe=True)
             if not auth_service.is_user_exempt_from_2fa(user_unsafe, app):
                 if not auth_service.person_two_factor_authentication_enabled(
@@ -1061,6 +1066,8 @@ class SAMLSSOResource(MethodView, ArgsMixin):
             additional_claims = {"identity_type": "person"}
             if requires_2fa_setup:
                 additional_claims["requires_2fa_setup"] = True
+            if config.SAML_SKIP_2FA:
+                additional_claims["skip_2fa_setup"] = True
 
             access_token, refresh_token = auth_service.create_auth_tokens(
                 user["id"], additional_claims
@@ -1255,6 +1262,8 @@ class OIDCCallbackResource(MethodView, ArgsMixin):
             additional_claims = {"identity_type": "person"}
             if requires_2fa_setup:
                 additional_claims["requires_2fa_setup"] = True
+            if config.OIDC_SKIP_2FA:
+                additional_claims["skip_2fa_setup"] = True
 
             access_token, refresh_token = auth_service.create_auth_tokens(
                 user["id"], additional_claims
