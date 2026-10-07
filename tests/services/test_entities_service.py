@@ -2,7 +2,7 @@ import pytest
 
 from tests.base import ApiDBTestCase
 
-from zou.app.models.entity import EntityLink
+from zou.app.models.entity import Entity, EntityLink
 from zou.app.services import (
     assets_service,
     deletion_service,
@@ -428,6 +428,39 @@ class EntityLinkTestCase(ApiDBTestCase):
         self.assertEqual(removed["id"], str(link.id))
         with pytest.raises(EntityLinkNotFoundException):
             entities_service.get_entity_link(str(link.id))
+
+    def test_remove_entity_link_refreshes_the_casting_of_the_shot(self):
+        """
+        Same path as uncasting from the breakdown: the shot counter the
+        shots page divides by, and the casting-update its listeners wait for.
+        """
+        link = self.a_link()
+        self.shot.update({"nb_entities_out": 1})
+        captured = self.capture_events("shot:casting-update")
+
+        entities_service.remove_entity_link(str(link.id))
+
+        self.assertEqual(Entity.get(self.shot.id).nb_entities_out, 0)
+        self.assertEqual(
+            [event["removed_asset_ids"] for event in captured],
+            [[str(self.asset.id)]],
+        )
+
+    def test_remove_entity_link_of_an_episode_leaves_its_shots_cast(self):
+        self.a_link()
+        episode = self.generate_fixture_episode("E99")
+        self.sequence.update({"parent_id": episode.id})
+        link = EntityLink.create(
+            entity_in_id=episode.id, entity_out_id=self.asset.id
+        )
+
+        entities_service.remove_entity_link(str(link.id))
+
+        self.assertIsNotNone(
+            EntityLink.get_by(
+                entity_in_id=self.shot.id, entity_out_id=self.asset.id
+            )
+        )
 
     def test_remove_entity_link_that_is_not_there(self):
         with pytest.raises(EntityLinkNotFoundException):

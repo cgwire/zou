@@ -385,16 +385,18 @@ def cast_asset(entity_id, asset_id, nb_occurences=None, label=None):
     return get_casting(entity_id)
 
 
-def uncast_asset(entity_id, asset_id):
+def uncast_asset(entity_id, asset_id, cascade_to_shots=True):
     """
     Remove given asset from the casting of given entity, leaving the other
-    assets untouched. Nothing happens when the asset was not cast.
+    assets untouched. Nothing happens when the asset was not cast. On an
+    episode, the asset also leaves the casting of its shots unless
+    cascade_to_shots is False.
     """
     link = get_entity_link_raw(entity_id, asset_id)
     if link is None:
         return get_casting(entity_id)
     entity = entities_service.get_entity_raw(entity_id)
-    if shots_service.is_episode(entity.serialize()):
+    if cascade_to_shots and shots_service.is_episode(entity.serialize()):
         _remove_asset_from_episode_shots(asset_id, entity_id)
     link.delete()
     _announce_casting_change(entity, [], [str(asset_id)])

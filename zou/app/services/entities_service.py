@@ -800,13 +800,21 @@ def get_entity_link(link_id):
 
 def remove_entity_link(link_id):
     """
-    Delete the entity link matching given id and return it.
+    Delete the entity link matching given id and return it. It goes through
+    the breakdown uncasting, which refreshes the link counter, the casting
+    caches and stats, and the episode link mirrored from the shots. Removing
+    one link leaves the shots of an episode untouched.
     """
+    from zou.app.services import breakdown_service
+
     link = EntityLink.get_by(id=link_id)
     if link is None:
         raise EntityLinkNotFoundException
-    link.delete()
-    return link.serialize()
+    serialized_link = link.serialize()
+    breakdown_service.uncast_asset(
+        link.entity_in_id, link.entity_out_id, cascade_to_shots=False
+    )
+    return serialized_link
 
 
 def get_not_allowed_descriptors_fields_for_vendor(
