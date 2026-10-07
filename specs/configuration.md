@@ -16,6 +16,8 @@ fails when one is added to the code and not here, or documented and no longer re
 | `DOMAIN_PROTOCOL` | https | Public scheme of the instance |
 | `CORS_ALLOWED_ORIGINS` | (none) | Semicolon-separated origins allowed to call the API from a browser; CORS is disabled when empty |
 | `CLIENT_CACHE_MAX_AGE` | 604800 | `Cache-Control: max-age` of the served pictures and movies, in seconds |
+| `MEDIA_MAX_CONCURRENT_REQUESTS` | 0 | Picture and movie downloads (`GET`/`HEAD` on `/pictures/` and `/movies/`) one worker process handles at once; the others wait, so a burst of thumbnails cannot starve the rest of the API. `0` disables the limit |
+| `MEDIA_SLOT_WAIT_TIMEOUT` | 30 | Seconds a download waits for a slot before a `503` with `Retry-After`; `0` waits as long as it takes |
 | `NB_RECORDS_PER_PAGE` | 100 | Page size of the paginated listings when the client gives none |
 | `MAX_CONTENT_LENGTH` | 10737418240 | Cap on any request body, in bytes (10 GiB). `0` removes the limit |
 | `MAX_IMAGE_PIXELS` | 400000000 | Pillow decompression bomb threshold for uploaded pictures |

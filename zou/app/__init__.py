@@ -32,7 +32,7 @@ from zou.app.exceptions import (
     InactiveUserException,
 )
 
-from zou.app.utils import cache, fs, monitoring
+from zou.app.utils import cache, fs, media_slots, monitoring
 from zou.app.utils.flask_utils import (
     ParsedUserAgent,
     ORJSONProvider,
@@ -308,6 +308,11 @@ def create_app(config_object=config):
     app.config.from_object(config_object)
 
     monitoring.init_monitoring(app)
+    media_slots.init_media_slots(
+        app,
+        app.config.get("MEDIA_MAX_CONCURRENT_REQUESTS", 0),
+        app.config.get("MEDIA_SLOT_WAIT_TIMEOUT", 30),
+    )
 
     db.init_app(app)
     migrate.init_app(app, db)

@@ -70,6 +70,14 @@ JWT_IDENTITY_CLAIM = "sub"
 CORS_ALLOWED_ORIGINS = env_with_semicolon_to_list("CORS_ALLOWED_ORIGINS", [])
 
 CLIENT_CACHE_MAX_AGE = int(os.getenv("CLIENT_CACHE_MAX_AGE", 604800))
+# Picture and movie downloads one worker process handles at once; the
+# others wait for a slot, so a burst of thumbnails cannot starve the rest
+# of the API. 0 disables the limit. Past MEDIA_SLOT_WAIT_TIMEOUT seconds
+# of waiting (0: no limit), the request is answered 503.
+MEDIA_MAX_CONCURRENT_REQUESTS = int(
+    os.getenv("MEDIA_MAX_CONCURRENT_REQUESTS", 0)
+)
+MEDIA_SLOT_WAIT_TIMEOUT = int(os.getenv("MEDIA_SLOT_WAIT_TIMEOUT", 30))
 
 DATABASE = {
     "drivername": os.getenv("DB_DRIVER", "postgresql+psycopg"),
