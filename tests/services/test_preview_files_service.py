@@ -285,6 +285,11 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
             {"hd_bitrate_compression": 4, "ld_bitrate_compression": None},
             current={"ld_bitrate_compression": 6},
         )
+        # So is leaving it: the encoder caps a stored low def.
+        validate(
+            {"hd_bitrate_compression": 4},
+            current={"ld_bitrate_compression": 6},
+        )
         for data, kwargs in (
             ({"hd_bitrate_compression": 10, "ld_bitrate_compression": 12}, {}),
             (
@@ -295,13 +300,35 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
                 {"hd_bitrate_compression": None, "ld_bitrate_compression": 12},
                 {"inherited": {"hd_bitrate_compression": 10}},
             ),
-            (
-                {"hd_bitrate_compression": 4},
-                {"current": {"ld_bitrate_compression": 6}},
-            ),
         ):
             with self.assertRaises(WrongParameterException):
                 validate(data, **kwargs)
+
+    def test_bitrate_validation_leaves_stored_values_to_the_encoder(self):
+        validate = preview_files_service.validate_movie_bitrates
+        project = {"hd_bitrate_compression": 28, "ld_bitrate_compression": 6}
+        # A link high def below the low def it inherits: the encoder caps
+        # that low def.
+        validate(
+            {"hd_bitrate_compression": 4, "ld_bitrate_compression": None},
+            inherited=project,
+        )
+        with patch.object(
+            preview_files_service.config, "MOVIE_HIGHDEF_BITRATE", 20
+        ):
+            # Bitrates stored above a ceiling lowered since do not lock the
+            # object, nor the links inheriting them.
+            validate({"name": "Renamed"}, current=project)
+            validate(
+                {"hd_bitrate_compression": None, "ld_bitrate_compression": 8},
+                inherited=project,
+            )
+            validate({"ld_bitrate_compression": 20}, current=project)
+            # Sent back with their stored values, they are not checked
+            # again.
+            validate(dict(project), current=project)
+        lowered = {"hd_bitrate_compression": 19, "ld_bitrate_compression": 20}
+        validate(dict(lowered), current=lowered)
 
     def test_encoding_bitrates_never_exceed_the_ceilings(self):
         project = {"hd_bitrate_compression": 8, "ld_bitrate_compression": None}

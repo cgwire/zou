@@ -1,5 +1,8 @@
+from unittest.mock import patch
+
 from tests.base import ApiDBTestCase
 
+from zou.app import config
 from zou.app.utils import fields
 from zou.app.models.project import Project
 from zou.app.services import projects_service, shots_service
@@ -163,7 +166,25 @@ class ProjectTestCase(ApiDBTestCase):
         # The low def bitrate is checked against the stored high def one.
         self.put(path, {"ld_bitrate_compression": 21}, 400)
         self.put(path, {"ld_bitrate_compression": 20})
-        self.put(path, {"hd_bitrate_compression": 19}, 400)
+        self.put(
+            path,
+            {"hd_bitrate_compression": 19, "ld_bitrate_compression": 21},
+            400,
+        )
+        # The encoder caps a stored low def left above the high def.
+        self.put(path, {"hd_bitrate_compression": 19})
+        # Bitrates stored above a ceiling lowered since do not lock the
+        # project, even sent back with the rest of it.
+        with patch.object(config, "MOVIE_HIGHDEF_BITRATE", 10):
+            self.put(path, {"description": "Still editable."})
+            self.put(
+                path,
+                {
+                    "description": "Sent back whole.",
+                    "hd_bitrate_compression": 19,
+                    "ld_bitrate_compression": 20,
+                },
+            )
 
     def test_delete_project(self):
         projects = self.get("data/projects")
