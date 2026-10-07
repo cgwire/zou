@@ -18,9 +18,9 @@ from ldap3 import Server, Connection, ALL, NTLM, SIMPLE
 from zou.app.utils import thumbnail as thumbnail_utils, auth
 from zou.app.utils.progress import NullProgress
 from zou.app.stores import auth_tokens_store, file_store
+from zou.app.commands import backup_service, sync_service
 from zou.app.services import (
     assets_service,
-    backup_service,
     breakdown_service,
     deletion_service,
     edits_service,
@@ -30,7 +30,6 @@ from zou.app.services import (
     preview_files_service,
     projects_service,
     shots_service,
-    sync_service,
     tasks_service,
 )
 from zou.app.models.entity import Entity

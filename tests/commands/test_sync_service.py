@@ -23,7 +23,8 @@ from zou.app.models.preview_file_storage_state import (
 from zou.app.models.project import Project
 from zou.app.models.studio import Studio
 from zou.app.models.task_status import TaskStatus
-from zou.app.services import news_service, sync_service
+from zou.app.commands import sync_service
+from zou.app.services import news_service
 from zou.app.stores import file_store
 
 

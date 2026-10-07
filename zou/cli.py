@@ -256,7 +256,7 @@ def upgrade_db(no_telemetry=False):
     # install or a version upgrade worth counting.
     if not no_telemetry and is_self_hosted and current_rev != head_rev:
         with _get_app().app_context():
-            from zou.app.services import telemetry_service
+            from zou.app.commands import telemetry_service
 
             try:
                 telemetry_service.send_main_infos()
@@ -353,7 +353,7 @@ def create_admin(email, password):
 @cli.command()
 def clean_auth_tokens():
     "Remove revoked and expired tokens."
-    from zou.app.services import commands_service as commands
+    from zou.app.commands import commands_service as commands
 
     commands.clean_auth_tokens()
 
@@ -361,7 +361,7 @@ def clean_auth_tokens():
 @cli.command()
 def clear_all_auth_tokens():
     "Remove all authentication tokens."
-    from zou.app.services import commands_service as commands
+    from zou.app.commands import commands_service as commands
 
     commands.clear_all_auth_tokens()
 
@@ -376,7 +376,7 @@ def clear_all_auth_tokens():
 )
 def init_data(domain):
     "Generate minimal data set required to run Kitsu."
-    from zou.app.services import commands_service as commands
+    from zou.app.commands import commands_service as commands
 
     commands.init_data(domain=domain.lower())
 
@@ -476,7 +476,7 @@ def sync_with_ldap_server():
     """
     For each user account in your LDAP server, it creates a new user.
     """
-    from zou.app.services import commands_service as commands
+    from zou.app.commands import commands_service as commands
     from zou.app.services import persons_service
 
     with _get_app().app_context():
@@ -622,7 +622,7 @@ def sync_full(
     connect to source instance are given through SYNC_LOGIN and SYNC_PASSWORD
     environment variables.
     """
-    from zou.app.services import commands_service as commands
+    from zou.app.commands import commands_service as commands
 
     print("Start syncing.")
     login = os.getenv("SYNC_LOGIN")
@@ -649,7 +649,7 @@ def sync_verify(source, project):
     dropped batches and tables missing from the sync. Reads SYNC_LOGIN and
     SYNC_PASSWORD from the environment.
     """
-    from zou.app.services import commands_service as commands
+    from zou.app.commands import commands_service as commands
 
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
@@ -685,7 +685,7 @@ def sync_push(target, project, batch_size, throttle, broadcast):
     with matching UUIDs. Reads SYNC_LOGIN and SYNC_PASSWORD from the
     environment.
     """
-    from zou.app.services import commands_service as commands
+    from zou.app.commands import commands_service as commands
 
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
@@ -710,7 +710,7 @@ def sync_push_verify(target, project):
     spot rows that did not reach the target. Reads SYNC_LOGIN and
     SYNC_PASSWORD from the environment.
     """
-    from zou.app.services import commands_service as commands
+    from zou.app.commands import commands_service as commands
 
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
@@ -755,7 +755,7 @@ def sync_full_files(
     connect to source instance are given through SYNC_LOGIN and SYNC_PASSWORD
     environment variables.
     """
-    from zou.app.services import commands_service as commands
+    from zou.app.commands import commands_service as commands
 
     print("Start syncing.")
     login = os.getenv("SYNC_LOGIN")
@@ -793,7 +793,7 @@ def sync_changes(event_source, source, logs_directory):
     instance. It expects that credentials to connect to source instance are
     given through SYNC_LOGIN and SYNC_PASSWORD environment variables.
     """
-    from zou.app.services import commands_service as commands
+    from zou.app.commands import commands_service as commands
 
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
@@ -812,7 +812,7 @@ def sync_file_changes(event_source, source, logs_directory):
     instance. It expects that credentials to connect to source instance are
     given through SYNC_LOGIN and SYNC_PASSWORD environment variables.
     """
-    from zou.app.services import commands_service as commands
+    from zou.app.commands import commands_service as commands
 
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
@@ -831,7 +831,7 @@ def sync_last_events(source, minutes, page_size):
     to them. It expects that credentials to connect to source instance are
     given through SYNC_LOGIN and SYNC_PASSWORD environment variables.
     """
-    from zou.app.services import commands_service as commands
+    from zou.app.commands import commands_service as commands
 
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
@@ -850,7 +850,7 @@ def sync_last_files(source, minutes, page_size):
     It expects that credentials to connect to source instance are
     given through SYNC_LOGIN and SYNC_PASSWORD environment variables.
     """
-    from zou.app.services import commands_service as commands
+    from zou.app.commands import commands_service as commands
 
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
@@ -865,7 +865,7 @@ def download_storage_files():
     Download all files from a Swift object storage and store them in a local
     storage.
     """
-    from zou.app.services import commands_service as commands
+    from zou.app.commands import commands_service as commands
 
     commands.download_file_from_storage()
 
@@ -877,7 +877,7 @@ def dump_database(store=False):
     Dump database described in Zou environment variables and save it to
     configured object storage.
     """
-    from zou.app.services import commands_service as commands
+    from zou.app.commands import commands_service as commands
 
     commands.dump_database(store)
 
@@ -888,7 +888,7 @@ def upload_files_to_cloud_storage(days):
     """
     Upload all files related to previews to configured object storage.
     """
-    from zou.app.services import commands_service as commands
+    from zou.app.commands import commands_service as commands
 
     commands.upload_files_to_cloud_storage(days)
 
@@ -901,7 +901,7 @@ def clean_tasks_data(project_id):
     """
     if project_id is None:
         raise click.UsageError("--project-id is required.")
-    from zou.app.services import commands_service as commands
+    from zou.app.commands import commands_service as commands
 
     commands.reset_tasks_data(project_id)
 
@@ -913,7 +913,7 @@ def remove_old_data(days):
     Remove old events, notifications and login logs older than 90 days
     (by default).
     """
-    from zou.app.services import commands_service as commands
+    from zou.app.commands import commands_service as commands
 
     commands.remove_old_data(days)
 
@@ -923,7 +923,7 @@ def reset_search_index():
     """
     Reset search index.
     """
-    from zou.app.services import commands_service as commands
+    from zou.app.commands import commands_service as commands
 
     commands.reset_search_index()
 
@@ -932,7 +932,7 @@ def reset_search_index():
 @click.option("--query", default="")
 def search_asset(query):
     """ """
-    from zou.app.services import commands_service as commands
+    from zou.app.commands import commands_service as commands
 
     commands.search_asset(query)
 
@@ -982,7 +982,7 @@ def generate_preview_extra(
     here. --limit caps the jobs queued, newest movies first. --force
     queues a movie attempted within the last hour too.
     """
-    from zou.app.services import commands_service as commands
+    from zou.app.commands import commands_service as commands
     from zou.app.exceptions import JobQueueDisabledException
 
     if only_missing_tiles:
@@ -1030,7 +1030,7 @@ def reset_movie_files_metadata():
     """
     Store height and width metadata for all movie previews in the database.
     """
-    from zou.app.services import commands_service as commands
+    from zou.app.commands import commands_service as commands
 
     commands.reset_movie_files_metadata()
 
@@ -1040,7 +1040,7 @@ def reset_picture_files_metadata():
     """
     Store height and width metadata for all picture previews in the database.
     """
-    from zou.app.services import commands_service as commands
+    from zou.app.commands import commands_service as commands
 
     commands.reset_picture_files_metadata()
 
@@ -1058,7 +1058,7 @@ def probe_preview_files(project_id, only_unknown, limit, dry_run, progress):
     every preview that already has at least one recorded state; run a
     full probe once after deploying.
     """
-    from zou.app.services import commands_service as commands
+    from zou.app.commands import commands_service as commands
 
     commands.probe_preview_files(
         project_id=project_id,
@@ -1074,7 +1074,7 @@ def reset_breakdown_data():
     """
     Reset breakdown statistics for all open projects.
     """
-    from zou.app.services import commands_service as commands
+    from zou.app.commands import commands_service as commands
 
     commands.reset_breakdown_data()
 
@@ -1099,7 +1099,7 @@ def create_bot(
     """
     Create a bot.
     """
-    from zou.app.services import commands_service as commands
+    from zou.app.commands import commands_service as commands
 
     commands.create_bot(
         email,
@@ -1144,7 +1144,7 @@ def renormalize_movie_preview_files(
     """
     Renormalize all preview files.
     """
-    from zou.app.services import commands_service as commands
+    from zou.app.commands import commands_service as commands
 
     commands.renormalize_movie_preview_files(
         preview_file_id,
@@ -1173,7 +1173,7 @@ def normalize_annotation_times(project_id, dry_run):
     stored unrounded annotation times, leaving entries the player cannot
     display.
     """
-    from zou.app.services import commands_service as commands
+    from zou.app.commands import commands_service as commands
 
     commands.normalize_annotation_times(project_id=project_id, dry_run=dry_run)
 
@@ -1365,7 +1365,7 @@ def list_plugins(output_format, verbose, filter_field, filter_value):
     """
     List installed plugins.
     """
-    from zou.app.services import commands_service as commands
+    from zou.app.commands import commands_service as commands
 
     commands.list_plugins(output_format, verbose, filter_field, filter_value)
 

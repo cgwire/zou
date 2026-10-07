@@ -13,7 +13,7 @@ from tests.base import ApiDBTestCase
 from zou.app.models.person import Person
 from zou.app.services import preview_files_service
 from zou.app.stores import auth_tokens_store, file_store
-from zou.app.services import commands_service as commands
+from zou.app.commands import commands_service as commands
 from zou.app.utils import fields
 from zou.app.utils import progress as progress_utils
 from zou.app.models.entity_type import EntityType
@@ -170,11 +170,11 @@ class RenormalizeMoviePreviewFilesTestCase(ApiDBTestCase):
             "get_local_movie_path",
             return_value=missing_path,
         ), patch(
-            "zou.app.services.commands_service.shutil.copyfile"
+            "zou.app.commands.commands_service.shutil.copyfile"
         ), patch(
-            "zou.app.services.commands_service.config.FS_BACKEND", "local"
+            "zou.app.commands.commands_service.config.FS_BACKEND", "local"
         ), patch(
-            "zou.app.services.commands_service.config.ENABLE_JOB_QUEUE", False
+            "zou.app.commands.commands_service.config.ENABLE_JOB_QUEUE", False
         ), patch.object(
             preview_files_service, "prepare_and_store_movie"
         ) as mock_prepare:
@@ -358,7 +358,7 @@ class RenormalizeMoviePreviewFilesTestCase(ApiDBTestCase):
 
 class SyncCommandsTestCase(ApiDBTestCase):
     def test_page_size_reaches_the_sync_service(self):
-        from zou.app.services import sync_service
+        from zou.app.commands import sync_service
 
         with patch.object(sync_service, "init"), patch.object(
             sync_service, "run_last_events_sync"
@@ -534,7 +534,7 @@ class UpgradeDbTelemetryTestCase(ApiDBTestCase):
         with patch("sqlalchemy.create_engine", return_value=engine), patch(
             "alembic.script.ScriptDirectory.from_config", return_value=script
         ), patch("alembic.command.upgrade"), patch(
-            "zou.app.services.telemetry_service.send_main_infos"
+            "zou.app.commands.telemetry_service.send_main_infos"
         ) as send:
             result = self.runner.invoke(cli, ["upgrade-db", *args])
 

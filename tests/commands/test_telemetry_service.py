@@ -8,7 +8,8 @@ from zou import __version__
 from zou.app import config
 from zou.app.models.person import Person
 from zou.app.models.preview_file import PreviewFile
-from zou.app.services import persons_service, telemetry_service
+from zou.app.commands import telemetry_service
+from zou.app.services import persons_service
 
 
 class TelemetryServiceTestCase(ApiDBTestCase):

@@ -9,7 +9,8 @@ from unittest import mock
 from tests.base import ApiDBTestCase
 
 from zou.app.models.organisation import Organisation
-from zou.app.services import backup_service, persons_service
+from zou.app.commands import backup_service
+from zou.app.services import persons_service
 from zou.app.exceptions import BackupFailedException
 
 
