@@ -38,5 +38,11 @@ responses:
               format: uuid
               description: Preview file unique identifier
               example: b35b7fb5-df86-5776-b181-68564193d360
+            preview_file_status:
+              type: string
+              enum: [processing, ready, broken, missing]
+              description: Status of the preview file. Its pictures can
+                be read once it is ready.
+              example: processing
   400:
     description: Cannot use frame number on non-movie preview

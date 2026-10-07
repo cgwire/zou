@@ -16,6 +16,7 @@ from zou.app.models.entity import (
     EntityVersion,
     EntityConceptLink,
 )
+from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
 from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
@@ -213,9 +214,13 @@ def get_concepts_and_tasks(criterions=None):
             query = query.filter(has_assigned_task)
         return query
 
+    # The variants of an uploaded picture are built by a background job:
+    # the status tells a concept whose picture is not stored yet.
     concept_rows = (
         apply_filters(
-            Entity.query.join(Project, Project.id == Entity.project_id)
+            Entity.query.join(
+                Project, Project.id == Entity.project_id
+            ).outerjoin(PreviewFile, PreviewFile.id == Entity.preview_file_id)
         )
         .with_entities(
             cast(Entity.id, Text).label("id"),
@@ -226,6 +231,7 @@ def get_concepts_and_tasks(criterions=None):
             cast(Entity.entity_type_id, Text).label("entity_type_id"),
             cast(Entity.parent_id, Text).label("parent_id"),
             cast(Entity.preview_file_id, Text).label("preview_file_id"),
+            PreviewFile.status.label("preview_file_status"),
             cast(Entity.source_id, Text).label("source_id"),
             Entity.nb_frames,
             Entity.nb_entities_out,
@@ -275,6 +281,9 @@ def get_concepts_and_tasks(criterions=None):
                 "nb_frames": row.nb_frames,
                 "parent_id": row.parent_id,
                 "preview_file_id": row.preview_file_id,
+                "preview_file_status": fields.serialize_value(
+                    row.preview_file_status
+                ),
                 "project_id": row.project_id,
                 "project_name": row.project_name,
                 "source_id": row.source_id,

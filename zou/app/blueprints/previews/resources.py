@@ -239,6 +239,14 @@ def _processing_answer(preview_file_id):
     preview_file = files_service.get_preview_file_for_access(preview_file_id)
     # .get: an entry memoized by a version predating "status" survives a
     # deploy for the cache TTL.
+    if preview_file.get("status") == "processing":
+        # The memoized status can outlive the job that made the preview
+        # ready: a cache local to this process, or a read racing the
+        # clear that followed the job's update.
+        files_service.clear_preview_file_cache(preview_file_id)
+        preview_file = files_service.get_preview_file_for_access(
+            preview_file_id
+        )
     if preview_file.get("status") != "processing":
         return None
     if wants_json_over_picture():

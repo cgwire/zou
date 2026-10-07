@@ -17,6 +17,16 @@ from zou.app.services import (
 from zou.app.utils import date_helpers
 
 
+def snap_to_whole(value):
+    """
+    Return the whole number a float result lands a hair off, the value
+    otherwise: 2.05 hours make 122.99999999999999 minutes, and 22.8 hours
+    at 7.6 hours a day make 3.0000000000000004 days.
+    """
+    whole = round(value)
+    return whole if abs(value - whole) < 1e-6 else value
+
+
 class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
 
     def check_permissions(self, project_id, task_type, episode_id=None):
@@ -97,13 +107,11 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
             )
 
         new_data = {}
+        estimation = None
 
         if row.get("Estimation") not in [None, ""]:
-            new_data["estimation"] = round(
-                float(row["Estimation"])
-                * self.organisation["hours_by_day"]
-                * 60
-            )
+            estimation = float(row["Estimation"])
+            new_data["estimation"] = self.get_estimation_minutes(estimation)
 
         if row.get("Drawings") not in [None, ""]:
             new_data["nb_drawings"] = int(row["Drawings"])
@@ -119,7 +127,8 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
             )
         elif new_data.get("start_date") and new_data.get("estimation"):
             new_data["due_date"] = date_helpers.add_business_days_to_date(
-                new_data["start_date"], float(row["Estimation"]) - 1
+                new_data["start_date"],
+                self.get_estimation_days(estimation) - 1,
             )
 
         if row.get("Difficulty") not in [None, ""]:
@@ -133,6 +142,29 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
             new_data["data"] = self.get_descriptor_values(row, task["data"])
 
         tasks_service.update_task(task["id"], new_data)
+
+    def get_estimation_minutes(self, estimation):
+        """
+        Return in minutes an estimation given in the unit Kitsu shows and
+        exports estimations in: hours when the organisation displays
+        durations in hours, days otherwise.
+        """
+        if self.organisation["format_duration_in_hours"]:
+            # Unrounded, as Kitsu stores the hours typed in its lists:
+            # whole minutes would bring 0.66 hours back as 0.67.
+            return snap_to_whole(estimation * 60)
+        return round(estimation * self.organisation["hours_by_day"] * 60)
+
+    def get_estimation_days(self, estimation):
+        """
+        Return in days an estimation given in the unit Kitsu shows and
+        exports estimations in.
+        """
+        if self.organisation["format_duration_in_hours"]:
+            return snap_to_whole(
+                estimation / self.organisation["hours_by_day"]
+            )
+        return estimation
 
 
 class TaskTypeEstimationsEpisodeCsvImportResource(

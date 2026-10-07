@@ -208,6 +208,29 @@ class EntityTestCase(ApiDBTestCase):
             ],
         )
 
+    def test_setting_a_processing_preview_tells_its_status(self):
+        """
+        The pictures of a processing preview are not built yet: the event
+        and the answer say so, for the clients to wait for them instead
+        of asking for them.
+        """
+        preview_file_id = str(
+            self.generate_fixture_preview_file(
+                revision=2, status="processing"
+            ).id
+        )
+        main = self.capture_events("preview-file:set-main")
+
+        entity = entities_service.update_entity_preview(
+            self.asset_id, preview_file_id
+        )
+
+        statuses = [event["preview_file_status"] for event in main]
+        statuses.append(entity["preview_file_status"])
+        self.assertEqual(statuses, ["processing", "processing"])
+        # A Choice compares equal to its code: only its type tells it apart.
+        self.assertEqual([type(status) for status in statuses], [str, str])
+
     def test_a_shot_is_announced_as_a_shot(self):
         captured = self.capture_events("shot:update")
         shot_id = str(self.shot.id)

@@ -4,7 +4,9 @@ tags:
   - Import
 description: Import task type estimations from a CSV file. Updates
   estimations, dates, and other task properties for assets or shots
-  based on CSV rows.
+  based on CSV rows. The Estimation column is read in hours when the
+  organisation displays durations in hours (format_duration_in_hours),
+  in days otherwise.
 consumes:
   - multipart/form-data
 parameters:

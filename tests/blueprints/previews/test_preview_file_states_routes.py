@@ -247,6 +247,32 @@ class PreviewFileStatesRoutesTestCase(ApiDBTestCase):
         self.assertIn("no-store", response.headers["Cache-Control"])
         self.assertIsNone(self.state("pictures", "thumbnails"))
 
+    def test_a_preview_made_ready_behind_a_stale_cache_is_served(self):
+        """
+        The job clears the memoized status once the preview is ready, but
+        that clear misses a cache local to another process, and a read
+        racing it memoizes "processing" again.
+        """
+        self.set_processing()
+        files_service.get_preview_file_for_access(self.preview_file_id)
+        files_service.get_preview_file_raw(self.preview_file_id).update(
+            {"status": "ready"}
+        )
+        memoized = files_service.get_preview_file_for_access(
+            self.preview_file_id
+        )
+        self.assertEqual(memoized["status"], "processing")
+
+        response = self.app.get(
+            f"/pictures/thumbnails/preview-files/{self.preview_file_id}.png",
+            headers={
+                **self.base_headers,
+                "Accept": "image/avif,image/webp,image/*,*/*;q=0.8",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+
     def test_a_processing_preview_answers_404_to_a_client_without_accept(
         self,
     ):

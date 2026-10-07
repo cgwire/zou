@@ -871,46 +871,58 @@ def _save_project(project):
     return project.serialize()
 
 
-def _migrate_metadata_field_name(model, old_key, new_key, *, use_no_commit):
+def _migrate_metadata_field_name(model, old_key, new_key):
     """
-    Move a value from old_key to new_key in model.data. No-op if old_key
-    is absent. Returns whether an update was applied.
+    Move a value from old_key to new_key in model.data, without committing.
+    No-op if old_key is absent. Returns whether an update was applied.
     """
     metadata = fields.serialize_value(model.data) or {}
     value = metadata.pop(old_key, None)
     if value is None:
         return False
     metadata[new_key] = value
-    if use_no_commit:
-        model.update_no_commit({"data": metadata})
-    else:
-        model.update({"data": metadata})
+    model.update_no_commit({"data": metadata})
     return True
 
 
 def _entity_query_for_descriptor_entity_type(descriptor):
     """
-    Entities whose `data` may hold values for this descriptor (non-Project).
+    Entities whose `data` holds a value for this descriptor (neither
+    Project nor Task). A field name is unique per entity type only, so the
+    query keeps the entities of the descriptor type: every asset type for
+    Asset, the type of that name for a shot, scene, sequence, episode or
+    edit column, none for any other name. Rows without the key are left
+    out: a removal rewrites only the rows it changes.
     """
-    query = Entity.query.filter(Entity.project_id == descriptor.project_id)
-    if descriptor.entity_type == "Shot":
-        shot_type = shots_service.get_shot_type()
-        return query.filter(Entity.entity_type_id == shot_type["id"])
+    query = Entity.query.filter(
+        Entity.project_id == descriptor.project_id,
+        Entity.data.has_key(descriptor.field_name),
+    )
     if descriptor.entity_type == "Asset":
         return query.filter(assets_service.build_asset_type_filter())
-    if descriptor.entity_type == "Edit":
-        edit_type = edits_service.get_edit_type()
-        return query.filter(Entity.entity_type_id == edit_type["id"])
-    return query
+    if descriptor.entity_type == "Shot":
+        entity_type = shots_service.get_shot_type()
+    elif descriptor.entity_type == "Scene":
+        entity_type = shots_service.get_scene_type()
+    elif descriptor.entity_type == "Sequence":
+        entity_type = shots_service.get_sequence_type()
+    elif descriptor.entity_type == "Episode":
+        entity_type = shots_service.get_episode_type()
+    elif descriptor.entity_type == "Edit":
+        entity_type = edits_service.get_edit_type()
+    else:
+        return query.filter(false())
+    return query.filter(Entity.entity_type_id == entity_type["id"])
 
 
 def _task_query_for_descriptor(descriptor):
     """
-    Tasks whose `data` may hold values for this Task descriptor.
+    Tasks whose `data` holds a value for this Task descriptor.
     """
     return Task.query.filter(
         Task.project_id == descriptor.project_id,
         Task.task_type_id == descriptor.task_type_id,
+        Task.data.has_key(descriptor.field_name),
     )
 
 
@@ -927,41 +939,64 @@ def _strip_metadata_field_from_model_data(model, field_name):
 def _migrate_descriptor_field_rename(descriptor, new_field_name):
     """
     Apply a metadata field rename to Project.data or matching Entity rows.
+    Nothing is committed: the caller commits the moved values with the
+    descriptor, so a failed update of the descriptor rolls them back too.
     """
     if descriptor.entity_type == "Project":
         project = get_project_raw(descriptor.project_id)
         _migrate_metadata_field_name(
-            project,
-            descriptor.field_name,
-            new_field_name,
-            use_no_commit=False,
+            project, descriptor.field_name, new_field_name
         )
         return
     if descriptor.entity_type == "Task":
         for task in _task_query_for_descriptor(descriptor).all():
             _migrate_metadata_field_name(
-                task,
-                descriptor.field_name,
-                new_field_name,
-                use_no_commit=True,
+                task, descriptor.field_name, new_field_name
             )
-        Task.commit()
         return
     entities = _entity_query_for_descriptor_entity_type(descriptor).all()
     for entity in entities:
         _migrate_metadata_field_name(
-            entity,
-            descriptor.field_name,
-            new_field_name,
-            use_no_commit=True,
+            entity, descriptor.field_name, new_field_name
         )
-    Entity.commit()
+
+
+def _check_metadata_descriptor_rename(descriptor, name, field_name):
+    """
+    Refuse a new name longer than the name or field name column holds, or
+    that another descriptor of the same project, entity type and task type,
+    the scope of the unique indexes, holds as its name or as its field
+    name. The update of the descriptor would fail on it once the stored
+    values moved to the new key, overwriting any value already there.
+    """
+    columns = MetadataDescriptor.__table__.c
+    if (
+        len(name) > columns.name.type.length
+        or len(field_name) > columns.field_name.type.length
+    ):
+        raise WrongParameterException("Metadata descriptor name is too long.")
+    query = MetadataDescriptor.query.filter(
+        MetadataDescriptor.id != descriptor.id,
+        MetadataDescriptor.project_id == descriptor.project_id,
+        MetadataDescriptor.entity_type == descriptor.entity_type,
+        or_(
+            MetadataDescriptor.name == name,
+            MetadataDescriptor.field_name == field_name,
+        ),
+    )
+    if descriptor.task_type_id is not None:
+        query = query.filter(
+            MetadataDescriptor.task_type_id == descriptor.task_type_id
+        )
+    if query.first() is not None:
+        raise WrongParameterException("Metadata descriptor already exists.")
 
 
 def _remove_stored_values_for_metadata_descriptor(descriptor):
     """
-    Remove descriptor field values from Project.data (Project type) or from
-    all Entity.data rows in the project (other types).
+    Remove descriptor field values from Project.data (Project type), from
+    the Task.data rows of its task type (Task type) or from the Entity.data
+    rows of its entity type (other types).
     """
     if descriptor.entity_type == "Project":
         project = get_project_raw(descriptor.project_id)
@@ -971,7 +1006,7 @@ def _remove_stored_values_for_metadata_descriptor(descriptor):
         for task in _task_query_for_descriptor(descriptor).all():
             _strip_metadata_field_from_model_data(task, descriptor.field_name)
         return
-    for entity in Entity.get_all_by(project_id=descriptor.project_id):
+    for entity in _entity_query_for_descriptor_entity_type(descriptor).all():
         _strip_metadata_field_from_model_data(entity, descriptor.field_name)
 
 
@@ -1095,14 +1130,15 @@ def is_metadata_descriptor_visible(
 
 def update_metadata_descriptor(metadata_descriptor_id, changes):
     """
-    Update metadata descriptor information for given id.
+    Update metadata descriptor information for given id. Whatever can
+    refuse the changes runs before a rename moves the stored values, and
+    the moved values are committed with the descriptor: a failed update
+    leaves them under their old key.
     """
     descriptor = get_metadata_descriptor_raw(metadata_descriptor_id)
-
-    if "name" in changes and len(changes["name"]) > 0:
-        changes["field_name"] = slugify.slugify(changes["name"], separator="_")
-        if descriptor.field_name != changes["field_name"]:
-            _migrate_descriptor_field_rename(descriptor, changes["field_name"])
+    if not changes.get("name"):
+        # Without a new name, the column keeps its own.
+        changes.pop("name", None)
 
     if "departments" in changes:
         if not changes["departments"]:
@@ -1118,6 +1154,14 @@ def update_metadata_descriptor(metadata_descriptor_id, changes):
             raise DepartmentNotFoundException()
 
         changes["departments"] = departments_objects
+
+    if "name" in changes:
+        changes["field_name"] = slugify.slugify(changes["name"], separator="_")
+        _check_metadata_descriptor_rename(
+            descriptor, changes["name"], changes["field_name"]
+        )
+        if descriptor.field_name != changes["field_name"]:
+            _migrate_descriptor_field_rename(descriptor, changes["field_name"])
 
     descriptor.update(changes)
     events.emit(
@@ -1291,11 +1335,18 @@ def update_metadata_descriptor_on_projects(
 ):
     """
     Update every metadata descriptor sharing the given field name and entity
-    type across the given projects. Returns the list of updated descriptors.
+    type across the given projects. A new name is checked on every project
+    first, so that a refusal leaves them all unchanged. Returns the list of
+    updated descriptors.
     """
     descriptors = _find_descriptors_by_field(
         project_ids, entity_type, field_name
     )
+    name = changes.get("name")
+    if name:
+        new_field_name = slugify.slugify(name, separator="_")
+        for descriptor in descriptors:
+            _check_metadata_descriptor_rename(descriptor, name, new_field_name)
     return [
         update_metadata_descriptor(str(descriptor.id), dict(changes))
         for descriptor in descriptors
