@@ -29,6 +29,9 @@ from zou.app.utils.api import configure_api_from_blueprint
 logger = logging.getLogger(__name__)
 
 
+PLUGIN_ALEMBIC_TEMPLATE_DIR = Path(__file__).parent / "plugin_alembic_template"
+
+
 class StaticResource(MethodView):
 
     plugin_id = None
@@ -191,9 +194,6 @@ def load_plugins(app):
                     f" failed to initialize: {e}"
                 )
                 app.logger.debug(traceback.format_exc())
-
-
-PLUGIN_ALEMBIC_TEMPLATE_DIR = Path(__file__).parent / "plugin_alembic_template"
 
 
 def _build_plugin_alembic_config(plugin_path):

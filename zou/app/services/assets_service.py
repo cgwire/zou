@@ -39,6 +39,48 @@ from zou.app.exceptions import (
     WrongParameterException,
 )
 
+# Field orders of the compact encoding of the with-tasks views. Clients
+# must map values by reading these names from the response header, never
+# by hardcoding positions.
+ASSETS_AND_TASKS_ASSET_FIELDS = [
+    "id",
+    "name",
+    "preview_file_id",
+    "description",
+    "asset_type_name",
+    "asset_type_id",
+    "canceled",
+    "ready_for",
+    "episode_id",
+    "casting_episode_ids",
+    "is_casting_standby",
+    "is_shared",
+    "data",
+    "tasks",
+]
+
+ASSETS_AND_TASKS_TASK_FIELDS = [
+    "id",
+    "due_date",
+    "done_date",
+    "duration",
+    "entity_id",
+    "estimation",
+    "end_date",
+    "is_subscribed",
+    "last_comment_date",
+    "last_preview_file_id",
+    "priority",
+    "real_start_date",
+    "retake_count",
+    "start_date",
+    "difficulty",
+    "task_status_id",
+    "task_type_id",
+    "assignees",
+    "data",
+]
+
 
 def clear_asset_cache(asset_id):
     """
@@ -225,48 +267,6 @@ def _apply_asset_and_tasks_criterions(
         )
 
     return query
-
-
-# Field orders of the compact encoding of the with-tasks views. Clients
-# must map values by reading these names from the response header, never
-# by hardcoding positions.
-ASSETS_AND_TASKS_ASSET_FIELDS = [
-    "id",
-    "name",
-    "preview_file_id",
-    "description",
-    "asset_type_name",
-    "asset_type_id",
-    "canceled",
-    "ready_for",
-    "episode_id",
-    "casting_episode_ids",
-    "is_casting_standby",
-    "is_shared",
-    "data",
-    "tasks",
-]
-ASSETS_AND_TASKS_TASK_FIELDS = [
-    "id",
-    "due_date",
-    "done_date",
-    "duration",
-    "entity_id",
-    "estimation",
-    "end_date",
-    "is_subscribed",
-    "last_comment_date",
-    "last_preview_file_id",
-    "priority",
-    "real_start_date",
-    "retake_count",
-    "start_date",
-    "difficulty",
-    "task_status_id",
-    "task_type_id",
-    "assignees",
-    "data",
-]
 
 
 def prepare_assets_and_tasks(

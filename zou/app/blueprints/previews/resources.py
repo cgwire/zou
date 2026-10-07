@@ -102,6 +102,9 @@ ALLOWED_FILE_EXTENSION = {
 ALLOWED_PREVIEW_BACKGROUND_EXTENSION = {"hdr"}
 
 
+PROCESSING_RETRY_AFTER = 5
+
+
 def send_standard_file(
     preview_file_id,
     extension,
@@ -193,9 +196,6 @@ def stream_movie_from_storage(
     response.cache_control.private = True
     response.cache_control.max_age = max_age
     return response
-
-
-PROCESSING_RETRY_AFTER = 5
 
 
 def wants_json_over_picture():

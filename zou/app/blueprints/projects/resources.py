@@ -43,6 +43,15 @@ from zou.app.exceptions import (
 )
 from zou.app.models.metadata_descriptor import METADATA_DESCRIPTOR_TYPES
 
+VALID_METADATA_ENTITY_TYPES = [
+    "Asset",
+    "Shot",
+    "Edit",
+    "Episode",
+    "Sequence",
+    "Project",
+]
+
 
 class OpenProjectsResource(MethodView, ArgsMixin):
     """
@@ -583,16 +592,6 @@ class ProductionMetadataDescriptorsReorderResource(MethodView, ArgsMixin):
         return projects_service.reorder_metadata_descriptors(
             project_id, body.entity_type, body.descriptor_ids
         )
-
-
-VALID_METADATA_ENTITY_TYPES = [
-    "Asset",
-    "Shot",
-    "Edit",
-    "Episode",
-    "Sequence",
-    "Project",
-]
 
 
 def _accessible_open_project_ids():

@@ -37,6 +37,9 @@ UUID_PATTERN = re.compile(
 )
 
 
+_FILE_TREE_NAME_PATTERN = re.compile(r"[A-Za-z0-9_-]+")
+
+
 def get_working_file_path(
     task,
     mode="working",
@@ -335,8 +338,6 @@ def get_tree_from_project(project):
 
 
 _file_tree_cache = {}
-
-_FILE_TREE_NAME_PATTERN = re.compile(r"[A-Za-z0-9_-]+")
 
 
 def get_tree_from_file(tree_name):

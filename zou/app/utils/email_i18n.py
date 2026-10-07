@@ -809,6 +809,20 @@ O IP de quem solicitou é: {person_IP}.</p>
 }
 
 
+#  Keys whose template is plain text rather than HTML. Everything else is
+#  escaped, so a key that stops following the convention loses its ampersands
+#  in a subject line instead of letting markup into a body.
+PLAIN_TEXT_KEY_SUFFIXES = ("_subject", "_title")
+
+#  Keys whose result its caller hands to another template, or to a chat
+#  channel, rather than to a mail body. Escaping here would reach the
+#  recipient twice over, or push &amp; into Slack: whoever interpolates the
+#  fragment is the one that escapes it. Named one by one on purpose, since
+#  share_invitation_message_segment is concatenated straight into the html
+#  and has to keep being escaped right here.
+PRE_RENDERED_KEYS = ("playlist_episode_segment",)
+
+
 def _normalize_locale(locale):
     """
     Return a locale string suitable for lookup (e.g. en_US, fr_FR).
@@ -837,20 +851,6 @@ def _normalize_locale(locale):
         if candidate in EMAIL_TRANSLATIONS:
             return candidate
     return LANGUAGE_LOCALES.get(language, locale)
-
-
-#  Keys whose template is plain text rather than HTML. Everything else is
-#  escaped, so a key that stops following the convention loses its ampersands
-#  in a subject line instead of letting markup into a body.
-PLAIN_TEXT_KEY_SUFFIXES = ("_subject", "_title")
-
-#  Keys whose result its caller hands to another template, or to a chat
-#  channel, rather than to a mail body. Escaping here would reach the
-#  recipient twice over, or push &amp; into Slack: whoever interpolates the
-#  fragment is the one that escapes it. Named one by one on purpose, since
-#  share_invitation_message_segment is concatenated straight into the html
-#  and has to keep being escaped right here.
-PRE_RENDERED_KEYS = ("playlist_episode_segment",)
 
 
 def _escape_params(key, params):

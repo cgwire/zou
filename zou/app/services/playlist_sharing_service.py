@@ -33,6 +33,13 @@ from zou.app.exceptions import (
     WrongParameterException,
 )
 
+# Entity types for which "parent" is a parent record (shot/seq/episode/…).
+# For other types, we show the entity type name as the logical parent
+# (e.g. assets).
+_SHOT_LIKE_ENTITY_TYPE_NAMES = frozenset(
+    ("Shot", "Sequence", "Episode", "Edit", "Concept")
+)
+
 
 def _get_expiration_datetime(expiration_date):
     """
@@ -605,14 +612,6 @@ def is_person_shown_by_share_link(share_link, person_id):
         )
         for author_id, replies in rows
     )
-
-
-# Entity types for which "parent" is a parent record (shot/seq/episode/…).
-# For other types, we show the entity type name as the logical parent
-# (e.g. assets).
-_SHOT_LIKE_ENTITY_TYPE_NAMES = frozenset(
-    ("Shot", "Sequence", "Episode", "Edit", "Concept")
-)
 
 
 def _enrich_shared_playlist_project_line(playlist_dict):

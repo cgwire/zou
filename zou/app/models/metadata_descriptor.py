@@ -6,6 +6,19 @@ from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
 from zou.app.models.department import Department
 
+METADATA_DESCRIPTOR_TYPES = [
+    ("string", "String"),
+    ("number", "Number"),
+    ("list", "List"),
+    ("taglist", "Taglist"),
+    ("boolean", "Boolean"),
+    ("checklist", "Checklist"),
+    ("date", "Date"),
+    ("url", "URL"),
+    ("textarea", "Textarea"),
+    ("person", "Person"),
+]
+
 
 class DepartmentMetadataDescriptorLink(db.Model):
     metadata_descriptor_id = db.Column(
@@ -28,20 +41,6 @@ class DepartmentMetadataDescriptorLink(db.Model):
             name="department_metadata_descriptor_link_uc",
         ),
     )
-
-
-METADATA_DESCRIPTOR_TYPES = [
-    ("string", "String"),
-    ("number", "Number"),
-    ("list", "List"),
-    ("taglist", "Taglist"),
-    ("boolean", "Boolean"),
-    ("checklist", "Checklist"),
-    ("date", "Date"),
-    ("url", "URL"),
-    ("textarea", "Textarea"),
-    ("person", "Person"),
-]
 
 
 class MetadataDescriptor(db.Model, BaseMixin, SerializerMixin):

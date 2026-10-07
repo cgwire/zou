@@ -14,6 +14,22 @@ MAX_CONCURRENT_CACHE_FILLS = 4
 _cache_fill_slots = threading.BoundedSemaphore(MAX_CONCURRENT_CACHE_FILLS)
 
 
+MISSING_OBJECT_ERROR_CODES = {
+    "404",
+    "NoSuchKey",
+    "NoSuchBucket",
+    "NotFound",
+}
+
+# Pause before the single retry of a transient storage failure. The
+# storage clients already retry on their own (FS_SWIFT_RETRIES, botocore's
+# retry mode), so this second chance only has to outlast a hiccup: a long
+# pause here holds a request worker for nothing.
+TRANSIENT_RETRY_DELAY = 0.5
+
+STALE_PART_AGE = 3600
+
+
 def mkdir_p(path):
     os.makedirs(path, exist_ok=True)
 
@@ -30,21 +46,6 @@ def rm_file(path):
 
 def copyfile(src, dest):
     shutil.copyfile(src, dest)
-
-
-MISSING_OBJECT_ERROR_CODES = {
-    "404",
-    "NoSuchKey",
-    "NoSuchBucket",
-    "NotFound",
-}
-
-
-# Pause before the single retry of a transient storage failure. The
-# storage clients already retry on their own (FS_SWIFT_RETRIES, botocore's
-# retry mode), so this second chance only has to outlast a hiccup: a long
-# pause here holds a request worker for nothing.
-TRANSIENT_RETRY_DELAY = 0.5
 
 
 def is_missing_file_error(exception):
@@ -154,9 +155,6 @@ def get_cache_file_path(config, prefix, instance_id, extension):
         config.TMP_DIR,
         f"cache-{prefix}-{instance_id}.{extension}",
     )
-
-
-STALE_PART_AGE = 3600
 
 
 def _remove_stale_parts(file_path):
