@@ -182,8 +182,8 @@ class Project(db.Model, BaseMixin, SerializerMixin):
     is_frame_in_numbering = db.Column(db.Boolean(), default=False)
     revision_padding = db.Column(db.Integer, default=0, nullable=False)
     # Movie encoding bitrates in Mbit/s, null inherits from the config.
-    hd_bitrate_compression = db.Column(db.Integer, default=28)
-    ld_bitrate_compression = db.Column(db.Integer, default=6)
+    hd_bitrate_compression = db.Column(db.Integer, nullable=True)
+    ld_bitrate_compression = db.Column(db.Integer, nullable=True)
 
     project_status_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("project_status.id"), index=True

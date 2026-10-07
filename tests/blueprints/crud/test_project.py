@@ -186,6 +186,16 @@ class ProjectTestCase(ApiDBTestCase):
                 },
             )
 
+    def test_create_project_leaves_the_bitrates_to_the_instance(self):
+        project = self.post("data/projects", {"name": "Cosmos Landromat 2"})
+        self.assertIsNone(project["hd_bitrate_compression"])
+        self.assertIsNone(project["ld_bitrate_compression"])
+        project = self.post(
+            "data/projects",
+            {"name": "Cosmos Landromat 3", "hd_bitrate_compression": None},
+        )
+        self.assertIsNone(project["hd_bitrate_compression"])
+
     def test_delete_project(self):
         projects = self.get("data/projects")
         self.assertEqual(len(projects), 3)
