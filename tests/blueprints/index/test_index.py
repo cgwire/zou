@@ -1,9 +1,11 @@
 import subprocess
 
+from unittest.mock import patch
+
 from tests.base import ApiDBTestCase, ApiTestCase
 
 from zou import __version__
-from zou.app import app
+from zou.app import app, config
 
 
 class VersionTestCase(ApiTestCase):
@@ -61,3 +63,17 @@ class StatsRouteTestCase(ApiDBTestCase):
         self.generate_fixture_user_manager()
         self.log_in_manager()
         self.get("/stats", 403)
+
+
+class ConfigRouteTestCase(ApiDBTestCase):
+    def test_config_route_gives_the_instance_movie_bitrates(self):
+        """
+        Kitsu shows them as the defaults of the video settings and caps
+        the typed bitrates at the high definition one, as the API does.
+        """
+        with patch.object(config, "MOVIE_HIGHDEF_BITRATE", 40), patch.object(
+            config, "MOVIE_LOWDEF_BITRATE", 8
+        ):
+            conf = self.get("config")
+        self.assertEqual(conf["movie_highdef_bitrate"], 40)
+        self.assertEqual(conf["movie_lowdef_bitrate"], 8)

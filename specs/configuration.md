@@ -236,8 +236,8 @@ Pictures, movies and files are stored through flask-fs2: on disk, in S3 or in Sw
 | `SKIP_NORMALIZATION_FULL` | false | Skip the movie normalization: the uploaded movie is stored as is, once, under `source` or `previews` (see below) |
 | `SKIP_NORMALIZATION_HIGHDEF` | false | Skip only the high def (28M) encoding: the low def version is built and is the only movie stored |
 | `SYNC_SOURCE_MOVIE_FILES` | false | Replicate the source movies when syncing from another instance |
-| `MOVIE_HIGHDEF_BITRATE` | 28 | Default bitrate of the normalized movies, in Mbit/s; projects and task type links can override it |
-| `MOVIE_LOWDEF_BITRATE` | 6 | Default bitrate of the low definition movies, in Mbit/s |
+| `MOVIE_HIGHDEF_BITRATE` | 28 | Default bitrate of the normalized movies, in Mbit/s, announced to the client through `/config`. Productions, templates and task type links can set their own, up to this one |
+| `MOVIE_LOWDEF_BITRATE` | 6 | Default bitrate of the low definition movies, in Mbit/s, announced to the client through `/config` |
 | `MOVIE_ENCODING_PRESET` | medium | x264 preset of the movie normalization |
 | `MOVIE_VBV_BUFSIZE_FACTOR` | 2 | VBV buffer size as a multiple of the bitrate, which is also the cap; `0` drops the cap and keeps a plain average bitrate target |
 | `PREVIEW_MISSING_FILE_RECHECK_DELAY` | 3600 | Seconds during which a preview known missing is answered 404 without asking the storage again |
