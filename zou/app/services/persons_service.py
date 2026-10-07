@@ -40,6 +40,15 @@ from zou.app.exceptions import (
 logger = logging.getLogger(__name__)
 
 
+_SHORT_PERSON_COLUMNS = (
+    Person.id,
+    Person.first_name,
+    Person.last_name,
+    Person.has_avatar,
+    Person.role,
+)
+
+
 def clear_person_cache():
     """
     Drop the memoized person lists and serializations.
@@ -195,15 +204,6 @@ def get_persons_by_ids(person_ids):
         return []
     persons = Person.query.filter(Person.id.in_(person_ids)).all()
     return [person.serialize_safe() for person in persons]
-
-
-_SHORT_PERSON_COLUMNS = (
-    Person.id,
-    Person.first_name,
-    Person.last_name,
-    Person.has_avatar,
-    Person.role,
-)
 
 
 def build_short_person(person):

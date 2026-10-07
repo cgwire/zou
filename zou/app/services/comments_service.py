@@ -40,6 +40,20 @@ from zou.app.utils import cache, date_helpers, events, fs, fields
 from zou.app.stores import file_store
 from zou.app import config
 
+# Raster image types that are safe to display inline. Paired with the global
+# X-Content-Type-Options: nosniff header, the browser honors the declared type
+# and will not sniff a disguised HTML payload into an executable document.
+# image/svg+xml is deliberately excluded: SVG can embed scripts and would run
+# in Kitsu's origin (stored XSS).
+INLINE_SAFE_MIMETYPES = {
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    "image/bmp",
+    "image/avif",
+}
+
 
 def get_attachment_file_raw(attachment_file_id):
     """
@@ -79,21 +93,6 @@ def get_attachment_file_path(attachment_file):
         attachment_file["extension"],
         file_size=attachment_file["size"],
     )
-
-
-# Raster image types that are safe to display inline. Paired with the global
-# X-Content-Type-Options: nosniff header, the browser honors the declared type
-# and will not sniff a disguised HTML payload into an executable document.
-# image/svg+xml is deliberately excluded: SVG can embed scripts and would run
-# in Kitsu's origin (stored XSS).
-INLINE_SAFE_MIMETYPES = {
-    "image/jpeg",
-    "image/png",
-    "image/gif",
-    "image/webp",
-    "image/bmp",
-    "image/avif",
-}
 
 
 def is_inline_safe_mimetype(mimetype):

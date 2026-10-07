@@ -47,6 +47,59 @@ from zou.app.exceptions import (
     WrongIdFormatException,
 )
 
+# Field orders of the compact encoding of the with-tasks view. Clients
+# must map values by reading these names from the response header, never
+# by hardcoding positions.
+SHOTS_AND_TASKS_SHOT_FIELDS = [
+    "canceled",
+    "data",
+    "description",
+    "entity_type_id",
+    "episode_id",
+    "episode_name",
+    "fps",
+    "frame_in",
+    "frame_out",
+    "id",
+    "name",
+    "nb_frames",
+    "parent_id",
+    "preview_file_id",
+    "project_id",
+    "project_name",
+    "sequence_id",
+    "sequence_name",
+    "source_id",
+    "nb_entities_out",
+    "is_casting_standby",
+    "type",
+    "tasks",
+]
+
+SHOTS_AND_TASKS_TASK_FIELDS = [
+    "id",
+    "duration",
+    "due_date",
+    "end_date",
+    "done_date",
+    "entity_id",
+    "estimation",
+    "is_subscribed",
+    "last_comment_date",
+    "last_preview_file_id",
+    "nb_assets_ready",
+    "priority",
+    "real_start_date",
+    "retake_count",
+    "start_date",
+    "difficulty",
+    "nb_drawings",
+    "task_status_id",
+    "task_type_id",
+    "assignees",
+    "data",
+]
+
 
 def clear_shot_cache(shot_id):
     """
@@ -239,59 +292,6 @@ def get_scenes(criterions=None):
         scenes.append(scene)
 
     return scenes
-
-
-# Field orders of the compact encoding of the with-tasks view. Clients
-# must map values by reading these names from the response header, never
-# by hardcoding positions.
-SHOTS_AND_TASKS_SHOT_FIELDS = [
-    "canceled",
-    "data",
-    "description",
-    "entity_type_id",
-    "episode_id",
-    "episode_name",
-    "fps",
-    "frame_in",
-    "frame_out",
-    "id",
-    "name",
-    "nb_frames",
-    "parent_id",
-    "preview_file_id",
-    "project_id",
-    "project_name",
-    "sequence_id",
-    "sequence_name",
-    "source_id",
-    "nb_entities_out",
-    "is_casting_standby",
-    "type",
-    "tasks",
-]
-SHOTS_AND_TASKS_TASK_FIELDS = [
-    "id",
-    "duration",
-    "due_date",
-    "end_date",
-    "done_date",
-    "entity_id",
-    "estimation",
-    "is_subscribed",
-    "last_comment_date",
-    "last_preview_file_id",
-    "nb_assets_ready",
-    "priority",
-    "real_start_date",
-    "retake_count",
-    "start_date",
-    "difficulty",
-    "nb_drawings",
-    "task_status_id",
-    "task_type_id",
-    "assignees",
-    "data",
-]
 
 
 def prepare_shots_and_tasks(criterions=None, compact=False):

@@ -68,6 +68,11 @@ from zou.app.exceptions import (
     WrongUserException,
 )
 
+SSO_REFUSED = {
+    "error": "This account cannot be signed in to with this identity. "
+    "Ask an administrator."
+}
+
 
 def _build_2fa_registration_response(response_data, user_id):
     """
@@ -951,12 +956,6 @@ class RecoveryCodesResource(MethodView, ArgsMixin):
                 },
                 400,
             )
-
-
-SSO_REFUSED = {
-    "error": "This account cannot be signed in to with this identity. "
-    "Ask an administrator."
-}
 
 
 def link_sso_person(protocol, issuer, subject, email, create_info):

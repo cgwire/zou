@@ -90,6 +90,13 @@ STORAGE_RETRIES_META_KEY = "storage_retries"
 PENDING_UPLOADS_FOLDER = "pending-uploads"
 
 
+ANNOTATED_PICTURE_EXTENSIONS = ("jpg", "jpeg", "jpe", "png")
+
+_NO_FRAME_EXTRACTED_MSG = (
+    "No annotated frame could be extracted from this preview"
+)
+
+
 def get_preview_file_dimensions(project, entity=None):
     """
     Return dimensions set at entity level or project level or default
@@ -1637,9 +1644,6 @@ def replace_extracted_frame_for_preview_file(preview_file, frame_number):
             run()
 
 
-ANNOTATED_PICTURE_EXTENSIONS = ("jpg", "jpeg", "jpe", "png")
-
-
 def extract_annotation_frame_from_preview_file(
     preview_file, frame_number=None
 ):
@@ -1820,11 +1824,6 @@ def _annotated_frame_base_name(preview_file):
     """
     full_name = names_service.get_preview_file_name(preview_file["id"])
     return os.path.splitext(full_name)[0]
-
-
-_NO_FRAME_EXTRACTED_MSG = (
-    "No annotated frame could be extracted from this preview"
-)
 
 
 def _build_movie_annotation_entries(preview_file, annotations, base_name):

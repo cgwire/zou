@@ -51,6 +51,56 @@ TEMPORAL_ENTITY_TYPE_NAMES = [
 ]
 
 
+# Builders for each task field of the with-tasks views. Every view picks
+# its exact field list so its response shape stays unchanged; is_subscribed
+# and assignees are always added by build_task.
+_TASK_FIELD_BUILDERS = {
+    "id": lambda row: row.id,
+    "entity_id": lambda row: row.entity_id,
+    "task_type_id": lambda row: row.task_type_id,
+    "task_status_id": lambda row: row.task_status_id,
+    "priority": lambda row: row.priority or 0,
+    "estimation": lambda row: row.estimation,
+    "duration": lambda row: row.duration,
+    "retake_count": lambda row: row.retake_count,
+    "real_start_date": lambda row: fields.serialize_datetime(
+        row.real_start_date
+    ),
+    "end_date": lambda row: fields.serialize_datetime(row.end_date),
+    "start_date": lambda row: fields.serialize_datetime(row.start_date),
+    "due_date": lambda row: fields.serialize_datetime(row.due_date),
+    "done_date": lambda row: fields.serialize_datetime(row.done_date),
+    "last_comment_date": lambda row: fields.serialize_datetime(
+        row.last_comment_date
+    ),
+    "last_preview_file_id": lambda row: row.last_preview_file_id,
+    "nb_assets_ready": lambda row: row.nb_assets_ready,
+    "difficulty": lambda row: row.difficulty,
+    "nb_drawings": lambda row: row.nb_drawings,
+    "data": lambda row: fields.serialize_value(row.data),
+}
+
+ENTITIES_AND_TASKS_TASK_FIELDS = [
+    "id",
+    "estimation",
+    "entity_id",
+    "end_date",
+    "due_date",
+    "done_date",
+    "duration",
+    "last_comment_date",
+    "last_preview_file_id",
+    "priority",
+    "real_start_date",
+    "retake_count",
+    "start_date",
+    "difficulty",
+    "task_status_id",
+    "task_type_id",
+    "data",
+]
+
+
 def clear_entity_cache(entity_id):
     """
     Drop the memoized serialization and full name of given entity.
@@ -467,56 +517,6 @@ def get_entity_links_for_project(
                 }
             )
     return results
-
-
-# Builders for each task field of the with-tasks views. Every view picks
-# its exact field list so its response shape stays unchanged; is_subscribed
-# and assignees are always added by build_task.
-_TASK_FIELD_BUILDERS = {
-    "id": lambda row: row.id,
-    "entity_id": lambda row: row.entity_id,
-    "task_type_id": lambda row: row.task_type_id,
-    "task_status_id": lambda row: row.task_status_id,
-    "priority": lambda row: row.priority or 0,
-    "estimation": lambda row: row.estimation,
-    "duration": lambda row: row.duration,
-    "retake_count": lambda row: row.retake_count,
-    "real_start_date": lambda row: fields.serialize_datetime(
-        row.real_start_date
-    ),
-    "end_date": lambda row: fields.serialize_datetime(row.end_date),
-    "start_date": lambda row: fields.serialize_datetime(row.start_date),
-    "due_date": lambda row: fields.serialize_datetime(row.due_date),
-    "done_date": lambda row: fields.serialize_datetime(row.done_date),
-    "last_comment_date": lambda row: fields.serialize_datetime(
-        row.last_comment_date
-    ),
-    "last_preview_file_id": lambda row: row.last_preview_file_id,
-    "nb_assets_ready": lambda row: row.nb_assets_ready,
-    "difficulty": lambda row: row.difficulty,
-    "nb_drawings": lambda row: row.nb_drawings,
-    "data": lambda row: fields.serialize_value(row.data),
-}
-
-ENTITIES_AND_TASKS_TASK_FIELDS = [
-    "id",
-    "estimation",
-    "entity_id",
-    "end_date",
-    "due_date",
-    "done_date",
-    "duration",
-    "last_comment_date",
-    "last_preview_file_id",
-    "priority",
-    "real_start_date",
-    "retake_count",
-    "start_date",
-    "difficulty",
-    "task_status_id",
-    "task_type_id",
-    "data",
-]
 
 
 def fetch_entity_task_map(

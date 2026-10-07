@@ -50,44 +50,6 @@ from zou.app import config
 
 from zou.app import app
 
-
-def clean_auth_tokens():
-    """
-    Remove all revoked tokens from the key value
-    store.
-    """
-    for key in auth_tokens_store.keys():
-        if auth_tokens_store.is_revoked(key):
-            auth_tokens_store.delete(key)
-
-
-def clear_all_auth_tokens():
-    """
-    Remove all authentication tokens from the key value store.
-    """
-    for key in auth_tokens_store.keys():
-        auth_tokens_store.delete(key)
-
-
-def _init_asset_types_for_domain(domain):
-    """
-    Initialize asset types according to domain (2d, 3d, vfx, games).
-    """
-    if domain == "2d":
-        for name in ("Character", "Prop", "Background", "FX"):
-            assets_service.get_or_create_asset_type(name)
-    elif domain == "vfx":
-        for name in ("Character", "Prop", "Environment", "FX", "Vehicle"):
-            assets_service.get_or_create_asset_type(name)
-    elif domain == "games":
-        for name in ("Character", "Prop", "Environment", "FX", "UI"):
-            assets_service.get_or_create_asset_type(name)
-    else:
-        # 3d (default)
-        for name in ("Character", "Prop", "Environment", "FX"):
-            assets_service.get_or_create_asset_type(name)
-
-
 # Departments (name, color) and task types (department, name, color,
 # priority, for_entity) that init-data creates, per studio domain. The
 # "default" entry is the 3d pipeline.
@@ -188,6 +150,43 @@ DOMAIN_TASK_TYPES = {
         ],
     },
 }
+
+
+def clean_auth_tokens():
+    """
+    Remove all revoked tokens from the key value
+    store.
+    """
+    for key in auth_tokens_store.keys():
+        if auth_tokens_store.is_revoked(key):
+            auth_tokens_store.delete(key)
+
+
+def clear_all_auth_tokens():
+    """
+    Remove all authentication tokens from the key value store.
+    """
+    for key in auth_tokens_store.keys():
+        auth_tokens_store.delete(key)
+
+
+def _init_asset_types_for_domain(domain):
+    """
+    Initialize asset types according to domain (2d, 3d, vfx, games).
+    """
+    if domain == "2d":
+        for name in ("Character", "Prop", "Background", "FX"):
+            assets_service.get_or_create_asset_type(name)
+    elif domain == "vfx":
+        for name in ("Character", "Prop", "Environment", "FX", "Vehicle"):
+            assets_service.get_or_create_asset_type(name)
+    elif domain == "games":
+        for name in ("Character", "Prop", "Environment", "FX", "UI"):
+            assets_service.get_or_create_asset_type(name)
+    else:
+        # 3d (default)
+        for name in ("Character", "Prop", "Environment", "FX"):
+            assets_service.get_or_create_asset_type(name)
 
 
 def _init_task_types_for_domain(domain):
