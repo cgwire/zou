@@ -78,11 +78,8 @@ def init_monitoring(app):
                 **prometheus_kwargs
             )
         except ValueError:
-            prometheus_kwargs["api"] = None
-            prometheus_kwargs["metrics_decorator"] = (
-                permissions.require_admin,
-            )
-            metrics = prometheus_flask_exporter.RESTfulPrometheusMetrics(
+            prometheus_kwargs["metrics_decorator"] = permissions.require_admin
+            metrics = prometheus_flask_exporter.PrometheusMetrics(
                 **prometheus_kwargs
             )
         metrics.info("zou_info", "Application info", version=zou_version)
