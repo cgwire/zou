@@ -1,5 +1,10 @@
+import base64
+import hashlib
+import hmac
+import json
 import pyotp
 import random
+import secrets
 import string
 
 from datetime import timedelta
@@ -48,6 +53,7 @@ from fido2.webauthn import AttestedCredentialData
 
 MAX_LOGIN_FAILED_ATTEMPS = 5
 LOGIN_LOCKOUT_DELAY = timedelta(minutes=1)
+APP_LOGIN_CODE_TTL = 60
 
 # Which method the preferred one falls back to when it gets disabled, in
 # order of preference.
@@ -771,6 +777,66 @@ def create_auth_tokens(identity, additional_claims=None):
         },
     )
     return access_token, refresh_token
+
+
+def create_app_login_code(person_id, code_challenge, skip_2fa_setup=False):
+    """
+    Store a one-time browser login code bound to the given PKCE challenge
+    and return it. It lives APP_LOGIN_CODE_TTL seconds.
+    """
+    code = secrets.token_urlsafe(32)
+    auth_tokens_store.add(
+        f"app-login-code-{code}",
+        json.dumps(
+            {
+                "person_id": person_id,
+                "code_challenge": code_challenge,
+                "skip_2fa_setup": skip_2fa_setup,
+            }
+        ),
+        ttl=APP_LOGIN_CODE_TTL,
+    )
+    return code
+
+
+def exchange_app_login_code(code, code_verifier):
+    """
+    Consume a browser login code and return the person it was minted for
+    with a new token pair, or None when the code is unknown or expired, the
+    verifier does not match its challenge or the person is inactive.
+    """
+    key = f"app-login-code-{code}"
+    value = auth_tokens_store.get(key)
+    # Of two concurrent exchanges, only the one whose delete removes the
+    # key goes on: the code stays single-use.
+    if value is None or auth_tokens_store.delete(key) != 1:
+        return None
+    data = json.loads(value)
+
+    challenge = (
+        base64.urlsafe_b64encode(
+            hashlib.sha256(code_verifier.encode()).digest()
+        )
+        .rstrip(b"=")
+        .decode()
+    )
+    if not hmac.compare_digest(challenge, data["code_challenge"]):
+        return None
+
+    try:
+        person = persons_service.get_person(data["person_id"])
+    except PersonNotFoundException:
+        return None
+    if not person["active"]:
+        return None
+
+    additional_claims = {"identity_type": "person"}
+    if data["skip_2fa_setup"]:
+        additional_claims["skip_2fa_setup"] = True
+    access_token, refresh_token = create_auth_tokens(
+        person["id"], additional_claims
+    )
+    return person, access_token, refresh_token
 
 
 def revoke_tokens(app, jti, refresh_jti=None):

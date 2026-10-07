@@ -22,6 +22,8 @@ from zou.app import app, config
 from zou.app.mixin import ArgsMixin
 from zou.app.utils import auth, emails, permissions, date_helpers, validation
 from zou.app.blueprints.auth.schemas import (
+    AppLoginCodeSchema,
+    AppLoginTokenSchema,
     LoginSchema,
     ChangePasswordSchema,
     ResetPasswordSchema,
@@ -377,6 +379,58 @@ class RefreshTokenResource(MethodView):
             return response
         else:
             return {"access_token": access_token}
+
+
+class AppLoginCodeResource(MethodView):
+
+    @jwt_required()
+    @permissions.require_person
+    @swag_from("openapi/AppLoginCodeResource_post.yml")
+    def post(self):
+        """
+        Mint a browser login code
+        """
+        body = validation.validate_request_body(AppLoginCodeSchema)
+        code = auth_service.create_app_login_code(
+            persons_service.get_current_user()["id"],
+            body.code_challenge,
+            bool(get_jwt().get("skip_2fa_setup")),
+        )
+        return {"code": code}, 201
+
+
+class AppLoginTokenResource(MethodView):
+
+    @swag_from("openapi/AppLoginTokenResource_post.yml")
+    def post(self):
+        """
+        Trade a browser login code for tokens
+        """
+        body = validation.validate_request_body(AppLoginTokenSchema)
+        result = auth_service.exchange_app_login_code(
+            body.code, body.code_verifier
+        )
+        if result is None:
+            return {
+                "login": False,
+                "message": "Wrong or expired code.",
+            }, 400
+
+        user, access_token, refresh_token = result
+        ip_address = request.environ.get("HTTP_X_REAL_IP", request.remote_addr)
+        events_service.create_login_log(user["id"], ip_address, "script")
+        current_app.logger.info(
+            f"User {user['email']} is logged in through the browser."
+        )
+        return {
+            "user": user,
+            "organisation": persons_service.get_organisation(
+                sensitive=user["role"] == "admin"
+            ),
+            "login": True,
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+        }
 
 
 class ChangePasswordResource(MethodView, ArgsMixin):
