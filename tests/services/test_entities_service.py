@@ -266,6 +266,11 @@ class EntityTestCase(ApiDBTestCase):
             entities_service.get_for_entity_from_task(shot_task.serialize()),
             "Shot",
         )
+        scene_task = self.generate_fixture_scene_task()
+        self.assertEqual(
+            entities_service.get_for_entity_from_task(scene_task.serialize()),
+            "Scene",
+        )
 
 
 class EntityListingTestCase(ApiDBTestCase):

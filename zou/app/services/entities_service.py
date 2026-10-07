@@ -442,16 +442,9 @@ def get_for_entity_from_task(task):
     """
     entity = get_entity(task["entity_id"])
     entity_type = get_entity_type(entity["entity_type_id"])
-    for_entity = entity_type["name"]
-    if for_entity.lower() not in [
-        "shot",
-        "sequence",
-        "episode",
-        "edit",
-        "concept",
-    ]:
-        for_entity = "Asset"
-    return for_entity
+    if entity_type["name"] in TEMPORAL_ENTITY_TYPE_NAMES:
+        return entity_type["name"]
+    return "Asset"
 
 
 def get_entities_for_project(
