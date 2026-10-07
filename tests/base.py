@@ -163,6 +163,15 @@ class ApiTestCase(unittest.TestCase):
         self.addCleanup(config_store.config_store.flushall)
         self.addCleanup(job_store.flushall)
         self.addCleanup(lock_store.flushall)
+        # The event handlers are module-level too: one a test registers would
+        # run in the next tests, or be enqueued on their patched job queue.
+        # register() adds to the dict of an event already listed: copy those.
+        self.addCleanup(
+            setattr,
+            events,
+            "handlers",
+            {name: names.copy() for name, names in events.handlers.items()},
+        )
 
         from zou.app.utils import cache
 
