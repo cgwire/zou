@@ -4,6 +4,7 @@ from unittest import mock
 
 from authlib.oidc.core import CodeIDToken
 from flask_jwt_extended import create_access_token as real_create_access_token
+from flask_jwt_extended import decode_token
 
 from tests.base import ApiDBTestCase
 
@@ -283,6 +284,54 @@ class OIDCCallbackTestCase(ApiDBTestCase):
             }
         )
         self.assertNotIn("requires_2fa_setup", additional_claims)
+
+    def test_skip_2fa_survives_token_refresh(self):
+        config.ENFORCE_2FA = True
+        config.OIDC_SKIP_2FA = True
+        enforce_2fa = self.flask_app.config["ENFORCE_2FA"]
+        self.flask_app.config["ENFORCE_2FA"] = True
+        issued = []
+        real_create_auth_tokens = auth_service.create_auth_tokens
+
+        def create_auth_tokens(*args):
+            issued.append(real_create_auth_tokens(*args))
+            return issued[-1]
+
+        try:
+            with mock.patch.object(
+                auth_service, "create_auth_tokens", create_auth_tokens
+            ):
+                self.call_callback(
+                    {
+                        "email": "refresh@example.com",
+                        "email_verified": True,
+                        "given_name": "Re",
+                        "family_name": "Fresh",
+                    }
+                )
+            access_token, refresh_token = issued[0]
+            # A fresh client: the callback cookies would take precedence
+            # over the Authorization header.
+            client = self.flask_app.test_client()
+            response = client.get(
+                "data/projects/open",
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            self.assertEqual(response.status_code, 200)
+            response = client.get(
+                "auth/refresh-token",
+                headers={"Authorization": f"Bearer {refresh_token}"},
+            )
+            access_token = response.get_json()["access_token"]
+            with self.flask_app.app_context():
+                self.assertTrue(decode_token(access_token)["skip_2fa_setup"])
+            response = client.get(
+                "data/projects/open",
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            self.assertEqual(response.status_code, 200)
+        finally:
+            self.flask_app.config["ENFORCE_2FA"] = enforce_2fa
 
     def test_returning_user_is_found_by_subject_not_by_email(self):
         claims = {"sub": "jane", "email_verified": True}

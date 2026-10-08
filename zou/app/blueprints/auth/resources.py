@@ -22,6 +22,8 @@ from zou.app import app, config
 from zou.app.mixin import ArgsMixin
 from zou.app.utils import auth, emails, permissions, date_helpers, validation
 from zou.app.blueprints.auth.schemas import (
+    AppLoginCodeSchema,
+    AppLoginTokenSchema,
     LoginSchema,
     ChangePasswordSchema,
     ResetPasswordSchema,
@@ -354,7 +356,12 @@ class RefreshTokenResource(MethodView):
         user = persons_service.get_current_user()
         additional_claims = {"identity_type": "person"}
 
-        if app.config["ENFORCE_2FA"]:
+        # The refresh token carries the claims of the login: an SSO session
+        # allowed to skip 2FA must not get restricted on refresh, and the
+        # new access token keeps the claim.
+        if get_jwt().get("skip_2fa_setup"):
+            additional_claims["skip_2fa_setup"] = True
+        elif app.config["ENFORCE_2FA"]:
             user_unsafe = persons_service.get_current_user(unsafe=True)
             if not auth_service.is_user_exempt_from_2fa(user_unsafe, app):
                 if not auth_service.person_two_factor_authentication_enabled(
@@ -377,6 +384,58 @@ class RefreshTokenResource(MethodView):
             return response
         else:
             return {"access_token": access_token}
+
+
+class AppLoginCodeResource(MethodView):
+
+    @jwt_required()
+    @permissions.require_person
+    @swag_from("openapi/AppLoginCodeResource_post.yml")
+    def post(self):
+        """
+        Mint a browser login code
+        """
+        body = validation.validate_request_body(AppLoginCodeSchema)
+        code = auth_service.create_app_login_code(
+            persons_service.get_current_user()["id"],
+            body.code_challenge,
+            bool(get_jwt().get("skip_2fa_setup")),
+        )
+        return {"code": code}, 201
+
+
+class AppLoginTokenResource(MethodView):
+
+    @swag_from("openapi/AppLoginTokenResource_post.yml")
+    def post(self):
+        """
+        Trade a browser login code for tokens
+        """
+        body = validation.validate_request_body(AppLoginTokenSchema)
+        result = auth_service.exchange_app_login_code(
+            body.code, body.code_verifier
+        )
+        if result is None:
+            return {
+                "login": False,
+                "message": "Wrong or expired code.",
+            }, 400
+
+        user, access_token, refresh_token = result
+        ip_address = request.environ.get("HTTP_X_REAL_IP", request.remote_addr)
+        events_service.create_login_log(user["id"], ip_address, "script")
+        current_app.logger.info(
+            f"User {user['email']} is logged in through the browser."
+        )
+        return {
+            "user": user,
+            "organisation": persons_service.get_organisation(
+                sensitive=user["role"] == "admin"
+            ),
+            "login": True,
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+        }
 
 
 class ChangePasswordResource(MethodView, ArgsMixin):
@@ -1060,6 +1119,8 @@ class SAMLSSOResource(MethodView, ArgsMixin):
             additional_claims = {"identity_type": "person"}
             if requires_2fa_setup:
                 additional_claims["requires_2fa_setup"] = True
+            if config.SAML_SKIP_2FA:
+                additional_claims["skip_2fa_setup"] = True
 
             access_token, refresh_token = auth_service.create_auth_tokens(
                 user["id"], additional_claims
@@ -1254,6 +1315,8 @@ class OIDCCallbackResource(MethodView, ArgsMixin):
             additional_claims = {"identity_type": "person"}
             if requires_2fa_setup:
                 additional_claims["requires_2fa_setup"] = True
+            if config.OIDC_SKIP_2FA:
+                additional_claims["skip_2fa_setup"] = True
 
             access_token, refresh_token = auth_service.create_auth_tokens(
                 user["id"], additional_claims
