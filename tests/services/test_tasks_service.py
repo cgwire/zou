@@ -4,87 +4,28 @@ import uuid
 
 from unittest import mock
 
-from sqlalchemy import event, text
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import StaleDataError
 
 from tests.base import ApiDBTestCase
 
-from zou.app import db
-from zou.app.stores import redis_lock
 from zou.app.models.comment import Comment
-from zou.app.models.studio import Studio
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
-from zou.app.models.time_spent import TimeSpent
 from zou.app.services import (
     comments_service,
     deletion_service,
-    persons_service,
     projects_service,
     tasks_service,
-    departments_service,
     task_types_service,
+    time_spents_service,
+    todos_service,
 )
-from zou.app.utils import fields
 
 from zou.app.exceptions import (
     RevisionAlreadyExistsException,
-    StudioNotFoundException,
     TaskNotFoundException,
-    TimeSpentNotFoundException,
 )
-
-
-class TaskTestCase(ApiDBTestCase):
-    """
-    An asset and a shot, each carrying one task. Holds no test of its own.
-    """
-
-    def setUp(self):
-        super().setUp()
-        self.generate_fixture_project()
-        self.generate_fixture_asset()
-        self.generate_fixture_sequence()
-        self.generate_fixture_shot()
-        self.generate_fixture_department()
-        self.generate_fixture_task_type()
-        self.generate_fixture_task_status()
-        self.generate_fixture_task_status_wip()
-        self.generate_fixture_task_status_to_review()
-        self.generate_fixture_person()
-        self.generate_fixture_assigner()
-        self.generate_fixture_task()
-        self.generate_fixture_shot_task()
-
-        self.project_id = str(self.project.id)
-        self.task_id = str(self.task.id)
-        self.person_id = str(self.person.id)
-        self.open_status_id = str(self.task_status.id)
-        self.wip_status_id = str(self.task_status_wip.id)
-        self.to_review_status_id = str(self.task_status_to_review.id)
-
-    def collect_statements(self):
-        """
-        Record every statement the session sends until the returned context
-        manager exits. Used to catch the queries a reader must not run.
-        """
-        statements = []
-
-        def collect(conn, cursor, statement, *args, **kwargs):
-            statements.append(statement)
-
-        engine = db.session.get_bind()
-
-        class Recorder:
-            def __enter__(inner):
-                event.listen(engine, "before_cursor_execute", collect)
-                return statements
-
-            def __exit__(inner, *args):
-                event.remove(engine, "before_cursor_execute", collect)
-
-        return Recorder()
+from tests.services.cases import TaskTestCase
 
 
 class TaskCreationTestCase(TaskTestCase):
@@ -293,18 +234,6 @@ class TaskReaderTestCase(TaskTestCase):
         department = tasks_service.get_department_from_task(self.task.id)
         self.assertEqual(department["name"], "Modeling")
 
-    def test_get_studio(self):
-        studio = Studio.create(name="Blue Spirit", color="#000000")
-
-        self.assertEqual(
-            task_types_service.get_studio(studio.id)["name"], "Blue Spirit"
-        )
-        self.assertRaises(
-            StudioNotFoundException,
-            task_types_service.get_studio,
-            fields.gen_uuid(),
-        )
-
     def test_get_full_task(self):
         task = tasks_service.get_full_task(self.task.id, self.person.id)
         self.assertEqual(task["project"]["name"], self.project.name)
@@ -412,27 +341,6 @@ class TaskReaderTestCase(TaskTestCase):
             f"{len(link_statements)}: {link_statements}",
         )
 
-    def test_get_tasks_for_project_loads_only_assignee_ids(self):
-        with self.collect_statements() as statements:
-            tasks = tasks_service.get_tasks_for_project(self.project.id)
-
-        assignees = [
-            assignee for task in tasks for assignee in task["assignees"]
-        ]
-        self.assertIn(self.person_id, assignees)
-        self.assertTrue(
-            all(isinstance(assignee, str) for assignee in assignees)
-        )
-
-        person_link_statements = [
-            statement
-            for statement in statements
-            if "task_person_link" in statement.lower()
-        ]
-        self.assertTrue(person_link_statements)
-        for statement in person_link_statements:
-            self.assertNotIn("person.password", statement)
-
     def test_the_project_readers_answer_for_one_production(self):
         """
         The three paginated readers behind the production pages. Each is
@@ -440,7 +348,7 @@ class TaskReaderTestCase(TaskTestCase):
         must stay out.
         """
         self.generate_fixture_comment()
-        tasks_service.create_or_update_time_spent(
+        time_spents_service.create_or_update_time_spent(
             self.task_id, self.person_id, "2018-06-04", 600
         )
 
@@ -452,14 +360,14 @@ class TaskReaderTestCase(TaskTestCase):
             self.user["id"],
             "elsewhere",
         )
-        tasks_service.create_or_update_time_spent(
+        time_spents_service.create_or_update_time_spent(
             str(other_task.id), self.person_id, "2018-06-04", 600
         )
 
         self.assertEqual(
             {
                 comment["object_id"]
-                for comment in tasks_service.get_comments_for_project(
+                for comment in comments_service.get_comments_for_project(
                     self.project_id
                 )
             },
@@ -468,7 +376,7 @@ class TaskReaderTestCase(TaskTestCase):
         self.assertEqual(
             {
                 time_spent["task_id"]
-                for time_spent in tasks_service.get_time_spents_for_project(
+                for time_spent in time_spents_service.get_time_spents_for_project(
                     self.project_id
                 )
             },
@@ -478,7 +386,7 @@ class TaskReaderTestCase(TaskTestCase):
             str(other_task.id),
             [
                 task["id"]
-                for task in tasks_service.get_tasks_for_project(
+                for task in todos_service.get_tasks_for_project(
                     self.project_id
                 )
             ],
@@ -534,237 +442,7 @@ class TaskTypeReaderTestCase(TaskTestCase):
         )
 
 
-class PersonTaskTestCase(TaskTestCase):
-    def test_get_person_tasks(self):
-        projects = [self.project.serialize()]
-        self.assertEqual(
-            tasks_service.get_person_tasks(self.user["id"], projects), []
-        )
-
-        tasks_service.assign_task(self.task.id, self.user["id"])
-        self.assertEqual(
-            len(tasks_service.get_person_tasks(self.user["id"], projects)), 1
-        )
-
-        comments_service.new_comment(
-            self.task.id, self.task_status.id, self.person.id, "first comment"
-        )
-        comments_service.new_comment(
-            self.task.id, self.task_status.id, self.person.id, "last comment"
-        )
-
-        tasks = tasks_service.get_person_tasks(self.person.id, projects)
-        tasks = sorted(tasks, key=lambda task: task["task_type_name"])
-        self.assertEqual(len(tasks), 2)
-        # Animation comes first, so the commented task is the second one.
-        self.assertEqual(tasks[1]["last_comment"]["text"], "last comment")
-        self.assertEqual(tasks[1]["last_comment"]["person_id"], self.person_id)
-
-    def test_get_person_done_tasks(self):
-        projects = [self.project.serialize()]
-        self.assertEqual(
-            tasks_service.get_person_done_tasks(self.user["id"], projects), []
-        )
-
-        tasks_service.assign_task(self.task.id, self.user["id"])
-        self.assertEqual(
-            tasks_service.get_person_done_tasks(self.user["id"], projects), []
-        )
-
-        done_status = task_types_service.get_or_create_task_status(
-            "Done", "done", "#22d160", is_done=True
-        )
-        tasks_service.update_task(
-            self.task.id, {"task_status_id": done_status["id"]}
-        )
-
-        self.assertEqual(
-            len(
-                tasks_service.get_person_done_tasks(self.user["id"], projects)
-            ),
-            1,
-        )
-
-
-class TimeSpentTestCase(TaskTestCase):
-    def test_create_or_update_time_spent(self):
-        time_spent = tasks_service.create_or_update_time_spent(
-            self.task_id, self.person_id, "2017-09-23", 3600
-        )
-        self.assertEqual(time_spent["duration"], 3600)
-
-        # A second write on the same day replaces the duration...
-        time_spent = tasks_service.create_or_update_time_spent(
-            self.task_id, self.person_id, "2017-09-23", 7200
-        )
-        self.assertEqual(time_spent["duration"], 7200)
-
-        # ...unless it is asked to add to it.
-        time_spent = tasks_service.create_or_update_time_spent(
-            self.task_id, self.person_id, "2017-09-23", 7200, add=True
-        )
-        self.assertEqual(time_spent["duration"], 14400)
-
-    def test_create_or_update_time_spent_losing_the_insert_race(self):
-        # Two concurrent writes on the same (person, task, date): the loser
-        # reads before the winner commits, so its insert is rejected by
-        # time_spent_uc. It must update the winning row instead of letting
-        # the IntegrityError out as a 500.
-        # The rejection is simulated: a real one rolls the session back, and
-        # the suite runs each test inside a single transaction, so it would
-        # take the fixtures with it.
-        tasks_service.create_or_update_time_spent(
-            self.task_id, self.person_id, "2017-09-23", 3600
-        )
-
-        read_time_spent = tasks_service._get_time_spent_raw
-        reads = []
-
-        def stale_first_read(*args, **kwargs):
-            reads.append(None)
-            if len(reads) == 1:
-                return None
-            return read_time_spent(*args, **kwargs)
-
-        rejected = IntegrityError("INSERT", {}, Exception("time_spent_uc"))
-        with mock.patch.object(
-            tasks_service, "_get_time_spent_raw", stale_first_read
-        ), mock.patch.object(TimeSpent, "create", side_effect=rejected):
-            time_spent = tasks_service.create_or_update_time_spent(
-                self.task_id, self.person_id, "2017-09-23", 7200
-            )
-
-        self.assertEqual(time_spent["duration"], 7200)
-        self.assertEqual(len(TimeSpent.get_all_by(task_id=self.task_id)), 1)
-
-    def test_create_time_spent_deleted_by_a_concurrent_request(self):
-        # The insert is committed, then a concurrent DELETE removes the row
-        # before this request reloads it: that must answer 404, not 500.
-        def delete_the_new_row(person_id):
-            db.session.execute(text("DELETE FROM time_spent"))
-            db.session.commit()
-
-        with mock.patch.object(
-            persons_service,
-            "update_person_last_presence",
-            side_effect=delete_the_new_row,
-        ):
-            self.assertRaises(
-                TimeSpentNotFoundException,
-                tasks_service.create_or_update_time_spent,
-                self.task_id,
-                self.person_id,
-                "2017-09-23",
-                3600,
-            )
-
-    def test_update_time_spent_deleted_by_a_concurrent_request(self):
-        # The row is read, then a concurrent DELETE removes it before the
-        # UPDATE: that must answer 404, not 500.
-        tasks_service.create_or_update_time_spent(
-            self.task_id, self.person_id, "2017-09-23", 3600
-        )
-        read_time_spent = tasks_service._get_time_spent_raw
-
-        def read_then_delete(*args, **kwargs):
-            time_spent = read_time_spent(*args, **kwargs)
-            db.session.execute(text("DELETE FROM time_spent"))
-            return time_spent
-
-        with mock.patch.object(
-            tasks_service, "_get_time_spent_raw", read_then_delete
-        ):
-            self.assertRaises(
-                TimeSpentNotFoundException,
-                tasks_service.create_or_update_time_spent,
-                self.task_id,
-                self.person_id,
-                "2017-09-23",
-                7200,
-            )
-
-    def test_the_task_duration_follows_its_time_spents(self):
-        # The duration of the task is the sum of its time spents, and it is
-        # read through the memoized task.
-        tasks_service.get_task(self.task_id)
-
-        for person_id, date, duration in [
-            (self.person_id, "2017-09-23", 3600),
-            (str(self.user["id"]), "2017-09-24", 7200),
-        ]:
-            tasks_service.create_or_update_time_spent(
-                self.task_id, person_id, date, duration
-            )
-
-        self.assertEqual(
-            tasks_service.get_task(self.task_id)["duration"], 10800
-        )
-
-        tasks_service.delete_time_spent(
-            self.task_id, self.person_id, "2017-09-23"
-        )
-
-        self.assertEqual(
-            tasks_service.get_task(self.task_id)["duration"], 7200
-        )
-
-    def test_get_time_spents(self):
-        """
-        Time spents of a task come back grouped by person, with the total
-        alongside. The optional date narrows the group without touching the
-        grouping itself.
-        """
-        user_id = str(self.user["id"])
-        first_day = datetime.date(2017, 9, 23)
-        second_day = datetime.date(2017, 9, 24)
-        for person_id, date, duration in [
-            (self.person_id, first_day, 3600),
-            (user_id, first_day, 7200),
-            (user_id, second_day, 7200),
-        ]:
-            TimeSpent.create(
-                person_id=person_id,
-                task_id=self.task_id,
-                date=date,
-                duration=duration,
-            )
-
-        time_spents = tasks_service.get_time_spents_for_task(self.task_id)
-        self.assertEqual(time_spents["total"], 18000)
-        self.assertEqual(len(time_spents[self.person_id]), 1)
-        self.assertEqual(len(time_spents[user_id]), 2)
-
-        one_day = tasks_service.get_time_spents_for_task(
-            self.task_id, first_day
-        )
-        self.assertEqual(one_day["total"], 10800)
-        self.assertEqual(len(one_day[user_id]), 1)
-
-
 class CommentReaderTestCase(TaskTestCase):
-    def test_get_comments_by_role(self):
-        """
-        An artist does not read what a client wrote, and a client only reads
-        what is meant for clients or written by another client.
-        """
-        self.generate_fixture_user_client()
-        self.generate_fixture_comment()
-        self.generate_fixture_comment()
-        self.generate_fixture_comment(person=self.user_client)
-        self.generate_fixture_comment()
-
-        self.assertEqual(
-            len(tasks_service.get_comments(self.task_id, is_manager=True)), 4
-        )
-        self.assertEqual(
-            len(tasks_service.get_comments(self.task_id, is_manager=False)), 3
-        )
-
-        with mock.patch.object(
-            persons_service, "get_current_user", return_value=self.user_client
-        ):
-            comments = tasks_service.get_comments(self.task_id, is_client=True)
-        self.assertEqual(len(comments), 1)
 
     def test_get_comment_by_preview_file_id(self):
         preview_file = self.generate_fixture_preview_file()
@@ -783,35 +461,6 @@ class CommentReaderTestCase(TaskTestCase):
             ],
             self.comment["id"],
         )
-
-    def test_a_preview_added_to_a_comment_takes_the_task_lock(self):
-        # The next revision and position are read then written: two
-        # uploads at once on the same task would pick the same ones.
-        comment_id = self.generate_fixture_comment()["id"]
-        with mock.patch.object(
-            redis_lock, "with_lock", wraps=redis_lock.with_lock
-        ) as with_lock:
-            tasks_service.add_preview_file_to_comment(
-                comment_id, self.person_id, self.task_id
-            )
-        with_lock.assert_called_once_with(
-            f"preview_revision_lock:{self.task_id}"
-        )
-
-    def test_a_preview_added_to_a_comment_drops_its_cache(self):
-        # The comment is read through a memoized serialization, and the
-        # comment:update event emitted right after the upload makes every
-        # client refetch: without the drop they all cache a comment with no
-        # preview on it.
-        comment_id = self.generate_fixture_comment()["id"]
-        tasks_service.get_comment(comment_id, relations=True)
-
-        preview_file = tasks_service.add_preview_file_to_comment(
-            comment_id, self.person_id, self.task_id
-        )
-
-        comment = tasks_service.get_comment(comment_id, relations=True)
-        self.assertEqual(comment["previews"], [preview_file["id"]])
 
 
 class ResetTaskDataTestCase(ApiDBTestCase):
@@ -863,7 +512,7 @@ class ResetTaskDataTestCase(ApiDBTestCase):
 
     def test_the_duration_is_the_sum_of_the_time_spents(self):
         for date, duration in [("2024-01-08", 120), ("2024-01-09", 300)]:
-            tasks_service.create_or_update_time_spent(
+            time_spents_service.create_or_update_time_spent(
                 self.task_id, str(self.person.id), date, duration
             )
         self.task.update({"duration": 0})
@@ -872,131 +521,6 @@ class ResetTaskDataTestCase(ApiDBTestCase):
 
         task = tasks_service.get_task(self.task_id)
         self.assertEqual(task["duration"], 420)
-
-
-class GetOrCreateTaskTypeTestCase(ApiDBTestCase):
-    def setUp(self):
-        super().setUp()
-        self.department = departments_service.get_or_create_department(
-            "Concept", "#8D6E63"
-        )
-
-    def test_create_when_missing(self):
-        task_type = task_types_service.get_or_create_task_type(
-            self.department, "Concept", "#8D6E63", 1
-        )
-        self.assertIsNotNone(task_type["id"])
-        self.assertEqual(task_type["for_entity"], "Asset")
-
-    def test_return_existing_with_same_name_and_entity(self):
-        first = task_types_service.get_or_create_task_type(
-            self.department, "Concept", "#8D6E63", 1
-        )
-        second = task_types_service.get_or_create_task_type(
-            self.department, "Concept", "#8D6E63", 1
-        )
-        self.assertEqual(first["id"], second["id"])
-        self.assertEqual(len(TaskType.get_all_by(name="Concept")), 1)
-
-    def test_return_existing_with_a_name_differing_only_by_case(self):
-        """
-        The bootstrap follows the same rule as the API: a name differing
-        only by case is the same task type, and the existing row keeps
-        its name.
-        """
-        first = task_types_service.get_or_create_task_type(
-            self.department, "Concept", "#8D6E63", 1
-        )
-        second = task_types_service.get_or_create_task_type(
-            self.department, "CONCEPT", "#8D6E63", 1
-        )
-        self.assertEqual(first["id"], second["id"])
-        self.assertEqual(second["name"], "Concept")
-        self.assertEqual(TaskType.get_all_by(name="CONCEPT"), [])
-
-    def test_same_name_different_for_entity_coexist(self):
-        asset_type = task_types_service.get_or_create_task_type(
-            self.department, "Concept", "#8D6E63", 1
-        )
-        concept_type = task_types_service.get_or_create_task_type(
-            self.department, "Concept", "#8D6E63", 1, for_entity="Concept"
-        )
-        self.assertNotEqual(asset_type["id"], concept_type["id"])
-        self.assertEqual(asset_type["for_entity"], "Asset")
-        self.assertEqual(concept_type["for_entity"], "Concept")
-        self.assertEqual(len(TaskType.get_all_by(name="Concept")), 2)
-
-    def test_a_new_task_type_joins_the_listing(self):
-        task_types_service.get_task_types()
-
-        task_type = task_types_service.get_or_create_task_type(
-            self.department, "Concept", "#8D6E63", 1
-        )
-
-        self.assertIn(
-            task_type["id"],
-            [listed["id"] for listed in task_types_service.get_task_types()],
-        )
-
-
-class TaskStatusTestCase(ApiDBTestCase):
-    """
-    The statuses a studio works with. get_or_create_task_status names them by
-    short name, so asking for a second long name of an existing short one
-    returns the first.
-    """
-
-    def setUp(self):
-        super().setUp()
-        self.generate_fixture_task_status()
-        # Named WIP with short name wip, which is what makes the second
-        # test below get it back under a different long name.
-        self.generate_fixture_task_status_wip()
-        self.generate_fixture_task_status_to_review()
-
-    def test_get_status(self):
-        task_status = task_types_service.get_or_create_task_status(
-            "WIP", "wip", is_wip=True
-        )
-        self.assertEqual(task_status["name"], "WIP")
-
-    def test_get_wip_status(self):
-        task_status = task_types_service.get_or_create_task_status(
-            "Work In Progress", "wip", "#3273dc", is_wip=True
-        )
-        self.assertEqual(task_status["name"], "WIP")
-
-    def test_get_done_status(self):
-        task_status = task_types_service.get_or_create_task_status(
-            "Done", "done", "#22d160", is_done=True
-        )
-        self.assertEqual(task_status["name"], "Done")
-
-    def test_get_todo_status(self):
-        task_status = task_types_service.get_default_task_status()
-        self.assertEqual(task_status["is_default"], True)
-
-    def test_get_to_review_status(self):
-        task_status = task_types_service.get_to_review_status()
-        self.assertEqual(task_status["name"], "To review")
-
-    def test_a_new_status_joins_the_listing(self):
-        # The listing is memoized and feeds the status dropdowns of every
-        # client, so a status created outside the CRUD route has to drop it
-        # too.
-        task_types_service.get_task_statuses()
-
-        task_status = task_types_service.get_or_create_task_status(
-            "Omitted", "omt", "#22d160"
-        )
-
-        self.assertIn(
-            task_status["id"],
-            [
-                listed["id"]
-                for listed in task_types_service.get_task_statuses()
-            ],
-        )
 
 
 class TaskPreviewRevisionTestCase(ApiDBTestCase):

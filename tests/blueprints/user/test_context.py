@@ -8,6 +8,8 @@ from zou.app.services import (
     persons_service,
     projects_service,
     task_types_service,
+    metadata_descriptors_service,
+    time_spents_service,
 )
 
 from zou.app.models.project import Project
@@ -602,7 +604,7 @@ class UserWorkloadTestCase(UserContextTestCase):
         path = "data/user/time-spents/2026-08-05"
         self.assertEqual(self.get(path), [])
 
-        tasks_service.create_or_update_time_spent(
+        time_spents_service.create_or_update_time_spent(
             self.task_id, self.user_id, "2026-08-05", 3600
         )
 
@@ -615,7 +617,7 @@ class UserWorkloadTestCase(UserContextTestCase):
 
     def test_get_task_time_spent_for_date(self):
         path = f"data/user/tasks/{self.task_id}/time-spents/2026-08-05"
-        tasks_service.create_or_update_time_spent(
+        time_spents_service.create_or_update_time_spent(
             self.task_id, self.user_id, "2026-08-05", 3600
         )
 
@@ -625,7 +627,7 @@ class UserWorkloadTestCase(UserContextTestCase):
         self.get(f"data/user/tasks/{self.task_id}/time-spents/nope", 400)
 
     def test_get_time_spents_range(self):
-        tasks_service.create_or_update_time_spent(
+        time_spents_service.create_or_update_time_spent(
             self.task_id, self.user_id, "2026-08-05", 3600
         )
         time_spents = self.get(
@@ -782,10 +784,10 @@ class UserContextRoutesTestCase(UserContextTestCase):
         self.assertEqual(context["custom_actions"], [])
 
     def test_get_metadata_columns(self):
-        projects_service.add_metadata_descriptor(
+        metadata_descriptors_service.add_metadata_descriptor(
             self.project_id, "asset", "test client", "string", [], True
         )
-        projects_service.add_metadata_descriptor(
+        metadata_descriptors_service.add_metadata_descriptor(
             self.project_id, "asset", "test", "string", [], False
         )
         self.generate_fixture_user_client()

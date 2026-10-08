@@ -258,7 +258,7 @@ class ProbePreviewFilesProgressTestCase(ApiDBTestCase):
         self.generate_fixture_preview_file(revision=2)
 
     def test_progress_counts_every_preview(self):
-        from tests.services.test_preview_files_service import SpyProgress
+        from tests.services.cases import SpyProgress
 
         progress = SpyProgress()
         with patch.object(file_store, "exists_confirmed", return_value=True):

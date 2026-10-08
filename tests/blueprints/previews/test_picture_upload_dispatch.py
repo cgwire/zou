@@ -284,7 +284,7 @@ class StorageRequeueTestCase(BasePreviewDispatchTestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
         self.addCleanup(
-            preview_files_service._remove_temp_files,
+            preview_files_service.remove_temp_files,
             self.tmp_path,
             self.pending_path,
         )

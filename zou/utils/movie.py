@@ -11,7 +11,6 @@ import uuid
 from collections import namedtuple
 from fractions import Fraction
 
-
 logger = logging.getLogger(__name__)
 loghandler = logging.StreamHandler()
 loghandler.setLevel(logging.INFO)
@@ -29,7 +28,9 @@ DEFAULT_LOWDEF_BITRATE = 6
 DEFAULT_ENCODING_PRESET = "medium"
 DEFAULT_VBV_BUFSIZE_FACTOR = 2
 
-EncodingParameters = namedtuple("EncodingParameters", ["width", "height", "fps"])
+EncodingParameters = namedtuple(
+    "EncodingParameters", ["width", "height", "fps"]
+)
 
 
 def log_ffmpeg_error(e, action):
@@ -90,7 +91,9 @@ def extract_frame_from_movie(movie_path, frame_number, movie_fps):
     import opentimelineio as otio
 
     file_source_name = os.path.basename(movie_path)
-    file_target_name = f"{file_source_name[:-4]}_{frame_number}_{uuid.uuid4().hex}.png"
+    file_target_name = (
+        f"{file_source_name[:-4]}_{frame_number}_{uuid.uuid4().hex}.png"
+    )
     file_target_path = os.path.join(tempfile.gettempdir(), file_target_name)
 
     frame_time = otio.opentime.RationalTime(
@@ -131,7 +134,9 @@ def generate_tile(movie_path):
     height = 100
     width = math.ceil(height * ratio)
     if rows == 480:
-        select = rf"select='not(mod(n\,{math.ceil(duration_in_frames / 3840)}))',"
+        select = (
+            rf"select='not(mod(n\,{math.ceil(duration_in_frames / 3840)}))',"
+        )
     else:
         select = ""
     try:
@@ -163,7 +168,11 @@ def get_video_track(movie_path, action_name="get_video_track"):
         log_ffmpeg_error(e, action_name)
         raise (e)
     video_track = next(
-        (stream for stream in probe["streams"] if stream["codec_type"] == "video"),
+        (
+            stream
+            for stream in probe["streams"]
+            if stream["codec_type"] == "video"
+        ),
         None,
     )
     return video_track
@@ -206,7 +215,9 @@ def get_movie_display_aspect_ratio(movie_path=None, video_track=None):
     is not set, fallback on width / height.
     """
     if video_track is None:
-        video_track = get_video_track(movie_path, "get_movie_display_aspect_ratio")
+        video_track = get_video_track(
+            movie_path, "get_movie_display_aspect_ratio"
+        )
     ratio = 1
     if video_track is not None:
         try:
@@ -319,10 +330,14 @@ def normalize_movie(
     unique_suffix = uuid.uuid4().hex
     file_target_name = f"{file_source_name[:-8]}_{unique_suffix}.mp4"
     file_target_path = (
-        None if skip_high_def else os.path.join(tempfile.gettempdir(), file_target_name)
+        None
+        if skip_high_def
+        else os.path.join(tempfile.gettempdir(), file_target_name)
     )
     low_file_target_name = f"{file_source_name[:-8]}_{unique_suffix}_low.mp4"
-    low_file_target_path = os.path.join(tempfile.gettempdir(), low_file_target_name)
+    low_file_target_path = os.path.join(
+        tempfile.gettempdir(), low_file_target_name
+    )
 
     w, h = get_movie_size(movie_path)
     resize_factor = w / h
@@ -493,7 +508,9 @@ def add_empty_soundtrack(file_path, try_count=1):
             )
             try:
                 logger.info(f"ffmpeg {' '.join(stream.get_args())}")
-                stream.run(quiet=False, capture_stderr=True, overwrite_output=True)
+                stream.run(
+                    quiet=False, capture_stderr=True, overwrite_output=True
+                )
             except ffmpeg._run.Error as e:
                 log_ffmpeg_error(
                     e,
@@ -515,7 +532,9 @@ def has_soundtrack(file_path):
     return len(audio["streams"]) > 0
 
 
-def build_playlist_movie(concat, tmp_file_paths, movie_file_path, width, height, fps):
+def build_playlist_movie(
+    concat, tmp_file_paths, movie_file_path, width, height, fps
+):
     """
     Build a single movie file from a playlist.
     """

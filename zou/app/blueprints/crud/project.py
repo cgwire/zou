@@ -17,7 +17,7 @@ from zou.app.services import (
     user_service,
     persons_service,
     files_service,
-    preview_files_service,
+    metadata_descriptors_service,
 )
 from zou.app.utils import events, permissions, fields
 
@@ -82,8 +82,8 @@ class ProjectsResource(BaseModelsResource):
             ]:
                 raise WrongParameterException("Invalid production_style")
         if "resolution" in data:
-            preview_files_service.validate_resolution(data["resolution"])
-        preview_files_service.validate_movie_bitrates(data)
+            projects_service.validate_resolution(data["resolution"])
+        projects_service.validate_movie_bitrates(data)
         return True
 
     def update_data(self, data):
@@ -151,7 +151,9 @@ class ProjectsResource(BaseModelsResource):
         # per project: copy them onto the new project so its cells are
         # editable right away, instead of one create request per descriptor
         # from the client.
-        projects_service.copy_project_metadata_descriptors(str(project.id))
+        metadata_descriptors_service.copy_project_metadata_descriptors(
+            str(project.id)
+        )
         user_service.clear_open_projects_cache()
         projects_service.clear_project_cache("")
         return project_dict
@@ -207,10 +209,8 @@ class ProjectResource(BaseModelResource, ArgsMixin):
 
     def pre_update(self, project_dict, data):
         if "resolution" in data:
-            preview_files_service.validate_resolution(data["resolution"])
-        preview_files_service.validate_movie_bitrates(
-            data, current=project_dict
-        )
+            projects_service.validate_resolution(data["resolution"])
+        projects_service.validate_movie_bitrates(data, current=project_dict)
 
         if "preview_background_files" in data:
             data["preview_background_files"] = [

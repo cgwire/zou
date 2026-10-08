@@ -29,6 +29,7 @@ from zou.app.services import (
     entity_types_service,
     persons_service,
     subscriptions_service,
+    metadata_descriptors_service,
 )
 
 from zou.app.exceptions import (
@@ -147,7 +148,7 @@ def get_assets(criterions=None, only_user_projects=False):
         ]
     else:
         result = query.all()
-    return entities_service.remove_not_allowed_metadata_for_vendor(
+    return metadata_descriptors_service.remove_not_allowed_metadata_for_vendor(
         "Asset",
         criterions.get("vendor_departments"),
         Entity.serialize_list(result, obj_type="Asset"),
@@ -323,12 +324,10 @@ def prepare_assets_and_tasks(
 
     not_allowed_map = None
     if "vendor_departments" in criterions:
-        not_allowed_map = (
-            entities_service.get_not_allowed_descriptors_fields_for_vendor(
-                "Asset",
-                criterions["vendor_departments"],
-                set(row.project_id for row in asset_rows),
-            )
+        not_allowed_map = metadata_descriptors_service.get_not_allowed_descriptors_fields_for_vendor(
+            "Asset",
+            criterions["vendor_departments"],
+            set(row.project_id for row in asset_rows),
         )
 
     def iterate():
@@ -336,10 +335,8 @@ def prepare_assets_and_tasks(
             asset_id = str(row.id)
             data = fields.serialize_value(row.data or {})
             if not_allowed_map is not None:
-                data = (
-                    entities_service.remove_not_allowed_fields_from_metadata(
-                        not_allowed_map[row.project_id], data
-                    )
+                data = metadata_descriptors_service.remove_not_allowed_fields_from_metadata(
+                    not_allowed_map[row.project_id], data
                 )
             tasks = [
                 build_task(task_row)
@@ -405,7 +402,7 @@ def get_asset_types_for_project(project_id):
     """
     Retrieve all asset types related to asset of a given project.
     """
-    return entity_types_service._serialize_asset_types(
+    return entity_types_service.serialize_asset_types(
         {x["entity_type_id"] for x in get_assets({"project_id": project_id})}
     )
 
@@ -415,7 +412,7 @@ def get_asset_types_for_episode(project_id, episode_id):
     Retrieve all asset types related to assets natively belonging to a given
     episode (shared/casted assets excluded, to match the schedule scope).
     """
-    return entity_types_service._serialize_asset_types(
+    return entity_types_service.serialize_asset_types(
         {
             asset.entity_type_id
             for asset in Entity.query.filter(
@@ -433,7 +430,7 @@ def get_asset_types_for_shot(shot_id):
     Retrieve all asset types related to asset casted in a given shot.
     """
     shot = Entity.get(shot_id)
-    return entity_types_service._serialize_asset_types(
+    return entity_types_service.serialize_asset_types(
         {x.entity_type_id for x in shot.entities_out}
     )
 

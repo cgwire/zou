@@ -29,6 +29,8 @@ from zou.app.services import (
     preview_files_service,
     entity_types_service,
     task_types_service,
+    files_service,
+    preview_file_states_service,
 )
 from zou.app.exceptions import (
     AttachmentFileNotFoundException,
@@ -40,6 +42,23 @@ from zou.app.exceptions import (
 from zou.app.utils import cache, date_helpers, events, fs, fields
 from zou.app.stores import file_store
 from zou.app import config
+from zou.app.exceptions import CommentNotFoundException
+from zou.app.models.comment import CommentPreviewLink
+from zou.app.models.news import News
+from zou.app.models.preview_file import PreviewFile
+from zou.app.models.project import ProjectPersonLink
+from sqlalchemy.exc import StatementError
+from zou.app.exceptions import TooManyPreviewFilesException
+from zou.app.models.comment import acknowledgements_table
+from sqlalchemy.orm import aliased
+from sqlalchemy import and_
+from zou.app import db
+from zou.app.models.comment import department_mentions_table
+from sqlalchemy.sql import func
+from zou.app.models.comment import mentions_table
+from zou.app.utils import query as query_utils
+from zou.app.stores import redis_lock
+import uuid
 
 # Raster image types that are safe to display inline. Paired with the global
 # X-Content-Type-Options: nosniff header, the browser honors the declared type
@@ -393,15 +412,13 @@ def _run_status_automation(automation, task, person_id):
                     )
 
                     for preview_file in preview_files:
-                        new_preview_file = (
-                            tasks_service.add_preview_file_to_comment(
-                                new_comment["id"],
-                                new_comment["person_id"],
-                                task_to_update["id"],
-                            )
+                        new_preview_file = add_preview_file_to_comment(
+                            new_comment["id"],
+                            new_comment["person_id"],
+                            task_to_update["id"],
                         )
 
-                        preview_files_service.copy_preview_file_in_another_one(
+                        copy_preview_file_in_another_one(
                             preview_file["id"], new_preview_file["id"]
                         )
 
@@ -497,7 +514,7 @@ def move_comment_to_task(comment_id, target_task_id):
     populated) cannot be moved: previews stay attached to the task that
     owns the revision.
     """
-    comment = tasks_service.get_comment_raw(comment_id)
+    comment = get_comment_raw(comment_id)
     source_task = tasks_service.get_task(str(comment.object_id))
     target_task = tasks_service.get_task(target_task_id, relations=True)
 
@@ -520,7 +537,7 @@ def move_comment_to_task(comment_id, target_task_id):
     news_service.delete_news_for_comment(comment.id)
 
     comment.update({"object_id": target_task["id"]})
-    tasks_service.clear_comment_cache(str(comment.id))
+    clear_comment_cache(str(comment.id))
 
     tasks_service.reset_task_data(str(source_task["id"]))
     target_task = tasks_service.reset_task_data(str(target_task["id"]))
@@ -668,7 +685,7 @@ def acknowledge_comment(comment_id):
     Add current user to the list of people who acknowledged given comment.
     If he's already present, remove it.
     """
-    comment = tasks_service.get_comment_raw(comment_id)
+    comment = get_comment_raw(comment_id)
     task = tasks_service.get_task(str(comment.object_id))
     project_id = task["project_id"]
     # Reload the person through the session: appending the cached
@@ -687,7 +704,7 @@ def acknowledge_comment(comment_id):
     comment.save()
     # Kitsu draws the checkmark from the comment it reads back, not from
     # the answer of this call.
-    tasks_service.clear_comment_cache(str(comment.id))
+    clear_comment_cache(str(comment.id))
     return comment.serialize(relations=True)
 
 
@@ -737,7 +754,7 @@ def reply_comment(comment_id, text, person_id=None, files=None):
         person = persons_service.get_current_user()
     else:
         person = persons_service.get_person(person_id)
-    comment = tasks_service.get_comment_raw(comment_id)
+    comment = get_comment_raw(comment_id)
     task = tasks_service.get_task(str(comment.object_id), relations=True)
     if comment.replies is None:
         comment.replies = []
@@ -764,7 +781,7 @@ def reply_comment(comment_id, text, person_id=None, files=None):
         for new_attachment_file in new_attachment_files:
             new_attachment_file["reply_id"] = reply["id"]
         reply["attachment_files"] = new_attachment_files
-    tasks_service.clear_comment_cache(comment_id)
+    clear_comment_cache(comment_id)
     events.emit(
         "comment:reply",
         {
@@ -786,7 +803,7 @@ def get_reply(comment_id, reply_id):
     """
     Return the reply matching given id inside given comment.
     """
-    comment = tasks_service.get_comment_raw(comment_id)
+    comment = get_comment_raw(comment_id)
     for reply in comment.replies or []:
         if reply.get("id") == reply_id:
             return reply
@@ -798,7 +815,7 @@ def delete_reply(comment_id, reply_id):
     Remove given reply from its comment, together with its attachments and
     the notifications it raised.
     """
-    comment = tasks_service.get_comment_raw(comment_id)
+    comment = get_comment_raw(comment_id)
     task = tasks_service.get_task(str(comment.object_id))
 
     if comment.attachment_files is not None:
@@ -813,7 +830,7 @@ def delete_reply(comment_id, reply_id):
         reply for reply in comment.replies if reply["id"] != reply_id
     ]
     comment.save()
-    tasks_service.clear_comment_cache(comment_id)
+    clear_comment_cache(comment_id)
     Notification.delete_all_by(reply_id=reply_id)
     events.emit(
         "comment:delete-reply",
@@ -937,5 +954,521 @@ def add_attachments_to_comment(comment, files, reply_id=None):
         # and appending to it leaves the stored one behind: a file attached
         # to a comment posted earlier would not show until the window
         # closes.
-        tasks_service.clear_comment_cache(comment["id"])
+        clear_comment_cache(comment["id"])
     return comment, new_attachment_files
+
+
+def clear_comment_cache(comment_id):
+    """
+    Drop every memoized serialization of given comment.
+    """
+    cache.cache.delete_memoized(get_comment, comment_id)
+    cache.cache.delete_memoized(get_comment, comment_id, True)
+
+
+def get_comments(task_id, is_client=False, is_manager=False):
+    """
+    Return all comments related to given task.
+    """
+    comments = []
+    query = prepare_query(task_id, is_client, is_manager)
+    comments, comment_ids = run_task_comments_query(query)
+    if len(comments) > 0:
+        ack_map = _build_ack_map_for_comments(comment_ids)
+        mention_map = _build_mention_map_for_comments(comment_ids)
+        department_mention_map = _build_department_mention_map_for_comments(
+            comment_ids
+        )
+        preview_map = build_preview_map_for_comments(comment_ids, is_client)
+        attachment_file_map = build_attachment_map_for_comments(comment_ids)
+        for comment in comments:
+            comment["acknowledgements"] = ack_map.get(comment["id"], [])
+            comment["previews"] = preview_map.get(comment["id"], [])
+            comment["mentions"] = mention_map.get(comment["id"], [])
+            comment["department_mentions"] = department_mention_map.get(
+                comment["id"], []
+            )
+            comment["attachment_files"] = attachment_file_map.get(
+                comment["id"], []
+            )
+        embed_reply_authors(comments)
+
+    if is_client:
+        tmp_comments = []
+        task = tasks_service.get_task(task_id)
+        project = projects_service.get_project(task["project_id"])
+        current_user = persons_service.get_current_user()
+        is_clients_isolated = project.get("is_clients_isolated", False)
+        person_ids = list(
+            {c["person_id"] for c in comments if c.get("person_id")}
+        )
+        persons_map = {
+            p["id"]: p for p in persons_service.get_persons_by_ids(person_ids)
+        }
+        for comment in comments:
+            person = persons_map.get(comment["person_id"], {})
+            is_author = comment["person_id"] == current_user["id"]
+            is_author_client = person.get("role") == "client"
+            is_for_client = comment.get("for_client", False)
+            is_allowed = (
+                is_for_client
+                or (is_clients_isolated and is_author)
+                or (not is_clients_isolated and is_author_client)
+            )
+            if (
+                len(comment["previews"]) > 0
+                and not is_author_client
+                and not is_for_client
+            ):
+                comment["text"] = ""
+                comment["attachment_files"] = []
+                comment["checklist"] = []
+                comment["replies"] = []
+                tmp_comments.append(comment)
+            elif is_allowed:
+                tmp_comments.append(comment)
+        comments = tmp_comments
+    return comments
+
+
+def prepare_query(task_id, is_client, is_manager):
+    """
+    Build the comment query of a task, scoped to what the caller may read:
+    a client only sees the comments flagged for clients.
+    """
+    Editor = aliased(Person, name="editor_id")
+    query = (
+        Comment.query.order_by(Comment.created_at.desc())
+        .filter_by(object_id=task_id)
+        .join(Person, Comment.person_id == Person.id)
+        .join(TaskStatus, Comment.task_status_id == TaskStatus.id)
+        .join(Editor, Comment.editor_id == Editor.id, isouter=True)
+        .add_columns(
+            TaskStatus.name,
+            TaskStatus.short_name,
+            TaskStatus.color,
+            Person.first_name,
+            Person.last_name,
+            Person.full_name,
+            Person.has_avatar,
+            Person.role,
+            Editor.first_name,
+            Editor.last_name,
+            Editor.has_avatar,
+            Editor.role,
+        )
+    )
+    if not is_manager and not is_client:
+        task = tasks_service.get_task(task_id)
+        query = query.outerjoin(
+            ProjectPersonLink,
+            and_(
+                ProjectPersonLink.person_id == Person.id,
+                ProjectPersonLink.project_id == task["project_id"],
+            ),
+        ).filter(
+            func.coalesce(ProjectPersonLink.role, Person.role) != "client"
+        )
+    return query
+
+
+def embed_reply_authors(comments):
+    """
+    Attach a minimal author to each reply so guest repliers render too.
+    """
+    reply_person_ids = {
+        reply.get("person_id")
+        for comment in comments
+        for reply in (comment.get("replies") or [])
+        if reply.get("person_id")
+    }
+    if not reply_person_ids:
+        return
+    persons_map = persons_service.get_short_persons_map(list(reply_person_ids))
+    for comment in comments:
+        for reply in comment.get("replies") or []:
+            reply["person"] = persons_map.get(reply.get("person_id"))
+
+
+def run_task_comments_query(query):
+    """
+    Execute a comment query and return the comments with their author,
+    editor and task status, plus their ids. Acknowledgements, mentions,
+    department mentions, previews, attachments and reply authors are left
+    to the callers, which add the ones they serve in a fixed number of
+    queries.
+    """
+    comment_ids = []
+    comments = []
+    for result in query.all():
+        (
+            comment,
+            task_status_name,
+            task_status_short_name,
+            task_status_color,
+            person_first_name,
+            person_last_name,
+            person_full_name,
+            person_has_avatar,
+            person_role,
+            editor_first_name,
+            editor_last_name,
+            editor_has_avatar,
+            editor_role,
+        ) = result
+
+        comment_dict = comment.serialize()
+        comment_dict["person"] = {
+            "first_name": person_first_name,
+            "last_name": person_last_name,
+            "full_name": person_full_name,
+            "has_avatar": person_has_avatar,
+            "role": getattr(person_role, "code", person_role),
+            "id": str(comment.person_id),
+        }
+        if comment.editor_id is not None:
+            comment_dict["editor"] = {
+                "first_name": editor_first_name,
+                "last_name": editor_last_name,
+                "has_avatar": editor_has_avatar,
+                "role": getattr(editor_role, "code", editor_role),
+                "id": str(comment.editor_id),
+            }
+        comment_dict["task_status"] = {
+            "name": task_status_name,
+            "short_name": task_status_short_name,
+            "color": task_status_color,
+            "id": str(comment.task_status_id),
+        }
+        comments.append(comment_dict)
+        comment_ids.append(comment_dict["id"])
+    return (comments, comment_ids)
+
+
+def _build_link_map_for_comments(comment_ids, table, value_column):
+    """
+    Group the rows of a comment link table by comment id, in one query.
+    """
+    link_map = {}
+    for link in (
+        db.session.query(table).filter(table.c.comment.in_(comment_ids)).all()
+    ):
+        comment_id = str(link.comment)
+        value = str(getattr(link, value_column))
+        link_map.setdefault(comment_id, []).append(value)
+    return link_map
+
+
+def _build_ack_map_for_comments(comment_ids):
+    """
+    Return the ids of the people who acknowledged each comment.
+    """
+    return _build_link_map_for_comments(
+        comment_ids, acknowledgements_table, "person"
+    )
+
+
+def _build_mention_map_for_comments(comment_ids):
+    """
+    Return the ids of the people mentioned in each comment.
+    """
+    return _build_link_map_for_comments(comment_ids, mentions_table, "person")
+
+
+def _build_department_mention_map_for_comments(comment_ids):
+    """
+    Return the ids of the departments mentioned in each comment.
+    """
+    return _build_link_map_for_comments(
+        comment_ids, department_mentions_table, "department"
+    )
+
+
+def build_preview_map_for_comments(comment_ids, is_client=False):
+    """
+    Return the previews attached to each comment. Clients never get the
+    previews of a revision that is not published to them.
+    """
+    preview_map = {}
+    query = (
+        PreviewFile.query.join(CommentPreviewLink)
+        .filter(CommentPreviewLink.comment.in_(comment_ids))
+        .add_columns(CommentPreviewLink.comment)
+    )
+    for preview, comment_id in query.all():
+        comment_id = str(comment_id)
+        if comment_id not in preview_map:
+            preview_map[comment_id] = []
+        status = "ready"
+        if preview.status is not None:
+            status = preview.status.code
+        validation_status = "neutral"
+        if preview.validation_status is not None:
+            validation_status = preview.validation_status.code
+
+        if validation_status != "rejected" or not is_client:
+            preview_map[comment_id].append(
+                {
+                    "id": str(preview.id),
+                    "task_id": str(preview.task_id),
+                    "revision": preview.revision,
+                    "extension": preview.extension,
+                    "width": preview.width,
+                    "height": preview.height,
+                    "duration": preview.duration,
+                    "status": status,
+                    "validation_status": validation_status,
+                    "original_name": preview.original_name,
+                    "position": preview.position,
+                    "annotations": preview.annotations,
+                }
+            )
+    return preview_map
+
+
+def build_attachment_map_for_comments(comment_ids):
+    """
+    Return the attachment files of each comment.
+    """
+    attachment_file_map = {}
+    attachment_files = AttachmentFile.query.filter(
+        AttachmentFile.comment_id.in_(comment_ids)
+    ).all()
+    for attachment_file in attachment_files:
+        comment_id = str(attachment_file.comment_id)
+        attachment_file_id = str(attachment_file.id)
+        if comment_id not in attachment_file_map:
+            attachment_file_map[str(comment_id)] = []
+        attachment_file_map[str(comment_id)].append(
+            {
+                "id": attachment_file_id,
+                "name": attachment_file.name,
+                "extension": attachment_file.extension,
+                "reply_id": attachment_file.reply_id,
+                "size": attachment_file.size,
+            }
+        )
+    return attachment_file_map
+
+
+def get_comment_raw(comment_id):
+    """
+    Return comment matching give id as an active record.
+    """
+    try:
+        comment = Comment.get(comment_id)
+    except StatementError:
+        raise CommentNotFoundException
+
+    if comment is None:
+        raise CommentNotFoundException
+    return comment
+
+
+@cache.memoize_function(120)
+def get_comment(comment_id, relations=False):
+    """
+    Return comment matching give id as a dict.
+    """
+    return get_comment_raw(comment_id).serialize(relations=relations)
+
+
+def get_comments_for_project(project_id, page=0, limit=None):
+    """
+    Return all comments for given project.
+    """
+    query = (
+        Comment.query.join(Task, Task.id == Comment.object_id)
+        .filter(Task.project_id == project_id)
+        .order_by(Comment.updated_at.desc())
+    )
+    return query_utils.get_paginated_results(
+        query, page, limit, relations=True
+    )
+
+
+def add_preview_file_to_comment(comment_id, person_id, task_id, revision=None):
+    """
+    Add a preview to comment preview list. Auto set the revision field
+    (add 1 if it's a new preview, keep the preview revision in other cases).
+    A revision of None means "auto-pick the next revision"; an explicit 0
+    is a valid, stored revision.
+    """
+    comment = get_comment_raw(comment_id)
+    news = News.get_by(comment_id=comment_id)
+    task = Task.get(comment.object_id)
+    project_id = str(task.project_id)
+    # The next revision and position are read then written: two uploads
+    # on the same task at once would pick the same ones, and nothing in
+    # the schema refuses that. The lock serializes them per task.
+    with redis_lock.with_lock(f"preview_revision_lock:{task_id}"):
+        position = 1
+        if revision is None and len(comment.previews) == 0:
+            revision = tasks_service.get_next_preview_revision(task_id)
+        elif revision is None:
+            revision = comment.previews[0].revision
+            position = tasks_service.get_next_position(task_id, revision)
+        else:
+            if len(comment.previews) == 0:
+                tasks_service.check_revision_is_unique_for_task(
+                    task_id, revision
+                )
+            position = tasks_service.get_next_position(task_id, revision)
+        if position > 1:
+            project = projects_service.get_project(project_id)
+            if project.get("is_single_preview_per_revision"):
+                raise TooManyPreviewFilesException(
+                    "Only one preview file is allowed per revision for this "
+                    "project."
+                )
+        preview_file = files_service.create_preview_file_raw(
+            str(uuid.uuid4())[:13],
+            revision,
+            task_id,
+            person_id,
+            position=position,
+        )
+    events.emit(
+        "preview-file:new",
+        {
+            "preview_file_id": preview_file.id,
+            "comment_id": comment_id,
+        },
+        project_id=project_id,
+    )
+    comment.previews.append(preview_file)
+    comment.save()
+    clear_comment_cache(comment_id)
+    if news is not None:
+        news.update({"preview_file_id": preview_file.id})
+    events.emit(
+        "comment:update", {"comment_id": comment.id}, project_id=project_id
+    )
+    return preview_file.serialize(relations=True)
+
+
+def copy_preview_file_in_another_one(
+    original_preview_file_id, preview_file_to_update_id
+):
+    """
+    Copy preview file data/files from one preview file to another one.
+    """
+    original_preview_file = files_service.get_preview_file(
+        original_preview_file_id
+    )
+    is_movie = original_preview_file["extension"] == "mp4"
+    is_picture = original_preview_file["extension"] == "png"
+
+    stored_movie_prefixes = []
+    copied_files = {}
+    if is_movie:
+        # The source is copied too: when the normalization is skipped it is
+        # the only stored movie, and the preview routes serve it.
+        for prefix in files_service.MOVIE_PREFIXES:
+            copied = preview_files_service.copy_preview_file_on_storage(
+                "movies",
+                file_store.get_local_movie_path,
+                file_store.exists_movie,
+                file_store.copy_movie,
+                prefix,
+                original_preview_file_id,
+                preview_file_to_update_id,
+            )
+            if copied:
+                stored_movie_prefixes.append(prefix)
+                copied_files[("movies", prefix)] = (
+                    preview_file_states_service.OK
+                )
+
+    if is_movie or is_picture:
+        prefixes = [
+            "previews",
+            "original",
+            "thumbnails",
+            "thumbnails-square",
+        ]
+        if is_movie:
+            prefixes.append("tiles")
+
+        for prefix in prefixes:
+            copied = preview_files_service.copy_preview_file_on_storage(
+                "pictures",
+                file_store.get_local_picture_path,
+                file_store.exists_picture,
+                file_store.copy_picture,
+                prefix,
+                original_preview_file_id,
+                preview_file_to_update_id,
+            )
+            if copied:
+                copied_files[("pictures", prefix)] = (
+                    preview_file_states_service.OK
+                )
+    else:
+        copied = preview_files_service.copy_preview_file_on_storage(
+            "files",
+            file_store.get_local_file_path,
+            file_store.exists_file,
+            file_store.copy_file,
+            "previews",
+            original_preview_file_id,
+            preview_file_to_update_id,
+        )
+        if copied:
+            copied_files[("files", "previews")] = (
+                preview_file_states_service.OK
+            )
+
+    preview_file_states_service.record_file_states(
+        preview_file_to_update_id, copied_files
+    )
+
+    data = {
+        "extension": original_preview_file["extension"],
+        "original_name": original_preview_file["original_name"],
+        "status": original_preview_file["status"],
+        "file_size": original_preview_file["file_size"],
+        "width": original_preview_file["width"],
+        "height": original_preview_file["height"],
+        "duration": original_preview_file["duration"],
+    }
+    if is_movie:
+        # The copy knows which movie versions it found: record them so
+        # that the movie routes do not probe the storage again.
+        target_preview_file = files_service.get_preview_file_raw(
+            preview_file_to_update_id
+        )
+        data["data"] = {
+            **files_service.get_preview_file_data(target_preview_file),
+            files_service.MOVIE_PREFIXES_KEY: stored_movie_prefixes,
+        }
+    preview_file_to_update = preview_files_service.update_preview_file(
+        preview_file_to_update_id, data
+    )
+    tasks_service.update_preview_file_info(preview_file_to_update)
+    comment = tasks_service.get_comment_by_preview_file_id(
+        preview_file_to_update_id
+    )
+    task = tasks_service.get_task(preview_file_to_update["task_id"])
+    comment_id = None
+    if comment is not None:
+        comment_id = comment["id"]
+        events.emit(
+            "comment:update",
+            {"comment_id": comment_id},
+            project_id=task["project_id"],
+        )
+        events.emit(
+            "preview-file:add-file",
+            {
+                "comment_id": comment_id,
+                "task_id": preview_file_to_update["task_id"],
+                "preview_file_id": preview_file_to_update["id"],
+                "revision": preview_file_to_update["revision"],
+                "extension": preview_file_to_update["extension"],
+                "status": preview_file_to_update["status"],
+            },
+            project_id=task["project_id"],
+        )
+
+    return preview_file_to_update

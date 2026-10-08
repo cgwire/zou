@@ -41,7 +41,9 @@ class DownloadAttachmentResource(MethodView):
             attachment_file_id
         )
         if attachment_file["comment_id"] is not None:
-            comment = tasks_service.get_comment(attachment_file["comment_id"])
+            comment = comments_service.get_comment(
+                attachment_file["comment_id"]
+            )
             permissions_service.check_task_access(comment["object_id"])
         elif attachment_file["chat_message_id"] is not None:
             message = chats_service.get_chat_message(
@@ -171,7 +173,7 @@ class AttachmentResource(MethodView):
         Delete comment attachment
         """
         user = persons_service.get_current_user()
-        comment = tasks_service.get_comment(comment_id)
+        comment = comments_service.get_comment(comment_id)
         if comment["object_id"] != task_id:
             raise permissions.PermissionDenied()
         # The author branch below skips the project check, so the attachment
@@ -200,7 +202,7 @@ class AddAttachmentToCommentResource(MethodView):
         Add comment attachments
         """
         user = persons_service.get_current_user()
-        comment = tasks_service.get_comment(comment_id)
+        comment = comments_service.get_comment(comment_id)
         if comment["object_id"] != task_id:
             raise permissions.PermissionDenied()
         if comment["person_id"] != user["id"]:
@@ -323,7 +325,7 @@ class ReplyCommentResource(MethodView, ArgsMixin):
         """
         Reply to comment
         """
-        comment = tasks_service.get_comment(comment_id)
+        comment = comments_service.get_comment(comment_id)
         if comment["object_id"] != task_id:
             raise permissions.PermissionDenied()
         current_user = persons_service.get_current_user()
@@ -420,7 +422,7 @@ class MoveCommentResource(MethodView):
         body = validation.validate_request_body(MoveCommentSchema)
         permissions_service.check_task_access(task_id)
         permissions_service.check_task_access(body.target_task_id)
-        comment = tasks_service.get_comment(comment_id)
+        comment = comments_service.get_comment(comment_id)
         if str(comment["object_id"]) != str(task_id):
             raise WrongParameterException(
                 "Comment does not belong to the given task."

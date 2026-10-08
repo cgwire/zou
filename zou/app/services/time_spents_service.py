@@ -22,8 +22,18 @@ from zou.app.utils import fields, date_helpers
 from zou.app.services import (
     projects_service,
     persons_service,
+    base_service,
+    tasks_service,
 )
 from zou.app.exceptions import WrongDateFormatException
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm.exc import ObjectDeletedError
+from sqlalchemy.orm.exc import StaleDataError
+from zou.app.exceptions import TaskNotFoundException
+from zou.app.exceptions import TimeSpentNotFoundException
+import collections
+from zou.app.utils import events
+from zou.app.utils import query as query_utils
 
 
 def _apply_time_spent_filters(
@@ -676,3 +686,145 @@ def get_day_offs_between_for_project(
     except DataError:
         raise WrongDateFormatException
     return dict(result)
+
+
+def _get_time_spent_raw(task_id, person_id, date):
+    """
+    Return the time spent recorded for given task, person and date.
+    """
+    try:
+        return TimeSpent.get_by(
+            task_id=task_id,
+            person_id=person_id,
+            date=func.cast(date, TimeSpent.date.type),
+        )
+    except DataError:
+        raise WrongDateFormatException
+
+
+def _apply_time_spent_duration(time_spent, duration, add, project_id):
+    """
+    Set the duration of an existing time spent and notify the change.
+    """
+    if add:
+        duration = time_spent.duration + duration
+    time_spent.update({"duration": duration})
+    events.emit(
+        "time-spent:update",
+        {"time_spent_id": str(time_spent.id)},
+        project_id=project_id,
+    )
+
+
+def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
+    """
+    Create a new time spent if it doesn't exist. If it exists, it update it
+    with the new duration and returns it from the database.
+    """
+    try:
+        return _create_or_update_time_spent(
+            task_id, person_id, date, duration, add
+        )
+    except (ObjectDeletedError, StaleDataError):
+        # A concurrent DELETE removed the row: before the UPDATE, it matches
+        # nothing (StaleDataError); after a commit, reading the expired row
+        # back finds nothing (ObjectDeletedError). The deleting request
+        # recomputes the task duration itself.
+        raise TimeSpentNotFoundException
+
+
+def _create_or_update_time_spent(task_id, person_id, date, duration, add):
+    time_spent = _get_time_spent_raw(task_id, person_id, date)
+
+    task = base_service.get_instance(Task, task_id, TaskNotFoundException)
+    project_id = str(task.project_id)
+    if time_spent is not None:
+        _apply_time_spent_duration(time_spent, duration, add, project_id)
+    else:
+        try:
+            time_spent = TimeSpent.create(
+                task_id=task_id,
+                person_id=person_id,
+                date=date,
+                duration=duration,
+            )
+            persons_service.update_person_last_presence(person_id)
+            events.emit(
+                "time-spent:new",
+                {"time_spent_id": str(time_spent.id)},
+                project_id=project_id,
+            )
+        except IntegrityError:
+            # A concurrent request inserted the same (person, task, date)
+            # between the read above and this insert: time_spent_uc rejects
+            # the loser, which updates the winning row instead of 500ing.
+            # BaseMixin.create already rolled the session back.
+            time_spent = _get_time_spent_raw(task_id, person_id, date)
+            if time_spent is None:
+                raise
+            _apply_time_spent_duration(time_spent, duration, add, project_id)
+
+    task.duration = sum(
+        time_spent.duration
+        for time_spent in TimeSpent.get_all_by(task_id=task_id)
+    )
+    task.save()
+    tasks_service.clear_task_cache(task_id)
+    events.emit("task:update", {"task_id": task_id}, project_id=project_id)
+
+    return time_spent.serialize()
+
+
+def delete_time_spent(task_id, person_id, date):
+    """
+    Delete time spent for given task, person and date.
+    """
+    time_spent = _get_time_spent_raw(task_id, person_id, date)
+
+    if time_spent is None:
+        raise TimeSpentNotFoundException
+
+    task = base_service.get_instance(Task, task_id, TaskNotFoundException)
+    project_id = str(task.project_id)
+    time_spent.duration = 0
+    time_spent.delete()
+    events.emit(
+        "time-spent:delete",
+        {"time_spent_id": str(time_spent.id)},
+        project_id=project_id,
+    )
+
+    task.duration = sum(
+        time_spent.duration
+        for time_spent in TimeSpent.get_all_by(task_id=task_id)
+    )
+    task.save()
+    tasks_service.clear_task_cache(task_id)
+    events.emit("task:update", {"task_id": task_id}, project_id=project_id)
+
+    return time_spent.serialize()
+
+
+def get_time_spents_for_task(task_id, date=None):
+    """
+    Return time spents for given task.
+    """
+    result = collections.defaultdict(list)
+    result["total"] = 0
+    time_spents = TimeSpent.query.filter_by(task_id=task_id)
+    if date is not None:
+        time_spents = time_spents.filter_by(
+            date=func.cast(date, TimeSpent.date.type)
+        )
+    for time_spent in time_spents.all():
+        result[str(time_spent.person_id)].append(time_spent.serialize())
+        result["total"] += time_spent.duration
+    return result
+
+
+def get_time_spents_for_project(project_id, page=0):
+    """
+    Return all time spents for given project.
+    """
+    query = TimeSpent.query.join(Task).filter(Task.project_id == project_id)
+    return query_utils.get_paginated_results(query, page)

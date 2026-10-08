@@ -1,6 +1,10 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.services import persons_service, projects_service, user_service
+from zou.app.services import (
+    persons_service,
+    projects_service,
+    search_filters_service,
+)
 
 
 class SharedFilterMixin:
@@ -148,7 +152,7 @@ class SharedFilterTestCase(SharedFilterMixin, ApiDBTestCase):
     detail_path = "data/search-filters/"
 
     def clear_cache(self):
-        user_service.clear_filter_cache()
+        search_filters_service.clear_filter_cache()
 
     def payload(self, name, **overrides):
         return {
@@ -177,7 +181,7 @@ class SharedFilterGroupTestCase(SharedFilterMixin, ApiDBTestCase):
     detail_path = "data/search-filter-groups/"
 
     def clear_cache(self):
-        user_service.clear_filter_group_cache()
+        search_filters_service.clear_filter_group_cache()
 
     def payload(self, name, **overrides):
         return {

@@ -1,6 +1,10 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.services import persons_service, projects_service
+from zou.app.services import (
+    persons_service,
+    projects_service,
+    metadata_descriptors_service,
+)
 from zou.app.utils import fields
 
 
@@ -200,7 +204,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
                 "data_type": "string",
             },
         )
-        projects_service.add_metadata_descriptor(
+        metadata_descriptors_service.add_metadata_descriptor(
             str(self.project_closed.id),
             "Project",
             "Closed only",
@@ -348,10 +352,10 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
             self.generate_fixture_project(name="Second Project").id
         )
         for project_id in (first_project_id, second_project_id):
-            projects_service.add_metadata_descriptor(
+            metadata_descriptors_service.add_metadata_descriptor(
                 project_id, "Project", "Delivery code", "string", [], False
             )
-        projects_service.add_metadata_descriptor(
+        metadata_descriptors_service.add_metadata_descriptor(
             second_project_id, "Project", "Ship code", "string", [], False
         )
 
@@ -375,7 +379,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
             )
 
     def test_unallowed_update_metadata_descriptor(self):
-        descriptor = projects_service.add_metadata_descriptor(
+        descriptor = metadata_descriptors_service.add_metadata_descriptor(
             self.project_id, "Asset", "Contractor", "string", [], False
         )
         self.generate_fixture_user_manager()
@@ -388,7 +392,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
 
     def test_an_updated_descriptor_lists_its_new_departments(self):
         self.generate_fixture_department()
-        descriptor = projects_service.add_metadata_descriptor(
+        descriptor = metadata_descriptors_service.add_metadata_descriptor(
             self.project_id,
             "Asset",
             "Rig",
@@ -409,7 +413,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         self.assertEqual(descriptor["departments"], [department_id])
 
     def test_delete_metadata_descriptor(self):
-        descriptor = projects_service.add_metadata_descriptor(
+        descriptor = metadata_descriptors_service.add_metadata_descriptor(
             self.project_id, "Asset", "Contractor", "string", [], False
         )
         self.asset.update({"data": {"contractor": "contractor 1"}})
@@ -420,7 +424,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         self.assertNotIn("contractor", asset["data"])
 
     def test_unallowed_delete_metadata_descriptor(self):
-        descriptor = projects_service.add_metadata_descriptor(
+        descriptor = metadata_descriptors_service.add_metadata_descriptor(
             self.project_id, "Asset", "Contractor", "string", [], False
         )
         self.generate_fixture_user_manager()
@@ -437,10 +441,10 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         vendor_id = self.generate_fixture_user_vendor()["id"]
         projects_service.add_team_member(self.project_id, vendor_id)
         persons_service.add_to_department(str(self.department.id), vendor_id)
-        shared = projects_service.add_metadata_descriptor(
+        shared = metadata_descriptors_service.add_metadata_descriptor(
             self.project_id, "Asset", "Contractor", "string", [], False
         )
-        theirs = projects_service.add_metadata_descriptor(
+        theirs = metadata_descriptors_service.add_metadata_descriptor(
             self.project_id,
             "Asset",
             "Rig",
@@ -449,7 +453,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
             False,
             [str(self.department.id)],
         )
-        projects_service.add_metadata_descriptor(
+        metadata_descriptors_service.add_metadata_descriptor(
             self.project_id,
             "Asset",
             "Layout",
@@ -478,7 +482,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         # creates, so keep this one before asking for a second production.
         project_id = self.project_id
         other_project = self.generate_fixture_project("Other Production")
-        foreign = projects_service.add_metadata_descriptor(
+        foreign = metadata_descriptors_service.add_metadata_descriptor(
             other_project.id, "Asset", "Contractor", "string", [], False
         )
         path = (
@@ -491,15 +495,17 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         self.delete(path, 404)
 
         self.assertEqual(
-            projects_service.get_metadata_descriptor(foreign["id"])["name"],
+            metadata_descriptors_service.get_metadata_descriptor(
+                foreign["id"]
+            )["name"],
             "Contractor",
         )
 
     def test_a_client_reads_a_published_descriptor_only(self):
-        kept = projects_service.add_metadata_descriptor(
+        kept = metadata_descriptors_service.add_metadata_descriptor(
             self.project_id, "Asset", "Contractor", "string", [], False
         )
-        published = projects_service.add_metadata_descriptor(
+        published = metadata_descriptors_service.add_metadata_descriptor(
             self.project_id, "Asset", "Delivery", "string", [], True
         )
         client_id = self.generate_fixture_user_client()["id"]

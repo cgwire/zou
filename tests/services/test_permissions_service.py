@@ -810,7 +810,7 @@ class DepartmentAccessTestCase(PermissionsTestCase):
     a supervisor of everything; one with departments is held to them.
 
     check_all_departments_access and check_metadata_department_access are
-    driven through their routes in tests/services/test_project_roles.py.
+    driven through their routes in tests/permissions/.
     """
 
     def setUp(self):

@@ -5,7 +5,6 @@ from zou.app.services import (
     assets_service,
     base_service,
     persons_service,
-    projects_service,
     shots_service,
     edits_service,
     tasks_service,
@@ -742,77 +741,6 @@ def remove_entity_link(link_id):
         link.entity_in_id, link.entity_out_id, cascade_to_shots=False
     )
     return serialized_link
-
-
-def get_not_allowed_descriptors_fields_for_vendor(
-    entity_type="Asset", departments=None, projects_ids=None
-):
-    """
-    Return, per project, the metadata field names a vendor of given
-    departments must not see: the descriptors restricted to departments they
-    do not belong to.
-    """
-    if departments is None:
-        departments = []
-    if projects_ids is None:
-        projects_ids = []
-    not_allowed_descriptors_field_names = {}
-    for project_id in projects_ids:
-        not_allowed_descriptors_field_names[project_id] = [
-            descriptor["field_name"]
-            for descriptor in projects_service.get_metadata_descriptors(
-                project_id
-            )
-            if descriptor["entity_type"] == entity_type
-            and descriptor["departments"] != []
-            and len(set(departments) & set(descriptor["departments"])) == 0
-        ]
-    return not_allowed_descriptors_field_names
-
-
-def remove_not_allowed_fields_from_metadata(
-    not_allowed_descriptors_field_names=None, data=None
-):
-    """
-    Return given metadata without the fields the caller must not see.
-    """
-    if not_allowed_descriptors_field_names is None:
-        not_allowed_descriptors_field_names = []
-    if data is None:
-        data = {}
-    return {
-        key: value
-        for key, value in data.items()
-        if key not in not_allowed_descriptors_field_names
-    }
-
-
-def remove_not_allowed_metadata_for_vendor(
-    entity_type, departments, entities, project_id=None
-):
-    """
-    Strip from a serialized listing the metadata a vendor of given departments
-    must not see, in place. No departments means nothing to narrow down.
-
-    The listings that carry the tasks pick their columns one by one and mask
-    them while they build their rows. These hand back whole serialized
-    entities, so the restricted descriptors come along unless they are taken
-    out here. Some of those listings drop the project on the way, hence the
-    fallback the caller passes in.
-    """
-    if departments is None:
-        return entities
-    not_allowed_map = get_not_allowed_descriptors_fields_for_vendor(
-        entity_type,
-        departments,
-        set(entity.get("project_id") or project_id for entity in entities),
-    )
-    for entity in entities:
-        entity["data"] = remove_not_allowed_fields_from_metadata(
-            not_allowed_map[entity.get("project_id") or project_id],
-            entity["data"],
-        )
-    return entities
 
 
 def get_linked_entities_with_tasks(entity_id):

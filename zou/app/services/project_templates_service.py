@@ -17,7 +17,10 @@ from zou.app.models.status_automation import StatusAutomation
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
 
-from zou.app.services import preview_files_service, projects_service
+from zou.app.services import (
+    projects_service,
+    metadata_descriptors_service,
+)
 from zou.app.exceptions import (
     ProjectTemplateNotFoundException,
     WrongParameterException,
@@ -97,7 +100,7 @@ def create_project_template(name, description=None, **settings):
     """
     if not name:
         raise WrongParameterException("name is required")
-    preview_files_service.validate_movie_bitrates(settings)
+    projects_service.validate_movie_bitrates(settings)
     data = {"name": name, "description": description}
     for key, value in settings.items():
         if key in PRODUCTION_SETTING_FIELDS or key in (
@@ -121,7 +124,7 @@ def update_project_template(template_id, changes):
     Update template fields.
     """
     template = get_project_template_raw(template_id)
-    preview_files_service.validate_movie_bitrates(
+    projects_service.validate_movie_bitrates(
         changes or {}, current=template.serialize()
     )
     # Filter out fields the caller can't change directly.
@@ -222,7 +225,7 @@ def add_task_type_to_template(
     _check_required_id(TaskType, task_type_id, "task_type_id", "Task type")
     template = _ensure_template_exists(template_id)
     if bitrates is not None:
-        preview_files_service.validate_movie_bitrates(
+        projects_service.validate_movie_bitrates(
             bitrates, inherited=template.serialize()
         )
     if priority is not None:
@@ -877,7 +880,7 @@ def _create_descriptor_from_snapshot(project_id, descriptor):
         return existing
 
     try:
-        return projects_service.add_metadata_descriptor(
+        return metadata_descriptors_service.add_metadata_descriptor(
             project_id=project_id,
             entity_type=entity_type,
             name=name,

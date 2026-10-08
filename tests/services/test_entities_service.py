@@ -7,109 +7,24 @@ from zou.app.services import (
     assets_service,
     deletion_service,
     entities_service,
-    projects_service,
     entity_types_service,
 )
 
 from zou.app.exceptions import (
     EntityLinkNotFoundException,
     EntityNotFoundException,
-    EntityTypeNotFoundException,
     PreviewFileNotFoundException,
+)
+from zou.app.services import (
+    assets_service,
+    concepts_service,
+    edits_service,
+    entities_service,
+    shots_service,
+    entity_types_service,
 )
 
 UNKNOWN = "00000000-0000-0000-0000-000000000000"
-
-
-class EntityTypeTestCase(ApiDBTestCase):
-    """
-    Entity types are a tiny, heavily read table: every lookup is memoized
-    for four minutes, and two of the three lookups create the row they do
-    not find.
-    """
-
-    def setUp(self):
-        super().setUp()
-
-        self.generate_fixture_asset_type()
-
-    def test_get_entity_type(self):
-        self.assertEqual(
-            entity_types_service.get_entity_type(self.asset_type.id),
-            self.asset_type.serialize(),
-        )
-
-        with pytest.raises(EntityTypeNotFoundException):
-            entity_types_service.get_entity_type(UNKNOWN)
-
-    def test_get_entity_type_by_name(self):
-        self.assertEqual(
-            entity_types_service.get_entity_type_by_name(self.asset_type.name),
-            self.asset_type.serialize(),
-        )
-
-    def test_get_entity_type_by_name_creates_what_it_cannot_find(self):
-        entity_type = entity_types_service.get_entity_type_by_name("Matte")
-
-        self.assertEqual(entity_type["name"], "Matte")
-        self.assertEqual(
-            entity_types_service.get_entity_type_by_name("Matte")["id"],
-            entity_type["id"],
-        )
-
-    def test_get_entity_type_by_name_or_not_found(self):
-        self.assertEqual(
-            entity_types_service.get_entity_type_by_name_or_not_found(
-                self.asset_type.name
-            )["id"],
-            str(self.asset_type.id),
-        )
-
-        with pytest.raises(EntityTypeNotFoundException):
-            entity_types_service.get_entity_type_by_name_or_not_found("Matte")
-
-    def test_a_renamed_type_is_read_again_after_the_cache_is_dropped(self):
-        entity_types_service.get_entity_type(self.asset_type.id)
-
-        self.asset_type.update({"name": "Sets"})
-        entity_types_service.clear_entity_type_cache(str(self.asset_type.id))
-
-        self.assertEqual(
-            entity_types_service.get_entity_type(self.asset_type.id)["name"],
-            "Sets",
-        )
-        self.assertEqual(
-            entity_types_service.get_entity_type_by_name("Sets")["id"],
-            str(self.asset_type.id),
-        )
-
-    def test_get_temporal_entity_type_by_name(self):
-        """
-        Meant to drop a cached None left by an older lookup and try again.
-        The retry is unreachable today, since get_entity_type_by_name
-        creates the row it cannot find and so never answers None: only the
-        first half is pinned here.
-        """
-        self.assertEqual(
-            entity_types_service.get_temporal_entity_type_by_name("Edit")[
-                "name"
-            ],
-            "Edit",
-        )
-
-    def test_is_edit(self):
-        edit_type = entity_types_service.get_temporal_entity_type_by_name(
-            "Edit"
-        )
-
-        self.assertTrue(
-            entity_types_service.is_edit({"entity_type_id": edit_type["id"]})
-        )
-        self.assertFalse(
-            entity_types_service.is_edit(
-                {"entity_type_id": str(self.asset_type.id)}
-            )
-        )
 
 
 class EntityTestCase(ApiDBTestCase):
@@ -519,11 +434,17 @@ class EntityLinkTestCase(ApiDBTestCase):
         self.assertEqual(paged["nb_pages"], 2)
 
 
-class VendorMetadataTestCase(ApiDBTestCase):
+class EntityCacheInvalidationTestCase(ApiDBTestCase):
     """
-    A vendor sees the custom fields of their own departments only. The two
-    halves are separate on purpose: one reads the descriptors of the
-    production, the other strips a payload with what it was handed.
+    An asset, a shot, a sequence, an episode, an edit and a concept are all
+    rows of the entity table. Each has a service of its own with its own
+    memoized serialization, and the generic entities_service.get_entity
+    reads the same row through a cache of its own.
+
+    Whoever drops one has to drop the other, or a rename made through one
+    service stays invisible to everything reading through the other:
+    names_service builds the breadcrumbs of the news feed, the
+    notifications and the playlists that way.
     """
 
     def setUp(self):
@@ -531,83 +452,94 @@ class VendorMetadataTestCase(ApiDBTestCase):
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()
+        self.generate_fixture_asset_type()
+        self.generate_fixture_asset()
+        self.generate_fixture_episode()
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+
+    def assert_the_rename_is_visible_through_both(self, entity_id, clear):
+        """
+        Warm both caches, rename the row underneath, then drop the caches
+        the way the service does.
+        """
+        entity_id = str(entity_id)
+        entities_service.get_entity(entity_id)
+        entity = entities_service.get_entity_raw(entity_id)
+
+        entity.update({"name": "Renamed"})
+        clear(entity_id)
+
+        self.assertEqual(
+            entities_service.get_entity(entity_id)["name"], "Renamed"
+        )
+
+    def test_clearing_an_asset_clears_the_entity(self):
+        self.assert_the_rename_is_visible_through_both(
+            self.asset.id, assets_service.clear_asset_cache
+        )
+
+    def test_clearing_a_shot_clears_the_entity(self):
+        self.assert_the_rename_is_visible_through_both(
+            self.shot.id, shots_service.clear_shot_cache
+        )
+
+    def test_clearing_a_sequence_clears_the_entity(self):
+        self.assert_the_rename_is_visible_through_both(
+            self.sequence.id, shots_service.clear_sequence_cache
+        )
+
+    def test_clearing_an_episode_clears_the_entity(self):
+        self.assert_the_rename_is_visible_through_both(
+            self.episode.id, shots_service.clear_episode_cache
+        )
+
+    def test_clearing_an_edit_clears_the_entity(self):
+        edit = self.generate_fixture_edit()
+        self.assert_the_rename_is_visible_through_both(
+            edit.id, edits_service.clear_edit_cache
+        )
+
+    def test_clearing_a_concept_clears_the_entity(self):
+        concept = concepts_service.create_concept(
+            str(self.project.id), "Concept"
+        )
+        self.assert_the_rename_is_visible_through_both(
+            concept["id"], concepts_service.clear_concept_cache
+        )
+
+    def test_clearing_an_asset_type_clears_the_entity_type(self):
+        # Asset types are rows of the entity type table.
+        asset_type_id = str(self.asset_type.id)
+        entity_types_service.get_entity_type(asset_type_id)
+
+        self.asset_type.update({"name": "Sets"})
+        entity_types_service.clear_asset_type_cache(asset_type_id)
+
+        self.assertEqual(
+            entity_types_service.get_entity_type(asset_type_id)["name"], "Sets"
+        )
+
+    def test_cancelling_a_shot_is_visible_through_the_entity(self):
+        # The service path, end to end: nothing here calls the entity cache
+        # itself.
+        shot_id = str(self.shot.id)
         self.generate_fixture_department()
-        self.project_id = str(self.project.id)
-        self.own_department = str(self.department.id)
-        self.other_department = str(self.department_animation.id)
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status()
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
+        self.generate_fixture_shot_task()
+        self.assertFalse(entities_service.get_entity(shot_id)["canceled"])
 
-    def a_descriptor(self, name, entity_type="Asset", departments=None):
-        return projects_service.add_metadata_descriptor(
-            self.project_id,
-            entity_type,
-            name,
-            "string",
-            [],
-            False,
-            departments=departments or [],
-        )
+        shots_service.remove_shot(shot_id)
 
-    def test_a_descriptor_of_no_department_is_visible_to_everyone(self):
-        self.a_descriptor("Contractor")
+        self.assertTrue(entities_service.get_entity(shot_id)["canceled"])
 
-        self.assertEqual(
-            entities_service.get_not_allowed_descriptors_fields_for_vendor(
-                departments=[], projects_ids=[self.project_id]
-            ),
-            {self.project_id: []},
-        )
+    def test_renaming_an_asset_is_visible_through_the_entity(self):
+        asset_id = str(self.asset.id)
+        self.assertEqual(entities_service.get_entity(asset_id)["name"], "Tree")
 
-    def test_a_descriptor_of_another_department_is_hidden(self):
-        self.a_descriptor("Rig Notes", departments=[self.other_department])
+        assets_service.update_asset(asset_id, {"name": "Rock"})
 
-        self.assertEqual(
-            entities_service.get_not_allowed_descriptors_fields_for_vendor(
-                departments=[self.own_department],
-                projects_ids=[self.project_id],
-            ),
-            {self.project_id: ["rig_notes"]},
-        )
-
-    def test_a_descriptor_of_ones_own_department_stays_visible(self):
-        self.a_descriptor("Rig Notes", departments=[self.own_department])
-
-        self.assertEqual(
-            entities_service.get_not_allowed_descriptors_fields_for_vendor(
-                departments=[self.own_department],
-                projects_ids=[self.project_id],
-            ),
-            {self.project_id: []},
-        )
-
-    def test_the_kind_of_entity_is_taken_into_account(self):
-        self.a_descriptor(
-            "Rig Notes",
-            entity_type="Shot",
-            departments=[self.other_department],
-        )
-
-        self.assertEqual(
-            entities_service.get_not_allowed_descriptors_fields_for_vendor(
-                entity_type="Asset",
-                departments=[self.own_department],
-                projects_ids=[self.project_id],
-            ),
-            {self.project_id: []},
-        )
-
-    def test_remove_not_allowed_fields_from_metadata(self):
-        data = {"rig_notes": "secret", "contractor": "Acme"}
-
-        self.assertEqual(
-            entities_service.remove_not_allowed_fields_from_metadata(
-                ["rig_notes"], data
-            ),
-            {"contractor": "Acme"},
-        )
-        self.assertEqual(
-            entities_service.remove_not_allowed_fields_from_metadata([], data),
-            data,
-        )
-        self.assertEqual(
-            entities_service.remove_not_allowed_fields_from_metadata(), {}
-        )
+        self.assertEqual(entities_service.get_entity(asset_id)["name"], "Rock")

@@ -1,6 +1,9 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.services import projects_service
+from zou.app.services import (
+    projects_service,
+    metadata_descriptors_service,
+)
 
 
 class OpenProjectRouteTestCase(ApiDBTestCase):
@@ -61,10 +64,10 @@ class OpenProjectRouteTestCase(ApiDBTestCase):
         Give the project a descriptor kept to the studio and one published
         to clients. Returns the published one.
         """
-        projects_service.add_metadata_descriptor(
+        metadata_descriptors_service.add_metadata_descriptor(
             project_id, "Asset", "Contractor", "string", [], False
         )
-        return projects_service.add_metadata_descriptor(
+        return metadata_descriptors_service.add_metadata_descriptor(
             project_id, "Asset", "Delivery", "string", [], True
         )
 
@@ -118,10 +121,10 @@ class OpenProjectRouteTestCase(ApiDBTestCase):
         # The manager belongs to no department: as a vendor on the project,
         # only the descriptors limited to no department are theirs.
         self.generate_fixture_department()
-        shared = projects_service.add_metadata_descriptor(
+        shared = metadata_descriptors_service.add_metadata_descriptor(
             self.project_id, "Asset", "Contractor", "string", [], False
         )
-        projects_service.add_metadata_descriptor(
+        metadata_descriptors_service.add_metadata_descriptor(
             self.project_id,
             "Asset",
             "Rig",

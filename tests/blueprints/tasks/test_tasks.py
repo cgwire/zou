@@ -13,6 +13,7 @@ from zou.app.services import (
     tasks_service,
     entity_types_service,
     task_types_service,
+    time_spents_service,
 )
 
 
@@ -1165,7 +1166,7 @@ class TaskListingTestCase(TaskTestCase):
         revived; the route adds the task access guard.
         """
         task = self.generate_fixture_task()
-        tasks_service.create_or_update_time_spent(
+        time_spents_service.create_or_update_time_spent(
             str(task.id), str(self.person_id), "2026-08-05", 3600
         )
         path = f"/actions/tasks/{task.id}/time-spents"

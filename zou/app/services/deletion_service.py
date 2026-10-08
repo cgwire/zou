@@ -42,8 +42,6 @@ from zou.app.models.production_schedule_version import (
 )
 from zou.app.models.project import Project
 from zou.app.models.schedule_item import ScheduleItem
-from zou.app.models.search_filter import SearchFilter
-from zou.app.models.search_filter_group import SearchFilterGroup
 from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 from zou.app.models.time_spent import TimeSpent
@@ -57,6 +55,8 @@ from zou.app.services import (
     base_service,
     files_service,
     entity_types_service,
+    cascade_deletion_service,
+    search_filters_service,
 )
 from zou.app.exceptions import (
     ProjectNotFoundException,
@@ -95,28 +95,6 @@ def _remove_older_than(model, date_column, days_old):
     )
     model.query.filter(date_column < limit_date).delete()
     model.commit()
-
-
-def _remove_search_filters(**kw):
-    """
-    Delete the search filters and search filter groups matching given
-    column values. A group takes the filters it holds with it, whoever
-    owns them, as removing a single group does: they go first, since they
-    reference their group. A shared filter shows in the listing of every
-    user, so the memoized listings are dropped for all of them.
-    """
-    from zou.app.services import user_service
-
-    group_ids = SearchFilterGroup.query.with_entities(
-        SearchFilterGroup.id
-    ).filter_by(**kw)
-    SearchFilter.delete_all_by(
-        SearchFilter.search_filter_group_id.in_(group_ids)
-    )
-    SearchFilter.delete_all_by(**kw)
-    SearchFilterGroup.delete_all_by(**kw)
-    user_service.clear_filter_cache()
-    user_service.clear_filter_group_cache()
 
 
 def _get_task_ids(*criterions, **kw):
@@ -567,7 +545,6 @@ def remove_project(project_id):
     Remove a project and everything it owns: previews, tasks, budgets, entity
     links, playlists, entities, metadata, schedule and news.
     """
-    from zou.app.services import playlists_service
 
     preview_files = (
         PreviewFile.query.join(Task)
@@ -602,7 +579,7 @@ def remove_project(project_id):
     ).delete()
     playlists = Playlist.query.filter_by(project_id=project_id)
     for playlist in playlists:
-        playlists_service.remove_playlist(playlist.id)
+        cascade_deletion_service.remove_playlist(playlist.id)
 
     ApiEvent.delete_all_by(project_id=project_id)
     remove_output_files_for_project(project_id)
@@ -616,7 +593,7 @@ def remove_project(project_id):
     Milestone.delete_all_by(project_id=project_id)
     ScheduleItem.delete_all_by(project_id=project_id)
     remove_production_schedule_versions_for_project(project_id)
-    _remove_search_filters(project_id=project_id)
+    search_filters_service.remove_search_filters(project_id=project_id)
     News.query.filter(
         News.task_id == Task.id, Task.project_id == project_id
     ).delete()
@@ -686,7 +663,7 @@ def remove_person(person_id, force=True):
         ApiEvent.delete_all_by(user_id=person_id)
         Notification.delete_all_by(person_id=person_id)
         Notification.delete_all_by(author_id=person_id)
-        _remove_search_filters(person_id=person_id)
+        search_filters_service.remove_search_filters(person_id=person_id)
         DesktopLoginLog.delete_all_by(person_id=person_id)
         LoginLog.delete_all_by(person_id=person_id)
         Subscription.delete_all_by(person_id=person_id)

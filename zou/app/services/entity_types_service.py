@@ -213,7 +213,7 @@ def get_all_asset_types():
     )
 
 
-def _serialize_asset_types(asset_type_ids):
+def serialize_asset_types(asset_type_ids):
     """
     Return the serialized asset types matching given ids, without querying
     when there is none.

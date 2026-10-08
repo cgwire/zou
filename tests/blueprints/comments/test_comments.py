@@ -69,7 +69,7 @@ class CommentRoutesTestCase(CommentTestCase):
         )
         self.assertEqual(result["text"], "A new comment")
         self.assertEqual(result["task_status_id"], str(self.task_status.id))
-        comments = tasks_service.get_comments(str(self.task.id))
+        comments = comments_service.get_comments(str(self.task.id))
         texts = [c["text"] for c in comments]
         self.assertIn("A new comment", texts)
 
@@ -104,7 +104,9 @@ class CommentRoutesTestCase(CommentTestCase):
             {"comments": comments},
         )
         self.assertEqual(len(result), 2)
-        texts = [c["text"] for c in tasks_service.get_comments(self.task.id)]
+        texts = [
+            c["text"] for c in comments_service.get_comments(self.task.id)
+        ]
         self.assertIn("note 1", texts)
         self.assertIn("note 2", texts)
 
@@ -129,10 +131,10 @@ class CommentRoutesTestCase(CommentTestCase):
         )
         self.assertEqual(len(result), 2)
         asset_texts = [
-            c["text"] for c in tasks_service.get_comments(self.task.id)
+            c["text"] for c in comments_service.get_comments(self.task.id)
         ]
         shot_texts = [
-            c["text"] for c in tasks_service.get_comments(self.shot_task.id)
+            c["text"] for c in comments_service.get_comments(self.shot_task.id)
         ]
         self.assertIn("asset note", asset_texts)
         self.assertIn("shot note", shot_texts)
@@ -188,7 +190,9 @@ class CommentRoutesTestCase(CommentTestCase):
             },
             403,
         )
-        texts = [c["text"] for c in tasks_service.get_comments(self.task.id)]
+        texts = [
+            c["text"] for c in comments_service.get_comments(self.task.id)
+        ]
         self.assertNotIn("refused", texts)
 
     def test_batch_comment_task_refuses_a_status_closed_to_artists(self):
@@ -205,7 +209,9 @@ class CommentRoutesTestCase(CommentTestCase):
             {"comments": [{"task_status_id": closed, "text": "refused"}]},
             403,
         )
-        texts = [c["text"] for c in tasks_service.get_comments(self.task.id)]
+        texts = [
+            c["text"] for c in comments_service.get_comments(self.task.id)
+        ]
         self.assertNotIn("refused", texts)
 
     def test_comment_many_tasks(self):
@@ -221,7 +227,7 @@ class CommentRoutesTestCase(CommentTestCase):
         )
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["text"], "Batch comment")
-        comments = tasks_service.get_comments(str(self.task.id))
+        comments = comments_service.get_comments(str(self.task.id))
         texts = [c["text"] for c in comments]
         self.assertIn("Batch comment", texts)
 
@@ -233,7 +239,7 @@ class CommentRoutesTestCase(CommentTestCase):
         self.assertIn("has_avatar", comment["person"])
 
     def test_comments_list_embeds_author_full_name(self):
-        comments = tasks_service.get_comments(str(self.task.id))
+        comments = comments_service.get_comments(str(self.task.id))
         self.assertEqual(comments[0]["person"]["full_name"], "John Did")
         self.assertEqual(comments[0]["person"]["role"], "admin")
 
@@ -264,7 +270,7 @@ class CommentRoutesTestCase(CommentTestCase):
             200,
         )
         self.assertIn("text", result)
-        comment = tasks_service.get_comment(self.comment["id"])
+        comment = comments_service.get_comment(self.comment["id"])
         replies = comment.get("replies", [])
         reply_texts = [r["text"] for r in replies]
         self.assertIn("My reply", reply_texts)
@@ -281,7 +287,7 @@ class CommentRoutesTestCase(CommentTestCase):
             f"/comments/{self.comment['id']}/reply/{reply_id}",
             200,
         )
-        comment = tasks_service.get_comment(self.comment["id"])
+        comment = comments_service.get_comment(self.comment["id"])
         reply_ids = [r["id"] for r in comment.get("replies", [])]
         self.assertNotIn(reply_id, reply_ids)
 
@@ -320,7 +326,7 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         )
 
         self.log_in_client()
-        comments = tasks_service.get_comments(
+        comments = comments_service.get_comments(
             str(self.task.id), is_client=True
         )
         target = next(c for c in comments if c["id"] == comment["id"])
@@ -336,7 +342,7 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         comment = self.comment_for_client()
 
         self.log_in_client()
-        comments = tasks_service.get_comments(
+        comments = comments_service.get_comments(
             str(self.task.id), is_client=True
         )
         target = next(c for c in comments if c["id"] == comment["id"])
@@ -360,7 +366,7 @@ class ClientVisibleCommentTestCase(CommentTestCase):
                 "comment": "Client question",
             },
         )
-        comments = tasks_service.get_comments(
+        comments = comments_service.get_comments(
             str(self.task.id), is_client=True
         )
         target = next(c for c in comments if c["id"] == comment["id"])
@@ -409,7 +415,7 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         comment_model.save()
 
         self.log_in_client()
-        comments = tasks_service.get_comments(
+        comments = comments_service.get_comments(
             str(self.task.id), is_client=True
         )
         target = next(c for c in comments if c["id"] == comment["id"])
@@ -427,7 +433,7 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         comment_model.save()
 
         self.log_in_client()
-        comments = tasks_service.get_comments(
+        comments = comments_service.get_comments(
             str(self.task.id), is_client=True
         )
         target = next(c for c in comments if c["id"] == comment["id"])
@@ -463,7 +469,7 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         )
 
         self.log_in_client()
-        comments = tasks_service.get_comments(
+        comments = comments_service.get_comments(
             str(self.task.id), is_client=True
         )
         texts = [c["text"] for c in comments]
@@ -509,7 +515,7 @@ class ClientThreadReplyTestCase(CommentTestCase):
         )
         if for_client:
             Comment.get(comment["id"]).update({"for_client": True})
-            tasks_service.clear_comment_cache(comment["id"])
+            comments_service.clear_comment_cache(comment["id"])
         return comment
 
     def reply(self, comment, code):
@@ -591,8 +597,8 @@ class MoveCommentTestCase(CommentTestCase):
         self.assertEqual(result["created_at"], original_created_at)
         self.assertEqual(result["task_status_id"], original_status_id)
 
-        source_comments = tasks_service.get_comments(str(self.task.id))
-        target_comments = tasks_service.get_comments(str(sibling.id))
+        source_comments = comments_service.get_comments(str(self.task.id))
+        target_comments = comments_service.get_comments(str(sibling.id))
         self.assertNotIn(
             self.comment["id"], [c["id"] for c in source_comments]
         )

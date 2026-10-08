@@ -4,6 +4,14 @@ from zou.app import db
 from zou.app.models.studio import Studio
 from zou.app.services import tasks_service, time_spents_service
 from zou.app.exceptions import WrongDateFormatException
+from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
+from unittest import mock
+from zou.app.exceptions import TimeSpentNotFoundException
+from zou.app.models.time_spent import TimeSpent
+from zou.app.services import persons_service, tasks_service
+import datetime
+from tests.services.cases import TaskTestCase
 
 
 class TimeSpentsTestCase(ApiDBTestCase):
@@ -46,7 +54,7 @@ class TimeSpentsTestCase(ApiDBTestCase):
         self.log(self.task_id, "2018-06-03", 600, person_id=self.user_id)
 
     def log(self, task_id, date, duration, person_id=None):
-        return tasks_service.create_or_update_time_spent(
+        return time_spents_service.create_or_update_time_spent(
             task_id, person_id or self.person_id, date, duration
         )
 
@@ -662,3 +670,160 @@ class ProjectTimeSpentTestCase(TimeSpentsTestCase):
         self.assertEqual(
             [entry["duration"] for entry in result[self.person_id]], [300]
         )
+
+
+class TimeSpentTestCase(TaskTestCase):
+    def test_create_or_update_time_spent(self):
+        time_spent = time_spents_service.create_or_update_time_spent(
+            self.task_id, self.person_id, "2017-09-23", 3600
+        )
+        self.assertEqual(time_spent["duration"], 3600)
+
+        # A second write on the same day replaces the duration...
+        time_spent = time_spents_service.create_or_update_time_spent(
+            self.task_id, self.person_id, "2017-09-23", 7200
+        )
+        self.assertEqual(time_spent["duration"], 7200)
+
+        # ...unless it is asked to add to it.
+        time_spent = time_spents_service.create_or_update_time_spent(
+            self.task_id, self.person_id, "2017-09-23", 7200, add=True
+        )
+        self.assertEqual(time_spent["duration"], 14400)
+
+    def test_create_or_update_time_spent_losing_the_insert_race(self):
+        # Two concurrent writes on the same (person, task, date): the loser
+        # reads before the winner commits, so its insert is rejected by
+        # time_spent_uc. It must update the winning row instead of letting
+        # the IntegrityError out as a 500.
+        # The rejection is simulated: a real one rolls the session back, and
+        # the suite runs each test inside a single transaction, so it would
+        # take the fixtures with it.
+        time_spents_service.create_or_update_time_spent(
+            self.task_id, self.person_id, "2017-09-23", 3600
+        )
+
+        read_time_spent = time_spents_service._get_time_spent_raw
+        reads = []
+
+        def stale_first_read(*args, **kwargs):
+            reads.append(None)
+            if len(reads) == 1:
+                return None
+            return read_time_spent(*args, **kwargs)
+
+        rejected = IntegrityError("INSERT", {}, Exception("time_spent_uc"))
+        with mock.patch.object(
+            time_spents_service, "_get_time_spent_raw", stale_first_read
+        ), mock.patch.object(TimeSpent, "create", side_effect=rejected):
+            time_spent = time_spents_service.create_or_update_time_spent(
+                self.task_id, self.person_id, "2017-09-23", 7200
+            )
+
+        self.assertEqual(time_spent["duration"], 7200)
+        self.assertEqual(len(TimeSpent.get_all_by(task_id=self.task_id)), 1)
+
+    def test_create_time_spent_deleted_by_a_concurrent_request(self):
+        # The insert is committed, then a concurrent DELETE removes the row
+        # before this request reloads it: that must answer 404, not 500.
+        def delete_the_new_row(person_id):
+            db.session.execute(text("DELETE FROM time_spent"))
+            db.session.commit()
+
+        with mock.patch.object(
+            persons_service,
+            "update_person_last_presence",
+            side_effect=delete_the_new_row,
+        ):
+            self.assertRaises(
+                TimeSpentNotFoundException,
+                time_spents_service.create_or_update_time_spent,
+                self.task_id,
+                self.person_id,
+                "2017-09-23",
+                3600,
+            )
+
+    def test_update_time_spent_deleted_by_a_concurrent_request(self):
+        # The row is read, then a concurrent DELETE removes it before the
+        # UPDATE: that must answer 404, not 500.
+        time_spents_service.create_or_update_time_spent(
+            self.task_id, self.person_id, "2017-09-23", 3600
+        )
+        read_time_spent = time_spents_service._get_time_spent_raw
+
+        def read_then_delete(*args, **kwargs):
+            time_spent = read_time_spent(*args, **kwargs)
+            db.session.execute(text("DELETE FROM time_spent"))
+            return time_spent
+
+        with mock.patch.object(
+            time_spents_service, "_get_time_spent_raw", read_then_delete
+        ):
+            self.assertRaises(
+                TimeSpentNotFoundException,
+                time_spents_service.create_or_update_time_spent,
+                self.task_id,
+                self.person_id,
+                "2017-09-23",
+                7200,
+            )
+
+    def test_the_task_duration_follows_its_time_spents(self):
+        # The duration of the task is the sum of its time spents, and it is
+        # read through the memoized task.
+        tasks_service.get_task(self.task_id)
+
+        for person_id, date, duration in [
+            (self.person_id, "2017-09-23", 3600),
+            (str(self.user["id"]), "2017-09-24", 7200),
+        ]:
+            time_spents_service.create_or_update_time_spent(
+                self.task_id, person_id, date, duration
+            )
+
+        self.assertEqual(
+            tasks_service.get_task(self.task_id)["duration"], 10800
+        )
+
+        time_spents_service.delete_time_spent(
+            self.task_id, self.person_id, "2017-09-23"
+        )
+
+        self.assertEqual(
+            tasks_service.get_task(self.task_id)["duration"], 7200
+        )
+
+    def test_get_time_spents(self):
+        """
+        Time spents of a task come back grouped by person, with the total
+        alongside. The optional date narrows the group without touching the
+        grouping itself.
+        """
+        user_id = str(self.user["id"])
+        first_day = datetime.date(2017, 9, 23)
+        second_day = datetime.date(2017, 9, 24)
+        for person_id, date, duration in [
+            (self.person_id, first_day, 3600),
+            (user_id, first_day, 7200),
+            (user_id, second_day, 7200),
+        ]:
+            TimeSpent.create(
+                person_id=person_id,
+                task_id=self.task_id,
+                date=date,
+                duration=duration,
+            )
+
+        time_spents = time_spents_service.get_time_spents_for_task(
+            self.task_id
+        )
+        self.assertEqual(time_spents["total"], 18000)
+        self.assertEqual(len(time_spents[self.person_id]), 1)
+        self.assertEqual(len(time_spents[user_id]), 2)
+
+        one_day = time_spents_service.get_time_spents_for_task(
+            self.task_id, first_day
+        )
+        self.assertEqual(one_day["total"], 10800)
+        self.assertEqual(len(one_day[user_id]), 1)

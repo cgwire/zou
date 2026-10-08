@@ -17,6 +17,7 @@ from zou.app.services import (
     permissions_service,
     user_service,
     entity_types_service,
+    quotas_service,
 )
 
 from zou.app.mixin import ArgsMixin
@@ -952,14 +953,14 @@ class ProjectQuotasResource(MethodView, ArgsMixin):
         weighted = "weighted" in count_mode
 
         if weighted:
-            return shots_service.get_weighted_quotas(
+            return quotas_service.get_weighted_quotas(
                 project_id,
                 task_type_id,
                 feedback=feedback,
                 studio_id=studio_id,
             )
         else:
-            return shots_service.get_raw_quotas(
+            return quotas_service.get_raw_quotas(
                 project_id,
                 task_type_id,
                 feedback=feedback,
@@ -1003,14 +1004,14 @@ class ProjectPersonQuotasResource(MethodView, ArgsMixin):
         weighted = "weighted" in count_mode
 
         if weighted:
-            return shots_service.get_weighted_quotas(
+            return quotas_service.get_weighted_quotas(
                 project_id,
                 person_id=person_id,
                 feedback=feedback,
                 studio_id=studio_id,
             )
         else:
-            return shots_service.get_raw_quotas(
+            return quotas_service.get_raw_quotas(
                 project_id,
                 person_id=person_id,
                 feedback=feedback,

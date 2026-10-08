@@ -41,6 +41,8 @@ from zou.app.services import (
     tasks_service,
     entity_types_service,
     task_types_service,
+    comments_service,
+    metadata_descriptors_service,
 )
 from zou.app.utils import permissions
 
@@ -205,7 +207,7 @@ def mask_metadata_for_vendor(entity_type, entities, project_id=None):
     These take no criterions, so the scope is read here, in the layer that
     still knows who is asking.
     """
-    return entities_service.remove_not_allowed_metadata_for_vendor(
+    return metadata_descriptors_service.remove_not_allowed_metadata_for_vendor(
         entity_type, get_vendor_departments(), entities, project_id
     )
 
@@ -413,7 +415,7 @@ def check_comment_access(comment_id, comment=None):
         return True
     else:
         if comment is None:
-            comment = tasks_service.get_comment(comment_id)
+            comment = comments_service.get_comment(comment_id)
         person_id = comment["person_id"]
         task_id = comment["object_id"]
         task = tasks_service.get_task(task_id)
@@ -495,7 +497,7 @@ def check_metadata_descriptor_access(descriptor):
     for_client, vendor_departments = get_descriptor_visibility(
         permissions.get_effective_role()
     )
-    if not projects_service.is_metadata_descriptor_visible(
+    if not metadata_descriptors_service.is_metadata_descriptor_visible(
         descriptor["id"], for_client, vendor_departments
     ):
         raise permissions.PermissionDenied
@@ -637,7 +639,7 @@ def check_metadata_department_access(entity, new_data=None):
                 if entity_type:
                     descriptors = [
                         descriptor
-                        for descriptor in projects_service.get_metadata_descriptors(
+                        for descriptor in metadata_descriptors_service.get_metadata_descriptors(
                             entity["project_id"]
                         )
                         if descriptor["entity_type"] == entity_type

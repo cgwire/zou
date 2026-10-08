@@ -22,6 +22,13 @@ from zou.app.services import (
     tasks_service,
 )
 from zou.app.utils import date_helpers, fields
+from unittest import mock
+from zou.app.services import preview_files_service
+from zou.app.services import preview_file_states_service as states_service
+from zou.app.stores import file_store
+from zou.app.stores import redis_lock
+import tempfile
+from tests.services.cases import TaskTestCase, PreviewFileTestCase
 
 
 class CommentsTestCase(ApiDBTestCase):
@@ -454,7 +461,7 @@ class CreateCommentTestCase(CommentsTestCase):
 
         self.assertEqual(comment["text"], comment_text)
         for sibling in [modeling_task, concept_task]:
-            comments = tasks_service.get_comments(sibling.id)
+            comments = comments_service.get_comments(sibling.id)
             self.assertEqual(len(comments), 1)
             self.assertIn("Animation", comments[0]["text"])
             # _handle_hashtags reposts with the target's current status, not
@@ -478,7 +485,7 @@ class CreateCommentTestCase(CommentsTestCase):
             with_hashtags=False,
         )
 
-        self.assertEqual(tasks_service.get_comments(modeling_task.id), [])
+        self.assertEqual(comments_service.get_comments(modeling_task.id), [])
 
     def test_the_all_hashtag_reaches_every_other_task(self):
         modeling_task = self.generate_fixture_shot_task(
@@ -496,9 +503,9 @@ class CreateCommentTestCase(CommentsTestCase):
         )
 
         for sibling in [modeling_task, concept_task]:
-            self.assertEqual(len(tasks_service.get_comments(sibling.id)), 1)
+            self.assertEqual(len(comments_service.get_comments(sibling.id)), 1)
         # The task the comment was posted on is not commented twice.
-        self.assertEqual(len(tasks_service.get_comments(self.task.id)), 1)
+        self.assertEqual(len(comments_service.get_comments(self.task.id)), 1)
 
 
 class MentionTestCase(CommentsTestCase):
@@ -699,14 +706,14 @@ class AttachmentTestCase(CommentsTestCase):
         closes.
         """
         comment = self.comment()
-        tasks_service.get_comment(comment["id"], relations=True)
+        comments_service.get_comment(comment["id"], relations=True)
 
         _, attached = comments_service.add_attachments_to_comment(
             comment, {"file": self.uploaded_file("notes.txt")}
         )
 
         self.assertEqual(
-            tasks_service.get_comment(comment["id"], relations=True)[
+            comments_service.get_comment(comment["id"], relations=True)[
                 "attachment_files"
             ],
             [attached[0]["id"]],
@@ -781,7 +788,7 @@ class ReplyTestCase(CommentsTestCase):
             comment["id"], "first reply", person_id=self.user["id"]
         )
 
-        comment = tasks_service.get_comment(comment["id"])
+        comment = comments_service.get_comment(comment["id"])
 
         self.assertEqual(len(comment["replies"]), 1)
         self.assertEqual(comment["replies"][0]["text"], "first reply")
@@ -796,7 +803,7 @@ class ReplyTestCase(CommentsTestCase):
             person_id=self.user["id"],
         )
 
-        reply = tasks_service.get_comment(comment["id"])["replies"][0]
+        reply = comments_service.get_comment(comment["id"])["replies"][0]
 
         self.assertEqual(reply["mentions"], [self.person_id])
         self.assertEqual(
@@ -846,7 +853,7 @@ class ReplyTestCase(CommentsTestCase):
             reply["id"],
         )
         self.assertEqual(
-            tasks_service.get_comment(comment["id"])["replies"], []
+            comments_service.get_comment(comment["id"])["replies"], []
         )
 
     def test_a_deleted_reply_takes_its_attachments_with_it(self):
@@ -862,7 +869,7 @@ class ReplyTestCase(CommentsTestCase):
             comment, {"file": self.uploaded_file("kept.txt")}
         )
         comments_service.add_attachments_to_comment(
-            tasks_service.get_comment(comment["id"], relations=True),
+            comments_service.get_comment(comment["id"], relations=True),
             {"file": self.uploaded_file("gone.txt")},
             reply_id=reply["id"],
         )
@@ -921,12 +928,12 @@ class AcknowledgeTestCase(CommentsTestCase):
         the answer of the acknowledgement call.
         """
         comment = self.comment("to ack")
-        tasks_service.get_comment(comment["id"], relations=True)
+        comments_service.get_comment(comment["id"], relations=True)
 
         self.acknowledge(comment)
 
         self.assertEqual(
-            tasks_service.get_comment(comment["id"], relations=True)[
+            comments_service.get_comment(comment["id"], relations=True)[
                 "acknowledgements"
             ],
             [self.user["id"]],
@@ -962,11 +969,11 @@ class MoveCommentTestCase(CommentsTestCase):
         self.assertEqual(
             [
                 found["id"]
-                for found in tasks_service.get_comments(self.target_task.id)
+                for found in comments_service.get_comments(self.target_task.id)
             ],
             [comment["id"]],
         )
-        self.assertEqual(tasks_service.get_comments(self.task.id), [])
+        self.assertEqual(comments_service.get_comments(self.task.id), [])
 
     def test_a_moved_comment_keeps_what_it_carries(self):
         comment = self.comment(
@@ -1046,7 +1053,7 @@ class MoveCommentTestCase(CommentsTestCase):
         comment showing it cannot leave without it.
         """
         comment = self.comment("with a preview")
-        tasks_service.add_preview_file_to_comment(
+        comments_service.add_preview_file_to_comment(
             comment["id"], self.user["id"], str(self.task.id)
         )
 
@@ -1056,3 +1063,130 @@ class MoveCommentTestCase(CommentsTestCase):
             comment["id"],
             str(self.target_task.id),
         )
+
+
+class PreviewFileServiceTestCase(PreviewFileTestCase):
+    def _write_temp_movie(self, size=1024):
+        """
+        Create a non-empty temp file standing in for a movie.
+        """
+        tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+        tmp.write(b"\x00" * size)
+        tmp.close()
+        self.addCleanup(
+            lambda: os.path.exists(tmp.name) and os.remove(tmp.name)
+        )
+        return tmp.name
+
+    def test_copying_a_movie_preview_carries_the_source_along(self):
+        """
+        A preview file whose normalization was skipped only holds a source
+        movie: leaving that prefix out would copy a preview with no movie.
+        """
+        original = self.generate_fixture_preview_file(name="original")
+        target = self.generate_fixture_preview_file(name="target")
+        original_id = str(original.id)
+        target_id = str(target.id)
+        source_path = file_store.get_local_movie_path("source", original_id)
+        os.makedirs(os.path.dirname(source_path), exist_ok=True)
+        with open(source_path, "wb") as movie_file:
+            movie_file.write(b"\x00" * 512)
+
+        comments_service.copy_preview_file_in_another_one(
+            original_id, target_id
+        )
+
+        self.assertTrue(
+            os.path.exists(
+                file_store.get_local_movie_path("source", target_id)
+            )
+        )
+
+
+class PreviewFileWritesRecordStatesTestCase(PreviewFileTestCase):
+    def setUp(self):
+        super().setUp()
+        self.preview_file = self.generate_fixture_preview_file()
+        self.preview_file_id = str(self.preview_file.id)
+
+    def states(self):
+        return {
+            key: value["state"]
+            for key, value in states_service.get_file_states(
+                self.preview_file_id
+            ).items()
+        }
+
+    def test_copy_records_the_copied_files(self):
+        target = self.generate_fixture_preview_file(revision=2)
+        with patch.object(
+            preview_files_service,
+            "copy_preview_file_on_storage",
+            side_effect=lambda _b, _p, _e, _c, prefix, *_: prefix != "source",
+        ):
+            comments_service.copy_preview_file_in_another_one(
+                self.preview_file_id, str(target.id)
+            )
+        states = states_service.get_file_states(target.id)
+        self.assertEqual(states["movies/lowdef"]["state"], "ok")
+        self.assertEqual(states["pictures/tiles"]["state"], "ok")
+        self.assertNotIn("movies/source", states)
+
+
+class CommentReaderTestCase(TaskTestCase):
+    def test_get_comments_by_role(self):
+        """
+        An artist does not read what a client wrote, and a client only reads
+        what is meant for clients or written by another client.
+        """
+        self.generate_fixture_user_client()
+        self.generate_fixture_comment()
+        self.generate_fixture_comment()
+        self.generate_fixture_comment(person=self.user_client)
+        self.generate_fixture_comment()
+
+        self.assertEqual(
+            len(comments_service.get_comments(self.task_id, is_manager=True)),
+            4,
+        )
+        self.assertEqual(
+            len(comments_service.get_comments(self.task_id, is_manager=False)),
+            3,
+        )
+
+        with mock.patch.object(
+            persons_service, "get_current_user", return_value=self.user_client
+        ):
+            comments = comments_service.get_comments(
+                self.task_id, is_client=True
+            )
+        self.assertEqual(len(comments), 1)
+
+    def test_a_preview_added_to_a_comment_takes_the_task_lock(self):
+        # The next revision and position are read then written: two
+        # uploads at once on the same task would pick the same ones.
+        comment_id = self.generate_fixture_comment()["id"]
+        with mock.patch.object(
+            redis_lock, "with_lock", wraps=redis_lock.with_lock
+        ) as with_lock:
+            comments_service.add_preview_file_to_comment(
+                comment_id, self.person_id, self.task_id
+            )
+        with_lock.assert_called_once_with(
+            f"preview_revision_lock:{self.task_id}"
+        )
+
+    def test_a_preview_added_to_a_comment_drops_its_cache(self):
+        # The comment is read through a memoized serialization, and the
+        # comment:update event emitted right after the upload makes every
+        # client refetch: without the drop they all cache a comment with no
+        # preview on it.
+        comment_id = self.generate_fixture_comment()["id"]
+        comments_service.get_comment(comment_id, relations=True)
+
+        preview_file = comments_service.add_preview_file_to_comment(
+            comment_id, self.person_id, self.task_id
+        )
+
+        comment = comments_service.get_comment(comment_id, relations=True)
+        self.assertEqual(comment["previews"], [preview_file["id"]])

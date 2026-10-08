@@ -327,7 +327,9 @@ def configure_openapi_route(app, swagger_instance):
     def openapi_spec():
         api_spec = swagger_instance.get_apispecs("openapi")
 
-        json_path = os.path.join(app.root_path, "data", "openapi-code-samples.json")
+        json_path = os.path.join(
+            app.root_path, "data", "openapi-code-samples.json"
+        )
         with open(json_path, "r") as f:
             code_samples_spec = json.load(f)
 

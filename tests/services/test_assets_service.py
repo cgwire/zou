@@ -1,5 +1,3 @@
-from tests.base import ApiDBTestCase
-
 from zou.app.models.entity import Entity
 from zou.app.services import (
     assets_service,
@@ -8,32 +6,8 @@ from zou.app.services import (
 )
 from zou.app.exceptions import (
     AssetNotFoundException,
-    AssetTypeNotFoundException,
 )
-
-
-class AssetsTestCase(ApiDBTestCase):
-    """
-    One production with a single asset type and a shot to cast into.
-    Holds no test of its own.
-    """
-
-    def setUp(self):
-        super().setUp()
-
-        self.generate_fixture_project()
-        self.generate_fixture_asset_type()
-        self.generate_fixture_asset()
-        self.generate_fixture_sequence()
-        self.generate_fixture_shot()
-
-    def a_character(self):
-        """
-        A second asset, of a second type, so that a reading has something
-        to order and something to leave out.
-        """
-        self.generate_fixture_asset_types()
-        return self.generate_fixture_asset_character()
+from tests.services.cases import AssetsTestCase
 
 
 class AssetListTestCase(AssetsTestCase):
@@ -136,50 +110,6 @@ class AssetTypeTestCase(AssetsTestCase):
     no production of their own: what a production holds is assets.
     """
 
-    def test_get_asset_types(self):
-        asset_types = entity_types_service.get_asset_types()
-        self.assertEqual(
-            [asset_type["name"] for asset_type in asset_types], ["Props"]
-        )
-
-    def test_get_asset_types_by_name(self):
-        """
-        A criterion is read off the asset types themselves. Read off the
-        assets instead, the two tables cross joined and the name of a type
-        matched no asset, so the listing came back empty.
-        """
-        self.a_character()
-        asset_types = entity_types_service.get_asset_types(
-            {"name": "Character"}
-        )
-        self.assertEqual(
-            [asset_type["name"] for asset_type in asset_types], ["Character"]
-        )
-
-    def test_get_asset_types_by_project(self):
-        """
-        A production is not a column of the asset type table: the criterion
-        is which types the production has assets of. Handed to the generic
-        criterion helper it restricted nothing, and the route documenting
-        it listed every type of the instance.
-        """
-        self.a_character()
-        self.generate_fixture_project_standard()
-        self.generate_fixture_asset(
-            "Elsewhere",
-            asset_type_id=self.asset_type_environment.id,
-            project_id=self.project_standard.id,
-        )
-
-        asset_types = entity_types_service.get_asset_types(
-            {"project_id": str(self.project.id)}
-        )
-
-        self.assertEqual(
-            sorted(asset_type["name"] for asset_type in asset_types),
-            ["Character", "Props"],
-        )
-
     def test_get_asset_types_for_project(self):
         asset_types = assets_service.get_asset_types_for_project(
             self.project.id
@@ -227,36 +157,6 @@ class AssetTypeTestCase(AssetsTestCase):
             [asset_type["name"] for asset_type in asset_types], ["Props"]
         )
 
-    def test_get_asset_type(self):
-        asset_type = entity_types_service.get_asset_type(self.asset_type.id)
-        self.assertDictEqual(
-            asset_type,
-            self.asset_type.serialize(obj_type="AssetType", relations=True),
-        )
-
-    def test_get_asset_type_of_a_temporal_type(self):
-        """
-        A shot type is an entity type too, and reading it as an asset type
-        would let the asset routes serve shots.
-        """
-        self.assertRaises(
-            AssetTypeNotFoundException,
-            entity_types_service.get_asset_type,
-            str(self.shot_type.id),
-        )
-
-    def test_get_or_create_asset_type(self):
-        asset_type = entity_types_service.get_or_create_asset_type(
-            self.asset_type.name
-        )
-        self.assertDictEqual(
-            asset_type, self.asset_type.serialize(obj_type="AssetType")
-        )
-        asset_type = entity_types_service.get_or_create_asset_type(
-            "New asset type"
-        )
-        self.assertEqual(asset_type["name"], "New asset type")
-
     def test_create_asset_types(self):
         assets_service.create_asset_types(["Type 01", "Type 02"])
         self.assertEqual(
@@ -265,40 +165,6 @@ class AssetTypeTestCase(AssetsTestCase):
                 for asset_type in entity_types_service.get_asset_types()
             ),
             ["Props", "Type 01", "Type 02"],
-        )
-
-    def test_a_new_asset_type_shows_up_in_the_memoized_listing(self):
-        """
-        The criterionless listing is memoized, so creating a type has to
-        drop it.
-        """
-        entity_types_service.get_asset_types()
-        entity_types_service.get_or_create_asset_type("Vehicle")
-        self.assertIn(
-            "Vehicle",
-            [
-                asset_type["name"]
-                for asset_type in entity_types_service.get_asset_types()
-            ],
-        )
-
-    def test_is_asset_type(self):
-        self.assertTrue(entity_types_service.is_asset_type(self.asset_type))
-        self.assertFalse(entity_types_service.is_asset_type(self.shot_type))
-        self.assertFalse(
-            entity_types_service.is_asset_type(self.sequence_type)
-        )
-        self.assertFalse(entity_types_service.is_asset_type(self.episode_type))
-
-    def test_is_asset_type_of_a_serialized_type(self):
-        """
-        The importers hand over dicts rather than rows.
-        """
-        self.assertTrue(
-            entity_types_service.is_asset_type(self.asset_type.serialize())
-        )
-        self.assertFalse(
-            entity_types_service.is_asset_type(self.shot_type.serialize())
         )
 
 
@@ -388,18 +254,6 @@ class AssetReadTestCase(AssetsTestCase):
             self.asset_instance.id
         )
         self.assertDictEqual(asset_instance, self.asset_instance.serialize())
-
-    def test_is_asset(self):
-        self.assertTrue(entity_types_service.is_asset(self.asset))
-        self.assertFalse(entity_types_service.is_asset(self.shot))
-
-    def test_is_asset_dict(self):
-        self.assertTrue(
-            entity_types_service.is_asset_dict(self.asset.serialize())
-        )
-        self.assertFalse(
-            entity_types_service.is_asset_dict(self.shot.serialize())
-        )
 
 
 class AssetWriteTestCase(AssetsTestCase):

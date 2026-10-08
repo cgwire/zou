@@ -32,7 +32,7 @@ from zou.app.services import (
     projects_service,
     shots_service,
     permissions_service,
-    user_service,
+    playlist_builds_service,
 )
 from zou.app.exceptions import (
     BuildJobNotFoundException,
@@ -200,7 +200,7 @@ class PlaylistDownloadResource(MethodView):
         permissions_service.check_playlist_access(
             playlist, supervisor_access=True
         )
-        build_job = playlists_service.get_build_job(build_job_id)
+        build_job = playlist_builds_service.get_build_job(build_job_id)
         if str(build_job["playlist_id"]) != str(playlist_id):
             raise BuildJobNotFoundException
 
@@ -216,8 +216,10 @@ class PlaylistDownloadResource(MethodView):
             build_job_id,
             "mp4",
         )
-        context_name = playlists_service.get_playlist_download_context_name(
-            project, playlist
+        context_name = (
+            playlist_builds_service.get_playlist_download_context_name(
+                project, playlist
+            )
         )
         download_name = (
             f"{slugify.slugify(build_job['created_at'], separator='').replace('t', '_')}"
@@ -259,7 +261,7 @@ class BuildPlaylistMovieResource(MethodView, ArgsMixin):
             for x in playlist["shots"]
         ]
 
-        job = playlists_service.start_build_job(playlist)
+        job = playlist_builds_service.start_build_job(playlist)
         if config.ENABLE_JOB_QUEUE:
             remote = config.ENABLE_JOB_QUEUE_REMOTE
             # remote worker can not access files local to the web app
@@ -272,7 +274,7 @@ class BuildPlaylistMovieResource(MethodView, ArgsMixin):
             current_user = persons_service.get_current_user()
             try:
                 queue_store.job_queue.enqueue(
-                    playlists_service.build_playlist_job,
+                    playlist_builds_service.build_playlist_job,
                     args=(
                         playlist,
                         job,
@@ -289,14 +291,14 @@ class BuildPlaylistMovieResource(MethodView, ArgsMixin):
                     failure_ttl=60,
                 )
             except DuplicateJobError:
-                playlists_service.remove_build_job(playlist, job["id"])
+                playlist_builds_service.remove_build_job(playlist, job["id"])
                 return {
                     "error": True,
                     "message": "A build is already in progress for this playlist",
                 }, 409
             return job
         else:
-            job = playlists_service.build_playlist_movie_file(
+            job = playlist_builds_service.build_playlist_movie_file(
                 playlist, job, shots, params, full, remote=False
             )
             return job
@@ -316,9 +318,13 @@ class PlaylistZipDownloadResource(MethodView):
             playlist, supervisor_access=True
         )
         project = projects_service.get_project(playlist["project_id"])
-        zip_file_path = playlists_service.build_playlist_zip_file(playlist)
-        context_name = playlists_service.get_playlist_download_context_name(
-            project, playlist
+        zip_file_path = playlist_builds_service.build_playlist_zip_file(
+            playlist
+        )
+        context_name = (
+            playlist_builds_service.get_playlist_download_context_name(
+                project, playlist
+            )
         )
         download_name = (
             f"{context_name}_"
@@ -353,7 +359,7 @@ class BuildJobResource(MethodView):
         permissions_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
         permissions_service.check_playlist_access(playlist)
-        build_job = playlists_service.get_build_job(build_job_id)
+        build_job = playlist_builds_service.get_build_job(build_job_id)
         if str(build_job["playlist_id"]) != str(playlist_id):
             raise BuildJobNotFoundException
         return build_job
@@ -367,10 +373,10 @@ class BuildJobResource(MethodView):
         permissions_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
         permissions_service.check_playlist_access(playlist)
-        build_job = playlists_service.get_build_job(build_job_id)
+        build_job = playlist_builds_service.get_build_job(build_job_id)
         if str(build_job["playlist_id"]) != str(playlist_id):
             raise BuildJobNotFoundException
-        playlists_service.remove_build_job(playlist, build_job_id)
+        playlist_builds_service.remove_build_job(playlist, build_job_id)
         return "", 204
 
 
@@ -384,7 +390,7 @@ class ProjectBuildJobsResource(MethodView):
         """
         permissions.check_admin_permissions()
         projects_service.get_project(project_id)
-        return playlists_service.get_build_jobs_for_project(project_id)
+        return playlist_builds_service.get_build_jobs_for_project(project_id)
 
 
 class ProjectAllPlaylistsResource(MethodView, ArgsMixin):

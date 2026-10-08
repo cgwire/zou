@@ -11,9 +11,10 @@ from zou.app.models.department import Department
 from zou.app.models.stored_file import StoredFile
 from zou.app.services import (
     deletion_service,
-    playlists_service,
     preview_files_service,
     stored_files_service,
+    playlist_builds_service,
+    preview_maintenance_service,
 )
 from zou.app.stores import file_store
 from zou.app.exceptions import PreviewProcessingFailedException
@@ -329,16 +330,16 @@ class StoredFilesServiceTestCase(ApiDBTestCase):
 
     def test_remote_playlist_records_before_the_job(self):
         with mock.patch.object(
-            playlists_service.remote_job,
+            playlist_builds_service.remote_job,
             "run_job",
             side_effect=RuntimeError("job failed"),
         ), mock.patch.object(
-            playlists_service.config_store,
+            playlist_builds_service.config_store,
             "get_nomad_playlist_job",
             return_value="zou-playlist",
         ):
             with self.assertRaises(RuntimeError):
-                playlists_service._run_remote_job_build_playlist(
+                playlist_builds_service._run_remote_job_build_playlist(
                     None,
                     {"id": self.file_id},
                     [],
@@ -363,7 +364,7 @@ class StoredFilesServiceTestCase(ApiDBTestCase):
             return_value="zou-tile",
         ):
             with self.assertRaises(RuntimeError):
-                preview_files_service._run_remote_tile_job(
+                preview_maintenance_service._run_remote_tile_job(
                     None, self.preview_file
                 )
         self.assertIsNotNone(

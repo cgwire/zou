@@ -6,7 +6,6 @@ from zou.app.models.entity import EntityVersion
 from zou.app.models.schedule_item import ScheduleItem
 from zou.app.services import (
     edits_service,
-    entity_types_service,
 )
 from zou.app.exceptions import (
     EditNotFoundException,
@@ -30,10 +29,6 @@ class EditUtilsTestCase(ApiDBTestCase):
         self.generate_fixture_department()
         self.generate_fixture_task_status()
         self.generate_fixture_task_type()
-
-    def test_get_edit_type(self):
-        edit_type = entity_types_service.get_edit_type()
-        self.assertEqual(edit_type["name"], "Edit")
 
     def test_get_edits(self):
         edit_dict = self.edit.serialize(obj_type="Edit")
@@ -111,10 +106,6 @@ class EditUtilsTestCase(ApiDBTestCase):
         self.assertEqual(edit["episode_id"], str(self.episode.id))
         self.assertEqual(edit["episode_name"], self.episode.name)
         self.assertEqual(len(edit["tasks"]), 1)
-
-    def test_is_edit(self):
-        self.assertTrue(entity_types_service.is_edit(self.edit.serialize()))
-        self.assertFalse(entity_types_service.is_edit(self.asset.serialize()))
 
     def test_create_edit(self):
         edit_name = "Editor's Cut"

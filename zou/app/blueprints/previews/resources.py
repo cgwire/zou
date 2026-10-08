@@ -37,6 +37,8 @@ from zou.app.services import (
     permissions_service,
     organisation_service,
     task_types_service,
+    preview_annotations_service,
+    preview_maintenance_service,
 )
 from zou.utils import movie
 from zou.app.utils import (
@@ -918,10 +920,12 @@ class BaseBatchComment(BaseNewPreviewFilePicture, ArgsMixin):
                 for (k, v) in request.files.items()
                 if f"preview_file-{i}" in k
             }.values():
-                new_preview_file = tasks_service.add_preview_file_to_comment(
-                    new_comment["id"],
-                    new_comment["person_id"],
-                    task_id or comment["task_id"],
+                new_preview_file = (
+                    comments_service.add_preview_file_to_comment(
+                        new_comment["id"],
+                        new_comment["person_id"],
+                        task_id or comment["task_id"],
+                    )
                 )
                 new_preview_file = self.process_uploaded_file(
                     new_preview_file["id"],
@@ -1200,7 +1204,7 @@ class AttachmentThumbnailResource(MethodView):
             attachment_id
         )
         if self.attachment_file["comment_id"] is not None:
-            comment = tasks_service.get_comment(
+            comment = comments_service.get_comment(
                 self.attachment_file["comment_id"]
             )
             permissions_service.check_task_access(comment["object_id"])
@@ -1314,7 +1318,7 @@ class PreviewFileTileResource(BasePreviewPictureResource):
         try:
             return super().get(instance_id)
         except PreviewFileNotFoundException:
-            preview_files_service.generate_tile_later(instance_id)
+            preview_maintenance_service.generate_tile_later(instance_id)
             raise
 
 
@@ -1612,7 +1616,7 @@ class UpdateAnnotationsResource(MethodView, ArgsMixin):
 
         body = validation_utils.validate_request_body(AnnotationsUpdateSchema)
         user = persons_service.get_current_user()
-        return preview_files_service.update_preview_file_annotations(
+        return preview_annotations_service.update_preview_file_annotations(
             user["id"],
             task["project_id"],
             preview_file_id,
@@ -1709,10 +1713,8 @@ class ExtractAnnotatedFrameFromPreview(MethodView):
         preview_file = files_service.get_preview_file(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
         permissions_service.check_manager_project_access(task["project_id"])
-        extracted_frame_path = (
-            preview_files_service.extract_annotation_frame_from_preview_file(
-                preview_file, args.frame_number
-            )
+        extracted_frame_path = preview_annotations_service.extract_annotation_frame_from_preview_file(
+            preview_file, args.frame_number
         )
         if extracted_frame_path is None:
             return {"error": "preview file binary is not available"}, 404
@@ -1772,7 +1774,7 @@ class ExtractAllAnnotatedFramesFromPreview(MethodView):
         """
         return _serve_annotated_frames_bundle(
             preview_file_id,
-            preview_files_service.extract_all_annotation_frames_from_preview_file,
+            preview_annotations_service.extract_all_annotation_frames_from_preview_file,
             mimetype="application/zip",
             file_extension="zip",
         )
@@ -1792,7 +1794,7 @@ class ExtractAllAnnotatedFramesAsPdfFromPreview(MethodView):
         """
         return _serve_annotated_frames_bundle(
             preview_file_id,
-            preview_files_service.extract_all_annotation_frames_pdf_from_preview_file,
+            preview_annotations_service.extract_all_annotation_frames_pdf_from_preview_file,
             mimetype="application/pdf",
             file_extension="pdf",
         )

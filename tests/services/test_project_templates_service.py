@@ -16,6 +16,7 @@ from zou.app.models.project_template import (
 from zou.app.services import (
     project_templates_service,
     projects_service,
+    metadata_descriptors_service,
 )
 from zou.app.exceptions import (
     ProjectNotFoundException,
@@ -368,7 +369,7 @@ class ProjectTemplateServiceTestCase(ApiDBTestCase):
         projects_service.add_asset_type_setting(
             self.project_id, str(self.asset_type.id)
         )
-        projects_service.add_metadata_descriptor(
+        metadata_descriptors_service.add_metadata_descriptor(
             project_id=str(self.project_id),
             entity_type="Asset",
             name="Difficulty",
@@ -430,7 +431,7 @@ class ProjectTemplateServiceTestCase(ApiDBTestCase):
         )
 
     def test_task_metadata_descriptor_round_trip(self):
-        projects_service.add_metadata_descriptor(
+        metadata_descriptors_service.add_metadata_descriptor(
             project_id=str(self.project.id),
             entity_type="Task",
             name="Render layer",

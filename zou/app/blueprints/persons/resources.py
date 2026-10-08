@@ -10,10 +10,10 @@ from zou.app.mixin import ArgsMixin
 from zou.app.services import (
     persons_service,
     time_spents_service,
-    shots_service,
     permissions_service,
     user_service,
     departments_service,
+    quotas_service,
 )
 from zou.app.utils import (
     permissions,
@@ -398,7 +398,7 @@ class PersonQuotaMixin(ArgsMixin):
 class PersonMonthQuotaShotsResource(MethodView, PersonQuotaMixin):
 
     def get_person_quotas(self, person_id, year, month, **kwargs):
-        return shots_service.get_month_quota_shots(
+        return quotas_service.get_month_quota_shots(
             person_id, year, month, **kwargs
         )
 
@@ -414,7 +414,7 @@ class PersonMonthQuotaShotsResource(MethodView, PersonQuotaMixin):
 class PersonWeekQuotaShotsResource(MethodView, PersonQuotaMixin):
 
     def get_person_quotas(self, person_id, year, week, **kwargs):
-        return shots_service.get_week_quota_shots(
+        return quotas_service.get_week_quota_shots(
             person_id, year, week, **kwargs
         )
 
@@ -430,7 +430,7 @@ class PersonWeekQuotaShotsResource(MethodView, PersonQuotaMixin):
 class PersonDayQuotaShotsResource(MethodView, PersonQuotaMixin):
 
     def get_person_quotas(self, person_id, year, month, day, **kwargs):
-        return shots_service.get_day_quota_shots(
+        return quotas_service.get_day_quota_shots(
             person_id, year, month, day, **kwargs
         )
 

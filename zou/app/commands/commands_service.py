@@ -37,6 +37,8 @@ from zou.app.services import (
     entity_types_service,
     organisation_service,
     task_types_service,
+    preview_annotations_service,
+    preview_maintenance_service,
 )
 from zou.app.models.entity import Entity
 from zou.app.models.person import Person
@@ -846,7 +848,7 @@ def generate_preview_extra(
     if episodes is None:
         episodes = []
     with app.app_context():
-        preview_files_service.generate_preview_extra(
+        preview_maintenance_service.generate_preview_extra(
             project=project,
             entity_id=entity_id,
             episodes=episodes,
@@ -904,7 +906,7 @@ def queue_missing_tiles(
     progress=False,
 ):
     with app.app_context():
-        summary = preview_files_service.queue_missing_tiles(
+        summary = preview_maintenance_service.queue_missing_tiles(
             project=project,
             entity_id=entity_id,
             episodes=episodes,
@@ -926,12 +928,12 @@ def queue_missing_tiles(
 
 def reset_movie_files_metadata():
     with app.app_context():
-        preview_files_service.reset_movie_files_metadata()
+        preview_maintenance_service.reset_movie_files_metadata()
 
 
 def reset_picture_files_metadata():
     with app.app_context():
-        preview_files_service.reset_picture_files_metadata()
+        preview_maintenance_service.reset_picture_files_metadata()
 
 
 def probe_preview_files(
@@ -1158,12 +1160,12 @@ def normalize_annotation_times(project_id=None, dry_run=False):
                         )
                     )
                     _, changed = (
-                        preview_files_service.normalize_annotation_times(
+                        preview_annotations_service.normalize_annotation_times(
                             preview_file.annotations, fps
                         )
                     )
                 else:
-                    changed = preview_files_service.normalize_preview_file_annotation_times(
+                    changed = preview_annotations_service.normalize_preview_file_annotation_times(
                         preview_file
                     )
                 if changed:

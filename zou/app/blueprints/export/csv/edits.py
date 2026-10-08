@@ -9,6 +9,7 @@ from zou.app.services import (
     permissions_service,
     persons_service,
     task_types_service,
+    metadata_descriptors_service,
 )
 from zou.app.utils import csv_utils
 
@@ -137,7 +138,7 @@ class EditsCsvExport(MethodView):
     def get_metadata_infos(self, project_id):
         descriptors = [
             descriptor
-            for descriptor in projects_service.get_metadata_descriptors(
+            for descriptor in metadata_descriptors_service.get_metadata_descriptors(
                 project_id
             )
             if descriptor["entity_type"] == "Edit"

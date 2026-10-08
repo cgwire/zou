@@ -28,6 +28,7 @@ from zou.app.services import (
     entity_types_service,
     persons_service,
     subscriptions_service,
+    metadata_descriptors_service,
 )
 from zou.app.exceptions import (
     EditNotFoundException,
@@ -128,7 +129,7 @@ def get_edits(criterions=None):
         edit["project_name"] = project_name
         edits.append(edit)
 
-    return entities_service.remove_not_allowed_metadata_for_vendor(
+    return metadata_descriptors_service.remove_not_allowed_metadata_for_vendor(
         "Edit", criterions.get("vendor_departments"), edits
     )
 
@@ -208,19 +209,17 @@ def get_edits_and_tasks(criterions=None):
 
     not_allowed_map = None
     if "vendor_departments" in criterions:
-        not_allowed_map = (
-            entities_service.get_not_allowed_descriptors_fields_for_vendor(
-                "Edit",
-                criterions["vendor_departments"],
-                set(row.project_id for row in edit_rows),
-            )
+        not_allowed_map = metadata_descriptors_service.get_not_allowed_descriptors_fields_for_vendor(
+            "Edit",
+            criterions["vendor_departments"],
+            set(row.project_id for row in edit_rows),
         )
 
     edits = []
     for row in edit_rows:
         data = fields.serialize_value(row.data or {})
         if not_allowed_map is not None:
-            data = entities_service.remove_not_allowed_fields_from_metadata(
+            data = metadata_descriptors_service.remove_not_allowed_fields_from_metadata(
                 not_allowed_map[row.project_id], data
             )
         edits.append(

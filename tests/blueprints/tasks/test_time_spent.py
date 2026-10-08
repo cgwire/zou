@@ -1,6 +1,8 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.services import tasks_service
+from zou.app.services import (
+    time_spents_service,
+)
 
 
 class RouteTimeSpentTestCase(ApiDBTestCase):
@@ -20,22 +22,22 @@ class RouteTimeSpentTestCase(ApiDBTestCase):
         self.generate_fixture_shot_task()
         shot_task_id = str(self.shot_task.id)
 
-        tasks_service.create_or_update_time_spent(
+        time_spents_service.create_or_update_time_spent(
             task_id, self.person_id, "2018-06-04", 500
         )
-        tasks_service.create_or_update_time_spent(
+        time_spents_service.create_or_update_time_spent(
             shot_task_id, self.person_id, "2018-06-04", 300
         )
-        tasks_service.create_or_update_time_spent(
+        time_spents_service.create_or_update_time_spent(
             task_id, self.person_id, "2018-06-03", 600
         )
-        tasks_service.create_or_update_time_spent(
+        time_spents_service.create_or_update_time_spent(
             task_id, self.person_id, "2018-05-03", 600
         )
-        tasks_service.create_or_update_time_spent(
+        time_spents_service.create_or_update_time_spent(
             task_id, self.person_id, "2018-05-03", 600
         )
-        tasks_service.create_or_update_time_spent(
+        time_spents_service.create_or_update_time_spent(
             task_id, self.user_id, "2018-06-03", 600
         )
 

@@ -1,11 +1,8 @@
-from tests.base import ApiDBTestCase
-
 from zou.app import config
 from zou.app.models.person import Person
 from zou.app.services import (
     persons_service,
-    tasks_service,
-    organisation_service,
+    time_spents_service,
 )
 from zou.app.exceptions import (
     PersonInProtectedAccounts,
@@ -13,35 +10,7 @@ from zou.app.exceptions import (
     WrongParameterException,
 )
 from zou.app.utils import auth, fields
-
-
-class PersonsTestCase(ApiDBTestCase):
-    """
-    The admin the base class logs in as, plus one studio member.
-    Holds no test of its own.
-    """
-
-    def setUp(self):
-        super().setUp()
-
-        self.generate_fixture_person()
-        self.generate_fixture_department()
-        self.person_id = str(self.person.id)
-        self.person_email = self.person.email
-        self.person_desktop_login = self.person.desktop_login
-
-    def a_guest(self):
-        """
-        A person created by the shared playlist flow: not part of the
-        studio, and left out of every team listing.
-        """
-        return Person.create(
-            first_name="Guest",
-            last_name="Reviewer",
-            email="guest-reviewer@guest.kitsu",
-            role="client",
-            is_guest=True,
-        )
+from tests.services.cases import PersonsTestCase
 
 
 class PersonReadTestCase(PersonsTestCase):
@@ -722,7 +691,7 @@ class PresenceTestCase(PersonsTestCase):
             persons_service.create_desktop_login_logs(self.person_id, date)
 
         def work(date):
-            tasks_service.create_or_update_time_spent(
+            time_spents_service.create_or_update_time_spent(
                 task_id, self.person_id, date, 600
             )
 
@@ -796,34 +765,3 @@ class PresenceTestCase(PersonsTestCase):
 
         by_name = {row[0]: row for row in rows}
         self.assertEqual(by_name["John Doe"].count("X"), 1)
-
-
-class OrganisationTestCase(PersonsTestCase):
-    """
-    The single organisation row of the instance.
-    """
-
-    def test_get_organisation(self):
-        organisation = organisation_service.get_organisation()
-        self.assertIn("id", organisation)
-
-    def test_get_organisation_creates_it_once(self):
-        """
-        A fresh instance has no organisation row: the first reading makes
-        it, and every later one finds it.
-        """
-        self.assertEqual(
-            organisation_service.get_organisation()["id"],
-            organisation_service.get_organisation()["id"],
-        )
-
-    def test_update_organisation(self):
-        organisation = organisation_service.get_organisation()
-        result = organisation_service.update_organisation(
-            organisation["id"], {"name": "NewOrg"}
-        )
-        self.assertEqual(result["name"], "NewOrg")
-        # Read back through the memoized path, which the update has to drop.
-        self.assertEqual(
-            organisation_service.get_organisation()["name"], "NewOrg"
-        )
