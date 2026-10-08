@@ -306,19 +306,32 @@ def get_time_spents(
 
 def get_time_spents_range(person_id, start_date, end_date):
     """
-    Returns time spents for person and date range.
+    Returns time spents for person and date range, with the project and the
+    task type of their task.
     """
     try:
-        query = TimeSpent.query.filter_by(person_id=person_id)
-        time_spents = query.filter(
-            TimeSpent.date.between(
-                func.cast(start_date, TimeSpent.date.type),
-                func.cast(end_date, TimeSpent.date.type),
+        rows = (
+            TimeSpent.query.join(Task, Task.id == TimeSpent.task_id)
+            .add_columns(Task.project_id, Task.task_type_id)
+            .filter(TimeSpent.person_id == person_id)
+            .filter(
+                TimeSpent.date.between(
+                    func.cast(start_date, TimeSpent.date.type),
+                    func.cast(end_date, TimeSpent.date.type),
+                )
             )
-        ).all()
+            .all()
+        )
     except DataError:
         raise WrongDateFormatException
-    return fields.serialize_list(time_spents)
+    return [
+        {
+            **time_spent.serialize(),
+            "project_id": str(project_id),
+            "task_type_id": str(task_type_id),
+        }
+        for time_spent, project_id, task_type_id in rows
+    ]
 
 
 def get_time_spent(person_id, task_id, date):

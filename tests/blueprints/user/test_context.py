@@ -634,6 +634,12 @@ class UserWorkloadTestCase(UserContextTestCase):
             "data/user/time-spents?start_date=2026-08-01&end_date=2026-08-31"
         )
         self.assertEqual(len(time_spents), 1)
+        self.assertEqual(
+            time_spents[0]["task_type_id"], str(self.task.task_type_id)
+        )
+        self.assertEqual(
+            time_spents[0]["project_id"], str(self.task.project_id)
+        )
         # Both bounds are required, one alone is a 400.
         self.get("data/user/time-spents?start_date=2026-08-01", 400)
 

@@ -49,6 +49,16 @@ responses:
                 format: uuid
                 description: Person unique identifier
                 example: b35b7fb5-df86-5776-b181-68564193d360
+              project_id:
+                type: string
+                format: uuid
+                description: Project of the task
+                example: d57d91d7-f1a8-7998-d3a3-8a786315f581
+              task_type_id:
+                type: string
+                format: uuid
+                description: Task type of the task
+                example: e68ea2e8-a2b9-8aa9-e4b4-9b897426a692
               duration:
                 type: number
                 format: float
