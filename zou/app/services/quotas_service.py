@@ -78,21 +78,28 @@ def get_weighted_quotas(
         nb_drawings = task.nb_drawings or 0
         nb_frames = nb_frames or 0
         if task.duration > 0:
-            nb_frames = round(nb_frames * (duration / task.duration))
-            nb_drawings = round(nb_drawings * (duration / task.duration))
+            share = duration / task.duration
+            nb_frames = round(nb_frames * share)
+            nb_drawings = round(nb_drawings * share)
             entry_id = str(task_person_id)
             # We get quotas for a specific person split by task types
             if person_id is not None:
                 entry_id = str(task.task_type_id)
             for entry in [entry_id, "total"]:
                 _add_quota_entry(
-                    quotas, entry, date, timezone, nb_frames, nb_drawings, fps
+                    quotas,
+                    entry,
+                    date,
+                    timezone,
+                    nb_frames,
+                    nb_drawings,
+                    fps,
+                    count=share,
                 )
 
     query = (
         Task.query.filter(Task.project_id == project_id)
         .filter(Entity.entity_type_id == shot_type["id"])
-        .filter(Task.task_type_id == task_type_id)
         .filter(Task.real_start_date != None)
         .filter(TimeSpent.id == None)
         .join(Entity, Entity.id == Task.entity_id)
@@ -156,8 +163,22 @@ def get_weighted_quotas(
                         nb_frames,
                         nb_drawings,
                         fps,
+                        count=1 / business_days,
                     )
             day = day + timedelta(1)
+    return _round_counts(quotas)
+
+
+def _round_counts(quotas):
+    """
+    Weighted counts are shares of shots: they add up at full precision and
+    are rounded only once every share is in, so a period total stays whole.
+    """
+    for entry in quotas.values():
+        for period in entry.values():
+            period["count"] = {
+                key: round(value, 2) for key, value in period["count"].items()
+            }
     return quotas
 
 
@@ -231,12 +252,12 @@ def get_raw_quotas(
 
 
 def _add_quota_entry(
-    quotas, entry_id, date, timezone, nb_frames, nb_drawings, fps
+    quotas, entry_id, date, timezone, nb_frames, nb_drawings, fps, count=1
 ):
     """
-    Add one shot to the quotas of a person, counted at once on its day,
-    its week and its month. Seconds are derived from the frame count and
-    the project fps.
+    Add one shot, or the share of it given by count, to the quotas of a
+    person, counted at once on its day, its week and its month. Seconds are
+    derived from the frame count and the project fps.
     """
     nb_seconds = nb_frames / fps
     # TimeSpent dates are plain calendar days, already the user's working
@@ -254,7 +275,9 @@ def _add_quota_entry(
         local_date = date
         date_str = date.strftime("%Y-%m-%d")
     year = date_str[:4]
-    week = f"{year}-{local_date.isocalendar()[1]}"
+    # A week belongs to its ISO year: 2025-12-30 is the first week of 2026.
+    iso_year, iso_week, _ = local_date.isocalendar()
+    week = f"{iso_year}-{iso_week}"
     month = date_str[:7]
     if entry_id not in quotas:
         _init_quota_entry(quotas, entry_id)
@@ -262,19 +285,19 @@ def _add_quota_entry(
     quotas[entry_id]["day"]["frames"][date_str] += nb_frames
     quotas[entry_id]["day"]["seconds"][date_str] += nb_seconds
     quotas[entry_id]["day"]["drawings"][date_str] += nb_drawings
-    quotas[entry_id]["day"]["count"][date_str] += 1
+    quotas[entry_id]["day"]["count"][date_str] += count
     quotas[entry_id]["week"]["frames"][week] += nb_frames
     quotas[entry_id]["week"]["seconds"][week] += nb_seconds
     quotas[entry_id]["week"]["drawings"][week] += nb_drawings
-    quotas[entry_id]["week"]["count"][week] += 1
+    quotas[entry_id]["week"]["count"][week] += count
     quotas[entry_id]["month"]["frames"][month] += nb_frames
     quotas[entry_id]["month"]["seconds"][month] += nb_seconds
     quotas[entry_id]["month"]["drawings"][month] += nb_drawings
-    quotas[entry_id]["month"]["count"][month] += 1
+    quotas[entry_id]["month"]["count"][month] += count
     quotas[entry_id]["year"]["frames"][year] += nb_frames
     quotas[entry_id]["year"]["drawings"][year] += nb_drawings
     quotas[entry_id]["year"]["seconds"][year] += nb_seconds
-    quotas[entry_id]["year"]["count"][year] += 1
+    quotas[entry_id]["year"]["count"][year] += count
 
 
 def _init_quota_date(quotas, entry_id, date_str, week, month):
@@ -282,7 +305,8 @@ def _init_quota_date(quotas, entry_id, date_str, week, month):
     Make sure the day, week and month buckets of given dates exist before
     counts are added to them.
     """
-    year = week[:4]
+    year = month[:4]
+    week_year = week[:4]
     if date_str not in quotas[entry_id]["day"]["frames"]:
         quotas[entry_id]["day"]["frames"][date_str] = 0
         quotas[entry_id]["day"]["seconds"][date_str] = 0
@@ -296,9 +320,9 @@ def _init_quota_date(quotas, entry_id, date_str, week, month):
         quotas[entry_id]["week"]["seconds"][week] = 0
         quotas[entry_id]["week"]["count"][week] = 0
         quotas[entry_id]["week"]["drawings"][week] = 0
-        if year not in quotas[entry_id]["week"]["entries"]:
-            quotas[entry_id]["week"]["entries"][year] = 0
-        quotas[entry_id]["week"]["entries"][year] += 1
+        if week_year not in quotas[entry_id]["week"]["entries"]:
+            quotas[entry_id]["week"]["entries"][week_year] = 0
+        quotas[entry_id]["week"]["entries"][week_year] += 1
     if month not in quotas[entry_id]["month"]["frames"]:
         quotas[entry_id]["month"]["frames"][month] = 0
         quotas[entry_id]["month"]["seconds"][month] = 0

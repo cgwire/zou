@@ -40,7 +40,11 @@ responses:
                 type: object
                 properties:
                   count:
-                    type: integer
+                    type: number
+                    description: >-
+                      Shots counted. In weighted modes a shot is split over
+                      the days it was worked on, so counts are fractions
+                      rounded to 2 decimals.
                     example: 15
                   frames:
                     type: integer
