@@ -358,12 +358,12 @@ class RenormalizeMoviePreviewFilesTestCase(ApiDBTestCase):
 
 class SyncCommandsTestCase(ApiDBTestCase):
     def test_page_size_reaches_the_sync_service(self):
-        from zou.app.commands import sync_service
+        from zou.app.commands import sync_files_service, sync_service
 
         with patch.object(sync_service, "init"), patch.object(
             sync_service, "run_last_events_sync"
         ) as events_sync, patch.object(
-            sync_service, "run_last_events_files"
+            sync_files_service, "run_last_events_files"
         ) as files_sync, redirect_stdout(
             io.StringIO()
         ):
