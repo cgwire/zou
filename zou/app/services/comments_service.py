@@ -1190,7 +1190,9 @@ def add_preview_file_to_comment(comment_id, person_id, task_id, revision=None):
     if news is not None:
         news.update({"preview_file_id": preview_file.id})
     events.emit(
-        "comment:update", {"comment_id": comment.id}, project_id=project_id
+        "comment:update",
+        {"comment_id": comment.id, "task_id": comment.object_id},
+        project_id=project_id,
     )
     return preview_file.serialize(relations=True)
 
@@ -1303,7 +1305,7 @@ def copy_preview_file_in_another_one(
         comment_id = comment["id"]
         events.emit(
             "comment:update",
-            {"comment_id": comment_id},
+            {"comment_id": comment_id, "task_id": comment["object_id"]},
             project_id=task["project_id"],
         )
         events.emit(

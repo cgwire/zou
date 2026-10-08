@@ -132,6 +132,20 @@ class PictureUploadDispatchTestCase(BasePreviewDispatchTestCase):
         preview_file = files_service.get_preview_file(preview_file_id)
         self.assertEqual(preview_file["status"], "ready")
 
+    def test_an_uploaded_picture_names_the_task_of_its_comment(self):
+        # Kitsu reloads an updated comment from the comments of its task:
+        # without the task, only a side panel showing the comment can.
+        preview_file_id = self.create_preview_file()
+        updates = self.capture_events("comment:update")
+
+        self.upload_file(
+            f"/pictures/preview-files/{preview_file_id}", self.picture_path
+        )
+
+        self.assertEqual(
+            [update["task_id"] for update in updates], [self.task_id]
+        )
+
     def test_a_synchronous_upload_updates_the_task_info_once(self):
         preview_file_id = self.create_preview_file()
         with patch.object(

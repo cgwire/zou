@@ -1034,6 +1034,28 @@ class PreviewFileWritesRecordStatesTestCase(PreviewFileTestCase):
         self.assertEqual(states["pictures/tiles"]["state"], "ok")
         self.assertNotIn("movies/source", states)
 
+    def test_a_copy_names_the_task_of_its_comment(self):
+        # Kitsu reloads an updated comment from the comments of its task:
+        # without the task, only a side panel showing the comment can.
+        target = self.generate_fixture_preview_file(revision=2)
+        comment = Comment.get(self.generate_fixture_comment()["id"])
+        comment.previews = [target]
+        comment.save()
+        updates = self.capture_events("comment:update")
+
+        with patch.object(
+            preview_files_service,
+            "copy_preview_file_on_storage",
+            side_effect=lambda _b, _p, _e, _c, prefix, *_: prefix != "source",
+        ):
+            comments_service.copy_preview_file_in_another_one(
+                self.preview_file_id, str(target.id)
+            )
+
+        self.assertEqual(
+            [update["task_id"] for update in updates], [str(self.task.id)]
+        )
+
 
 class CommentReaderTestCase(TaskTestCase):
     def test_get_comments_by_role(self):
@@ -1092,3 +1114,17 @@ class CommentReaderTestCase(TaskTestCase):
 
         comment = comments_service.get_comment(comment_id, relations=True)
         self.assertEqual(comment["previews"], [preview_file["id"]])
+
+    def test_a_preview_added_to_a_comment_names_its_task(self):
+        # Kitsu reloads an updated comment from the comments of its task:
+        # without the task, only a side panel showing the comment can.
+        comment_id = self.generate_fixture_comment()["id"]
+        updates = self.capture_events("comment:update")
+
+        comments_service.add_preview_file_to_comment(
+            comment_id, self.person_id, self.task_id
+        )
+
+        self.assertEqual(
+            [update["task_id"] for update in updates], [str(self.task_id)]
+        )
