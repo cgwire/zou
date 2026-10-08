@@ -18,9 +18,14 @@ from ldap3 import Server, Connection, ALL, NTLM, SIMPLE
 from zou.app.utils import thumbnail as thumbnail_utils, auth
 from zou.app.utils.progress import NullProgress
 from zou.app.stores import auth_tokens_store, file_store
+from zou.app.commands import (
+    backup_service,
+    sync_files_service,
+    sync_service,
+    sync_verify_service,
+)
 from zou.app.services import (
     assets_service,
-    backup_service,
     breakdown_service,
     deletion_service,
     edits_service,
@@ -30,7 +35,6 @@ from zou.app.services import (
     preview_files_service,
     projects_service,
     shots_service,
-    sync_service,
     tasks_service,
 )
 from zou.app.models.entity import Entity
@@ -622,7 +626,7 @@ def verify_project_against_source(source, login, password, project_name):
     """
     with app.app_context():
         sync_service.init(source, login, password)
-        sync_service.verify_project_sync(project_name, direction="pull")
+        sync_verify_service.verify_project_sync(project_name, direction="pull")
 
 
 def verify_project_against_target(target, login, password, project_name):
@@ -633,7 +637,7 @@ def verify_project_against_target(target, login, password, project_name):
     """
     with app.app_context():
         sync_service.init(target, login, password)
-        sync_service.verify_project_sync(project_name, direction="push")
+        sync_verify_service.verify_project_sync(project_name, direction="push")
 
 
 def push_project_to_target(
@@ -688,7 +692,7 @@ def run_sync_file_change_daemon(
         event_client = sync_service.init_events_listener(
             source, event_source, login, password, logs_dir
         )
-        sync_service.add_file_listeners(event_client)
+        sync_files_service.add_file_listeners(event_client)
         print("Start listening.")
         sync_service.run_listeners(event_client)
 
@@ -718,7 +722,7 @@ def import_last_file_changes_from_another_instance(
     with app.app_context():
         sync_service.init(source, login, password)
         print("Last files syncing started.")
-        sync_service.run_last_events_files(minutes=minutes, limit=limit)
+        sync_files_service.run_last_events_files(minutes=minutes, limit=limit)
         print("Last files syncing ended.")
 
 
@@ -742,7 +746,7 @@ def import_files_from_another_instance(
         sync_service.init(
             source, login, password, multithreaded, number_workers
         )
-        return sync_service.download_files_from_another_instance(
+        return sync_files_service.download_files_from_another_instance(
             project=project,
             multithreaded=multithreaded,
             number_workers=number_workers,
@@ -755,8 +759,8 @@ def import_files_from_another_instance(
 
 def download_file_from_storage():
     with app.app_context():
-        sync_service.download_entity_thumbnails_from_storage()
-        sync_service.download_preview_files_from_storage()
+        sync_files_service.download_entity_thumbnails_from_storage()
+        sync_files_service.download_preview_files_from_storage()
 
 
 def dump_database(store=False):
@@ -1070,7 +1074,7 @@ def renormalize_movie_preview_files(
                             uploaded_movie_path,
                         )
                     else:
-                        sync_service.download_file(
+                        sync_files_service.download_file(
                             uploaded_movie_path,
                             "source",
                             file_store.open_movie,

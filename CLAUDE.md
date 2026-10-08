@@ -37,12 +37,14 @@ zou/
 ├── remote/                  # Remote job runners (playlist, normalize)
 └── cli.py                   # CLI commands (zou init-db, create-admin, etc.)
 tests/
-├── base.py                  # ApiDBTestCase with fixture generators
+├── base.py                  # ApiTestCase / ApiDBTestCase (HTTP helpers, DB setup)
+├── factories/               # generate_fixture_* mixins, one module per domain
 ├── conftest.py              # Schema create/drop per session
-├── models/                  # CRUD model tests
+├── blueprints/<feature>/    # Route-level tests (CRUD ones in crud/)
+├── models/                  # BaseMixin tests
 ├── services/                # Service function tests
 ├── utils/                   # Utility tests
-└── <feature>/               # Route-level tests per blueprint
+└── misc/                    # Static contract checks (imports, OpenAPI…)
 specs/                       # Detailed architecture specs (for reference)
 ```
 
