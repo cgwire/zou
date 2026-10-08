@@ -37,9 +37,9 @@ from zou.app.stores import file_store
 
 from zou.app.services import (
     files_service,
-    comments_service,
     news_service,
     tasks_service,
+    attachment_files_service,
 )
 from zou.app.exceptions import (
     CommentNotFoundException,
@@ -111,7 +111,7 @@ def remove_comment(comment_id):
         remove_preview_file(preview)
 
     for attachment in attachments:
-        comments_service.remove_attachment_file(attachment)
+        attachment_files_service.remove_attachment_file(attachment)
 
     if task is not None:
         events.emit(

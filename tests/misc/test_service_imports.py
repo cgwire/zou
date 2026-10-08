@@ -1,3 +1,4 @@
+import ast
 import os
 import pathlib
 import subprocess
@@ -8,26 +9,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 SERVICES = pathlib.Path(__file__).parents[2] / "zou" / "app" / "services"
 
-# Imports written inside a function body. Each one is a service reaching up
-# into a service that imports it back; the list can only shrink.
-KNOWN_DEFERRED_IMPORTS = {
-    ("deletion_service", "_remove_search_filters", "user_service"),
-    ("deletion_service", "remove_task", "tasks_service"),
-    ("deletion_service", "remove_preview_file", "tasks_service"),
-    ("deletion_service", "remove_attachment_file", "comments_service"),
-    ("deletion_service", "remove_entities", "assets_service"),
-    ("deletion_service", "remove_entities", "concepts_service"),
-    ("deletion_service", "remove_entities", "edits_service"),
-    ("deletion_service", "remove_entities", "entities_service"),
-    ("deletion_service", "remove_entities", "shots_service"),
-    ("deletion_service", "remove_project", "playlists_service"),
-    ("deletion_service", "remove_episode", "shots_service"),
-    ("deletion_service", "remove_episode", "assets_service"),
-}
-
 
 def deferred_imports():
-    import ast
 
     found = set()
     for path in sorted(SERVICES.glob("*_service.py")):
@@ -49,6 +32,49 @@ def deferred_imports():
                     )
                     found.add((path.stem, function.name, target))
     return found
+
+
+def import_graph():
+    """
+    Map each service to the services it imports, wherever the import is.
+    """
+    graph = {}
+    for path in sorted(SERVICES.glob("*_service.py")):
+        targets = set()
+        for node in ast.walk(ast.parse(path.read_text())):
+            if isinstance(node, ast.ImportFrom) and node.module:
+                if node.module == "zou.app.services":
+                    targets |= {alias.name for alias in node.names}
+                elif node.module.startswith("zou.app.services."):
+                    targets.add(node.module.split(".")[-1])
+        graph[path.stem] = targets - {path.stem}
+    return graph
+
+
+def find_cycle(graph):
+    """
+    Return one import cycle as a list of services, or None.
+    """
+    state = {}
+
+    def visit(service, path):
+        state[service] = "open"
+        for target in sorted(graph.get(service, ())):
+            if state.get(target) == "open":
+                return path[path.index(target) :] + [target]
+            if target not in state:
+                cycle = visit(target, path + [target])
+                if cycle:
+                    return cycle
+        state[service] = "done"
+        return None
+
+    for service in sorted(graph):
+        if service not in state:
+            cycle = visit(service, [service])
+            if cycle:
+                return cycle
+    return None
 
 
 class ServiceImportsTestCase(unittest.TestCase):
@@ -76,13 +102,23 @@ class ServiceImportsTestCase(unittest.TestCase):
                 with self.subTest(service=name):
                     self.assertEqual(returncode, 0, stderr)
 
-    def test_no_new_deferred_service_import(self):
-        found = deferred_imports()
+    def test_no_deferred_service_import(self):
         self.assertEqual(
-            found - KNOWN_DEFERRED_IMPORTS,
+            deferred_imports(),
             set(),
-            "A new import inside a function: either import it at module "
-            "level, or move the dependency down a layer.",
+            "An import inside a function hides a cycle: import it at module "
+            "level and move the dependency down a layer if that loops.",
         )
-        for entry in KNOWN_DEFERRED_IMPORTS - found:
-            self.fail(f"{entry} was fixed: drop it from the known list")
+
+    def test_no_import_cycle_between_services(self):
+        """
+        The services form layers: a service only imports the ones below
+        it. A cycle makes the placement of every function in it arbitrary,
+        so the first one that comes back fails here with its path.
+        """
+        cycle = find_cycle(import_graph())
+        self.assertIsNone(
+            cycle,
+            f"Import cycle: {' -> '.join(cycle or [])}. Move the function "
+            "that closes it to the lower service.",
+        )

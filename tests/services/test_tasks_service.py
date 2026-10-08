@@ -26,6 +26,12 @@ from zou.app.exceptions import (
     TaskNotFoundException,
 )
 from tests.services.cases import TaskTestCase
+from zou.app.exceptions import (
+    EntityNotFoundException,
+    PreviewFileNotFoundException,
+)
+from zou.app.services import assets_service, deletion_service
+import pytest
 
 
 class TaskCreationTestCase(TaskTestCase):
@@ -612,3 +618,106 @@ class TaskPreviewRevisionTestCase(ApiDBTestCase):
         entity = tasks_service.update_preview_file_info(preview_file)
 
         self.assertEqual(entity["preview_file_id"], preview_file["id"])
+
+
+class EntityTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+
+        self.generate_fixture_asset_type()
+        self.generate_fixture_asset()
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+        self.generate_fixture_task()
+        self.generate_fixture_preview_file()
+        self.asset_id = str(self.asset.id)
+        self.preview_file_id = str(self.preview_file.id)
+
+    def test_update_entity_preview(self):
+        tasks_service.update_entity_preview(
+            self.asset_id, self.preview_file_id
+        )
+
+        asset = assets_service.get_asset(self.asset_id)
+        self.assertEqual(asset["preview_file_id"], self.preview_file_id)
+
+    def test_update_entity_preview_refuses_what_it_cannot_find(self):
+        with pytest.raises(EntityNotFoundException):
+            tasks_service.update_entity_preview(
+                self.preview_file_id, self.preview_file_id
+            )
+
+        with pytest.raises(PreviewFileNotFoundException):
+            tasks_service.update_entity_preview(self.asset_id, self.asset_id)
+
+    def test_setting_a_preview_announces_it_under_the_entity_kind(self):
+        """
+        Two events: the generic one, and one named after the kind of
+        entity, which is what each listing subscribes to. An asset type is
+        any name the studio invented, so it is announced as "asset".
+        """
+        main = self.capture_events("preview-file:set-main")
+
+        tasks_service.update_entity_preview(
+            self.asset_id, self.preview_file_id
+        )
+
+        self.assertEqual(
+            [
+                (
+                    event["entity_id"],
+                    event["preview_file_id"],
+                    event["project_id"],
+                )
+                for event in main
+            ],
+            [
+                (
+                    self.asset_id,
+                    self.preview_file_id,
+                    str(self.asset.project_id),
+                )
+            ],
+        )
+
+    def test_setting_a_processing_preview_tells_its_status(self):
+        """
+        The pictures of a processing preview are not built yet: the event
+        and the answer say so, for the clients to wait for them instead
+        of asking for them.
+        """
+        preview_file_id = str(
+            self.generate_fixture_preview_file(
+                revision=2, status="processing"
+            ).id
+        )
+        main = self.capture_events("preview-file:set-main")
+
+        entity = tasks_service.update_entity_preview(
+            self.asset_id, preview_file_id
+        )
+
+        statuses = [event["preview_file_status"] for event in main]
+        statuses.append(entity["preview_file_status"])
+        self.assertEqual(statuses, ["processing", "processing"])
+        # A Choice compares equal to its code: only its type tells it apart.
+        self.assertEqual([type(status) for status in statuses], [str, str])
+
+    def test_a_shot_is_announced_as_a_shot(self):
+        captured = self.capture_events("shot:update")
+        shot_id = str(self.shot.id)
+
+        tasks_service.update_entity_preview(shot_id, self.preview_file_id)
+
+        self.assertEqual([event["shot_id"] for event in captured], [shot_id])
+
+    def test_an_asset_is_announced_as_an_asset(self):
+        captured = self.capture_events("asset:update")
+
+        tasks_service.update_entity_preview(
+            self.asset_id, self.preview_file_id
+        )
+
+        self.assertEqual(
+            [event["asset_id"] for event in captured], [self.asset_id]
+        )

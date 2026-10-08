@@ -312,7 +312,7 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
         preview_file_id = self.upload_movie_preview()
         url = f"/movies/originals/preview-files/{preview_file_id}/download"
         with patch.object(
-            preview_resources.names_service,
+            preview_resources.preview_files_service,
             "get_preview_file_name",
             return_value="カット 01.mp4",
         ):

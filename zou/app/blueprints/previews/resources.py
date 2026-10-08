@@ -28,7 +28,6 @@ from zou.app.services import (
     deletion_service,
     entities_service,
     files_service,
-    names_service,
     persons_service,
     projects_service,
     preview_file_states_service,
@@ -39,6 +38,7 @@ from zou.app.services import (
     task_types_service,
     preview_annotations_service,
     preview_maintenance_service,
+    attachment_files_service,
 )
 from zou.utils import movie
 from zou.app.utils import (
@@ -495,7 +495,9 @@ def send_storage_file(
     except NotFound:
         pass
     if as_attachment:
-        download_name = names_service.get_preview_file_name(preview_file_id)
+        download_name = preview_files_service.get_preview_file_name(
+            preview_file_id
+        )
 
     # Werkzeug never starts the body generator of a HEAD response: a
     # storage stream opened for it would only be closed by refcount.
@@ -1200,7 +1202,7 @@ class AttachmentThumbnailResource(MethodView):
         self.attachment_file = None
 
     def is_allowed(self, attachment_id):
-        self.attachment_file = comments_service.get_attachment_file(
+        self.attachment_file = attachment_files_service.get_attachment_file(
             attachment_id
         )
         if self.attachment_file["comment_id"] is not None:
@@ -1556,7 +1558,7 @@ class SetMainPreviewResource(MethodView, ArgsMixin):
             preview_files_service.dispatch_frame_extraction(
                 preview_file, frame_number, no_job=self.get_no_job()
             )
-        entity = entities_service.update_entity_preview(
+        entity = tasks_service.update_entity_preview(
             task["entity_id"],
             preview_file_id,
         )
@@ -1745,7 +1747,7 @@ def _serve_annotated_frames_bundle(
     if bundle_path is None:
         return {"error": "preview file binary is not available"}, 404
     base_name = os.path.splitext(
-        names_service.get_preview_file_name(preview_file_id)
+        preview_files_service.get_preview_file_name(preview_file_id)
     )[0]
     download_name = f"{base_name}_annotated_frames.{file_extension}"
     try:

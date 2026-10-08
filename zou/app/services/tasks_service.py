@@ -72,6 +72,9 @@ from zou.app.services import (
     subscriptions_service,
     task_types_service,
 )
+from zou.app.exceptions import EntityNotFoundException
+from zou.app.exceptions import PreviewFileNotFoundException
+from zou.app.services import tasks_service
 
 
 def clear_task_cache(task_id):
@@ -1001,7 +1004,7 @@ def update_preview_file_info(preview_file):
         project = projects_service.get_project(str(task.project_id))
 
         if project["is_set_preview_automated"]:
-            entity = entities_service.update_entity_preview(
+            entity = update_entity_preview(
                 task.entity_id,
                 preview_file["id"],
             )
@@ -1196,3 +1199,73 @@ class OpenTasksFilters:
                 for field in dataclasses.fields(cls)
             }
         )
+
+
+def update_entity_preview(entity_id, preview_file_id):
+    """
+    Update given entity main preview. If entity or preview is not found, it
+    raises an exception. The entity returned carries the status of that
+    preview, as the event does.
+    """
+    entity = Entity.get(entity_id)
+    if entity is None:
+        raise EntityNotFoundException
+
+    entity_id = str(entity.id)
+    preview_file = PreviewFile.get(preview_file_id)
+    if preview_file is None:
+        raise PreviewFileNotFoundException
+
+    try:
+        entity.update({"preview_file_id": preview_file.id})
+    except IntegrityError:
+        raise PreviewFileNotFoundException
+    # Read after the commit, so that a job that made the preview ready in
+    # the meantime is seen. The column alone: reading preview_file now
+    # would load its annotations again.
+    preview_file_status = fields.serialize_value(
+        PreviewFile.query.with_entities(PreviewFile.status)
+        .filter(PreviewFile.id == preview_file_id)
+        .scalar()
+    )
+    entities_service.clear_entity_cache(entity_id)
+    events.emit(
+        "preview-file:set-main",
+        {
+            "entity_id": entity_id,
+            "preview_file_id": preview_file_id,
+            "preview_file_status": preview_file_status,
+        },
+        project_id=str(entity.project_id),
+    )
+    entity_type = EntityType.get(entity.entity_type_id)
+    entity_type_name = "asset"
+    if entity_type.name in entities_service.TEMPORAL_ENTITY_TYPE_NAMES:
+        entity_type_name = entity_type.name.lower()
+    events.emit(
+        f"{entity_type_name}:update",
+        {f"{entity_type_name}_id": entity_id},
+        project_id=str(entity.project_id),
+    )
+    assets_service.clear_asset_cache(entity_id)
+    edits_service.clear_edit_cache(entity_id)
+    shots_service.clear_shot_cache(entity_id)
+    shots_service.clear_episode_cache(entity_id)
+    shots_service.clear_sequence_cache(entity_id)
+    return {**entity.serialize(), "preview_file_status": preview_file_status}
+
+
+def get_entity_tasks(entity):
+    """
+    Get all tasks for a given entity.
+    """
+    entity_type = entity_types_service.get_entity_type(
+        entity_type_id=entity["entity_type_id"]
+    )
+    entity_type_name = entity_type["name"]
+    if entity_types_service.is_asset_type(entity_type):
+        entity_type_name = "Asset"
+    get_tasks = getattr(
+        tasks_service, "get_tasks_for_" + entity_type_name.lower()
+    )
+    return get_tasks(entity["id"])

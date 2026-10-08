@@ -3,16 +3,19 @@ Base test cases shared by several service test files: each sets up the
 fixtures its tests need and holds no test of its own.
 """
 
+import io
 from sqlalchemy import event
 from tests.base import ApiDBTestCase
 from contextlib import contextmanager
 from flask import g
 from flask_jwt_extended import verify_jwt_in_request
+from werkzeug.datastructures import FileStorage
 
 from zou.app import db, app
-from zou.app.services import comments_service
+from zou.app.services import comments_service, auth_service
 from zou.app.models.person import Person
 from zou.app.models.notification import Notification
+from zou.app.utils import auth
 
 
 class TaskTestCase(ApiDBTestCase):
@@ -291,3 +294,72 @@ class FilesTestCase(ApiDBTestCase):
         self.generate_fixture_working_file()
         self.generate_fixture_output_type()
         self.generate_fixture_output_file()
+
+
+class CommentsTestCase(ApiDBTestCase):
+    """
+    One shot with an animation task, two people, and a production capping
+    retakes: the context every comment of this service is posted in.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project()
+        self.project.update({"max_retakes": 3})
+        self.generate_fixture_asset()
+        self.generate_fixture_episode()
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+        self.generate_fixture_person()
+        self.generate_fixture_department()
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status()
+        self.task = self.generate_fixture_shot_task()
+        self.person_id = str(self.person.id)
+        self.person_dict = self.generate_fixture_person(
+            first_name="Jane", email="jane.doe@gmail.com"
+        ).serialize()
+        self.wfa_status = self.generate_fixture_task_status_wfa()
+        self.project_id = str(self.project.id)
+
+    def comment(self, text="a comment", **kwargs):
+        return comments_service.new_comment(
+            kwargs.pop("task_id", self.task.id),
+            kwargs.pop("task_status_id", self.task_status.id),
+            kwargs.pop("person_id", self.user["id"]),
+            text,
+            **kwargs,
+        )
+
+    def uploaded_file(self, filename):
+        return FileStorage(
+            stream=io.BytesIO(b"attachment content"), filename=filename
+        )
+
+
+class AuthTestCase(ApiDBTestCase):
+    """
+    One person with a known password. Holds no test of its own.
+    """
+
+    def setUp(self):
+        super().setUp()
+
+        self.generate_fixture_person()
+        self.person.update(
+            {"password": auth.encrypt_password("secretpassword")}
+        )
+        self.person_id = str(self.person.id)
+        self.email = self.person.email
+
+    def tearDown(self):
+        # Some tests switch the auth strategy; restore the default so the
+        # leak does not break login tests run after this file.
+        app.config["AUTH_STRATEGY"] = "auth_local_classic"
+        super().tearDown()
+
+    def authenticate(self, password="secretpassword", **kwargs):
+        return auth_service.check_auth(app, self.email, password, **kwargs)
+
+    def failed_attemps(self):
+        return Person.get(self.person_id).login_failed_attemps

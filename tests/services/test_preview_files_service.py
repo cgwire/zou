@@ -43,6 +43,7 @@ from zou.app.services.preview_files_service import (
     get_preview_file_fps,
 )
 from tests.services.cases import PreviewFileTestCase
+from zou.app.models.entity import Entity
 
 
 class PreviewFileServiceTestCase(PreviewFileTestCase):
@@ -1398,7 +1399,7 @@ def _patch_movie_extraction(
             side_effect=lambda pf, fn: frame_factory(),
         ),
         patch(
-            "zou.app.services.preview_files_service.names_service.get_preview_file_name",
+            "zou.app.services.preview_files_service.get_preview_file_name",
             return_value=file_name,
         ),
     ]
@@ -1536,7 +1537,7 @@ class ExtractAllAnnotationFramesTestCase(ApiDBTestCase):
                 side_effect=lambda pf: _make_white_png(),
             ),
             patch(
-                "zou.app.services.preview_files_service.names_service.get_preview_file_name",
+                "zou.app.services.preview_files_service.get_preview_file_name",
                 return_value="proj_asset_anim_v1.png",
             ),
         ]
@@ -1598,7 +1599,7 @@ class ExtractAllAnnotationFramesTestCase(ApiDBTestCase):
                 side_effect=fake_extract,
             ),
             patch(
-                "zou.app.services.preview_files_service.names_service.get_preview_file_name",
+                "zou.app.services.preview_files_service.get_preview_file_name",
                 return_value="proj_asset_anim_v1.mp4",
             ),
         ]
@@ -1667,7 +1668,7 @@ class ExtractAllAnnotationFramesTestCase(ApiDBTestCase):
                 side_effect=fake_extract,
             ),
             patch(
-                "zou.app.services.preview_files_service.names_service.get_preview_file_name",
+                "zou.app.services.preview_files_service.get_preview_file_name",
                 return_value="proj_asset_anim_v1.mp4",
             ),
         ]
@@ -1884,3 +1885,53 @@ class PreviewFileWritesRecordStatesTestCase(PreviewFileTestCase):
                     self.preview_file_id
                 )
         self.assertNotIn("pictures/tiles", self.states())
+
+
+class PreviewFileNameTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+
+        self.generate_fixture_asset()
+        self.generate_fixture_episode()
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+        self.sequence_dict = self.sequence.serialize()
+        self.generate_fixture_task_type()
+        self.task_type_dict = self.task_type_animation.serialize()
+        self.asset_task = self.generate_fixture_task().serialize()
+        self.shot_task = self.generate_fixture_shot_task().serialize()
+
+    def a_sequence_under_no_episode(self, name="S02"):
+        """
+        generate_fixture_sequence reads episode_id=None as "the usual
+        episode", so a sequence with nothing above it is built here.
+        """
+        return Entity.create(
+            name=name,
+            project_id=self.project.id,
+            entity_type_id=self.sequence_type.id,
+        )
+
+    def test_get_preview_file_name(self):
+        preview_file = files_service.create_preview_file(
+            "main", 3, self.shot_task["id"], self.user["id"], source="webgui"
+        )
+        name = preview_files_service.get_preview_file_name(preview_file["id"])
+        self.assertEqual(name, "cosmos_landromat_e01_s01_p01_animation_v3.mp4")
+
+        preview_file = files_service.create_preview_file(
+            "main", 3, self.asset_task["id"], self.user["id"], source="webgui"
+        )
+        name = preview_files_service.get_preview_file_name(preview_file["id"])
+        self.assertEqual(name, "cosmos_landromat_props_tree_shaders_v3.mp4")
+
+        preview_file = files_service.create_preview_file(
+            "main",
+            4,
+            self.asset_task["id"],
+            self.user["id"],
+            source="webgui",
+            position=5,
+        )
+        name = preview_files_service.get_preview_file_name(preview_file["id"])
+        self.assertEqual(name, "cosmos_landromat_props_tree_shaders_v4-5.mp4")

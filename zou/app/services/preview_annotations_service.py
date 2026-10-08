@@ -13,7 +13,6 @@ from zou.app.models.entity import Entity
 from zou.app.models.project import Project
 from zou.app.models.task import Task
 from zou.app.services import (
-    names_service,
     files_service,
     preview_files_service,
 )
@@ -585,7 +584,7 @@ def _annotated_frame_base_name(preview_file):
     """
     Build the file name stem the extracted annotated frames are named on.
     """
-    full_name = names_service.get_preview_file_name(preview_file["id"])
+    full_name = preview_files_service.get_preview_file_name(preview_file["id"])
     return os.path.splitext(full_name)[0]
 
 

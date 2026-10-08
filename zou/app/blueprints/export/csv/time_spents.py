@@ -11,7 +11,10 @@ from zou.app.models.time_spent import TimeSpent
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 
-from zou.app.services import names_service, persons_service
+from zou.app.services import (
+    persons_service,
+    entities_service,
+)
 from zou.app.utils import date_helpers
 
 
@@ -82,7 +85,9 @@ class TimeSpentsCsvExport(BaseCsvExport):
             person_last_name,
         ) = time_spent_row
         if entity_type_name == "Shot":
-            entity_name, _, _ = names_service.get_full_entity_name(entity_id)
+            entity_name, _, _ = entities_service.get_full_entity_name(
+                entity_id
+            )
 
         date = ""
         if time_spent.date is not None:

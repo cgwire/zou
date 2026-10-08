@@ -15,7 +15,6 @@ from zou.app.utils import fields, events
 
 from zou.app.services import (
     base_service,
-    assets_service,
     entities_service,
     projects_service,
     shots_service,
@@ -25,6 +24,8 @@ from zou.app.services import (
 from zou.app.exceptions import AssetNotFoundException
 
 from flask import current_app
+from zou.app.exceptions import AssetInstanceNotFoundException
+from zou.app.exceptions import EntityLinkNotFoundException
 
 """
 Breakdown can be represented in two ways:
@@ -803,7 +804,7 @@ def add_asset_instance_to_shot(shot_id, asset_instance_id):
     Add asset instance to instance casting of given shot.
     """
     shot = shots_service.get_shot_raw(shot_id)
-    asset_instance = assets_service.get_asset_instance_raw(asset_instance_id)
+    asset_instance = get_asset_instance_raw(asset_instance_id)
     shot.instance_casting.append(asset_instance)
     shot.save()
 
@@ -819,7 +820,7 @@ def remove_asset_instance_for_shot(shot_id, asset_instance_id):
     Remove asset instance from instance casting of given shot.
     """
     shot = shots_service.get_shot_raw(shot_id)
-    asset_instance = assets_service.get_asset_instance_raw(asset_instance_id)
+    asset_instance = get_asset_instance_raw(asset_instance_id)
     shot.instance_casting.remove(asset_instance)
     shot.save()
     events.emit(
@@ -1043,3 +1044,35 @@ def _is_asset_ready(asset, task, priority_map):
             priority_task = priority_map.get(str(task.task_type_id), 0) or 0
             is_ready = priority_task <= priority_ready
     return is_ready
+
+
+def remove_entity_link(link_id):
+    """
+    Delete the entity link matching given id and return it. It goes through
+    the breakdown uncasting, which refreshes the link counter, the casting
+    caches and stats, and the episode link mirrored from the shots. Removing
+    one link leaves the shots of an episode untouched.
+    """
+
+    link = EntityLink.get_by(id=link_id)
+    if link is None:
+        raise EntityLinkNotFoundException
+    serialized_link = link.serialize()
+    uncast_asset(link.entity_in_id, link.entity_out_id, cascade_to_shots=False)
+    return serialized_link
+
+
+def get_asset_instance_raw(asset_instance_id):
+    """
+    Return given asset instance as active record.
+    """
+    return base_service.get_instance(
+        AssetInstance, asset_instance_id, AssetInstanceNotFoundException
+    )
+
+
+def get_asset_instance(asset_instance_id):
+    """
+    Return given asset instance as a dict.
+    """
+    return get_asset_instance_raw(asset_instance_id).serialize()

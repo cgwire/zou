@@ -1,20 +1,14 @@
 from sqlalchemy import cast, func, Text
-from sqlalchemy.exc import IntegrityError
 
 from zou.app.services import (
-    assets_service,
     base_service,
     persons_service,
-    shots_service,
-    edits_service,
-    tasks_service,
     entity_types_service,
     subscriptions_service,
 )
 from zou.app.utils import (
     date_helpers,
     cache,
-    events,
     fields,
     http_cache,
     permissions,
@@ -23,7 +17,6 @@ from zou.app.utils import (
 
 from zou.app.models.entity import Entity, EntityLink, EntityConceptLink
 from zou.app.models.entity_type import EntityType
-from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
 from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task, TaskPersonLink
@@ -31,7 +24,6 @@ from zou.app.models.task import Task, TaskPersonLink
 from zou.app import db
 
 from zou.app.exceptions import (
-    PreviewFileNotFoundException,
     EntityLinkNotFoundException,
     EntityNotFoundException,
 )
@@ -308,60 +300,6 @@ def get_entity(entity_id):
     get_entity_type.
     """
     return _get_entity_cached(str(entity_id))
-
-
-def update_entity_preview(entity_id, preview_file_id):
-    """
-    Update given entity main preview. If entity or preview is not found, it
-    raises an exception. The entity returned carries the status of that
-    preview, as the event does.
-    """
-    entity = Entity.get(entity_id)
-    if entity is None:
-        raise EntityNotFoundException
-
-    entity_id = str(entity.id)
-    preview_file = PreviewFile.get(preview_file_id)
-    if preview_file is None:
-        raise PreviewFileNotFoundException
-
-    try:
-        entity.update({"preview_file_id": preview_file.id})
-    except IntegrityError:
-        raise PreviewFileNotFoundException
-    # Read after the commit, so that a job that made the preview ready in
-    # the meantime is seen. The column alone: reading preview_file now
-    # would load its annotations again.
-    preview_file_status = fields.serialize_value(
-        PreviewFile.query.with_entities(PreviewFile.status)
-        .filter(PreviewFile.id == preview_file_id)
-        .scalar()
-    )
-    clear_entity_cache(entity_id)
-    events.emit(
-        "preview-file:set-main",
-        {
-            "entity_id": entity_id,
-            "preview_file_id": preview_file_id,
-            "preview_file_status": preview_file_status,
-        },
-        project_id=str(entity.project_id),
-    )
-    entity_type = EntityType.get(entity.entity_type_id)
-    entity_type_name = "asset"
-    if entity_type.name in TEMPORAL_ENTITY_TYPE_NAMES:
-        entity_type_name = entity_type.name.lower()
-    events.emit(
-        f"{entity_type_name}:update",
-        {f"{entity_type_name}_id": entity_id},
-        project_id=str(entity.project_id),
-    )
-    assets_service.clear_asset_cache(entity_id)
-    edits_service.clear_edit_cache(entity_id)
-    shots_service.clear_shot_cache(entity_id)
-    shots_service.clear_episode_cache(entity_id)
-    shots_service.clear_sequence_cache(entity_id)
-    return {**entity.serialize(), "preview_file_status": preview_file_status}
 
 
 def get_for_entity_from_task(task):
@@ -697,22 +635,6 @@ def get_entities_and_tasks(criterions=None):
     return entities
 
 
-def get_entity_tasks(entity):
-    """
-    Get all tasks for a given entity.
-    """
-    entity_type = entity_types_service.get_entity_type(
-        entity_type_id=entity["entity_type_id"]
-    )
-    entity_type_name = entity_type["name"]
-    if entity_types_service.is_asset_type(entity_type):
-        entity_type_name = "Asset"
-    get_tasks = getattr(
-        tasks_service, "get_tasks_for_" + entity_type_name.lower()
-    )
-    return get_tasks(entity["id"])
-
-
 def get_entity_link(link_id):
     """
     Return the entity link matching given id, as a dict. Raises an exception
@@ -722,25 +644,6 @@ def get_entity_link(link_id):
     if link is None:
         raise EntityLinkNotFoundException
     return link.serialize()
-
-
-def remove_entity_link(link_id):
-    """
-    Delete the entity link matching given id and return it. It goes through
-    the breakdown uncasting, which refreshes the link counter, the casting
-    caches and stats, and the episode link mirrored from the shots. Removing
-    one link leaves the shots of an episode untouched.
-    """
-    from zou.app.services import breakdown_service
-
-    link = EntityLink.get_by(id=link_id)
-    if link is None:
-        raise EntityLinkNotFoundException
-    serialized_link = link.serialize()
-    breakdown_service.uncast_asset(
-        link.entity_in_id, link.entity_out_id, cascade_to_shots=False
-    )
-    return serialized_link
 
 
 def get_linked_entities_with_tasks(entity_id):

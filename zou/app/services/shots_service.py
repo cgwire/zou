@@ -1028,16 +1028,6 @@ def get_last_shot_version_raw(shot_id):
     )
 
 
-def get_all_raw_shots():
-    """
-    Get all shots from the database.
-    """
-    query = Entity.query.filter(
-        Entity.entity_type_id == entity_types_service.get_shot_type()["id"]
-    )
-    return query.all()
-
-
 def set_frames_from_task_type_preview_files(
     project_id,
     task_type_id,

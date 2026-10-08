@@ -9,12 +9,12 @@ from zou.app.services import (
     entities_service,
     entity_types_service,
     cascade_deletion_service,
+    tasks_service,
 )
 
 from zou.app.exceptions import (
     EntityLinkNotFoundException,
     EntityNotFoundException,
-    PreviewFileNotFoundException,
 )
 from zou.app.services import (
     assets_service,
@@ -78,97 +78,6 @@ class EntityTestCase(ApiDBTestCase):
         )
         self.assertEqual(
             entities_service.get_entity(self.asset_id)["name"], "Rock"
-        )
-
-    def test_update_entity_preview(self):
-        entities_service.update_entity_preview(
-            self.asset_id, self.preview_file_id
-        )
-
-        asset = assets_service.get_asset(self.asset_id)
-        self.assertEqual(asset["preview_file_id"], self.preview_file_id)
-
-    def test_update_entity_preview_refuses_what_it_cannot_find(self):
-        with pytest.raises(EntityNotFoundException):
-            entities_service.update_entity_preview(
-                self.preview_file_id, self.preview_file_id
-            )
-
-        with pytest.raises(PreviewFileNotFoundException):
-            entities_service.update_entity_preview(
-                self.asset_id, self.asset_id
-            )
-
-    def test_setting_a_preview_announces_it_under_the_entity_kind(self):
-        """
-        Two events: the generic one, and one named after the kind of
-        entity, which is what each listing subscribes to. An asset type is
-        any name the studio invented, so it is announced as "asset".
-        """
-        main = self.capture_events("preview-file:set-main")
-
-        entities_service.update_entity_preview(
-            self.asset_id, self.preview_file_id
-        )
-
-        self.assertEqual(
-            [
-                (
-                    event["entity_id"],
-                    event["preview_file_id"],
-                    event["project_id"],
-                )
-                for event in main
-            ],
-            [
-                (
-                    self.asset_id,
-                    self.preview_file_id,
-                    str(self.asset.project_id),
-                )
-            ],
-        )
-
-    def test_setting_a_processing_preview_tells_its_status(self):
-        """
-        The pictures of a processing preview are not built yet: the event
-        and the answer say so, for the clients to wait for them instead
-        of asking for them.
-        """
-        preview_file_id = str(
-            self.generate_fixture_preview_file(
-                revision=2, status="processing"
-            ).id
-        )
-        main = self.capture_events("preview-file:set-main")
-
-        entity = entities_service.update_entity_preview(
-            self.asset_id, preview_file_id
-        )
-
-        statuses = [event["preview_file_status"] for event in main]
-        statuses.append(entity["preview_file_status"])
-        self.assertEqual(statuses, ["processing", "processing"])
-        # A Choice compares equal to its code: only its type tells it apart.
-        self.assertEqual([type(status) for status in statuses], [str, str])
-
-    def test_a_shot_is_announced_as_a_shot(self):
-        captured = self.capture_events("shot:update")
-        shot_id = str(self.shot.id)
-
-        entities_service.update_entity_preview(shot_id, self.preview_file_id)
-
-        self.assertEqual([event["shot_id"] for event in captured], [shot_id])
-
-    def test_an_asset_is_announced_as_an_asset(self):
-        captured = self.capture_events("asset:update")
-
-        entities_service.update_entity_preview(
-            self.asset_id, self.preview_file_id
-        )
-
-        self.assertEqual(
-            [event["asset_id"] for event in captured], [self.asset_id]
         )
 
     def test_get_for_entity_from_task(self):
@@ -273,7 +182,7 @@ class EntityTasksTestCase(ApiDBTestCase):
         """
         entity = entities_service.get_entity(str(entity_id))
 
-        tasks = entities_service.get_entity_tasks(entity)
+        tasks = tasks_service.get_entity_tasks(entity)
 
         self.assertGreater(len(tasks), 0)
         for task in tasks:
@@ -291,7 +200,7 @@ class EntityTasksTestCase(ApiDBTestCase):
         shot = entities_service.get_entity(str(self.shot.id))
         deletion_service.remove_task(str(self.shot_task.id), force=True)
 
-        self.assertEqual(entities_service.get_entity_tasks(shot), [])
+        self.assertEqual(tasks_service.get_entity_tasks(shot), [])
 
     def test_get_entities_and_tasks(self):
         self.generate_fixture_sequence_task()
@@ -346,52 +255,6 @@ class EntityLinkTestCase(ApiDBTestCase):
         with pytest.raises(EntityLinkNotFoundException):
             entities_service.get_entity_link(UNKNOWN)
 
-    def test_remove_entity_link(self):
-        link = self.a_link()
-
-        removed = entities_service.remove_entity_link(str(link.id))
-
-        self.assertEqual(removed["id"], str(link.id))
-        with pytest.raises(EntityLinkNotFoundException):
-            entities_service.get_entity_link(str(link.id))
-
-    def test_remove_entity_link_refreshes_the_casting_of_the_shot(self):
-        """
-        Same path as uncasting from the breakdown: the shot counter the
-        shots page divides by, and the casting-update its listeners wait for.
-        """
-        link = self.a_link()
-        self.shot.update({"nb_entities_out": 1})
-        captured = self.capture_events("shot:casting-update")
-
-        entities_service.remove_entity_link(str(link.id))
-
-        self.assertEqual(Entity.get(self.shot.id).nb_entities_out, 0)
-        self.assertEqual(
-            [event["removed_asset_ids"] for event in captured],
-            [[str(self.asset.id)]],
-        )
-
-    def test_remove_entity_link_of_an_episode_leaves_its_shots_cast(self):
-        self.a_link()
-        episode = self.generate_fixture_episode("E99")
-        self.sequence.update({"parent_id": episode.id})
-        link = EntityLink.create(
-            entity_in_id=episode.id, entity_out_id=self.asset.id
-        )
-
-        entities_service.remove_entity_link(str(link.id))
-
-        self.assertIsNotNone(
-            EntityLink.get_by(
-                entity_in_id=self.shot.id, entity_out_id=self.asset.id
-            )
-        )
-
-    def test_remove_entity_link_that_is_not_there(self):
-        with pytest.raises(EntityLinkNotFoundException):
-            entities_service.remove_entity_link(UNKNOWN)
-
     def test_get_entity_links_for_project(self):
         link = self.a_link(nb_occurences=2, label="hero")
 
@@ -444,7 +307,7 @@ class EntityCacheInvalidationTestCase(ApiDBTestCase):
 
     Whoever drops one has to drop the other, or a rename made through one
     service stays invisible to everything reading through the other:
-    names_service builds the breadcrumbs of the news feed, the
+    entities_service builds the breadcrumbs of the news feed, the
     notifications and the playlists that way.
     """
 
@@ -544,3 +407,90 @@ class EntityCacheInvalidationTestCase(ApiDBTestCase):
         assets_service.update_asset(asset_id, {"name": "Rock"})
 
         self.assertEqual(entities_service.get_entity(asset_id)["name"], "Rock")
+
+
+class EntityNameTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+
+        self.generate_fixture_asset()
+        self.generate_fixture_episode()
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+        self.sequence_dict = self.sequence.serialize()
+        self.generate_fixture_task_type()
+        self.task_type_dict = self.task_type_animation.serialize()
+        self.asset_task = self.generate_fixture_task().serialize()
+        self.shot_task = self.generate_fixture_shot_task().serialize()
+
+    def a_sequence_under_no_episode(self, name="S02"):
+        """
+        generate_fixture_sequence reads episode_id=None as "the usual
+        episode", so a sequence with nothing above it is built here.
+        """
+        return Entity.create(
+            name=name,
+            project_id=self.project.id,
+            entity_type_id=self.sequence_type.id,
+        )
+
+    def test_get_full_entity_name(self):
+        """
+        Where an entity sits, read upwards: an asset under its type, a
+        sequence and a shot under their episode, an episode alone.
+        """
+        cases = {
+            self.asset.id: "Props / Tree",
+            self.episode.id: "E01",
+            self.sequence.id: "E01 / S01",
+            self.shot.id: "E01 / S01 / P01",
+        }
+        for entity_id, expected in cases.items():
+            with self.subTest(expected=expected):
+                name, _, _ = entities_service.get_full_entity_name(entity_id)
+                self.assertEqual(name, expected)
+
+    def test_get_full_entity_name_of_a_flat_production(self):
+        # A sequence with no episode above it, and the shot under it.
+        sequence = self.a_sequence_under_no_episode()
+        shot = self.generate_fixture_shot("P02", sequence_id=sequence.id)
+
+        self.assertEqual(
+            entities_service.get_full_entity_name(sequence.id)[0], "S02"
+        )
+        self.assertEqual(
+            entities_service.get_full_entity_name(shot.id)[0], "S02 / P02"
+        )
+
+    def test_get_full_entity_names_agrees_with_the_single_lookup(self):
+        """
+        The batch version walks the same branches in its own code, so what
+        matters is that the two never disagree. Every kind of entity is
+        represented here, with and without an episode above it.
+        """
+        sequence = self.a_sequence_under_no_episode()
+        flat_shot = self.generate_fixture_shot("P02", sequence_id=sequence.id)
+        entity_ids = [
+            str(entity.id)
+            for entity in [
+                self.asset,
+                self.episode,
+                self.sequence,
+                self.shot,
+                sequence,
+                flat_shot,
+            ]
+        ]
+
+        names = entities_service.get_full_entity_names(entity_ids)
+
+        self.assertEqual(
+            names,
+            {
+                entity_id: entities_service.get_full_entity_name(entity_id)
+                for entity_id in entity_ids
+            },
+        )
+
+    def test_get_full_entity_names_of_nothing(self):
+        self.assertEqual(entities_service.get_full_entity_names([]), {})

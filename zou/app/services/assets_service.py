@@ -13,10 +13,8 @@ from zou.app.models.entity import (
 from zou.app.models.entity_type import EntityType
 from zou.app.models.project import Project
 from zou.app.models.task import Task
-from zou.app.models.asset_instance import AssetInstance
 
 from zou.app.services import (
-    base_service,
     index_service,
     projects_service,
     entities_service,
@@ -28,7 +26,6 @@ from zou.app.services import (
 
 from zou.app.exceptions import (
     AssetNotFoundException,
-    AssetInstanceNotFoundException,
 )
 
 # Field orders of the compact encoding of the with-tasks views. Clients
@@ -79,7 +76,7 @@ def clear_asset_cache(asset_id):
     Drop every memoized serialization of given asset.
 
     An asset is a row of the entity table, so the generic entity
-    serialization goes with it: names_service and the breakdown read the
+    serialization goes with it: entity names and the breakdown read the
     asset through it.
     """
     cache.cache.delete_memoized(get_asset, asset_id)
@@ -147,14 +144,6 @@ def get_assets(criterions=None, only_user_projects=False):
         criterions.get("vendor_departments"),
         Entity.serialize_list(result, obj_type="Asset"),
     )
-
-
-def get_all_raw_assets():
-    """
-    Get all assets from the database.
-    """
-    query = Entity.query.filter(entity_types_service.build_asset_type_filter())
-    return query.all()
 
 
 def _apply_asset_and_tasks_criterions(
@@ -493,22 +482,6 @@ def get_full_asset(asset_id):
     del asset["nb_frames"]
     asset.update(assets[0])
     return asset
-
-
-def get_asset_instance_raw(asset_instance_id):
-    """
-    Return given asset instance as active record.
-    """
-    return base_service.get_instance(
-        AssetInstance, asset_instance_id, AssetInstanceNotFoundException
-    )
-
-
-def get_asset_instance(asset_instance_id):
-    """
-    Return given asset instance as a dict.
-    """
-    return get_asset_instance_raw(asset_instance_id).serialize()
 
 
 def create_asset_types(asset_type_names):

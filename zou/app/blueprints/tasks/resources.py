@@ -885,7 +885,7 @@ class SetTaskMainPreviewResource(MethodView):
             raise WrongParameterException(
                 "This task has no preview file to set as the main preview."
             )
-        return entities_service.update_entity_preview(
+        return tasks_service.update_entity_preview(
             task["entity_id"], preview_file["id"]
         )
 
@@ -915,7 +915,7 @@ class SetTasksMainPreviewResource(MethodView):
             )
             if preview_file is not None:
                 entities.append(
-                    entities_service.update_entity_preview(
+                    tasks_service.update_entity_preview(
                         task["entity_id"], preview_file["id"]
                     )
                 )

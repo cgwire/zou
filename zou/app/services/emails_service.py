@@ -6,7 +6,6 @@ from zou.app.utils.string import mask_secret
 
 from zou.app.services import (
     entities_service,
-    names_service,
     persons_service,
     projects_service,
     shots_service,
@@ -15,6 +14,8 @@ from zou.app.services import (
     task_types_service,
 )
 from zou.app.stores import queue_store
+from zou.app.utils import date_helpers
+from babel.dates import format_datetime
 
 # Chat channels a person can be notified on: the suffix used by the person
 # columns, the message keys and the chats sender, then the organisation field
@@ -277,7 +278,7 @@ def get_task_descriptors(person_id, task):
     project = projects_service.get_project(task["project_id"])
     task_type = task_types_service.get_task_type(task["task_type_id"])
     entity = entities_service.get_entity(task["entity_id"])
-    entity_name, episode_id, _ = names_service.get_full_entity_name(
+    entity_name, episode_id, _ = entities_service.get_full_entity_name(
         entity["id"]
     )
 
@@ -476,3 +477,52 @@ def send_share_invitation(
         emails.send_email(
             subject, email_html_body, recipient_email, locale=email_locale
         )
+
+
+def send_password_changed_by_admin_email(person, admin_user, person_IP=None):
+    """
+    Send an email to the person notifying that an admin changed their password.
+    """
+    _send_admin_action_email(
+        person, "auth_password_changed_by_admin", person_IP=person_IP
+    )
+
+
+def send_2fa_disabled_by_admin_email(person, admin_user, person_IP=None):
+    """
+    Send an email to the person notifying that an admin disabled their 2FA.
+    """
+    _send_admin_action_email(
+        person, "auth_2fa_disabled_by_admin", person_IP=person_IP
+    )
+
+
+def _send_admin_action_email(person, translation_prefix, person_IP=None):
+    """
+    Tell a person that an admin acted on their account. The three
+    translation keys are built from the prefix (_subject, _title, _body).
+    """
+    organisation = organisation_service.get_organisation()
+    locale = persons_service.get_email_locale(person)
+    time_string = format_datetime(
+        date_helpers.get_utc_now_datetime(),
+        tzinfo=person.get("timezone"),
+        locale=person.get("locale"),
+    )
+    subject = get_email_translation(
+        locale,
+        f"{translation_prefix}_subject",
+        organisation_name=organisation["name"],
+    )
+    title = get_email_translation(locale, f"{translation_prefix}_title")
+    html = get_email_translation(
+        locale,
+        f"{translation_prefix}_body",
+        first_name=person["first_name"],
+        time_string=time_string,
+        person_IP=person_IP or "",
+    )
+    email_html_body = templates_service.generate_html_body(
+        title, html, locale=locale
+    )
+    emails.send_email(subject, email_html_body, person["email"], locale=locale)

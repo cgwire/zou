@@ -2,7 +2,6 @@ import datetime
 import logging
 import urllib.parse
 
-from babel.dates import format_datetime
 from calendar import monthrange
 from dateutil import relativedelta
 
@@ -23,7 +22,6 @@ from zou.app.utils import fields, events, cache, emails, date_helpers
 from zou.app.utils.email_i18n import get_email_translation
 from zou.app.services import (
     index_service,
-    auth_service,
     templates_service,
     organisation_service,
 )
@@ -35,6 +33,8 @@ from zou.app.exceptions import (
     WrongParameterException,
 )
 from zou.app.models.project import ProjectPersonLink
+import random
+import string
 
 logger = logging.getLogger(__name__)
 
@@ -82,15 +82,6 @@ def get_persons(minimal=False, include_guests=False):
         else:
             persons.append(person.serialize_safe(relations=True))
     return persons
-
-
-def get_all_raw_active_persons():
-    """
-    Return all active persons without serialization. Guests are excluded.
-    """
-    return Person.query.filter(
-        Person.active, Person.is_guest.isnot(True)
-    ).all()
 
 
 @cache.memoize_function(120)
@@ -773,12 +764,12 @@ def get_or_create_password_reset_link(person_id):
     key = f"reset-token-{person['email']}"
     token = auth_tokens_store.get(key)
     if not token:
-        token = auth_service.generate_reset_token()
+        token = generate_reset_token()
         auth_tokens_store.add(key, token, ttl=3600 * 2)
     return build_password_reset_url(person["email"], token)
 
 
-def _get_email_locale(person):
+def get_email_locale(person):
     """
     Return the locale given person must be written to in. A Babel Locale
     object, which the dict carries when it comes straight from the ORM, is
@@ -797,7 +788,7 @@ def invite_person(person_id):
     """
     person = get_person(person_id)
     organisation = organisation_service.get_organisation()
-    token = auth_service.generate_reset_token()
+    token = generate_reset_token()
     auth_tokens_store.add(
         f"reset-token-{person['email']}", token, ttl=3600 * 24 * 7
     )
@@ -805,7 +796,7 @@ def invite_person(person_id):
         person["email"], token, token_type="new"
     )
 
-    locale = _get_email_locale(person)
+    locale = get_email_locale(person)
     subject = get_email_translation(
         locale,
         "auth_invitation_subject",
@@ -824,55 +815,6 @@ def invite_person(person_id):
         title, html, locale=locale
     )
     emails.send_email(subject, email_html_body, person["email"], locale=locale)
-
-
-def _send_admin_action_email(person, translation_prefix, person_IP=None):
-    """
-    Tell a person that an admin acted on their account. The three
-    translation keys are built from the prefix (_subject, _title, _body).
-    """
-    organisation = organisation_service.get_organisation()
-    locale = _get_email_locale(person)
-    time_string = format_datetime(
-        date_helpers.get_utc_now_datetime(),
-        tzinfo=person.get("timezone"),
-        locale=person.get("locale"),
-    )
-    subject = get_email_translation(
-        locale,
-        f"{translation_prefix}_subject",
-        organisation_name=organisation["name"],
-    )
-    title = get_email_translation(locale, f"{translation_prefix}_title")
-    html = get_email_translation(
-        locale,
-        f"{translation_prefix}_body",
-        first_name=person["first_name"],
-        time_string=time_string,
-        person_IP=person_IP or "",
-    )
-    email_html_body = templates_service.generate_html_body(
-        title, html, locale=locale
-    )
-    emails.send_email(subject, email_html_body, person["email"], locale=locale)
-
-
-def send_password_changed_by_admin_email(person, admin_user, person_IP=None):
-    """
-    Send an email to the person notifying that an admin changed their password.
-    """
-    _send_admin_action_email(
-        person, "auth_password_changed_by_admin", person_IP=person_IP
-    )
-
-
-def send_2fa_disabled_by_admin_email(person, admin_user, person_IP=None):
-    """
-    Send an email to the person notifying that an admin disabled their 2FA.
-    """
-    _send_admin_action_email(
-        person, "auth_2fa_disabled_by_admin", person_IP=person_IP
-    )
 
 
 def is_user_limit_reached():
@@ -1006,3 +948,13 @@ def clear_user_scoped_cache(getter, user_id):
         cache.cache.delete_memoized(getter)
     else:
         cache.cache.delete_memoized(getter, user_id)
+
+
+def generate_reset_token():
+    """
+    Generate and return a reset token.
+    """
+    return "".join(
+        random.SystemRandom().choice(string.ascii_uppercase + string.digits)
+        for _ in range(64)
+    )

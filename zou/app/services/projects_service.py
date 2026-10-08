@@ -18,7 +18,6 @@ from zou.app.models.task_type import TaskType
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.department import Department
 from zou.app.services import (
-    preview_files_service,
     entity_types_service,
 )
 from zou.app.exceptions import (

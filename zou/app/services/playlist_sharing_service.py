@@ -26,6 +26,7 @@ from zou.app.services import (
     tasks_service,
     projects_service,
     task_types_service,
+    attachment_files_service,
 )
 from zou.app.exceptions import (
     PersonNotFoundException,
@@ -449,7 +450,7 @@ def download_shared_attachment(token, attachment_id, file_name):
     """
     from flask import send_file as flask_send_file
 
-    attachment = comments_service.get_attachment_file(attachment_id)
+    attachment = attachment_files_service.get_attachment_file(attachment_id)
     comment_id = attachment.get("comment_id")
     if not comment_id:
         raise GuestCommentNotFound
@@ -477,7 +478,7 @@ def download_shared_attachment(token, attachment_id, file_name):
     if not (comment.get("for_client") or author_is_guest):
         raise GuestCommentNotFound
 
-    file_path = comments_service.get_attachment_file_path(attachment)
+    file_path = attachment_files_service.get_attachment_file_path(attachment)
     return flask_send_file(
         file_path,
         conditional=True,
@@ -506,7 +507,7 @@ def remove_guest_comment_attachment(
     attachment = AttachmentFile.get(attachment_id)
     if attachment is None or str(attachment.comment_id) != str(comment_id):
         raise GuestCommentNotFound
-    comments_service.remove_attachment_file(attachment)
+    attachment_files_service.remove_attachment_file(attachment)
 
 
 def get_shared_task_comments(task_id):
@@ -541,7 +542,7 @@ def get_shared_task_comments(task_id):
 
     if visible:
         attachment_file_map = (
-            comments_service.build_attachment_map_for_comments(
+            attachment_files_service.build_attachment_map_for_comments(
                 [comment["id"] for comment in visible]
             )
         )

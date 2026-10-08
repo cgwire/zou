@@ -99,11 +99,6 @@ class AssetListTestCase(AssetsTestCase):
         )
         self.assertEqual(tree_tasks[0]["task_type_id"], str(self.task_type.id))
 
-    def test_get_all_raw_assets(self):
-        # The indexer walks every asset of the instance, productions included.
-        assets = assets_service.get_all_raw_assets()
-        self.assertEqual([asset.id for asset in assets], [self.asset.id])
-
 
 class AssetTypeTestCase(AssetsTestCase):
     """
@@ -244,17 +239,6 @@ class AssetReadTestCase(AssetsTestCase):
         self.assertRaises(
             AssetNotFoundException, assets_service.get_asset_by_shotgun_id, 1
         )
-
-    def test_get_asset_instance(self):
-        self.generate_fixture_scene()
-        self.generate_fixture_scene_asset_instance()
-        self.generate_fixture_shot_asset_instance(
-            self.shot, self.asset_instance
-        )
-        asset_instance = assets_service.get_asset_instance(
-            self.asset_instance.id
-        )
-        self.assertDictEqual(asset_instance, self.asset_instance.serialize())
 
 
 class AssetWriteTestCase(AssetsTestCase):

@@ -23,7 +23,6 @@ from zou.app.services import (
     preview_files_service,
     shots_service,
     stored_files_service,
-    names_service,
     persons_service,
     templates_service,
     organisation_service,
@@ -96,7 +95,7 @@ def retrieve_playlist_tmp_file(preview_file, tmp_dir=None, index=0):
             preview_file["id"],
             preview_file["extension"],
         )
-    file_name = names_service.get_preview_file_name(preview_file["id"])
+    file_name = preview_files_service.get_preview_file_name(preview_file["id"])
     tmp_file_path = os.path.join(tmp_dir, f"{index:04d}_{file_name}")
     copyfile(file_path, tmp_file_path)
     return tmp_file_path, file_name

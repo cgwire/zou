@@ -18,7 +18,6 @@ from zou.app.models.task_type import TaskType
 
 from zou.app.services import (
     custom_actions_service,
-    names_service,
     permissions_service,
     persons_service,
     plugins_service,
@@ -31,6 +30,7 @@ from zou.app.services import (
     subscriptions_service,
     task_types_service,
     search_filters_service,
+    entities_service,
 )
 from zou.app.exceptions import (
     NotificationNotFoundException,
@@ -538,7 +538,7 @@ def _load_notification_context(notifications):
     return {
         "comments": comments,
         "playlists": playlists,
-        "entity_names": names_service.get_full_entity_names(
+        "entity_names": entities_service.get_full_entity_names(
             [str(entity_id) for entity_id in entity_ids]
         ),
     }

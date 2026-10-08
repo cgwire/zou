@@ -3,6 +3,7 @@ from zou.app.models.person import Person
 from zou.app.services import (
     persons_service,
     time_spents_service,
+    index_service,
 )
 from zou.app.exceptions import (
     PersonInProtectedAccounts,
@@ -10,7 +11,7 @@ from zou.app.exceptions import (
     WrongParameterException,
 )
 from zou.app.utils import auth, fields
-from tests.services.cases import PersonsTestCase
+from tests.services.cases import PersonsTestCase, AuthTestCase
 
 
 class PersonReadTestCase(PersonsTestCase):
@@ -279,7 +280,7 @@ class PersonListTestCase(PersonsTestCase):
             guest_id,
             [
                 str(person.id)
-                for person in persons_service.get_all_raw_active_persons()
+                for person in index_service.get_all_raw_active_persons()
             ],
         )
         self.assertNotIn(
@@ -329,16 +330,6 @@ class PersonListTestCase(PersonsTestCase):
                 "departments"
             ],
             [],
-        )
-
-    def test_get_all_raw_active_persons(self):
-        persons_service.update_person(self.person_id, {"active": False})
-        self.assertNotIn(
-            self.person_id,
-            [
-                str(person.id)
-                for person in persons_service.get_all_raw_active_persons()
-            ],
         )
 
     def test_is_user_limit_reached(self):
@@ -765,3 +756,10 @@ class PresenceTestCase(PersonsTestCase):
 
         by_name = {row[0]: row for row in rows}
         self.assertEqual(by_name["John Doe"].count("X"), 1)
+
+
+class TokenTestCase(AuthTestCase):
+    def test_generate_reset_token(self):
+        token = persons_service.generate_reset_token()
+        self.assertEqual(len(token), 64)
+        self.assertNotEqual(token, persons_service.generate_reset_token())

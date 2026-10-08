@@ -14,6 +14,7 @@ from zou.app.services import (
     user_service,
     departments_service,
     quotas_service,
+    emails_service,
 )
 from zou.app.utils import (
     permissions,
@@ -758,7 +759,7 @@ class ChangePasswordForPersonResource(MethodView, ArgsMixin):
                     person_IP = person_IP.split(",")[0].strip()
                 except ValueError:
                     person_IP = None
-            persons_service.send_password_changed_by_admin_email(
+            emails_service.send_password_changed_by_admin_email(
                 person, current_user, person_IP=person_IP
             )
             return {"success": True}
@@ -819,7 +820,7 @@ class DisableTwoFactorAuthenticationPersonResource(MethodView, ArgsMixin):
                     person_IP = person_IP.split(",")[0].strip()
                 except ValueError:
                     person_IP = None
-            persons_service.send_2fa_disabled_by_admin_email(
+            emails_service.send_2fa_disabled_by_admin_email(
                 person, current_user, person_IP=person_IP
             )
             return {"success": True}

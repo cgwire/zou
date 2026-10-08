@@ -31,6 +31,7 @@ from zou.app.services import (
     entities_service,
     permissions_service,
     task_types_service,
+    breakdown_service,
 )
 
 from zou.app.exceptions import (
@@ -285,7 +286,7 @@ class InstanceOutputFilePathResource(MethodView, ArgsMixin):
         args = self.get_arguments()
 
         try:
-            asset_instance = assets_service.get_asset_instance(
+            asset_instance = breakdown_service.get_asset_instance(
                 asset_instance_id
             )
             entity = entities_service.get_entity(temporal_entity_id)
@@ -617,7 +618,7 @@ class NewInstanceOutputFileResource(MethodView, ArgsMixin):
             except WorkingFileNotFoundException:
                 working_file_id = None
 
-            asset_instance = assets_service.get_asset_instance(
+            asset_instance = breakdown_service.get_asset_instance(
                 asset_instance_id
             )
             temporal_entity = entities_service.get_entity(temporal_entity_id)
@@ -753,7 +754,9 @@ class GetNextInstanceOutputFileRevisionResource(MethodView, ArgsMixin):
         """
         body = validation.validate_request_body(NextRevisionSchema)
 
-        asset_instance = assets_service.get_asset_instance(asset_instance_id)
+        asset_instance = breakdown_service.get_asset_instance(
+            asset_instance_id
+        )
         asset = entities_service.get_entity(asset_instance["asset_id"])
         output_type = files_service.get_output_type(body.output_type_id)
         task_type = task_types_service.get_task_type(body.task_type_id)
@@ -820,7 +823,9 @@ class LastInstanceOutputFilesResource(MethodView, ArgsMixin):
             ],
         )
 
-        asset_instance = assets_service.get_asset_instance(asset_instance_id)
+        asset_instance = breakdown_service.get_asset_instance(
+            asset_instance_id
+        )
         entity = entities_service.get_entity(asset_instance["asset_id"])
         permissions_service.check_project_access(entity["project_id"])
 
@@ -856,7 +861,9 @@ class InstanceOutputTypesResource(MethodView):
         """
         Get instance output types
         """
-        asset_instance = assets_service.get_asset_instance(asset_instance_id)
+        asset_instance = breakdown_service.get_asset_instance(
+            asset_instance_id
+        )
         entity = entities_service.get_entity(asset_instance["asset_id"])
         permissions_service.check_project_access(entity["project_id"])
         return files_service.get_output_types_for_instance(
@@ -896,7 +903,9 @@ class InstanceOutputTypeOutputFilesResource(MethodView, ArgsMixin):
         """
         representation = self.get_text_parameter("representation")
 
-        asset_instance = assets_service.get_asset_instance(asset_instance_id)
+        asset_instance = breakdown_service.get_asset_instance(
+            asset_instance_id
+        )
         asset = assets_service.get_asset(asset_instance["asset_id"])
         permissions_service.check_project_access(asset["project_id"])
 
@@ -990,7 +999,9 @@ class InstanceOutputFilesResource(MethodView, ArgsMixin):
             ],
         )
 
-        asset_instance = assets_service.get_asset_instance(asset_instance_id)
+        asset_instance = breakdown_service.get_asset_instance(
+            asset_instance_id
+        )
         asset = assets_service.get_asset(asset_instance["asset_id"])
         permissions_service.check_project_access(asset["project_id"])
 

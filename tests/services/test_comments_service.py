@@ -1,13 +1,8 @@
-import io
 import os
 
 from unittest.mock import patch
 
-from werkzeug.datastructures import FileStorage
 
-from tests.base import ApiDBTestCase
-
-from zou.app import config
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.comment import Comment
 from zou.app.models.news import News
@@ -20,6 +15,7 @@ from zou.app.services import (
     exception,
     persons_service,
     tasks_service,
+    attachment_files_service,
 )
 from zou.app.utils import date_helpers, fields
 from unittest import mock
@@ -28,48 +24,11 @@ from zou.app.services import preview_file_states_service as states_service
 from zou.app.stores import file_store
 from zou.app.stores import redis_lock
 import tempfile
-from tests.services.cases import TaskTestCase, PreviewFileTestCase
-
-
-class CommentsTestCase(ApiDBTestCase):
-    """
-    One shot with an animation task, two people, and a production capping
-    retakes: the context every comment of this service is posted in.
-    """
-
-    def setUp(self):
-        super().setUp()
-        self.generate_fixture_project()
-        self.project.update({"max_retakes": 3})
-        self.generate_fixture_asset()
-        self.generate_fixture_episode()
-        self.generate_fixture_sequence()
-        self.generate_fixture_shot()
-        self.generate_fixture_person()
-        self.generate_fixture_department()
-        self.generate_fixture_task_type()
-        self.generate_fixture_task_status()
-        self.task = self.generate_fixture_shot_task()
-        self.person_id = str(self.person.id)
-        self.person_dict = self.generate_fixture_person(
-            first_name="Jane", email="jane.doe@gmail.com"
-        ).serialize()
-        self.wfa_status = self.generate_fixture_task_status_wfa()
-        self.project_id = str(self.project.id)
-
-    def comment(self, text="a comment", **kwargs):
-        return comments_service.new_comment(
-            kwargs.pop("task_id", self.task.id),
-            kwargs.pop("task_status_id", self.task_status.id),
-            kwargs.pop("person_id", self.user["id"]),
-            text,
-            **kwargs,
-        )
-
-    def uploaded_file(self, filename):
-        return FileStorage(
-            stream=io.BytesIO(b"attachment content"), filename=filename
-        )
+from tests.services.cases import (
+    TaskTestCase,
+    PreviewFileTestCase,
+    CommentsTestCase,
+)
 
 
 class NewCommentTestCase(CommentsTestCase):
@@ -649,54 +608,9 @@ class AttachmentTestCase(CommentsTestCase):
     """
 
     def attach(self, comment, filename):
-        return comments_service.create_attachment(
+        return attachment_files_service.create_attachment(
             comment, self.uploaded_file(filename)
         )
-
-    def test_an_attachment_carries_its_name_and_its_weight(self):
-        attachment = self.attach(self.comment(), "notes.txt")
-        self.assertEqual(attachment["name"], "notes.txt")
-        self.assertEqual(attachment["extension"], "txt")
-        self.assertGreater(attachment["size"], 0)
-
-    def test_an_attachment_is_read_back_from_the_store(self):
-        attachment = self.attach(self.comment(), "notes.txt")
-        path = comments_service.get_attachment_file_path(attachment)
-        with open(path, "rb") as attachment_file:
-            self.assertEqual(attachment_file.read(), b"attachment content")
-
-    def test_a_storage_failure_leaves_nothing_behind(self):
-        comment = self.comment()
-        os.makedirs(config.TMP_DIR, exist_ok=True)
-        tmp_files_before = set(os.listdir(config.TMP_DIR))
-
-        with patch(
-            "zou.app.services.comments_service.file_store.add_file",
-            side_effect=OSError("storage down"),
-        ):
-            with self.assertRaises(OSError):
-                self.attach(comment, "notes.txt")
-
-        self.assertEqual(AttachmentFile.query.count(), 0)
-        self.assertEqual(set(os.listdir(config.TMP_DIR)), tmp_files_before)
-
-    def test_a_randomized_name_keeps_its_extension(self):
-        attachment = comments_service.create_attachment(
-            self.comment(), self.uploaded_file("notes.txt"), randomize=True
-        )
-        self.assertTrue(attachment["name"].startswith("notes-"))
-        self.assertTrue(attachment["name"].endswith(".txt"))
-        self.assertEqual(attachment["extension"], "txt")
-
-    def test_an_attachment_named_after_an_unknown_reply_stays_on_the_comment(
-        self,
-    ):
-        attachment = comments_service.create_attachment(
-            self.comment(),
-            self.uploaded_file("notes.txt"),
-            reply_id=str(fields.gen_uuid()),
-        )
-        self.assertIsNone(attachment.get("reply_id"))
 
     def test_a_new_attachment_shows_on_the_comment(self):
         """
@@ -732,18 +646,6 @@ class AttachmentTestCase(CommentsTestCase):
             [attached["id"] for attached in attachments], [attachment["id"]]
         )
         self.assertEqual(list_files(fields.gen_uuid()), [])
-
-    def test_the_attachments_of_a_production_are_listed(self):
-        self.assert_the_attachment_listing_is_scoped(
-            comments_service.get_all_attachment_files_for_project,
-            self.project_id,
-        )
-
-    def test_the_attachments_of_a_task_are_listed(self):
-        self.assert_the_attachment_listing_is_scoped(
-            comments_service.get_all_attachment_files_for_task,
-            str(self.task.id),
-        )
 
     def test_only_raster_images_are_served_inline(self):
         """

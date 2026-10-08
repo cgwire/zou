@@ -298,4 +298,4 @@ class ProjectEntityLinkResource(MethodView):
         permissions_service.check_entities_belong_to_project(
             [link["entity_in_id"]], project_id
         )
-        return entities_service.remove_entity_link(entity_link_id)
+        return breakdown_service.remove_entity_link(entity_link_id)

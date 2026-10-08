@@ -9,7 +9,11 @@ from zou.app import config
 from zou.app.models.build_job import BuildJob
 from zou.app.models.playlist import Playlist
 from zou.app.stores import file_store
-from zou.app.services import playlists_service, playlist_builds_service
+from zou.app.services import (
+    playlists_service,
+    playlist_builds_service,
+    preview_files_service,
+)
 from zou.app.utils import fields, fs, remote_job
 from zou.utils import movie
 from zou.utils.movie import EncodingParameters
@@ -343,7 +347,7 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         tmp_dir = tempfile.mkdtemp()
         try:
             with patch.object(
-                playlist_builds_service.names_service,
+                preview_files_service,
                 "get_preview_file_name",
                 return_value="render.mp4",
             ):

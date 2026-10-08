@@ -24,6 +24,7 @@ from zou.app.services import (
     tasks_service,
     permissions_service,
     task_types_service,
+    attachment_files_service,
 )
 from zou.app import config
 
@@ -36,7 +37,7 @@ class DownloadAttachmentResource(MethodView):
         """
         Download attachment file
         """
-        attachment_file = comments_service.get_attachment_file(
+        attachment_file = attachment_files_service.get_attachment_file(
             attachment_file_id
         )
         if attachment_file["comment_id"] is not None:
@@ -55,7 +56,7 @@ class DownloadAttachmentResource(MethodView):
         else:
             raise permissions.PermissionDenied()
         try:
-            file_path = comments_service.get_attachment_file_path(
+            file_path = attachment_files_service.get_attachment_file_path(
                 attachment_file
             )
             return flask_send_file(
@@ -178,7 +179,7 @@ class AttachmentResource(MethodView):
         # The author branch below skips the project check, so the attachment
         # must be tied to the comment too: otherwise pointing at one's own
         # comment deletes any attachment whose id the caller knows.
-        attachment_file = comments_service.get_attachment_file(
+        attachment_file = attachment_files_service.get_attachment_file(
             attachment_file_id
         )
         if str(attachment_file["comment_id"]) != str(comment_id):
@@ -189,7 +190,9 @@ class AttachmentResource(MethodView):
                 task["project_id"]
             )
 
-        comments_service.remove_attachment_file_by_id(attachment_file_id)
+        attachment_files_service.remove_attachment_file_by_id(
+            attachment_file_id
+        )
         return "", 204
 
 
@@ -392,7 +395,7 @@ class ProjectAttachmentFiles(MethodView):
         Get project attachment files
         """
         permissions.check_admin_permissions()
-        return comments_service.get_all_attachment_files_for_project(
+        return attachment_files_service.get_all_attachment_files_for_project(
             project_id
         )
 
@@ -406,7 +409,9 @@ class TaskAttachmentFiles(MethodView):
         Get task attachment files
         """
         permissions.check_admin_permissions()
-        return comments_service.get_all_attachment_files_for_task(task_id)
+        return attachment_files_service.get_all_attachment_files_for_task(
+            task_id
+        )
 
 
 class MoveCommentResource(MethodView):

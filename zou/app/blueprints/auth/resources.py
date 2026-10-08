@@ -227,7 +227,7 @@ class LoginResource(MethodView, ArgsMixin):
             )
 
             if auth_service.is_default_password(app, password):
-                token = auth_service.generate_reset_token()
+                token = persons_service.generate_reset_token()
                 auth_tokens_store.add(
                     f"reset-token-{email}", token, ttl=3600 * 2
                 )
@@ -590,7 +590,7 @@ class ResetPasswordResource(MethodView, ArgsMixin):
         if not user["active"]:
             return generic_response
 
-        token = auth_service.generate_reset_token()
+        token = persons_service.generate_reset_token()
         auth_tokens_store.add(f"reset-token-{body.email}", token, ttl=3600 * 2)
         reset_url = persons_service.build_password_reset_url(body.email, token)
         locale = user.get("locale") or getattr(

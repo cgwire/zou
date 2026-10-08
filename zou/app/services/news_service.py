@@ -13,7 +13,11 @@ from zou.app.models.project import Project
 from zou.app.models.task import Task
 
 from zou.app.utils import cache, events, fields
-from zou.app.services import names_service, persons_service, tasks_service
+from zou.app.services import (
+    persons_service,
+    tasks_service,
+    entities_service,
+)
 
 
 @dataclasses.dataclass
@@ -230,7 +234,7 @@ def get_last_news_for_project(
             for (_, _, _, _, _, _, task_entity_id, _, _, _, _) in news_list
         )
     )
-    entity_names_map = names_service.get_full_entity_names(entity_ids)
+    entity_names_map = entities_service.get_full_entity_names(entity_ids)
 
     for (
         news,

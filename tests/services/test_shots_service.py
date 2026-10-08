@@ -410,13 +410,6 @@ class ListingTestCase(ShotsTestCase):
             [str(self.shot.id)],
         )
 
-    def test_every_shot_of_the_instance_is_walked_for_the_index(self):
-        # The indexer walks every shot, productions included.
-        self.assertEqual(
-            [shot.id for shot in shots_service.get_all_raw_shots()],
-            [self.shot.id],
-        )
-
 
 class CreationTestCase(ShotsTestCase):
     """

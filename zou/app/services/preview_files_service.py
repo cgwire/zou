@@ -26,12 +26,14 @@ from zou.app.models.project_status import ProjectStatus
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 from zou.app.services import (
-    names_service,
     files_service,
     preview_file_states_service,
     projects_service,
     stored_files_service,
     tasks_service,
+    entities_service,
+    organisation_service,
+    task_types_service,
 )
 from zou.utils import movie
 from zou.app.utils import (
@@ -46,6 +48,7 @@ from zou.app.exceptions import (
     PreviewProcessingFailedException,
 )
 from zou.app.utils import fs
+import slugify
 
 logger = logging.getLogger(__name__)
 
@@ -1079,8 +1082,8 @@ def get_running_preview_files(cursor_preview_file_id=None, limit=None):
         result = preview_file.serialize()
         result["project_id"] = fields.serialize_value(project_id)
         result["task_type_id"] = fields.serialize_value(task_type_id)
-        result["full_entity_name"], _, _ = names_service.get_full_entity_name(
-            entity_id
+        result["full_entity_name"], _, _ = (
+            entities_service.get_full_entity_name(entity_id)
         )
         results.append(result)
     return results
@@ -1432,3 +1435,34 @@ def copy_preview_file_on_storage(
         )
         return True
     return False
+
+
+def get_preview_file_name(preview_file_id):
+    """
+    Build unique and human readable file name for preview downloads. The
+    convention followed is:
+    [project_name]_[entity_name]_[task_type_name]_v[revivision].[extension].
+    """
+    organisation = organisation_service.get_organisation()
+    preview_file = files_service.get_preview_file(preview_file_id)
+    task = tasks_service.get_task(preview_file["task_id"])
+    task_type = task_types_service.get_task_type(task["task_type_id"])
+    project = projects_service.get_project(task["project_id"])
+    entity_name, _, _ = entities_service.get_full_entity_name(
+        task["entity_id"]
+    )
+
+    if (
+        organisation["use_original_file_name"]
+        and preview_file.get("original_name", None) is not None
+    ):
+        name = preview_file["original_name"]
+    else:
+        name = (
+            f"{project['name']}_{entity_name}_{task_type['name']}_v"
+            f"{preview_file['revision']}"
+        )
+        name = slugify.slugify(name, separator="_")
+    if (preview_file.get("position", 0) or 0) > 1:
+        name = f"{name}-{preview_file['position']}"
+    return f"{name}.{preview_file['extension']}"

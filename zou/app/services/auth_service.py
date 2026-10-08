@@ -865,16 +865,6 @@ def is_default_password(app, password):
     )
 
 
-def generate_reset_token():
-    """
-    Generate and return a reset token.
-    """
-    return "".join(
-        random.SystemRandom().choice(string.ascii_uppercase + string.digits)
-        for _ in range(64)
-    )
-
-
 def generate_recovery_codes():
     """
     Generate and return recovery codes.
