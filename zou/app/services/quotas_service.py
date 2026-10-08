@@ -517,8 +517,6 @@ def get_weighted_quota_shots_between(
 
     query = (
         Entity.query.filter(Entity.entity_type_id == shot_type["id"])
-        .filter(Task.project_id == project_id)
-        .filter(Task.task_type_id == task_type_id)
         .filter(TimeSpent.person_id == person_id)
         .filter(TimeSpent.date >= func.cast(start, TimeSpent.date.type))
         .filter(TimeSpent.date < func.cast(end, TimeSpent.date.type))
@@ -530,6 +528,8 @@ def get_weighted_quota_shots_between(
         # duration on one task are identical in every other column.
         .add_columns(Task.duration, TimeSpent.duration, TimeSpent.id)
     )
+
+    query = _filter_on_scope(query, project_id, task_type_id)
 
     if feedback:
         query = query.filter(Task.end_date != None)
@@ -551,8 +551,6 @@ def get_weighted_quota_shots_between(
 
     query = (
         Entity.query.filter(Entity.entity_type_id == shot_type["id"])
-        .filter(Task.project_id == project_id)
-        .filter(Task.task_type_id == task_type_id)
         .filter(Task.real_start_date != None)
         .filter(Task.assignees.contains(person))
         .filter(TimeSpent.id == None)
@@ -560,6 +558,8 @@ def get_weighted_quota_shots_between(
         .join(Project, Project.id == Task.project_id)
         .outerjoin(TimeSpent, TimeSpent.task_id == Task.id)
     )
+
+    query = _filter_on_scope(query, project_id, task_type_id)
 
     if feedback:
         query = (
@@ -634,12 +634,12 @@ def get_raw_quota_shots_between(
 
     query = (
         Entity.query.filter(Entity.entity_type_id == shot_type["id"])
-        .filter(Task.project_id == project_id)
-        .filter(Task.task_type_id == task_type_id)
         .filter(Task.assignees.contains(person))
         .join(Task, Entity.id == Task.entity_id)
         .join(Project, Project.id == Task.project_id)
     )
+
+    query = _filter_on_scope(query, project_id, task_type_id)
 
     if feedback:
         query = query.filter(
@@ -666,6 +666,18 @@ def get_raw_quota_shots_between(
         shots.append(shot)
 
     return sorted(shots, key=itemgetter("full_name"))
+
+
+def _filter_on_scope(query, project_id=None, task_type_id=None):
+    """
+    Restrict a quota shots query to a production and a task type, each
+    only when given: a person's own view spans all of them.
+    """
+    if project_id is not None:
+        query = query.filter(Task.project_id == project_id)
+    if task_type_id is not None:
+        query = query.filter(Task.task_type_id == task_type_id)
+    return query
 
 
 def _get_timezoned_interval(start, end, timezone=None):

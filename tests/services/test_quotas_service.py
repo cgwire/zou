@@ -306,6 +306,75 @@ class QuotaTestCase(ShotsTestCase):
             )
             self.assertEqual(quotas[entry]["day"]["count"], {"2024-06-03": 1})
 
+    def test_the_quota_shots_of_every_task_type_without_a_filter(self):
+        """
+        Without a task type, the listing holds the shots of every task type
+        the person worked on.
+        """
+        self.generate_shot_task()
+        # generate_fixture_shot repoints self.shot, hence the local.
+        anim_shot = self.shot
+        layout_shot = self.generate_fixture_shot("L01")
+        layout_task = self.generate_fixture_shot_task(
+            name="layout",
+            shot_id=layout_shot.id,
+            task_type_id=self.task_type_layout.id,
+        )
+        anim_task = self.generate_fixture_shot_task(
+            name="anim", shot_id=anim_shot.id
+        )
+        for task in [anim_task, layout_task]:
+            task.update(
+                {
+                    "real_start_date": datetime.datetime(2024, 6, 3, 10, 0),
+                    "end_date": fields.get_date_object("2024-06-04"),
+                }
+            )
+
+        for weighted in [True, False]:
+            with self.subTest(weighted=weighted):
+                shots = quotas_service.get_month_quota_shots(
+                    str(self.person.id),
+                    2024,
+                    6,
+                    project_id=str(self.project.id),
+                    weighted=weighted,
+                )
+                self.assertEqual(
+                    [shot["name"] for shot in shots], ["L01", "P01"]
+                )
+
+    def test_the_quota_shots_of_every_project_without_a_filter(self):
+        """
+        Without a project, the listing holds the shots of every production,
+        each one carrying its project so a client can link to it.
+        """
+        task = self.generate_shot_task()
+        other_task = self.generate_fixture_shot_task_standard()
+        for each in [task, other_task]:
+            each.update(
+                {
+                    "real_start_date": datetime.datetime(2024, 6, 3, 10, 0),
+                    "end_date": fields.get_date_object("2024-06-04"),
+                }
+            )
+
+        for weighted in [True, False]:
+            with self.subTest(weighted=weighted):
+                shots = quotas_service.get_month_quota_shots(
+                    str(self.person.id),
+                    2024,
+                    6,
+                    task_type_id=str(self.task_type_animation.id),
+                    weighted=weighted,
+                )
+                self.assertEqual(
+                    sorted(shot["project_id"] for shot in shots),
+                    sorted(
+                        [str(self.project.id), str(self.project_standard.id)]
+                    ),
+                )
+
     def test_a_week_is_keyed_by_its_iso_year(self):
         """
         2025-12-30 belongs to ISO week 1 of 2026: keying it with the

@@ -366,7 +366,10 @@ class PersonQuotaMixin(ArgsMixin):
 
     def check_permissions(self, person_id, project_id=None):
         permissions_service.resolve_project_role(project_id)
-        if permissions.has_manager_permissions():
+        # Without a production there is no project to clear a manager on:
+        # check_manager_project_access(None) denies every non admin, so a
+        # manager falls back to their own quotas, like an artist.
+        if project_id is not None and permissions.has_manager_permissions():
             permissions_service.check_manager_project_access(project_id)
         else:
             permissions_service.check_person_access(person_id)
