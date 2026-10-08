@@ -698,7 +698,7 @@ class BaseNewPreviewFilePicture:
             comment_id = comment["id"]
             events.emit(
                 "comment:update",
-                {"comment_id": comment_id},
+                {"comment_id": comment_id, "task_id": comment["object_id"]},
                 project_id=task["project_id"],
             )
             events.emit(
