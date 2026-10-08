@@ -16,7 +16,7 @@ from zou.app.services import (
     tasks_service,
     time_spents_service,
     permissions_service,
-    user_service,
+    task_types_service,
 )
 from zou.app.utils import permissions, validation
 
@@ -90,7 +90,7 @@ class EntityTaskCreationResource(MethodView):
             raise permissions.PermissionDenied
         body = validation.validate_request_body(CreateEntityTasksSchema)
         task_types = [
-            tasks_service.get_task_type(task_type_id)
+            task_types_service.get_task_type(task_type_id)
             for task_type_id in body.task_type_ids
         ]
         tasks = tasks_service.create_tasks_for_entity(entity, task_types)

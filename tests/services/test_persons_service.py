@@ -2,7 +2,11 @@ from tests.base import ApiDBTestCase
 
 from zou.app import config
 from zou.app.models.person import Person
-from zou.app.services import persons_service, tasks_service
+from zou.app.services import (
+    persons_service,
+    tasks_service,
+    organisation_service,
+)
 from zou.app.exceptions import (
     PersonInProtectedAccounts,
     PersonNotFoundException,
@@ -800,7 +804,7 @@ class OrganisationTestCase(PersonsTestCase):
     """
 
     def test_get_organisation(self):
-        organisation = persons_service.get_organisation()
+        organisation = organisation_service.get_organisation()
         self.assertIn("id", organisation)
 
     def test_get_organisation_creates_it_once(self):
@@ -809,15 +813,17 @@ class OrganisationTestCase(PersonsTestCase):
         it, and every later one finds it.
         """
         self.assertEqual(
-            persons_service.get_organisation()["id"],
-            persons_service.get_organisation()["id"],
+            organisation_service.get_organisation()["id"],
+            organisation_service.get_organisation()["id"],
         )
 
     def test_update_organisation(self):
-        organisation = persons_service.get_organisation()
-        result = persons_service.update_organisation(
+        organisation = organisation_service.get_organisation()
+        result = organisation_service.update_organisation(
             organisation["id"], {"name": "NewOrg"}
         )
         self.assertEqual(result["name"], "NewOrg")
         # Read back through the memoized path, which the update has to drop.
-        self.assertEqual(persons_service.get_organisation()["name"], "NewOrg")
+        self.assertEqual(
+            organisation_service.get_organisation()["name"], "NewOrg"
+        )

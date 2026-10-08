@@ -8,9 +8,8 @@ from zou.app.services import (
     assets_service,
     projects_service,
     permissions_service,
-    user_service,
-    tasks_service,
     persons_service,
+    task_types_service,
 )
 from zou.app.utils import csv_utils, query
 
@@ -29,8 +28,8 @@ class AssetsCsvExport(MethodView):
         query.check_criterion_id_format(criterions, ["id", "episode_id"])
         criterions["project_id"] = project["id"]
 
-        self.task_type_map = tasks_service.get_task_type_map()
-        self.task_status_map = tasks_service.get_task_status_map()
+        self.task_type_map = task_types_service.get_task_type_map()
+        self.task_status_map = task_types_service.get_task_status_map()
         self.persons_map = persons_service.get_persons_map()
 
         csv_content = []

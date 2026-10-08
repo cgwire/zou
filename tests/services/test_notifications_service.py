@@ -11,6 +11,7 @@ from zou.app.services import (
     comments_service,
     notifications_service,
     projects_service,
+    subscriptions_service,
 )
 
 
@@ -86,7 +87,7 @@ class NotificationRecipientTestCase(NotificationsTestCase):
         )
 
     def test_a_task_subscriber_is_a_recipient(self):
-        notifications_service.subscribe_to_task(
+        subscriptions_service.subscribe_to_task(
             self.outsider_id, self.task_dict["id"]
         )
         self.assertIn(
@@ -95,7 +96,7 @@ class NotificationRecipientTestCase(NotificationsTestCase):
         )
 
     def test_a_sequence_subscriber_is_a_recipient(self):
-        notifications_service.subscribe_to_sequence(
+        subscriptions_service.subscribe_to_sequence(
             self.outsider_id,
             self.sequence_dict["id"],
             self.task_type_dict["id"],
@@ -110,7 +111,7 @@ class NotificationRecipientTestCase(NotificationsTestCase):
         Subscribing to the animation of a sequence says nothing about its
         layout.
         """
-        notifications_service.subscribe_to_sequence(
+        subscriptions_service.subscribe_to_sequence(
             self.outsider_id,
             self.sequence_dict["id"],
             str(self.task_type_layout.id),
@@ -127,7 +128,7 @@ class NotificationRecipientTestCase(NotificationsTestCase):
         """
         asset_task = self.generate_fixture_task().serialize(relations=True)
         self.assertEqual(
-            notifications_service.get_sequence_subscriptions_for_task(
+            subscriptions_service.get_sequence_subscriptions_for_task(
                 asset_task
             ),
             [],
@@ -140,20 +141,20 @@ class SubscriptionTestCase(NotificationsTestCase):
     """
 
     def test_subscribe_to_task(self):
-        notifications_service.subscribe_to_task(
+        subscriptions_service.subscribe_to_task(
             self.outsider_id, self.task_dict["id"]
         )
         self.assertTrue(
-            notifications_service.has_task_subscription(
+            subscriptions_service.has_task_subscription(
                 self.outsider_id, self.task_dict["id"]
             )
         )
 
     def test_subscribe_to_task_twice(self):
-        first = notifications_service.subscribe_to_task(
+        first = subscriptions_service.subscribe_to_task(
             self.outsider_id, self.task_dict["id"]
         )
-        second = notifications_service.subscribe_to_task(
+        second = subscriptions_service.subscribe_to_task(
             self.outsider_id, self.task_dict["id"]
         )
         self.assertEqual(first["id"], second["id"])
@@ -163,10 +164,10 @@ class SubscriptionTestCase(NotificationsTestCase):
         # commits, so subscription_task_uc rejects its insert. It must get
         # the winning row back instead of a 500. The rejection is simulated:
         # a real one rolls back the transaction holding the fixtures.
-        first = notifications_service.subscribe_to_task(
+        first = subscriptions_service.subscribe_to_task(
             self.outsider_id, self.task_dict["id"]
         )
-        read_subscription = notifications_service.get_task_subscription_raw
+        read_subscription = subscriptions_service.get_task_subscription_raw
         reads = []
 
         def stale_first_read(*args, **kwargs):
@@ -177,31 +178,31 @@ class SubscriptionTestCase(NotificationsTestCase):
 
         rejected = IntegrityError("INSERT", {}, Exception("subscription_uc"))
         with patch.object(
-            notifications_service,
+            subscriptions_service,
             "get_task_subscription_raw",
             stale_first_read,
         ), patch.object(Subscription, "create", side_effect=rejected):
-            second = notifications_service.subscribe_to_task(
+            second = subscriptions_service.subscribe_to_task(
                 self.outsider_id, self.task_dict["id"]
             )
         self.assertEqual(first["id"], second["id"])
 
     def test_unsubscribe_from_task(self):
-        notifications_service.subscribe_to_task(
+        subscriptions_service.subscribe_to_task(
             self.outsider_id, self.task_dict["id"]
         )
-        notifications_service.unsubscribe_from_task(
+        subscriptions_service.unsubscribe_from_task(
             self.outsider_id, self.task_dict["id"]
         )
         self.assertIsNone(
-            notifications_service.get_task_subscription_raw(
+            subscriptions_service.get_task_subscription_raw(
                 self.outsider_id, self.task_dict["id"]
             )
         )
 
     def test_unsubscribe_from_a_task_nobody_subscribed_to(self):
         self.assertEqual(
-            notifications_service.unsubscribe_from_task(
+            subscriptions_service.unsubscribe_from_task(
                 self.outsider_id, self.task_dict["id"]
             ),
             {},
@@ -212,23 +213,23 @@ class SubscriptionTestCase(NotificationsTestCase):
         Memoized, so subscribing and unsubscribing both have to drop it.
         """
         self.assertFalse(
-            notifications_service.is_person_subscribed(
+            subscriptions_service.is_person_subscribed(
                 self.outsider_id, self.task_dict["id"]
             )
         )
-        notifications_service.subscribe_to_task(
+        subscriptions_service.subscribe_to_task(
             self.outsider_id, self.task_dict["id"]
         )
         self.assertTrue(
-            notifications_service.is_person_subscribed(
+            subscriptions_service.is_person_subscribed(
                 self.outsider_id, self.task_dict["id"]
             )
         )
-        notifications_service.unsubscribe_from_task(
+        subscriptions_service.unsubscribe_from_task(
             self.outsider_id, self.task_dict["id"]
         )
         self.assertFalse(
-            notifications_service.is_person_subscribed(
+            subscriptions_service.is_person_subscribed(
                 self.outsider_id, self.task_dict["id"]
             )
         )
@@ -239,24 +240,24 @@ class SubscriptionTestCase(NotificationsTestCase):
         read as a uuid answers no subscription rather than a 500.
         """
         self.assertIsNone(
-            notifications_service.get_task_subscription_raw(
+            subscriptions_service.get_task_subscription_raw(
                 self.outsider_id, "not-an-id"
             )
         )
         self.assertFalse(
-            notifications_service.has_sequence_subscription(
+            subscriptions_service.has_sequence_subscription(
                 self.outsider_id, "not-an-id", self.task_type_dict["id"]
             )
         )
 
     def test_subscribe_to_sequence(self):
-        notifications_service.subscribe_to_sequence(
+        subscriptions_service.subscribe_to_sequence(
             self.outsider_id,
             self.sequence_dict["id"],
             self.task_type_dict["id"],
         )
         self.assertTrue(
-            notifications_service.has_sequence_subscription(
+            subscriptions_service.has_sequence_subscription(
                 self.outsider_id,
                 self.sequence_dict["id"],
                 self.task_type_dict["id"],
@@ -264,18 +265,18 @@ class SubscriptionTestCase(NotificationsTestCase):
         )
 
     def test_unsubscribe_from_sequence(self):
-        notifications_service.subscribe_to_sequence(
+        subscriptions_service.subscribe_to_sequence(
             self.outsider_id,
             self.sequence_dict["id"],
             self.task_type_dict["id"],
         )
-        notifications_service.unsubscribe_from_sequence(
+        subscriptions_service.unsubscribe_from_sequence(
             self.outsider_id,
             self.sequence_dict["id"],
             self.task_type_dict["id"],
         )
         self.assertFalse(
-            notifications_service.has_sequence_subscription(
+            subscriptions_service.has_sequence_subscription(
                 self.outsider_id,
                 self.sequence_dict["id"],
                 self.task_type_dict["id"],
@@ -284,7 +285,7 @@ class SubscriptionTestCase(NotificationsTestCase):
 
     def test_unsubscribe_from_a_sequence_nobody_subscribed_to(self):
         self.assertEqual(
-            notifications_service.unsubscribe_from_sequence(
+            subscriptions_service.unsubscribe_from_sequence(
                 self.outsider_id,
                 self.sequence_dict["id"],
                 self.task_type_dict["id"],
@@ -299,15 +300,15 @@ class SubscriptionTestCase(NotificationsTestCase):
         """
         person_id = self.outsider_id
         task_type_id = self.task_type_dict["id"]
-        notifications_service.subscribe_to_sequence(
+        subscriptions_service.subscribe_to_sequence(
             person_id, self.sequence_dict["id"], task_type_id
         )
         # Same sequence, another task type.
-        notifications_service.subscribe_to_sequence(
+        subscriptions_service.subscribe_to_sequence(
             person_id, self.sequence_dict["id"], str(self.task_type_layout.id)
         )
         # Same sequence, someone else.
-        notifications_service.subscribe_to_sequence(
+        subscriptions_service.subscribe_to_sequence(
             self.assignee_id, self.sequence_dict["id"], task_type_id
         )
         # A sequence of another production, subscribed the same way.
@@ -315,11 +316,11 @@ class SubscriptionTestCase(NotificationsTestCase):
         other_sequence = self.generate_fixture_sequence(
             name="SQ99", project_id=self.project_standard.id
         )
-        notifications_service.subscribe_to_sequence(
+        subscriptions_service.subscribe_to_sequence(
             person_id, str(other_sequence.id), task_type_id
         )
 
-        result = notifications_service.get_all_sequence_subscriptions(
+        result = subscriptions_service.get_all_sequence_subscriptions(
             person_id, str(self.project.id), task_type_id
         )
         self.assertEqual(result, [self.sequence_dict["id"]])
@@ -329,21 +330,21 @@ class SubscriptionTestCase(NotificationsTestCase):
         Task subscriptions of one production. A sequence subscription
         carries no task, so it is not one of these.
         """
-        notifications_service.subscribe_to_task(
+        subscriptions_service.subscribe_to_task(
             self.outsider_id, self.task_dict["id"]
         )
-        notifications_service.subscribe_to_sequence(
+        subscriptions_service.subscribe_to_sequence(
             self.outsider_id,
             self.sequence_dict["id"],
             self.task_type_dict["id"],
         )
         self.generate_fixture_project_standard()
         other_task = self.generate_fixture_shot_task_standard()
-        notifications_service.subscribe_to_task(
+        subscriptions_service.subscribe_to_task(
             self.outsider_id, str(other_task.id)
         )
 
-        result = notifications_service.get_subscriptions_for_project(
+        result = subscriptions_service.get_subscriptions_for_project(
             str(self.project.id)
         )
 
@@ -362,12 +363,12 @@ class SubscriptionTestCase(NotificationsTestCase):
         asset_task = self.generate_fixture_task(name="asset task")
         shot_task_id = self.task_dict["id"]
         for task_id in [str(asset_task.id), shot_task_id]:
-            notifications_service.subscribe_to_task(self.admin_id, task_id)
+            subscriptions_service.subscribe_to_task(self.admin_id, task_id)
         # Someone else's subscriptions must not show up, on this task or
         # on one the caller never subscribed to.
         other_asset_task = self.generate_fixture_task(name="other asset task")
         for task_id in [str(asset_task.id), str(other_asset_task.id)]:
-            notifications_service.subscribe_to_task(self.outsider_id, task_id)
+            subscriptions_service.subscribe_to_task(self.outsider_id, task_id)
 
         # The caller comes from the request context, which a service test
         # has none of.
@@ -377,13 +378,13 @@ class SubscriptionTestCase(NotificationsTestCase):
             return_value=self.user,
         ):
             self.assertEqual(
-                notifications_service.get_subscriptions_for_user(
+                subscriptions_service.get_subscriptions_for_user(
                     str(self.project.id)
                 ),
                 {str(asset_task.id): True},
             )
             self.assertEqual(
-                notifications_service.get_subscriptions_for_user(
+                subscriptions_service.get_subscriptions_for_user(
                     str(self.project.id),
                     entity_type_id=str(self.shot_type.id),
                 ),
@@ -392,13 +393,13 @@ class SubscriptionTestCase(NotificationsTestCase):
 
             self.generate_fixture_project_standard()
             self.assertEqual(
-                notifications_service.get_subscriptions_for_user(
+                subscriptions_service.get_subscriptions_for_user(
                     str(self.project_standard.id)
                 ),
                 {},
             )
             self.assertEqual(
-                notifications_service.get_subscriptions_for_user(None), {}
+                subscriptions_service.get_subscriptions_for_user(None), {}
             )
 
 

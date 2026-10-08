@@ -8,6 +8,7 @@ from zou.app.services import (
     projects_service,
     shots_service,
     tasks_service,
+    task_types_service,
 )
 
 
@@ -783,7 +784,7 @@ class CastingReadyStatsTestCase(ApiDBTestCase):
         self.asset_id = str(self.asset.id)
         self.asset_character_id = str(self.asset_character.id)
 
-        compositing = tasks_service.get_or_create_task_type(
+        compositing = task_types_service.get_or_create_task_type(
             self.department_animation.serialize(),
             "compositing",
             color="#FFFFFF",

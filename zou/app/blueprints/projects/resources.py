@@ -3,7 +3,10 @@ from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 
-from zou.app.services import budget_service
+from zou.app.services import (
+    budget_service,
+    task_types_service,
+)
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
     persons_service,
@@ -431,7 +434,7 @@ class ProductionMetadataDescriptorsResource(MethodView, ArgsMixin):
         """
         permissions_service.check_project_access(project_id)
         for_client, vendor_departments = (
-            user_service.get_descriptor_visibility(
+            permissions_service.get_descriptor_visibility(
                 permissions.get_effective_role()
             )
         )
@@ -471,7 +474,7 @@ class ProductionMetadataDescriptorsResource(MethodView, ArgsMixin):
                     "Task metadata descriptors require a task_type_id."
                 )
             try:
-                tasks_service.get_task_type(body.task_type_id)
+                task_types_service.get_task_type(body.task_type_id)
             except TaskTypeNotFoundException:
                 raise WrongParameterException("Task type not found.")
         elif body.task_type_id is not None:

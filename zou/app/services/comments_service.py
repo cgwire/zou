@@ -26,8 +26,9 @@ from zou.app.services import (
     persons_service,
     projects_service,
     tasks_service,
-    concepts_service,
     preview_files_service,
+    entity_types_service,
+    task_types_service,
 )
 from zou.app.exceptions import (
     AttachmentFileNotFoundException,
@@ -128,8 +129,8 @@ def create_comment(
         links = []
     author = _get_comment_author(person_id)
     task = tasks_service.get_task(task_id, relations=True)
-    task_status = tasks_service.get_task_status(task_status_id)
-    task_type = tasks_service.get_task_type(task["task_type_id"])
+    task_status = task_types_service.get_task_status(task_status_id)
+    task_type = task_types_service.get_task_type(task["task_type_id"])
     _check_retake_capping(task_status, task)
 
     comment = new_comment(
@@ -311,7 +312,7 @@ def _manage_subscriptions(task, comment, status_changed):
     )
     if (
         entities_service.get_entity(task["entity_id"])["entity_type_id"]
-        != concepts_service.get_concept_type()["id"]
+        != entity_types_service.get_concept_type()["id"]
     ):
         news_service.create_news_for_task_and_comment(
             task,
@@ -334,10 +335,12 @@ def _run_status_automation(automation, task, person_id):
         return
 
     entity = entities_service.get_entity(task["entity_id"])
-    entity_type = entities_service.get_entity_type(entity["entity_type_id"])
+    entity_type = entity_types_service.get_entity_type(
+        entity["entity_type_id"]
+    )
     wanted = (automation.get("entity_type") or "").lower()
     if wanted == "asset":
-        if not assets_service.is_asset_type(entity_type):
+        if not entity_types_service.is_asset_type(entity_type):
             return
     elif entity_type["name"].lower() != wanted:
         return
@@ -361,10 +364,10 @@ def _run_status_automation(automation, task, person_id):
         )
         if len(tasks_to_update) > 0:
             task_to_update = tasks_to_update[0]
-            task_type = tasks_service.get_task_type(
+            task_type = task_types_service.get_task_type(
                 automation["in_task_type_id"]
             )
-            task_status = tasks_service.get_task_status(
+            task_status = task_types_service.get_task_status(
                 automation["in_task_status_id"]
             )
             new_comment = create_comment(
@@ -544,7 +547,7 @@ def move_comment_to_task(comment_id, target_task_id):
     )
     if (
         entities_service.get_entity(target_task["entity_id"])["entity_type_id"]
-        != concepts_service.get_concept_type()["id"]
+        != entity_types_service.get_concept_type()["id"]
     ):
         news_service.create_news_for_task_and_comment(
             target_task,

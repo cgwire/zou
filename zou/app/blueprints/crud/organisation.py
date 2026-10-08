@@ -6,7 +6,9 @@ from sqlalchemy.inspection import inspect
 from zou.app.models.organisation import Organisation, SENSITIVE_FIELDS
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
-from zou.app.services import persons_service
+from zou.app.services import (
+    organisation_service,
+)
 from zou.app.exceptions import WrongParameterException
 from zou.app.utils.permissions import has_admin_permissions
 
@@ -97,5 +99,5 @@ class OrganisationResource(BaseModelResource):
         return data.present_minimal(relations=relations)
 
     def post_update(self, instance_dict, data):
-        persons_service.clear_organisation_cache()
+        organisation_service.clear_organisation_cache()
         return instance_dict

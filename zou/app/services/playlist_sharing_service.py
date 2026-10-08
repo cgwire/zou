@@ -25,6 +25,7 @@ from zou.app.services import (
     playlists_service,
     tasks_service,
     projects_service,
+    task_types_service,
 )
 from zou.app.exceptions import (
     PersonNotFoundException,
@@ -320,7 +321,7 @@ def update_guest_comment(comment_id, guest_id, data, token):
     )
     if status_changed:
         try:
-            new_status = tasks_service.get_task_status(new_status_id)
+            new_status = task_types_service.get_task_status(new_status_id)
         except Exception:
             raise GuestCommentForbidden
         if not new_status.get("is_client_allowed", False):

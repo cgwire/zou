@@ -24,7 +24,7 @@ from zou.app.services import (
     persons_service,
     tasks_service,
     permissions_service,
-    user_service,
+    task_types_service,
 )
 from zou.app import config
 
@@ -283,9 +283,9 @@ class CommentManyTasksResource(MethodView):
                     role_cache[project_id] == "supervisor"
                     and (
                         len(person["departments"]) == 0
-                        or tasks_service.get_task_type(task["task_type_id"])[
-                            "department_id"
-                        ]
+                        or task_types_service.get_task_type(
+                            task["task_type_id"]
+                        )["department_id"]
                         in person["departments"]
                     )
                 ) or person["id"] in task["assignees"]:

@@ -1,16 +1,13 @@
 import slugify
 
-from zou.app.models.entity import Entity
-from zou.app.models.entity_type import EntityType
-from zou.app.utils import cache
 
 from zou.app.services import (
     entities_service,
     files_service,
     projects_service,
     tasks_service,
-    shots_service,
-    persons_service,
+    organisation_service,
+    task_types_service,
 )
 
 
@@ -37,10 +34,10 @@ def get_preview_file_name(preview_file_id):
     convention followed is:
     [project_name]_[entity_name]_[task_type_name]_v[revivision].[extension].
     """
-    organisation = persons_service.get_organisation()
+    organisation = organisation_service.get_organisation()
     preview_file = files_service.get_preview_file(preview_file_id)
     task = tasks_service.get_task(preview_file["task_id"])
-    task_type = tasks_service.get_task_type(task["task_type_id"])
+    task_type = task_types_service.get_task_type(task["task_type_id"])
     project = projects_service.get_project(task["project_id"])
     entity_name, _, _ = get_full_entity_name(task["entity_id"])
 

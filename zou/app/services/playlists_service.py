@@ -48,6 +48,8 @@ from zou.app.services import (
     names_service,
     persons_service,
     templates_service,
+    entity_types_service,
+    organisation_service,
 )
 
 from zou.app.exceptions import (
@@ -1086,7 +1088,7 @@ def build_playlist_job(playlist, job, shots, params, email, full, remote):
     # exception in order to be flagged as failed.
     if job["status"] == "succeeded":
         person = persons_service.get_person_by_email_raw(email)
-        organisation = persons_service.get_organisation()
+        organisation = organisation_service.get_organisation()
         playlist_url = (
             f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}"
             f"/api/data/playlists/{playlist['id']}/jobs/{job['id']}/build/mp4"
@@ -1310,13 +1312,13 @@ def generate_playlisted_entity_from_task(task_id, task_type_links):
     """
     task = tasks_service.get_task(task_id)
     entity = entities_service.get_entity(task["entity_id"])
-    if shots_service.is_shot(entity):
+    if entity_types_service.is_shot(entity):
         playlisted_entity = get_base_shot_for_playlist(entity, task_id)
-    elif shots_service.is_sequence(entity):
+    elif entity_types_service.is_sequence(entity):
         playlisted_entity = get_base_sequence_for_playlist(entity, task_id)
-    elif shots_service.is_episode(entity):
+    elif entity_types_service.is_episode(entity):
         playlisted_entity = get_base_episode_for_playlist(entity, task_id)
-    elif edits_service.is_edit(entity):
+    elif entity_types_service.is_edit(entity):
         playlisted_entity = get_base_edit_for_playlist(entity, task_id)
     else:
         playlisted_entity = get_base_asset_for_playlist(entity, task_id)
@@ -1455,7 +1457,7 @@ def get_base_asset_for_playlist(entity, task_id):
     Build the playlist entry of an asset, showing its type as parent.
     """
     asset = assets_service.get_asset(entity["id"])
-    asset_type = assets_service.get_asset_type(asset["entity_type_id"])
+    asset_type = entity_types_service.get_asset_type(asset["entity_type_id"])
     return _build_playlisted_entity(
         asset,
         task_id,

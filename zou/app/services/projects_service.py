@@ -21,11 +21,9 @@ from zou.app.models.task_type import TaskType
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.department import Department
 from zou.app.services import (
-    assets_service,
     base_service,
-    edits_service,
     preview_files_service,
-    shots_service,
+    entity_types_service,
 )
 from zou.app.exceptions import (
     ProjectNotFoundException,
@@ -273,7 +271,7 @@ def _fetch_first_episodes_by_project(project_ids):
     if not project_ids:
         return {}
 
-    episode_type = shots_service.get_episode_type()
+    episode_type = entity_types_service.get_episode_type()
     first_episodes_by_project = {}
 
     episodes = (
@@ -899,17 +897,17 @@ def _entity_query_for_descriptor_entity_type(descriptor):
         Entity.data.has_key(descriptor.field_name),
     )
     if descriptor.entity_type == "Asset":
-        return query.filter(assets_service.build_asset_type_filter())
+        return query.filter(entity_types_service.build_asset_type_filter())
     if descriptor.entity_type == "Shot":
-        entity_type = shots_service.get_shot_type()
+        entity_type = entity_types_service.get_shot_type()
     elif descriptor.entity_type == "Scene":
-        entity_type = shots_service.get_scene_type()
+        entity_type = entity_types_service.get_scene_type()
     elif descriptor.entity_type == "Sequence":
-        entity_type = shots_service.get_sequence_type()
+        entity_type = entity_types_service.get_sequence_type()
     elif descriptor.entity_type == "Episode":
-        entity_type = shots_service.get_episode_type()
+        entity_type = entity_types_service.get_episode_type()
     elif descriptor.entity_type == "Edit":
-        entity_type = edits_service.get_edit_type()
+        entity_type = entity_types_service.get_edit_type()
     else:
         return query.filter(false())
     return query.filter(Entity.entity_type_id == entity_type["id"])
@@ -1628,3 +1626,11 @@ def get_department_team(project_id, department_id):
         .filter(DepartmentLink.department_id == department_id)
     ).all()
     return persons
+
+
+def build_open_project_filter():
+    """
+    Query filter for project to retrieve only open projects.
+    """
+    open_status = get_open_status()
+    return Project.project_status_id == open_status["id"]

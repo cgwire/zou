@@ -4,7 +4,10 @@ from tests.base import ApiDBTestCase
 
 from zou.app.models.entity import EntityVersion
 from zou.app.models.schedule_item import ScheduleItem
-from zou.app.services import edits_service
+from zou.app.services import (
+    edits_service,
+    entity_types_service,
+)
 from zou.app.exceptions import (
     EditNotFoundException,
     WrongIdFormatException,
@@ -29,7 +32,7 @@ class EditUtilsTestCase(ApiDBTestCase):
         self.generate_fixture_task_type()
 
     def test_get_edit_type(self):
-        edit_type = edits_service.get_edit_type()
+        edit_type = entity_types_service.get_edit_type()
         self.assertEqual(edit_type["name"], "Edit")
 
     def test_get_edits(self):
@@ -110,8 +113,8 @@ class EditUtilsTestCase(ApiDBTestCase):
         self.assertEqual(len(edit["tasks"]), 1)
 
     def test_is_edit(self):
-        self.assertTrue(edits_service.is_edit(self.edit.serialize()))
-        self.assertFalse(edits_service.is_edit(self.asset.serialize()))
+        self.assertTrue(entity_types_service.is_edit(self.edit.serialize()))
+        self.assertFalse(entity_types_service.is_edit(self.asset.serialize()))
 
     def test_create_edit(self):
         edit_name = "Editor's Cut"

@@ -3,7 +3,10 @@ from tests.blueprints.source.shotgun.base import ShotgunTestCase
 from zou.app.models.entity import Entity
 from zou.app.models.project import Project
 
-from zou.app.services import shots_service
+from zou.app.services import (
+    shots_service,
+    entity_types_service,
+)
 
 
 class ImportShotgunShotTestCase(ShotgunTestCase):
@@ -43,7 +46,7 @@ class ImportShotgunShotTestCase(ShotgunTestCase):
         )
         sequence = Entity.get_by(
             shotgun_id=self.sg_shot["sg_sequence"]["id"],
-            entity_type_id=shots_service.get_sequence_type()["id"],
+            entity_type_id=entity_types_service.get_sequence_type()["id"],
         )
         entity = Entity.get_by(name=self.sg_shot["assets"][0]["name"])
         project = Project.get_by(name=self.sg_shot["project"]["name"])

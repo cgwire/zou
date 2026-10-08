@@ -7,6 +7,9 @@ import logging
 import os
 import sys
 import click
+from zou.app.services import (
+    organisation_service,
+)
 
 
 def _get_app():
@@ -345,7 +348,7 @@ def create_admin(email, password):
                 sys.exit(1)
             except IsUserLimitReachedException:
                 print(
-                    f"User limit reached (limit {persons_service.get_user_limit()})."
+                    f"User limit reached (limit {organisation_service.get_user_limit()})."
                 )
                 sys.exit(1)
 
@@ -463,7 +466,7 @@ def set_person_as_active(email, unactive):
             )
         except IsUserLimitReachedException:
             print(
-                f"User limit reached (limit {persons_service.get_user_limit()})."
+                f"User limit reached (limit {organisation_service.get_user_limit()})."
             )
             sys.exit(1)
         except PersonNotFoundException:
@@ -482,7 +485,7 @@ def sync_with_ldap_server():
     with _get_app().app_context():
         if persons_service.is_user_limit_reached():
             print(
-                f"User limit reached (limit {persons_service.get_user_limit()}). New users will not be added."
+                f"User limit reached (limit {organisation_service.get_user_limit()}). New users will not be added."
             )
             sys.exit(1)
         commands.sync_with_ldap_server()

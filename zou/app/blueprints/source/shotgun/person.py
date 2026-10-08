@@ -12,7 +12,9 @@ from zou.app.blueprints.source.shotgun.base import (
     BaseImportShotgunResource,
     ImportRemoveShotgunBaseResource,
 )
-from zou.app.services import tasks_service
+from zou.app.services import (
+    departments_service,
+)
 
 
 class ImportShotgunPersonsResource(BaseImportShotgunResource):
@@ -39,7 +41,7 @@ class ImportShotgunPersonsResource(BaseImportShotgunResource):
             role = "admin"
 
         if sg_person.get("department", None) is not None:
-            department = tasks_service.get_or_create_department(
+            department = departments_service.get_or_create_department(
                 sg_person["department"]["name"]
             )
         else:

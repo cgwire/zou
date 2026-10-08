@@ -20,6 +20,7 @@ from zou.app.services import (
     projects_service,
     shots_service,
     tasks_service,
+    entity_types_service,
 )
 from zou.app.exceptions import AssetNotFoundException
 
@@ -291,7 +292,7 @@ def update_casting(entity_id, casting):
     added_asset_ids = sorted(new_asset_ids - previous_asset_ids)
     removed_asset_ids = sorted(previous_asset_ids - new_asset_ids)
 
-    if shots_service.is_episode(entity_dict):
+    if entity_types_service.is_episode(entity_dict):
         assets = _extract_removal(entity_dict, casting)
         for asset_id in assets:
             _remove_asset_from_episode_shots(asset_id, entity_id)
@@ -304,7 +305,7 @@ def update_casting(entity_id, casting):
                 nb_occurences=cast["nb_occurences"],
                 label=cast.get("label", ""),
             )
-            if shots_service.is_episode(entity_dict):
+            if entity_types_service.is_episode(entity_dict):
                 events.emit(
                     "asset:update",
                     {"asset_id": cast["asset_id"]},
@@ -331,7 +332,7 @@ def _announce_casting_change(entity, added_asset_ids, removed_asset_ids):
         "added_asset_ids": added_asset_ids,
         "removed_asset_ids": removed_asset_ids,
     }
-    if shots_service.is_shot(entity_dict):
+    if entity_types_service.is_shot(entity_dict):
         refresh_shot_casting_stats(entity_dict)
         events.emit(
             "shot:casting-update",
@@ -343,7 +344,7 @@ def _announce_casting_change(entity, added_asset_ids, removed_asset_ids):
             if episode_id is not None:
                 for asset_id in removed_asset_ids:
                     _detach_asset_from_episode_if_unused(asset_id, episode_id)
-    elif shots_service.is_episode(entity_dict):
+    elif entity_types_service.is_episode(entity_dict):
         events.emit(
             "episode:casting-update",
             {"episode_id": entity_id, **casting_diff},
@@ -374,7 +375,7 @@ def cast_asset(entity_id, asset_id, nb_occurences=None, label=None):
     # The asset list of an episode is drawn from its casting: the asset
     # just joined the episode, and only asset:update makes the clients
     # reload it (same as update_casting on an episode).
-    if shots_service.is_episode(entity.serialize()):
+    if entity_types_service.is_episode(entity.serialize()):
         events.emit(
             "asset:update",
             {"asset_id": str(asset_id)},
@@ -396,7 +397,9 @@ def uncast_asset(entity_id, asset_id, cascade_to_shots=True):
     if link is None:
         return get_casting(entity_id)
     entity = entities_service.get_entity_raw(entity_id)
-    if cascade_to_shots and shots_service.is_episode(entity.serialize()):
+    if cascade_to_shots and entity_types_service.is_episode(
+        entity.serialize()
+    ):
         _remove_asset_from_episode_shots(asset_id, entity_id)
     link.delete()
     _announce_casting_change(entity, [], [str(asset_id)])
@@ -410,7 +413,7 @@ def _clear_casting_cache(entity_id):
     on its way through, so the count is cached before it is written.
     """
     entity_id = str(entity_id)
-    if shots_service.is_shot(entities_service.get_entity(entity_id)):
+    if entity_types_service.is_shot(entities_service.get_entity(entity_id)):
         shots_service.clear_shot_cache(entity_id)
     else:
         entities_service.clear_entity_cache(entity_id)
@@ -453,7 +456,7 @@ def create_casting_link(entity_in_id, asset_id, nb_occurences=1, label=""):
             )
     except IntegrityError:
         current_app.logger.warning(
-            "Attempt to create duplicated entity links (link already created) via breakdown_service.create_casting_link (raised by sqlalchemy.exc.IntegrityError)"
+            "Attempt to create duplicated entity links (link already created) via create_casting_link (raised by sqlalchemy.exc.IntegrityError)"
         )
     except StaleDataError:
         current_app.logger.warning(
@@ -577,7 +580,10 @@ def _create_episode_casting_link(entity, asset_id, nb_occurences=1, label=""):
     # A shot laid out before its sequences exist hangs from nothing, and
     # then there is no episode to cast the asset in: reading the sequence
     # anyway turned the whole casting into a 404.
-    if shots_service.is_shot(entity) and entity["parent_id"] is not None:
+    if (
+        entity_types_service.is_shot(entity)
+        and entity["parent_id"] is not None
+    ):
         sequence = shots_service.get_sequence(entity["parent_id"])
         if sequence["parent_id"] is not None:
             link = EntityLink.get_by(
@@ -654,7 +660,7 @@ def get_cast_in(asset_id):
     links = (
         EntityLink.query.filter_by(entity_out_id=asset_id)
         .filter(Entity.canceled != True)
-        .filter(assets_service.build_entity_type_asset_type_filter())
+        .filter(entity_types_service.build_entity_type_asset_type_filter())
         .join(Entity, EntityLink.entity_in_id == Entity.id)
         .join(EntityType, EntityType.id == Entity.entity_type_id)
         .add_columns(Entity.name, EntityType.name, Entity.preview_file_id)
@@ -753,7 +759,9 @@ def get_camera_instances_for_scene(scene_id):
     """
     Return all instances of type Camera for given layout scene.
     """
-    camera_entity_type = assets_service.get_or_create_asset_type("Camera")
+    camera_entity_type = entity_types_service.get_or_create_asset_type(
+        "Camera"
+    )
     return get_asset_instances_for_scene(scene_id, camera_entity_type["id"])
 
 

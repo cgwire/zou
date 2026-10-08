@@ -14,6 +14,7 @@ from zou.app.services import (
     persons_service,
     projects_service,
     shots_service,
+    entity_types_service,
 )
 from zou.app.exceptions import (
     EpisodeNotFoundException,
@@ -451,7 +452,7 @@ def prepare_asset(asset):
     Prepare a indexation document from given asset.
     """
     asset_serialized = asset.serialize()
-    asset_type = assets_service.get_asset_type(
+    asset_type = entity_types_service.get_asset_type(
         asset_serialized["entity_type_id"]
     )
     metadatas = {}

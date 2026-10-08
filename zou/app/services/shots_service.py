@@ -32,11 +32,10 @@ from zou.app.services import (
     entities_service,
     persons_service,
     projects_service,
-    notifications_service,
     names_service,
-    user_service,
     index_service,
-    concepts_service,
+    entity_types_service,
+    subscriptions_service,
 )
 from zou.app.exceptions import (
     EpisodeNotFoundException,
@@ -130,53 +129,13 @@ def clear_episode_cache(episode_id):
     entities_service.clear_entity_cache(episode_id)
 
 
-@cache.memoize_function(1200)
-def get_episode_type():
-    """
-    Return the Episode entity type.
-    """
-    return entities_service.get_temporal_entity_type_by_name("Episode")
-
-
-@cache.memoize_function(1200)
-def get_edit_type():
-    """
-    Return the Edit entity type.
-    """
-    return entities_service.get_temporal_entity_type_by_name("Edit")
-
-
-@cache.memoize_function(1200)
-def get_sequence_type():
-    """
-    Return the Sequence entity type.
-    """
-    return entities_service.get_temporal_entity_type_by_name("Sequence")
-
-
-@cache.memoize_function(1200)
-def get_shot_type():
-    """
-    Return the Shot entity type.
-    """
-    return entities_service.get_temporal_entity_type_by_name("Shot")
-
-
-@cache.memoize_function(1200)
-def get_scene_type():
-    """
-    Return the Scene entity type.
-    """
-    return entities_service.get_temporal_entity_type_by_name("Scene")
-
-
 def get_episodes(criterions=None):
     """
     Get all episodes for given criterions.
     """
     if criterions is None:
         criterions = {}
-    episode_type = get_episode_type()
+    episode_type = entity_types_service.get_episode_type()
     criterions["entity_type_id"] = episode_type["id"]
     query = Entity.query.order_by(Entity.name)
     query = query_utils.apply_criterions_to_db_query(Entity, query, criterions)
@@ -193,7 +152,7 @@ def get_sequences(criterions=None):
     """
     if criterions is None:
         criterions = {}
-    sequence_type = get_sequence_type()
+    sequence_type = entity_types_service.get_sequence_type()
     criterions["entity_type_id"] = sequence_type["id"]
     query = Entity.query.order_by(Entity.name)
     query = query_utils.apply_criterions_to_db_query(Entity, query, criterions)
@@ -210,7 +169,7 @@ def get_shots(criterions=None):
     """
     if criterions is None:
         criterions = {}
-    shot_type = get_shot_type()
+    shot_type = entity_types_service.get_shot_type()
     criterions["entity_type_id"] = shot_type["id"]
     Sequence = aliased(Entity, name="sequence")
     is_only_assignation = "assigned_to" in criterions
@@ -228,7 +187,7 @@ def get_shots(criterions=None):
 
     if is_only_assignation:
         query = query.outerjoin(Task, Task.entity_id == Entity.id)
-        query = query.filter(user_service.build_assignee_filter())
+        query = query.filter(persons_service.build_assignee_filter())
 
     try:
         data = query.all()
@@ -258,7 +217,7 @@ def get_scenes(criterions=None):
     """
     if criterions is None:
         criterions = {}
-    scene_type = get_scene_type()
+    scene_type = entity_types_service.get_scene_type()
     criterions["entity_type_id"] = scene_type["id"]
     Sequence = aliased(Entity, name="sequence")
 
@@ -277,7 +236,7 @@ def get_scenes(criterions=None):
 
     if is_only_assignation:
         query = query.outerjoin(Task, Task.entity_id == Entity.id)
-        query = query.filter(user_service.build_assignee_filter())
+        query = query.filter(persons_service.build_assignee_filter())
 
     try:
         data = query.all()
@@ -315,8 +274,8 @@ def prepare_shots_and_tasks(criterions=None, compact=False):
 
     if criterions is None:
         criterions = {}
-    shot_type = get_shot_type()
-    subscription_map = notifications_service.get_subscriptions_for_user(
+    shot_type = entity_types_service.get_shot_type()
+    subscription_map = subscriptions_service.get_subscriptions_for_user(
         criterions.get("project_id", None), shot_type["id"]
     )
 
@@ -341,7 +300,7 @@ def prepare_shots_and_tasks(criterions=None, compact=False):
             has_assigned_task = (
                 db.session.query(Task.id)
                 .filter(Task.entity_id == Entity.id)
-                .filter(user_service.build_assignee_filter())
+                .filter(persons_service.build_assignee_filter())
                 .exists()
             )
             query = query.filter(has_assigned_task)
@@ -494,7 +453,10 @@ def get_shot_raw(shot_id):
     Return given shot as an active record.
     """
     return base_service.get_typed_instance(
-        Entity, shot_id, get_shot_type()["id"], ShotNotFoundException
+        Entity,
+        shot_id,
+        entity_types_service.get_shot_type()["id"],
+        ShotNotFoundException,
     )
 
 
@@ -529,7 +491,10 @@ def get_scene_raw(scene_id):
     Return given scene as an active record.
     """
     return base_service.get_typed_instance(
-        Entity, scene_id, get_scene_type()["id"], SceneNotFoundException
+        Entity,
+        scene_id,
+        entity_types_service.get_scene_type()["id"],
+        SceneNotFoundException,
     )
 
 
@@ -566,7 +531,7 @@ def get_sequence_raw(sequence_id):
     return base_service.get_typed_instance(
         Entity,
         sequence_id,
-        get_sequence_type()["id"],
+        entity_types_service.get_sequence_type()["id"],
         SequenceNotFoundException,
     )
 
@@ -618,7 +583,10 @@ def get_episode_raw(episode_id):
     Return given episode as an active record.
     """
     return base_service.get_typed_instance(
-        Entity, episode_id, get_episode_type()["id"], EpisodeNotFoundException
+        Entity,
+        episode_id,
+        entity_types_service.get_episode_type()["id"],
+        EpisodeNotFoundException,
     )
 
 
@@ -636,7 +604,7 @@ def get_episode_by_name(project_id, episode_name):
     Get episode matching given name project_id. Raises an exception if episode
     is not found.
     """
-    episode_type_id = get_episode_type()["id"]
+    episode_type_id = entity_types_service.get_episode_type()["id"]
     episode = (
         Entity.query.filter(Entity.entity_type_id == episode_type_id)
         .filter(Entity.project_id == project_id)
@@ -680,7 +648,7 @@ def get_shot_by_shotgun_id(shotgun_id):
     Retrieves a shot identifed by its shotgun ID (stored during import).
     """
     return _get_typed_entity_by_shotgun_id(
-        get_shot_type(), shotgun_id, ShotNotFoundException
+        entity_types_service.get_shot_type(), shotgun_id, ShotNotFoundException
     ).serialize(obj_type="Shot")
 
 
@@ -689,7 +657,9 @@ def get_scene_by_shotgun_id(shotgun_id):
     Retrieves a scene identifed by its shotgun ID (stored during import).
     """
     return _get_typed_entity_by_shotgun_id(
-        get_scene_type(), shotgun_id, SceneNotFoundException
+        entity_types_service.get_scene_type(),
+        shotgun_id,
+        SceneNotFoundException,
     ).serialize(obj_type="Scene")
 
 
@@ -698,7 +668,9 @@ def get_sequence_by_shotgun_id(shotgun_id):
     Retrieves a sequence identifed by its shotgun ID (stored during import).
     """
     return _get_typed_entity_by_shotgun_id(
-        get_sequence_type(), shotgun_id, SequenceNotFoundException
+        entity_types_service.get_sequence_type(),
+        shotgun_id,
+        SequenceNotFoundException,
     ).serialize(obj_type="Sequence")
 
 
@@ -707,54 +679,17 @@ def get_episode_by_shotgun_id(shotgun_id):
     Retrieves an episode identifed by its shotgun ID (stored during import).
     """
     return _get_typed_entity_by_shotgun_id(
-        get_episode_type(), shotgun_id, EpisodeNotFoundException
+        entity_types_service.get_episode_type(),
+        shotgun_id,
+        EpisodeNotFoundException,
     ).serialize(obj_type="Episode")
-
-
-def is_shot(entity):
-    """
-    Returns True if given entity has 'Shot' as entity type
-    """
-    shot_type = get_shot_type()
-    return str(entity["entity_type_id"]) == shot_type["id"]
-
-
-def is_scene(entity):
-    """
-    Returns True if given entity has 'Scene' as entity type
-    """
-    scene_type = get_scene_type()
-    return str(entity["entity_type_id"]) == scene_type["id"]
-
-
-def is_sequence(entity):
-    """
-    Returns True if given entity has 'Sequence' as entity type
-    """
-    sequence_type = get_sequence_type()
-    return str(entity["entity_type_id"]) == sequence_type["id"]
-
-
-def is_edit(entity):
-    """
-    Returns True if given entity has 'Edit' as entity type
-    """
-    return entities_service.is_edit(entity)
-
-
-def is_episode(entity):
-    """
-    Returns True if given entity has 'Episode' as entity type
-    """
-    episode_type = get_episode_type()
-    return str(entity["entity_type_id"]) == episode_type["id"]
 
 
 def get_or_create_first_episode(project_id, created_by=None):
     """
     Get the first episode of the production.
     """
-    episode_type = get_episode_type()
+    episode_type = entity_types_service.get_episode_type()
     episode = (
         Entity.query.filter_by(
             project_id=project_id, entity_type_id=episode_type["id"]
@@ -781,7 +716,7 @@ def get_episodes_for_project(project_id, only_assigned=False):
             .join(Shot, Sequence.id == Shot.parent_id)
             .join(Task, Shot.id == Task.entity_id)
             .filter(Entity.project_id == project_id)
-            .filter(user_service.build_assignee_filter())
+            .filter(persons_service.build_assignee_filter())
         )
         shot_episodes = fields.serialize_models(query.all())
         shot_episode_ids = {episode["id"]: True for episode in shot_episodes}
@@ -789,7 +724,7 @@ def get_episodes_for_project(project_id, only_assigned=False):
             Entity.query.join(Asset, Entity.id == Asset.source_id)
             .join(Task, Asset.id == Task.entity_id)
             .filter(Entity.project_id == project_id)
-            .filter(user_service.build_assignee_filter())
+            .filter(persons_service.build_assignee_filter())
         )
         asset_episodes = fields.serialize_models(query.all())
         result = shot_episodes
@@ -799,7 +734,9 @@ def get_episodes_for_project(project_id, only_assigned=False):
         return result
     else:
         return entities_service.get_entities_for_project(
-            project_id, get_episode_type()["id"], "Episode"
+            project_id,
+            entity_types_service.get_episode_type()["id"],
+            "Episode",
         )
 
 
@@ -813,12 +750,14 @@ def get_sequences_for_project(project_id, only_assigned=False):
             Entity.query.join(Shot, Entity.id == Shot.parent_id)
             .join(Task, Shot.id == Task.entity_id)
             .filter(Entity.project_id == project_id)
-            .filter(user_service.build_assignee_filter())
+            .filter(persons_service.build_assignee_filter())
         )
         return fields.serialize_models(query.all())
     else:
         return entities_service.get_entities_for_project(
-            project_id, get_sequence_type()["id"], "Sequence"
+            project_id,
+            entity_types_service.get_sequence_type()["id"],
+            "Sequence",
         )
 
 
@@ -832,7 +771,7 @@ def get_sequences_for_episode(episode_id, only_assigned=False):
             Entity.query.join(Shot, Entity.id == Shot.parent_id)
             .join(Task, Shot.id == Task.entity_id)
             .filter(Entity.parent_id == episode_id)
-            .filter(user_service.build_assignee_filter())
+            .filter(persons_service.build_assignee_filter())
         )
         return fields.serialize_models(query.all())
     else:
@@ -844,7 +783,10 @@ def get_shots_for_project(project_id, only_assigned=False):
     Retrieve all shots related to given project.
     """
     return entities_service.get_entities_for_project(
-        project_id, get_shot_type()["id"], "Shot", only_assigned=only_assigned
+        project_id,
+        entity_types_service.get_shot_type()["id"],
+        "Shot",
+        only_assigned=only_assigned,
     )
 
 
@@ -853,7 +795,7 @@ def get_shots_for_episode(episode_id, relations=False):
     Get all shots for given episode.
     """
     Sequence = aliased(Entity, name="sequence")
-    shot_type_id = get_shot_type()["id"]
+    shot_type_id = entity_types_service.get_shot_type()["id"]
     result = (
         Entity.query.filter(Entity.entity_type_id == shot_type_id)
         .filter(Sequence.parent_id == episode_id)
@@ -868,7 +810,7 @@ def get_scenes_for_project(project_id, only_assigned=False):
     """
     return entities_service.get_entities_for_project(
         project_id,
-        get_scene_type()["id"],
+        entity_types_service.get_scene_type()["id"],
         "Scene",
         only_assigned=only_assigned,
     )
@@ -879,7 +821,7 @@ def get_scenes_for_sequence(sequence_id):
     Retrieve all scenes children of given sequence.
     """
     get_sequence(sequence_id)
-    scene_type_id = get_scene_type()["id"]
+    scene_type_id = entity_types_service.get_scene_type()["id"]
     result = (
         Entity.query.filter(Entity.entity_type_id == scene_type_id)
         .filter(Entity.parent_id == sequence_id)
@@ -957,11 +899,13 @@ def remove_sequence(sequence_id, force=False):
         # Scenes hang from a sequence too, and remove_shot would raise on
         # one halfway through, after taking part of the sequence away.
         for shot in Entity.get_all_by(
-            parent_id=sequence_id, entity_type_id=get_shot_type()["id"]
+            parent_id=sequence_id,
+            entity_type_id=entity_types_service.get_shot_type()["id"],
         ):
             remove_shot(shot.id, force=True)
         for scene in Entity.get_all_by(
-            parent_id=sequence_id, entity_type_id=get_scene_type()["id"]
+            parent_id=sequence_id,
+            entity_type_id=entity_types_service.get_scene_type()["id"],
         ):
             remove_scene(scene.id)
         Subscription.delete_all_by(entity_id=sequence_id)
@@ -998,7 +942,7 @@ def create_episode(
     """
     if data is None:
         data = {}
-    episode_type = get_episode_type()
+    episode_type = entity_types_service.get_episode_type()
     episode = Entity.get_by(
         entity_type_id=episode_type["id"], project_id=project_id, name=name
     )
@@ -1028,7 +972,7 @@ def create_sequence(
     """
     if data is None:
         data = {}
-    sequence_type = get_sequence_type()
+    sequence_type = entity_types_service.get_sequence_type()
 
     if episode_id is not None:
         episode = get_episode(episode_id)  # raises if it fails.
@@ -1073,7 +1017,7 @@ def create_shot(
     """
     if data is None:
         data = {}
-    shot_type = get_shot_type()
+    shot_type = entity_types_service.get_shot_type()
 
     sequence = None
     if sequence_id is not None:
@@ -1126,7 +1070,7 @@ def create_scene(project_id, sequence_id, name, created_by=None):
     """
     Create scene for given project and sequence.
     """
-    scene_type = get_scene_type()
+    scene_type = entity_types_service.get_scene_type()
 
     if sequence_id is not None:
         # raises SequenceNotFound if it fails.
@@ -1197,31 +1141,6 @@ def get_last_shot_version_raw(shot_id):
     )
 
 
-def get_base_entity_type_name(entity_dict):
-    """
-    Return the entity type name of given entity, as the API names it:
-    Shot, Sequence, Episode, Edit, Concept, ConceptFolder, or Asset for
-    everything else.
-    """
-    type_name = "Asset"
-    if is_shot(entity_dict):
-        type_name = "Shot"
-    elif is_sequence(entity_dict):
-        type_name = "Sequence"
-    elif is_edit(entity_dict):
-        type_name = "Edit"
-    elif is_episode(entity_dict):
-        type_name = "Episode"
-    elif is_scene(entity_dict):
-        type_name = "Scene"
-    elif concepts_service.is_concept(entity_dict):
-        type_name = "Concept"
-    elif concepts_service.is_concept_folder(entity_dict):
-        type_name = "ConceptFolder"
-
-    return type_name
-
-
 def get_weighted_quotas(
     project_id,
     task_type_id=None,
@@ -1244,8 +1163,8 @@ def get_weighted_quotas(
     (done_date).
     """
     fps = projects_service.get_project_fps(project_id)
-    timezone = user_service.get_timezone()
-    shot_type = get_shot_type()
+    timezone = persons_service.get_timezone()
+    shot_type = entity_types_service.get_shot_type()
     quotas = {}
     query = (
         Task.query.filter(Entity.entity_type_id == shot_type["id"])
@@ -1383,8 +1302,8 @@ def get_raw_quotas(
     It computes the shot count and the number of seconds too.
     """
     fps = projects_service.get_project_fps(project_id)
-    timezone = user_service.get_timezone()
-    shot_type = get_shot_type()
+    timezone = persons_service.get_timezone()
+    shot_type = entity_types_service.get_shot_type()
     quotas = {}
     query = (
         Task.query.filter(Task.project_id == project_id)
@@ -1687,7 +1606,7 @@ def get_weighted_quota_shots_between(
     before comparing (a feedback given in the local evening east of UTC
     belongs to the next local day).
     """
-    shot_type = get_shot_type()
+    shot_type = entity_types_service.get_shot_type()
     person = persons_service.get_person_raw(person_id)
     shots = []
     already_listed = {}
@@ -1805,7 +1724,7 @@ def get_raw_quota_shots_between(
     dates are UTC instants, so the bounds are converted to UTC before
     comparing.
     """
-    shot_type = get_shot_type()
+    shot_type = entity_types_service.get_shot_type()
     person = persons_service.get_person_raw(person_id)
     shots = []
     if type(start) is str:
@@ -1855,7 +1774,7 @@ def _get_timezoned_interval(start, end, timezone=None):
     Convert an interval expressed in the user's local time to naive UTC.
     """
     if timezone is None:
-        timezone = user_service.get_timezone()
+        timezone = persons_service.get_timezone()
     return date_helpers.get_timezoned_interval(start, end, timezone)
 
 
@@ -1863,7 +1782,9 @@ def get_all_raw_shots():
     """
     Get all shots from the database.
     """
-    query = Entity.query.filter(Entity.entity_type_id == get_shot_type()["id"])
+    query = Entity.query.filter(
+        Entity.entity_type_id == entity_types_service.get_shot_type()["id"]
+    )
     return query.all()
 
 
@@ -1879,7 +1800,7 @@ def set_frames_from_task_type_preview_files(
     """
     from zou.app import db
 
-    shot_type = get_shot_type()
+    shot_type = entity_types_service.get_shot_type()
     Shot = aliased(Entity)
     Sequence = aliased(Entity)
 

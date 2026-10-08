@@ -30,6 +30,9 @@ from zou.app.services import (
     permissions_service,
     user_service,
     concepts_service,
+    entity_types_service,
+    subscriptions_service,
+    task_types_service,
 )
 from zou.app.utils import (
     events,
@@ -278,7 +281,7 @@ class CreateShotTasksResource(MethodView):
         Create shot tasks
         """
         permissions_service.check_manager_project_access(project_id)
-        task_type = tasks_service.get_task_type(task_type_id)
+        task_type = task_types_service.get_task_type(task_type_id)
 
         shot_ids = validation.validate_id_list(required=False)
         shots = []
@@ -310,7 +313,7 @@ class CreateConceptTasksResource(MethodView):
             or permissions.has_client_permissions()
         ):
             raise permissions.PermissionDenied
-        task_type = tasks_service.get_task_type(task_type_id)
+        task_type = task_types_service.get_task_type(task_type_id)
 
         concept_ids = validation.validate_id_list(required=False)
         concepts = []
@@ -340,9 +343,9 @@ class CreateEntityTasksResource(MethodView):
         Create entity tasks
         """
         permissions_service.check_manager_project_access(project_id)
-        task_type = tasks_service.get_task_type(task_type_id)
+        task_type = task_types_service.get_task_type(task_type_id)
         entity_type_dict = (
-            entities_service.get_entity_type_by_name_or_not_found(
+            entity_types_service.get_entity_type_by_name_or_not_found(
                 entity_type.capitalize()
             )
         )
@@ -374,7 +377,7 @@ class CreateAssetTasksResource(MethodView):
         Create asset tasks
         """
         permissions_service.check_manager_project_access(project_id)
-        task_type = tasks_service.get_task_type(task_type_id)
+        task_type = task_types_service.get_task_type(task_type_id)
 
         asset_ids = validation.validate_id_list(required=False)
         assets = []
@@ -401,7 +404,7 @@ class CreateEditTasksResource(MethodView):
         Create edit tasks
         """
         permissions_service.check_manager_project_access(project_id)
-        task_type = tasks_service.get_task_type(task_type_id)
+        task_type = task_types_service.get_task_type(task_type_id)
 
         edit_ids = validation.validate_id_list(required=False)
         edits = []
@@ -766,7 +769,7 @@ class ProjectSubscriptionsResource(MethodView):
         Get project subscriptions
         """
         projects_service.get_project(project_id)
-        return notifications_service.get_subscriptions_for_project(project_id)
+        return subscriptions_service.get_subscriptions_for_project(project_id)
 
 
 class ProjectNotificationsResource(MethodView, ArgsMixin):

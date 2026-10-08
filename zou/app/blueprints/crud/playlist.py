@@ -69,7 +69,7 @@ class PlaylistsResource(BaseModelsResource):
                 )
             )
         return query.filter(
-            user_service.build_team_exists_filter(Playlist.project_id)
+            persons_service.build_team_exists_filter(Playlist.project_id)
         )
 
     @jwt_required()

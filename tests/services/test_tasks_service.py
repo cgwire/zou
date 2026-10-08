@@ -23,6 +23,8 @@ from zou.app.services import (
     persons_service,
     projects_service,
     tasks_service,
+    departments_service,
+    task_types_service,
 )
 from zou.app.utils import fields
 
@@ -89,7 +91,7 @@ class TaskCreationTestCase(TaskTestCase):
     def test_create_task(self):
         shot = self.shot.serialize()
         task_type = self.task_type.serialize()
-        status = tasks_service.get_default_task_status()
+        status = task_types_service.get_default_task_status()
 
         task = tasks_service.create_task(task_type, shot)
 
@@ -103,7 +105,7 @@ class TaskCreationTestCase(TaskTestCase):
         shot = self.shot.serialize()
         shot_2 = self.generate_fixture_shot("S02").serialize()
         task_type = self.task_type.serialize()
-        status = tasks_service.get_default_task_status()
+        status = task_types_service.get_default_task_status()
 
         tasks = tasks_service.create_tasks(task_type, [shot, shot_2])
 
@@ -295,11 +297,11 @@ class TaskReaderTestCase(TaskTestCase):
         studio = Studio.create(name="Blue Spirit", color="#000000")
 
         self.assertEqual(
-            tasks_service.get_studio(studio.id)["name"], "Blue Spirit"
+            task_types_service.get_studio(studio.id)["name"], "Blue Spirit"
         )
         self.assertRaises(
             StudioNotFoundException,
-            tasks_service.get_studio,
+            task_types_service.get_studio,
             fields.gen_uuid(),
         )
 
@@ -569,7 +571,7 @@ class PersonTaskTestCase(TaskTestCase):
             tasks_service.get_person_done_tasks(self.user["id"], projects), []
         )
 
-        done_status = tasks_service.get_or_create_task_status(
+        done_status = task_types_service.get_or_create_task_status(
             "Done", "done", "#22d160", is_done=True
         )
         tasks_service.update_task(
@@ -875,22 +877,22 @@ class ResetTaskDataTestCase(ApiDBTestCase):
 class GetOrCreateTaskTypeTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
-        self.department = tasks_service.get_or_create_department(
+        self.department = departments_service.get_or_create_department(
             "Concept", "#8D6E63"
         )
 
     def test_create_when_missing(self):
-        task_type = tasks_service.get_or_create_task_type(
+        task_type = task_types_service.get_or_create_task_type(
             self.department, "Concept", "#8D6E63", 1
         )
         self.assertIsNotNone(task_type["id"])
         self.assertEqual(task_type["for_entity"], "Asset")
 
     def test_return_existing_with_same_name_and_entity(self):
-        first = tasks_service.get_or_create_task_type(
+        first = task_types_service.get_or_create_task_type(
             self.department, "Concept", "#8D6E63", 1
         )
-        second = tasks_service.get_or_create_task_type(
+        second = task_types_service.get_or_create_task_type(
             self.department, "Concept", "#8D6E63", 1
         )
         self.assertEqual(first["id"], second["id"])
@@ -902,10 +904,10 @@ class GetOrCreateTaskTypeTestCase(ApiDBTestCase):
         only by case is the same task type, and the existing row keeps
         its name.
         """
-        first = tasks_service.get_or_create_task_type(
+        first = task_types_service.get_or_create_task_type(
             self.department, "Concept", "#8D6E63", 1
         )
-        second = tasks_service.get_or_create_task_type(
+        second = task_types_service.get_or_create_task_type(
             self.department, "CONCEPT", "#8D6E63", 1
         )
         self.assertEqual(first["id"], second["id"])
@@ -913,10 +915,10 @@ class GetOrCreateTaskTypeTestCase(ApiDBTestCase):
         self.assertEqual(TaskType.get_all_by(name="CONCEPT"), [])
 
     def test_same_name_different_for_entity_coexist(self):
-        asset_type = tasks_service.get_or_create_task_type(
+        asset_type = task_types_service.get_or_create_task_type(
             self.department, "Concept", "#8D6E63", 1
         )
-        concept_type = tasks_service.get_or_create_task_type(
+        concept_type = task_types_service.get_or_create_task_type(
             self.department, "Concept", "#8D6E63", 1, for_entity="Concept"
         )
         self.assertNotEqual(asset_type["id"], concept_type["id"])
@@ -925,15 +927,15 @@ class GetOrCreateTaskTypeTestCase(ApiDBTestCase):
         self.assertEqual(len(TaskType.get_all_by(name="Concept")), 2)
 
     def test_a_new_task_type_joins_the_listing(self):
-        tasks_service.get_task_types()
+        task_types_service.get_task_types()
 
-        task_type = tasks_service.get_or_create_task_type(
+        task_type = task_types_service.get_or_create_task_type(
             self.department, "Concept", "#8D6E63", 1
         )
 
         self.assertIn(
             task_type["id"],
-            [listed["id"] for listed in tasks_service.get_task_types()],
+            [listed["id"] for listed in task_types_service.get_task_types()],
         )
 
 
@@ -953,44 +955,47 @@ class TaskStatusTestCase(ApiDBTestCase):
         self.generate_fixture_task_status_to_review()
 
     def test_get_status(self):
-        task_status = tasks_service.get_or_create_task_status(
+        task_status = task_types_service.get_or_create_task_status(
             "WIP", "wip", is_wip=True
         )
         self.assertEqual(task_status["name"], "WIP")
 
     def test_get_wip_status(self):
-        task_status = tasks_service.get_or_create_task_status(
+        task_status = task_types_service.get_or_create_task_status(
             "Work In Progress", "wip", "#3273dc", is_wip=True
         )
         self.assertEqual(task_status["name"], "WIP")
 
     def test_get_done_status(self):
-        task_status = tasks_service.get_or_create_task_status(
+        task_status = task_types_service.get_or_create_task_status(
             "Done", "done", "#22d160", is_done=True
         )
         self.assertEqual(task_status["name"], "Done")
 
     def test_get_todo_status(self):
-        task_status = tasks_service.get_default_task_status()
+        task_status = task_types_service.get_default_task_status()
         self.assertEqual(task_status["is_default"], True)
 
     def test_get_to_review_status(self):
-        task_status = tasks_service.get_to_review_status()
+        task_status = task_types_service.get_to_review_status()
         self.assertEqual(task_status["name"], "To review")
 
     def test_a_new_status_joins_the_listing(self):
         # The listing is memoized and feeds the status dropdowns of every
         # client, so a status created outside the CRUD route has to drop it
         # too.
-        tasks_service.get_task_statuses()
+        task_types_service.get_task_statuses()
 
-        task_status = tasks_service.get_or_create_task_status(
+        task_status = task_types_service.get_or_create_task_status(
             "Omitted", "omt", "#22d160"
         )
 
         self.assertIn(
             task_status["id"],
-            [listed["id"] for listed in tasks_service.get_task_statuses()],
+            [
+                listed["id"]
+                for listed in task_types_service.get_task_statuses()
+            ],
         )
 
 

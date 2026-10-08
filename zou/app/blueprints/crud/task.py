@@ -17,9 +17,10 @@ from zou.app.services import (
     tasks_service,
     deletion_service,
     entities_service,
-    assets_service,
     notifications_service,
     persons_service,
+    entity_types_service,
+    task_types_service,
 )
 from zou.app.utils import events, fields, permissions
 
@@ -56,7 +57,7 @@ class TasksResource(BaseModelsResource, ArgsMixin):
 
     def add_project_permission_filter(self, query):
         if permissions.has_vendor_permissions():
-            query = query.filter(user_service.build_assignee_filter())
+            query = query.filter(persons_service.build_assignee_filter())
         elif not permissions.has_admin_permissions():
             query = query.join(Project).filter(
                 user_service.build_related_projects_filter()
@@ -122,15 +123,15 @@ class TasksResource(BaseModelsResource, ArgsMixin):
             if is_assignees and not isinstance(data["assignees"], list):
                 raise WrongParameterException("assignees must be a list.")
 
-            task_type = tasks_service.get_task_type(data["task_type_id"])
+            task_type = task_types_service.get_task_type(data["task_type_id"])
             entity = entities_service.get_entity(data["entity_id"])
             if task_type["for_entity"] == "Asset":
-                if not assets_service.is_asset_dict(entity):
+                if not entity_types_service.is_asset_dict(entity):
                     raise WrongTaskTypeForEntityException(
                         "Task type of the task does not match entity type."
                     )
             elif (
-                entities_service.get_temporal_entity_type_by_name(
+                entity_types_service.get_temporal_entity_type_by_name(
                     task_type["for_entity"]
                 )["id"]
                 != entity["entity_type_id"]

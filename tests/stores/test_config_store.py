@@ -2,7 +2,10 @@ from tests.base import ApiDBTestCase
 
 from zou.app import config
 from zou.app.stores import config_store
-from zou.app.services import persons_service
+from zou.app.services import (
+    persons_service,
+    organisation_service,
+)
 
 
 class ConfigStoreTestCase(ApiDBTestCase):
@@ -44,10 +47,10 @@ class ConfigStoreTestCase(ApiDBTestCase):
 
     def test_persons_service_get_user_limit(self):
         """
-        persons_service.get_user_limit reads from Redis.
+        organisation_service.get_user_limit reads from Redis.
         """
         config_store.config_store.set(config_store.USER_LIMIT_KEY, 77)
-        self.assertEqual(persons_service.get_user_limit(), 77)
+        self.assertEqual(organisation_service.get_user_limit(), 77)
 
     def test_is_user_limit_reached_with_redis(self):
         """
@@ -116,12 +119,14 @@ class ConfigStoreTestCase(ApiDBTestCase):
 
     def test_persons_service_get_default_timezone(self):
         """
-        persons_service.get_default_timezone reads from Redis.
+        organisation_service.get_default_timezone reads from Redis.
         """
         config_store.config_store.set(
             config_store.DEFAULT_TIMEZONE_KEY, "Asia/Tokyo"
         )
-        self.assertEqual(persons_service.get_default_timezone(), "Asia/Tokyo")
+        self.assertEqual(
+            organisation_service.get_default_timezone(), "Asia/Tokyo"
+        )
 
     def test_config_returns_redis_timezone(self):
         """
@@ -153,10 +158,10 @@ class ConfigStoreTestCase(ApiDBTestCase):
 
     def test_persons_service_get_default_locale(self):
         """
-        persons_service.get_default_locale reads from Redis.
+        organisation_service.get_default_locale reads from Redis.
         """
         config_store.config_store.set(config_store.DEFAULT_LOCALE_KEY, "de_DE")
-        self.assertEqual(persons_service.get_default_locale(), "de_DE")
+        self.assertEqual(organisation_service.get_default_locale(), "de_DE")
 
     def test_config_returns_redis_locale(self):
         """

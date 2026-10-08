@@ -8,6 +8,7 @@ from zou.app.services import (
     deletion_service,
     entities_service,
     projects_service,
+    entity_types_service,
 )
 
 from zou.app.exceptions import (
@@ -34,51 +35,51 @@ class EntityTypeTestCase(ApiDBTestCase):
 
     def test_get_entity_type(self):
         self.assertEqual(
-            entities_service.get_entity_type(self.asset_type.id),
+            entity_types_service.get_entity_type(self.asset_type.id),
             self.asset_type.serialize(),
         )
 
         with pytest.raises(EntityTypeNotFoundException):
-            entities_service.get_entity_type(UNKNOWN)
+            entity_types_service.get_entity_type(UNKNOWN)
 
     def test_get_entity_type_by_name(self):
         self.assertEqual(
-            entities_service.get_entity_type_by_name(self.asset_type.name),
+            entity_types_service.get_entity_type_by_name(self.asset_type.name),
             self.asset_type.serialize(),
         )
 
     def test_get_entity_type_by_name_creates_what_it_cannot_find(self):
-        entity_type = entities_service.get_entity_type_by_name("Matte")
+        entity_type = entity_types_service.get_entity_type_by_name("Matte")
 
         self.assertEqual(entity_type["name"], "Matte")
         self.assertEqual(
-            entities_service.get_entity_type_by_name("Matte")["id"],
+            entity_types_service.get_entity_type_by_name("Matte")["id"],
             entity_type["id"],
         )
 
     def test_get_entity_type_by_name_or_not_found(self):
         self.assertEqual(
-            entities_service.get_entity_type_by_name_or_not_found(
+            entity_types_service.get_entity_type_by_name_or_not_found(
                 self.asset_type.name
             )["id"],
             str(self.asset_type.id),
         )
 
         with pytest.raises(EntityTypeNotFoundException):
-            entities_service.get_entity_type_by_name_or_not_found("Matte")
+            entity_types_service.get_entity_type_by_name_or_not_found("Matte")
 
     def test_a_renamed_type_is_read_again_after_the_cache_is_dropped(self):
-        entities_service.get_entity_type(self.asset_type.id)
+        entity_types_service.get_entity_type(self.asset_type.id)
 
         self.asset_type.update({"name": "Sets"})
-        entities_service.clear_entity_type_cache(str(self.asset_type.id))
+        entity_types_service.clear_entity_type_cache(str(self.asset_type.id))
 
         self.assertEqual(
-            entities_service.get_entity_type(self.asset_type.id)["name"],
+            entity_types_service.get_entity_type(self.asset_type.id)["name"],
             "Sets",
         )
         self.assertEqual(
-            entities_service.get_entity_type_by_name("Sets")["id"],
+            entity_types_service.get_entity_type_by_name("Sets")["id"],
             str(self.asset_type.id),
         )
 
@@ -90,18 +91,22 @@ class EntityTypeTestCase(ApiDBTestCase):
         first half is pinned here.
         """
         self.assertEqual(
-            entities_service.get_temporal_entity_type_by_name("Edit")["name"],
+            entity_types_service.get_temporal_entity_type_by_name("Edit")[
+                "name"
+            ],
             "Edit",
         )
 
     def test_is_edit(self):
-        edit_type = entities_service.get_temporal_entity_type_by_name("Edit")
+        edit_type = entity_types_service.get_temporal_entity_type_by_name(
+            "Edit"
+        )
 
         self.assertTrue(
-            entities_service.is_edit({"entity_type_id": edit_type["id"]})
+            entity_types_service.is_edit({"entity_type_id": edit_type["id"]})
         )
         self.assertFalse(
-            entities_service.is_edit(
+            entity_types_service.is_edit(
                 {"entity_type_id": str(self.asset_type.id)}
             )
         )

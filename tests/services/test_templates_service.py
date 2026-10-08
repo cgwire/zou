@@ -2,7 +2,10 @@ import unittest
 
 from unittest import mock
 
-from zou.app.services import templates_service
+from zou.app.services import (
+    templates_service,
+    organisation_service,
+)
 
 
 class TemplatesServiceTestCase(unittest.TestCase):
@@ -15,7 +18,7 @@ class TemplatesServiceTestCase(unittest.TestCase):
 
     def setUp(self):
         self.organisation = mock.patch.object(
-            templates_service.persons_service,
+            organisation_service,
             "get_organisation",
             return_value={"name": "Ghost Studio"},
         ).start()

@@ -20,7 +20,8 @@ from zou.app.services import (
     index_service,
     projects_service,
     shots_service,
-    tasks_service,
+    entity_types_service,
+    task_types_service,
 )
 
 
@@ -78,7 +79,7 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         entities = Entity.query.all()
         self.assertEqual(len(entities), 3)
 
-        asset_types = assets_service.get_asset_types()
+        asset_types = entity_types_service.get_asset_types()
         self.assertEqual(len(asset_types), 2)
 
         tasks = Task.query.all()
@@ -127,8 +128,10 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         task_types = self.link_asset_task_types_to_project()
         self.generate_fixture_task_status_wip()
         # The status list the importer matches columns against is memoized.
-        tasks_service.clear_task_status_cache(str(self.task_status_wip.id))
-        default_status_id = tasks_service.get_default_task_status()["id"]
+        task_types_service.clear_task_status_cache(
+            str(self.task_status_wip.id)
+        )
+        default_status_id = task_types_service.get_default_task_status()["id"]
 
         path = f"/import/csv/projects/{self.project.id}/assets"
         file_path_fixture = self.get_fixture_file_path(
@@ -174,7 +177,7 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
 
     def test_import_assets_creates_tasks_of_rows_before_a_failing_one(self):
         task_types = self.link_asset_task_types_to_project()
-        default_status_id = tasks_service.get_default_task_status()["id"]
+        default_status_id = task_types_service.get_default_task_status()["id"]
 
         path = f"/import/csv/projects/{self.project.id}/assets"
         file_path_fixture = self.get_fixture_file_path(

@@ -14,6 +14,7 @@ from zou.app.services import (
     persons_service,
     projects_service,
     tasks_service,
+    task_types_service,
 )
 
 from zou.app.exceptions import PlaylistNotFoundException
@@ -631,7 +632,7 @@ class TaskAccessTestCase(PermissionsTestCase):
         """
         status = self.generate_fixture_task_status_wip()
         status.update({"is_artist_allowed": False, "is_client_allowed": False})
-        tasks_service.clear_task_status_cache(str(status.id))
+        task_types_service.clear_task_status_cache(str(status.id))
         return str(status.id)
 
     def test_a_client_may_not_use_a_status_closed_to_clients(self):
@@ -675,7 +676,7 @@ class TaskAccessTestCase(PermissionsTestCase):
     def test_a_manager_may_use_a_status_closed_to_artists(self):
         closed = self.generate_fixture_task_status_wip()
         closed.update({"is_artist_allowed": False, "is_client_allowed": False})
-        tasks_service.clear_task_status_cache(str(closed.id))
+        task_types_service.clear_task_status_cache(str(closed.id))
         self.join_team(self.a_user("manager"))
 
         with self.as_role("manager"):

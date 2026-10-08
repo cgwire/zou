@@ -35,6 +35,8 @@ from zou.app.services import (
     preview_files_service,
     tasks_service,
     permissions_service,
+    organisation_service,
+    task_types_service,
 )
 from zou.utils import movie
 from zou.app.utils import (
@@ -1469,13 +1471,13 @@ class OrganisationThumbnailResource(BaseThumbnailResource):
         BaseThumbnailResource.__init__(
             self,
             "organisations",
-            persons_service.get_organisation,
-            persons_service.update_organisation,
+            organisation_service.get_organisation,
+            organisation_service.update_organisation,
             thumbnail_utils.BIG_SQUARE_SIZE,
         )
 
     def is_exist(self, organisation_id):
-        self.model = persons_service.get_organisation()
+        self.model = organisation_service.get_organisation()
 
 
 class ProjectThumbnailResource(BaseThumbnailResource):
@@ -1598,7 +1600,7 @@ class UpdateAnnotationsResource(MethodView, ArgsMixin):
             )["departments"]
             if (
                 user_departments == []
-                or tasks_service.get_task_type(task["task_type_id"])[
+                or task_types_service.get_task_type(task["task_type_id"])[
                     "department_id"
                 ]
                 in user_departments

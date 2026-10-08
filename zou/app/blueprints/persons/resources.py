@@ -9,11 +9,11 @@ from flask_jwt_extended import jwt_required
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
     persons_service,
-    tasks_service,
     time_spents_service,
     shots_service,
     permissions_service,
     user_service,
+    departments_service,
 )
 from zou.app.utils import (
     permissions,
@@ -702,7 +702,7 @@ class AddToDepartmentResource(MethodView, ArgsMixin):
         department_id = str(body.department_id)
 
         try:
-            department = tasks_service.get_department(department_id)
+            department = departments_service.get_department(department_id)
         except DepartmentNotFoundException:
             raise WrongParameterException(
                 "Department ID matches no department"
@@ -721,7 +721,7 @@ class RemoveFromDepartmentResource(MethodView, ArgsMixin):
         """
         permissions.check_admin_permissions()
         try:
-            tasks_service.get_department(department_id)
+            departments_service.get_department(department_id)
         except DepartmentNotFoundException:
             raise WrongParameterException(
                 "Department ID matches no department"

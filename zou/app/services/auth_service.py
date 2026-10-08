@@ -18,7 +18,11 @@ from flask_jwt_extended import (
 from babel.dates import format_datetime
 
 
-from zou.app.services import persons_service, templates_service
+from zou.app.services import (
+    persons_service,
+    templates_service,
+    organisation_service,
+)
 from zou.app.models.person import Person, SENSITIVE_FIELDS
 from zou.app.exceptions import (
     EmailOTPAlreadyEnabledException,
@@ -476,7 +480,7 @@ def pre_enable_totp(person_id):
 
     person.totp_secret = pyotp.random_base32()
     totp = pyotp.TOTP(person.totp_secret)
-    organisation = persons_service.get_organisation()
+    organisation = organisation_service.get_organisation()
     totp_provisionning_uri = totp.provisioning_uri(
         name=person.email, issuer_name=f"Kitsu {organisation['name']}"
     )
@@ -576,7 +580,7 @@ def send_email_otp(person):
     auth_tokens_store.add(
         f"email-otp-count-{person['email']}", count, ttl=60 * 5
     )
-    organisation = persons_service.get_organisation()
+    organisation = organisation_service.get_organisation()
     locale = person.get("locale") or config.DEFAULT_LOCALE
     if hasattr(locale, "language"):
         locale = str(locale)

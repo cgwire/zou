@@ -41,6 +41,7 @@ from zou.app.services import (
     deletion_service,
     index_service,
     persons_service,
+    organisation_service,
 )
 from zou.app.utils import permissions, auth, date_helpers
 from zou.app.utils.fields import serialize_value
@@ -180,7 +181,7 @@ class PersonsResource(BaseModelsResource):
             raise WrongParameterException(
                 "User limit reached.",
                 {
-                    "limit": persons_service.get_user_limit(),
+                    "limit": organisation_service.get_user_limit(),
                 },
             )
         return permissions.check_admin_permissions()

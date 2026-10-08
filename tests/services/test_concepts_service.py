@@ -1,7 +1,10 @@
 from tests.base import ApiDBTestCase
 
 from zou.app.models.entity import Entity
-from zou.app.services import concepts_service
+from zou.app.services import (
+    concepts_service,
+    entity_types_service,
+)
 from zou.app.exceptions import ConceptNotFoundException
 
 
@@ -44,7 +47,7 @@ class ConceptsServiceTestCase(ApiDBTestCase):
         self.assertEqual(concept["description"], "A cool concept")
         self.assertEqual(
             concept["entity_type_id"],
-            concepts_service.get_concept_type()["id"],
+            entity_types_service.get_concept_type()["id"],
         )
 
     def test_create_concept_reuses_the_name_within_a_production(self):
@@ -191,8 +194,8 @@ class ConceptsServiceTestCase(ApiDBTestCase):
 
     def test_is_concept(self):
         concept = self.a_concept("Is Concept")
-        self.assertTrue(concepts_service.is_concept(concept))
+        self.assertTrue(entity_types_service.is_concept(concept))
 
         self.generate_fixture_asset()
         asset = self.asset.serialize()
-        self.assertFalse(concepts_service.is_concept(asset))
+        self.assertFalse(entity_types_service.is_concept(asset))

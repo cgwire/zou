@@ -17,6 +17,7 @@ from zou.app.services import (
     persons_service,
     shots_service,
     tasks_service,
+    entity_types_service,
 )
 from zou.app.utils import fields
 from zou.app.exceptions import (
@@ -69,7 +70,8 @@ class FirstEpisodeTestCase(ApiDBTestCase):
         self.assertEqual(episode["name"], "E01")
         self.assertEqual(episode["status"], "running")
         self.assertEqual(
-            episode["entity_type_id"], shots_service.get_episode_type()["id"]
+            episode["entity_type_id"],
+            entity_types_service.get_episode_type()["id"],
         )
 
 
@@ -106,11 +108,11 @@ class EntityTypeTestCase(ShotsTestCase):
 
     def test_each_temporal_type_is_named_after_itself(self):
         for get_type, name in [
-            (shots_service.get_shot_type, "Shot"),
-            (shots_service.get_sequence_type, "Sequence"),
-            (shots_service.get_episode_type, "Episode"),
-            (shots_service.get_scene_type, "Scene"),
-            (shots_service.get_edit_type, "Edit"),
+            (entity_types_service.get_shot_type, "Shot"),
+            (entity_types_service.get_sequence_type, "Sequence"),
+            (entity_types_service.get_episode_type, "Episode"),
+            (entity_types_service.get_scene_type, "Scene"),
+            (entity_types_service.get_edit_type, "Edit"),
         ]:
             with self.subTest(name=name):
                 self.assertEqual(get_type()["name"], name)
@@ -124,10 +126,10 @@ class EntityTypeTestCase(ShotsTestCase):
             "asset": self.asset,
         }
         predicates = {
-            "shot": shots_service.is_shot,
-            "sequence": shots_service.is_sequence,
-            "scene": shots_service.is_scene,
-            "episode": shots_service.is_episode,
+            "shot": entity_types_service.is_shot,
+            "sequence": entity_types_service.is_sequence,
+            "scene": entity_types_service.is_scene,
+            "episode": entity_types_service.is_episode,
         }
         for kind, is_kind in predicates.items():
             for name, entity in entities.items():
@@ -402,7 +404,7 @@ class ListingTestCase(ShotsTestCase):
         # caller comes from the request context, which a service test has
         # none of.
         with patch.object(
-            shots_service.user_service,
+            persons_service,
             "build_assignee_filter",
             return_value=Task.assignees.contains(
                 persons_service.get_person_raw(self.person.id)
@@ -584,7 +586,7 @@ class CreationTestCase(ShotsTestCase):
     def test_a_shot_created_twice_at_once_is_created_once(self):
         shot_name = "RACE_SHOT"
         parent_id = str(self.sequence.id)
-        shot_type = shots_service.get_shot_type()
+        shot_type = entity_types_service.get_shot_type()
         existing = Entity.create(
             entity_type_id=shot_type["id"],
             project_id=self.project.id,

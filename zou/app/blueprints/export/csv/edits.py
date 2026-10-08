@@ -7,9 +7,8 @@ from zou.app.services import (
     edits_service,
     projects_service,
     permissions_service,
-    user_service,
-    tasks_service,
     persons_service,
+    task_types_service,
 )
 from zou.app.utils import csv_utils
 
@@ -21,8 +20,8 @@ class EditsCsvExport(MethodView):
         """
         Export edits csv
         """
-        self.task_type_map = tasks_service.get_task_type_map()
-        self.task_status_map = tasks_service.get_task_status_map()
+        self.task_type_map = task_types_service.get_task_type_map()
+        self.task_status_map = task_types_service.get_task_status_map()
         self.persons_map = persons_service.get_persons_map()
 
         project = projects_service.get_project(project_id)

@@ -4,7 +4,11 @@ import hashlib
 from tests.base import ApiDBTestCase, TEST_FOLDER
 
 from zou.app.utils import fs, thumbnail
-from zou.app.services import assets_service, persons_service, projects_service
+from zou.app.services import (
+    assets_service,
+    projects_service,
+    organisation_service,
+)
 
 from PIL import Image
 
@@ -204,7 +208,7 @@ class RouteThumbnailTestCase(ApiDBTestCase):
         get_organisation() and ignores the id in the url when reading, so the
         round trip only holds for the one row the instance actually has.
         """
-        organisation_id = persons_service.get_organisation()["id"]
+        organisation_id = organisation_service.get_organisation()["id"]
         path = f"/pictures/thumbnails/organisations/{organisation_id}"
         self._upload_thumbnail(path)
 

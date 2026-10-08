@@ -25,8 +25,9 @@ from zou.app.services import (
     base_service,
     deletion_service,
     entities_service,
-    notifications_service,
-    user_service,
+    entity_types_service,
+    persons_service,
+    subscriptions_service,
 )
 from zou.app.exceptions import (
     EditNotFoundException,
@@ -63,20 +64,15 @@ def clear_edit_cache(edit_id):
     entities_service.clear_entity_cache(edit_id)
 
 
-@cache.memoize_function(1200)
-def get_edit_type():
-    """
-    Return the Edit entity type.
-    """
-    return entities_service.get_temporal_entity_type_by_name("Edit")
-
-
 def get_edit_raw(edit_id):
     """
     Return given edit as an active record.
     """
     return base_service.get_typed_instance(
-        Entity, edit_id, get_edit_type()["id"], EditNotFoundException
+        Entity,
+        edit_id,
+        entity_types_service.get_edit_type()["id"],
+        EditNotFoundException,
     )
 
 
@@ -107,7 +103,7 @@ def get_edits(criterions=None):
     """
     if criterions is None:
         criterions = {}
-    edit_type = get_edit_type()
+    edit_type = entity_types_service.get_edit_type()
     criterions["entity_type_id"] = edit_type["id"]
     is_only_assignation = "assigned_to" in criterions
     if is_only_assignation:
@@ -119,7 +115,7 @@ def get_edits(criterions=None):
 
     if is_only_assignation:
         query = query.outerjoin(Task, Task.entity_id == Entity.id)
-        query = query.filter(user_service.build_assignee_filter())
+        query = query.filter(persons_service.build_assignee_filter())
 
     try:
         data = query.all()
@@ -146,8 +142,8 @@ def get_edits_and_tasks(criterions=None):
     """
     if criterions is None:
         criterions = {}
-    edit_type = get_edit_type()
-    subscription_map = notifications_service.get_subscriptions_for_user(
+    edit_type = entity_types_service.get_edit_type()
+    subscription_map = subscriptions_service.get_subscriptions_for_user(
         criterions.get("project_id", None), edit_type["id"]
     )
 
@@ -172,7 +168,7 @@ def get_edits_and_tasks(criterions=None):
             has_assigned_task = (
                 db.session.query(Task.id)
                 .filter(Task.entity_id == Entity.id)
-                .filter(user_service.build_assignee_filter())
+                .filter(persons_service.build_assignee_filter())
                 .exists()
             )
             query = query.filter(has_assigned_task)
@@ -253,19 +249,15 @@ def get_edits_and_tasks(criterions=None):
     return edits
 
 
-def is_edit(entity):
-    """
-    Returns True if given entity has 'Edit' as entity type
-    """
-    return entities_service.is_edit(entity)
-
-
 def get_edits_for_project(project_id, only_assigned=False):
     """
     Retrieve all edits related to given project.
     """
     return entities_service.get_entities_for_project(
-        project_id, get_edit_type()["id"], "Edit", only_assigned=only_assigned
+        project_id,
+        entity_types_service.get_edit_type()["id"],
+        "Edit",
+        only_assigned=only_assigned,
     )
 
 
@@ -273,7 +265,7 @@ def get_edits_for_episode(episode_id, relations=False):
     """
     Get all edits for given episode.
     """
-    edit_type_id = get_edit_type()["id"]
+    edit_type_id = entity_types_service.get_edit_type()["id"]
     result = (
         Entity.query.filter(Entity.entity_type_id == edit_type_id).filter(
             Entity.parent_id == episode_id
@@ -333,7 +325,7 @@ def create_edit(
     """
     if data is None:
         data = {}
-    edit_type = get_edit_type()
+    edit_type = entity_types_service.get_edit_type()
 
     # Anything shorter than a UUID is not an episode id, it is the client
     # sending an empty value: the edit then belongs to no episode.

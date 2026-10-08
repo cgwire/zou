@@ -7,6 +7,7 @@ from zou.app.services import (
     notifications_service,
     persons_service,
     projects_service,
+    task_types_service,
 )
 
 from zou.app.models.project import Project
@@ -292,7 +293,7 @@ class UserWorkloadTestCase(UserContextTestCase):
         tasks_service.update_task(
             shot_task_id,
             {
-                "task_status_id": tasks_service.get_or_create_task_status(
+                "task_status_id": task_types_service.get_or_create_task_status(
                     "Done", "done", "#22d160", is_done=True
                 )["id"]
             },
@@ -330,7 +331,7 @@ class UserWorkloadTestCase(UserContextTestCase):
         tasks = self.get(path)
         self.assertEqual(tasks, [])
 
-        done_status = tasks_service.get_or_create_task_status(
+        done_status = task_types_service.get_or_create_task_status(
             "Done", "done", "#22d160", is_done=True
         )
         tasks_service.update_task(
@@ -345,7 +346,7 @@ class UserWorkloadTestCase(UserContextTestCase):
         tasks = self.get("data/user/tasks-to-check")
         self.assertEqual(tasks, [])
 
-        feedback_status = tasks_service.get_or_create_task_status(
+        feedback_status = task_types_service.get_or_create_task_status(
             "Waiting For Approval", "wfa", is_feedback_request=True
         )
         tasks_service.update_task(
@@ -357,7 +358,7 @@ class UserWorkloadTestCase(UserContextTestCase):
         self.assertEqual(tasks[0]["id"], str(self.task_id))
 
     def test_get_tasks_to_check_paginated(self):
-        feedback_status = tasks_service.get_or_create_task_status(
+        feedback_status = task_types_service.get_or_create_task_status(
             "Waiting For Approval", "wfa", is_feedback_request=True
         )
         for task_id in [self.task_id, self.shot_task.id]:
@@ -414,7 +415,7 @@ class UserWorkloadTestCase(UserContextTestCase):
         Switch given tasks (all of them when none is given) to a feedback
         status and return it.
         """
-        feedback_status = tasks_service.get_or_create_task_status(
+        feedback_status = task_types_service.get_or_create_task_status(
             "Waiting For Approval", "wfa", is_feedback_request=True
         )
         if not task_ids:
@@ -561,7 +562,7 @@ class UserWorkloadTestCase(UserContextTestCase):
         self.assertEqual(result["project_ids"], [])
         self.assertEqual(result["person_ids"], [])
 
-        feedback_status = tasks_service.get_or_create_task_status(
+        feedback_status = task_types_service.get_or_create_task_status(
             "Waiting For Approval", "wfa", is_feedback_request=True
         )
         for task_id in [self.task_id, self.shot_task.id]:

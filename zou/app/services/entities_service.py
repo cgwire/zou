@@ -6,10 +6,11 @@ from zou.app.services import (
     base_service,
     persons_service,
     projects_service,
-    notifications_service,
     shots_service,
     edits_service,
     tasks_service,
+    entity_types_service,
+    subscriptions_service,
 )
 from zou.app.utils import (
     date_helpers,
@@ -34,7 +35,6 @@ from zou.app.exceptions import (
     PreviewFileNotFoundException,
     EntityLinkNotFoundException,
     EntityNotFoundException,
-    EntityTypeNotFoundException,
 )
 
 # Entity types positioned in time, as opposed to the asset types. Their
@@ -151,7 +151,7 @@ def get_full_entity_name(entity_id):
     """
     entity = get_entity(entity_id)
     episode_id = None
-    if shots_service.is_shot(entity):
+    if entity_types_service.is_shot(entity):
         sequence = get_entity(entity["parent_id"])
         if sequence["parent_id"] is None:
             name = f"{sequence['name']} / {entity['name']}"
@@ -159,16 +159,18 @@ def get_full_entity_name(entity_id):
             episode = get_entity(sequence["parent_id"])
             episode_id = episode["id"]
             name = f"{episode['name']} / {sequence['name']} / {entity['name']}"
-    elif shots_service.is_episode(entity):
+    elif entity_types_service.is_episode(entity):
         name = entity["name"]
-    elif shots_service.is_sequence(entity):
+    elif entity_types_service.is_sequence(entity):
         name = entity["name"]
         if entity["parent_id"] is not None:
             episode = get_entity(entity["parent_id"])
             episode_id = episode["id"]
             name = f"{episode['name']} / {entity['name']}"
     else:
-        asset_type = get_entity_type(entity["entity_type_id"])
+        asset_type = entity_types_service.get_entity_type(
+            entity["entity_type_id"]
+        )
         episode_id = entity["source_id"]
         name = f"{asset_type['name']} / {entity['name']}"
     return name, episode_id, entity["preview_file_id"]
@@ -200,9 +202,9 @@ def get_full_entity_names(entity_ids):
     all_entities.update(entities_map)
 
     # Get type IDs for classification
-    shot_type = shots_service.get_shot_type()
-    episode_type = shots_service.get_episode_type()
-    sequence_type = shots_service.get_sequence_type()
+    shot_type = entity_types_service.get_shot_type()
+    episode_type = entity_types_service.get_episode_type()
+    sequence_type = entity_types_service.get_sequence_type()
 
     # Anything that is not a shot, an episode or a sequence is an asset, so
     # its entity type has to be resolved to build the name.
@@ -271,78 +273,6 @@ def get_full_entity_names(entity_ids):
         result[str_eid] = name, episode_id, entity["preview_file_id"]
 
     return result
-
-
-def clear_entity_type_cache(entity_type_id):
-    """
-    Drop the memoized serializations of given entity type. The by-name
-    lookups are flushed whole, since the name is not known here.
-    """
-    cache.cache.delete_memoized(_get_entity_type_cached, str(entity_type_id))
-    cache.cache.delete_memoized(get_entity_type_by_name)
-    cache.cache.delete_memoized(get_entity_type_by_name_or_not_found)
-
-
-def get_temporal_entity_type_by_name(name):
-    """
-    Return the entity type matching given name, creating it if needed. A
-    cached None (the type did not exist yet when it was first looked up) is
-    dropped and looked up again.
-    """
-    entity_type = get_entity_type_by_name(name)
-    if entity_type is None:
-        cache.cache.delete_memoized(get_entity_type_by_name, name)
-        entity_type = get_entity_type_by_name(name)
-    return entity_type
-
-
-def is_edit(entity):
-    """
-    Return True if given entity dict has 'Edit' as entity type.
-    """
-    edit_type = get_temporal_entity_type_by_name("Edit")
-    return str(entity["entity_type_id"]) == edit_type["id"]
-
-
-@cache.memoize_function(240)
-def _get_entity_type_cached(entity_type_id):
-    return base_service.get_instance(
-        EntityType, entity_type_id, EntityTypeNotFoundException
-    ).serialize()
-
-
-def get_entity_type(entity_type_id):
-    """
-    Return an entity type matching given id, as a dict. Raises an exception
-    if nothing is found.
-
-    The id is normalised before it reaches the memoization, which keys on
-    the argument: callers hold it as a UUID read off a row as often as they
-    hold the string form, and the two must not be two cache entries.
-    """
-    return _get_entity_type_cached(str(entity_type_id))
-
-
-@cache.memoize_function(240)
-def get_entity_type_by_name(name):
-    """
-    Return entity type maching *name*. If it doesn't exist, it creates it.
-    """
-    entity_type = EntityType.get_by(name=name)
-    if entity_type is None:
-        entity_type = EntityType.create(name=name)
-    return entity_type.serialize()
-
-
-@cache.memoize_function(240)
-def get_entity_type_by_name_or_not_found(name):
-    """
-    Return entity type maching *name*. If it doesn't exist, it raises.
-    """
-    entity_type = EntityType.get_by(name=name)
-    if entity_type is None:
-        raise EntityTypeNotFoundException
-    return entity_type.serialize()
 
 
 def find_entity_raw(**lookup):
@@ -441,7 +371,9 @@ def get_for_entity_from_task(task):
     as "Asset".
     """
     entity = get_entity(task["entity_id"])
-    entity_type = get_entity_type(entity["entity_type_id"])
+    entity_type = entity_types_service.get_entity_type(
+        entity["entity_type_id"]
+    )
     if entity_type["name"] in TEMPORAL_ENTITY_TYPE_NAMES:
         return entity_type["name"]
     return "Asset"
@@ -693,7 +625,7 @@ def get_entities_and_tasks(criterions=None):
     if criterions is None:
         criterions = {}
 
-    subscription_map = notifications_service.get_subscriptions_for_user(
+    subscription_map = subscriptions_service.get_subscriptions_for_user(
         criterions.get("project_id", None),
         criterions.get("entity_type_id", None),
     )
@@ -770,9 +702,11 @@ def get_entity_tasks(entity):
     """
     Get all tasks for a given entity.
     """
-    entity_type = get_entity_type(entity_type_id=entity["entity_type_id"])
+    entity_type = entity_types_service.get_entity_type(
+        entity_type_id=entity["entity_type_id"]
+    )
     entity_type_name = entity_type["name"]
-    if assets_service.is_asset_type(entity_type):
+    if entity_types_service.is_asset_type(entity_type):
         entity_type_name = "Asset"
     get_tasks = getattr(
         tasks_service, "get_tasks_for_" + entity_type_name.lower()

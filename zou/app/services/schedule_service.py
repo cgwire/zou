@@ -24,6 +24,7 @@ from zou.app.services import (
     shots_service,
     tasks_service,
     projects_service,
+    entity_types_service,
 )
 from zou.app import db
 
@@ -163,7 +164,7 @@ def get_episodes_schedule_items(project_id, task_type_id, episode_id=None):
     exists for a given episode, it creates one. When an episode is given,
     results are restricted to that episode.
     """
-    episode_type = shots_service.get_episode_type()
+    episode_type = entity_types_service.get_episode_type()
     episodes = shots_service.get_episodes_for_project(project_id)
     if episode_id is not None:
         episodes = [
@@ -201,7 +202,7 @@ def get_sequences_schedule_items(project_id, task_type_id, episode_id=None):
             if sequence["parent_id"] == str(episode_id)
         ]
     sequence_map = base_service.get_model_map_from_array(sequences)
-    sequence_type = shots_service.get_sequence_type()
+    sequence_type = entity_types_service.get_sequence_type()
 
     query = _entity_schedule_items_query(
         project_id, task_type_id, sequence_type["id"]
@@ -233,7 +234,7 @@ def get_edits_schedule_items(project_id, task_type_id, episode_id=None):
             edit for edit in edits if edit["parent_id"] == str(episode_id)
         ]
     edit_map = base_service.get_model_map_from_array(edits)
-    edit_type = edits_service.get_edit_type()
+    edit_type = entity_types_service.get_edit_type()
 
     query = _entity_schedule_items_query(
         project_id, task_type_id, edit_type["id"]

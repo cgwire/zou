@@ -19,7 +19,10 @@ from zou.app.models.person import Person
 
 from zou.app.utils import fields, date_helpers
 
-from zou.app.services import user_service, projects_service
+from zou.app.services import (
+    projects_service,
+    persons_service,
+)
 from zou.app.exceptions import WrongDateFormatException
 
 
@@ -576,7 +579,7 @@ def get_timezoned_interval(start, end):
     """
     Get time intervals adapted to the user timezone.
     """
-    timezone = user_service.get_timezone()
+    timezone = persons_service.get_timezone()
     return date_helpers.get_timezoned_interval(start, end, timezone)
 
 

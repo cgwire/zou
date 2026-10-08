@@ -24,7 +24,7 @@ from sqlalchemy.sql.expression import case
 from sqlalchemy.orm import aliased, selectinload
 from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
 
-from zou.app import config, db
+from zou.app import db
 from zou.app.stores import redis_lock
 from zou.app.utils import events
 
@@ -36,7 +36,6 @@ from zou.app.models.comment import (
     department_mentions_table,
     CommentPreviewLink,
 )
-from zou.app.models.department import Department
 from zou.app.models.entity import Entity, EntityLink
 from zou.app.models.entity_type import EntityType, TaskTypeAssetTypeLink
 from zou.app.models.news import News
@@ -52,7 +51,6 @@ from zou.app.models.task import Task, TaskPersonLink
 from zou.app.models.task_type import TaskType
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.time_spent import TimeSpent
-from zou.app.models.studio import Studio
 
 from zou.app.utils import (
     cache,
@@ -70,11 +68,7 @@ from zou.app.exceptions import (
     RevisionAlreadyExistsException,
     TooManyPreviewFilesException,
     TaskNotFoundException,
-    TaskStatusNotFoundException,
-    TaskTypeNotFoundException,
     WrongParameterException,
-    DepartmentNotFoundException,
-    StudioNotFoundException,
     WrongDateFormatException,
     TimeSpentNotFoundException,
 )
@@ -86,45 +80,16 @@ from zou.app.services import (
     edits_service,
     entities_service,
     files_service,
-    notifications_service,
     persons_service,
     projects_service,
     shots_service,
     permissions_service,
     user_service,
+    departments_service,
+    entity_types_service,
+    subscriptions_service,
+    task_types_service,
 )
-
-
-def clear_task_status_cache(task_status_id):
-    """
-    Drop the memoized serialization of given task status, and the list.
-    """
-    cache.cache.delete_memoized(get_task_status, task_status_id)
-    cache.cache.delete_memoized(get_task_statuses)
-
-
-def clear_task_type_cache(task_type_id):
-    """
-    Drop the memoized serializations of given task type, and the list.
-    """
-    cache.cache.delete_memoized(get_task_type, task_type_id)
-    cache.cache.delete_memoized(get_task_types)
-
-
-def clear_department_cache(department_id):
-    """
-    Drop the memoized serializations of given department, and the list.
-    """
-    cache.cache.delete_memoized(get_department, department_id)
-    cache.cache.delete_memoized(get_departments)
-
-
-def clear_studio_cache(studio_id):
-    """
-    Drop the memoized serializations of given studio, and the list.
-    """
-    cache.cache.delete_memoized(get_studio, studio_id)
-    cache.cache.delete_memoized(get_studios)
 
 
 def clear_task_cache(task_id):
@@ -143,154 +108,12 @@ def clear_comment_cache(comment_id):
     cache.cache.delete_memoized(get_comment, comment_id, True)
 
 
-@cache.memoize_function(120)
-def get_departments():
-    """
-    Return every department.
-    """
-    return fields.serialize_models(Department.get_all())
-
-
-@cache.memoize_function(120)
-def get_studios():
-    """
-    Return every studio.
-    """
-    return fields.serialize_models(Studio.get_all())
-
-
-@cache.memoize_function(120)
-def get_task_types():
-    """
-    Return every task type.
-    """
-    return fields.serialize_models(TaskType.get_all())
-
-
-@cache.memoize_function(120)
-def get_task_statuses():
-    """
-    Return every task status.
-    """
-    return fields.serialize_models(TaskStatus.get_all())
-
-
-@cache.memoize_function(120)
-def get_to_review_status():
-    """
-    Return the task status previews are set to on upload.
-    """
-    return get_or_create_task_status(config.TO_REVIEW_TASK_STATUS, "pndng")
-
-
-@cache.memoize_function(120)
-def get_default_task_status(for_concept=False):
-    """
-    Return the task status new tasks start on.
-    """
-    if for_concept:
-        return get_or_create_task_status(
-            "Neutral",
-            "neutral",
-            "#CCCCCC",
-            is_default=True,
-            for_concept=True,
-        )
-    else:
-        return get_or_create_task_status(
-            "Todo", "todo", "#f5f5f5", is_default=True
-        )
-
-
-def get_task_status_raw(task_status_id):
-    """
-    Get task status matching given id as an active record.
-    """
-    return base_service.get_instance(
-        TaskStatus, task_status_id, TaskStatusNotFoundException
-    )
-
-
-@cache.memoize_function(1200)
-def get_task_status(task_status_id):
-    """
-    Get task status matching given id  as a dictionary.
-    """
-    return get_task_status_raw(task_status_id).serialize()
-
-
-@cache.memoize_function(120)
-def get_department(department_id):
-    """
-    Get department matching given id as a dictionary.
-    """
-    return base_service.get_instance(
-        Department, department_id, DepartmentNotFoundException
-    ).serialize()
-
-
-@cache.memoize_function(120)
-def get_studio(studio_id):
-    """
-    Get studio matching given id as a dictionary.
-    """
-    return base_service.get_instance(
-        Studio, studio_id, StudioNotFoundException
-    ).serialize()
-
-
-def get_department_from_task_type(task_type_id):
-    """
-    Get department of given task type as dictionary
-    """
-    task_type = get_task_type_raw(task_type_id)
-    return get_department(task_type.department_id)
-
-
 def get_department_from_task(task_id):
     """
     Get department of given task as dictionary
     """
     task = get_task_raw(task_id)
-    return get_department_from_task_type(task.task_type_id)
-
-
-def get_task_type_raw(task_type_id):
-    """
-    Get task type matching given id as an active record.
-    """
-    return base_service.get_instance(
-        TaskType, task_type_id, TaskTypeNotFoundException
-    )
-
-
-@cache.memoize_function(1200)
-def get_task_type(task_type_id):
-    """
-    Get task type matching given id as a dictionary.
-    """
-    return get_task_type_raw(task_type_id).serialize()
-
-
-def check_task_type_name_is_unique(name, exclude_task_type_id=None):
-    """
-    Check that no task type carries given name, compared regardless of
-    case: clients resolve a task type from its name and lower-case it on
-    the way, so a twin differing only by case collapses onto the same
-    entry. Raises WrongParameterException when one exists.
-
-    The task type being renamed is excluded in the query rather than by
-    comparing ids afterwards: a database can already hold such twins, and
-    a lookup free to return any of them could hand back the renamed row
-    and hide the conflict with the other.
-    """
-    criterions = []
-    if exclude_task_type_id is not None:
-        criterions.append(TaskType.id != exclude_task_type_id)
-    if TaskType.get_by_case_insensitive(*criterions, name=name) is not None:
-        raise WrongParameterException(
-            "A task type with similar name already exists"
-        )
+    return departments_service.get_department_from_task_type(task.task_type_id)
 
 
 def get_task_raw(task_id):
@@ -412,7 +235,7 @@ def get_edit_tasks_for_episode(episode_id, relations=False):
         # An edit hangs straight off its episode, where a shot goes through
         # a sequence, so the entity type is what tells them apart here.
         .filter(
-            Entity.entity_type_id == edits_service.get_edit_type()["id"]
+            Entity.entity_type_id == entity_types_service.get_edit_type()["id"]
         ).filter(Entity.parent_id == episode_id)
     )
     return _convert_rows_to_detailed_tasks(query.all(), relations)
@@ -424,7 +247,7 @@ def get_asset_tasks_for_episode(episode_id, relations=False):
     """
     query = (
         _get_entity_task_query(relations=relations)
-        .filter(assets_service.build_asset_type_filter())
+        .filter(entity_types_service.build_asset_type_filter())
         .filter(Entity.source_id == episode_id)
     )
     return _convert_rows_to_detailed_tasks(query.all(), relations)
@@ -699,16 +522,6 @@ def get_task_types_for_edit(edit_id):
     Return all task types for which there is a task related to given edit.
     """
     return get_task_types_for_entity(edit_id)
-
-
-def get_task_type_map():
-    """
-    Return a dict of which keys are task type ids and values are task types.
-    """
-    task_types = TaskType.query.all()
-    return {
-        str(task_type.id): task_type.serialize() for task_type in task_types
-    }
 
 
 def get_next_preview_revision(task_id):
@@ -1098,16 +911,6 @@ def get_tasks_for_project_and_task_type(project_id, task_type_id):
     return Task.serialize_list(tasks)
 
 
-def get_task_status_map():
-    """
-    Return a dict of which keys are task status ids and values are task
-    statuses.
-    """
-    return {
-        str(status.id): status.serialize() for status in TaskStatus.query.all()
-    }
-
-
 def get_person_done_tasks(person_id, projects):
     """
     Return all finished tasks performed by a person.
@@ -1315,7 +1118,7 @@ def get_person_tasks_to_check(
     if project_ids is not None:
         query = query.filter(Project.id.in_(project_ids))
     else:
-        query = query.filter(user_service.build_open_project_filter())
+        query = query.filter(projects_service.build_open_project_filter())
 
     if department_ids:
         query = query.filter(TaskType.department_id.in_(department_ids))
@@ -1469,7 +1272,7 @@ def get_person_tasks_to_check_filter_values(
         if project_ids is not None:
             query = query.filter(Project.id.in_(project_ids))
         else:
-            query = query.filter(user_service.build_open_project_filter())
+            query = query.filter(projects_service.build_open_project_filter())
         if department_ids:
             query = query.filter(TaskType.department_id.in_(department_ids))
         return query
@@ -1605,9 +1408,9 @@ def create_tasks(task_type, entities):
     ).all()
     existing_entity_ids = {str(task.entity_id) for task in existing_tasks}
 
-    task_status = get_default_task_status(
+    task_status = task_types_service.get_default_task_status(
         for_concept=entities[0]["entity_type_id"]
-        == concepts_service.get_concept_type()["id"]
+        == entity_types_service.get_concept_type()["id"]
     )
 
     tasks = []
@@ -1637,11 +1440,11 @@ def create_tasks_for_entity(entity, task_types=None):
     name="main") are skipped.
     """
     project_id = entity["project_id"]
-    is_asset = assets_service.is_asset_dict(entity)
+    is_asset = entity_types_service.is_asset_dict(entity)
     if is_asset:
         entity_kind = "Asset"
     else:
-        entity_type = entities_service.get_entity_type(
+        entity_type = entity_types_service.get_entity_type(
             entity["entity_type_id"]
         )
         entity_kind = entity_type["name"]
@@ -1711,9 +1514,9 @@ def create_tasks_for_entity(entity, task_types=None):
         ).all()
     }
 
-    task_status = get_default_task_status(
+    task_status = task_types_service.get_default_task_status(
         for_concept=entity["entity_type_id"]
-        == concepts_service.get_concept_type()["id"]
+        == entity_types_service.get_concept_type()["id"]
     )
     current_user_id = None
     try:
@@ -1741,9 +1544,9 @@ def create_task(task_type, entity, name="main"):
     """
     Create a new task for given task type and entity.
     """
-    task_status = get_default_task_status(
+    task_status = task_types_service.get_default_task_status(
         for_concept=entity["entity_type_id"]
-        == concepts_service.get_concept_type()["id"]
+        == entity_types_service.get_concept_type()["id"]
     )
     try:
         try:
@@ -1807,7 +1610,9 @@ def update_task(task_id, data):
     if "task_status_id" in data and data["task_status_id"] != str(
         task.task_status_id
     ):
-        new_status = get_task_status_raw(data["task_status_id"])
+        new_status = task_types_service.get_task_status_raw(
+            data["task_status_id"]
+        )
         now = date_helpers.get_utc_now_datetime()
         # Rolling a task back from done/feedback must clear the matching
         # dates, otherwise stats keep counting the task as finished.
@@ -1823,100 +1628,6 @@ def update_task(task_id, data):
         "task:update", {"task_id": task_id}, project_id=str(task.project_id)
     )
     return task.serialize()
-
-
-def get_or_create_task_status(
-    name,
-    short_name="",
-    color="#f5f5f5",
-    is_done=False,
-    is_retake=False,
-    is_feedback_request=False,
-    is_default=False,
-    is_wip=False,
-    for_concept=False,
-    is_artist_allowed=True,
-    is_client_allowed=True,
-):
-    """
-    Create a new task status if it doesn't exist. If it exists, it returns the
-    status from database.
-    """
-    if is_default:
-        task_status = TaskStatus.get_by(
-            is_default=is_default, for_concept=for_concept
-        )
-    else:
-        task_status = TaskStatus.get_by(name=name, for_concept=for_concept)
-    if task_status is None and len(short_name) > 0:
-        task_status = TaskStatus.get_by(
-            short_name=short_name, for_concept=for_concept
-        )
-
-    if task_status is None:
-        task_status = TaskStatus.create(
-            name=name,
-            short_name=short_name or name.lower(),
-            color=color,
-            is_done=is_done,
-            is_retake=is_retake,
-            is_feedback_request=is_feedback_request,
-            is_default=is_default,
-            for_concept=for_concept,
-            is_artist_allowed=is_artist_allowed,
-            is_client_allowed=is_client_allowed,
-            is_wip=is_wip,
-        )
-        clear_task_status_cache(str(task_status.id))
-        events.emit("task-status:new", {"task_status_id": task_status.id})
-    return task_status.serialize()
-
-
-def get_or_create_department(name, color="#000000"):
-    """
-    Create a new department it doesn't exist. If it exists, it returns the
-    department from database.
-    """
-    department = Department.get_by(name=name)
-    if department is None:
-        department = Department(name=name, color=color)
-        department.save()
-        clear_department_cache(department.id)
-        events.emit("department:new", {"department_id": department.id})
-    return department.serialize()
-
-
-def get_or_create_task_type(
-    department,
-    name,
-    color="#888888",
-    priority=1,
-    for_entity="Asset",
-    short_name="",
-    shotgun_id=None,
-):
-    """
-    Create a new task type if it doesn't exist. If it exists, it returns the
-    type from database. The name is matched regardless of case, so a
-    bootstrap or an import never creates a twin the clients cannot tell
-    apart (see check_task_type_name_is_unique).
-    """
-    task_type = TaskType.get_by_case_insensitive(
-        name=name, for_entity=for_entity
-    )
-    if task_type is None:
-        task_type = TaskType.create(
-            name=name,
-            short_name=short_name,
-            department_id=department["id"],
-            color=color,
-            priority=priority,
-            for_entity=for_entity,
-            shotgun_id=shotgun_id,
-        )
-        events.emit("task-type:new", {"task_type_id": task_type.id})
-        clear_task_type_cache(str(task_type.id))
-    return task_type.serialize()
 
 
 def _get_time_spent_raw(task_id, person_id, date):
@@ -2106,7 +1817,7 @@ def task_to_review(
     if preview_path is None:
         preview_path = {}
     task = get_task_raw(task_id)
-    to_review_status = get_to_review_status()
+    to_review_status = task_types_service.get_to_review_status()
     task_dict_before = task.serialize()
 
     if change_status:
@@ -2307,7 +2018,7 @@ def get_tasks_for_project(
         )
 
         if permissions.has_vendor_permissions():
-            query = query.filter(user_service.build_assignee_filter())
+            query = query.filter(persons_service.build_assignee_filter())
         elif not permissions.has_admin_permissions():
             query = query.join(Project).filter(
                 user_service.build_related_projects_filter()
@@ -2322,12 +2033,14 @@ def get_full_task(task_id, user_id):
     task type, status, assignees, time spents and subscription state.
     """
     task = get_task(task_id, relations=True)
-    task_type = get_task_type(task["task_type_id"])
+    task_type = task_types_service.get_task_type(task["task_type_id"])
     project = projects_service.get_project(task["project_id"])
-    task_status = get_task_status(task["task_status_id"])
+    task_status = task_types_service.get_task_status(task["task_status_id"])
     entity = entities_service.get_entity(task["entity_id"])
-    entity_type = entities_service.get_entity_type(entity["entity_type_id"])
-    is_subscribed = notifications_service.is_person_subscribed(
+    entity_type = entity_types_service.get_entity_type(
+        entity["entity_type_id"]
+    )
+    is_subscribed = subscriptions_service.is_person_subscribed(
         user_id, task_id
     )
     assignees = persons_service.get_persons_by_ids(task["assignees"])
@@ -2390,9 +2103,9 @@ def reset_task_data(task_id):
     end_date = None
     done_date = None
     entity = entities_service.get_entity(task.entity_id)
-    task_status_id = get_default_task_status(
+    task_status_id = task_types_service.get_default_task_status(
         for_concept=entity["entity_type_id"]
-        == concepts_service.get_concept_type()["id"]
+        == entity_types_service.get_concept_type()["id"]
     )["id"]
     comments = (
         Comment.query.join(TaskStatus)

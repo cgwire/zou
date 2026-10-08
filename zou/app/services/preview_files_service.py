@@ -41,12 +41,12 @@ from zou.app.models.task_type import TaskType
 from zou.app.services import (
     names_service,
     files_service,
-    assets_service,
     preview_file_states_service,
     shots_service,
     projects_service,
     stored_files_service,
     tasks_service,
+    entity_types_service,
 )
 from zou.utils import movie
 from zou.app.utils import (
@@ -2150,12 +2150,12 @@ def _build_preview_extra_query(
         )
     if only_shots:
         query = query.filter(
-            Entity.entity_type_id == shots_service.get_shot_type()["id"]
+            Entity.entity_type_id == entity_types_service.get_shot_type()["id"]
         )
     elif only_assets:
         query = query.filter(
             Entity.entity_type_id.not_in(
-                assets_service.get_temporal_type_ids()
+                entity_types_service.get_temporal_type_ids()
             )
         )
     return query

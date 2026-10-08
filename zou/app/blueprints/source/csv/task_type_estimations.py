@@ -9,9 +9,9 @@ from zou.app.services import (
     assets_service,
     shots_service,
     tasks_service,
-    persons_service,
     permissions_service,
-    user_service,
+    organisation_service,
+    task_types_service,
 )
 
 from zou.app.utils import date_helpers
@@ -39,11 +39,11 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
         """
         Import task type estimations csv
         """
-        task_type = tasks_service.get_task_type(task_type_id)
+        task_type = task_types_service.get_task_type(task_type_id)
         return super().post(project_id, task_type, episode_id)
 
     def prepare_import(self, project_id, task_type, episode_id=None):
-        self.organisation = persons_service.get_organisation()
+        self.organisation = organisation_service.get_organisation()
         self.assets_map = {}
         self.shots_map = {}
         self.tasks_map = {}

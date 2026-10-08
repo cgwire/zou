@@ -2,8 +2,8 @@ from zou.app.models.status_automation import StatusAutomation
 from zou.app.utils import fields
 from zou.app.services import (
     comments_service,
-    tasks_service,
     projects_service,
+    task_types_service,
 )
 
 from zou.app.models.task import Task
@@ -116,7 +116,7 @@ class TaskFactories:
     def generate_fixture_task_status_todo(self):
         if hasattr(self, "task_status_todo"):
             return self.task_status_todo
-        self.task_status_todo = tasks_service.get_default_task_status()
+        self.task_status_todo = task_types_service.get_default_task_status()
         return self.task_status_todo
 
     def generate_fixture_status_automation_to_status(self):

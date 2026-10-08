@@ -19,18 +19,20 @@ from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 
 from zou.app.services import (
-    assets_service,
     custom_actions_service,
-    notifications_service,
     names_service,
     permissions_service,
     persons_service,
     plugins_service,
     projects_service,
-    shots_service,
     status_automations_service,
     tasks_service,
     files_service,
+    departments_service,
+    entity_types_service,
+    organisation_service,
+    subscriptions_service,
+    task_types_service,
 )
 from zou.app.exceptions import (
     SearchFilterNotFoundException,
@@ -113,13 +115,6 @@ def _get_own_or_as_admin(model, instance_id, current_user):
     return instance
 
 
-def build_assignee_filter():
-    """
-    Query filter for task to retrieve only tasks assigned to current user.
-    """
-    return persons_service.build_assignee_filter()
-
-
 def build_team_filter():
     """
     Query filter for task to retrieve only models from project for which the
@@ -127,29 +122,6 @@ def build_team_filter():
     """
     current_user = persons_service.get_current_user_raw()
     return Project.team.contains(current_user)
-
-
-def build_team_exists_filter(project_id):
-    """
-    Query filter to keep only rows whose project the user is part of the
-    team of. Expressed as an EXISTS so it never multiplies result rows.
-    """
-    current_user = persons_service.get_current_user()
-    return (
-        ProjectPersonLink.query.filter(
-            ProjectPersonLink.project_id == project_id
-        )
-        .filter(ProjectPersonLink.person_id == current_user["id"])
-        .exists()
-    )
-
-
-def build_open_project_filter():
-    """
-    Query filter for project to retrieve only open projects.
-    """
-    open_status = projects_service.get_open_status()
-    return Project.project_status_id == open_status["id"]
 
 
 def build_related_projects_filter():
@@ -186,7 +158,7 @@ def related_projects_raw():
         )
         .join(ProjectPersonLink, Project.id == ProjectPersonLink.project_id)
         .filter(ProjectPersonLink.person_id == current_user["id"])
-        .filter(build_open_project_filter())
+        .filter(projects_service.build_open_project_filter())
         .distinct()
         .all()
     )
@@ -295,8 +267,8 @@ def get_tasks_for_entity(entity_id):
         Task.query.join(Project)
         .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
         .filter(Task.entity_id == entity_id)
-        .filter(build_assignee_filter())
-        .filter(build_open_project_filter())
+        .filter(persons_service.build_assignee_filter())
+        .filter(projects_service.build_open_project_filter())
     )
 
     return fields.serialize_value(query.all())
@@ -312,8 +284,8 @@ def get_task_types_for_entity(entity_id):
         .join(Project)
         .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
         .filter(Task.entity_id == entity_id)
-        .filter(build_assignee_filter())
-        .filter(build_open_project_filter())
+        .filter(persons_service.build_assignee_filter())
+        .filter(projects_service.build_open_project_filter())
     )
 
     return fields.serialize_value(query.all())
@@ -331,8 +303,8 @@ def get_assets_for_asset_type(project_id, asset_type_id):
         .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
         .filter(EntityType.id == asset_type_id)
         .filter(Project.id == project_id)
-        .filter(build_assignee_filter())
-        .filter(build_open_project_filter())
+        .filter(persons_service.build_assignee_filter())
+        .filter(projects_service.build_open_project_filter())
     )
 
     return Entity.serialize_list(query.all(), obj_type="Asset")
@@ -349,9 +321,9 @@ def get_asset_types_for_project(project_id):
         .join(Project)
         .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
         .filter(Project.id == project_id)
-        .filter(build_assignee_filter())
-        .filter(build_open_project_filter())
-        .filter(assets_service.build_asset_type_filter())
+        .filter(persons_service.build_assignee_filter())
+        .filter(projects_service.build_open_project_filter())
+        .filter(entity_types_service.build_asset_type_filter())
     )
 
     return EntityType.serialize_list(query.all(), obj_type="AssetType")
@@ -362,8 +334,8 @@ def get_sequences_for_project(project_id):
     Return all sequences for given project and for which current user has
     a task assigned to a shot.
     """
-    shot_type = shots_service.get_shot_type()
-    sequence_type = shots_service.get_sequence_type()
+    shot_type = entity_types_service.get_shot_type()
+    sequence_type = entity_types_service.get_sequence_type()
 
     Shot = aliased(Entity, name="shot")
     query = (
@@ -375,8 +347,8 @@ def get_sequences_for_project(project_id):
         .filter(Shot.entity_type_id == shot_type["id"])
         .filter(Entity.entity_type_id == sequence_type["id"])
         .filter(Project.id == project_id)
-        .filter(build_assignee_filter())
-        .filter(build_open_project_filter())
+        .filter(persons_service.build_assignee_filter())
+        .filter(projects_service.build_open_project_filter())
     )
 
     return Entity.serialize_list(query.all(), obj_type="Sequence")
@@ -387,9 +359,9 @@ def get_project_episodes(project_id):
     Return all episodes for given project and for which current user has
     a task assigned to a shot.
     """
-    shot_type = shots_service.get_shot_type()
-    sequence_type = shots_service.get_sequence_type()
-    episode_type = shots_service.get_episode_type()
+    shot_type = entity_types_service.get_shot_type()
+    sequence_type = entity_types_service.get_sequence_type()
+    episode_type = entity_types_service.get_episode_type()
 
     Shot = aliased(Entity, name="shot")
     Sequence = aliased(Entity, name="sequence")
@@ -403,8 +375,8 @@ def get_project_episodes(project_id):
         .filter(Sequence.entity_type_id == sequence_type["id"])
         .filter(Entity.entity_type_id == episode_type["id"])
         .filter(Project.id == project_id)
-        .filter(build_assignee_filter())
-        .filter(build_open_project_filter())
+        .filter(persons_service.build_assignee_filter())
+        .filter(projects_service.build_open_project_filter())
     )
 
     return Entity.serialize_list(query.all(), obj_type="Episode")
@@ -414,7 +386,7 @@ def get_shots_for_sequence(sequence_id):
     """
     Get all shots for given sequence and for which the user has a task assigned.
     """
-    shot_type = shots_service.get_shot_type()
+    shot_type = entity_types_service.get_shot_type()
     query = (
         Entity.query.join(Task)
         .join(Project)
@@ -422,8 +394,8 @@ def get_shots_for_sequence(sequence_id):
         .join(EntityType)
         .filter(Entity.entity_type_id == shot_type["id"])
         .filter(Entity.parent_id == sequence_id)
-        .filter(build_assignee_filter())
-        .filter(build_open_project_filter())
+        .filter(persons_service.build_assignee_filter())
+        .filter(projects_service.build_open_project_filter())
     )
 
     return Entity.serialize_list(query.all(), obj_type="Shot")
@@ -434,7 +406,7 @@ def get_scenes_for_sequence(sequence_id):
     Get all layout scenes for given sequence and for which the user has a task
     assigned.
     """
-    scene_type = shots_service.get_scene_type()
+    scene_type = entity_types_service.get_scene_type()
     query = (
         Entity.query.join(Task)
         .join(Project)
@@ -442,8 +414,8 @@ def get_scenes_for_sequence(sequence_id):
         .join(EntityType)
         .filter(Entity.entity_type_id == scene_type["id"])
         .filter(Entity.parent_id == sequence_id)
-        .filter(build_assignee_filter())
-        .filter(build_open_project_filter())
+        .filter(persons_service.build_assignee_filter())
+        .filter(projects_service.build_open_project_filter())
     )
 
     return Entity.serialize_list(query.all(), obj_type="Scene")
@@ -456,7 +428,7 @@ def get_open_projects(name=None):
     """
     query = Project.query.join(
         ProjectStatus, Project.project_status_id == ProjectStatus.id
-    ).filter(build_open_project_filter())
+    ).filter(projects_service.build_open_project_filter())
 
     if name is not None:
         query = query.filter(Project.name == name)
@@ -499,29 +471,13 @@ def get_descriptor_visibilities(project_ids):
         project_ids_by_role[role].append(project_id)
     descriptor_visibilities = []
     for role, role_project_ids in project_ids_by_role.items():
-        for_client, vendor_departments = get_descriptor_visibility(role)
+        for_client, vendor_departments = (
+            permissions_service.get_descriptor_visibility(role)
+        )
         descriptor_visibilities.append(
             (role_project_ids, for_client, vendor_departments)
         )
     return descriptor_visibilities
-
-
-def get_descriptor_visibility(role):
-    """
-    Return the (for_client, vendor_departments) pair narrowing the metadata
-    descriptors served to the current user holding given role: a client
-    only gets the ones published to clients, a vendor only the ones of their
-    departments. A role can be set per project: give the one held on the
-    project served.
-    """
-    if role == "client":
-        return True, None
-    if role == "vendor":
-        departments = persons_service.get_current_user(relations=True)[
-            "departments"
-        ]
-        return False, departments
-    return False, None
 
 
 def get_open_project_ids():
@@ -601,7 +557,10 @@ def get_user_filters(current_user_id):
             )
         )
         .filter(
-            or_(build_open_project_filter(), SearchFilter.project_id == None)
+            or_(
+                projects_service.build_open_project_filter(),
+                SearchFilter.project_id == None,
+            )
         )
         .all()
     )
@@ -663,7 +622,7 @@ def create_filter(
             )
 
     if department_id is not None:
-        department = tasks_service.get_department(department_id)
+        department = departments_service.get_department(department_id)
         if department is None:
             raise WrongParameterException(
                 f"No department found with id: {department_id}"
@@ -699,7 +658,7 @@ def update_filter(search_filter_id, data):
 
     department_id = data.get("department_id", None)
     if department_id is not None:
-        department = tasks_service.get_department(department_id)
+        department = departments_service.get_department(department_id)
         if department is None:
             raise WrongParameterException(
                 f"No department found with id: {department_id}"
@@ -785,7 +744,12 @@ def get_user_filter_groups(current_user_id):
                 SearchFilterGroup.is_shared == True,
             )
         )
-        .filter(or_(build_open_project_filter(), Project.id == None))
+        .filter(
+            or_(
+                projects_service.build_open_project_filter(),
+                Project.id == None,
+            )
+        )
         .order_by(SearchFilterGroup.created_at.desc())
         .all()
     )
@@ -834,7 +798,7 @@ def create_filter_group(
         is_shared = False
 
     if department_id is not None:
-        department = tasks_service.get_department(department_id)
+        department = departments_service.get_department(department_id)
         if department is None:
             raise WrongParameterException(
                 f"No department found with id: {department_id}"
@@ -1315,7 +1279,7 @@ def has_task_subscription(task_id):
     task.
     """
     current_user = persons_service.get_current_user()
-    return notifications_service.has_task_subscription(
+    return subscriptions_service.has_task_subscription(
         current_user["id"], task_id
     )
 
@@ -1325,7 +1289,7 @@ def subscribe_to_task(task_id):
     Create a subscription entry for current user and given task
     """
     current_user = persons_service.get_current_user()
-    return notifications_service.subscribe_to_task(current_user["id"], task_id)
+    return subscriptions_service.subscribe_to_task(current_user["id"], task_id)
 
 
 def unsubscribe_from_task(task_id):
@@ -1333,7 +1297,7 @@ def unsubscribe_from_task(task_id):
     Remove subscription entry for current user and given task
     """
     current_user = persons_service.get_current_user()
-    return notifications_service.unsubscribe_from_task(
+    return subscriptions_service.unsubscribe_from_task(
         current_user["id"], task_id
     )
 
@@ -1344,7 +1308,7 @@ def has_sequence_subscription(sequence_id, task_type_id):
     sequence.
     """
     current_user = persons_service.get_current_user()
-    return notifications_service.has_sequence_subscription(
+    return subscriptions_service.has_sequence_subscription(
         current_user["id"], sequence_id, task_type_id
     )
 
@@ -1354,7 +1318,7 @@ def subscribe_to_sequence(sequence_id, task_type_id):
     Create a subscription entry for current user and given sequence
     """
     current_user = persons_service.get_current_user()
-    return notifications_service.subscribe_to_sequence(
+    return subscriptions_service.subscribe_to_sequence(
         current_user["id"], sequence_id, task_type_id
     )
 
@@ -1364,7 +1328,7 @@ def unsubscribe_from_sequence(sequence_id, task_type_id):
     Remove subscription entry for current user and given sequence
     """
     current_user = persons_service.get_current_user()
-    return notifications_service.unsubscribe_from_sequence(
+    return subscriptions_service.unsubscribe_from_sequence(
         current_user["id"], sequence_id, task_type_id
     )
 
@@ -1375,21 +1339,9 @@ def get_sequence_subscriptions(project_id, task_type_id):
     for given project and task type.
     """
     current_user = persons_service.get_current_user()
-    return notifications_service.get_all_sequence_subscriptions(
+    return subscriptions_service.get_all_sequence_subscriptions(
         current_user["id"], project_id, task_type_id
     )
-
-
-def get_timezone():
-    """
-    Return the timezone of the current user, the instance default when
-    they set none.
-    """
-    try:
-        timezone = persons_service.get_current_user()["timezone"]
-    except Exception:
-        timezone = persons_service.get_default_timezone()
-    return timezone or persons_service.get_default_timezone()
 
 
 def get_project_roles():
@@ -1441,11 +1393,11 @@ def get_context():
     user's own filters. Scoped to the current user throughout.
     """
     context = {
-        "asset_types": assets_service.get_asset_types(),
+        "asset_types": entity_types_service.get_asset_types(),
         "custom_actions": custom_actions_service.get_custom_actions(),
         "status_automations": status_automations_service.get_status_automations(),
-        "departments": tasks_service.get_departments(),
-        "studios": tasks_service.get_studios(),
+        "departments": departments_service.get_departments(),
+        "studios": task_types_service.get_studios(),
         "notification_count": get_unread_notifications_count(),
         "persons": persons_service.get_persons(
             minimal=not permissions.has_manager_permissions()
@@ -1453,8 +1405,8 @@ def get_context():
         "project_status": projects_service.get_project_statuses(),
         "project_roles": get_project_roles(),
         "projects": get_open_projects(),
-        "task_types": tasks_service.get_task_types(),
-        "task_status": tasks_service.get_task_statuses(),
+        "task_types": task_types_service.get_task_types(),
+        "task_status": task_types_service.get_task_statuses(),
         "search_filters": get_filters(),
         "search_filter_groups": get_filter_groups(),
         "preview_background_files": files_service.get_preview_background_files(),
@@ -1462,5 +1414,5 @@ def get_context():
     }
 
     if permissions.has_admin_permissions():
-        context["user_limit"] = persons_service.get_user_limit()
+        context["user_limit"] = organisation_service.get_user_limit()
     return context

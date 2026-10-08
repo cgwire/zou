@@ -28,6 +28,7 @@ from zou.app.services import (
     permissions_service,
     user_service,
     concepts_service,
+    entity_types_service,
 )
 from zou.app.utils import date_helpers, events, fields, permissions
 
@@ -49,7 +50,7 @@ SHOT_VERSION_FOLD_MAX_DURATION = 5 * 60
 class EntityEventMixin(object):
     def emit_event(self, event_name, entity_dict):
         instance_id = entity_dict["id"]
-        type_name = shots_service.get_base_entity_type_name(entity_dict)
+        type_name = entity_types_service.get_base_entity_type_name(entity_dict)
         if event_name in ["update", "delete"]:
             if type_name == "shot":
                 shots_service.clear_shot_cache(instance_id)
@@ -104,7 +105,7 @@ class EntitiesResource(BaseModelsResource, EntityEventMixin):
             )
             if permissions.has_vendor_permissions():
                 query = query.join(Task).filter(
-                    user_service.build_assignee_filter()
+                    persons_service.build_assignee_filter()
                 )
 
         return query
@@ -129,7 +130,9 @@ class EntitiesResource(BaseModelsResource, EntityEventMixin):
             self, query=query, relations=relations
         )
         for entity in entities:
-            entity["type"] = shots_service.get_base_entity_type_name(entity)
+            entity["type"] = entity_types_service.get_base_entity_type_name(
+                entity
+            )
         return entities
 
 
@@ -148,7 +151,7 @@ class EntityResource(BaseModelResource, EntityEventMixin):
 
     def serialize_instance(self, entity, relations=True):
         entity = entity.serialize(relations=relations)
-        entity["type"] = shots_service.get_base_entity_type_name(entity)
+        entity["type"] = entity_types_service.get_base_entity_type_name(entity)
         return entity
 
     def check_read_permissions(self, entity):
@@ -235,7 +238,7 @@ class EntityResource(BaseModelResource, EntityEventMixin):
         )
 
     def pre_delete(self, entity):
-        if shots_service.is_sequence(entity):
+        if entity_types_service.is_sequence(entity):
             Subscription.delete_all_by(entity_id=entity["id"])
         EntityLink.delete_all_by(entity_in_id=entity["id"])
         EntityLink.delete_all_by(entity_out_id=entity["id"])
@@ -279,20 +282,20 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             entity.update(data)
             entity_dict = self.serialize_instance(entity)
 
-            if shots_service.is_shot(entity_dict):
+            if entity_types_service.is_shot(entity_dict):
                 index_service.remove_shot_index(entity_dict["id"])
                 index_service.index_shot(entity)
                 shots_service.clear_shot_cache(entity_dict["id"])
                 self.save_version_if_needed(entity_dict, previous_version)
-            elif shots_service.is_sequence(entity_dict):
+            elif entity_types_service.is_sequence(entity_dict):
                 shots_service.clear_sequence_cache(entity_dict["id"])
-            elif shots_service.is_edit(entity_dict):
+            elif entity_types_service.is_edit(entity_dict):
                 edits_service.clear_edit_cache(entity_dict["id"])
-            elif shots_service.is_episode(entity_dict):
+            elif entity_types_service.is_episode(entity_dict):
                 shots_service.clear_episode_cache(entity_dict["id"])
-            elif concepts_service.is_concept(entity_dict):
+            elif entity_types_service.is_concept(entity_dict):
                 concepts_service.clear_concept_cache(entity_dict["id"])
-            elif assets_service.is_asset(entity):
+            elif entity_types_service.is_asset(entity):
                 index_service.remove_asset_index(entity_dict["id"])
                 index_service.index_asset(entity)
                 if is_ready_for_changed:
@@ -402,9 +405,9 @@ class EntityResource(BaseModelResource, EntityEventMixin):
         self.emit_event("delete", entity_dict)
 
     def post_delete(self, entity_dict):
-        if assets_service.is_asset_dict(entity_dict):
+        if entity_types_service.is_asset_dict(entity_dict):
             index_service.remove_asset_index(entity_dict["id"])
-        elif shots_service.is_shot(entity_dict):
+        elif entity_types_service.is_shot(entity_dict):
             index_service.remove_shot_index(entity_dict["id"])
 
     def update_data(self, data, instance_id):

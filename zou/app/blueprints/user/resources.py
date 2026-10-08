@@ -13,6 +13,7 @@ from zou.app.services import (
     time_spents_service,
     permissions_service,
     user_service,
+    entity_types_service,
 )
 from zou.app.utils import date_helpers, validation
 from zou.app.blueprints.user.schemas import (
@@ -95,7 +96,7 @@ class AssetTypeAssetsResource(MethodView):
         Get project assets
         """
         projects_service.get_project(project_id)
-        assets_service.get_asset_type(asset_type_id)
+        entity_types_service.get_asset_type(asset_type_id)
         return user_service.get_assets_for_asset_type(
             project_id, asset_type_id
         )

@@ -10,12 +10,15 @@ from zou.app.services import (
     shots_service,
     projects_service,
     persons_service,
+    entity_types_service,
 )
 from zou.app.services.tasks_service import (
     assign_task,
     create_task,
     create_tasks,
     get_tasks_for_shot,
+)
+from zou.app.services.task_types_service import (
     get_task_statuses,
     get_task_type,
 )
@@ -185,7 +188,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                 )
         sequence_id = self.get_id_from_cache(self.sequences, sequence_key)
 
-        shot_type = shots_service.get_shot_type()
+        shot_type = entity_types_service.get_shot_type()
 
         shot_values = {
             "name": shot_name,

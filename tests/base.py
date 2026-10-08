@@ -15,7 +15,9 @@ seed_fake_stores()
 
 from zou.app import app, config, db
 from zou.app.utils import events, fields, fs
-from zou.app.services import tasks_service
+from zou.app.services import (
+    tasks_service,
+)
 
 from zou.app.stores import (
     auth_tokens_store,
@@ -356,7 +358,7 @@ class ApiDBTestCase(
       precise.
     - The app treats the organisation as a singleton it creates on demand.
       There is deliberately no generator for it: one would add a second row
-      the routes never read. Go through persons_service.get_organisation().
+      the routes never read. Go through organisation_service.get_organisation().
     - Caching is on during tests (conftest sets CACHE_TYPE), so changing a
       model the service also writes leaves the route reading a stale value.
       project.team.append() is the common one: use

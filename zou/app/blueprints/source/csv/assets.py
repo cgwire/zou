@@ -13,6 +13,8 @@ from zou.app.services import (
     persons_service,
     comments_service,
     tasks_service,
+    entity_types_service,
+    task_types_service,
 )
 from zou.app.exceptions import WrongParameterException
 
@@ -41,7 +43,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         asset_type_ids_in_project = set(project["asset_types"])
         self.asset_types_in_project = {
             asset_type["name"].lower(): asset_type["id"]
-            for asset_type in assets_service.get_asset_types()
+            for asset_type in entity_types_service.get_asset_types()
             if asset_type["id"] in asset_type_ids_in_project
         }
         task_types = projects_service.get_project_task_types_raw(
@@ -59,7 +61,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         self.task_types_for_asset_type = {}
         self.task_statuses = {
             status["id"]: [status[n].lower() for n in ("name", "short_name")]
-            for status in tasks_service.get_task_statuses()
+            for status in task_types_service.get_task_statuses()
         }
         self.current_user_id = persons_service.get_current_user()["id"]
         self.task_types_for_ready_for_map = {
@@ -144,7 +146,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                 # The column names a task type outside the asset type
                 # workflow: the explicit status still creates its task.
                 task = tasks_service.create_task(
-                    tasks_service.get_task_type(task_type_id),
+                    task_types_service.get_task_type(task_type_id),
                     entity.serialize(),
                 )
                 if task is None:
@@ -213,7 +215,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                 entity_type_name.lower()
             )
             if entity_type_id is None:
-                asset_type = assets_service.find_asset_type_by_name(
+                asset_type = entity_types_service.find_asset_type_by_name(
                     entity_type_name
                 )
                 if asset_type is None:
@@ -231,7 +233,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         else:
             self.add_to_cache_if_absent(
                 self.entity_types,
-                assets_service.get_or_create_asset_type,
+                entity_types_service.get_or_create_asset_type,
                 entity_type_name,
             )
             entity_type_id = self.get_id_from_cache(
@@ -341,7 +343,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         asset_type_id = str(asset_type_id)
         if asset_type_id not in self.task_types_for_asset_type:
             task_type_ids = self.task_type_ids_in_project_for_assets
-            asset_type = assets_service.get_asset_type(asset_type_id)
+            asset_type = entity_types_service.get_asset_type(asset_type_id)
             type_task_type_ids = asset_type["task_types"]
             if len(type_task_type_ids) > 0:
                 type_task_types_map = {

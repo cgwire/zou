@@ -10,8 +10,7 @@ from zou.app.models.entity_type import EntityType
 from zou.app.services import (
     permissions_service,
     projects_service,
-    shots_service,
-    user_service,
+    entity_types_service,
 )
 from zou.app.utils import csv_utils
 
@@ -233,7 +232,7 @@ class CastingCsvExport(MethodView, ArgsMixin):
         Asset = aliased(Entity, name="asset")
         AssetType = aliased(EntityType, name="asset_type")
         Episode = aliased(Entity, name="episode")
-        shot_type = shots_service.get_shot_type()
+        shot_type = entity_types_service.get_shot_type()
 
         query = (
             EntityLink.query.join(
@@ -325,8 +324,8 @@ class CastingCsvExport(MethodView, ArgsMixin):
         ParentAssetType = aliased(EntityType, name="parent_asset_type")
         Asset = aliased(Entity, name="asset")
         AssetType = aliased(EntityType, name="asset_type")
-        shot_type = shots_service.get_shot_type()
-        episode_type = shots_service.get_episode_type()
+        shot_type = entity_types_service.get_shot_type()
+        episode_type = entity_types_service.get_episode_type()
 
         query = (
             EntityLink.query.join(
@@ -381,7 +380,7 @@ class CastingCsvExport(MethodView, ArgsMixin):
         ParentAssetType = aliased(EntityType, name="parent_asset_type")
         Asset = aliased(Entity, name="asset")
         AssetType = aliased(EntityType, name="asset_type")
-        episode_type = shots_service.get_episode_type()
+        episode_type = entity_types_service.get_episode_type()
 
         query = (
             EntityLink.query.join(

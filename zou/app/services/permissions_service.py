@@ -34,15 +34,13 @@ from zou.app.models.project import Project, ProjectPersonLink
 from zou.app.models.task import Task
 
 from zou.app.services import (
-    assets_service,
-    edits_service,
     entities_service,
     persons_service,
     playlists_service,
     projects_service,
-    shots_service,
     tasks_service,
-    user_service,
+    entity_types_service,
+    task_types_service,
 )
 from zou.app.utils import permissions
 
@@ -221,7 +219,7 @@ def check_entity_access(entity_id):
     if not is_allowed:
         nb_tasks = (
             Task.query.filter(Task.entity_id == entity_id)
-            .filter(user_service.build_assignee_filter())
+            .filter(persons_service.build_assignee_filter())
             .count()
         )
         if nb_tasks == 0:
@@ -246,7 +244,7 @@ def keep_entities_a_vendor_reaches(entities):
         str(entity_id)
         for (entity_id,) in Task.query.with_entities(Task.entity_id)
         .filter(Task.entity_id.in_([entity["id"] for entity in entities]))
-        .filter(user_service.build_assignee_filter())
+        .filter(persons_service.build_assignee_filter())
         .all()
     }
     return [entity for entity in entities if entity["id"] in assigned]
@@ -264,7 +262,7 @@ def check_task_status_access(task_status_id):
     is_artist = permissions.has_artist_permissions()
     is_client = permissions.has_client_permissions()
     if is_artist or is_client:
-        task_status = tasks_service.get_task_status(task_status_id)
+        task_status = task_types_service.get_task_status(task_status_id)
         if is_artist and not task_status["is_artist_allowed"]:
             raise permissions.PermissionDenied
         if is_client and not task_status["is_client_allowed"]:
@@ -302,7 +300,7 @@ def check_task_action_access(task_id):
             if not is_allowed and permissions.has_supervisor_permissions():
                 is_allowed = (
                     user["departments"] == []
-                    or tasks_service.get_task_type(task["task_type_id"])[
+                    or task_types_service.get_task_type(task["task_type_id"])[
                         "department_id"
                     ]
                     in user["departments"]
@@ -396,7 +394,7 @@ def check_supervisor_project_task_type_access(project_id, task_type_id):
         user = persons_service.get_current_user(relations=True)
         is_allowed = (
             user["departments"] == []
-            or tasks_service.get_task_type(task_type_id)["department_id"]
+            or task_types_service.get_task_type(task_type_id)["department_id"]
             in user["departments"]
         )
 
@@ -494,7 +492,7 @@ def check_metadata_descriptor_access(descriptor):
     read.
     """
     check_project_access(descriptor["project_id"])
-    for_client, vendor_departments = user_service.get_descriptor_visibility(
+    for_client, vendor_departments = get_descriptor_visibility(
         permissions.get_effective_role()
     )
     if not projects_service.is_metadata_descriptor_visible(
@@ -586,7 +584,7 @@ def check_supervisor_task_access(task, new_data=None):
             )["departments"]
             if (
                 user_departments == []
-                or tasks_service.get_task_type(task["task_type_id"])[
+                or task_types_service.get_task_type(task["task_type_id"])[
                     "department_id"
                 ]
                 in user_departments
@@ -628,13 +626,13 @@ def check_metadata_department_access(entity, new_data=None):
                 is_allowed = True
             else:
                 entity_type = None
-                if shots_service.is_shot(entity):
+                if entity_types_service.is_shot(entity):
                     entity_type = "Shot"
-                elif assets_service.is_asset(
+                elif entity_types_service.is_asset(
                     entities_service.get_entity_raw(entity["id"])
                 ):
                     entity_type = "Asset"
-                elif edits_service.is_edit(entity):
+                elif entity_types_service.is_edit(entity):
                     entity_type = "Edit"
                 if entity_type:
                     descriptors = [
@@ -677,7 +675,7 @@ def check_task_department_access(task_id, person_id):
     task = tasks_service.get_task(task_id)
     if not task or not user:
         raise permissions.PermissionDenied
-    task_type = tasks_service.get_task_type(task["task_type_id"])
+    task_type = task_types_service.get_task_type(task["task_type_id"])
     is_allowed = permissions.has_admin_permissions() or (
         check_belong_to_project(task["project_id"])
         and (
@@ -740,7 +738,7 @@ def check_task_department_access_for_unassign(task_id, person_id=None):
     task = tasks_service.get_task(task_id, relations=True)
     if not task or not user:
         raise permissions.PermissionDenied
-    task_type = tasks_service.get_task_type(task["task_type_id"])
+    task_type = task_types_service.get_task_type(task["task_type_id"])
     is_allowed = permissions.has_admin_permissions() or (
         check_belong_to_project(task["project_id"])
         and (
@@ -968,3 +966,21 @@ def get_day_off_readable_person_ids():
     for person_id in _supervised_person_ids(current_user, supervised_ids):
         readable.setdefault(person_id, False)
     return readable
+
+
+def get_descriptor_visibility(role):
+    """
+    Return the (for_client, vendor_departments) pair narrowing the metadata
+    descriptors served to the current user holding given role: a client
+    only gets the ones published to clients, a vendor only the ones of their
+    departments. A role can be set per project: give the one held on the
+    project served.
+    """
+    if role == "client":
+        return True, None
+    if role == "vendor":
+        departments = persons_service.get_current_user(relations=True)[
+            "departments"
+        ]
+        return False, departments
+    return False, None

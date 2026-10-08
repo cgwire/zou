@@ -10,8 +10,9 @@ from zou.app.services import (
     persons_service,
     projects_service,
     shots_service,
-    tasks_service,
     templates_service,
+    organisation_service,
+    task_types_service,
 )
 from zou.app.stores import queue_store
 
@@ -43,7 +44,7 @@ def _get_locale(person):
     """
     Return the locale the person must be written to in.
     """
-    return person.get("locale") or persons_service.get_default_locale()
+    return person.get("locale") or organisation_service.get_default_locale()
 
 
 def _build_messages(email_message, slack_message, discord_message, project):
@@ -76,7 +77,9 @@ def send_notification(
         channel: messages[f"{channel}_message"] for channel, _ in CHAT_CHANNELS
     }
     email_locale = (
-        locale or person.get("locale") or persons_service.get_default_locale()
+        locale
+        or person.get("locale")
+        or organisation_service.get_default_locale()
     )
     email_html_body = templates_service.generate_html_body(
         title, email_message, locale=email_locale
@@ -101,7 +104,7 @@ def send_notification(
     for channel, credential_field in CHAT_CHANNELS:
         if not person[f"notifications_{channel}_enabled"]:
             continue
-        organisation = persons_service.get_organisation(sensitive=True)
+        organisation = organisation_service.get_organisation(sensitive=True)
         send_to_chat = getattr(chats, f"send_to_{channel}")
         args = (
             organisation.get(credential_field, ""),
@@ -134,7 +137,9 @@ def send_comment_notification(person_id, author_id, comment, task):
     project = projects_service.get_project(task["project_id"])
     locale = _get_locale(person)
     if _is_notified(person):
-        task_status = tasks_service.get_task_status(task["task_status_id"])
+        task_status = task_types_service.get_task_status(
+            task["task_status_id"]
+        )
         task_status_name = task_status["short_name"].upper()
         author, task_name, task_url = get_task_descriptors(author_id, task)
         subject = get_email_translation(
@@ -270,7 +275,7 @@ def get_task_descriptors(person_id, task):
     """
     author = persons_service.get_person(person_id)
     project = projects_service.get_project(task["project_id"])
-    task_type = tasks_service.get_task_type(task["task_type_id"])
+    task_type = task_types_service.get_task_type(task["task_type_id"])
     entity = entities_service.get_entity(task["entity_id"])
     entity_name, episode_id, _ = names_service.get_full_entity_name(
         entity["id"]
@@ -306,7 +311,7 @@ def send_reply_notification(person_id, author_id, comment, task, reply):
     person = persons_service.get_person(person_id)
     locale = _get_locale(person)
     if _is_notified(person):
-        tasks_service.get_task_status(task["task_status_id"])
+        task_types_service.get_task_status(task["task_status_id"])
         project = projects_service.get_project(task["project_id"])
         author, task_name, task_url = get_task_descriptors(author_id, task)
         subject = get_email_translation(
@@ -436,7 +441,7 @@ def send_share_invitation(
     who do not have a Kitsu account can be invited too. Fire-and-forget:
     no DB record is kept, no Person is created.
     """
-    email_locale = locale or persons_service.get_default_locale()
+    email_locale = locale or organisation_service.get_default_locale()
     title = get_email_translation(email_locale, "share_invitation_title")
     subject = get_email_translation(
         email_locale,

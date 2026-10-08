@@ -14,8 +14,8 @@ from zou.app.services import (
     projects_service,
     shots_service,
     permissions_service,
-    user_service,
     tasks_service,
+    task_types_service,
 )
 from zou.app.utils import csv_utils
 
@@ -33,8 +33,8 @@ class PlaylistCsvExport(MethodView):
             playlist, supervisor_access=True
         )
         project = projects_service.get_project(playlist["project_id"])
-        self.task_type_map = tasks_service.get_task_type_map()
-        self.task_status_map = tasks_service.get_task_status_map()
+        self.task_type_map = task_types_service.get_task_type_map()
+        self.task_status_map = task_types_service.get_task_status_map()
         task_ids = []
         for shot in playlist["shots"]:
             preview_file = files_service.get_preview_file(

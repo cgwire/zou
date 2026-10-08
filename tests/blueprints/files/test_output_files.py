@@ -2,7 +2,10 @@ from tests.base import ApiDBTestCase
 
 from zou.app.models.output_type import OutputType
 
-from zou.app.services import files_service, tasks_service
+from zou.app.services import (
+    files_service,
+    task_types_service,
+)
 
 
 class OutputFileTestCase(ApiDBTestCase):
@@ -208,7 +211,7 @@ class NewOutputFileTestCase(OutputFileTestCase):
 
     def test_to_review(self):
         data = {"person_id": str(self.person_id)}
-        status_id = str(tasks_service.get_to_review_status()["id"])
+        status_id = str(task_types_service.get_to_review_status()["id"])
         self.put(f"/actions/tasks/{self.task_id}/to-review", data)
         task = self.get(f"data/tasks/{self.task_id}")
         self.assertEqual(task["task_status_id"], status_id)

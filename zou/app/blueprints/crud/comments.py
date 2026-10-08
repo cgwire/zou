@@ -12,7 +12,7 @@ from zou.app.services import (
     persons_service,
     tasks_service,
     permissions_service,
-    user_service,
+    task_types_service,
 )
 from zou.app.utils import events, permissions
 
@@ -155,7 +155,7 @@ class CommentResource(BaseModelResource):
             task = tasks_service.get_task(
                 instance["object_id"], relations=True
             )
-            task_type = tasks_service.get_task_type(task["task_type_id"])
+            task_type = task_types_service.get_task_type(task["task_type_id"])
             current_user = persons_service.get_current_user(relations=True)
             if not permissions_service.check_belong_to_project(
                 task["project_id"]

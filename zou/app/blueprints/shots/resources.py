@@ -16,6 +16,7 @@ from zou.app.services import (
     tasks_service,
     permissions_service,
     user_service,
+    entity_types_service,
 )
 
 from zou.app.mixin import ArgsMixin
@@ -382,7 +383,9 @@ class SceneAndTasksResource(MethodView):
         )
         if permissions.has_vendor_permissions():
             raise permissions.PermissionDenied
-        criterions["entity_type_id"] = shots_service.get_scene_type()["id"]
+        criterions["entity_type_id"] = entity_types_service.get_scene_type()[
+            "id"
+        ]
         return entities_service.get_entities_and_tasks(criterions)
 
 
@@ -400,7 +403,9 @@ class SequenceAndTasksResource(MethodView):
         permissions_service.check_project_access(
             criterions.get("project_id", None)
         )
-        criterions["entity_type_id"] = shots_service.get_sequence_type()["id"]
+        criterions["entity_type_id"] = (
+            entity_types_service.get_sequence_type()["id"]
+        )
         if permissions.has_vendor_permissions():
             # Vendors only see sequences holding a shot with a task assigned
             # to them, and only their own tasks on those sequences.
@@ -439,7 +444,9 @@ class EpisodeAndTasksResource(MethodView):
         permissions_service.check_project_access(
             criterions.get("project_id", None)
         )
-        criterions["entity_type_id"] = shots_service.get_episode_type()["id"]
+        criterions["entity_type_id"] = entity_types_service.get_episode_type()[
+            "id"
+        ]
         if permissions.has_vendor_permissions():
             # Vendors only see episodes holding a shot with a task assigned
             # to them, and only their own tasks on those episodes.

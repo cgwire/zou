@@ -1,6 +1,9 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.services import assets_service
+from zou.app.services import (
+    assets_service,
+    entity_types_service,
+)
 from zou.app.models.entity import Entity
 
 from zou.app.utils import events
@@ -58,7 +61,7 @@ class AssetsTestCase(ApiDBTestCase):
         self.assertEqual(assets[0]["type"], "Asset")
 
     def test_get_project_and_type_assets(self):
-        asset_type = assets_service.get_or_create_asset_type("VFX")
+        asset_type = entity_types_service.get_or_create_asset_type("VFX")
         Entity.create(
             name="Smoke",
             entity_type_id=asset_type["id"],

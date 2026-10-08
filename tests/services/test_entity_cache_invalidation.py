@@ -6,6 +6,7 @@ from zou.app.services import (
     edits_service,
     entities_service,
     shots_service,
+    entity_types_service,
 )
 
 
@@ -86,13 +87,13 @@ class EntityCacheInvalidationTestCase(ApiDBTestCase):
     def test_clearing_an_asset_type_clears_the_entity_type(self):
         # Asset types are rows of the entity type table.
         asset_type_id = str(self.asset_type.id)
-        entities_service.get_entity_type(asset_type_id)
+        entity_types_service.get_entity_type(asset_type_id)
 
         self.asset_type.update({"name": "Sets"})
-        assets_service.clear_asset_type_cache(asset_type_id)
+        entity_types_service.clear_asset_type_cache(asset_type_id)
 
         self.assertEqual(
-            entities_service.get_entity_type(asset_type_id)["name"], "Sets"
+            entity_types_service.get_entity_type(asset_type_id)["name"], "Sets"
         )
 
     def test_cancelling_a_shot_is_visible_through_the_entity(self):

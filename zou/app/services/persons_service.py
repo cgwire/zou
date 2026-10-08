@@ -13,7 +13,6 @@ from flask_jwt_extended import create_access_token, get_jti, current_user
 
 from zou.app.models.department import Department
 from zou.app.models.desktop_login_log import DesktopLoginLog
-from zou.app.models.organisation import Organisation
 from zou.app.models.person import Person
 from zou.app.models.studio import Studio
 from zou.app.models.task import Task
@@ -23,19 +22,19 @@ from zou.app import config, file_store, db
 from zou.app.utils import fields, events, cache, emails, date_helpers
 from zou.app.utils.email_i18n import get_email_translation
 from zou.app.services import (
-    base_service,
     index_service,
     auth_service,
     templates_service,
+    organisation_service,
 )
 from zou.app.stores import auth_tokens_store
 from zou.app.exceptions import (
-    OrganisationNotFoundException,
     PersonNotFoundException,
     SSOIdentityMismatchException,
     PersonInProtectedAccounts,
     WrongParameterException,
 )
+from zou.app.models.project import ProjectPersonLink
 
 logger = logging.getLogger(__name__)
 
@@ -61,14 +60,6 @@ def clear_person_cache():
     cache.cache.delete_memoized(get_active_persons)
     cache.cache.delete_memoized(get_persons)
     cache.cache.delete_memoized(get_short_person)
-
-
-def clear_organisation_cache():
-    """
-    Drop the memoized organisation.
-    """
-    cache.cache.delete_memoized(get_organisation)
-    cache.cache.delete_memoized(get_organisation, True)
 
 
 @cache.memoize_function(120)
@@ -805,7 +796,7 @@ def invite_person(person_id):
     connect on Kitsu).
     """
     person = get_person(person_id)
-    organisation = get_organisation()
+    organisation = organisation_service.get_organisation()
     token = auth_service.generate_reset_token()
     auth_tokens_store.add(
         f"reset-token-{person['email']}", token, ttl=3600 * 24 * 7
@@ -840,7 +831,7 @@ def _send_admin_action_email(person, translation_prefix, person_IP=None):
     Tell a person that an admin acted on their account. The three
     translation keys are built from the prefix (_subject, _title, _body).
     """
-    organisation = get_organisation()
+    organisation = organisation_service.get_organisation()
     locale = _get_email_locale(person)
     time_string = format_datetime(
         date_helpers.get_utc_now_datetime(),
@@ -884,62 +875,6 @@ def send_2fa_disabled_by_admin_email(person, admin_user, person_IP=None):
     )
 
 
-@cache.memoize_function(120)
-def get_organisation(sensitive=False):
-    """
-    Return organisation set up on this instance. It creates it if none exists.
-    """
-    organisation = Organisation.query.first()
-    if organisation is None:
-        organisation = Organisation.create(name="Kitsu")
-    if sensitive:
-        return organisation.present()
-    return organisation.present_minimal()
-
-
-def update_organisation(organisation_id, data):
-    """
-    Update organisation entry with data given in parameter.
-    """
-    organisation = base_service.get_instance(
-        Organisation, organisation_id, OrganisationNotFoundException
-    )
-    organisation.update(data)
-    events.emit("organisation:update", {"organisation_id": organisation_id})
-    clear_organisation_cache()
-    return organisation.present_minimal()
-
-
-def get_user_limit():
-    """
-    Returns the current user limit, reading from Redis first (shared
-    across workers) and falling back to the config file value.
-    """
-    from zou.app.stores.config_store import get_user_limit
-
-    return get_user_limit()
-
-
-def get_default_timezone():
-    """
-    Returns the default timezone, reading from Redis first (shared
-    across workers) and falling back to the config file value.
-    """
-    from zou.app.stores.config_store import get_default_timezone
-
-    return get_default_timezone()
-
-
-def get_default_locale():
-    """
-    Returns the default locale, reading from Redis first (shared
-    across workers) and falling back to the config file value.
-    """
-    from zou.app.stores.config_store import get_default_locale
-
-    return get_default_locale()
-
-
 def is_user_limit_reached():
     """
     Returns true if the number of active users is equal and superior to the
@@ -950,7 +885,7 @@ def is_user_limit_reached():
         Person.is_bot.isnot(True),
         Person.is_guest.isnot(True),
     ).count()
-    return nb_active_users >= get_user_limit()
+    return nb_active_users >= organisation_service.get_user_limit()
 
 
 def add_to_department(department_id, person_id):
@@ -1033,3 +968,30 @@ def create_access_token_for_raw_person(person):
     person.jti = get_jti(access_token)
     person.save()
     return access_token
+
+
+def build_team_exists_filter(project_id):
+    """
+    Query filter to keep only rows whose project the user is part of the
+    team of. Expressed as an EXISTS so it never multiplies result rows.
+    """
+    current_user = get_current_user()
+    return (
+        ProjectPersonLink.query.filter(
+            ProjectPersonLink.project_id == project_id
+        )
+        .filter(ProjectPersonLink.person_id == current_user["id"])
+        .exists()
+    )
+
+
+def get_timezone():
+    """
+    Return the timezone of the current user, the instance default when
+    they set none.
+    """
+    try:
+        timezone = get_current_user()["timezone"]
+    except Exception:
+        timezone = organisation_service.get_default_timezone()
+    return timezone or organisation_service.get_default_timezone()

@@ -7,7 +7,12 @@ from zou.app.models.comment import Comment
 from zou.app.models.notification import Notification
 from zou.app.models.person import Person
 from zou.app.models.task import Task
-from zou.app.services import comments_service, projects_service, tasks_service
+from zou.app.services import (
+    comments_service,
+    projects_service,
+    tasks_service,
+    task_types_service,
+)
 
 
 class CommentTestCase(ApiDBTestCase):
@@ -142,7 +147,7 @@ class CommentRoutesTestCase(CommentTestCase):
     def a_status_closed_to_artists(self):
         status = self.generate_fixture_task_status_wip()
         status.update({"is_artist_allowed": False})
-        tasks_service.clear_task_status_cache(str(status.id))
+        task_types_service.clear_task_status_cache(str(status.id))
         return str(status.id)
 
     def test_comment_many_refuses_a_malformed_body(self):

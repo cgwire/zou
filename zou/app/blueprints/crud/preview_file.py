@@ -12,6 +12,8 @@ from zou.app.services import (
     permissions_service,
     user_service,
     tasks_service,
+    persons_service,
+    projects_service,
 )
 from zou.app.utils import permissions
 
@@ -48,10 +50,10 @@ class PreviewFilesResource(BaseModelsResource):
                     ProjectStatus,
                     Project.project_status_id == ProjectStatus.id,
                 )
-                .filter(user_service.build_open_project_filter())
+                .filter(projects_service.build_open_project_filter())
             )
             if permissions.has_vendor_permissions():
-                query = query.filter(user_service.build_assignee_filter())
+                query = query.filter(persons_service.build_assignee_filter())
             else:
                 query = query.filter(
                     user_service.build_related_projects_filter()

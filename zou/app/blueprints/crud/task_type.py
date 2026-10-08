@@ -7,7 +7,9 @@ from zou.app.models.task_type import TaskType
 from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.exceptions import WrongParameterException
-from zou.app.services import tasks_service
+from zou.app.services import (
+    task_types_service,
+)
 from zou.app.utils import permissions
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
@@ -38,11 +40,11 @@ class TaskTypesResource(BaseModelsResource):
 
     def update_data(self, data):
         data = super().update_data(data)
-        tasks_service.check_task_type_name_is_unique(data.get("name"))
+        task_types_service.check_task_type_name_is_unique(data.get("name"))
         return data
 
     def post_creation(self, instance):
-        tasks_service.clear_task_type_cache(str(instance.id))
+        task_types_service.clear_task_type_cache(str(instance.id))
         return instance.serialize(relations=True)
 
 
@@ -113,17 +115,17 @@ class TaskTypeResource(BaseModelResource):
         # must stay editable (colour, department) without renaming it
         name = data.get("name", None)
         if name is not None and name != self.instance.name:
-            tasks_service.check_task_type_name_is_unique(
+            task_types_service.check_task_type_name_is_unique(
                 name, exclude_task_type_id=instance_id
             )
         return data
 
     def post_update(self, instance_dict, data):
-        tasks_service.clear_task_type_cache(instance_dict["id"])
+        task_types_service.clear_task_type_cache(instance_dict["id"])
         return instance_dict
 
     def post_delete(self, instance_dict):
-        tasks_service.clear_task_type_cache(instance_dict["id"])
+        task_types_service.clear_task_type_cache(instance_dict["id"])
         return instance_dict
 
 
@@ -150,6 +152,6 @@ class TaskTypesReorderResource(MethodView):
             task_type = TaskType.get(task_type_id)
             if task_type is not None:
                 task_type.update({"priority": priority})
-                tasks_service.clear_task_type_cache(str(task_type.id))
+                task_types_service.clear_task_type_cache(str(task_type.id))
                 updated.append(task_type.serialize())
         return updated

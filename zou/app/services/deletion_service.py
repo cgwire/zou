@@ -53,7 +53,11 @@ from zou.app.utils import events, fields, date_helpers
 from zou.app.stores import file_store
 from zou.app import config
 
-from zou.app.services import base_service, files_service
+from zou.app.services import (
+    base_service,
+    files_service,
+    entity_types_service,
+)
 from zou.app.exceptions import (
     ProjectNotFoundException,
     AttachmentFileNotFoundException,
@@ -506,9 +510,9 @@ def remove_entities(project_id, entity_ids, force=False):
         shots_service,
     )
 
-    shot_type_id = shots_service.get_shot_type()["id"]
-    edit_type_id = edits_service.get_edit_type()["id"]
-    concept_type_id = concepts_service.get_concept_type()["id"]
+    shot_type_id = entity_types_service.get_shot_type()["id"]
+    edit_type_id = entity_types_service.get_edit_type()["id"]
+    concept_type_id = entity_types_service.get_concept_type()["id"]
 
     to_remove = []
     for entity_id in entity_ids:
@@ -529,7 +533,7 @@ def remove_entities(project_id, entity_ids, force=False):
         elif entity_type_id == concept_type_id:
             remove = concepts_service.remove_concept
             entity_force = True
-        elif assets_service.is_asset_dict(entity):
+        elif entity_types_service.is_asset_dict(entity):
             remove = assets_service.remove_asset
         else:
             continue
