@@ -15,7 +15,9 @@ from zou.app.models.task import Task
 from zou.app.models.working_file import WorkingFile
 
 
-from zou.app.services import entities_service
+from zou.app.services import (
+    entities_service,
+)
 from zou.app.services.base_service import (
     get_instance,
     get_or_create_instance_by_name,
@@ -1114,24 +1116,6 @@ def get_output_files_for_output_type_and_asset_instance(
     return OutputFile.serialize_list(output_files)
 
 
-def remove_preview_file_row(preview_file_id):
-    """
-    Delete a preview file row and tell the clients, nothing else: no
-    stored binary, no task or entity pointing at it. The whole cascade is
-    deletion_service.remove_preview_file, which this name stays apart from.
-    """
-    preview_file = get_preview_file_raw(preview_file_id)
-    preview_file.delete()
-    clear_preview_file_cache(str(preview_file_id))
-    task = Task.get(preview_file.task_id)
-    events.emit(
-        "preview-file:delete",
-        {"preview_file_id": preview_file_id},
-        project_id=str(task.project_id),
-    )
-    return preview_file.serialize()
-
-
 def get_preview_files_for_project(project_id, page=-1):
     """
     Return all preview files for given project.
@@ -1210,3 +1194,17 @@ def update_preview_background_file(preview_background_file_id, data):
     preview_background_file.update(data)
     clear_preview_background_file_cache(preview_background_file_id)
     return preview_background_file.serialize()
+
+
+def remove_quietly(remove_from_store, prefix, file_id, force=False):
+    """
+    Mark a stored file deleted, ignoring a failure: the database row is
+    already gone, a leftover object in the store must not fail the
+    deletion.
+    """
+    try:
+        remove_from_store(prefix, file_id, force=force)
+    except Exception:
+        logger.warning(
+            f"Stored file {prefix}-{file_id} could not be removed.", exc_info=1
+        )

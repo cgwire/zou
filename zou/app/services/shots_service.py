@@ -11,19 +11,14 @@ from zou.app.utils import (
 
 from zou.app.models.entity import (
     Entity,
-    EntityLink,
     EntityVersion,
-    EntityConceptLink,
 )
 from zou.app.models.project import Project
 from zou.app.models.preview_file import PreviewFile
-from zou.app.models.schedule_item import ScheduleItem
-from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 
 from zou.app.services import (
     base_service,
-    deletion_service,
     entities_service,
     persons_service,
     projects_service,
@@ -34,7 +29,6 @@ from zou.app.services import (
 )
 from zou.app.exceptions import (
     EpisodeNotFoundException,
-    ModelWithRelationsDeletionException,
     SequenceNotFoundException,
     SceneNotFoundException,
     ShotNotFoundException,
@@ -820,104 +814,6 @@ def get_scenes_for_sequence(sequence_id):
         .all()
     )
     return Entity.serialize_list(result, "Scene")
-
-
-def remove_shot(shot_id, force=False):
-    """
-    Remove given shot from database. If it has tasks linked to it, it marks
-    the shot as canceled. Deletion can be forced.
-    """
-    shot = get_shot_raw(shot_id)
-    is_tasks_related = Task.query.filter_by(entity_id=shot_id).count() > 0
-
-    if is_tasks_related and not force:
-        shot.update({"canceled": True})
-        clear_shot_cache(shot_id)
-        events.emit(
-            "shot:update",
-            {"shot_id": shot_id},
-            project_id=str(shot.project_id),
-        )
-    else:
-        deletion_service.remove_tasks_for_entity(shot_id)
-
-        EntityVersion.delete_all_by(entity_id=shot_id)
-        Subscription.delete_all_by(entity_id=shot_id)
-        EntityLink.delete_all_by(entity_in_id=shot_id)
-        EntityLink.delete_all_by(entity_out_id=shot_id)
-        EntityConceptLink.delete_all_by(entity_in_id=shot_id)
-        EntityConceptLink.delete_all_by(entity_out_id=shot_id)
-        deletion_service.remove_output_files_for_entity(shot_id)
-
-        shot.delete()
-        events.emit(
-            "shot:delete",
-            {"shot_id": shot_id},
-            project_id=str(shot.project_id),
-        )
-        index_service.remove_shot_index(shot_id)
-        clear_shot_cache(shot_id)
-
-    deleted_shot = shot.serialize(obj_type="Shot")
-    return deleted_shot
-
-
-def remove_scene(scene_id):
-    """
-    Remove given scene from database. If it has tasks linked to it, it marks
-    the scene as canceled.
-    """
-    scene = get_scene_raw(scene_id)
-    try:
-        scene.delete()
-    except IntegrityError:
-        scene.update({"canceled": True})
-    deleted_scene = scene.serialize(obj_type="Scene")
-    events.emit(
-        "scene:delete",
-        {"scene_id": scene_id},
-        project_id=str(scene.project_id),
-    )
-    return deleted_scene
-
-
-def remove_sequence(sequence_id, force=False):
-    """
-    Remove a sequence and all related shots.
-    """
-    sequence = get_sequence_raw(sequence_id)
-    if force:
-        # Scenes hang from a sequence too, and remove_shot would raise on
-        # one halfway through, after taking part of the sequence away.
-        for shot in Entity.get_all_by(
-            parent_id=sequence_id,
-            entity_type_id=entity_types_service.get_shot_type()["id"],
-        ):
-            remove_shot(shot.id, force=True)
-        for scene in Entity.get_all_by(
-            parent_id=sequence_id,
-            entity_type_id=entity_types_service.get_scene_type()["id"],
-        ):
-            remove_scene(scene.id)
-        Subscription.delete_all_by(entity_id=sequence_id)
-        ScheduleItem.delete_all_by(object_id=sequence_id)
-
-        deletion_service.remove_tasks_for_entity(sequence_id)
-        Subscription.delete_all_by(entity_id=sequence_id)
-        deletion_service.remove_output_files_for_entity(sequence_id)
-    try:
-        sequence.delete()
-        events.emit(
-            "sequence:delete",
-            {"sequence_id": sequence_id},
-            project_id=str(sequence.project_id),
-        )
-    except IntegrityError:
-        raise ModelWithRelationsDeletionException(
-            "Some data are still linked to this sequence."
-        )
-    clear_sequence_cache(sequence_id)
-    return sequence.serialize(obj_type="Sequence")
 
 
 def create_episode(

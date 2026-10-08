@@ -19,7 +19,6 @@ from zou.app.blueprints.comments.schemas import (
 from zou.app.services import (
     chats_service,
     comments_service,
-    deletion_service,
     entities_service,
     persons_service,
     tasks_service,
@@ -190,7 +189,7 @@ class AttachmentResource(MethodView):
                 task["project_id"]
             )
 
-        deletion_service.remove_attachment_file_by_id(attachment_file_id)
+        comments_service.remove_attachment_file_by_id(attachment_file_id)
         return "", 204
 
 

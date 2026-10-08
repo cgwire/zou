@@ -9,7 +9,6 @@ from zou.app.mixin import ArgsMixin
 from zou.app.models.project import Project, PROJECT_STYLES
 from zou.app.models.project_status import ProjectStatus
 from zou.app.services import (
-    deletion_service,
     project_templates_service,
     projects_service,
     shots_service,
@@ -18,6 +17,7 @@ from zou.app.services import (
     persons_service,
     files_service,
     metadata_descriptors_service,
+    cascade_deletion_service,
 )
 from zou.app.utils import events, permissions, fields
 
@@ -300,7 +300,7 @@ class ProjectResource(BaseModelResource, ArgsMixin):
         else:
             self.check_delete_permissions(project_dict)
             if force:
-                deletion_service.remove_project(instance_id)
+                cascade_deletion_service.remove_project(instance_id)
             else:
                 project.delete()
                 events.emit("project:delete", {"project_id": project.id})

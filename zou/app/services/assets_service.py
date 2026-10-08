@@ -9,22 +9,16 @@ from zou.app.utils import query as query_utils
 from zou.app.models.entity import (
     Entity,
     EntityLink,
-    EntityConceptLink,
-    EntityVersion,
 )
 from zou.app.models.entity_type import EntityType
-from zou.app.models.subscription import Subscription
 from zou.app.models.project import Project
 from zou.app.models.task import Task
 from zou.app.models.asset_instance import AssetInstance
 
 from zou.app.services import (
     base_service,
-    breakdown_service,
-    deletion_service,
     index_service,
     projects_service,
-    shots_service,
     entities_service,
     entity_types_service,
     persons_service,
@@ -593,80 +587,6 @@ def update_asset(asset_id, data, index=True):
     clear_asset_cache(asset_id)
 
     return asset.serialize(obj_type="Asset")
-
-
-def remove_asset(asset_id, force=False):
-    """
-    Remove given asset. With tasks attached and without force, the asset
-    is only marked canceled; force deletes it and everything tied to it.
-    """
-    asset = get_asset_raw(asset_id)
-    is_tasks_related = Task.query.filter_by(entity_id=asset_id).count() > 0
-
-    if is_tasks_related and not force:
-        asset.update({"canceled": True})
-        clear_asset_cache(str(asset_id))
-        events.emit(
-            "asset:update",
-            {"asset_id": asset_id},
-            project_id=str(asset.project_id),
-        )
-        breakdown_service.refresh_casting_stats(
-            asset.serialize(obj_type="Asset")
-        )
-    else:
-        # Before deleting EntityLinks, collect affected shot IDs so we can
-        # refresh their casting stats after deletion
-        cast_in = breakdown_service.get_cast_in(asset_id)
-        affected_shot_ids = {
-            entity["shot_id"] for entity in cast_in if "shot_id" in entity
-        }
-
-        deletion_service.remove_tasks_for_entity(asset_id)
-        index_service.remove_asset_index(str(asset_id))
-        events.emit(
-            "asset:delete",
-            {"asset_id": asset_id},
-            project_id=str(asset.project_id),
-        )
-        EntityVersion.delete_all_by(entity_id=asset_id)
-        Subscription.delete_all_by(entity_id=asset_id)
-        EntityLink.delete_all_by(entity_in_id=asset_id)
-        EntityLink.delete_all_by(entity_out_id=asset_id)
-        EntityConceptLink.delete_all_by(entity_in_id=asset_id)
-        EntityConceptLink.delete_all_by(entity_out_id=asset_id)
-        deletion_service.remove_output_files_for_entity(asset_id)
-        for child in Entity.get_all_by(parent_id=asset_id):
-            child.update({"parent_id": None})
-        asset.delete()
-        clear_asset_cache(str(asset_id))
-
-        if affected_shot_ids:
-            for shot_id in affected_shot_ids:
-                shot = shots_service.get_shot(shot_id)
-                breakdown_service.refresh_shot_casting_stats(shot)
-    deleted_asset = asset.serialize(obj_type="Asset")
-    return deleted_asset
-
-
-def cancel_asset(asset_id, force=True):
-    """
-    Set cancel flag on asset to true. Send an event to event queue.
-    """
-    asset = get_asset_raw(asset_id)
-
-    asset.update({"canceled": True})
-    asset_dict = asset.serialize(obj_type="Asset")
-    # Same write as the canceling branch of remove_asset, so the same
-    # invalidation: without it the asset reads back as live for the whole
-    # memoization window.
-    clear_asset_cache(str(asset_id))
-    events.emit(
-        "asset:delete",
-        {"asset_id": asset_id},
-        project_id=str(asset.project_id),
-    )
-    return asset_dict
 
 
 def set_shared_assets(

@@ -19,7 +19,6 @@ from zou.app.services import (
     assets_service,
     base_service,
     breakdown_service,
-    deletion_service,
     entities_service,
     news_service,
     notifications_service,
@@ -821,9 +820,7 @@ def delete_reply(comment_id, reply_id):
     if comment.attachment_files is not None:
         for attachment_file in comment.attachment_files:
             if str(attachment_file.reply_id) == str(reply_id):
-                deletion_service.remove_attachment_file_by_id(
-                    str(attachment_file.id)
-                )
+                remove_attachment_file_by_id(str(attachment_file.id))
     if comment.replies is None:
         comment.replies = []
     comment.replies = [
@@ -1472,3 +1469,29 @@ def copy_preview_file_in_another_one(
         )
 
     return preview_file_to_update
+
+
+def remove_attachment_file(attachment_file):
+    """
+    Remove all files related to given attachment file, then remove the
+    attachment file entry from the database.
+    """
+
+    files_service.remove_quietly(
+        file_store.remove_file, "attachments", attachment_file.id
+    )
+    attachment_dict = attachment_file.serialize()
+    attachment_file.delete()
+    clear_attachment_file_cache(attachment_dict["id"])
+    return attachment_dict
+
+
+def remove_attachment_file_by_id(attachment_file_id):
+    """
+    Remove all files related to given attachment file, then remove the
+    attachment file entry from the database.
+    """
+    attachment_file = AttachmentFile.get(attachment_file_id)
+    if attachment_file is None:
+        raise AttachmentFileNotFoundException
+    return remove_attachment_file(attachment_file)

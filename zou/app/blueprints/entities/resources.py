@@ -7,7 +7,6 @@ from zou.app.blueprints.entities.schemas import CreateEntityTasksSchema
 from zou.app.mixin import ArgsMixin
 from zou.app.exceptions import EntityNotFoundException
 from zou.app.services import (
-    deletion_service,
     entities_service,
     news_service,
     persons_service,
@@ -17,6 +16,7 @@ from zou.app.services import (
     time_spents_service,
     permissions_service,
     task_types_service,
+    cascade_deletion_service,
 )
 from zou.app.utils import permissions, validation
 
@@ -123,7 +123,7 @@ class ProjectDeleteEntitiesResource(MethodView, ArgsMixin):
                 permissions_service.check_manager_project_access(project_id)
 
         return (
-            deletion_service.remove_entities(
+            cascade_deletion_service.remove_entities(
                 project_id, entity_ids, force=force
             ),
             200,

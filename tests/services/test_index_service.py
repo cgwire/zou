@@ -10,6 +10,7 @@ from zou.app.services import (
     assets_service,
     index_service,
     projects_service,
+    cascade_deletion_service,
 )
 from zou.app.exceptions import (
     EpisodeNotFoundException,
@@ -92,7 +93,7 @@ class SearchTestCase(ApiDBTestCase):
         )
         self.assertEqual(len(index_service.search_assets("girafe")), 1)
 
-        assets_service.remove_asset(asset["id"])
+        cascade_deletion_service.remove_asset(asset["id"])
 
         self.assertEqual(index_service.search_assets("girafe"), [])
 

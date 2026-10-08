@@ -5,7 +5,6 @@ from flask_jwt_extended import jwt_required
 
 from zou.app.services import (
     breakdown_service,
-    deletion_service,
     entities_service,
     persons_service,
     projects_service,
@@ -18,6 +17,7 @@ from zou.app.services import (
     user_service,
     entity_types_service,
     quotas_service,
+    cascade_deletion_service,
 )
 
 from zou.app.mixin import ArgsMixin
@@ -95,7 +95,7 @@ class ShotResource(MethodView, ArgsMixin):
             permissions_service.check_manager_project_access(
                 shot["project_id"]
             )
-        shots_service.remove_shot(shot_id, force=force)
+        cascade_deletion_service.remove_shot(shot_id, force=force)
         return "", 204
 
 
@@ -124,7 +124,7 @@ class SceneResource(MethodView):
             permissions_service.check_manager_project_access(
                 scene["project_id"]
             )
-        shots_service.remove_scene(scene_id)
+        cascade_deletion_service.remove_scene(scene_id)
         return "", 204
 
 
@@ -634,7 +634,7 @@ class EpisodeResource(MethodView, ArgsMixin):
             permissions_service.check_manager_project_access(
                 episode["project_id"]
             )
-        deletion_service.remove_episode(episode_id, force=force)
+        cascade_deletion_service.remove_episode(episode_id, force=force)
         return "", 204
 
 
@@ -741,7 +741,7 @@ class SequenceResource(MethodView, ArgsMixin):
             permissions_service.check_manager_project_access(
                 sequence["project_id"]
             )
-        shots_service.remove_sequence(sequence_id, force=force)
+        cascade_deletion_service.remove_sequence(sequence_id, force=force)
         return "", 204
 
 

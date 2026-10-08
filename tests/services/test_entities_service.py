@@ -8,6 +8,7 @@ from zou.app.services import (
     deletion_service,
     entities_service,
     entity_types_service,
+    cascade_deletion_service,
 )
 
 from zou.app.exceptions import (
@@ -532,7 +533,7 @@ class EntityCacheInvalidationTestCase(ApiDBTestCase):
         self.generate_fixture_shot_task()
         self.assertFalse(entities_service.get_entity(shot_id)["canceled"])
 
-        shots_service.remove_shot(shot_id)
+        cascade_deletion_service.remove_shot(shot_id)
 
         self.assertTrue(entities_service.get_entity(shot_id)["canceled"])
 

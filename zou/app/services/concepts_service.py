@@ -12,18 +12,14 @@ from zou.app.utils import (
 from zou.app import db
 from zou.app.models.entity import (
     Entity,
-    EntityLink,
-    EntityVersion,
     EntityConceptLink,
 )
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
-from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 
 from zou.app.services import (
     base_service,
-    deletion_service,
     entities_service,
     entity_types_service,
     persons_service,
@@ -99,43 +95,6 @@ def get_full_concept(concept_id):
     concept = concepts[0]
     concept.update(get_concept(concept_id, relations=True))
     return concept
-
-
-def remove_concept(concept_id, force=False):
-    """
-    Remove given concept from database. If it has tasks linked to it, it marks
-    the concept as canceled. Deletion can be forced.
-    """
-    concept = get_concept_raw(concept_id)
-    is_tasks_related = Task.query.filter_by(entity_id=concept_id).count() > 0
-
-    if is_tasks_related and not force:
-        concept.update({"canceled": True})
-        clear_concept_cache(concept_id)
-        events.emit(
-            "concept:update",
-            {"concept_id": concept_id},
-            project_id=str(concept.project_id),
-        )
-    else:
-        deletion_service.remove_tasks_for_entity(concept_id)
-
-        EntityVersion.delete_all_by(entity_id=concept_id)
-        Subscription.delete_all_by(entity_id=concept_id)
-        EntityLink.delete_all_by(entity_in_id=concept_id)
-        EntityLink.delete_all_by(entity_out_id=concept_id)
-        EntityConceptLink.delete_all_by(entity_in_id=concept_id)
-        EntityConceptLink.delete_all_by(entity_out_id=concept_id)
-
-        concept.delete()
-        events.emit(
-            "concept:delete",
-            {"concept_id": concept_id},
-            project_id=str(concept.project_id),
-        )
-        clear_concept_cache(concept_id)
-
-    return concept.serialize(obj_type="Concept")
 
 
 def get_concepts(criterions=None):

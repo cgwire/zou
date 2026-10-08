@@ -506,7 +506,7 @@ def remove_guest_comment_attachment(
     attachment = AttachmentFile.get(attachment_id)
     if attachment is None or str(attachment.comment_id) != str(comment_id):
         raise GuestCommentNotFound
-    deletion_service.remove_attachment_file(attachment)
+    comments_service.remove_attachment_file(attachment)
 
 
 def get_shared_task_comments(task_id):

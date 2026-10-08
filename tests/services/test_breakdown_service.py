@@ -9,6 +9,7 @@ from zou.app.services import (
     shots_service,
     tasks_service,
     task_types_service,
+    cascade_deletion_service,
 )
 
 
@@ -932,7 +933,7 @@ class CastingReadyStatsTestCase(ApiDBTestCase):
             entity_id=self.asset_id,
             task_type_id=self.layout_id,
         )
-        assets_service.remove_asset(self.asset_id, force=False)
+        cascade_deletion_service.remove_asset(self.asset_id, force=False)
 
         self.assert_ready_counts(1, 1, 1)
         self.assert_casting_size(1)
@@ -948,7 +949,7 @@ class CastingReadyStatsTestCase(ApiDBTestCase):
         )
         self.assert_ready_counts(2, 2, 1)
 
-        assets_service.remove_asset(temp_asset_id)
+        cascade_deletion_service.remove_asset(temp_asset_id)
 
         self.assert_ready_counts(1, 1, 1)
         self.assert_casting_size(1)

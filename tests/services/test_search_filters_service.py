@@ -1,9 +1,9 @@
 from zou.app.models.search_filter import SearchFilter
 from zou.app.models.search_filter_group import SearchFilterGroup
 from zou.app.services import (
-    deletion_service,
     projects_service,
     search_filters_service,
+    cascade_deletion_service,
 )
 from zou.app.exceptions import (
     DepartmentNotFoundException,
@@ -402,6 +402,6 @@ class SearchFilterGroupTestCase(SavedSearchTestCase):
         # Warm the admin's listing before the removal.
         self.assertIn("shot", self.filters_of(self.user))
 
-        deletion_service.remove_person(self.user_manager["id"])
+        cascade_deletion_service.remove_person(self.user_manager["id"])
 
         self.assertEqual(self.filters_of(self.user), {})

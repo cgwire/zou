@@ -254,3 +254,40 @@ class SpyProgress:
 
     def stop(self):
         self.stopped = True
+
+
+class DeletionTestCase(ApiDBTestCase):
+    """
+    Base fixture set: one production with an asset carrying a task.
+    """
+
+    def setUp(self):
+        super().setUp()
+
+        self.generate_fixture_project()
+        self.generate_fixture_asset()
+        self.generate_fixture_person()
+        self.generate_fixture_task_type()
+        self.generate_fixture_task()
+
+
+class FilesTestCase(ApiDBTestCase):
+    """
+    An asset and a shot, each with a task, a working file and an output
+    file: the smallest set every listing of this service reads from.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project()
+        self.generate_fixture_asset()
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+        self.generate_fixture_task_type()
+        self.generate_fixture_person()
+        self.generate_fixture_task()
+        self.generate_fixture_shot_task()
+        self.generate_fixture_software()
+        self.generate_fixture_working_file()
+        self.generate_fixture_output_type()
+        self.generate_fixture_output_file()

@@ -3,6 +3,7 @@ from zou.app.services import (
     assets_service,
     breakdown_service,
     entity_types_service,
+    cascade_deletion_service,
 )
 from zou.app.exceptions import (
     AssetNotFoundException,
@@ -197,7 +198,7 @@ class AssetReadTestCase(AssetsTestCase):
     def test_get_asset_of_a_removed_asset(self):
         asset_id = str(self.asset.id)
         assets_service.get_asset(asset_id)
-        assets_service.remove_asset(asset_id)
+        cascade_deletion_service.remove_asset(asset_id)
         self.assertRaises(
             AssetNotFoundException, assets_service.get_asset, asset_id
         )
@@ -239,7 +240,7 @@ class AssetReadTestCase(AssetsTestCase):
         self.asset.update({"shotgun_id": 1})
         asset = assets_service.get_asset_by_shotgun_id(1)
         self.assertEqual(asset["id"], str(self.asset.id))
-        assets_service.remove_asset(asset["id"])
+        cascade_deletion_service.remove_asset(asset["id"])
         self.assertRaises(
             AssetNotFoundException, assets_service.get_asset_by_shotgun_id, 1
         )
@@ -307,54 +308,6 @@ class AssetWriteTestCase(AssetsTestCase):
         self.assertEqual(
             assets_service.get_asset(asset_id)["name"], "New name"
         )
-
-    def test_remove_asset(self):
-        asset_id = self.asset.id
-        assets_service.remove_asset(asset_id)
-        self.assertRaises(
-            AssetNotFoundException, assets_service.get_asset, asset_id
-        )
-
-    def test_remove_asset_carrying_tasks(self):
-        """
-        An asset someone has worked on is kept and marked canceled, so the
-        history of those tasks survives. Only force really deletes it.
-        """
-        self.generate_fixture_person()
-        self.generate_fixture_assigner()
-        self.generate_fixture_department()
-        self.generate_fixture_task_status()
-        self.generate_fixture_task_type()
-        self.generate_fixture_task()
-        asset_id = str(self.asset.id)
-        assets_service.get_asset(asset_id)
-
-        assets_service.remove_asset(asset_id)
-        self.assertTrue(assets_service.get_asset(asset_id)["canceled"])
-
-        assets_service.remove_asset(asset_id, force=True)
-        self.assertRaises(
-            AssetNotFoundException, assets_service.get_asset, asset_id
-        )
-
-    def test_remove_asset_reparents_its_children(self):
-        child = Entity.create(
-            name="Child",
-            entity_type_id=self.asset_type.id,
-            project_id=self.project.id,
-            parent_id=self.asset.id,
-        )
-        assets_service.remove_asset(self.asset.id)
-        self.assertIsNone(Entity.get(child.id).parent_id)
-
-    def test_cancel_asset(self):
-        asset_id = str(self.asset.id)
-        # Read it once so the serialization is memoized: canceling writes
-        # the same column as the canceling branch of remove_asset and drops
-        # the same cache.
-        assets_service.get_asset(asset_id)
-        assets_service.cancel_asset(asset_id)
-        self.assertTrue(assets_service.get_asset(asset_id)["canceled"])
 
 
 class SharedAssetTestCase(AssetsTestCase):

@@ -11,6 +11,7 @@ from zou.app.services import (
     shots_service,
     tasks_service,
     permissions_service,
+    cascade_deletion_service,
 )
 
 from zou.app.mixin import ArgsMixin
@@ -44,7 +45,7 @@ class EditResource(MethodView, ArgsMixin):
             permissions_service.check_manager_project_access(
                 edit["project_id"]
             )
-        edits_service.remove_edit(edit_id, force=force)
+        cascade_deletion_service.remove_edit(edit_id, force=force)
         return "", 204
 
 

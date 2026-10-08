@@ -20,6 +20,7 @@ from zou.app.services import (
     tasks_service,
     permissions_service,
     entity_types_service,
+    cascade_deletion_service,
 )
 from zou.app.blueprints.assets.schemas import (
     CastingEntrySchema,
@@ -79,7 +80,7 @@ class AssetResource(MethodView, ArgsMixin):
                 asset["project_id"]
             )
 
-        assets_service.remove_asset(asset_id, force=force)
+        cascade_deletion_service.remove_asset(asset_id, force=force)
         return "", 204
 
 

@@ -12,18 +12,13 @@ from zou.app.utils import (
 from zou.app import db
 from zou.app.models.entity import (
     Entity,
-    EntityLink,
     EntityVersion,
-    EntityConceptLink,
 )
 from zou.app.models.project import Project
-from zou.app.models.schedule_item import ScheduleItem
-from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 
 from zou.app.services import (
     base_service,
-    deletion_service,
     entities_service,
     entity_types_service,
     persons_service,
@@ -271,44 +266,6 @@ def get_edits_for_episode(episode_id, relations=False):
         )
     ).all()
     return Entity.serialize_list(result, "Edit", relations=relations)
-
-
-def remove_edit(edit_id, force=False):
-    """
-    Remove given edit from database. If it has tasks linked to it, it marks
-    the edit as canceled. Deletion can be forced.
-    """
-    edit = get_edit_raw(edit_id)
-    is_tasks_related = Task.query.filter_by(entity_id=edit_id).count() > 0
-
-    if is_tasks_related and not force:
-        edit.update({"canceled": True})
-        clear_edit_cache(edit_id)
-        events.emit(
-            "edit:update",
-            {"edit_id": edit_id},
-            project_id=str(edit.project_id),
-        )
-    else:
-        deletion_service.remove_tasks_for_entity(edit_id)
-
-        EntityVersion.delete_all_by(entity_id=edit_id)
-        Subscription.delete_all_by(entity_id=edit_id)
-        ScheduleItem.delete_all_by(object_id=edit_id)
-        EntityLink.delete_all_by(entity_in_id=edit_id)
-        EntityLink.delete_all_by(entity_out_id=edit_id)
-        EntityConceptLink.delete_all_by(entity_in_id=edit_id)
-        EntityConceptLink.delete_all_by(entity_out_id=edit_id)
-
-        edit.delete()
-        clear_edit_cache(edit_id)
-        events.emit(
-            "edit:delete",
-            {"edit_id": edit_id},
-            project_id=str(edit.project_id),
-        )
-
-    return edit.serialize(obj_type="Edit")
 
 
 def create_edit(

@@ -4,8 +4,8 @@ from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
 from zou.app.services import (
     breakdown_service,
-    deletion_service,
     projects_service,
+    cascade_deletion_service,
 )
 from zou.app.exceptions import (
     ProjectNotFoundException,
@@ -167,7 +167,7 @@ class ProjectServiceTestCase(ApiDBTestCase):
         breakdown_service.create_casting_link(self.shot.id, self.asset.id)
 
         project_id = str(self.project.id)
-        deletion_service.remove_project(project_id)
+        cascade_deletion_service.remove_project(project_id)
         self.assertIsNone(Project.get(project_id))
 
     def test_is_tv_show(self):
