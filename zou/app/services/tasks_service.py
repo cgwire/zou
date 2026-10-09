@@ -1211,7 +1211,6 @@ def update_entity_preview(entity_id, preview_file_id):
     if entity is None:
         raise EntityNotFoundException
 
-    entity_id = str(entity.id)
     preview_file = PreviewFile.get(preview_file_id)
     if preview_file is None:
         raise PreviewFileNotFoundException
@@ -1228,6 +1227,30 @@ def update_entity_preview(entity_id, preview_file_id):
         .filter(PreviewFile.id == preview_file_id)
         .scalar()
     )
+    return _announce_entity_preview(
+        entity, preview_file_id, preview_file_status
+    )
+
+
+def remove_entity_preview(entity_id):
+    """
+    Leave given entity without a main preview. The event carries a null
+    preview file id, which the clients show as an empty thumbnail.
+    """
+    entity = Entity.get(entity_id)
+    if entity is None:
+        raise EntityNotFoundException
+    if entity.preview_file_id is not None:
+        entity.update({"preview_file_id": None})
+    return _announce_entity_preview(entity, None, None)
+
+
+def _announce_entity_preview(entity, preview_file_id, preview_file_status):
+    """
+    Drop the caches of given entity and tell the clients about its new main
+    preview.
+    """
+    entity_id = str(entity.id)
     entities_service.clear_entity_cache(entity_id)
     events.emit(
         "preview-file:set-main",
