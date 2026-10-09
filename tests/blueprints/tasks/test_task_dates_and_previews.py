@@ -1,9 +1,14 @@
+from unittest.mock import patch
+
 from tests.base import ApiDBTestCase
 
+from zou.app.models.comment import Comment
 from zou.app.models.person import Person
+from zou.app.models.preview_file import PreviewFile
 from zou.app.models.task import Task
 from zou.app.services import (
     concepts_service,
+    deletion_service,
     persons_service,
     projects_service,
     tasks_service,
@@ -476,16 +481,237 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
         self.assertEqual(result, [shot_task_id])
         self.get_404(f"/data/tasks/{shot_task_id}")
 
-    def test_delete_preview_from_comment(self):
-        self.generate_fixture_preview_file()
-        self.generate_fixture_comment()
-        preview_id = str(self.preview_file.id)
-        comment_id = self.comment["id"]
-        self.delete(
-            f"/actions/tasks/{self.task.id}"
-            f"/comments/{comment_id}"
-            f"/preview-files/{preview_id}",
+    def generate_comment_with_preview(self, task):
+        """
+        Post a comment on given task with a preview attached to it, as a
+        revision publish does. Return both as dicts.
+        """
+        comment = self.generate_fixture_comment(task_id=task.id)
+        preview_file = comments_service.add_preview_file_to_comment(
+            comment["id"], comment["person_id"], str(task.id)
         )
-        comment = comments_service.get_comment(comment_id)
-        preview_ids = [p["id"] for p in comment.get("previews", [])]
-        self.assertNotIn(preview_id, preview_ids)
+        return comment, preview_file
+
+    def generate_preview_attached_by_hand(self, comment_task, preview_task):
+        """
+        Attach a preview of a task to a comment of a task, whichever they
+        are. Return the comment id and the preview id.
+        """
+        comment = Comment.get(
+            self.generate_fixture_comment(task_id=comment_task.id)["id"]
+        )
+        preview_file = self.generate_fixture_preview_file(
+            task_id=preview_task.id
+        )
+        comment.previews.append(preview_file)
+        comment.save()
+        return str(comment.id), str(preview_file.id)
+
+    def get_comment_preview_ids(self, comment_id):
+        return [
+            str(preview_file.id)
+            for preview_file in Comment.get(comment_id).previews
+        ]
+
+    def remove_comment_preview(
+        self, task_id, comment_id, preview_file_id, code=204, force=False
+    ):
+        path = (
+            f"/actions/tasks/{task_id}/comments/{comment_id}"
+            f"/preview-files/{preview_file_id}"
+        )
+        if force:
+            path += "?force=true"
+        return self.delete(path, code)
+
+    def log_in_member(self, person, assigned=False):
+        """
+        Log in as given person, made a member of the production and, on
+        demand, an assignee of the task.
+        """
+        projects_service.add_team_member(self.project_id, person["id"])
+        if assigned:
+            self.assign_task(self.task.id, person["id"])
+        self.log_in(person["email"])
+
+    def test_delete_preview_from_comment(self):
+        comment, preview_file = self.generate_comment_with_preview(self.task)
+        self.assertEqual(
+            self.get_comment_preview_ids(comment["id"]), [preview_file["id"]]
+        )
+
+        self.remove_comment_preview(
+            self.task.id, comment["id"], preview_file["id"]
+        )
+
+        self.assertEqual(self.get_comment_preview_ids(comment["id"]), [])
+        self.assertIsNone(PreviewFile.get(preview_file["id"]))
+
+    def test_delete_preview_of_a_comment_of_another_production(self):
+        # The rights are checked on the task of the path: the comment and
+        # its preview are only looked for there.
+        self.generate_fixture_task_standard()
+        comment, preview_file = self.generate_comment_with_preview(
+            self.task_standard
+        )
+        own_comment = self.generate_fixture_comment(task_id=self.task.id)
+        self.generate_fixture_user_cg_artist()
+        self.log_in_member(self.user_cg_artist, assigned=True)
+
+        self.remove_comment_preview(
+            self.task.id, comment["id"], preview_file["id"], 404
+        )
+        self.remove_comment_preview(
+            self.task.id, own_comment["id"], preview_file["id"], 404
+        )
+        self.remove_comment_preview(
+            self.task_standard.id, comment["id"], preview_file["id"], 403
+        )
+
+        self.assertEqual(
+            self.get_comment_preview_ids(comment["id"]), [preview_file["id"]]
+        )
+
+    def test_delete_preview_of_another_comment(self):
+        comment, preview_file = self.generate_comment_with_preview(self.task)
+        other_comment = self.generate_fixture_comment(task_id=self.task.id)
+
+        self.remove_comment_preview(
+            self.task.id, other_comment["id"], preview_file["id"], 404
+        )
+
+        self.assertEqual(
+            self.get_comment_preview_ids(comment["id"]), [preview_file["id"]]
+        )
+
+    def test_delete_preview_through_a_comment_of_another_task(self):
+        # The comment has to be on the task of the path, whatever preview
+        # it holds.
+        comment_id, preview_file_id = self.generate_preview_attached_by_hand(
+            self.shot_task, self.task
+        )
+
+        self.remove_comment_preview(
+            self.task.id, comment_id, preview_file_id, 404
+        )
+
+        self.assertEqual(
+            self.get_comment_preview_ids(comment_id), [preview_file_id]
+        )
+
+    def test_delete_preview_of_another_task_attached_to_the_comment(self):
+        # The link to the comment is not enough: the preview has to be on
+        # the task of the path too.
+        comment_id, preview_file_id = self.generate_preview_attached_by_hand(
+            self.task, self.shot_task
+        )
+
+        self.remove_comment_preview(
+            self.task.id, comment_id, preview_file_id, 404
+        )
+
+        self.assertEqual(
+            self.get_comment_preview_ids(comment_id), [preview_file_id]
+        )
+
+    def test_delete_preview_from_comment_as_an_artist_not_assigned(self):
+        comment, preview_file = self.generate_comment_with_preview(self.task)
+        self.generate_fixture_user_cg_artist()
+        self.log_in_member(self.user_cg_artist)
+
+        self.remove_comment_preview(
+            self.task.id, comment["id"], preview_file["id"], 403
+        )
+
+        self.assertEqual(
+            self.get_comment_preview_ids(comment["id"]), [preview_file["id"]]
+        )
+
+    def test_delete_preview_from_comment_as_an_assigned_artist(self):
+        # Kitsu removes the extra preview it added when its upload fails
+        # for good.
+        comment, preview_file = self.generate_comment_with_preview(self.task)
+        self.generate_fixture_user_cg_artist()
+        self.log_in_member(self.user_cg_artist, assigned=True)
+        self.assertEqual(
+            self.get_comment_preview_ids(comment["id"]), [preview_file["id"]]
+        )
+
+        self.remove_comment_preview(
+            self.task.id, comment["id"], preview_file["id"]
+        )
+
+        self.assertEqual(self.get_comment_preview_ids(comment["id"]), [])
+        self.assertIsNone(PreviewFile.get(preview_file["id"]))
+
+    def test_delete_preview_from_comment_as_a_manager(self):
+        comment, preview_file = self.generate_comment_with_preview(self.task)
+        self.generate_fixture_user_manager()
+        self.log_in_member(self.user_manager)
+        self.assertEqual(
+            self.get_comment_preview_ids(comment["id"]), [preview_file["id"]]
+        )
+
+        self.remove_comment_preview(
+            self.task.id, comment["id"], preview_file["id"]
+        )
+
+        self.assertEqual(self.get_comment_preview_ids(comment["id"]), [])
+        self.assertIsNone(PreviewFile.get(preview_file["id"]))
+
+    def test_delete_preview_from_comment_as_a_client(self):
+        # Adding a preview to a comment is a task action a client has, and
+        # the preview player of Kitsu offers them the removal too, on the
+        # comments they read only. Force stays out of their reach.
+        comment, preview_file = self.generate_comment_with_preview(self.task)
+        self.generate_fixture_user_client()
+        self.log_in_member(self.user_client)
+
+        self.remove_comment_preview(
+            self.task.id, comment["id"], preview_file["id"], 403
+        )
+        Comment.get(comment["id"]).update({"for_client": True})
+        comments_service.clear_comment_cache(comment["id"])
+        self.remove_comment_preview(
+            self.task.id, comment["id"], preview_file["id"], 403, force=True
+        )
+        self.assertEqual(
+            self.get_comment_preview_ids(comment["id"]), [preview_file["id"]]
+        )
+
+        self.remove_comment_preview(
+            self.task.id, comment["id"], preview_file["id"]
+        )
+
+        self.assertEqual(self.get_comment_preview_ids(comment["id"]), [])
+        self.assertIsNone(PreviewFile.get(preview_file["id"]))
+
+    def test_force_delete_preview_from_comment_needs_a_manager(self):
+        # Force purges the stored files at once, a right the preview file
+        # route keeps to the managers.
+        comment, preview_file = self.generate_comment_with_preview(self.task)
+        self.generate_fixture_user_cg_artist()
+        self.log_in_member(self.user_cg_artist, assigned=True)
+
+        self.remove_comment_preview(
+            self.task.id, comment["id"], preview_file["id"], 403, force=True
+        )
+        self.assertEqual(
+            self.get_comment_preview_ids(comment["id"]), [preview_file["id"]]
+        )
+
+        self.generate_fixture_user_manager()
+        self.log_in_member(self.user_manager)
+        with patch.object(
+            deletion_service,
+            "remove_preview_file_by_id",
+            wraps=deletion_service.remove_preview_file_by_id,
+        ) as remove_preview_file_by_id:
+            self.remove_comment_preview(
+                self.task.id, comment["id"], preview_file["id"], force=True
+            )
+
+        remove_preview_file_by_id.assert_called_once_with(
+            preview_file["id"], force=True
+        )
+        self.assertIsNone(PreviewFile.get(preview_file["id"]))
