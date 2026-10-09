@@ -363,6 +363,29 @@ class PersonRoutesTestCase(ApiDBTestCase):
             f"/data/persons/{self.person_id}/quota-shots/month/2024/06", 403
         )
 
+    def test_a_supervisor_lists_quota_shots_of_their_productions(self):
+        """
+        A supervisor reads another person's quota shots in a production they
+        belong to, as the production quotas route lets them, and not in a
+        production they have no access to.
+        """
+        artist = self.generate_fixture_user_cg_artist()
+        self.a_shot_given_feedback_for(artist)
+        supervisor = self.generate_fixture_user_supervisor()
+        path = (
+            f"/data/persons/{artist['id']}/quota-shots/month/2024/06"
+            f"?count_mode=feedback&project_id={self.project.id}"
+        )
+        self.log_in_supervisor()
+        self.get(path, 403)
+
+        projects_service.add_team_member(
+            str(self.project.id), supervisor["id"]
+        )
+        self.assertEqual(
+            [shot["id"] for shot in self.get(path)], [str(self.shot.id)]
+        )
+
     # --- Actions ---
 
     def test_change_password(self):
