@@ -46,6 +46,16 @@ responses:
                   format: uuid
                   description: Task identifier
                   example: c46c80c6-e097-6887-c292-79675204e470
+                project_id:
+                  type: string
+                  format: uuid
+                  description: Project of the task, given with a date range
+                  example: d57d91d7-f1a8-7998-d3a3-8a786315f581
+                task_type_id:
+                  type: string
+                  format: uuid
+                  description: Task type of the task, given with a date range
+                  example: e68ea2e8-a2b9-8aa9-e4b4-9b897426a692
                 date:
                   type: string
                   format: date

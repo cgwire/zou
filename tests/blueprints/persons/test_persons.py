@@ -292,8 +292,7 @@ class PersonRoutesTestCase(ApiDBTestCase):
             {"end_date": fields.get_date_object("2024-06-04")}
         )
 
-        # The listing is scoped to a production and a task type: without
-        # both the query filters on a null project and finds nothing.
+        # Scoped to a production and a task type, as the quota page asks.
         scope = (
             f"?project_id={self.shot_task.project_id}"
             f"&task_type_id={self.shot_task.task_type_id}"
@@ -319,6 +318,73 @@ class PersonRoutesTestCase(ApiDBTestCase):
         for period, path in misses.items():
             with self.subTest(misses=period):
                 self.assertEqual(self.get(path), [])
+
+    def a_shot_given_feedback_for(self, person):
+        tasks_service.assign_task(str(self.shot_task.id), person["id"])
+        self.shot_task.update(
+            {"end_date": fields.get_date_object("2024-06-04")}
+        )
+        return (
+            f"/data/persons/{person['id']}/quota-shots/month/2024/06"
+            "?count_mode=feedback"
+        )
+
+    def test_an_artist_lists_their_quota_shots_of_every_production(self):
+        """
+        My tasks charts a person's own quotas across productions and task
+        types: neither filter is required for their own listing.
+        """
+        artist = self.generate_fixture_user_cg_artist()
+        path = self.a_shot_given_feedback_for(artist)
+        self.log_in_cg_artist()
+
+        self.assertEqual(
+            [(shot["id"], shot["project_id"]) for shot in self.get(path)],
+            [(str(self.shot.id), str(self.project.id))],
+        )
+        self.get(
+            f"/data/persons/{self.person_id}/quota-shots/month/2024/06", 403
+        )
+
+    def test_a_manager_lists_their_own_quota_shots_without_a_production(self):
+        """
+        Without a production, a manager reads their own quota shots like
+        any artist, and nobody else's: the project check has no project to
+        clear them on.
+        """
+        manager = self.generate_fixture_user_manager()
+        path = self.a_shot_given_feedback_for(manager)
+        self.log_in_manager()
+
+        self.assertEqual(
+            [shot["id"] for shot in self.get(path)], [str(self.shot.id)]
+        )
+        self.get(
+            f"/data/persons/{self.person_id}/quota-shots/month/2024/06", 403
+        )
+
+    def test_a_supervisor_lists_quota_shots_of_their_productions(self):
+        """
+        A supervisor reads another person's quota shots in a production they
+        belong to, as the production quotas route lets them, and not in a
+        production they have no access to.
+        """
+        artist = self.generate_fixture_user_cg_artist()
+        self.a_shot_given_feedback_for(artist)
+        supervisor = self.generate_fixture_user_supervisor()
+        path = (
+            f"/data/persons/{artist['id']}/quota-shots/month/2024/06"
+            f"?count_mode=feedback&project_id={self.project.id}"
+        )
+        self.log_in_supervisor()
+        self.get(path, 403)
+
+        projects_service.add_team_member(
+            str(self.project.id), supervisor["id"]
+        )
+        self.assertEqual(
+            [shot["id"] for shot in self.get(path)], [str(self.shot.id)]
+        )
 
     # --- Actions ---
 
