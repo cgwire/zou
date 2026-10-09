@@ -2,6 +2,7 @@ from tests.base import ApiDBTestCase
 
 from zou.app import db
 from zou.app.models.comment import Comment
+from zou.app.models.event import ApiEvent
 from zou.app.services import projects_service, tasks_service
 
 from zou.app.utils import fields
@@ -63,6 +64,63 @@ class CommentTestCase(ApiDBTestCase):
         comment_id = self.comments[0]["id"]
         self.put(f"data/comments/{comment_id}", {"checklist": None})
         self.assertEqual(Comment.get(comment_id).checklist, [])
+
+    def test_one_event_per_update_names_the_task_author_and_client_flag(self):
+        # A client may read only some comments: from the author and the
+        # client flag, Kitsu skips reloading the others. It reloads a
+        # comment on each event, so an edit sends one.
+        comment_id = self.comments[0]["id"]
+        updates = self.capture_events("comment:update")
+
+        self.put(f"data/comments/{comment_id}", {"for_client": True})
+        self.put(f"data/comments/{comment_id}", {"for_client": False})
+
+        event_ids = [update.pop("id") for update in updates]
+        edit = {
+            "comment_id": comment_id,
+            "task_id": str(self.task.id),
+            "person_id": str(self.person.id),
+            "project_id": str(self.project.id),
+        }
+        self.assertEqual(
+            updates,
+            [{**edit, "for_client": True}, {**edit, "for_client": False}],
+        )
+        # The event log files each one under the production of the task.
+        stored = ApiEvent.query.filter_by(name="comment:update").all()
+        self.assertEqual(
+            sorted((str(event.id), str(event.project_id)) for event in stored),
+            sorted((event_id, str(self.project.id)) for event_id in event_ids),
+        )
+
+    def test_a_creation_names_the_task_the_author_and_the_client_flag(self):
+        # The generic creation announced the comment only: Kitsu could not
+        # reload it from its task, nor skip it for a client.
+        added = self.capture_events("comment:new")
+
+        comment = self.post(
+            "data/comments",
+            {
+                "object_type": "Task",
+                "object_id": str(self.task.id),
+                "person_id": str(self.person.id),
+                "text": "New comment",
+                "for_client": True,
+            },
+        )
+
+        self.assertEqual(
+            [
+                (
+                    event["comment_id"],
+                    event["task_id"],
+                    event["person_id"],
+                    event["for_client"],
+                )
+                for event in added
+            ],
+            [(comment["id"], str(self.task.id), str(self.person.id), True)],
+        )
 
     def log_in_team_artist(self):
         # A team member who wrote none of the comments.

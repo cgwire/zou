@@ -122,7 +122,7 @@ def remove_comment(comment_id):
     if task is not None:
         events.emit(
             "comment:delete",
-            {"comment_id": comment.id},
+            {"comment_id": comment.id, "task_id": str(task.id)},
             project_id=str(task.project_id),
         )
     else:

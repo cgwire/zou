@@ -44,6 +44,18 @@ class RemoveCommentTestCase(DeletionTestCase):
         self.assertEqual(result["id"], comment_id)
         self.assertIsNone(Comment.get(comment_id))
 
+    def test_remove_comment_names_its_task(self):
+        # Kitsu refreshes the last comment of the task the event names.
+        self.generate_fixture_comment()
+        captured = self.capture_events("comment:delete")
+
+        deletion_service.remove_comment(self.comment["id"])
+
+        self.assertEqual(
+            [event["task_id"] for event in captured],
+            [self.comment["object_id"]],
+        )
+
     def test_remove_comment_with_deleted_task(self):
         # The task is read to refresh its status; it may already be gone.
         self.generate_fixture_comment()

@@ -448,6 +448,8 @@ def new_comment(
             "comment_id": comment["id"],
             "task_id": task_id,
             "task_status_id": task_status_id,
+            "person_id": comment["person_id"],
+            "for_client": comment["for_client"],
         },
         project_id=task["project_id"],
     )
@@ -499,7 +501,7 @@ def move_comment_to_task(comment_id, target_task_id):
 
     events.emit(
         "comment:delete",
-        {"comment_id": str(comment.id)},
+        {"comment_id": str(comment.id), "task_id": str(source_task["id"])},
         project_id=source_task["project_id"],
     )
     events.emit(
@@ -508,6 +510,8 @@ def move_comment_to_task(comment_id, target_task_id):
             "comment_id": str(comment.id),
             "task_id": str(target_task["id"]),
             "task_status_id": comment_dict["task_status_id"],
+            "person_id": comment_dict["person_id"],
+            "for_client": comment_dict["for_client"],
         },
         project_id=target_task["project_id"],
     )
@@ -1191,7 +1195,12 @@ def add_preview_file_to_comment(comment_id, person_id, task_id, revision=None):
         news.update({"preview_file_id": preview_file.id})
     events.emit(
         "comment:update",
-        {"comment_id": comment.id, "task_id": comment.object_id},
+        {
+            "comment_id": comment.id,
+            "task_id": comment.object_id,
+            "person_id": comment.person_id,
+            "for_client": comment.for_client,
+        },
         project_id=project_id,
     )
     return preview_file.serialize(relations=True)
@@ -1305,7 +1314,12 @@ def copy_preview_file_in_another_one(
         comment_id = comment["id"]
         events.emit(
             "comment:update",
-            {"comment_id": comment_id, "task_id": comment["object_id"]},
+            {
+                "comment_id": comment_id,
+                "task_id": comment["object_id"],
+                "person_id": comment["person_id"],
+                "for_client": comment["for_client"],
+            },
             project_id=task["project_id"],
         )
         events.emit(

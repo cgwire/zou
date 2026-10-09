@@ -48,6 +48,20 @@ class CommentsResource(BaseModelsResource):
         """
         return super().post()
 
+    def emit_create_event(self, instance_dict):
+        # The generic event names the comment only: the task panels of Kitsu
+        # reload it from its task, and a client skips what it cannot read.
+        return events.emit(
+            "comment:new",
+            {
+                "comment_id": instance_dict["id"],
+                "task_id": instance_dict["object_id"],
+                "person_id": instance_dict["person_id"],
+                "for_client": instance_dict["for_client"],
+            },
+            project_id=instance_dict.get("project_id", None),
+        )
+
 
 class CommentResource(BaseModelResource):
     def __init__(self):
@@ -120,7 +134,6 @@ class CommentResource(BaseModelResource):
     def post_update(self, instance_dict, data):
         comment = comments_service.reset_mentions(instance_dict)
         task_id = comment["object_id"]
-        task = tasks_service.get_task(task_id)
         if self.task_status_change:
             task = tasks_service.reset_task_data(task_id)
             events.emit(
@@ -136,12 +149,23 @@ class CommentResource(BaseModelResource):
 
         comments_service.clear_comment_cache(comment["id"])
         notifications_service.reset_notifications_for_mentions(comment)
-        events.emit(
+        return comment
+
+    def emit_update_event(self, instance_dict):
+        # The generic event names the comment only, with no production:
+        # Kitsu finds the comment through its task, and a client skips what
+        # it cannot read.
+        task = tasks_service.get_task(instance_dict["object_id"])
+        return events.emit(
             "comment:update",
-            {"comment_id": comment["id"], "task_id": task_id},
+            {
+                "comment_id": instance_dict["id"],
+                "task_id": instance_dict["object_id"],
+                "person_id": instance_dict["person_id"],
+                "for_client": instance_dict["for_client"],
+            },
             project_id=task["project_id"],
         )
-        return comment
 
     def check_read_permissions(self, instance):
         return permissions_service.check_comment_access(
