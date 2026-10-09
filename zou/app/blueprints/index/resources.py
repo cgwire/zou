@@ -4,7 +4,7 @@ import datetime
 import psutil
 import redis
 import requests
-from flask import Response, abort
+from flask import Response
 from flask_jwt_extended import jwt_required
 from flask.views import MethodView
 
@@ -12,9 +12,9 @@ from zou import __version__
 from zou.app import app, config
 from zou.app.indexer import indexing
 from zou.app.services import (
-    persons_service,
     projects_service,
     stats_service,
+    organisation_service,
 )
 from zou.app.stores import redis_client
 from zou.app.utils import date_helpers, permissions
@@ -253,7 +253,7 @@ class ConfigResource(MethodView):
         """
         Get the configuration of the Kitsu instance
         """
-        organisation = persons_service.get_organisation()
+        organisation = organisation_service.get_organisation()
         conf = {
             "is_self_hosted": config.IS_SELF_HOSTED,
             "crisp_token": config.CRISP_TOKEN,
@@ -263,8 +263,8 @@ class ConfigResource(MethodView):
             "saml_idp_name": config.SAML_IDP_NAME,
             "oidc_enabled": config.OIDC_ENABLED,
             "oidc_idp_name": config.OIDC_IDP_NAME,
-            "default_locale": persons_service.get_default_locale(),
-            "default_timezone": persons_service.get_default_timezone(),
+            "default_locale": organisation_service.get_default_locale(),
+            "default_timezone": organisation_service.get_default_timezone(),
             "enforce_2fa": config.ENFORCE_2FA,
             "movie_highdef_bitrate": config.MOVIE_HIGHDEF_BITRATE,
             "movie_lowdef_bitrate": config.MOVIE_LOWDEF_BITRATE,

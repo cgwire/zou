@@ -1,20 +1,14 @@
 from sqlalchemy import cast, func, Text
-from sqlalchemy.exc import IntegrityError
 
 from zou.app.services import (
-    assets_service,
     base_service,
     persons_service,
-    projects_service,
-    notifications_service,
-    shots_service,
-    edits_service,
-    tasks_service,
+    entity_types_service,
+    subscriptions_service,
 )
 from zou.app.utils import (
     date_helpers,
     cache,
-    events,
     fields,
     http_cache,
     permissions,
@@ -23,7 +17,6 @@ from zou.app.utils import (
 
 from zou.app.models.entity import Entity, EntityLink, EntityConceptLink
 from zou.app.models.entity_type import EntityType
-from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
 from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task, TaskPersonLink
@@ -31,10 +24,8 @@ from zou.app.models.task import Task, TaskPersonLink
 from zou.app import db
 
 from zou.app.exceptions import (
-    PreviewFileNotFoundException,
     EntityLinkNotFoundException,
     EntityNotFoundException,
-    EntityTypeNotFoundException,
 )
 
 # Entity types positioned in time, as opposed to the asset types. Their
@@ -151,7 +142,7 @@ def get_full_entity_name(entity_id):
     """
     entity = get_entity(entity_id)
     episode_id = None
-    if shots_service.is_shot(entity):
+    if entity_types_service.is_shot(entity):
         sequence = get_entity(entity["parent_id"])
         if sequence["parent_id"] is None:
             name = f"{sequence['name']} / {entity['name']}"
@@ -159,16 +150,18 @@ def get_full_entity_name(entity_id):
             episode = get_entity(sequence["parent_id"])
             episode_id = episode["id"]
             name = f"{episode['name']} / {sequence['name']} / {entity['name']}"
-    elif shots_service.is_episode(entity):
+    elif entity_types_service.is_episode(entity):
         name = entity["name"]
-    elif shots_service.is_sequence(entity):
+    elif entity_types_service.is_sequence(entity):
         name = entity["name"]
         if entity["parent_id"] is not None:
             episode = get_entity(entity["parent_id"])
             episode_id = episode["id"]
             name = f"{episode['name']} / {entity['name']}"
     else:
-        asset_type = get_entity_type(entity["entity_type_id"])
+        asset_type = entity_types_service.get_entity_type(
+            entity["entity_type_id"]
+        )
         episode_id = entity["source_id"]
         name = f"{asset_type['name']} / {entity['name']}"
     return name, episode_id, entity["preview_file_id"]
@@ -200,9 +193,9 @@ def get_full_entity_names(entity_ids):
     all_entities.update(entities_map)
 
     # Get type IDs for classification
-    shot_type = shots_service.get_shot_type()
-    episode_type = shots_service.get_episode_type()
-    sequence_type = shots_service.get_sequence_type()
+    shot_type = entity_types_service.get_shot_type()
+    episode_type = entity_types_service.get_episode_type()
+    sequence_type = entity_types_service.get_sequence_type()
 
     # Anything that is not a shot, an episode or a sequence is an asset, so
     # its entity type has to be resolved to build the name.
@@ -273,78 +266,6 @@ def get_full_entity_names(entity_ids):
     return result
 
 
-def clear_entity_type_cache(entity_type_id):
-    """
-    Drop the memoized serializations of given entity type. The by-name
-    lookups are flushed whole, since the name is not known here.
-    """
-    cache.cache.delete_memoized(_get_entity_type_cached, str(entity_type_id))
-    cache.cache.delete_memoized(get_entity_type_by_name)
-    cache.cache.delete_memoized(get_entity_type_by_name_or_not_found)
-
-
-def get_temporal_entity_type_by_name(name):
-    """
-    Return the entity type matching given name, creating it if needed. A
-    cached None (the type did not exist yet when it was first looked up) is
-    dropped and looked up again.
-    """
-    entity_type = get_entity_type_by_name(name)
-    if entity_type is None:
-        cache.cache.delete_memoized(get_entity_type_by_name, name)
-        entity_type = get_entity_type_by_name(name)
-    return entity_type
-
-
-def is_edit(entity):
-    """
-    Return True if given entity dict has 'Edit' as entity type.
-    """
-    edit_type = get_temporal_entity_type_by_name("Edit")
-    return str(entity["entity_type_id"]) == edit_type["id"]
-
-
-@cache.memoize_function(240)
-def _get_entity_type_cached(entity_type_id):
-    return base_service.get_instance(
-        EntityType, entity_type_id, EntityTypeNotFoundException
-    ).serialize()
-
-
-def get_entity_type(entity_type_id):
-    """
-    Return an entity type matching given id, as a dict. Raises an exception
-    if nothing is found.
-
-    The id is normalised before it reaches the memoization, which keys on
-    the argument: callers hold it as a UUID read off a row as often as they
-    hold the string form, and the two must not be two cache entries.
-    """
-    return _get_entity_type_cached(str(entity_type_id))
-
-
-@cache.memoize_function(240)
-def get_entity_type_by_name(name):
-    """
-    Return entity type maching *name*. If it doesn't exist, it creates it.
-    """
-    entity_type = EntityType.get_by(name=name)
-    if entity_type is None:
-        entity_type = EntityType.create(name=name)
-    return entity_type.serialize()
-
-
-@cache.memoize_function(240)
-def get_entity_type_by_name_or_not_found(name):
-    """
-    Return entity type maching *name*. If it doesn't exist, it raises.
-    """
-    entity_type = EntityType.get_by(name=name)
-    if entity_type is None:
-        raise EntityTypeNotFoundException
-    return entity_type.serialize()
-
-
 def find_entity_raw(**lookup):
     """
     Return the entity matching given columns (name, project_id,
@@ -381,77 +302,18 @@ def get_entity(entity_id):
     return _get_entity_cached(str(entity_id))
 
 
-def update_entity_preview(entity_id, preview_file_id):
-    """
-    Update given entity main preview. If entity or preview is not found, it
-    raises an exception. The entity returned carries the status of that
-    preview, as the event does.
-    """
-    entity = Entity.get(entity_id)
-    if entity is None:
-        raise EntityNotFoundException
-
-    entity_id = str(entity.id)
-    preview_file = PreviewFile.get(preview_file_id)
-    if preview_file is None:
-        raise PreviewFileNotFoundException
-
-    try:
-        entity.update({"preview_file_id": preview_file.id})
-    except IntegrityError:
-        raise PreviewFileNotFoundException
-    # Read after the commit, so that a job that made the preview ready in
-    # the meantime is seen. The column alone: reading preview_file now
-    # would load its annotations again.
-    preview_file_status = fields.serialize_value(
-        PreviewFile.query.with_entities(PreviewFile.status)
-        .filter(PreviewFile.id == preview_file_id)
-        .scalar()
-    )
-    clear_entity_cache(entity_id)
-    events.emit(
-        "preview-file:set-main",
-        {
-            "entity_id": entity_id,
-            "preview_file_id": preview_file_id,
-            "preview_file_status": preview_file_status,
-        },
-        project_id=str(entity.project_id),
-    )
-    entity_type = EntityType.get(entity.entity_type_id)
-    entity_type_name = "asset"
-    if entity_type.name in TEMPORAL_ENTITY_TYPE_NAMES:
-        entity_type_name = entity_type.name.lower()
-    events.emit(
-        f"{entity_type_name}:update",
-        {f"{entity_type_name}_id": entity_id},
-        project_id=str(entity.project_id),
-    )
-    assets_service.clear_asset_cache(entity_id)
-    edits_service.clear_edit_cache(entity_id)
-    shots_service.clear_shot_cache(entity_id)
-    shots_service.clear_episode_cache(entity_id)
-    shots_service.clear_sequence_cache(entity_id)
-    return {**entity.serialize(), "preview_file_status": preview_file_status}
-
-
 def get_for_entity_from_task(task):
     """
     Return the entity type name for given task. All asset types are returned
     as "Asset".
     """
     entity = get_entity(task["entity_id"])
-    entity_type = get_entity_type(entity["entity_type_id"])
-    for_entity = entity_type["name"]
-    if for_entity.lower() not in [
-        "shot",
-        "sequence",
-        "episode",
-        "edit",
-        "concept",
-    ]:
-        for_entity = "Asset"
-    return for_entity
+    entity_type = entity_types_service.get_entity_type(
+        entity["entity_type_id"]
+    )
+    if entity_type["name"] in TEMPORAL_ENTITY_TYPE_NAMES:
+        return entity_type["name"]
+    return "Asset"
 
 
 def get_entities_for_project(
@@ -700,7 +562,7 @@ def get_entities_and_tasks(criterions=None):
     if criterions is None:
         criterions = {}
 
-    subscription_map = notifications_service.get_subscriptions_for_user(
+    subscription_map = subscriptions_service.get_subscriptions_for_user(
         criterions.get("project_id", None),
         criterions.get("entity_type_id", None),
     )
@@ -773,20 +635,6 @@ def get_entities_and_tasks(criterions=None):
     return entities
 
 
-def get_entity_tasks(entity):
-    """
-    Get all tasks for a given entity.
-    """
-    entity_type = get_entity_type(entity_type_id=entity["entity_type_id"])
-    entity_type_name = entity_type["name"]
-    if assets_service.is_asset_type(entity_type):
-        entity_type_name = "Asset"
-    get_tasks = getattr(
-        tasks_service, "get_tasks_for_" + entity_type_name.lower()
-    )
-    return get_tasks(entity["id"])
-
-
 def get_entity_link(link_id):
     """
     Return the entity link matching given id, as a dict. Raises an exception
@@ -796,88 +644,6 @@ def get_entity_link(link_id):
     if link is None:
         raise EntityLinkNotFoundException
     return link.serialize()
-
-
-def remove_entity_link(link_id):
-    """
-    Delete the entity link matching given id and return it.
-    """
-    link = EntityLink.get_by(id=link_id)
-    if link is None:
-        raise EntityLinkNotFoundException
-    link.delete()
-    return link.serialize()
-
-
-def get_not_allowed_descriptors_fields_for_vendor(
-    entity_type="Asset", departments=None, projects_ids=None
-):
-    """
-    Return, per project, the metadata field names a vendor of given
-    departments must not see: the descriptors restricted to departments they
-    do not belong to.
-    """
-    if departments is None:
-        departments = []
-    if projects_ids is None:
-        projects_ids = []
-    not_allowed_descriptors_field_names = {}
-    for project_id in projects_ids:
-        not_allowed_descriptors_field_names[project_id] = [
-            descriptor["field_name"]
-            for descriptor in projects_service.get_metadata_descriptors(
-                project_id
-            )
-            if descriptor["entity_type"] == entity_type
-            and descriptor["departments"] != []
-            and len(set(departments) & set(descriptor["departments"])) == 0
-        ]
-    return not_allowed_descriptors_field_names
-
-
-def remove_not_allowed_fields_from_metadata(
-    not_allowed_descriptors_field_names=None, data=None
-):
-    """
-    Return given metadata without the fields the caller must not see.
-    """
-    if not_allowed_descriptors_field_names is None:
-        not_allowed_descriptors_field_names = []
-    if data is None:
-        data = {}
-    return {
-        key: value
-        for key, value in data.items()
-        if key not in not_allowed_descriptors_field_names
-    }
-
-
-def remove_not_allowed_metadata_for_vendor(
-    entity_type, departments, entities, project_id=None
-):
-    """
-    Strip from a serialized listing the metadata a vendor of given departments
-    must not see, in place. No departments means nothing to narrow down.
-
-    The listings that carry the tasks pick their columns one by one and mask
-    them while they build their rows. These hand back whole serialized
-    entities, so the restricted descriptors come along unless they are taken
-    out here. Some of those listings drop the project on the way, hence the
-    fallback the caller passes in.
-    """
-    if departments is None:
-        return entities
-    not_allowed_map = get_not_allowed_descriptors_fields_for_vendor(
-        entity_type,
-        departments,
-        set(entity.get("project_id") or project_id for entity in entities),
-    )
-    for entity in entities:
-        entity["data"] = remove_not_allowed_fields_from_metadata(
-            not_allowed_map[entity.get("project_id") or project_id],
-            entity["data"],
-        )
-    return entities
 
 
 def get_linked_entities_with_tasks(entity_id):

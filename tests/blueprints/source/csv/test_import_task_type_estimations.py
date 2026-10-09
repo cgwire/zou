@@ -5,7 +5,9 @@ from tests.base import ApiDBTestCase
 
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.task import Task
-from zou.app.services import persons_service
+from zou.app.services import (
+    organisation_service,
+)
 
 
 class ImportCsvTaskTypeEstimationsTestCase(ApiDBTestCase):
@@ -127,8 +129,8 @@ class ImportCsvTaskTypeEstimationsTestCase(ApiDBTestCase):
         return Task.get(self.task.id)
 
     def display_durations_in_hours(self, hours_by_day=8):
-        organisation = persons_service.get_organisation()
-        persons_service.update_organisation(
+        organisation = organisation_service.get_organisation()
+        organisation_service.update_organisation(
             organisation["id"],
             {"format_duration_in_hours": True, "hours_by_day": hours_by_day},
         )

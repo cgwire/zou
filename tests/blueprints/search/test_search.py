@@ -2,7 +2,12 @@ import pytest
 
 from tests.base import ApiDBTestCase, indexer_is_up
 
-from zou.app.services import index_service, projects_service, tasks_service
+from zou.app.services import (
+    index_service,
+    projects_service,
+    tasks_service,
+    metadata_descriptors_service,
+)
 
 pytestmark = [
     pytest.mark.integration,
@@ -227,7 +232,7 @@ class VendorSearchTestCase(ApiDBTestCase):
         # The vendor works on Girafe. Chameau is another asset of the same
         # production, and none of their business.
         tasks_service.assign_task(str(self.task.id), person_id)
-        projects_service.add_metadata_descriptor(
+        metadata_descriptors_service.add_metadata_descriptor(
             project_id,
             "Asset",
             "Contractor",

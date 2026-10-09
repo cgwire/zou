@@ -5,7 +5,6 @@ from flask_jwt_extended import jwt_required
 
 from zou.app.services import (
     breakdown_service,
-    deletion_service,
     entities_service,
     persons_service,
     projects_service,
@@ -16,6 +15,9 @@ from zou.app.services import (
     tasks_service,
     permissions_service,
     user_service,
+    entity_types_service,
+    quotas_service,
+    cascade_deletion_service,
 )
 
 from zou.app.mixin import ArgsMixin
@@ -93,7 +95,7 @@ class ShotResource(MethodView, ArgsMixin):
             permissions_service.check_manager_project_access(
                 shot["project_id"]
             )
-        shots_service.remove_shot(shot_id, force=force)
+        cascade_deletion_service.remove_shot(shot_id, force=force)
         return "", 204
 
 
@@ -122,7 +124,7 @@ class SceneResource(MethodView):
             permissions_service.check_manager_project_access(
                 scene["project_id"]
             )
-        shots_service.remove_scene(scene_id)
+        cascade_deletion_service.remove_scene(scene_id)
         return "", 204
 
 
@@ -382,7 +384,9 @@ class SceneAndTasksResource(MethodView):
         )
         if permissions.has_vendor_permissions():
             raise permissions.PermissionDenied
-        criterions["entity_type_id"] = shots_service.get_scene_type()["id"]
+        criterions["entity_type_id"] = entity_types_service.get_scene_type()[
+            "id"
+        ]
         return entities_service.get_entities_and_tasks(criterions)
 
 
@@ -400,7 +404,9 @@ class SequenceAndTasksResource(MethodView):
         permissions_service.check_project_access(
             criterions.get("project_id", None)
         )
-        criterions["entity_type_id"] = shots_service.get_sequence_type()["id"]
+        criterions["entity_type_id"] = (
+            entity_types_service.get_sequence_type()["id"]
+        )
         if permissions.has_vendor_permissions():
             # Vendors only see sequences holding a shot with a task assigned
             # to them, and only their own tasks on those sequences.
@@ -439,7 +445,9 @@ class EpisodeAndTasksResource(MethodView):
         permissions_service.check_project_access(
             criterions.get("project_id", None)
         )
-        criterions["entity_type_id"] = shots_service.get_episode_type()["id"]
+        criterions["entity_type_id"] = entity_types_service.get_episode_type()[
+            "id"
+        ]
         if permissions.has_vendor_permissions():
             # Vendors only see episodes holding a shot with a task assigned
             # to them, and only their own tasks on those episodes.
@@ -626,7 +634,7 @@ class EpisodeResource(MethodView, ArgsMixin):
             permissions_service.check_manager_project_access(
                 episode["project_id"]
             )
-        deletion_service.remove_episode(episode_id, force=force)
+        cascade_deletion_service.remove_episode(episode_id, force=force)
         return "", 204
 
 
@@ -733,7 +741,7 @@ class SequenceResource(MethodView, ArgsMixin):
             permissions_service.check_manager_project_access(
                 sequence["project_id"]
             )
-        shots_service.remove_sequence(sequence_id, force=force)
+        cascade_deletion_service.remove_sequence(sequence_id, force=force)
         return "", 204
 
 
@@ -945,14 +953,14 @@ class ProjectQuotasResource(MethodView, ArgsMixin):
         weighted = "weighted" in count_mode
 
         if weighted:
-            return shots_service.get_weighted_quotas(
+            return quotas_service.get_weighted_quotas(
                 project_id,
                 task_type_id,
                 feedback=feedback,
                 studio_id=studio_id,
             )
         else:
-            return shots_service.get_raw_quotas(
+            return quotas_service.get_raw_quotas(
                 project_id,
                 task_type_id,
                 feedback=feedback,
@@ -996,14 +1004,14 @@ class ProjectPersonQuotasResource(MethodView, ArgsMixin):
         weighted = "weighted" in count_mode
 
         if weighted:
-            return shots_service.get_weighted_quotas(
+            return quotas_service.get_weighted_quotas(
                 project_id,
                 person_id=person_id,
                 feedback=feedback,
                 studio_id=studio_id,
             )
         else:
-            return shots_service.get_raw_quotas(
+            return quotas_service.get_raw_quotas(
                 project_id,
                 person_id=person_id,
                 feedback=feedback,

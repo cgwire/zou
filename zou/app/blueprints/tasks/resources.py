@@ -30,6 +30,13 @@ from zou.app.services import (
     permissions_service,
     user_service,
     concepts_service,
+    entity_types_service,
+    subscriptions_service,
+    task_types_service,
+    comments_service,
+    schedule_service,
+    time_spents_service,
+    todos_service,
 )
 from zou.app.utils import (
     events,
@@ -66,7 +73,7 @@ class AddPreviewResource(MethodView, ArgsMixin):
         permissions_service.check_task_action_access(task_id)
 
         person = persons_service.get_current_user()
-        preview_file = tasks_service.add_preview_file_to_comment(
+        preview_file = comments_service.add_preview_file_to_comment(
             comment_id, person["id"], task_id, body.revision
         )
         return preview_file, 201
@@ -81,12 +88,12 @@ class AddExtraPreviewResource(MethodView, ArgsMixin):
         Add preview to comment
         """
         permissions_service.check_task_action_access(task_id)
-        tasks_service.get_comment(comment_id)
+        comments_service.get_comment(comment_id)
 
         person = persons_service.get_current_user()
         related_preview_file = files_service.get_preview_file(preview_file_id)
 
-        preview_file = tasks_service.add_preview_file_to_comment(
+        preview_file = comments_service.add_preview_file_to_comment(
             comment_id, person["id"], task_id, related_preview_file["revision"]
         )
         return preview_file, 201
@@ -132,7 +139,7 @@ class TaskCommentsResource(MethodView):
         is_client = permissions.has_client_permissions()
         is_manager = permissions.has_manager_permissions()
         is_supervisor = permissions.has_supervisor_permissions()
-        return tasks_service.get_comments(
+        return comments_service.get_comments(
             task_id, is_client, is_manager or is_supervisor
         )
 
@@ -145,7 +152,7 @@ class TaskCommentResource(MethodView):
         """
         Get comment
         """
-        comment = tasks_service.get_comment(comment_id)
+        comment = comments_service.get_comment(comment_id)
         if comment["object_id"] != task_id:
             raise CommentNotFoundException
         permissions_service.check_comment_access(
@@ -180,7 +187,7 @@ class TaskCommentResource(MethodView):
         """
         Delete comment
         """
-        comment = tasks_service.get_comment(comment_id)
+        comment = comments_service.get_comment(comment_id)
         task = tasks_service.get_task(comment["object_id"])
         permissions_service.resolve_project_role(task["project_id"])
         if permissions.has_manager_permissions():
@@ -190,7 +197,7 @@ class TaskCommentResource(MethodView):
         self.pre_delete(comment)
         deletion_service.remove_comment(comment_id)
         tasks_service.reset_task_data(comment["object_id"])
-        tasks_service.clear_comment_cache(comment_id)
+        comments_service.clear_comment_cache(comment_id)
         self.post_delete(comment)
         return "", 204
 
@@ -220,7 +227,7 @@ class PersonTasksResource(MethodView):
                 return []
         elif permissions.has_client_permissions():
             return []
-        return tasks_service.get_person_tasks(person_id, projects)
+        return todos_service.get_person_tasks(person_id, projects)
 
 
 class PersonRelatedTasksResource(MethodView):
@@ -238,7 +245,7 @@ class PersonRelatedTasksResource(MethodView):
             and permissions.has_vendor_permissions()
         ):
             raise permissions.PermissionDenied
-        return tasks_service.get_person_related_tasks(person_id, task_type_id)
+        return todos_service.get_person_related_tasks(person_id, task_type_id)
 
 
 class PersonDoneTasksResource(MethodView):
@@ -266,7 +273,7 @@ class PersonDoneTasksResource(MethodView):
                 return []
         elif permissions.has_client_permissions():
             return []
-        return tasks_service.get_person_done_tasks(person_id, projects)
+        return todos_service.get_person_done_tasks(person_id, projects)
 
 
 class CreateShotTasksResource(MethodView):
@@ -278,7 +285,7 @@ class CreateShotTasksResource(MethodView):
         Create shot tasks
         """
         permissions_service.check_manager_project_access(project_id)
-        task_type = tasks_service.get_task_type(task_type_id)
+        task_type = task_types_service.get_task_type(task_type_id)
 
         shot_ids = validation.validate_id_list(required=False)
         shots = []
@@ -310,7 +317,7 @@ class CreateConceptTasksResource(MethodView):
             or permissions.has_client_permissions()
         ):
             raise permissions.PermissionDenied
-        task_type = tasks_service.get_task_type(task_type_id)
+        task_type = task_types_service.get_task_type(task_type_id)
 
         concept_ids = validation.validate_id_list(required=False)
         concepts = []
@@ -340,9 +347,9 @@ class CreateEntityTasksResource(MethodView):
         Create entity tasks
         """
         permissions_service.check_manager_project_access(project_id)
-        task_type = tasks_service.get_task_type(task_type_id)
+        task_type = task_types_service.get_task_type(task_type_id)
         entity_type_dict = (
-            entities_service.get_entity_type_by_name_or_not_found(
+            entity_types_service.get_entity_type_by_name_or_not_found(
                 entity_type.capitalize()
             )
         )
@@ -374,7 +381,7 @@ class CreateAssetTasksResource(MethodView):
         Create asset tasks
         """
         permissions_service.check_manager_project_access(project_id)
-        task_type = tasks_service.get_task_type(task_type_id)
+        task_type = task_types_service.get_task_type(task_type_id)
 
         asset_ids = validation.validate_id_list(required=False)
         assets = []
@@ -401,7 +408,7 @@ class CreateEditTasksResource(MethodView):
         Create edit tasks
         """
         permissions_service.check_manager_project_access(project_id)
-        task_type = tasks_service.get_task_type(task_type_id)
+        task_type = task_types_service.get_task_type(task_type_id)
 
         edit_ids = validation.validate_id_list(required=False)
         edits = []
@@ -635,7 +642,7 @@ class SetTimeSpentResource(MethodView, ArgsMixin):
         body = validation.validate_request_body(TimeSpentSchema)
         try:
             permissions_service.check_time_spent_access(task_id, person_id)
-            time_spent = tasks_service.create_or_update_time_spent(
+            time_spent = time_spents_service.create_or_update_time_spent(
                 task_id,
                 person_id,
                 date_helpers.get_date_from_string(date),
@@ -656,7 +663,7 @@ class SetTimeSpentResource(MethodView, ArgsMixin):
         permissions_service.check_person_is_not_bot(person_id)
         try:
             permissions_service.check_time_spent_access(task_id, person_id)
-            time_spent = tasks_service.delete_time_spent(
+            time_spent = time_spents_service.delete_time_spent(
                 task_id,
                 person_id,
                 datetime.datetime.strptime(date, "%Y-%m-%d"),
@@ -681,7 +688,7 @@ class AddTimeSpentResource(MethodView, ArgsMixin):
         body = validation.validate_request_body(TimeSpentSchema)
         try:
             permissions_service.check_time_spent_access(task_id, person_id)
-            time_spent = tasks_service.create_or_update_time_spent(
+            time_spent = time_spents_service.create_or_update_time_spent(
                 task_id,
                 person_id,
                 date_helpers.get_date_from_string(date),
@@ -704,7 +711,7 @@ class GetTimeSpentResource(MethodView):
         Get task time spent
         """
         permissions_service.check_task_access(task_id)
-        return tasks_service.get_time_spents_for_task(task_id)
+        return time_spents_service.get_time_spents_for_task(task_id)
 
 
 class GetTimeSpentDateResource(MethodView):
@@ -717,7 +724,7 @@ class GetTimeSpentDateResource(MethodView):
         """
         try:
             permissions_service.check_task_access(task_id)
-            return tasks_service.get_time_spents_for_task(task_id, date)
+            return time_spents_service.get_time_spents_for_task(task_id, date)
         except WrongDateFormatException:
             raise WrongParameterException("Wrong date format.")
 
@@ -766,7 +773,7 @@ class ProjectSubscriptionsResource(MethodView):
         Get project subscriptions
         """
         projects_service.get_project(project_id)
-        return notifications_service.get_subscriptions_for_project(project_id)
+        return subscriptions_service.get_subscriptions_for_project(project_id)
 
 
 class ProjectNotificationsResource(MethodView, ArgsMixin):
@@ -811,7 +818,7 @@ class ProjectTasksResource(MethodView, ArgsMixin):
         task_type_id = self.get_task_type_id()
         episode_id = self.get_episode_id()
         return http_cache.json_response(
-            tasks_service.get_tasks_for_project(
+            todos_service.get_tasks_for_project(
                 project_id,
                 page,
                 task_type_id=task_type_id,
@@ -838,7 +845,9 @@ class ProjectCommentsResource(MethodView, ArgsMixin):
             raise permissions.PermissionDenied
         page = self.get_page()
         limit = self.get_limit()
-        return tasks_service.get_comments_for_project(project_id, page, limit)
+        return comments_service.get_comments_for_project(
+            project_id, page, limit
+        )
 
 
 class ProjectPreviewFilesResource(MethodView, ArgsMixin):
@@ -876,7 +885,7 @@ class SetTaskMainPreviewResource(MethodView):
             raise WrongParameterException(
                 "This task has no preview file to set as the main preview."
             )
-        return entities_service.update_entity_preview(
+        return tasks_service.update_entity_preview(
             task["entity_id"], preview_file["id"]
         )
 
@@ -906,7 +915,7 @@ class SetTasksMainPreviewResource(MethodView):
             )
             if preview_file is not None:
                 entities.append(
-                    entities_service.update_entity_preview(
+                    tasks_service.update_entity_preview(
                         task["entity_id"], preview_file["id"]
                     )
                 )
@@ -950,7 +959,7 @@ class PersonsTasksDatesResource(MethodView, ArgsMixin):
                     for open_project_id in projects_service.open_project_ids()
                     if open_project_id not in own_project_ids
                 ]
-        return tasks_service.get_persons_tasks_dates(
+        return schedule_service.get_persons_tasks_dates(
             project_id=project_id,
             project_ids=project_ids,
             busy_project_ids=busy_project_ids,
@@ -1003,7 +1012,7 @@ class OpenTasksResource(MethodView, ArgsMixin):
             ]
         )
         check_open_tasks_filter_args(self, args)
-        return tasks_service.get_open_tasks(
+        return todos_service.get_open_tasks(
             tasks_service.OpenTasksFilters.from_args(args),
             page=args["page"],
             limit=args["limit"],
@@ -1018,7 +1027,7 @@ class OpenTasksStatsResource(MethodView, ArgsMixin):
         """
         Get open tasks stats
         """
-        return tasks_service.get_open_tasks_stats()
+        return todos_service.get_open_tasks_stats()
 
 
 class OpenTasksBurndownResource(MethodView, ArgsMixin):
@@ -1043,6 +1052,6 @@ class OpenTasksBurndownResource(MethodView, ArgsMixin):
             ]
         )
         check_open_tasks_filter_args(self, args)
-        return tasks_service.get_open_tasks_burndown(
+        return todos_service.get_open_tasks_burndown(
             tasks_service.OpenTasksFilters.from_args(args)
         )

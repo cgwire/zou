@@ -6,7 +6,9 @@ from flask_jwt_extended import jwt_required
 from zou.app.models.department import Department
 from zou.app.models.task_type import TaskType
 from zou.app.utils import colors
-from zou.app.services import tasks_service
+from zou.app.services import (
+    task_types_service,
+)
 
 from zou.app.blueprints.source.shotgun.base import (
     BaseImportShotgunResource,
@@ -97,7 +99,7 @@ class ImportShotgunStepsResource(BaseImportShotgunResource):
                 # when the step moves it to another department
                 data.pop("name", None)
             task_type.update(data)
-            tasks_service.clear_task_type_cache(str(task_type.id))
+            task_types_service.clear_task_type_cache(str(task_type.id))
             current_app.logger.info(f"Task Type updated: {task_type}")
         return task_type
 

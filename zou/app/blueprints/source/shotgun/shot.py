@@ -5,7 +5,11 @@ from flask_jwt_extended import jwt_required
 from zou.app.models.project import Project
 from zou.app.models.entity import Entity
 
-from zou.app.services import shots_service, persons_service
+from zou.app.services import (
+    shots_service,
+    persons_service,
+    entity_types_service,
+)
 
 from zou.app.blueprints.source.shotgun.base import (
     BaseImportShotgunResource,
@@ -26,7 +30,7 @@ class ImportShotgunShotsResource(BaseImportShotgunResource):
         return super().post()
 
     def prepare_import(self):
-        self.shot_type = shots_service.get_shot_type()
+        self.shot_type = entity_types_service.get_shot_type()
         self.project_map = Project.get_id_map(field="name")
         self.current_user_id = persons_service.get_current_user()["id"]
 
@@ -41,7 +45,7 @@ class ImportShotgunShotsResource(BaseImportShotgunResource):
         scene_id = self.get_scene(sg_shot)
         assets = self.extract_assets(sg_shot)
 
-        shot_type = shots_service.get_shot_type()
+        shot_type = entity_types_service.get_shot_type()
 
         data = {
             "name": sg_shot["code"],
@@ -99,7 +103,7 @@ class ImportShotgunShotsResource(BaseImportShotgunResource):
     def import_entry(self, data):
         shot = Entity.get_by(
             shotgun_id=data["shotgun_id"],
-            entity_type_id=shots_service.get_shot_type()["id"],
+            entity_type_id=entity_types_service.get_shot_type()["id"],
         )
 
         if shot is None:
@@ -121,7 +125,9 @@ class ImportShotgunShotsResource(BaseImportShotgunResource):
 class ImportRemoveShotgunShotResource(ImportRemoveShotgunBaseResource):
     def __init__(self):
         ImportRemoveShotgunBaseResource.__init__(
-            self, Entity, entity_type_id=shots_service.get_shot_type()["id"]
+            self,
+            Entity,
+            entity_type_id=entity_types_service.get_shot_type()["id"],
         )
 
     @jwt_required()

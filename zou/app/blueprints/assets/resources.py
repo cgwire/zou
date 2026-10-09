@@ -19,6 +19,8 @@ from zou.app.services import (
     shots_service,
     tasks_service,
     permissions_service,
+    entity_types_service,
+    cascade_deletion_service,
 )
 from zou.app.blueprints.assets.schemas import (
     CastingEntrySchema,
@@ -78,7 +80,7 @@ class AssetResource(MethodView, ArgsMixin):
                 asset["project_id"]
             )
 
-        assets_service.remove_asset(asset_id, force=force)
+        cascade_deletion_service.remove_asset(asset_id, force=force)
         return "", 204
 
 
@@ -159,7 +161,7 @@ class AssetTypeResource(MethodView):
         """
         Get asset type
         """
-        return assets_service.get_asset_type(asset_type_id)
+        return entity_types_service.get_asset_type(asset_type_id)
 
 
 class AssetTypesResource(MethodView):
@@ -171,7 +173,7 @@ class AssetTypesResource(MethodView):
         Get asset types
         """
         criterions = query.get_query_criterions_from_request(request)
-        return assets_service.get_asset_types(criterions)
+        return entity_types_service.get_asset_types(criterions)
 
 
 class ProjectAssetTypesResource(MethodView):

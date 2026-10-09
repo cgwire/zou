@@ -25,8 +25,8 @@ from zou.app.utils import events, fields, permissions
 from zou.app.exceptions import WrongParameterException
 from zou.app.services import (
     entities_service,
-    shots_service,
     tasks_service,
+    entity_types_service,
 )
 
 
@@ -132,7 +132,7 @@ class ImportKitsuEntitiesResource(BaseImportKitsuResource):
 
     def emit_event(self, event_type, entry):
         project_id = entry["project_id"]
-        name = shots_service.get_base_entity_type_name(entry)
+        name = entity_types_service.get_base_entity_type_name(entry)
         events.emit(
             f"{name.lower()}:{event_type}",
             {f"{name}_id": entry["id"]},

@@ -1,7 +1,9 @@
 from tests.base import ApiDBTestCase
 
 from zou.app.models.entity import Entity
-from zou.app.services import concepts_service
+from zou.app.services import (
+    concepts_service,
+)
 from zou.app.exceptions import ConceptNotFoundException
 
 
@@ -35,17 +37,6 @@ class ConceptsServiceTestCase(ApiDBTestCase):
             entity_id=concept["id"], task_type_id=self.task_type.id
         )
         return concept, task
-
-    def test_create_concept(self):
-        concept = self.a_concept("Concept 1", description="A cool concept")
-
-        self.assertEqual(concept["name"], "Concept 1")
-        self.assertEqual(concept["project_id"], str(self.project.id))
-        self.assertEqual(concept["description"], "A cool concept")
-        self.assertEqual(
-            concept["entity_type_id"],
-            concepts_service.get_concept_type()["id"],
-        )
 
     def test_create_concept_reuses_the_name_within_a_production(self):
         first = self.a_concept("Same Name")
@@ -165,34 +156,3 @@ class ConceptsServiceTestCase(ApiDBTestCase):
             concepts_service.get_full_concept(
                 "00000000-0000-0000-0000-000000000000"
             )
-
-    def test_remove_concept(self):
-        concept = self.a_concept("To Remove")
-        result = concepts_service.remove_concept(concept["id"])
-        self.assertEqual(result["id"], concept["id"])
-        with self.assertRaises(ConceptNotFoundException):
-            concepts_service.get_concept_raw(concept["id"])
-
-    def test_remove_concept_with_task_cancels(self):
-        # A concept someone has worked on is canceled rather than deleted.
-        concept, _ = self.a_concept_with_a_task("With Task")
-
-        result = concepts_service.remove_concept(concept["id"])
-
-        self.assertTrue(result["canceled"])
-        self.assertIsNotNone(concepts_service.get_concept_raw(concept["id"]))
-
-    def test_remove_concept_with_task_force(self):
-        concept, _ = self.a_concept_with_a_task("Force Remove")
-        result = concepts_service.remove_concept(concept["id"], force=True)
-        self.assertEqual(result["id"], concept["id"])
-        with self.assertRaises(ConceptNotFoundException):
-            concepts_service.get_concept_raw(concept["id"])
-
-    def test_is_concept(self):
-        concept = self.a_concept("Is Concept")
-        self.assertTrue(concepts_service.is_concept(concept))
-
-        self.generate_fixture_asset()
-        asset = self.asset.serialize()
-        self.assertFalse(concepts_service.is_concept(asset))

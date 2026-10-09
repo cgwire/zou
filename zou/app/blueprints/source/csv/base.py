@@ -14,8 +14,7 @@ from zou.app.utils import permissions, string
 from zou.app.services import (
     permissions_service,
     persons_service,
-    projects_service,
-    user_service,
+    metadata_descriptors_service,
 )
 
 
@@ -175,7 +174,9 @@ class BaseCsvProjectImportResource(BaseCsvImportResource, ArgsMixin):
     def get_descriptor_field_map(self, project_id, entity_type):
         descriptor_map = {}
         self.person_lookup = None
-        descriptors = projects_service.get_metadata_descriptors(project_id)
+        descriptors = metadata_descriptors_service.get_metadata_descriptors(
+            project_id
+        )
         for descriptor in descriptors:
             if descriptor["entity_type"] == entity_type:
                 descriptor_map[descriptor["name"]] = descriptor

@@ -5,7 +5,11 @@ from tests.base import ApiDBTestCase
 from zou.app import config
 from zou.app.utils import fields
 from zou.app.models.project import Project
-from zou.app.services import projects_service, shots_service
+from zou.app.services import (
+    projects_service,
+    shots_service,
+    metadata_descriptors_service,
+)
 
 
 class ProjectTestCase(ApiDBTestCase):
@@ -47,7 +51,7 @@ class ProjectTestCase(ApiDBTestCase):
         project_id = str(self.project_closed.id)
         self.project_closed.update({"production_type": "tvshow"})
         episode = shots_service.create_episode(project_id, "E01")
-        descriptor = projects_service.add_metadata_descriptor(
+        descriptor = metadata_descriptors_service.add_metadata_descriptor(
             project_id, "Asset", "Contractor", "list", ["in", "out"], False
         )
         projects_service.create_project_task_type_link(
@@ -86,10 +90,10 @@ class ProjectTestCase(ApiDBTestCase):
         project_id = str(self.project.id)
         self.generate_fixture_user_client()
         projects_service.add_team_member(project_id, self.user_client["id"])
-        projects_service.add_metadata_descriptor(
+        metadata_descriptors_service.add_metadata_descriptor(
             project_id, "Asset", "Contractor", "list", ["in", "out"], False
         )
-        published = projects_service.add_metadata_descriptor(
+        published = metadata_descriptors_service.add_metadata_descriptor(
             project_id, "Asset", "Delivery", "list", ["in", "out"], True
         )
         self.log_in_client()

@@ -38,9 +38,10 @@ MINIMAL_PERSON_FILTER_FIELDS = [
     "is_guest",
 ]
 from zou.app.services import (
-    deletion_service,
     index_service,
     persons_service,
+    organisation_service,
+    cascade_deletion_service,
 )
 from zou.app.utils import permissions, auth, date_helpers
 from zou.app.utils.fields import serialize_value
@@ -180,7 +181,7 @@ class PersonsResource(BaseModelsResource):
             raise WrongParameterException(
                 "User limit reached.",
                 {
-                    "limit": persons_service.get_user_limit(),
+                    "limit": organisation_service.get_user_limit(),
                 },
             )
         return permissions.check_admin_permissions()
@@ -447,7 +448,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
         person_dict = person.serialize()
         self.check_delete_permissions(person_dict)
         self.pre_delete(person_dict)
-        deletion_service.remove_person(instance_id, force=force)
+        cascade_deletion_service.remove_person(instance_id, force=force)
         index_service.remove_person_index(instance_id)
         self.emit_delete_event(person_dict)
         self.post_delete(person_dict)

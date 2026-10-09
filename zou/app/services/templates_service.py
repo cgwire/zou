@@ -1,5 +1,7 @@
 from zou.app import config
-from zou.app.services import persons_service
+from zou.app.services import (
+    organisation_service,
+)
 from zou.app.utils.email_i18n import get_email_translation
 
 notification_template_begin = """
@@ -115,7 +117,7 @@ def get_signature(locale=None):
     Build signature for Zou emails. If locale is provided, the signature
     is translated (e.g. "Best regards" / "Cordialement").
     """
-    organisation = persons_service.get_organisation()
+    organisation = organisation_service.get_organisation()
     return get_email_translation(
         locale or config.DEFAULT_LOCALE,
         "email_signature",

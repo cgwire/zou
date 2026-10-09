@@ -8,7 +8,10 @@ from PIL import Image
 
 from tests.base import ApiDBTestCase
 from zou.app.models.preview_file import PreviewFile
-from zou.app.services import files_service, preview_files_service
+from zou.app.services import (
+    files_service,
+    preview_annotations_service,
+)
 
 
 def _rect_annotation(time, left, stroke):
@@ -97,7 +100,7 @@ class ExtractAnnotatedFrameRouteTestCase(ApiDBTestCase):
                 ]
             },
         }
-        preview_files_service.update_preview_file_annotations(
+        preview_annotations_service.update_preview_file_annotations(
             self.user["id"],
             str(self.project.id),
             self.preview_file["id"],
@@ -212,7 +215,7 @@ class ExtractAnnotatedFramePictureRouteTestCase(ApiDBTestCase):
                 ]
             },
         }
-        preview_files_service.update_preview_file_annotations(
+        preview_annotations_service.update_preview_file_annotations(
             self.user["id"],
             str(self.project.id),
             self.preview_file["id"],
@@ -225,7 +228,7 @@ class ExtractAnnotatedFramePictureRouteTestCase(ApiDBTestCase):
 
     def _patch_copy(self, picture_path):
         p = patch(
-            "zou.app.services.preview_files_service._copy_picture_preview_to_temp_png",
+            "zou.app.services.preview_annotations_service._copy_picture_preview_to_temp_png",
             return_value=picture_path,
         )
         p.start()
@@ -274,7 +277,7 @@ class AnnotatedFramesRouteMixin:
             _rect_annotation(time=0, left=10, stroke="#ff0000"),
             _rect_annotation(time=1, left=30, stroke="#00ff00"),
         ]
-        preview_files_service.update_preview_file_annotations(
+        preview_annotations_service.update_preview_file_annotations(
             self.user["id"],
             str(self.project.id),
             self.preview_file["id"],

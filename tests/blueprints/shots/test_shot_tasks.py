@@ -5,6 +5,7 @@ from zou.app.services import (
     projects_service,
     tasks_service,
     shots_service,
+    metadata_descriptors_service,
 )
 
 
@@ -101,7 +102,7 @@ class ShotTasksTestCase(ApiDBTestCase):
         shots = self.get(f"data/shots/with-tasks?project_id={project_id}")
         self.assertEqual(shots[0]["data"]["contractor"], "test")
 
-        projects_service.update_metadata_descriptor(
+        metadata_descriptors_service.update_metadata_descriptor(
             self.meta_descriptor_id, {"departments": [self.department_id]}
         )
         persons_service.add_to_department(str(self.department_id), person_id)

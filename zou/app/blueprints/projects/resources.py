@@ -3,13 +3,16 @@ from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 
-from zou.app.services import budget_service
+from zou.app.services import (
+    budget_service,
+    task_types_service,
+    metadata_descriptors_service,
+)
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
     persons_service,
     projects_service,
     schedule_service,
-    tasks_service,
     time_spents_service,
     permissions_service,
     user_service,
@@ -431,11 +434,11 @@ class ProductionMetadataDescriptorsResource(MethodView, ArgsMixin):
         """
         permissions_service.check_project_access(project_id)
         for_client, vendor_departments = (
-            user_service.get_descriptor_visibility(
+            permissions_service.get_descriptor_visibility(
                 permissions.get_effective_role()
             )
         )
-        return projects_service.get_metadata_descriptors(
+        return metadata_descriptors_service.get_metadata_descriptors(
             project_id, for_client, vendor_departments
         )
 
@@ -471,7 +474,7 @@ class ProductionMetadataDescriptorsResource(MethodView, ArgsMixin):
                     "Task metadata descriptors require a task_type_id."
                 )
             try:
-                tasks_service.get_task_type(body.task_type_id)
+                task_types_service.get_task_type(body.task_type_id)
             except TaskTypeNotFoundException:
                 raise WrongParameterException("Task type not found.")
         elif body.task_type_id is not None:
@@ -484,7 +487,7 @@ class ProductionMetadataDescriptorsResource(MethodView, ArgsMixin):
             raise WrongParameterException("Invalid data_type")
 
         return (
-            projects_service.add_metadata_descriptor(
+            metadata_descriptors_service.add_metadata_descriptor(
                 project_id,
                 body.entity_type,
                 body.name,
@@ -511,8 +514,10 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
         Get metadata descriptor
         """
         permissions_service.check_project_access(project_id)
-        descriptor = projects_service.get_project_metadata_descriptor(
-            project_id, metadata_descriptor_id
+        descriptor = (
+            metadata_descriptors_service.get_project_metadata_descriptor(
+                project_id, metadata_descriptor_id
+            )
         )
         permissions_service.check_metadata_descriptor_access(descriptor)
         return descriptor
@@ -526,8 +531,10 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
         body = validation.validate_request_body(MetadataDescriptorUpdateSchema)
         # The rights are checked on the project of the path: a descriptor of
         # another project must not be reachable through it.
-        descriptor = projects_service.get_project_metadata_descriptor(
-            project_id, metadata_descriptor_id
+        descriptor = (
+            metadata_descriptors_service.get_project_metadata_descriptor(
+                project_id, metadata_descriptor_id
+            )
         )
         permissions_service.check_all_departments_access(
             project_id, descriptor["departments"] + body.departments
@@ -541,7 +548,7 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
             raise WrongParameterException("Invalid data_type")
 
         args = body.model_dump()
-        return projects_service.update_metadata_descriptor(
+        return metadata_descriptors_service.update_metadata_descriptor(
             metadata_descriptor_id, args
         )
 
@@ -553,13 +560,17 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
         """
         # The rights are checked on the project of the path: a descriptor of
         # another project must not be reachable through it.
-        descriptor = projects_service.get_project_metadata_descriptor(
-            project_id, metadata_descriptor_id
+        descriptor = (
+            metadata_descriptors_service.get_project_metadata_descriptor(
+                project_id, metadata_descriptor_id
+            )
         )
         permissions_service.check_all_departments_access(
             project_id, descriptor["departments"]
         )
-        projects_service.remove_metadata_descriptor(metadata_descriptor_id)
+        metadata_descriptors_service.remove_metadata_descriptor(
+            metadata_descriptor_id
+        )
         return "", 204
 
 
@@ -589,7 +600,7 @@ class ProductionMetadataDescriptorsReorderResource(MethodView, ArgsMixin):
                 "Episode, Edit, Project, or Task."
             )
 
-        return projects_service.reorder_metadata_descriptors(
+        return metadata_descriptors_service.reorder_metadata_descriptors(
             project_id, body.entity_type, body.descriptor_ids
         )
 
@@ -638,7 +649,7 @@ class AllProjectsMetadataDescriptorsResource(MethodView):
         if body.data_type not in types:
             raise WrongParameterException("Invalid data_type")
         return (
-            projects_service.add_metadata_descriptor_to_projects(
+            metadata_descriptors_service.add_metadata_descriptor_to_projects(
                 _accessible_open_project_ids(),
                 body.entity_type,
                 body.name,
@@ -676,7 +687,7 @@ class AllProjectsMetadataDescriptorResource(MethodView, ArgsMixin):
         # Keep the field name untouched when the name is not being changed.
         if body.name:
             changes["name"] = body.name
-        return projects_service.update_metadata_descriptor_on_projects(
+        return metadata_descriptors_service.update_metadata_descriptor_on_projects(
             _accessible_open_project_ids(),
             body.entity_type,
             field_name,
@@ -692,7 +703,7 @@ class AllProjectsMetadataDescriptorResource(MethodView, ArgsMixin):
         permissions.check_manager_permissions()
         entity_type = self.get_text_parameter("entity_type")
         _check_metadata_entity_type(entity_type)
-        return projects_service.remove_metadata_descriptor_from_projects(
+        return metadata_descriptors_service.remove_metadata_descriptor_from_projects(
             _accessible_open_project_ids(), entity_type, field_name
         )
 
@@ -712,7 +723,7 @@ class AllProjectsMetadataDescriptorsReorderResource(MethodView):
             AllProjectsMetadataDescriptorOrderSchema
         )
         _check_metadata_entity_type(body.entity_type)
-        return projects_service.reorder_metadata_descriptors_on_projects(
+        return metadata_descriptors_service.reorder_metadata_descriptors_on_projects(
             _accessible_open_project_ids(),
             body.entity_type,
             body.field_order,
@@ -731,7 +742,7 @@ class ProductionTimeSpentsResource(MethodView):
         Get production time spents
         """
         permissions_service.check_project_access(project_id)
-        return tasks_service.get_time_spents_for_project(project_id)
+        return time_spents_service.get_time_spents_for_project(project_id)
 
 
 class ProductionMilestonesResource(MethodView):

@@ -2,109 +2,30 @@ import pytest
 
 from tests.base import ApiDBTestCase
 
-from zou.app.models.entity import EntityLink
+from zou.app.models.entity import Entity, EntityLink
 from zou.app.services import (
     assets_service,
     deletion_service,
     entities_service,
-    projects_service,
+    entity_types_service,
+    cascade_deletion_service,
+    tasks_service,
 )
 
 from zou.app.exceptions import (
     EntityLinkNotFoundException,
     EntityNotFoundException,
-    EntityTypeNotFoundException,
-    PreviewFileNotFoundException,
+)
+from zou.app.services import (
+    assets_service,
+    concepts_service,
+    edits_service,
+    entities_service,
+    shots_service,
+    entity_types_service,
 )
 
 UNKNOWN = "00000000-0000-0000-0000-000000000000"
-
-
-class EntityTypeTestCase(ApiDBTestCase):
-    """
-    Entity types are a tiny, heavily read table: every lookup is memoized
-    for four minutes, and two of the three lookups create the row they do
-    not find.
-    """
-
-    def setUp(self):
-        super().setUp()
-
-        self.generate_fixture_asset_type()
-
-    def test_get_entity_type(self):
-        self.assertEqual(
-            entities_service.get_entity_type(self.asset_type.id),
-            self.asset_type.serialize(),
-        )
-
-        with pytest.raises(EntityTypeNotFoundException):
-            entities_service.get_entity_type(UNKNOWN)
-
-    def test_get_entity_type_by_name(self):
-        self.assertEqual(
-            entities_service.get_entity_type_by_name(self.asset_type.name),
-            self.asset_type.serialize(),
-        )
-
-    def test_get_entity_type_by_name_creates_what_it_cannot_find(self):
-        entity_type = entities_service.get_entity_type_by_name("Matte")
-
-        self.assertEqual(entity_type["name"], "Matte")
-        self.assertEqual(
-            entities_service.get_entity_type_by_name("Matte")["id"],
-            entity_type["id"],
-        )
-
-    def test_get_entity_type_by_name_or_not_found(self):
-        self.assertEqual(
-            entities_service.get_entity_type_by_name_or_not_found(
-                self.asset_type.name
-            )["id"],
-            str(self.asset_type.id),
-        )
-
-        with pytest.raises(EntityTypeNotFoundException):
-            entities_service.get_entity_type_by_name_or_not_found("Matte")
-
-    def test_a_renamed_type_is_read_again_after_the_cache_is_dropped(self):
-        entities_service.get_entity_type(self.asset_type.id)
-
-        self.asset_type.update({"name": "Sets"})
-        entities_service.clear_entity_type_cache(str(self.asset_type.id))
-
-        self.assertEqual(
-            entities_service.get_entity_type(self.asset_type.id)["name"],
-            "Sets",
-        )
-        self.assertEqual(
-            entities_service.get_entity_type_by_name("Sets")["id"],
-            str(self.asset_type.id),
-        )
-
-    def test_get_temporal_entity_type_by_name(self):
-        """
-        Meant to drop a cached None left by an older lookup and try again.
-        The retry is unreachable today, since get_entity_type_by_name
-        creates the row it cannot find and so never answers None: only the
-        first half is pinned here.
-        """
-        self.assertEqual(
-            entities_service.get_temporal_entity_type_by_name("Edit")["name"],
-            "Edit",
-        )
-
-    def test_is_edit(self):
-        edit_type = entities_service.get_temporal_entity_type_by_name("Edit")
-
-        self.assertTrue(
-            entities_service.is_edit({"entity_type_id": edit_type["id"]})
-        )
-        self.assertFalse(
-            entities_service.is_edit(
-                {"entity_type_id": str(self.asset_type.id)}
-            )
-        )
 
 
 class EntityTestCase(ApiDBTestCase):
@@ -159,97 +80,6 @@ class EntityTestCase(ApiDBTestCase):
             entities_service.get_entity(self.asset_id)["name"], "Rock"
         )
 
-    def test_update_entity_preview(self):
-        entities_service.update_entity_preview(
-            self.asset_id, self.preview_file_id
-        )
-
-        asset = assets_service.get_asset(self.asset_id)
-        self.assertEqual(asset["preview_file_id"], self.preview_file_id)
-
-    def test_update_entity_preview_refuses_what_it_cannot_find(self):
-        with pytest.raises(EntityNotFoundException):
-            entities_service.update_entity_preview(
-                self.preview_file_id, self.preview_file_id
-            )
-
-        with pytest.raises(PreviewFileNotFoundException):
-            entities_service.update_entity_preview(
-                self.asset_id, self.asset_id
-            )
-
-    def test_setting_a_preview_announces_it_under_the_entity_kind(self):
-        """
-        Two events: the generic one, and one named after the kind of
-        entity, which is what each listing subscribes to. An asset type is
-        any name the studio invented, so it is announced as "asset".
-        """
-        main = self.capture_events("preview-file:set-main")
-
-        entities_service.update_entity_preview(
-            self.asset_id, self.preview_file_id
-        )
-
-        self.assertEqual(
-            [
-                (
-                    event["entity_id"],
-                    event["preview_file_id"],
-                    event["project_id"],
-                )
-                for event in main
-            ],
-            [
-                (
-                    self.asset_id,
-                    self.preview_file_id,
-                    str(self.asset.project_id),
-                )
-            ],
-        )
-
-    def test_setting_a_processing_preview_tells_its_status(self):
-        """
-        The pictures of a processing preview are not built yet: the event
-        and the answer say so, for the clients to wait for them instead
-        of asking for them.
-        """
-        preview_file_id = str(
-            self.generate_fixture_preview_file(
-                revision=2, status="processing"
-            ).id
-        )
-        main = self.capture_events("preview-file:set-main")
-
-        entity = entities_service.update_entity_preview(
-            self.asset_id, preview_file_id
-        )
-
-        statuses = [event["preview_file_status"] for event in main]
-        statuses.append(entity["preview_file_status"])
-        self.assertEqual(statuses, ["processing", "processing"])
-        # A Choice compares equal to its code: only its type tells it apart.
-        self.assertEqual([type(status) for status in statuses], [str, str])
-
-    def test_a_shot_is_announced_as_a_shot(self):
-        captured = self.capture_events("shot:update")
-        shot_id = str(self.shot.id)
-
-        entities_service.update_entity_preview(shot_id, self.preview_file_id)
-
-        self.assertEqual([event["shot_id"] for event in captured], [shot_id])
-
-    def test_an_asset_is_announced_as_an_asset(self):
-        captured = self.capture_events("asset:update")
-
-        entities_service.update_entity_preview(
-            self.asset_id, self.preview_file_id
-        )
-
-        self.assertEqual(
-            [event["asset_id"] for event in captured], [self.asset_id]
-        )
-
     def test_get_for_entity_from_task(self):
         """
         The name of the kind of entity a task hangs on. Every asset type a
@@ -265,6 +95,11 @@ class EntityTestCase(ApiDBTestCase):
         self.assertEqual(
             entities_service.get_for_entity_from_task(shot_task.serialize()),
             "Shot",
+        )
+        scene_task = self.generate_fixture_scene_task()
+        self.assertEqual(
+            entities_service.get_for_entity_from_task(scene_task.serialize()),
+            "Scene",
         )
 
 
@@ -347,7 +182,7 @@ class EntityTasksTestCase(ApiDBTestCase):
         """
         entity = entities_service.get_entity(str(entity_id))
 
-        tasks = entities_service.get_entity_tasks(entity)
+        tasks = tasks_service.get_entity_tasks(entity)
 
         self.assertGreater(len(tasks), 0)
         for task in tasks:
@@ -365,7 +200,7 @@ class EntityTasksTestCase(ApiDBTestCase):
         shot = entities_service.get_entity(str(self.shot.id))
         deletion_service.remove_task(str(self.shot_task.id), force=True)
 
-        self.assertEqual(entities_service.get_entity_tasks(shot), [])
+        self.assertEqual(tasks_service.get_entity_tasks(shot), [])
 
     def test_get_entities_and_tasks(self):
         self.generate_fixture_sequence_task()
@@ -420,19 +255,6 @@ class EntityLinkTestCase(ApiDBTestCase):
         with pytest.raises(EntityLinkNotFoundException):
             entities_service.get_entity_link(UNKNOWN)
 
-    def test_remove_entity_link(self):
-        link = self.a_link()
-
-        removed = entities_service.remove_entity_link(str(link.id))
-
-        self.assertEqual(removed["id"], str(link.id))
-        with pytest.raises(EntityLinkNotFoundException):
-            entities_service.get_entity_link(str(link.id))
-
-    def test_remove_entity_link_that_is_not_there(self):
-        with pytest.raises(EntityLinkNotFoundException):
-            entities_service.remove_entity_link(UNKNOWN)
-
     def test_get_entity_links_for_project(self):
         link = self.a_link(nb_occurences=2, label="hero")
 
@@ -476,11 +298,17 @@ class EntityLinkTestCase(ApiDBTestCase):
         self.assertEqual(paged["nb_pages"], 2)
 
 
-class VendorMetadataTestCase(ApiDBTestCase):
+class EntityCacheInvalidationTestCase(ApiDBTestCase):
     """
-    A vendor sees the custom fields of their own departments only. The two
-    halves are separate on purpose: one reads the descriptors of the
-    production, the other strips a payload with what it was handed.
+    An asset, a shot, a sequence, an episode, an edit and a concept are all
+    rows of the entity table. Each has a service of its own with its own
+    memoized serialization, and the generic entities_service.get_entity
+    reads the same row through a cache of its own.
+
+    Whoever drops one has to drop the other, or a rename made through one
+    service stays invisible to everything reading through the other:
+    entities_service builds the breadcrumbs of the news feed, the
+    notifications and the playlists that way.
     """
 
     def setUp(self):
@@ -488,83 +316,181 @@ class VendorMetadataTestCase(ApiDBTestCase):
 
         self.generate_fixture_project_status()
         self.generate_fixture_project()
+        self.generate_fixture_asset_type()
+        self.generate_fixture_asset()
+        self.generate_fixture_episode()
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+
+    def assert_the_rename_is_visible_through_both(self, entity_id, clear):
+        """
+        Warm both caches, rename the row underneath, then drop the caches
+        the way the service does.
+        """
+        entity_id = str(entity_id)
+        entities_service.get_entity(entity_id)
+        entity = entities_service.get_entity_raw(entity_id)
+
+        entity.update({"name": "Renamed"})
+        clear(entity_id)
+
+        self.assertEqual(
+            entities_service.get_entity(entity_id)["name"], "Renamed"
+        )
+
+    def test_clearing_an_asset_clears_the_entity(self):
+        self.assert_the_rename_is_visible_through_both(
+            self.asset.id, assets_service.clear_asset_cache
+        )
+
+    def test_clearing_a_shot_clears_the_entity(self):
+        self.assert_the_rename_is_visible_through_both(
+            self.shot.id, shots_service.clear_shot_cache
+        )
+
+    def test_clearing_a_sequence_clears_the_entity(self):
+        self.assert_the_rename_is_visible_through_both(
+            self.sequence.id, shots_service.clear_sequence_cache
+        )
+
+    def test_clearing_an_episode_clears_the_entity(self):
+        self.assert_the_rename_is_visible_through_both(
+            self.episode.id, shots_service.clear_episode_cache
+        )
+
+    def test_clearing_an_edit_clears_the_entity(self):
+        edit = self.generate_fixture_edit()
+        self.assert_the_rename_is_visible_through_both(
+            edit.id, edits_service.clear_edit_cache
+        )
+
+    def test_clearing_a_concept_clears_the_entity(self):
+        concept = concepts_service.create_concept(
+            str(self.project.id), "Concept"
+        )
+        self.assert_the_rename_is_visible_through_both(
+            concept["id"], concepts_service.clear_concept_cache
+        )
+
+    def test_clearing_an_asset_type_clears_the_entity_type(self):
+        # Asset types are rows of the entity type table.
+        asset_type_id = str(self.asset_type.id)
+        entity_types_service.get_entity_type(asset_type_id)
+
+        self.asset_type.update({"name": "Sets"})
+        entity_types_service.clear_asset_type_cache(asset_type_id)
+
+        self.assertEqual(
+            entity_types_service.get_entity_type(asset_type_id)["name"], "Sets"
+        )
+
+    def test_cancelling_a_shot_is_visible_through_the_entity(self):
+        # The service path, end to end: nothing here calls the entity cache
+        # itself.
+        shot_id = str(self.shot.id)
         self.generate_fixture_department()
-        self.project_id = str(self.project.id)
-        self.own_department = str(self.department.id)
-        self.other_department = str(self.department_animation.id)
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status()
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
+        self.generate_fixture_shot_task()
+        self.assertFalse(entities_service.get_entity(shot_id)["canceled"])
 
-    def a_descriptor(self, name, entity_type="Asset", departments=None):
-        return projects_service.add_metadata_descriptor(
-            self.project_id,
-            entity_type,
-            name,
-            "string",
-            [],
-            False,
-            departments=departments or [],
+        cascade_deletion_service.remove_shot(shot_id)
+
+        self.assertTrue(entities_service.get_entity(shot_id)["canceled"])
+
+    def test_renaming_an_asset_is_visible_through_the_entity(self):
+        asset_id = str(self.asset.id)
+        self.assertEqual(entities_service.get_entity(asset_id)["name"], "Tree")
+
+        assets_service.update_asset(asset_id, {"name": "Rock"})
+
+        self.assertEqual(entities_service.get_entity(asset_id)["name"], "Rock")
+
+
+class EntityNameTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+
+        self.generate_fixture_asset()
+        self.generate_fixture_episode()
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+        self.sequence_dict = self.sequence.serialize()
+        self.generate_fixture_task_type()
+        self.task_type_dict = self.task_type_animation.serialize()
+        self.asset_task = self.generate_fixture_task().serialize()
+        self.shot_task = self.generate_fixture_shot_task().serialize()
+
+    def a_sequence_under_no_episode(self, name="S02"):
+        """
+        generate_fixture_sequence reads episode_id=None as "the usual
+        episode", so a sequence with nothing above it is built here.
+        """
+        return Entity.create(
+            name=name,
+            project_id=self.project.id,
+            entity_type_id=self.sequence_type.id,
         )
 
-    def test_a_descriptor_of_no_department_is_visible_to_everyone(self):
-        self.a_descriptor("Contractor")
+    def test_get_full_entity_name(self):
+        """
+        Where an entity sits, read upwards: an asset under its type, a
+        sequence and a shot under their episode, an episode alone.
+        """
+        cases = {
+            self.asset.id: "Props / Tree",
+            self.episode.id: "E01",
+            self.sequence.id: "E01 / S01",
+            self.shot.id: "E01 / S01 / P01",
+        }
+        for entity_id, expected in cases.items():
+            with self.subTest(expected=expected):
+                name, _, _ = entities_service.get_full_entity_name(entity_id)
+                self.assertEqual(name, expected)
+
+    def test_get_full_entity_name_of_a_flat_production(self):
+        # A sequence with no episode above it, and the shot under it.
+        sequence = self.a_sequence_under_no_episode()
+        shot = self.generate_fixture_shot("P02", sequence_id=sequence.id)
 
         self.assertEqual(
-            entities_service.get_not_allowed_descriptors_fields_for_vendor(
-                departments=[], projects_ids=[self.project_id]
-            ),
-            {self.project_id: []},
-        )
-
-    def test_a_descriptor_of_another_department_is_hidden(self):
-        self.a_descriptor("Rig Notes", departments=[self.other_department])
-
-        self.assertEqual(
-            entities_service.get_not_allowed_descriptors_fields_for_vendor(
-                departments=[self.own_department],
-                projects_ids=[self.project_id],
-            ),
-            {self.project_id: ["rig_notes"]},
-        )
-
-    def test_a_descriptor_of_ones_own_department_stays_visible(self):
-        self.a_descriptor("Rig Notes", departments=[self.own_department])
-
-        self.assertEqual(
-            entities_service.get_not_allowed_descriptors_fields_for_vendor(
-                departments=[self.own_department],
-                projects_ids=[self.project_id],
-            ),
-            {self.project_id: []},
-        )
-
-    def test_the_kind_of_entity_is_taken_into_account(self):
-        self.a_descriptor(
-            "Rig Notes",
-            entity_type="Shot",
-            departments=[self.other_department],
-        )
-
-        self.assertEqual(
-            entities_service.get_not_allowed_descriptors_fields_for_vendor(
-                entity_type="Asset",
-                departments=[self.own_department],
-                projects_ids=[self.project_id],
-            ),
-            {self.project_id: []},
-        )
-
-    def test_remove_not_allowed_fields_from_metadata(self):
-        data = {"rig_notes": "secret", "contractor": "Acme"}
-
-        self.assertEqual(
-            entities_service.remove_not_allowed_fields_from_metadata(
-                ["rig_notes"], data
-            ),
-            {"contractor": "Acme"},
+            entities_service.get_full_entity_name(sequence.id)[0], "S02"
         )
         self.assertEqual(
-            entities_service.remove_not_allowed_fields_from_metadata([], data),
-            data,
+            entities_service.get_full_entity_name(shot.id)[0], "S02 / P02"
         )
+
+    def test_get_full_entity_names_agrees_with_the_single_lookup(self):
+        """
+        The batch version walks the same branches in its own code, so what
+        matters is that the two never disagree. Every kind of entity is
+        represented here, with and without an episode above it.
+        """
+        sequence = self.a_sequence_under_no_episode()
+        flat_shot = self.generate_fixture_shot("P02", sequence_id=sequence.id)
+        entity_ids = [
+            str(entity.id)
+            for entity in [
+                self.asset,
+                self.episode,
+                self.sequence,
+                self.shot,
+                sequence,
+                flat_shot,
+            ]
+        ]
+
+        names = entities_service.get_full_entity_names(entity_ids)
+
         self.assertEqual(
-            entities_service.remove_not_allowed_fields_from_metadata(), {}
+            names,
+            {
+                entity_id: entities_service.get_full_entity_name(entity_id)
+                for entity_id in entity_ids
+            },
         )
+
+    def test_get_full_entity_names_of_nothing(self):
+        self.assertEqual(entities_service.get_full_entity_names([]), {})

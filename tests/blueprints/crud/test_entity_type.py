@@ -3,7 +3,9 @@ from tests.base import ApiDBTestCase
 from zou.app.models.entity_type import EntityType
 from zou.app.models.task_type import TaskType
 
-from zou.app.services import assets_service
+from zou.app.services import (
+    entity_types_service,
+)
 
 from zou.app.utils import fields
 
@@ -97,7 +99,10 @@ class EntityTypeTestCase(ApiDBTestCase):
         # Warm the memoized serialization: it carries the workflow, so it
         # has to be dropped when the workflow changes.
         self.assertEqual(
-            assets_service.get_asset_type(asset_type["id"])["task_types"], []
+            entity_types_service.get_asset_type(asset_type["id"])[
+                "task_types"
+            ],
+            [],
         )
 
         task_types = [str(self.task_type_modeling.id)]
@@ -106,7 +111,9 @@ class EntityTypeTestCase(ApiDBTestCase):
             {"name": asset_type["name"], "task_types": task_types},
         )
         self.assertEqual(
-            assets_service.get_asset_type(asset_type["id"])["task_types"],
+            entity_types_service.get_asset_type(asset_type["id"])[
+                "task_types"
+            ],
             task_types,
         )
 

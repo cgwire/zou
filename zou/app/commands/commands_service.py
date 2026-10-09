@@ -25,17 +25,20 @@ from zou.app.commands import (
     sync_verify_service,
 )
 from zou.app.services import (
-    assets_service,
     breakdown_service,
     deletion_service,
-    edits_service,
     index_service,
     persons_service,
     preview_file_states_service,
     preview_files_service,
     projects_service,
-    shots_service,
     tasks_service,
+    departments_service,
+    entity_types_service,
+    organisation_service,
+    task_types_service,
+    preview_annotations_service,
+    preview_maintenance_service,
 )
 from zou.app.models.entity import Entity
 from zou.app.models.person import Person
@@ -180,17 +183,17 @@ def _init_asset_types_for_domain(domain):
     """
     if domain == "2d":
         for name in ("Character", "Prop", "Background", "FX"):
-            assets_service.get_or_create_asset_type(name)
+            entity_types_service.get_or_create_asset_type(name)
     elif domain == "vfx":
         for name in ("Character", "Prop", "Environment", "FX", "Vehicle"):
-            assets_service.get_or_create_asset_type(name)
+            entity_types_service.get_or_create_asset_type(name)
     elif domain == "games":
         for name in ("Character", "Prop", "Environment", "FX", "UI"):
-            assets_service.get_or_create_asset_type(name)
+            entity_types_service.get_or_create_asset_type(name)
     else:
         # 3d (default)
         for name in ("Character", "Prop", "Environment", "FX"):
-            assets_service.get_or_create_asset_type(name)
+            entity_types_service.get_or_create_asset_type(name)
 
 
 def _init_task_types_for_domain(domain):
@@ -200,9 +203,11 @@ def _init_task_types_for_domain(domain):
     setup = DOMAIN_TASK_TYPES.get(domain, DOMAIN_TASK_TYPES["default"])
     departments = {}
     for name, color in setup["departments"]:
-        departments[name] = tasks_service.get_or_create_department(name, color)
+        departments[name] = departments_service.get_or_create_department(
+            name, color
+        )
     for department, name, color, priority, for_entity in setup["task_types"]:
-        tasks_service.get_or_create_task_type(
+        task_types_service.get_or_create_task_type(
             departments[department],
             name,
             color,
@@ -225,35 +230,35 @@ def init_data(domain="3d"):
         _init_asset_types_for_domain(domain)
         print(f"Asset types initialized (domain: {domain}).")
 
-        shots_service.get_episode_type()
-        shots_service.get_sequence_type()
-        shots_service.get_shot_type()
+        entity_types_service.get_episode_type()
+        entity_types_service.get_sequence_type()
+        entity_types_service.get_shot_type()
         print("Shot types initialized.")
 
-        edits_service.get_edit_type()
+        entity_types_service.get_edit_type()
         print("Edit type initialized.")
 
         _init_task_types_for_domain(domain)
         print("Task types initialized.")
 
-        tasks_service.get_default_task_status()
-        tasks_service.get_or_create_task_status(
+        task_types_service.get_default_task_status()
+        task_types_service.get_or_create_task_status(
             "Work In Progress", "wip", "#3273dc", is_wip=True
         )
-        tasks_service.get_or_create_task_status(
+        task_types_service.get_or_create_task_status(
             "Waiting For Approval", "wfa", "#ab26ff", is_feedback_request=True
         )
-        tasks_service.get_or_create_task_status(
+        task_types_service.get_or_create_task_status(
             "Retake", "retake", "#ff3860", is_retake=True
         )
-        tasks_service.get_or_create_task_status(
+        task_types_service.get_or_create_task_status(
             "Done", "done", "#22d160", is_done=True
         )
-        tasks_service.get_or_create_task_status(
+        task_types_service.get_or_create_task_status(
             "Ready To Start", "ready", "#fbc02d"
         )
 
-        tasks_service.get_or_create_task_status(
+        task_types_service.get_or_create_task_status(
             "Neutral",
             "neutral",
             "#CCCCCC",
@@ -263,7 +268,7 @@ def init_data(domain="3d"):
             is_client_allowed=True,
         )
 
-        tasks_service.get_or_create_task_status(
+        task_types_service.get_or_create_task_status(
             "Approved",
             "approved",
             "#66BB6A",
@@ -272,7 +277,7 @@ def init_data(domain="3d"):
             is_client_allowed=True,
         )
 
-        tasks_service.get_or_create_task_status(
+        task_types_service.get_or_create_task_status(
             "Rejected",
             "rejected",
             "#E81123",
@@ -527,7 +532,7 @@ def _ldap_update_persons(users):
                 print(f"User {user['desktop_login']} updated.")
         except IsUserLimitReachedException:
             print(
-                f"User {user['desktop_login']} update failed (limit reached, limit {persons_service.get_user_limit()})."
+                f"User {user['desktop_login']} update failed (limit reached, limit {organisation_service.get_user_limit()})."
             )
         except Exception:
             print(
@@ -557,7 +562,7 @@ def _ldap_update_persons(users):
                 print(f"User {user['desktop_login']} created.")
             except IsUserLimitReachedException:
                 print(
-                    f"User {user['desktop_login']} creation failed (limit reached, limit {persons_service.get_user_limit()})."
+                    f"User {user['desktop_login']} creation failed (limit reached, limit {organisation_service.get_user_limit()})."
                 )
             except Exception:
                 print(
@@ -843,7 +848,7 @@ def generate_preview_extra(
     if episodes is None:
         episodes = []
     with app.app_context():
-        preview_files_service.generate_preview_extra(
+        preview_maintenance_service.generate_preview_extra(
             project=project,
             entity_id=entity_id,
             episodes=episodes,
@@ -901,7 +906,7 @@ def queue_missing_tiles(
     progress=False,
 ):
     with app.app_context():
-        summary = preview_files_service.queue_missing_tiles(
+        summary = preview_maintenance_service.queue_missing_tiles(
             project=project,
             entity_id=entity_id,
             episodes=episodes,
@@ -923,12 +928,12 @@ def queue_missing_tiles(
 
 def reset_movie_files_metadata():
     with app.app_context():
-        preview_files_service.reset_movie_files_metadata()
+        preview_maintenance_service.reset_movie_files_metadata()
 
 
 def reset_picture_files_metadata():
     with app.app_context():
-        preview_files_service.reset_picture_files_metadata()
+        preview_maintenance_service.reset_picture_files_metadata()
 
 
 def probe_preview_files(
@@ -1155,12 +1160,12 @@ def normalize_annotation_times(project_id=None, dry_run=False):
                         )
                     )
                     _, changed = (
-                        preview_files_service.normalize_annotation_times(
+                        preview_annotations_service.normalize_annotation_times(
                             preview_file.annotations, fps
                         )
                     )
                 else:
-                    changed = preview_files_service.normalize_preview_file_annotation_times(
+                    changed = preview_annotations_service.normalize_preview_file_annotation_times(
                         preview_file
                     )
                 if changed:

@@ -1,6 +1,8 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.services import notifications_service
+from zou.app.services import (
+    subscriptions_service,
+)
 
 
 class WithTasksConditionalGetTestCase(ApiDBTestCase):
@@ -74,7 +76,7 @@ class WithTasksConditionalGetTestCase(ApiDBTestCase):
 
     def test_a_subscription_invalidates_the_board(self):
         etag = self.get_etag(self.shots_path)
-        notifications_service.subscribe_to_task(
+        subscriptions_service.subscribe_to_task(
             self.user["id"], str(self.shot_task.id)
         )
         second = self.get_response(

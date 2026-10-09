@@ -10,8 +10,9 @@ from zou.app.models.person import Person
 from zou.app.models.playlist_share_link import PlaylistShareLink
 from zou.app.services import (
     playlist_sharing_service,
-    playlists_service,
     projects_service,
+    cascade_deletion_service,
+    playlist_builds_service,
 )
 
 
@@ -316,7 +317,7 @@ class PlaylistTestCase(ApiDBTestCase):
         both are exercised so the cascade cannot drift apart again.
         """
         self.assert_dependents_go_with_the_playlist(
-            playlists_service.remove_playlist
+            cascade_deletion_service.remove_playlist
         )
 
     def test_create_playlist_for_each_entity_type(self):
@@ -381,8 +382,8 @@ class PlaylistTestCase(ApiDBTestCase):
         # Two downloads of the same playlist: the second build must not
         # remove the archive the first one is about to send.
         playlist = self.generate_fixture_playlist("Playlist 1")
-        first_path = playlists_service.build_playlist_zip_file(playlist)
-        second_path = playlists_service.build_playlist_zip_file(playlist)
+        first_path = playlist_builds_service.build_playlist_zip_file(playlist)
+        second_path = playlist_builds_service.build_playlist_zip_file(playlist)
         try:
             self.assertNotEqual(first_path, second_path)
             self.assertTrue(os.path.exists(first_path))

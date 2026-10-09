@@ -22,6 +22,7 @@ from zou.app.exceptions import (
 )
 from zou.app.stores import file_store
 from zou.app.utils import cache, fields
+from tests.services.cases import FilesTestCase
 
 
 class DefaultFileStatusTestCase(ApiDBTestCase):
@@ -44,28 +45,6 @@ class DefaultFileStatusTestCase(ApiDBTestCase):
         )
         self.assertEqual(FileStatus.query.count(), 1)
         self.assertEqual(files_service.get_default_file_status(), file_status)
-
-
-class FilesTestCase(ApiDBTestCase):
-    """
-    An asset and a shot, each with a task, a working file and an output
-    file: the smallest set every listing of this service reads from.
-    """
-
-    def setUp(self):
-        super().setUp()
-        self.generate_fixture_project()
-        self.generate_fixture_asset()
-        self.generate_fixture_sequence()
-        self.generate_fixture_shot()
-        self.generate_fixture_task_type()
-        self.generate_fixture_person()
-        self.generate_fixture_task()
-        self.generate_fixture_shot_task()
-        self.generate_fixture_software()
-        self.generate_fixture_working_file()
-        self.generate_fixture_output_type()
-        self.generate_fixture_output_file()
 
 
 class LookupTestCase(FilesTestCase):
@@ -777,7 +756,7 @@ class PreviewFileTestCase(FilesTestCase):
         files_service.get_preview_file(preview_file_id)
         files_service.get_preview_file_for_access(preview_file_id)
 
-        files_service.remove_preview_file_row(preview_file_id)
+        deletion_service.remove_preview_file_row(preview_file_id)
 
         for get in [
             files_service.get_preview_file,
@@ -787,12 +766,6 @@ class PreviewFileTestCase(FilesTestCase):
                 self.assertRaises(
                     PreviewFileNotFoundException, get, preview_file_id
                 )
-
-    def test_a_removed_preview_is_announced(self):
-        self.generate_fixture_preview_file()
-        captured = self.capture_events("preview-file:delete")
-        files_service.remove_preview_file_row(self.preview_file.id)
-        self.assertEqual(len(captured), 1)
 
     def test_a_deleted_preview_stops_being_downloadable(self):
         """

@@ -8,12 +8,16 @@ from zou.app.models.department import (
 from zou.app.models.hardware_item import HardwareItem
 from zou.app.models.person import DepartmentLink, Person
 from zou.app.models.software import Software
-from zou.app.utils import fields
+from zou.app.utils import cache, events, fields
 
 from zou.app.exceptions import (
     DepartmentNotFoundException,
     SoftwareNotFoundException,
     HardwareItemNotFoundException,
+)
+from zou.app.services import (
+    base_service,
+    task_types_service,
 )
 
 
@@ -183,3 +187,51 @@ def remove_hardware_item_from_department(department_id, hardware_item_id):
         return None
     link.delete()
     return link.serialize()
+
+
+def clear_department_cache(department_id):
+    """
+    Drop the memoized serializations of given department, and the list.
+    """
+    cache.cache.delete_memoized(get_department, department_id)
+    cache.cache.delete_memoized(get_departments)
+
+
+@cache.memoize_function(120)
+def get_departments():
+    """
+    Return every department.
+    """
+    return fields.serialize_models(Department.get_all())
+
+
+@cache.memoize_function(120)
+def get_department(department_id):
+    """
+    Get department matching given id as a dictionary.
+    """
+    return base_service.get_instance(
+        Department, department_id, DepartmentNotFoundException
+    ).serialize()
+
+
+def get_department_from_task_type(task_type_id):
+    """
+    Get department of given task type as dictionary
+    """
+    task_type = task_types_service.get_task_type_raw(task_type_id)
+    return get_department(task_type.department_id)
+
+
+def get_or_create_department(name, color="#000000"):
+    """
+    Create a new department it doesn't exist. If it exists, it returns the
+    department from database.
+    """
+    department = Department.get_by(name=name)
+    if department is None:
+        department = Department(name=name, color=color)
+        department.save()
+        clear_department_cache(department.id)
+        events.emit("department:new", {"department_id": department.id})
+    return department.serialize()

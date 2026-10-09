@@ -13,6 +13,9 @@ from zou.app.services import (
     time_spents_service,
     permissions_service,
     user_service,
+    entity_types_service,
+    search_filters_service,
+    todos_service,
 )
 from zou.app.utils import date_helpers, validation
 from zou.app.blueprints.user.schemas import (
@@ -95,7 +98,7 @@ class AssetTypeAssetsResource(MethodView):
         Get project assets
         """
         projects_service.get_project(project_id)
-        assets_service.get_asset_type(asset_type_id)
+        entity_types_service.get_asset_type(asset_type_id)
         return user_service.get_assets_for_asset_type(
             project_id, asset_type_id
         )
@@ -207,7 +210,7 @@ class TodosResource(MethodView):
         """
         Get my tasks
         """
-        return user_service.get_todos()
+        return todos_service.get_todos()
 
 
 class ToChecksResource(MethodView, ArgsMixin):
@@ -244,7 +247,7 @@ class ToChecksResource(MethodView, ArgsMixin):
                 self.check_id_parameter(person_id)
         self.parse_date_parameter(args["due_date_since"])
         self.parse_date_parameter(args["due_date_until"])
-        return user_service.get_tasks_to_check(**args)
+        return todos_service.get_tasks_to_check(**args)
 
 
 class ToChecksFilterValuesResource(MethodView):
@@ -254,7 +257,7 @@ class ToChecksFilterValuesResource(MethodView):
         """
         Get filter values for tasks requiring feedback
         """
-        return user_service.get_tasks_to_check_filter_values()
+        return todos_service.get_tasks_to_check_filter_values()
 
 
 class DoneResource(MethodView):
@@ -264,7 +267,7 @@ class DoneResource(MethodView):
         """
         Get done tasks
         """
-        return user_service.get_done_tasks()
+        return todos_service.get_done_tasks()
 
 
 class FiltersResource(MethodView, ArgsMixin):
@@ -274,7 +277,7 @@ class FiltersResource(MethodView, ArgsMixin):
         """
         Get filters
         """
-        return user_service.get_filters()
+        return search_filters_service.get_filters()
 
     @swag_from("openapi/FiltersResource_post.yml")
     def post(self):
@@ -284,7 +287,7 @@ class FiltersResource(MethodView, ArgsMixin):
         body = validation.validate_request_body(CreateSearchFilterSchema)
 
         return (
-            user_service.create_filter(
+            search_filters_service.create_filter(
                 body.list_type,
                 body.name,
                 body.query,
@@ -309,7 +312,7 @@ class FilterResource(MethodView, ArgsMixin):
         data = body.model_dump(exclude_none=True)
         if "search_filter_group_id" in (body.model_fields_set or set()):
             data["search_filter_group_id"] = body.search_filter_group_id
-        user_filter = user_service.update_filter(filter_id, data)
+        user_filter = search_filters_service.update_filter(filter_id, data)
         return user_filter, 200
 
     @swag_from("openapi/FilterResource_delete.yml")
@@ -317,7 +320,7 @@ class FilterResource(MethodView, ArgsMixin):
         """
         Delete filter
         """
-        user_service.remove_filter(filter_id)
+        search_filters_service.remove_filter(filter_id)
         return "", 204
 
 
@@ -328,7 +331,7 @@ class FilterGroupsResource(MethodView, ArgsMixin):
         """
         Get filter groups
         """
-        return user_service.get_filter_groups()
+        return search_filters_service.get_filter_groups()
 
     @swag_from("openapi/FilterGroupsResource_post.yml")
     def post(self):
@@ -337,7 +340,7 @@ class FilterGroupsResource(MethodView, ArgsMixin):
         """
         body = validation.validate_request_body(CreateSearchFilterGroupSchema)
         return (
-            user_service.create_filter_group(
+            search_filters_service.create_filter_group(
                 body.list_type,
                 body.name,
                 body.color,
@@ -357,7 +360,7 @@ class FilterGroupResource(MethodView, ArgsMixin):
         """
         Get filter group
         """
-        return user_service.get_filter_group(filter_group_id)
+        return search_filters_service.get_filter_group(filter_group_id)
 
     @swag_from("openapi/FilterGroupResource_put.yml")
     def put(self, filter_group_id):
@@ -366,7 +369,9 @@ class FilterGroupResource(MethodView, ArgsMixin):
         """
         body = validation.validate_request_body(UpdateSearchFilterGroupSchema)
         data = body.model_dump(exclude_none=True)
-        user_filter = user_service.update_filter_group(filter_group_id, data)
+        user_filter = search_filters_service.update_filter_group(
+            filter_group_id, data
+        )
         return user_filter, 200
 
     @swag_from("openapi/FilterGroupResource_delete.yml")
@@ -374,7 +379,7 @@ class FilterGroupResource(MethodView, ArgsMixin):
         """
         Delete filter group
         """
-        user_service.remove_filter_group(filter_group_id)
+        search_filters_service.remove_filter_group(filter_group_id)
         return "", 204
 
 

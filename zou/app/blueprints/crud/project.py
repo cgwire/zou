@@ -9,7 +9,6 @@ from zou.app.mixin import ArgsMixin
 from zou.app.models.project import Project, PROJECT_STYLES
 from zou.app.models.project_status import ProjectStatus
 from zou.app.services import (
-    deletion_service,
     project_templates_service,
     projects_service,
     shots_service,
@@ -17,7 +16,8 @@ from zou.app.services import (
     user_service,
     persons_service,
     files_service,
-    preview_files_service,
+    metadata_descriptors_service,
+    cascade_deletion_service,
 )
 from zou.app.utils import events, permissions, fields
 
@@ -82,8 +82,8 @@ class ProjectsResource(BaseModelsResource):
             ]:
                 raise WrongParameterException("Invalid production_style")
         if "resolution" in data:
-            preview_files_service.validate_resolution(data["resolution"])
-        preview_files_service.validate_movie_bitrates(data)
+            projects_service.validate_resolution(data["resolution"])
+        projects_service.validate_movie_bitrates(data)
         return True
 
     def update_data(self, data):
@@ -151,7 +151,9 @@ class ProjectsResource(BaseModelsResource):
         # per project: copy them onto the new project so its cells are
         # editable right away, instead of one create request per descriptor
         # from the client.
-        projects_service.copy_project_metadata_descriptors(str(project.id))
+        metadata_descriptors_service.copy_project_metadata_descriptors(
+            str(project.id)
+        )
         user_service.clear_open_projects_cache()
         projects_service.clear_project_cache("")
         return project_dict
@@ -178,7 +180,7 @@ class ProjectResource(BaseModelResource, ArgsMixin):
         # the access check comes first, it resolves that role.
         permissions_service.check_project_access(str(project.id))
         for_client, vendor_departments = (
-            user_service.get_descriptor_visibility(
+            permissions_service.get_descriptor_visibility(
                 permissions.get_effective_role()
             )
         )
@@ -207,10 +209,8 @@ class ProjectResource(BaseModelResource, ArgsMixin):
 
     def pre_update(self, project_dict, data):
         if "resolution" in data:
-            preview_files_service.validate_resolution(data["resolution"])
-        preview_files_service.validate_movie_bitrates(
-            data, current=project_dict
-        )
+            projects_service.validate_resolution(data["resolution"])
+        projects_service.validate_movie_bitrates(data, current=project_dict)
 
         if "preview_background_files" in data:
             data["preview_background_files"] = [
@@ -300,7 +300,7 @@ class ProjectResource(BaseModelResource, ArgsMixin):
         else:
             self.check_delete_permissions(project_dict)
             if force:
-                deletion_service.remove_project(instance_id)
+                cascade_deletion_service.remove_project(instance_id)
             else:
                 project.delete()
                 events.emit("project:delete", {"project_id": project.id})

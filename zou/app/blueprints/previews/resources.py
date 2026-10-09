@@ -28,13 +28,17 @@ from zou.app.services import (
     deletion_service,
     entities_service,
     files_service,
-    names_service,
     persons_service,
     projects_service,
     preview_file_states_service,
     preview_files_service,
     tasks_service,
     permissions_service,
+    organisation_service,
+    task_types_service,
+    preview_annotations_service,
+    preview_maintenance_service,
+    attachment_files_service,
 )
 from zou.utils import movie
 from zou.app.utils import (
@@ -491,7 +495,9 @@ def send_storage_file(
     except NotFound:
         pass
     if as_attachment:
-        download_name = names_service.get_preview_file_name(preview_file_id)
+        download_name = preview_files_service.get_preview_file_name(
+            preview_file_id
+        )
 
     # Werkzeug never starts the body generator of a HEAD response: a
     # storage stream opened for it would only be closed by refcount.
@@ -916,10 +922,12 @@ class BaseBatchComment(BaseNewPreviewFilePicture, ArgsMixin):
                 for (k, v) in request.files.items()
                 if f"preview_file-{i}" in k
             }.values():
-                new_preview_file = tasks_service.add_preview_file_to_comment(
-                    new_comment["id"],
-                    new_comment["person_id"],
-                    task_id or comment["task_id"],
+                new_preview_file = (
+                    comments_service.add_preview_file_to_comment(
+                        new_comment["id"],
+                        new_comment["person_id"],
+                        task_id or comment["task_id"],
+                    )
                 )
                 new_preview_file = self.process_uploaded_file(
                     new_preview_file["id"],
@@ -1194,11 +1202,11 @@ class AttachmentThumbnailResource(MethodView):
         self.attachment_file = None
 
     def is_allowed(self, attachment_id):
-        self.attachment_file = comments_service.get_attachment_file(
+        self.attachment_file = attachment_files_service.get_attachment_file(
             attachment_id
         )
         if self.attachment_file["comment_id"] is not None:
-            comment = tasks_service.get_comment(
+            comment = comments_service.get_comment(
                 self.attachment_file["comment_id"]
             )
             permissions_service.check_task_access(comment["object_id"])
@@ -1312,7 +1320,7 @@ class PreviewFileTileResource(BasePreviewPictureResource):
         try:
             return super().get(instance_id)
         except PreviewFileNotFoundException:
-            preview_files_service.generate_tile_later(instance_id)
+            preview_maintenance_service.generate_tile_later(instance_id)
             raise
 
 
@@ -1469,13 +1477,13 @@ class OrganisationThumbnailResource(BaseThumbnailResource):
         BaseThumbnailResource.__init__(
             self,
             "organisations",
-            persons_service.get_organisation,
-            persons_service.update_organisation,
+            organisation_service.get_organisation,
+            organisation_service.update_organisation,
             thumbnail_utils.BIG_SQUARE_SIZE,
         )
 
     def is_exist(self, organisation_id):
-        self.model = persons_service.get_organisation()
+        self.model = organisation_service.get_organisation()
 
 
 class ProjectThumbnailResource(BaseThumbnailResource):
@@ -1550,7 +1558,7 @@ class SetMainPreviewResource(MethodView, ArgsMixin):
             preview_files_service.dispatch_frame_extraction(
                 preview_file, frame_number, no_job=self.get_no_job()
             )
-        entity = entities_service.update_entity_preview(
+        entity = tasks_service.update_entity_preview(
             task["entity_id"],
             preview_file_id,
         )
@@ -1598,7 +1606,7 @@ class UpdateAnnotationsResource(MethodView, ArgsMixin):
             )["departments"]
             if (
                 user_departments == []
-                or tasks_service.get_task_type(task["task_type_id"])[
+                or task_types_service.get_task_type(task["task_type_id"])[
                     "department_id"
                 ]
                 in user_departments
@@ -1610,7 +1618,7 @@ class UpdateAnnotationsResource(MethodView, ArgsMixin):
 
         body = validation_utils.validate_request_body(AnnotationsUpdateSchema)
         user = persons_service.get_current_user()
-        return preview_files_service.update_preview_file_annotations(
+        return preview_annotations_service.update_preview_file_annotations(
             user["id"],
             task["project_id"],
             preview_file_id,
@@ -1707,10 +1715,8 @@ class ExtractAnnotatedFrameFromPreview(MethodView):
         preview_file = files_service.get_preview_file(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
         permissions_service.check_manager_project_access(task["project_id"])
-        extracted_frame_path = (
-            preview_files_service.extract_annotation_frame_from_preview_file(
-                preview_file, args.frame_number
-            )
+        extracted_frame_path = preview_annotations_service.extract_annotation_frame_from_preview_file(
+            preview_file, args.frame_number
         )
         if extracted_frame_path is None:
             return {"error": "preview file binary is not available"}, 404
@@ -1741,7 +1747,7 @@ def _serve_annotated_frames_bundle(
     if bundle_path is None:
         return {"error": "preview file binary is not available"}, 404
     base_name = os.path.splitext(
-        names_service.get_preview_file_name(preview_file_id)
+        preview_files_service.get_preview_file_name(preview_file_id)
     )[0]
     download_name = f"{base_name}_annotated_frames.{file_extension}"
     try:
@@ -1770,7 +1776,7 @@ class ExtractAllAnnotatedFramesFromPreview(MethodView):
         """
         return _serve_annotated_frames_bundle(
             preview_file_id,
-            preview_files_service.extract_all_annotation_frames_from_preview_file,
+            preview_annotations_service.extract_all_annotation_frames_from_preview_file,
             mimetype="application/zip",
             file_extension="zip",
         )
@@ -1790,7 +1796,7 @@ class ExtractAllAnnotatedFramesAsPdfFromPreview(MethodView):
         """
         return _serve_annotated_frames_bundle(
             preview_file_id,
-            preview_files_service.extract_all_annotation_frames_pdf_from_preview_file,
+            preview_annotations_service.extract_all_annotation_frames_pdf_from_preview_file,
             mimetype="application/pdf",
             file_extension="pdf",
         )

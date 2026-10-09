@@ -4,7 +4,10 @@ from flask_jwt_extended import jwt_required
 
 from zou.app.models.project import Project
 from zou.app.models.entity import Entity
-from zou.app.services import shots_service, persons_service
+from zou.app.services import (
+    persons_service,
+    entity_types_service,
+)
 from zou.app.blueprints.source.shotgun.base import (
     BaseImportShotgunResource,
     ImportRemoveShotgunBaseResource,
@@ -24,7 +27,7 @@ class ImportShotgunSequencesResource(BaseImportShotgunResource):
         return super().post()
 
     def prepare_import(self):
-        self.sequence_type = shots_service.get_sequence_type()
+        self.sequence_type = entity_types_service.get_sequence_type()
         self.project_map = Project.get_id_map(field="name")
         self.current_user_id = persons_service.get_current_user()["id"]
 
@@ -96,7 +99,7 @@ class ImportRemoveShotgunSequenceResource(ImportRemoveShotgunBaseResource):
         ImportRemoveShotgunBaseResource.__init__(
             self,
             Entity,
-            entity_type_id=shots_service.get_sequence_type()["id"],
+            entity_type_id=entity_types_service.get_sequence_type()["id"],
         )
 
     @jwt_required()

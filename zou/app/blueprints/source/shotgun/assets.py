@@ -19,6 +19,7 @@ from zou.app.services import (
     tasks_service,
     files_service,
     persons_service,
+    cascade_deletion_service,
 )
 
 from zou.app.exceptions import AssetNotFoundException
@@ -142,11 +143,11 @@ class ImportRemoveShotgunAssetResource(ImportRemoveShotgunBaseResource):
             asset = assets_service.get_asset_by_shotgun_id(asset.shotgun_id)
             tasks = tasks_service.get_tasks_for_asset(asset["id"])
             if self.is_working_files_linked(tasks):
-                assets_service.cancel_asset(asset["id"])
+                cascade_deletion_service.cancel_asset(asset["id"])
             else:
                 for task in tasks:
                     deletion_service.remove_task(task["id"])
-                assets_service.remove_asset(asset["id"])
+                cascade_deletion_service.remove_asset(asset["id"])
             return asset
         except AssetNotFoundException:
             return None

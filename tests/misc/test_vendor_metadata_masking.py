@@ -6,6 +6,7 @@ from zou.app.services import (
     persons_service,
     projects_service,
     tasks_service,
+    metadata_descriptors_service,
 )
 
 
@@ -71,7 +72,7 @@ class VendorMetadataMaskingTestCase(ApiDBTestCase):
             "Edit": self.edit,
         }
         for entity_type, entity in entities.items():
-            projects_service.add_metadata_descriptor(
+            metadata_descriptors_service.add_metadata_descriptor(
                 project_id,
                 entity_type,
                 "Contractor",

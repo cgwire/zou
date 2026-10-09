@@ -10,8 +10,10 @@ from zou.app.services import (
     notifications_service,
     persons_service,
     projects_service,
-    shots_service,
     tasks_service,
+    entity_types_service,
+    task_types_service,
+    time_spents_service,
 )
 
 
@@ -284,7 +286,7 @@ class CreateTasksTestCase(TaskTestCase):
         foreign_sequence = Entity.create(
             name="Foreign",
             project_id=other_project.id,
-            entity_type_id=shots_service.get_sequence_type()["id"],
+            entity_type_id=entity_types_service.get_sequence_type()["id"],
         )
 
         path = (
@@ -737,7 +739,7 @@ class TaskListingTestCase(TaskTestCase):
         tasks = self.get(f"/data/persons/{self.person.id}/done-tasks")
         self.assertEqual(tasks, [])
 
-        done_status = tasks_service.get_or_create_task_status(
+        done_status = task_types_service.get_or_create_task_status(
             "Done", "done", "#22d160", is_done=True
         )
         tasks_service.update_task(
@@ -1164,7 +1166,7 @@ class TaskListingTestCase(TaskTestCase):
         revived; the route adds the task access guard.
         """
         task = self.generate_fixture_task()
-        tasks_service.create_or_update_time_spent(
+        time_spents_service.create_or_update_time_spent(
             str(task.id), str(self.person_id), "2026-08-05", 3600
         )
         path = f"/actions/tasks/{task.id}/time-spents"

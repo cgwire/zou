@@ -8,14 +8,13 @@ from zou.app.utils import date_helpers
 from zou.app.services import (
     entities_service,
     files_service,
-    names_service,
     playlists_service,
     persons_service,
     projects_service,
     shots_service,
     permissions_service,
-    user_service,
     tasks_service,
+    task_types_service,
 )
 from zou.app.utils import csv_utils
 
@@ -33,8 +32,8 @@ class PlaylistCsvExport(MethodView):
             playlist, supervisor_access=True
         )
         project = projects_service.get_project(playlist["project_id"])
-        self.task_type_map = tasks_service.get_task_type_map()
-        self.task_status_map = tasks_service.get_task_status_map()
+        self.task_type_map = task_types_service.get_task_type_map()
+        self.task_status_map = task_types_service.get_task_status_map()
         task_ids = []
         for shot in playlist["shots"]:
             preview_file = files_service.get_preview_file(
@@ -92,7 +91,7 @@ class PlaylistCsvExport(MethodView):
 
     def build_row(self, shot):
         entity = entities_service.get_entity(shot["entity_id"])
-        name, _, _ = names_service.get_full_entity_name(shot["entity_id"])
+        name, _, _ = entities_service.get_full_entity_name(shot["entity_id"])
         preview_file = files_service.get_preview_file(shot["preview_file_id"])
         task = tasks_service.get_task(preview_file["task_id"])
         task_type = self.task_type_map[task["task_type_id"]]

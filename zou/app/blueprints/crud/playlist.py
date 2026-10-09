@@ -9,6 +9,7 @@ from zou.app.services import (
     playlists_service,
     preview_files_service,
     user_service,
+    cascade_deletion_service,
 )
 from zou.app.exceptions import WrongParameterException
 
@@ -69,7 +70,7 @@ class PlaylistsResource(BaseModelsResource):
                 )
             )
         return query.filter(
-            user_service.build_team_exists_filter(Playlist.project_id)
+            persons_service.build_team_exists_filter(Playlist.project_id)
         )
 
     @jwt_required()
@@ -140,7 +141,7 @@ class PlaylistResource(BaseModelResource):
         return super().delete(instance_id)
 
     def pre_delete(self, playlist):
-        playlists_service.remove_playlist_dependents(playlist)
+        cascade_deletion_service.remove_playlist_dependents(playlist)
 
     def check_update_permissions(self, playlist, data):
         return permissions_service.check_playlist_update_access(playlist)

@@ -1,5 +1,3 @@
-import slugify
-
 from collections import defaultdict
 from sqlalchemy.exc import IntegrityError
 
@@ -16,21 +14,14 @@ from zou.app.models.project import (
 )
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.status_automation import StatusAutomation
-from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.department import Department
 from zou.app.services import (
-    assets_service,
-    base_service,
-    edits_service,
-    preview_files_service,
-    shots_service,
+    entity_types_service,
 )
 from zou.app.exceptions import (
     ProjectNotFoundException,
-    MetadataDescriptorNotFoundException,
-    DepartmentNotFoundException,
     WrongParameterException,
 )
 
@@ -39,8 +30,13 @@ from zou.app import db
 
 from sqlalchemy.exc import StatementError
 from sqlalchemy.orm import joinedload, selectinload
-from sqlalchemy.orm.exc import ObjectDeletedError
-from sqlalchemy import and_, false, or_
+from sqlalchemy import or_
+from zou.app import config
+import re
+
+# Lower bound of a project movie bitrate in Mbit/s. The upper bound is the
+# instance high definition bitrate, MOVIE_HIGHDEF_BITRATE.
+MIN_MOVIE_BITRATE = 1
 
 
 def clear_project_cache(project_id):
@@ -153,85 +149,6 @@ def serialize_projects_with_extra_data(projects_list, descriptor_visibilities):
     ]
 
 
-def _build_descriptor_narrowing(for_client=False, vendor_departments=None):
-    """
-    Return the criterion keeping the metadata descriptors a client or a
-    vendor may read, None when nothing is narrowed: a client only gets the
-    ones published to clients, a vendor only the ones of their departments
-    or of no department. Shared by every route serving descriptors, so that
-    they all apply the same rule.
-    """
-    if for_client:
-        return MetadataDescriptor.for_client == True
-    if vendor_departments is not None:
-        return or_(
-            MetadataDescriptor.departments == None,
-            MetadataDescriptor.departments.any(
-                Department.id.in_(vendor_departments)
-            ),
-        )
-    return None
-
-
-def _narrow_metadata_descriptors(
-    query, for_client=False, vendor_departments=None
-):
-    """
-    Narrow given metadata descriptors query to the ones a client or a vendor
-    may read.
-    """
-    narrowing = _build_descriptor_narrowing(for_client, vendor_departments)
-    if narrowing is None:
-        return query
-    return query.filter(narrowing)
-
-
-def build_metadata_descriptors_filter(descriptor_visibilities):
-    """
-    Return a filter keeping the metadata descriptors of the projects of
-    given (project_ids, for_client, vendor_departments) triples, each
-    narrowed as its triple says: a query spanning several projects narrows
-    each on the role held on it.
-    """
-    criteria = []
-    for project_ids, for_client, vendor_departments in descriptor_visibilities:
-        criterion = MetadataDescriptor.project_id.in_(project_ids)
-        narrowing = _build_descriptor_narrowing(for_client, vendor_departments)
-        if narrowing is not None:
-            criterion = and_(criterion, narrowing)
-        criteria.append(criterion)
-    if not criteria:
-        return false()
-    return or_(*criteria)
-
-
-def _fetch_metadata_descriptors_by_project(
-    project_ids, for_client=False, vendor_departments=None
-):
-    """
-    Return the metadata descriptors of given projects grouped by project,
-    in one query. Clients only get the descriptors published to them, and
-    a vendor only the ones of their departments.
-    """
-    descriptors_query = _narrow_metadata_descriptors(
-        MetadataDescriptor.query.filter(
-            MetadataDescriptor.project_id.in_(project_ids)
-        ),
-        for_client,
-        vendor_departments,
-    )
-    # Eager-load departments to avoid N+1 when serializing descriptors
-    descriptors_query = descriptors_query.options(
-        joinedload(MetadataDescriptor.departments)
-    )
-
-    all_descriptors = descriptors_query.all()
-    descriptors_by_project = defaultdict(list)
-    for desc in all_descriptors:
-        descriptors_by_project[desc.project_id].append(desc)
-    return descriptors_by_project
-
-
 def _fetch_task_type_links_by_project(project_ids):
     """
     Return the task type links of given projects grouped by project.
@@ -273,7 +190,7 @@ def _fetch_first_episodes_by_project(project_ids):
     if not project_ids:
         return {}
 
-    episode_type = shots_service.get_episode_type()
+    episode_type = entity_types_service.get_episode_type()
     first_episodes_by_project = {}
 
     episodes = (
@@ -395,23 +312,6 @@ def get_projects():
         ]
         result.append(data)
     return result
-
-
-def _fetch_all_project_descriptors_by_project():
-    """
-    Return the metadata descriptors of every project grouped by project.
-    """
-    descriptors = (
-        MetadataDescriptor.query.filter(
-            MetadataDescriptor.entity_type == "Project"
-        )
-        .options(joinedload(MetadataDescriptor.departments))
-        .all()
-    )
-    by_project = defaultdict(list)
-    for descriptor in descriptors:
-        by_project[descriptor.project_id].append(descriptor)
-    return by_project
 
 
 @cache.memoize_function(480)
@@ -659,9 +559,7 @@ def add_task_type_setting(
 
     project = get_project_raw(project_id)
     if bitrates is not None:
-        preview_files_service.validate_movie_bitrates(
-            bitrates, inherited=project.serialize()
-        )
+        validate_movie_bitrates(bitrates, inherited=project.serialize())
     link = ProjectTaskTypeLink.get_by(
         task_type_id=task_type_id, project_id=project_id
     )
@@ -869,536 +767,6 @@ def _save_project(project):
     clear_project_cache(str(project.id))
     events.emit("project:update", {}, project_id=str(project.id))
     return project.serialize()
-
-
-def _migrate_metadata_field_name(model, old_key, new_key):
-    """
-    Move a value from old_key to new_key in model.data, without committing.
-    No-op if old_key is absent. Returns whether an update was applied.
-    """
-    metadata = fields.serialize_value(model.data) or {}
-    value = metadata.pop(old_key, None)
-    if value is None:
-        return False
-    metadata[new_key] = value
-    model.update_no_commit({"data": metadata})
-    return True
-
-
-def _entity_query_for_descriptor_entity_type(descriptor):
-    """
-    Entities whose `data` holds a value for this descriptor (neither
-    Project nor Task). A field name is unique per entity type only, so the
-    query keeps the entities of the descriptor type: every asset type for
-    Asset, the type of that name for a shot, scene, sequence, episode or
-    edit column, none for any other name. Rows without the key are left
-    out: a removal rewrites only the rows it changes.
-    """
-    query = Entity.query.filter(
-        Entity.project_id == descriptor.project_id,
-        Entity.data.has_key(descriptor.field_name),
-    )
-    if descriptor.entity_type == "Asset":
-        return query.filter(assets_service.build_asset_type_filter())
-    if descriptor.entity_type == "Shot":
-        entity_type = shots_service.get_shot_type()
-    elif descriptor.entity_type == "Scene":
-        entity_type = shots_service.get_scene_type()
-    elif descriptor.entity_type == "Sequence":
-        entity_type = shots_service.get_sequence_type()
-    elif descriptor.entity_type == "Episode":
-        entity_type = shots_service.get_episode_type()
-    elif descriptor.entity_type == "Edit":
-        entity_type = edits_service.get_edit_type()
-    else:
-        return query.filter(false())
-    return query.filter(Entity.entity_type_id == entity_type["id"])
-
-
-def _task_query_for_descriptor(descriptor):
-    """
-    Tasks whose `data` holds a value for this Task descriptor.
-    """
-    return Task.query.filter(
-        Task.project_id == descriptor.project_id,
-        Task.task_type_id == descriptor.task_type_id,
-        Task.data.has_key(descriptor.field_name),
-    )
-
-
-def _strip_metadata_field_from_model_data(model, field_name):
-    """
-    Remove field_name from model.data when `data` is not null.
-    """
-    metadata = fields.serialize_value(model.data)
-    if metadata is not None:
-        metadata.pop(field_name, None)
-        model.update({"data": metadata})
-
-
-def _migrate_descriptor_field_rename(descriptor, new_field_name):
-    """
-    Apply a metadata field rename to Project.data or matching Entity rows.
-    Nothing is committed: the caller commits the moved values with the
-    descriptor, so a failed update of the descriptor rolls them back too.
-    """
-    if descriptor.entity_type == "Project":
-        project = get_project_raw(descriptor.project_id)
-        _migrate_metadata_field_name(
-            project, descriptor.field_name, new_field_name
-        )
-        return
-    if descriptor.entity_type == "Task":
-        for task in _task_query_for_descriptor(descriptor).all():
-            _migrate_metadata_field_name(
-                task, descriptor.field_name, new_field_name
-            )
-        return
-    entities = _entity_query_for_descriptor_entity_type(descriptor).all()
-    for entity in entities:
-        _migrate_metadata_field_name(
-            entity, descriptor.field_name, new_field_name
-        )
-
-
-def _check_metadata_descriptor_rename(descriptor, name, field_name):
-    """
-    Refuse a new name longer than the name or field name column holds, or
-    that another descriptor of the same project, entity type and task type,
-    the scope of the unique indexes, holds as its name or as its field
-    name. The update of the descriptor would fail on it once the stored
-    values moved to the new key, overwriting any value already there.
-    """
-    columns = MetadataDescriptor.__table__.c
-    if (
-        len(name) > columns.name.type.length
-        or len(field_name) > columns.field_name.type.length
-    ):
-        raise WrongParameterException("Metadata descriptor name is too long.")
-    query = MetadataDescriptor.query.filter(
-        MetadataDescriptor.id != descriptor.id,
-        MetadataDescriptor.project_id == descriptor.project_id,
-        MetadataDescriptor.entity_type == descriptor.entity_type,
-        or_(
-            MetadataDescriptor.name == name,
-            MetadataDescriptor.field_name == field_name,
-        ),
-    )
-    if descriptor.task_type_id is not None:
-        query = query.filter(
-            MetadataDescriptor.task_type_id == descriptor.task_type_id
-        )
-    if query.first() is not None:
-        raise WrongParameterException("Metadata descriptor already exists.")
-
-
-def _remove_stored_values_for_metadata_descriptor(descriptor):
-    """
-    Remove descriptor field values from Project.data (Project type), from
-    the Task.data rows of its task type (Task type) or from the Entity.data
-    rows of its entity type (other types).
-    """
-    if descriptor.entity_type == "Project":
-        project = get_project_raw(descriptor.project_id)
-        _strip_metadata_field_from_model_data(project, descriptor.field_name)
-        return
-    if descriptor.entity_type == "Task":
-        for task in _task_query_for_descriptor(descriptor).all():
-            _strip_metadata_field_from_model_data(task, descriptor.field_name)
-        return
-    for entity in _entity_query_for_descriptor_entity_type(descriptor).all():
-        _strip_metadata_field_from_model_data(entity, descriptor.field_name)
-
-
-def add_metadata_descriptor(
-    project_id,
-    entity_type,
-    name,
-    data_type,
-    choices,
-    for_client,
-    departments=None,
-    task_type_id=None,
-):
-    """
-    Register a custom field for the given `entity_type` in this project.
-    Values are stored in `Entity.data` (Asset, Shot, …), in `Project.data`
-    when `entity_type` is ``Project`` or in `Task.data` when it is
-    ``Task`` (scoped to `task_type_id`).
-    """
-    if not departments:
-        departments = []
-
-    try:
-        departments_objects = [
-            Department.get(department_id)
-            for department_id in departments
-            if department_id is not None
-        ]
-    except StatementError:
-        raise DepartmentNotFoundException()
-
-    try:
-        descriptor = MetadataDescriptor.create(
-            project_id=project_id,
-            entity_type=entity_type,
-            task_type_id=task_type_id,
-            name=name,
-            data_type=data_type,
-            choices=choices,
-            for_client=for_client,
-            departments=departments_objects,
-            field_name=slugify.slugify(name, separator="_"),
-        )
-    except IntegrityError:
-        raise WrongParameterException("Metadata descriptor already exists.")
-    events.emit(
-        "metadata-descriptor:new",
-        {"metadata_descriptor_id": str(descriptor.id)},
-        project_id=project_id,
-    )
-    clear_project_cache(project_id)
-    return descriptor.serialize(relations=True)
-
-
-def get_metadata_descriptors(
-    project_id, for_client=False, vendor_departments=None
-):
-    """
-    Get all metadata descriptors for given project and entity type, narrowed
-    for a client or a vendor as the open projects listing narrows them.
-    """
-    query = MetadataDescriptor.query.filter(
-        MetadataDescriptor.project_id == project_id
-    ).order_by(MetadataDescriptor.position, MetadataDescriptor.name)
-    query = _narrow_metadata_descriptors(query, for_client, vendor_departments)
-
-    # Eager-load departments to avoid N+1 during serialization
-    query = query.options(joinedload(MetadataDescriptor.departments))
-    descriptors = query.all()
-    return fields.serialize_models(descriptors, relations=True)
-
-
-def get_metadata_descriptor_raw(metadata_descriptor_id):
-    """
-    Get metadata descriptor for given id as active record.
-    """
-    return base_service.get_instance(
-        MetadataDescriptor,
-        metadata_descriptor_id,
-        MetadataDescriptorNotFoundException,
-    )
-
-
-def get_metadata_descriptor(metadata_descriptor_id):
-    """
-    Get metadata descriptor for given id as dict.
-    """
-    return get_metadata_descriptor_raw(metadata_descriptor_id).serialize(
-        relations=True
-    )
-
-
-def get_project_metadata_descriptor(project_id, metadata_descriptor_id):
-    """
-    Get metadata descriptor for given id as dict, provided it belongs to
-    given project. The id comes from the client next to a project it may
-    access: a descriptor of another project is not found.
-    """
-    descriptor = get_metadata_descriptor(metadata_descriptor_id)
-    if descriptor["project_id"] != str(project_id):
-        raise MetadataDescriptorNotFoundException()
-    return descriptor
-
-
-def is_metadata_descriptor_visible(
-    metadata_descriptor_id, for_client=False, vendor_departments=None
-):
-    """
-    Return True if given metadata descriptor is left in by the narrowing of
-    a client or a vendor.
-    """
-    query = _narrow_metadata_descriptors(
-        MetadataDescriptor.query.filter(
-            MetadataDescriptor.id == metadata_descriptor_id
-        ),
-        for_client,
-        vendor_departments,
-    )
-    return query.first() is not None
-
-
-def update_metadata_descriptor(metadata_descriptor_id, changes):
-    """
-    Update metadata descriptor information for given id. Whatever can
-    refuse the changes runs before a rename moves the stored values, and
-    the moved values are committed with the descriptor: a failed update
-    leaves them under their old key.
-    """
-    descriptor = get_metadata_descriptor_raw(metadata_descriptor_id)
-    if not changes.get("name"):
-        # Without a new name, the column keeps its own.
-        changes.pop("name", None)
-
-    if "departments" in changes:
-        if not changes["departments"]:
-            changes["departments"] = []
-
-        try:
-            departments_objects = [
-                Department.get(department_id)
-                for department_id in changes["departments"]
-                if department_id is not None
-            ]
-        except StatementError:
-            raise DepartmentNotFoundException()
-
-        changes["departments"] = departments_objects
-
-    if "name" in changes:
-        changes["field_name"] = slugify.slugify(changes["name"], separator="_")
-        _check_metadata_descriptor_rename(
-            descriptor, changes["name"], changes["field_name"]
-        )
-        if descriptor.field_name != changes["field_name"]:
-            _migrate_descriptor_field_rename(descriptor, changes["field_name"])
-
-    descriptor.update(changes)
-    events.emit(
-        "metadata-descriptor:update",
-        {"metadata_descriptor_id": str(descriptor.id)},
-        project_id=descriptor.project_id,
-    )
-    clear_project_cache(str(descriptor.project_id))
-    return descriptor.serialize(relations=True)
-
-
-def reorder_metadata_descriptors(project_id, entity_type, descriptor_ids):
-    """
-    Reorder metadata descriptors for a given project and entity type.
-    Updates position field based on the order of descriptor IDs provided.
-    Descriptors not in the list are added at the end, ordered by name.
-    """
-    descriptors = MetadataDescriptor.query.filter(
-        MetadataDescriptor.project_id == project_id,
-        MetadataDescriptor.entity_type == entity_type,
-    ).all()
-
-    descriptor_map = {str(desc.id): desc for desc in descriptors}
-
-    for descriptor_id in descriptor_ids:
-        if descriptor_id not in descriptor_map:
-            raise WrongParameterException(
-                f"Descriptor {descriptor_id} not found for project {project_id} and entity type {entity_type}"
-            )
-
-    for position, descriptor_id in enumerate(descriptor_ids, start=1):
-        descriptor = descriptor_map[descriptor_id]
-        descriptor.update({"position": position})
-
-    descriptors_not_in_list = [
-        desc for desc in descriptors if not str(desc.id) in descriptor_ids
-    ]
-    descriptors_not_in_list.sort(key=lambda d: d.name)
-    start_position = len(descriptor_ids) + 1
-    for position_offset, descriptor in enumerate(descriptors_not_in_list):
-        descriptor.update({"position": start_position + position_offset})
-
-    clear_project_cache(project_id)
-
-    query = MetadataDescriptor.query.filter(
-        MetadataDescriptor.project_id == project_id,
-        MetadataDescriptor.entity_type == entity_type,
-    ).order_by(MetadataDescriptor.position, MetadataDescriptor.name)
-    # Eager-load departments to avoid N+1 during serialization
-    query = query.options(joinedload(MetadataDescriptor.departments))
-    return fields.serialize_models(query.all(), relations=True)
-
-
-def remove_metadata_descriptor(metadata_descriptor_id):
-    """
-    Delete metadata descriptor and related informations.
-    """
-    descriptor = get_metadata_descriptor_raw(metadata_descriptor_id)
-    _remove_stored_values_for_metadata_descriptor(descriptor)
-    try:
-        descriptor.delete()
-    except ObjectDeletedError:
-        pass
-    events.emit(
-        "metadata-descriptor:delete",
-        {"metadata_descriptor_id": str(descriptor.id)},
-        project_id=descriptor.project_id,
-    )
-    clear_project_cache(str(descriptor.project_id))
-    return descriptor.serialize()
-
-
-def add_metadata_descriptor_to_projects(
-    project_ids,
-    entity_type,
-    name,
-    data_type,
-    choices,
-    for_client,
-    departments=None,
-):
-    """
-    Create the same metadata descriptor in every given project that does not
-    already own one with the same field name and entity type. Returns the
-    list of created descriptors.
-    """
-    field_name = slugify.slugify(name, separator="_")
-    created = []
-    for project_id in project_ids:
-        exists = (
-            MetadataDescriptor.query.filter(
-                MetadataDescriptor.project_id == project_id,
-                MetadataDescriptor.entity_type == entity_type,
-                MetadataDescriptor.field_name == field_name,
-            ).count()
-            > 0
-        )
-        if not exists:
-            created.append(
-                add_metadata_descriptor(
-                    project_id,
-                    entity_type,
-                    name,
-                    data_type,
-                    choices,
-                    for_client,
-                    departments,
-                )
-            )
-    return created
-
-
-def copy_project_metadata_descriptors(project_id):
-    """
-    Copy the Project-scoped metadata descriptors (the all-projects columns)
-    owned by open projects onto the given project so that its cells are
-    editable right away. One copy per distinct field name; field names the
-    project already owns are left untouched. Returns the created descriptors.
-    """
-    descriptors = (
-        MetadataDescriptor.query.join(
-            Project, MetadataDescriptor.project_id == Project.id
-        )
-        .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
-        .filter(ProjectStatus.name.in_(("Active", "open", "Open")))
-        .filter(MetadataDescriptor.entity_type == "Project")
-        .filter(MetadataDescriptor.project_id != project_id)
-        .order_by(MetadataDescriptor.position, MetadataDescriptor.name)
-        .all()
-    )
-    owned_field_names = {
-        descriptor.field_name
-        for descriptor in MetadataDescriptor.query.filter(
-            MetadataDescriptor.project_id == project_id,
-            MetadataDescriptor.entity_type == "Project",
-        )
-    }
-    created = []
-    for descriptor in descriptors:
-        if descriptor.field_name in owned_field_names:
-            continue
-        owned_field_names.add(descriptor.field_name)
-        created.append(
-            add_metadata_descriptor(
-                project_id,
-                "Project",
-                descriptor.name,
-                descriptor.data_type,
-                descriptor.choices,
-                descriptor.for_client,
-                [str(department.id) for department in descriptor.departments],
-            )
-        )
-    return created
-
-
-def _find_descriptors_by_field(project_ids, entity_type, field_name):
-    """
-    Return the metadata descriptors sharing given field name and entity type
-    across given projects.
-    """
-    return MetadataDescriptor.query.filter(
-        MetadataDescriptor.project_id.in_(project_ids),
-        MetadataDescriptor.entity_type == entity_type,
-        MetadataDescriptor.field_name == field_name,
-    ).all()
-
-
-def update_metadata_descriptor_on_projects(
-    project_ids, entity_type, field_name, changes
-):
-    """
-    Update every metadata descriptor sharing the given field name and entity
-    type across the given projects. A new name is checked on every project
-    first, so that a refusal leaves them all unchanged. Returns the list of
-    updated descriptors.
-    """
-    descriptors = _find_descriptors_by_field(
-        project_ids, entity_type, field_name
-    )
-    name = changes.get("name")
-    if name:
-        new_field_name = slugify.slugify(name, separator="_")
-        for descriptor in descriptors:
-            _check_metadata_descriptor_rename(descriptor, name, new_field_name)
-    return [
-        update_metadata_descriptor(str(descriptor.id), dict(changes))
-        for descriptor in descriptors
-    ]
-
-
-def remove_metadata_descriptor_from_projects(
-    project_ids, entity_type, field_name
-):
-    """
-    Remove every metadata descriptor sharing the given field name and entity
-    type across the given projects. Returns the list of removed ids.
-    """
-    descriptors = _find_descriptors_by_field(
-        project_ids, entity_type, field_name
-    )
-    removed_ids = []
-    for descriptor in descriptors:
-        descriptor_id = str(descriptor.id)
-        remove_metadata_descriptor(descriptor_id)
-        removed_ids.append(descriptor_id)
-    return removed_ids
-
-
-def reorder_metadata_descriptors_on_projects(
-    project_ids, entity_type, field_order
-):
-    """
-    Apply the same column order, given as a list of field names, on every
-    given project. Descriptors whose field name is not listed keep trailing
-    positions (handled by reorder_metadata_descriptors). Returns the list of
-    updated descriptors across all projects.
-    """
-    updated = []
-    for project_id in project_ids:
-        descriptors = MetadataDescriptor.query.filter(
-            MetadataDescriptor.project_id == project_id,
-            MetadataDescriptor.entity_type == entity_type,
-        ).all()
-        by_field = {desc.field_name: str(desc.id) for desc in descriptors}
-        ordered_ids = [
-            by_field[field_name]
-            for field_name in field_order
-            if field_name in by_field
-        ]
-        if ordered_ids:
-            updated.extend(
-                reorder_metadata_descriptors(
-                    project_id, entity_type, ordered_ids
-                )
-            )
-    return updated
 
 
 def is_tv_show(project):
@@ -1628,3 +996,195 @@ def get_department_team(project_id, department_id):
         .filter(DepartmentLink.department_id == department_id)
     ).all()
     return persons
+
+
+def build_open_project_filter():
+    """
+    Query filter for project to retrieve only open projects.
+    """
+    open_status = get_open_status()
+    return Project.project_status_id == open_status["id"]
+
+
+def narrow_metadata_descriptors(
+    query, for_client=False, vendor_departments=None
+):
+    """
+    Narrow given metadata descriptors query to the ones a client or a vendor
+    may read.
+    """
+    narrowing = build_descriptor_narrowing(for_client, vendor_departments)
+    if narrowing is None:
+        return query
+    return query.filter(narrowing)
+
+
+def _fetch_metadata_descriptors_by_project(
+    project_ids, for_client=False, vendor_departments=None
+):
+    """
+    Return the metadata descriptors of given projects grouped by project,
+    in one query. Clients only get the descriptors published to them, and
+    a vendor only the ones of their departments.
+    """
+    descriptors_query = narrow_metadata_descriptors(
+        MetadataDescriptor.query.filter(
+            MetadataDescriptor.project_id.in_(project_ids)
+        ),
+        for_client,
+        vendor_departments,
+    )
+    # Eager-load departments to avoid N+1 when serializing descriptors
+    descriptors_query = descriptors_query.options(
+        joinedload(MetadataDescriptor.departments)
+    )
+
+    all_descriptors = descriptors_query.all()
+    descriptors_by_project = defaultdict(list)
+    for desc in all_descriptors:
+        descriptors_by_project[desc.project_id].append(desc)
+    return descriptors_by_project
+
+
+def _fetch_all_project_descriptors_by_project():
+    """
+    Return the metadata descriptors of every project grouped by project.
+    """
+    descriptors = (
+        MetadataDescriptor.query.filter(
+            MetadataDescriptor.entity_type == "Project"
+        )
+        .options(joinedload(MetadataDescriptor.departments))
+        .all()
+    )
+    by_project = defaultdict(list)
+    for descriptor in descriptors:
+        by_project[descriptor.project_id].append(descriptor)
+    return by_project
+
+
+def build_descriptor_narrowing(for_client=False, vendor_departments=None):
+    """
+    Return the criterion keeping the metadata descriptors a client or a
+    vendor may read, None when nothing is narrowed: a client only gets the
+    ones published to clients, a vendor only the ones of their departments
+    or of no department. Shared by every route serving descriptors, so that
+    they all apply the same rule.
+    """
+    if for_client:
+        return MetadataDescriptor.for_client == True
+    if vendor_departments is not None:
+        return or_(
+            MetadataDescriptor.departments == None,
+            MetadataDescriptor.departments.any(
+                Department.id.in_(vendor_departments)
+            ),
+        )
+    return None
+
+
+def is_valid_resolution(resolution):
+    """
+    Return true if the dimension follows the 1920x1080 pattern.
+    """
+    return resolution is not None and bool(
+        re.match(r"^\d{3,4}x\d{3,4}$", resolution)
+    )
+
+
+def is_valid_partial_resolution(resolution):
+    """
+    Return true if the dimension follows the x1080 pattern.
+    """
+    return resolution is not None and bool(re.match(r"^x\d{3,4}$", resolution))
+
+
+def validate_resolution(resolution):
+    """
+    Raise WrongParameterException if the resolution is set but doesn't
+    match the canonical "WIDTHxHEIGHT" or "xHEIGHT" format. Empty values
+    (None or "") are accepted: the runtime falls back to 1080p.
+
+    Used at the CRUD boundary so users get an immediate 400 instead of
+    a silent fallback at normalization time.
+    """
+    if resolution in (None, ""):
+        return
+    if not (
+        is_valid_resolution(resolution)
+        or is_valid_partial_resolution(resolution)
+    ):
+        raise WrongParameterException(
+            f"Invalid resolution {resolution}. Expected format: '1920x1080' or 'x1080'."
+        )
+
+
+def validate_movie_bitrate(bitrate):
+    """
+    Raise WrongParameterException when a movie bitrate is set but is not
+    an integer number of Mbit/s between 1 and the instance high definition
+    bitrate.
+    """
+    if bitrate is None:
+        return
+    if (
+        not isinstance(bitrate, int)
+        or isinstance(bitrate, bool)
+        or not MIN_MOVIE_BITRATE <= bitrate <= config.MOVIE_HIGHDEF_BITRATE
+    ):
+        raise WrongParameterException(
+            f"Invalid bitrate {bitrate}. Expected an integer number of "
+            f"Mbit/s between {MIN_MOVIE_BITRATE} and "
+            f"{config.MOVIE_HIGHDEF_BITRATE}."
+        )
+
+
+def validate_movie_bitrates(data, current=None, inherited=None):
+    """
+    Check the hd_bitrate_compression and ld_bitrate_compression a settings
+    change sets: each within bounds, and a low definition one never above
+    the high definition bitrate the movies will get. That one resolves as
+    the encoder does: data, then current (the object being changed) for a
+    bitrate absent from data, then inherited (the level the object falls
+    back on), then the config. Bitrates the change leaves as they are, sent
+    back or not, are not checked: the encoder caps them, as it caps an
+    unset low definition bitrate.
+    """
+    current = current or {}
+    changes = {
+        key: data[key]
+        for key in ("hd_bitrate_compression", "ld_bitrate_compression")
+        if key in data and data[key] != current.get(key)
+    }
+    for bitrate in changes.values():
+        validate_movie_bitrate(bitrate)
+    lowdef = changes.get("ld_bitrate_compression")
+    if lowdef is None:
+        return
+    highdef, _ = get_movie_bitrates(inherited or {}, {**current, **data})
+    if lowdef > highdef:
+        raise WrongParameterException(
+            f"The low definition bitrate ({lowdef}) cannot exceed the high "
+            f"definition one ({highdef})."
+        )
+
+
+def get_movie_bitrates(project, task_type_link=None):
+    """
+    Return the (highdef, lowdef) bitrates in Mbit/s the movies of a task
+    are encoded at: the task type link's, then the project's, then the
+    config's. Each version resolves on its own.
+    """
+    bitrates = []
+    for key, default in (
+        ("hd_bitrate_compression", config.MOVIE_HIGHDEF_BITRATE),
+        ("ld_bitrate_compression", config.MOVIE_LOWDEF_BITRATE),
+    ):
+        value = (task_type_link or {}).get(key) or project.get(key)
+        bitrates.append(value or default)
+    # Writes only check the bitrates they change: a stored or inherited one
+    # can exceed a ceiling lowered since, or a low definition one its high
+    # definition one. The encoder never exceeds the ceilings.
+    highdef = min(bitrates[0], config.MOVIE_HIGHDEF_BITRATE)
+    lowdef = min(bitrates[1], highdef)
+    return highdef, lowdef

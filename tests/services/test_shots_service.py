@@ -2,30 +2,25 @@ import datetime
 
 from unittest.mock import patch
 
-import pytest
-from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from tests.base import ApiDBTestCase
 
-from zou.app import db
-from zou.app.models.entity import Entity, EntityLink, EntityVersion
+from zou.app.models.entity import Entity, EntityVersion
 from zou.app.models.task import Task
 from zou.app.services import (
-    breakdown_service,
-    deletion_service,
     persons_service,
     shots_service,
-    tasks_service,
+    entity_types_service,
 )
 from zou.app.utils import fields
 from zou.app.exceptions import (
     EpisodeNotFoundException,
-    ModelWithRelationsDeletionException,
     SceneNotFoundException,
     ShotNotFoundException,
     SequenceNotFoundException,
 )
+from tests.services.cases import ShotsTestCase
 
 
 class FirstEpisodeTestCase(ApiDBTestCase):
@@ -69,70 +64,9 @@ class FirstEpisodeTestCase(ApiDBTestCase):
         self.assertEqual(episode["name"], "E01")
         self.assertEqual(episode["status"], "running")
         self.assertEqual(
-            episode["entity_type_id"], shots_service.get_episode_type()["id"]
+            episode["entity_type_id"],
+            entity_types_service.get_episode_type()["id"],
         )
-
-
-class ShotsTestCase(ApiDBTestCase):
-    """
-    One production holding an episode, a sequence, a shot, a scene and an
-    asset: the five kinds this service tells apart.
-    """
-
-    def setUp(self):
-        super().setUp()
-        self.generate_fixture_project()
-        self.generate_fixture_asset_type()
-        self.generate_fixture_episode()
-        self.generate_fixture_sequence()
-        self.generate_fixture_shot()
-        self.generate_fixture_scene()
-        self.generate_fixture_asset()
-
-    def generate_shot_task(self):
-        self.generate_fixture_person()
-        self.generate_fixture_assigner()
-        self.generate_fixture_department()
-        self.generate_fixture_task_status()
-        self.generate_fixture_task_type()
-        return self.generate_fixture_shot_task()
-
-
-class EntityTypeTestCase(ShotsTestCase):
-    """
-    Shots, sequences, episodes and scenes are all rows of the entity table:
-    only the entity type tells them apart.
-    """
-
-    def test_each_temporal_type_is_named_after_itself(self):
-        for get_type, name in [
-            (shots_service.get_shot_type, "Shot"),
-            (shots_service.get_sequence_type, "Sequence"),
-            (shots_service.get_episode_type, "Episode"),
-            (shots_service.get_scene_type, "Scene"),
-            (shots_service.get_edit_type, "Edit"),
-        ]:
-            with self.subTest(name=name):
-                self.assertEqual(get_type()["name"], name)
-
-    def test_an_entity_is_recognized_by_its_type(self):
-        entities = {
-            "shot": self.shot,
-            "sequence": self.sequence,
-            "scene": self.scene,
-            "episode": self.episode,
-            "asset": self.asset,
-        }
-        predicates = {
-            "shot": shots_service.is_shot,
-            "sequence": shots_service.is_sequence,
-            "scene": shots_service.is_scene,
-            "episode": shots_service.is_episode,
-        }
-        for kind, is_kind in predicates.items():
-            for name, entity in entities.items():
-                with self.subTest(predicate=kind, entity=name):
-                    self.assertEqual(is_kind(entity.serialize()), kind == name)
 
 
 class LookupTestCase(ShotsTestCase):
@@ -402,7 +336,7 @@ class ListingTestCase(ShotsTestCase):
         # caller comes from the request context, which a service test has
         # none of.
         with patch.object(
-            shots_service.user_service,
+            persons_service,
             "build_assignee_filter",
             return_value=Task.assignees.contains(
                 persons_service.get_person_raw(self.person.id)
@@ -474,13 +408,6 @@ class ListingTestCase(ShotsTestCase):
                 )
             ],
             [str(self.shot.id)],
-        )
-
-    def test_every_shot_of_the_instance_is_walked_for_the_index(self):
-        # The indexer walks every shot, productions included.
-        self.assertEqual(
-            [shot.id for shot in shots_service.get_all_raw_shots()],
-            [self.shot.id],
         )
 
 
@@ -584,7 +511,7 @@ class CreationTestCase(ShotsTestCase):
     def test_a_shot_created_twice_at_once_is_created_once(self):
         shot_name = "RACE_SHOT"
         parent_id = str(self.sequence.id)
-        shot_type = shots_service.get_shot_type()
+        shot_type = entity_types_service.get_shot_type()
         existing = Entity.create(
             entity_type_id=shot_type["id"],
             project_id=self.project.id,
@@ -640,356 +567,6 @@ class CreationTestCase(ShotsTestCase):
 
         self.assertEqual(shots_service.get_shot(shot_id)["nb_frames"], 42)
         self.assertEqual(len(captured), 1)
-
-
-class RemovalTestCase(ShotsTestCase):
-    """
-    Removing an entity that other rows still point at. A shot that carries
-    tasks is canceled rather than deleted, unless the caller forces it.
-    """
-
-    def test_a_shot_with_no_task_is_deleted(self):
-        """
-        The casting of a shot points at it from a link table: leaving the
-        links behind would keep the asset cast in a shot that no longer
-        exists, and the delete would fail on the foreign key anyway.
-        """
-        shot_id = str(self.shot.id)
-        breakdown_service.create_casting_link(shot_id, str(self.asset.id))
-
-        shots_service.remove_shot(shot_id)
-
-        with pytest.raises(ShotNotFoundException):
-            shots_service.get_shot(shot_id)
-        self.assertEqual(
-            EntityLink.query.filter_by(entity_in_id=shot_id).count(), 0
-        )
-
-    def test_a_shot_with_tasks_is_canceled(self):
-        self.generate_shot_task()
-        shot_id = str(self.shot.id)
-
-        shots_service.remove_shot(shot_id)
-
-        self.assertTrue(shots_service.get_shot(shot_id)["canceled"])
-
-    def test_a_forced_removal_takes_the_tasks_with_it(self):
-        self.generate_shot_task()
-        shot_id = str(self.shot.id)
-
-        shots_service.remove_shot(shot_id, force=True)
-
-        with pytest.raises(ShotNotFoundException):
-            shots_service.get_shot(shot_id)
-        self.assertEqual(Task.query.filter_by(entity_id=shot_id).count(), 0)
-
-    def test_a_forced_removal_skips_a_task_deleted_meanwhile(self):
-        """
-        Another request may delete a task of the shot while the removal
-        walks them. Every removal commits, which expires the instances left
-        to walk: reading the id of the deleted one reloaded a missing row
-        and raised ObjectDeletedError.
-        """
-        self.generate_fixture_task_status()
-        self.generate_fixture_task_type()
-        shot_id = str(self.shot.id)
-        # No assignee, so that a plain DELETE can take either of them.
-        for task_type in [self.task_type_layout, self.task_type_animation]:
-            Task.create(
-                name=task_type.name,
-                project_id=self.project.id,
-                task_type_id=task_type.id,
-                task_status_id=self.task_status.id,
-                entity_id=self.shot.id,
-            )
-        remove_task = deletion_service.remove_task
-
-        def delete_the_other_task_first(task_id, force=False):
-            # Straight on the table, out of sight of the session, as the
-            # other request does.
-            db.session.execute(
-                text(
-                    "DELETE FROM task "
-                    "WHERE entity_id = :shot_id AND id != :task_id"
-                ),
-                {"shot_id": shot_id, "task_id": str(task_id)},
-            )
-            db.session.commit()
-            return remove_task(task_id, force=force)
-
-        with patch.object(
-            deletion_service,
-            "remove_task",
-            side_effect=delete_the_other_task_first,
-        ):
-            shots_service.remove_shot(shot_id, force=True)
-
-        with pytest.raises(ShotNotFoundException):
-            shots_service.get_shot(shot_id)
-        self.assertEqual(Task.query.filter_by(entity_id=shot_id).count(), 0)
-
-    def test_a_scene_is_deleted(self):
-        scene_id = str(self.scene.id)
-        shots_service.remove_scene(scene_id)
-        with pytest.raises(SceneNotFoundException):
-            shots_service.get_scene(scene_id)
-
-    def test_a_sequence_still_holding_shots_is_not_removed(self):
-        """
-        Without force the caller is told, rather than left with a branch of
-        the production hanging from nothing.
-
-        Nothing is read back afterwards: the rolled back delete takes the
-        fixtures of this test with it, since they were never committed.
-        """
-        self.assertRaises(
-            ModelWithRelationsDeletionException,
-            shots_service.remove_sequence,
-            str(self.sequence.id),
-        )
-
-    def test_a_forced_sequence_removal_takes_its_children_with_it(self):
-        """
-        Scenes hang from a sequence too: walking its children as if they
-        were all shots raises halfway through, after part of the sequence
-        is already gone.
-        """
-        sequence_id = str(self.sequence.id)
-        shot_id = str(self.shot.id)
-        scene_id = str(self.scene.id)
-
-        shots_service.remove_sequence(sequence_id, force=True)
-
-        with pytest.raises(SequenceNotFoundException):
-            shots_service.get_sequence(sequence_id)
-        with pytest.raises(ShotNotFoundException):
-            shots_service.get_shot(shot_id)
-        with pytest.raises(SceneNotFoundException):
-            shots_service.get_scene(scene_id)
-
-
-class QuotaTestCase(ShotsTestCase):
-    """
-    How much a person drew over a period. Every shot counted lands in four
-    buckets at once.
-    """
-
-    def test_the_entries_add_up_by_day_week_month_and_year(self):
-        """
-        Shots sharing a period add up. The entries counters are distinct
-        period counts: how many days a month holds, how many weeks and
-        months a year does, which is why two days in January are needed to
-        tell a sum from an assignment.
-        """
-        quotas = {}
-        counted = [
-            (datetime.datetime(2024, 1, 8), 100, 3),
-            (datetime.datetime(2024, 1, 8), 50, 2),
-            (datetime.datetime(2024, 1, 9), 25, 1),
-            (datetime.datetime(2024, 2, 5), 75, 4),
-        ]
-        for date, nb_frames, nb_drawings in counted:
-            shots_service._add_quota_entry(
-                quotas, "person", date, "UTC", nb_frames, nb_drawings, 25
-            )
-
-        entry = quotas["person"]
-        self.assertEqual(
-            entry["day"],
-            {
-                "frames": {
-                    "2024-01-08": 150,
-                    "2024-01-09": 25,
-                    "2024-02-05": 75,
-                },
-                "seconds": {
-                    "2024-01-08": 6,
-                    "2024-01-09": 1,
-                    "2024-02-05": 3,
-                },
-                "count": {"2024-01-08": 2, "2024-01-09": 1, "2024-02-05": 1},
-                "drawings": {
-                    "2024-01-08": 5,
-                    "2024-01-09": 1,
-                    "2024-02-05": 4,
-                },
-                "entries": {"2024-01": 2, "2024-02": 1},
-            },
-        )
-        self.assertEqual(
-            entry["week"],
-            {
-                "frames": {"2024-2": 175, "2024-6": 75},
-                "seconds": {"2024-2": 7, "2024-6": 3},
-                "count": {"2024-2": 3, "2024-6": 1},
-                "drawings": {"2024-2": 6, "2024-6": 4},
-                "entries": {"2024": 2},
-            },
-        )
-        self.assertEqual(
-            entry["month"],
-            {
-                "frames": {"2024-01": 175, "2024-02": 75},
-                "seconds": {"2024-01": 7, "2024-02": 3},
-                "count": {"2024-01": 3, "2024-02": 1},
-                "drawings": {"2024-01": 6, "2024-02": 4},
-                "entries": {"2024": 2},
-            },
-        )
-        self.assertEqual(
-            entry["year"],
-            {
-                "frames": {"2024": 250},
-                "seconds": {"2024": 10},
-                "count": {"2024": 4},
-                "drawings": {"2024": 10},
-            },
-        )
-
-    def test_a_time_spent_day_is_not_shifted_by_the_timezone(self):
-        """
-        A time spent is logged against a calendar day, not an instant:
-        west of UTC it must stay on the day the artist picked instead of
-        sliding to the previous one.
-        """
-        quotas = {}
-        shots_service._add_quota_entry(
-            quotas,
-            "person",
-            datetime.date(2024, 1, 8),
-            "America/New_York",
-            100,
-            2,
-            25,
-        )
-        self.assertEqual(
-            quotas["person"]["day"]["frames"], {"2024-01-08": 100}
-        )
-
-    def test_an_end_date_lands_on_the_local_day_and_week(self):
-        """
-        End dates are UTC instants: a feedback given Sunday evening UTC is
-        Monday in Kuala Lumpur, and the week bucket must follow that local
-        day or the day and week totals disagree.
-        """
-        quotas = {}
-        shots_service._add_quota_entry(
-            quotas,
-            "person",
-            datetime.datetime(2024, 12, 15, 18, 0),
-            "Asia/Kuala_Lumpur",
-            100,
-            2,
-            25,
-        )
-        entry = quotas["person"]
-        self.assertEqual(entry["day"]["frames"], {"2024-12-16": 100})
-        self.assertEqual(entry["week"]["frames"], {"2024-51": 100})
-
-    def test_the_day_list_agrees_with_the_day_the_shot_is_counted_on(self):
-        """
-        The issue 1612 symptom: the aggregate counted a shot on the right
-        local day but the day detail list queried the raw UTC day, so the
-        shot was missing from the list. A feedback at 18:00 UTC is the
-        17th in Kuala Lumpur: the 17th's list must hold it, the 16th's
-        must not.
-        """
-        self.generate_shot_task()
-        task = self.generate_fixture_shot_task(
-            name="quota", shot_id=self.shot.id
-        )
-        task.update(
-            {
-                "end_date": fields.get_date_object(
-                    "2024-12-16T18:00:00", "%Y-%m-%dT%H:%M:%S"
-                )
-            }
-        )
-        args = dict(
-            project_id=str(self.project.id),
-            task_type_id=str(self.task_type_animation.id),
-            weighted=False,
-            timezone="Asia/Kuala_Lumpur",
-        )
-
-        counted_day = shots_service.get_day_quota_shots(
-            str(self.person.id), 2024, 12, 17, **args
-        )
-        wrong_day = shots_service.get_day_quota_shots(
-            str(self.person.id), 2024, 12, 16, **args
-        )
-
-        self.assertEqual([shot["name"] for shot in counted_day], ["P01"])
-        self.assertEqual(wrong_day, [])
-
-    def test_a_shot_is_weighted_by_the_share_of_the_task_it_took(self):
-        """
-        The shots a person worked on in the window, weighted by the share of
-        the task duration they logged, and returned in full name order.
-        """
-        self.generate_shot_task()
-
-        # Named to come first while created last, so the sort has work to
-        # do. generate_fixture_shot repoints self.shot, hence the local.
-        first_shot = self.shot
-        shots = [first_shot, self.generate_fixture_shot("A01")]
-        tasks = {}
-        for shot in shots:
-            task = self.generate_fixture_shot_task(
-                name=f"quota {shot.name}", shot_id=shot.id
-            )
-            task.update({"end_date": fields.get_date_object("2018-06-10")})
-            # The task duration is the sum of every time spent on it, so a
-            # second worker is what makes the share below one.
-            tasks_service.create_or_update_time_spent(
-                str(task.id), str(self.person.id), "2018-06-04", 250
-            )
-            tasks_service.create_or_update_time_spent(
-                str(task.id), self.user["id"], "2018-06-04", 750
-            )
-            tasks[shot.name] = task
-
-        # A second day logged on one shot, for the same duration as the
-        # first: the two shares have to add up rather than the last one
-        # winning, and the rows must stay apart even though everything the
-        # query selects of them is equal.
-        tasks_service.create_or_update_time_spent(
-            str(tasks["A01"].id), str(self.person.id), "2018-06-05", 250
-        )
-
-        quota_shots = shots_service.get_weighted_quota_shots_between(
-            str(self.person.id),
-            "2018-06-01T00:00:00",
-            "2018-06-30T00:00:00",
-            project_id=str(self.project.id),
-            task_type_id=str(self.task_type_animation.id),
-        )
-
-        self.assertEqual(
-            [(shot["name"], shot["weight"]) for shot in quota_shots],
-            [("A01", 0.4), ("P01", 0.25)],
-        )
-
-    def test_a_shot_outside_the_window_is_not_counted(self):
-        self.generate_shot_task()
-        task = self.generate_fixture_shot_task(
-            name="quota", shot_id=self.shot.id
-        )
-        task.update({"end_date": fields.get_date_object("2018-06-10")})
-        tasks_service.create_or_update_time_spent(
-            str(task.id), str(self.person.id), "2018-06-04", 250
-        )
-
-        self.assertEqual(
-            shots_service.get_weighted_quota_shots_between(
-                str(self.person.id),
-                "2018-07-01T00:00:00",
-                "2018-07-30T00:00:00",
-                project_id=str(self.project.id),
-                task_type_id=str(self.task_type_animation.id),
-            ),
-            [],
-        )
 
 
 class FramesFromPreviewTestCase(ShotsTestCase):

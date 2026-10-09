@@ -4,7 +4,6 @@ import pytest
 
 from unittest import mock
 
-from tests.base import ApiDBTestCase
 
 from zou.app import app
 from zou.app.models.person import Person, SENSITIVE_FIELDS
@@ -21,37 +20,10 @@ from zou.app.exceptions import (
     WrongUserException,
 )
 from zou.app.utils import auth, date_helpers
+from tests.services.cases import AuthTestCase
 
 # The whole point of these is what a password check accepts and refuses.
 pytestmark = pytest.mark.real_bcrypt
-
-
-class AuthTestCase(ApiDBTestCase):
-    """
-    One person with a known password. Holds no test of its own.
-    """
-
-    def setUp(self):
-        super().setUp()
-
-        self.generate_fixture_person()
-        self.person.update(
-            {"password": auth.encrypt_password("secretpassword")}
-        )
-        self.person_id = str(self.person.id)
-        self.email = self.person.email
-
-    def tearDown(self):
-        # Some tests switch the auth strategy; restore the default so the
-        # leak does not break login tests run after this file.
-        app.config["AUTH_STRATEGY"] = "auth_local_classic"
-        super().tearDown()
-
-    def authenticate(self, password="secretpassword", **kwargs):
-        return auth_service.check_auth(app, self.email, password, **kwargs)
-
-    def failed_attemps(self):
-        return Person.get(self.person_id).login_failed_attemps
 
 
 class CheckAuthTestCase(AuthTestCase):
@@ -639,11 +611,6 @@ class TokenTestCase(AuthTestCase):
         # be nagged about.
         app.config["AUTH_STRATEGY"] = "auth_local_no_password"
         self.assertFalse(auth_service.is_default_password(app, "default"))
-
-    def test_generate_reset_token(self):
-        token = auth_service.generate_reset_token()
-        self.assertEqual(len(token), 64)
-        self.assertNotEqual(token, auth_service.generate_reset_token())
 
     def test_generate_recovery_codes(self):
         codes = auth_service.generate_recovery_codes()

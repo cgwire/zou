@@ -12,7 +12,11 @@ from zou.app.models.playlist_share_link import PlaylistShareLink
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.task import Task
 
-from zou.app.services import comments_service, playlist_sharing_service
+from zou.app.services import (
+    comments_service,
+    playlist_sharing_service,
+    attachment_files_service,
+)
 from zou.app.exceptions import (
     PlaylistShareLinkNotFoundException,
     WrongParameterException,
@@ -537,7 +541,7 @@ class SharedCommentTestCase(SharedPlaylistTestCase):
         # comments_service is imported inside the function, so the patch
         # lands on the source module rather than on a local alias.
         with patch.object(
-            comments_service,
+            attachment_files_service,
             "get_attachment_file_path",
             return_value="/tmp/note.png",
         ), patch("flask.send_file") as send_file:

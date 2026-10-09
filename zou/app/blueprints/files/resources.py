@@ -1,7 +1,7 @@
 from flasgger import swag_from
 import os
 
-from flask import request, abort, current_app
+from flask import request, current_app
 from flask import send_file as flask_send_file
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -30,7 +30,8 @@ from zou.app.services import (
     tasks_service,
     entities_service,
     permissions_service,
-    user_service,
+    task_types_service,
+    breakdown_service,
 )
 
 from zou.app.exceptions import (
@@ -231,7 +232,7 @@ class EntityOutputFilePathResource(MethodView, ArgsMixin):
             permissions_service.check_project_access(entity["project_id"])
             permissions_service.check_entity_access(entity_id)
             output_type = files_service.get_output_type(args["output_type_id"])
-            task_type = tasks_service.get_task_type(args["task_type_id"])
+            task_type = task_types_service.get_task_type(args["task_type_id"])
             is_revision_set_by_user = args["revision"] != 0
             if not is_revision_set_by_user:
                 revision = files_service.get_next_output_file_revision(
@@ -285,13 +286,13 @@ class InstanceOutputFilePathResource(MethodView, ArgsMixin):
         args = self.get_arguments()
 
         try:
-            asset_instance = assets_service.get_asset_instance(
+            asset_instance = breakdown_service.get_asset_instance(
                 asset_instance_id
             )
             entity = entities_service.get_entity(temporal_entity_id)
             asset = assets_service.get_asset(asset_instance["asset_id"])
             output_type = files_service.get_output_type(args["output_type_id"])
-            task_type = tasks_service.get_task_type(args["task_type_id"])
+            task_type = task_types_service.get_task_type(args["task_type_id"])
             permissions_service.check_project_access(asset["project_id"])
             permissions_service.check_entity_access(asset["id"])
 
@@ -503,7 +504,7 @@ class NewEntityOutputFileResource(MethodView, ArgsMixin):
             entity = entities_service.get_entity(entity_id)
             permissions_service.check_project_access(entity["project_id"])
             output_type = files_service.get_output_type(args["output_type_id"])
-            task_type = tasks_service.get_task_type(args["task_type_id"])
+            task_type = task_types_service.get_task_type(args["task_type_id"])
 
             if args["person_id"] is None:
                 person = persons_service.get_current_user()
@@ -617,7 +618,7 @@ class NewInstanceOutputFileResource(MethodView, ArgsMixin):
             except WorkingFileNotFoundException:
                 working_file_id = None
 
-            asset_instance = assets_service.get_asset_instance(
+            asset_instance = breakdown_service.get_asset_instance(
                 asset_instance_id
             )
             temporal_entity = entities_service.get_entity(temporal_entity_id)
@@ -626,7 +627,7 @@ class NewInstanceOutputFileResource(MethodView, ArgsMixin):
             permissions_service.check_project_access(entity["project_id"])
 
             output_type = files_service.get_output_type(args["output_type_id"])
-            task_type = tasks_service.get_task_type(args["task_type_id"])
+            task_type = task_types_service.get_task_type(args["task_type_id"])
             if args["person_id"] is None:
                 person = persons_service.get_current_user()
             else:
@@ -733,7 +734,7 @@ class GetNextEntityOutputFileRevisionResource(MethodView, ArgsMixin):
         body = validation.validate_request_body(NextRevisionSchema)
         entity = entities_service.get_entity(entity_id)
         output_type = files_service.get_output_type(body.output_type_id)
-        task_type = tasks_service.get_task_type(body.task_type_id)
+        task_type = task_types_service.get_task_type(body.task_type_id)
         permissions_service.check_project_access(entity["project_id"])
 
         next_revision_number = files_service.get_next_output_file_revision(
@@ -753,10 +754,12 @@ class GetNextInstanceOutputFileRevisionResource(MethodView, ArgsMixin):
         """
         body = validation.validate_request_body(NextRevisionSchema)
 
-        asset_instance = assets_service.get_asset_instance(asset_instance_id)
+        asset_instance = breakdown_service.get_asset_instance(
+            asset_instance_id
+        )
         asset = entities_service.get_entity(asset_instance["asset_id"])
         output_type = files_service.get_output_type(body.output_type_id)
-        task_type = tasks_service.get_task_type(body.task_type_id)
+        task_type = task_types_service.get_task_type(body.task_type_id)
         permissions_service.check_project_access(asset["project_id"])
 
         next_revision_number = files_service.get_next_output_file_revision(
@@ -820,7 +823,9 @@ class LastInstanceOutputFilesResource(MethodView, ArgsMixin):
             ],
         )
 
-        asset_instance = assets_service.get_asset_instance(asset_instance_id)
+        asset_instance = breakdown_service.get_asset_instance(
+            asset_instance_id
+        )
         entity = entities_service.get_entity(asset_instance["asset_id"])
         permissions_service.check_project_access(entity["project_id"])
 
@@ -856,7 +861,9 @@ class InstanceOutputTypesResource(MethodView):
         """
         Get instance output types
         """
-        asset_instance = assets_service.get_asset_instance(asset_instance_id)
+        asset_instance = breakdown_service.get_asset_instance(
+            asset_instance_id
+        )
         entity = entities_service.get_entity(asset_instance["asset_id"])
         permissions_service.check_project_access(entity["project_id"])
         return files_service.get_output_types_for_instance(
@@ -896,7 +903,9 @@ class InstanceOutputTypeOutputFilesResource(MethodView, ArgsMixin):
         """
         representation = self.get_text_parameter("representation")
 
-        asset_instance = assets_service.get_asset_instance(asset_instance_id)
+        asset_instance = breakdown_service.get_asset_instance(
+            asset_instance_id
+        )
         asset = assets_service.get_asset(asset_instance["asset_id"])
         permissions_service.check_project_access(asset["project_id"])
 
@@ -990,7 +999,9 @@ class InstanceOutputFilesResource(MethodView, ArgsMixin):
             ],
         )
 
-        asset_instance = assets_service.get_asset_instance(asset_instance_id)
+        asset_instance = breakdown_service.get_asset_instance(
+            asset_instance_id
+        )
         asset = assets_service.get_asset(asset_instance["asset_id"])
         permissions_service.check_project_access(asset["project_id"])
 

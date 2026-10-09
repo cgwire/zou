@@ -7,10 +7,10 @@ from slugify import slugify
 from zou.app.services import (
     shots_service,
     projects_service,
-    tasks_service,
     permissions_service,
-    user_service,
     persons_service,
+    task_types_service,
+    metadata_descriptors_service,
 )
 from zou.app.utils import csv_utils, query
 
@@ -29,8 +29,8 @@ class ShotsCsvExport(MethodView):
         query.check_criterion_id_format(criterions, ["id", "episode_id"])
         criterions["project_id"] = project["id"]
 
-        self.task_status_map = tasks_service.get_task_status_map()
-        self.task_type_map = tasks_service.get_task_type_map()
+        self.task_status_map = task_types_service.get_task_status_map()
+        self.task_type_map = task_types_service.get_task_type_map()
         self.persons_map = persons_service.get_persons_map()
 
         csv_content = []
@@ -161,7 +161,7 @@ class ShotsCsvExport(MethodView):
     def get_metadata_infos(self, project_id):
         descriptors = [
             descriptor
-            for descriptor in projects_service.get_metadata_descriptors(
+            for descriptor in metadata_descriptors_service.get_metadata_descriptors(
                 project_id
             )
             if descriptor["entity_type"] == "Shot"

@@ -3,7 +3,9 @@ from tests.blueprints.source.shotgun.base import ShotgunTestCase
 from zou.app.models.entity import Entity
 from zou.app.models.project import Project
 
-from zou.app.services import shots_service
+from zou.app.services import (
+    entity_types_service,
+)
 
 
 class ImportShotgunSceneTestCase(ShotgunTestCase):
@@ -36,7 +38,7 @@ class ImportShotgunSceneTestCase(ShotgunTestCase):
             shotgun_id=self.sg_scene["sequence_sg_scenes_1_sequences"][0][
                 "id"
             ],
-            entity_type_id=shots_service.get_sequence_type()["id"],
+            entity_type_id=entity_types_service.get_sequence_type()["id"],
         )
         project = Project.get_by(name=self.sg_scene["project"]["name"])
         self.assertEqual(scene["name"], self.sg_scene["code"])

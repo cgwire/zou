@@ -8,6 +8,7 @@ from zou.app.services import (
     shots_service,
     breakdown_service,
     entities_service,
+    entity_types_service,
 )
 
 from zou.app.utils import events
@@ -29,7 +30,7 @@ class CastingCsvImportResource(BaseCsvProjectImportResource):
         self.sequence_map = {}
         self.shot_map = {}
 
-        asset_types = assets_service.get_asset_types()
+        asset_types = entity_types_service.get_asset_types()
         for asset_type in asset_types:
             self.asset_type_map[asset_type["id"]] = slugify(asset_type["name"])
 
@@ -106,7 +107,7 @@ class CastingCsvImportResource(BaseCsvProjectImportResource):
             else:
                 link.update({"nb_occurences": occurences, "label": label})
             entity_id = str(entity.id)
-            if shots_service.is_shot(entity.serialize()):
+            if entity_types_service.is_shot(entity.serialize()):
                 breakdown_service.refresh_shot_casting_stats(
                     entity.serialize()
                 )
@@ -118,7 +119,7 @@ class CastingCsvImportResource(BaseCsvProjectImportResource):
                     },
                     project_id=str(entity.project_id),
                 )
-            elif shots_service.is_episode(entity.serialize()):
+            elif entity_types_service.is_episode(entity.serialize()):
                 events.emit(
                     "episode:casting-update",
                     {

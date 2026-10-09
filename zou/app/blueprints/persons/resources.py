@@ -9,11 +9,12 @@ from flask_jwt_extended import jwt_required
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
     persons_service,
-    tasks_service,
     time_spents_service,
-    shots_service,
     permissions_service,
     user_service,
+    departments_service,
+    quotas_service,
+    emails_service,
 )
 from zou.app.utils import (
     permissions,
@@ -398,7 +399,7 @@ class PersonQuotaMixin(ArgsMixin):
 class PersonMonthQuotaShotsResource(MethodView, PersonQuotaMixin):
 
     def get_person_quotas(self, person_id, year, month, **kwargs):
-        return shots_service.get_month_quota_shots(
+        return quotas_service.get_month_quota_shots(
             person_id, year, month, **kwargs
         )
 
@@ -414,7 +415,7 @@ class PersonMonthQuotaShotsResource(MethodView, PersonQuotaMixin):
 class PersonWeekQuotaShotsResource(MethodView, PersonQuotaMixin):
 
     def get_person_quotas(self, person_id, year, week, **kwargs):
-        return shots_service.get_week_quota_shots(
+        return quotas_service.get_week_quota_shots(
             person_id, year, week, **kwargs
         )
 
@@ -430,7 +431,7 @@ class PersonWeekQuotaShotsResource(MethodView, PersonQuotaMixin):
 class PersonDayQuotaShotsResource(MethodView, PersonQuotaMixin):
 
     def get_person_quotas(self, person_id, year, month, day, **kwargs):
-        return shots_service.get_day_quota_shots(
+        return quotas_service.get_day_quota_shots(
             person_id, year, month, day, **kwargs
         )
 
@@ -702,7 +703,7 @@ class AddToDepartmentResource(MethodView, ArgsMixin):
         department_id = str(body.department_id)
 
         try:
-            department = tasks_service.get_department(department_id)
+            department = departments_service.get_department(department_id)
         except DepartmentNotFoundException:
             raise WrongParameterException(
                 "Department ID matches no department"
@@ -721,7 +722,7 @@ class RemoveFromDepartmentResource(MethodView, ArgsMixin):
         """
         permissions.check_admin_permissions()
         try:
-            tasks_service.get_department(department_id)
+            departments_service.get_department(department_id)
         except DepartmentNotFoundException:
             raise WrongParameterException(
                 "Department ID matches no department"
@@ -758,7 +759,7 @@ class ChangePasswordForPersonResource(MethodView, ArgsMixin):
                     person_IP = person_IP.split(",")[0].strip()
                 except ValueError:
                     person_IP = None
-            persons_service.send_password_changed_by_admin_email(
+            emails_service.send_password_changed_by_admin_email(
                 person, current_user, person_IP=person_IP
             )
             return {"success": True}
@@ -819,7 +820,7 @@ class DisableTwoFactorAuthenticationPersonResource(MethodView, ArgsMixin):
                     person_IP = person_IP.split(",")[0].strip()
                 except ValueError:
                     person_IP = None
-            persons_service.send_2fa_disabled_by_admin_email(
+            emails_service.send_2fa_disabled_by_admin_email(
                 person, current_user, person_IP=person_IP
             )
             return {"success": True}

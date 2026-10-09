@@ -2,7 +2,11 @@ from tests.base import ApiDBTestCase
 
 from zou.app.utils import fields
 from zou.app.models.metadata_descriptor import MetadataDescriptor
-from zou.app.services import persons_service, projects_service
+from zou.app.services import (
+    persons_service,
+    projects_service,
+    metadata_descriptors_service,
+)
 
 
 class MetadataTestCase(ApiDBTestCase):
@@ -17,7 +21,7 @@ class MetadataTestCase(ApiDBTestCase):
         self.assertEqual(len(descriptors), 1)
 
     def add_published_descriptor(self):
-        return projects_service.add_metadata_descriptor(
+        return metadata_descriptors_service.add_metadata_descriptor(
             self.project.id, "Asset", "Delivery", "string", [], True
         )
 
@@ -60,7 +64,7 @@ class MetadataTestCase(ApiDBTestCase):
 
     def test_a_vendor_lists_the_descriptors_of_their_departments(self):
         self.generate_fixture_department()
-        theirs = projects_service.add_metadata_descriptor(
+        theirs = metadata_descriptors_service.add_metadata_descriptor(
             self.project.id,
             "Asset",
             "Rig",
@@ -69,7 +73,7 @@ class MetadataTestCase(ApiDBTestCase):
             False,
             [str(self.department.id)],
         )
-        projects_service.add_metadata_descriptor(
+        metadata_descriptors_service.add_metadata_descriptor(
             self.project.id,
             "Asset",
             "Layout",

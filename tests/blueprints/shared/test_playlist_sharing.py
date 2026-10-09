@@ -14,8 +14,10 @@ from zou.app.models.playlist_share_link import PlaylistShareLink
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
-from zou.app.services import comments_service
-from zou.app.services import entities_service
+from zou.app.services import (
+    comments_service,
+    tasks_service,
+)
 from zou.app.services import playlist_sharing_service
 from zou.app.services import preview_file_states_service as states_service
 from zou.app.stores import file_store
@@ -563,7 +565,7 @@ class SharedRevisionTestCase(PlaylistSharingTestCase):
         preview, which can be a revision the link does not share. The
         player reads the names off the shots.
         """
-        entities_service.update_entity_preview(
+        tasks_service.update_entity_preview(
             str(self.shot.id), str(self.revision_2.id)
         )
 

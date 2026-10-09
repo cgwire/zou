@@ -1,6 +1,8 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.services import tasks_service
+from zou.app.services import (
+    time_spents_service,
+)
 
 
 class TasksCsvExportTestCase(ApiDBTestCase):
@@ -13,7 +15,7 @@ class TasksCsvExportTestCase(ApiDBTestCase):
         self.generate_fixture_shot()
         person_id = str(self.generate_fixture_person().id)
         task_id = str(self.generate_fixture_task().id)
-        tasks_service.create_or_update_time_spent(
+        time_spents_service.create_or_update_time_spent(
             task_id, person_id, "2023-03-04", 500
         )
         self.generate_fixture_project_closed()
@@ -21,7 +23,7 @@ class TasksCsvExportTestCase(ApiDBTestCase):
         self.project = self.project_closed
         self.generate_fixture_asset()
         task_id = str(self.generate_fixture_task().id)
-        tasks_service.create_or_update_time_spent(
+        time_spents_service.create_or_update_time_spent(
             task_id, person_id, "2022-03-04", 200
         )
         self.maxDiff = None

@@ -7,6 +7,7 @@ from zou.app.services import (
     persons_service,
     projects_service,
     tasks_service,
+    comments_service,
 )
 from zou.app.utils import fields
 
@@ -485,6 +486,6 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
             f"/comments/{comment_id}"
             f"/preview-files/{preview_id}",
         )
-        comment = tasks_service.get_comment(comment_id)
+        comment = comments_service.get_comment(comment_id)
         preview_ids = [p["id"] for p in comment.get("previews", [])]
         self.assertNotIn(preview_id, preview_ids)

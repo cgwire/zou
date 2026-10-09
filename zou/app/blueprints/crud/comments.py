@@ -12,7 +12,7 @@ from zou.app.services import (
     persons_service,
     tasks_service,
     permissions_service,
-    user_service,
+    task_types_service,
 )
 from zou.app.utils import events, permissions
 
@@ -71,7 +71,7 @@ class CommentResource(BaseModelResource):
         return super().put(instance_id)
 
     def get_serialized_instance(self, instance_id, relations=True):
-        return tasks_service.get_comment(instance_id, relations=relations)
+        return comments_service.get_comment(instance_id, relations=relations)
 
     def clean_get_result(self, result):
         is_client = permissions.has_client_permissions()
@@ -80,7 +80,7 @@ class CommentResource(BaseModelResource):
             result["person"] = persons_service.get_short_person(
                 result["person_id"]
             )
-        tasks_service.embed_reply_authors([result])
+        comments_service.embed_reply_authors([result])
         if (
             "attachment_files" in result
             and len(result["attachment_files"]) > 0
@@ -100,7 +100,7 @@ class CommentResource(BaseModelResource):
         ):
             previews = result["previews"]
             if len(previews) > 0 and isinstance(previews[0], str):
-                preview_map = tasks_service._build_preview_map_for_comments(
+                preview_map = comments_service.build_preview_map_for_comments(
                     [result["id"]], is_client
                 )
                 result["previews"] = preview_map.get(result["id"], [])
@@ -134,7 +134,7 @@ class CommentResource(BaseModelResource):
                 project_id=task["project_id"],
             )
 
-        tasks_service.clear_comment_cache(comment["id"])
+        comments_service.clear_comment_cache(comment["id"])
         notifications_service.reset_notifications_for_mentions(comment)
         events.emit(
             "comment:update",
@@ -155,7 +155,7 @@ class CommentResource(BaseModelResource):
             task = tasks_service.get_task(
                 instance["object_id"], relations=True
             )
-            task_type = tasks_service.get_task_type(task["task_type_id"])
+            task_type = task_types_service.get_task_type(task["task_type_id"])
             current_user = persons_service.get_current_user(relations=True)
             if not permissions_service.check_belong_to_project(
                 task["project_id"]
@@ -283,7 +283,7 @@ class CommentResource(BaseModelResource):
         """
         Delete comment
         """
-        comment = tasks_service.get_comment(instance_id)
+        comment = comments_service.get_comment(instance_id)
         task = tasks_service.get_task(comment["object_id"])
         permissions_service.resolve_project_role(task["project_id"])
         if permissions.has_manager_permissions():
@@ -293,6 +293,6 @@ class CommentResource(BaseModelResource):
         self.pre_delete(comment)
         deletion_service.remove_comment(comment["id"])
         tasks_service.reset_task_data(comment["object_id"])
-        tasks_service.clear_comment_cache(comment["id"])
+        comments_service.clear_comment_cache(comment["id"])
         self.post_delete(comment)
         return "", 204

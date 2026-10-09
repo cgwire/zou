@@ -27,8 +27,9 @@ from zou.app.services import (
     persons_service,
     playlist_sharing_service,
     playlists_service,
-    preview_files_service,
     tasks_service,
+    task_types_service,
+    preview_annotations_service,
 )
 from zou.app.exceptions import (
     AttachmentFileNotFoundException,
@@ -138,7 +139,7 @@ class SharedPlaylistCommentsResource(MethodView):
             return {"error": "Task not part of this shared playlist"}, 403
 
         try:
-            task_status = tasks_service.get_task_status(task_status_id)
+            task_status = task_types_service.get_task_status(task_status_id)
         except Exception:
             return {"error": "Task status not found"}, 400
         if not task_status.get("is_client_allowed", False):
@@ -320,7 +321,7 @@ class SharedPlaylistAnnotationsResource(MethodView):
 
         preview_file = files_service.get_preview_file(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
-        return preview_files_service.update_preview_file_annotations(
+        return preview_annotations_service.update_preview_file_annotations(
             guest_id,
             task["project_id"],
             preview_file_id,

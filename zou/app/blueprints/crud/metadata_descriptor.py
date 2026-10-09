@@ -8,7 +8,10 @@ from zou.app.models.metadata_descriptor import (
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.utils import permissions
-from zou.app.services import projects_service, user_service
+from zou.app.services import (
+    user_service,
+    metadata_descriptors_service,
+)
 
 from zou.app.exceptions import (
     WrongParameterException,
@@ -53,7 +56,7 @@ class MetadataDescriptorsResource(BaseModelsResource):
             project["id"] for project in user_service.related_projects()
         ]
         return query.filter(
-            projects_service.build_metadata_descriptors_filter(
+            metadata_descriptors_service.build_metadata_descriptors_filter(
                 user_service.get_descriptor_visibilities(project_ids)
             )
         )

@@ -1,7 +1,10 @@
 from tests.base import ApiDBTestCase
 
 from zou.app.models.time_spent import TimeSpent
-from zou.app.services import projects_service, tasks_service
+from zou.app.services import (
+    projects_service,
+    time_spents_service,
+)
 from zou.app.utils import fields
 
 
@@ -121,7 +124,7 @@ class DayOffTimeSpentTestCase(ApiDBTestCase):
         self.generate_fixture_task_type()
         self.generate_fixture_task()
         for day in range(1, 6):
-            tasks_service.create_or_update_time_spent(
+            time_spents_service.create_or_update_time_spent(
                 str(self.task.id), self.person_id, f"2024-01-0{day}", 100
             )
 

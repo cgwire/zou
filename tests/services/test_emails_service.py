@@ -6,7 +6,10 @@ from tests.base import ApiDBTestCase
 from zou.app.models.comment import Comment
 from zou.app.models.person import Person
 from zou.app import config
-from zou.app.services import emails_service, persons_service
+from zou.app.services import (
+    emails_service,
+    organisation_service,
+)
 from zou.app.stores import queue_store
 
 MESSAGES = {
@@ -140,8 +143,8 @@ class EmailsServiceTestCase(ApiDBTestCase):
         chat credential, while the job still gets the real one.
         """
         token = "xoxb-1234567890-secretsecret-abcd"
-        organisation = persons_service.get_organisation()
-        persons_service.update_organisation(
+        organisation = organisation_service.get_organisation()
+        organisation_service.update_organisation(
             organisation["id"], {"chat_token_slack": token}
         )
         person = self.a_person(

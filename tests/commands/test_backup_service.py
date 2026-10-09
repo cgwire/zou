@@ -10,7 +10,9 @@ from tests.base import ApiDBTestCase
 
 from zou.app.models.organisation import Organisation
 from zou.app.commands import backup_service
-from zou.app.services import persons_service
+from zou.app.services import (
+    organisation_service,
+)
 from zou.app.exceptions import BackupFailedException
 
 
@@ -304,7 +306,7 @@ class UploadEntityThumbnailsTestCase(UploadTestCase):
         A production, the studio itself and a person each keep their avatar
         on their own table.
         """
-        organisation = persons_service.get_organisation()
+        organisation = organisation_service.get_organisation()
         Organisation.get(organisation["id"]).update({"has_avatar": True})
         self.project.update({"has_avatar": True})
         self.person.update({"has_avatar": True})

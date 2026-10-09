@@ -14,32 +14,22 @@ Two conventions matter when editing this module:
 import collections
 import dataclasses
 from typing import Optional
-import uuid
 
-from sqlalchemy import and_, any_, cast, or_
+from sqlalchemy import and_, any_, cast
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
-from sqlalchemy.exc import StatementError, IntegrityError, DataError
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql import func
-from sqlalchemy.sql.expression import case
-from sqlalchemy.orm import aliased, selectinload
-from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
+from sqlalchemy.orm import aliased
+from sqlalchemy.orm.exc import StaleDataError
 
-from zou.app import config, db
-from zou.app.stores import redis_lock
+from zou.app import db
 from zou.app.utils import events
 
-from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.comment import (
     Comment,
-    acknowledgements_table,
-    mentions_table,
-    department_mentions_table,
-    CommentPreviewLink,
 )
-from zou.app.models.department import Department
-from zou.app.models.entity import Entity, EntityLink
+from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType, TaskTypeAssetTypeLink
-from zou.app.models.news import News
 from zou.app.models.person import Person
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import (
@@ -47,36 +37,24 @@ from zou.app.models.project import (
     ProjectPersonLink,
     ProjectTaskTypeLink,
 )
-from zou.app.models.project_status import ProjectStatus
 from zou.app.models.task import Task, TaskPersonLink
 from zou.app.models.task_type import TaskType
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.time_spent import TimeSpent
-from zou.app.models.studio import Studio
 
 from zou.app.utils import (
     cache,
     fields,
-    query as query_utils,
-    permissions,
     date_helpers,
 )
 
 
 from zou.app.exceptions import (
-    CommentNotFoundException,
     EpisodeNotFoundException,
     PersonNotFoundException,
     RevisionAlreadyExistsException,
-    TooManyPreviewFilesException,
     TaskNotFoundException,
-    TaskStatusNotFoundException,
-    TaskTypeNotFoundException,
     WrongParameterException,
-    DepartmentNotFoundException,
-    StudioNotFoundException,
-    WrongDateFormatException,
-    TimeSpentNotFoundException,
 )
 
 from zou.app.services import (
@@ -86,45 +64,17 @@ from zou.app.services import (
     edits_service,
     entities_service,
     files_service,
-    notifications_service,
     persons_service,
     projects_service,
     shots_service,
-    permissions_service,
-    user_service,
+    departments_service,
+    entity_types_service,
+    subscriptions_service,
+    task_types_service,
 )
-
-
-def clear_task_status_cache(task_status_id):
-    """
-    Drop the memoized serialization of given task status, and the list.
-    """
-    cache.cache.delete_memoized(get_task_status, task_status_id)
-    cache.cache.delete_memoized(get_task_statuses)
-
-
-def clear_task_type_cache(task_type_id):
-    """
-    Drop the memoized serializations of given task type, and the list.
-    """
-    cache.cache.delete_memoized(get_task_type, task_type_id)
-    cache.cache.delete_memoized(get_task_types)
-
-
-def clear_department_cache(department_id):
-    """
-    Drop the memoized serializations of given department, and the list.
-    """
-    cache.cache.delete_memoized(get_department, department_id)
-    cache.cache.delete_memoized(get_departments)
-
-
-def clear_studio_cache(studio_id):
-    """
-    Drop the memoized serializations of given studio, and the list.
-    """
-    cache.cache.delete_memoized(get_studio, studio_id)
-    cache.cache.delete_memoized(get_studios)
+from zou.app.exceptions import EntityNotFoundException
+from zou.app.exceptions import PreviewFileNotFoundException
+from zou.app.services import tasks_service
 
 
 def clear_task_cache(task_id):
@@ -135,162 +85,12 @@ def clear_task_cache(task_id):
     cache.cache.delete_memoized(_get_task_cached, str(task_id), True)
 
 
-def clear_comment_cache(comment_id):
-    """
-    Drop every memoized serialization of given comment.
-    """
-    cache.cache.delete_memoized(get_comment, comment_id)
-    cache.cache.delete_memoized(get_comment, comment_id, True)
-
-
-@cache.memoize_function(120)
-def get_departments():
-    """
-    Return every department.
-    """
-    return fields.serialize_models(Department.get_all())
-
-
-@cache.memoize_function(120)
-def get_studios():
-    """
-    Return every studio.
-    """
-    return fields.serialize_models(Studio.get_all())
-
-
-@cache.memoize_function(120)
-def get_task_types():
-    """
-    Return every task type.
-    """
-    return fields.serialize_models(TaskType.get_all())
-
-
-@cache.memoize_function(120)
-def get_task_statuses():
-    """
-    Return every task status.
-    """
-    return fields.serialize_models(TaskStatus.get_all())
-
-
-@cache.memoize_function(120)
-def get_to_review_status():
-    """
-    Return the task status previews are set to on upload.
-    """
-    return get_or_create_task_status(config.TO_REVIEW_TASK_STATUS, "pndng")
-
-
-@cache.memoize_function(120)
-def get_default_task_status(for_concept=False):
-    """
-    Return the task status new tasks start on.
-    """
-    if for_concept:
-        return get_or_create_task_status(
-            "Neutral",
-            "neutral",
-            "#CCCCCC",
-            is_default=True,
-            for_concept=True,
-        )
-    else:
-        return get_or_create_task_status(
-            "Todo", "todo", "#f5f5f5", is_default=True
-        )
-
-
-def get_task_status_raw(task_status_id):
-    """
-    Get task status matching given id as an active record.
-    """
-    return base_service.get_instance(
-        TaskStatus, task_status_id, TaskStatusNotFoundException
-    )
-
-
-@cache.memoize_function(1200)
-def get_task_status(task_status_id):
-    """
-    Get task status matching given id  as a dictionary.
-    """
-    return get_task_status_raw(task_status_id).serialize()
-
-
-@cache.memoize_function(120)
-def get_department(department_id):
-    """
-    Get department matching given id as a dictionary.
-    """
-    return base_service.get_instance(
-        Department, department_id, DepartmentNotFoundException
-    ).serialize()
-
-
-@cache.memoize_function(120)
-def get_studio(studio_id):
-    """
-    Get studio matching given id as a dictionary.
-    """
-    return base_service.get_instance(
-        Studio, studio_id, StudioNotFoundException
-    ).serialize()
-
-
-def get_department_from_task_type(task_type_id):
-    """
-    Get department of given task type as dictionary
-    """
-    task_type = get_task_type_raw(task_type_id)
-    return get_department(task_type.department_id)
-
-
 def get_department_from_task(task_id):
     """
     Get department of given task as dictionary
     """
     task = get_task_raw(task_id)
-    return get_department_from_task_type(task.task_type_id)
-
-
-def get_task_type_raw(task_type_id):
-    """
-    Get task type matching given id as an active record.
-    """
-    return base_service.get_instance(
-        TaskType, task_type_id, TaskTypeNotFoundException
-    )
-
-
-@cache.memoize_function(1200)
-def get_task_type(task_type_id):
-    """
-    Get task type matching given id as a dictionary.
-    """
-    return get_task_type_raw(task_type_id).serialize()
-
-
-def check_task_type_name_is_unique(name, exclude_task_type_id=None):
-    """
-    Check that no task type carries given name, compared regardless of
-    case: clients resolve a task type from its name and lower-case it on
-    the way, so a twin differing only by case collapses onto the same
-    entry. Raises WrongParameterException when one exists.
-
-    The task type being renamed is excluded in the query rather than by
-    comparing ids afterwards: a database can already hold such twins, and
-    a lookup free to return any of them could hand back the renamed row
-    and hide the conflict with the other.
-    """
-    criterions = []
-    if exclude_task_type_id is not None:
-        criterions.append(TaskType.id != exclude_task_type_id)
-    if TaskType.get_by_case_insensitive(*criterions, name=name) is not None:
-        raise WrongParameterException(
-            "A task type with similar name already exists"
-        )
+    return departments_service.get_department_from_task_type(task.task_type_id)
 
 
 def get_task_raw(task_id):
@@ -412,7 +212,7 @@ def get_edit_tasks_for_episode(episode_id, relations=False):
         # An edit hangs straight off its episode, where a shot goes through
         # a sequence, so the entity type is what tells them apart here.
         .filter(
-            Entity.entity_type_id == edits_service.get_edit_type()["id"]
+            Entity.entity_type_id == entity_types_service.get_edit_type()["id"]
         ).filter(Entity.parent_id == episode_id)
     )
     return _convert_rows_to_detailed_tasks(query.all(), relations)
@@ -424,7 +224,7 @@ def get_asset_tasks_for_episode(episode_id, relations=False):
     """
     query = (
         _get_entity_task_query(relations=relations)
-        .filter(assets_service.build_asset_type_filter())
+        .filter(entity_types_service.build_asset_type_filter())
         .filter(Entity.source_id == episode_id)
     )
     return _convert_rows_to_detailed_tasks(query.all(), relations)
@@ -488,11 +288,11 @@ def _convert_rows_to_detailed_tasks(rows, relations=False):
         )
     )
     if relations and task_dicts:
-        _attach_assignee_ids(task_dicts)
+        attach_assignee_ids(task_dicts)
     return task_dicts
 
 
-def _attach_assignee_ids(task_dicts):
+def attach_assignee_ids(task_dicts):
     """
     Fetch all assignees for the given tasks in a single query and inject the
     list of person ids into each dict. Avoids the N+1 that occurs when each
@@ -514,7 +314,7 @@ def _attach_assignee_ids(task_dicts):
         task["assignees"] = assignees_by_task.get(task["id"], [])
 
 
-def _resolve_episode_and_build_task_dict(
+def resolve_episode_and_build_task_dict(
     task,
     project_name,
     project_has_avatar,
@@ -595,7 +395,7 @@ def _resolve_episode_and_build_task_dict(
     )
 
 
-def _add_last_comments_to_tasks(tasks):
+def add_last_comments_to_tasks(tasks):
     """
     For each task, add the last comment info.
     """
@@ -701,16 +501,6 @@ def get_task_types_for_edit(edit_id):
     return get_task_types_for_entity(edit_id)
 
 
-def get_task_type_map():
-    """
-    Return a dict of which keys are task type ids and values are task types.
-    """
-    task_types = TaskType.query.all()
-    return {
-        str(task_type.id): task_type.serialize() for task_type in task_types
-    }
-
-
 def get_next_preview_revision(task_id):
     """
     Get upcoming revision for preview files of given task.
@@ -734,330 +524,6 @@ def get_next_position(task_id, revision):
         task_id=task_id, revision=revision
     ).all()
     return len(preview_files) + 1
-
-
-def get_time_spents_for_task(task_id, date=None):
-    """
-    Return time spents for given task.
-    """
-    result = collections.defaultdict(list)
-    result["total"] = 0
-    time_spents = TimeSpent.query.filter_by(task_id=task_id)
-    if date is not None:
-        time_spents = time_spents.filter_by(
-            date=func.cast(date, TimeSpent.date.type)
-        )
-    for time_spent in time_spents.all():
-        result[str(time_spent.person_id)].append(time_spent.serialize())
-        result["total"] += time_spent.duration
-    return result
-
-
-def get_comments(task_id, is_client=False, is_manager=False):
-    """
-    Return all comments related to given task.
-    """
-    comments = []
-    query = _prepare_query(task_id, is_client, is_manager)
-    comments, comment_ids = _run_task_comments_query(query)
-    if len(comments) > 0:
-        ack_map = _build_ack_map_for_comments(comment_ids)
-        mention_map = _build_mention_map_for_comments(comment_ids)
-        department_mention_map = _build_department_mention_map_for_comments(
-            comment_ids
-        )
-        preview_map = _build_preview_map_for_comments(comment_ids, is_client)
-        attachment_file_map = _build_attachment_map_for_comments(comment_ids)
-        for comment in comments:
-            comment["acknowledgements"] = ack_map.get(comment["id"], [])
-            comment["previews"] = preview_map.get(comment["id"], [])
-            comment["mentions"] = mention_map.get(comment["id"], [])
-            comment["department_mentions"] = department_mention_map.get(
-                comment["id"], []
-            )
-            comment["attachment_files"] = attachment_file_map.get(
-                comment["id"], []
-            )
-        embed_reply_authors(comments)
-
-    if is_client:
-        tmp_comments = []
-        task = get_task(task_id)
-        project = projects_service.get_project(task["project_id"])
-        current_user = persons_service.get_current_user()
-        is_clients_isolated = project.get("is_clients_isolated", False)
-        person_ids = list(
-            {c["person_id"] for c in comments if c.get("person_id")}
-        )
-        persons_map = {
-            p["id"]: p for p in persons_service.get_persons_by_ids(person_ids)
-        }
-        for comment in comments:
-            person = persons_map.get(comment["person_id"], {})
-            is_author = comment["person_id"] == current_user["id"]
-            is_author_client = person.get("role") == "client"
-            is_for_client = comment.get("for_client", False)
-            is_allowed = (
-                is_for_client
-                or (is_clients_isolated and is_author)
-                or (not is_clients_isolated and is_author_client)
-            )
-            if (
-                len(comment["previews"]) > 0
-                and not is_author_client
-                and not is_for_client
-            ):
-                comment["text"] = ""
-                comment["attachment_files"] = []
-                comment["checklist"] = []
-                comment["replies"] = []
-                tmp_comments.append(comment)
-            elif is_allowed:
-                tmp_comments.append(comment)
-        comments = tmp_comments
-    return comments
-
-
-def _prepare_query(task_id, is_client, is_manager):
-    """
-    Build the comment query of a task, scoped to what the caller may read:
-    a client only sees the comments flagged for clients.
-    """
-    Editor = aliased(Person, name="editor_id")
-    query = (
-        Comment.query.order_by(Comment.created_at.desc())
-        .filter_by(object_id=task_id)
-        .join(Person, Comment.person_id == Person.id)
-        .join(TaskStatus, Comment.task_status_id == TaskStatus.id)
-        .join(Editor, Comment.editor_id == Editor.id, isouter=True)
-        .add_columns(
-            TaskStatus.name,
-            TaskStatus.short_name,
-            TaskStatus.color,
-            Person.first_name,
-            Person.last_name,
-            Person.full_name,
-            Person.has_avatar,
-            Person.role,
-            Editor.first_name,
-            Editor.last_name,
-            Editor.has_avatar,
-            Editor.role,
-        )
-    )
-    if not is_manager and not is_client:
-        task = get_task(task_id)
-        query = query.outerjoin(
-            ProjectPersonLink,
-            and_(
-                ProjectPersonLink.person_id == Person.id,
-                ProjectPersonLink.project_id == task["project_id"],
-            ),
-        ).filter(
-            func.coalesce(ProjectPersonLink.role, Person.role) != "client"
-        )
-    return query
-
-
-def embed_reply_authors(comments):
-    """
-    Attach a minimal author to each reply so guest repliers render too.
-    """
-    reply_person_ids = {
-        reply.get("person_id")
-        for comment in comments
-        for reply in (comment.get("replies") or [])
-        if reply.get("person_id")
-    }
-    if not reply_person_ids:
-        return
-    persons_map = persons_service.get_short_persons_map(list(reply_person_ids))
-    for comment in comments:
-        for reply in comment.get("replies") or []:
-            reply["person"] = persons_map.get(reply.get("person_id"))
-
-
-def _run_task_comments_query(query):
-    """
-    Execute a comment query and return the comments with their author,
-    editor and task status, plus their ids. Acknowledgements, mentions,
-    department mentions, previews, attachments and reply authors are left
-    to the callers, which add the ones they serve in a fixed number of
-    queries.
-    """
-    comment_ids = []
-    comments = []
-    for result in query.all():
-        (
-            comment,
-            task_status_name,
-            task_status_short_name,
-            task_status_color,
-            person_first_name,
-            person_last_name,
-            person_full_name,
-            person_has_avatar,
-            person_role,
-            editor_first_name,
-            editor_last_name,
-            editor_has_avatar,
-            editor_role,
-        ) = result
-
-        comment_dict = comment.serialize()
-        comment_dict["person"] = {
-            "first_name": person_first_name,
-            "last_name": person_last_name,
-            "full_name": person_full_name,
-            "has_avatar": person_has_avatar,
-            "role": getattr(person_role, "code", person_role),
-            "id": str(comment.person_id),
-        }
-        if comment.editor_id is not None:
-            comment_dict["editor"] = {
-                "first_name": editor_first_name,
-                "last_name": editor_last_name,
-                "has_avatar": editor_has_avatar,
-                "role": getattr(editor_role, "code", editor_role),
-                "id": str(comment.editor_id),
-            }
-        comment_dict["task_status"] = {
-            "name": task_status_name,
-            "short_name": task_status_short_name,
-            "color": task_status_color,
-            "id": str(comment.task_status_id),
-        }
-        comments.append(comment_dict)
-        comment_ids.append(comment_dict["id"])
-    return (comments, comment_ids)
-
-
-def _build_link_map_for_comments(comment_ids, table, value_column):
-    """
-    Group the rows of a comment link table by comment id, in one query.
-    """
-    link_map = {}
-    for link in (
-        db.session.query(table).filter(table.c.comment.in_(comment_ids)).all()
-    ):
-        comment_id = str(link.comment)
-        value = str(getattr(link, value_column))
-        link_map.setdefault(comment_id, []).append(value)
-    return link_map
-
-
-def _build_ack_map_for_comments(comment_ids):
-    """
-    Return the ids of the people who acknowledged each comment.
-    """
-    return _build_link_map_for_comments(
-        comment_ids, acknowledgements_table, "person"
-    )
-
-
-def _build_mention_map_for_comments(comment_ids):
-    """
-    Return the ids of the people mentioned in each comment.
-    """
-    return _build_link_map_for_comments(comment_ids, mentions_table, "person")
-
-
-def _build_department_mention_map_for_comments(comment_ids):
-    """
-    Return the ids of the departments mentioned in each comment.
-    """
-    return _build_link_map_for_comments(
-        comment_ids, department_mentions_table, "department"
-    )
-
-
-def _build_preview_map_for_comments(comment_ids, is_client=False):
-    """
-    Return the previews attached to each comment. Clients never get the
-    previews of a revision that is not published to them.
-    """
-    preview_map = {}
-    query = (
-        PreviewFile.query.join(CommentPreviewLink)
-        .filter(CommentPreviewLink.comment.in_(comment_ids))
-        .add_columns(CommentPreviewLink.comment)
-    )
-    for preview, comment_id in query.all():
-        comment_id = str(comment_id)
-        if comment_id not in preview_map:
-            preview_map[comment_id] = []
-        status = "ready"
-        if preview.status is not None:
-            status = preview.status.code
-        validation_status = "neutral"
-        if preview.validation_status is not None:
-            validation_status = preview.validation_status.code
-
-        if validation_status != "rejected" or not is_client:
-            preview_map[comment_id].append(
-                {
-                    "id": str(preview.id),
-                    "task_id": str(preview.task_id),
-                    "revision": preview.revision,
-                    "extension": preview.extension,
-                    "width": preview.width,
-                    "height": preview.height,
-                    "duration": preview.duration,
-                    "status": status,
-                    "validation_status": validation_status,
-                    "original_name": preview.original_name,
-                    "position": preview.position,
-                    "annotations": preview.annotations,
-                }
-            )
-    return preview_map
-
-
-def _build_attachment_map_for_comments(comment_ids):
-    """
-    Return the attachment files of each comment.
-    """
-    attachment_file_map = {}
-    attachment_files = AttachmentFile.query.filter(
-        AttachmentFile.comment_id.in_(comment_ids)
-    ).all()
-    for attachment_file in attachment_files:
-        comment_id = str(attachment_file.comment_id)
-        attachment_file_id = str(attachment_file.id)
-        if comment_id not in attachment_file_map:
-            attachment_file_map[str(comment_id)] = []
-        attachment_file_map[str(comment_id)].append(
-            {
-                "id": attachment_file_id,
-                "name": attachment_file.name,
-                "extension": attachment_file.extension,
-                "reply_id": attachment_file.reply_id,
-                "size": attachment_file.size,
-            }
-        )
-    return attachment_file_map
-
-
-def get_comment_raw(comment_id):
-    """
-    Return comment matching give id as an active record.
-    """
-    try:
-        comment = Comment.get(comment_id)
-    except StatementError:
-        raise CommentNotFoundException
-
-    if comment is None:
-        raise CommentNotFoundException
-    return comment
-
-
-@cache.memoize_function(120)
-def get_comment(comment_id, relations=False):
-    """
-    Return comment matching give id as a dict.
-    """
-    return get_comment_raw(comment_id).serialize(relations=relations)
 
 
 def get_comment_by_preview_file_id(preview_file_id):
@@ -1096,441 +562,6 @@ def get_tasks_for_project_and_task_type(project_id, task_type_id):
         .all()
     )
     return Task.serialize_list(tasks)
-
-
-def get_task_status_map():
-    """
-    Return a dict of which keys are task status ids and values are task
-    statuses.
-    """
-    return {
-        str(status.id): status.serialize() for status in TaskStatus.query.all()
-    }
-
-
-def get_person_done_tasks(person_id, projects):
-    """
-    Return all finished tasks performed by a person.
-    """
-    return get_person_tasks(person_id, projects, is_done=True)
-
-
-def get_person_related_tasks(person_id, task_type_id):
-    """
-    Retrieve all tasks for given task types and to entiities
-    that have at least one person assignation.
-    """
-    person = Person.get(person_id)
-    projects = projects_service.open_projects()
-    project_ids = [project["id"] for project in projects]
-
-    entities = (
-        Entity.query.join(Task, Entity.id == Task.entity_id)
-        .filter(Task.assignees.contains(person))
-        .filter(Entity.project_id.in_(project_ids))
-    ).all()
-
-    entity_ids = [entity.id for entity in entities]
-    tasks = (
-        Task.query.filter(Task.entity_id.in_(entity_ids)).filter(
-            Task.task_type_id == task_type_id
-        )
-    ).all()
-
-    return fields.serialize_models(tasks)
-
-
-def get_person_tasks(person_id, projects, is_done=None):
-    """
-    Retrieve all tasks for given person and projects.
-    """
-    Person.get(person_id)
-    project_ids = [project["id"] for project in projects]
-
-    Sequence = aliased(Entity, name="sequence")
-    Episode = aliased(Entity, name="episode")
-    query = (
-        Task.query.join(TaskPersonLink, Task.id == TaskPersonLink.task_id)
-        .join(Project, Task.project_id == Project.id)
-        .join(TaskType, Task.task_type_id == TaskType.id)
-        .join(TaskStatus, Task.task_status_id == TaskStatus.id)
-        .join(Entity, Entity.id == Task.entity_id)
-        .join(EntityType, EntityType.id == Entity.entity_type_id)
-        .outerjoin(Sequence, Sequence.id == Entity.parent_id)
-        .outerjoin(Episode, Episode.id == Sequence.parent_id)
-        .filter(TaskPersonLink.person_id == person_id)
-        .filter(Project.id.in_(project_ids))
-        .add_columns(
-            Project.name,
-            Project.has_avatar,
-            Entity.id,
-            Entity.name,
-            Entity.description,
-            Entity.data,
-            Entity.preview_file_id,
-            EntityType.name,
-            Entity.canceled,
-            Entity.parent_id,
-            Entity.source_id,
-            Sequence.name,
-            Episode.id,
-            Episode.name,
-            TaskType.name,
-            TaskType.for_entity,
-            TaskStatus.name,
-            TaskType.color,
-            TaskStatus.color,
-            TaskStatus.short_name,
-        )
-    )
-
-    if is_done:
-        query = query.filter(TaskStatus.is_done == True).order_by(
-            Task.end_date.desc(), TaskType.name, Entity.name
-        )
-    else:
-        query = query.filter(TaskStatus.is_done == False)
-
-    # Execute query once and reuse results
-    query_results = query.all()
-
-    # Add episodes linked to assets
-    asset_ids = []
-    for row in query_results:
-        asset_ids.append(str(row[0].entity_id))
-
-    cast_in_episode_ids = {}
-    cast_in_episode_names = {}
-    episode_links_query = (
-        EntityLink.query.join(Episode, EntityLink.entity_in_id == Episode.id)
-        .join(EntityType, EntityType.id == Episode.entity_type_id)
-        .filter(EntityType.name == "Episode")
-        .filter(EntityLink.entity_out_id.in_(asset_ids))
-        .add_columns(Episode.id, Episode.name)
-        .order_by(Episode.name)
-    )
-    for link, episode_id, episode_name in episode_links_query.all():
-        asset_id = str(link.entity_out_id)
-        if asset_id not in cast_in_episode_ids:
-            cast_in_episode_ids[asset_id] = []
-            cast_in_episode_names[asset_id] = []
-        cast_in_episode_ids[asset_id].append(episode_id)
-        cast_in_episode_names[asset_id].append(episode_name)
-
-    # Build the result
-
-    tasks = []
-    for row in query_results:
-        (
-            task_dict,
-            task,
-            task_type_name,
-            task_status_name,
-            task_type_color,
-            task_status_color,
-            task_status_short_name,
-        ) = _resolve_episode_and_build_task_dict(*row)
-        task_dict.update(
-            {
-                "task_estimation": task.estimation,
-                "task_duration": task.duration,
-                "task_start_date": fields.serialize_value(task.start_date),
-                "task_due_date": fields.serialize_value(task.due_date),
-                "task_type_name": task_type_name,
-                "task_status_name": task_status_name,
-                "task_type_color": task_type_color,
-                "task_status_color": task_status_color,
-                "task_status_short_name": task_status_short_name,
-            }
-        )
-
-        if str(task.entity_id) in cast_in_episode_ids:
-            task_dict["episode_ids"] = cast_in_episode_ids[str(task.entity_id)]
-            task_dict["episode_names"] = cast_in_episode_names[
-                str(task.entity_id)
-            ]
-        tasks.append(task_dict)
-
-    if tasks:
-        _attach_assignee_ids(tasks)
-    _add_last_comments_to_tasks(tasks)
-    return tasks
-
-
-def get_person_tasks_to_check(
-    project_ids=None,
-    department_ids=None,
-    project_id=None,
-    task_type_id=None,
-    task_status_id=None,
-    person_id=None,
-    episode_id=None,
-    due_date_since=None,
-    due_date_until=None,
-    order_by=None,
-    page=None,
-    limit=100,
-):
-    """
-    Retrieve all tasks requiring a feedback for given departments and projects.
-    When a page number is given, return a pagination envelope instead of a
-    bare list.
-    """
-    Sequence = aliased(Entity, name="sequence")
-    Episode = aliased(Entity, name="episode")
-    query = (
-        Task.query.join(Project, Project.id == Task.project_id)
-        .join(ProjectStatus, ProjectStatus.id == Project.project_status_id)
-        .join(TaskType, TaskType.id == Task.task_type_id)
-        .join(TaskStatus, TaskStatus.id == Task.task_status_id)
-        .join(Entity, Entity.id == Task.entity_id)
-        .join(EntityType, EntityType.id == Entity.entity_type_id)
-        .outerjoin(Sequence, Sequence.id == Entity.parent_id)
-        .outerjoin(Episode, Episode.id == Sequence.parent_id)
-        .filter(TaskStatus.is_feedback_request)
-        .add_columns(
-            Project.name,
-            Project.has_avatar,
-            Entity.id,
-            Entity.name,
-            Entity.description,
-            Entity.data,
-            Entity.preview_file_id,
-            EntityType.name,
-            Entity.canceled,
-            Entity.parent_id,
-            Entity.source_id,
-            Sequence.name,
-            Episode.id,
-            Episode.name,
-            TaskType.name,
-            TaskType.for_entity,
-            TaskStatus.name,
-            TaskType.color,
-            TaskStatus.color,
-            TaskStatus.short_name,
-        )
-    )
-
-    if project_ids is not None:
-        query = query.filter(Project.id.in_(project_ids))
-    else:
-        query = query.filter(user_service.build_open_project_filter())
-
-    if department_ids:
-        query = query.filter(TaskType.department_id.in_(department_ids))
-
-    if project_id is not None:
-        query = query.filter(Project.id == project_id)
-
-    if task_type_id is not None:
-        query = query.filter(TaskType.id == task_type_id)
-
-    if task_status_id is not None:
-        query = query.filter(TaskStatus.id == task_status_id)
-
-    if person_id is not None:
-        if person_id == "unassigned":
-            query = query.filter(Task.assignees == None)
-        else:
-            query = query.filter(
-                Task.assignees.any(Person.id.in_(person_id.split(",")))
-            )
-
-    if episode_id is not None:
-        # match every way a row resolves its episode: the sequence chain,
-        # an episode scoped entity (source_id) and a sequence level task
-        # (parent_id)
-        query = query.filter(
-            or_(
-                Episode.id == episode_id,
-                Entity.source_id == episode_id,
-                Entity.parent_id == episode_id,
-            )
-        )
-
-    if due_date_since is not None:
-        due_date_since = func.cast(due_date_since, Task.due_date.type)
-        query = query.filter(Task.due_date >= due_date_since)
-
-    if due_date_until is not None:
-        due_date_until = func.cast(due_date_until, Task.due_date.type)
-        query = query.filter(Task.due_date <= due_date_until)
-
-    stats = None
-    if page is not None:
-        page = max(page, 1)
-        limit = max(limit, 1)
-        total, total_duration, total_estimation = query.with_entities(
-            func.count(Task.id),
-            func.sum(Task.duration),
-            func.sum(Task.estimation),
-        ).one()
-        stats = {
-            "total": total,
-            "total_duration": total_duration or 0,
-            "total_estimation": total_estimation or 0,
-        }
-
-    name_order = [
-        Project.name,
-        Episode.name,
-        Sequence.name,
-        EntityType.name,
-        Entity.name,
-        TaskType.name,
-    ]
-    order_columns = {
-        "priority": [
-            Task.priority.desc().nullslast(),
-            Task.due_date.asc().nullslast(),
-        ]
-        + name_order,
-        "due_date": [Task.due_date.asc().nullslast()] + name_order,
-        "estimation": [Task.estimation.desc().nullslast()] + name_order,
-        "entity_name": [
-            Project.name,
-            TaskType.name,
-            Episode.name,
-            Sequence.name,
-            Entity.name,
-        ],
-    }
-    # the unpaginated legacy path never had an ordering: do not tax it
-    # with a six column sort its callers do not need
-    if page is not None or order_by is not None:
-        query = query.order_by(
-            *order_columns.get(order_by, name_order), Task.id
-        )
-
-    if page is not None:
-        query = query.offset((page - 1) * limit).limit(limit)
-
-    tasks = []
-    for row in query.all():
-        (
-            task_dict,
-            task,
-            task_type_name,
-            task_status_name,
-            task_type_color,
-            task_status_color,
-            task_status_short_name,
-        ) = _resolve_episode_and_build_task_dict(*row)
-        task_dict.update(
-            {
-                "task_estimation": task.estimation,
-                "task_duration": task.duration,
-                "task_start_date": fields.serialize_value(task.start_date),
-                "task_due_date": fields.serialize_value(task.due_date),
-                "task_type_name": task_type_name,
-                "task_status_name": task_status_name,
-                "task_type_color": task_type_color,
-                "task_status_color": task_status_color,
-                "task_status_short_name": task_status_short_name,
-            }
-        )
-        tasks.append(task_dict)
-
-    if tasks:
-        _attach_assignee_ids(tasks)
-    _add_last_comments_to_tasks(tasks)
-
-    if page is None:
-        return tasks
-
-    return {
-        "data": tasks,
-        "stats": stats,
-        "page": page,
-        "limit": limit,
-        "is_more": page * limit < stats["total"],
-    }
-
-
-def get_person_tasks_to_check_filter_values(
-    project_ids=None, department_ids=None
-):
-    """
-    Return the distinct project, task type, task status, episode and
-    assignee ids present in the tasks requiring a feedback for given
-    departments and projects.
-    """
-    Sequence = aliased(Entity, name="sequence")
-    Episode = aliased(Entity, name="episode")
-
-    def scope_query(query):
-        query = (
-            query.join(Project, Project.id == Task.project_id)
-            .join(TaskType, TaskType.id == Task.task_type_id)
-            .join(TaskStatus, TaskStatus.id == Task.task_status_id)
-            .filter(TaskStatus.is_feedback_request)
-        )
-        if project_ids is not None:
-            query = query.filter(Project.id.in_(project_ids))
-        else:
-            query = query.filter(user_service.build_open_project_filter())
-        if department_ids:
-            query = query.filter(TaskType.department_id.in_(department_ids))
-        return query
-
-    rows = scope_query(
-        db.session.query(
-            Task.project_id,
-            Task.task_type_id,
-            Task.task_status_id,
-            Episode.id,
-            Entity.source_id,
-            Entity.parent_id,
-            EntityType.name,
-        )
-        .select_from(Task)
-        .join(Entity, Entity.id == Task.entity_id)
-        .join(EntityType, EntityType.id == Entity.entity_type_id)
-        .outerjoin(Sequence, Sequence.id == Entity.parent_id)
-        .outerjoin(Episode, Episode.id == Sequence.parent_id)
-    ).distinct()
-
-    persons = scope_query(
-        db.session.query(TaskPersonLink.person_id)
-        .select_from(Task)
-        .join(Entity, Entity.id == Task.entity_id)
-        .join(TaskPersonLink, TaskPersonLink.task_id == Task.id)
-    ).distinct()
-
-    values = {
-        "project_ids": set(),
-        "task_type_ids": set(),
-        "task_status_ids": set(),
-        "episode_ids": set(),
-    }
-    for (
-        project_id,
-        task_type_id,
-        task_status_id,
-        episode_id,
-        source_id,
-        parent_id,
-        entity_type_name,
-    ) in rows.all():
-        values["project_ids"].add(project_id)
-        values["task_type_ids"].add(task_type_id)
-        values["task_status_ids"].add(task_status_id)
-        # resolve the episode the way the rows display it: the sequence
-        # chain, then the entity source id, then the parent of a
-        # sequence level task
-        if episode_id is None:
-            episode_id = source_id
-        if entity_type_name == "Sequence" and parent_id is not None:
-            episode_id = parent_id
-        if episode_id is not None:
-            values["episode_ids"].add(episode_id)
-    values["person_ids"] = {row[0] for row in persons.all()}
-
-    return {
-        key: sorted(str(value_id) for value_id in ids)
-        for key, ids in values.items()
-    }
 
 
 def get_last_comment_map(task_ids):
@@ -1605,9 +636,9 @@ def create_tasks(task_type, entities):
     ).all()
     existing_entity_ids = {str(task.entity_id) for task in existing_tasks}
 
-    task_status = get_default_task_status(
+    task_status = task_types_service.get_default_task_status(
         for_concept=entities[0]["entity_type_id"]
-        == concepts_service.get_concept_type()["id"]
+        == entity_types_service.get_concept_type()["id"]
     )
 
     tasks = []
@@ -1637,11 +668,11 @@ def create_tasks_for_entity(entity, task_types=None):
     name="main") are skipped.
     """
     project_id = entity["project_id"]
-    is_asset = assets_service.is_asset_dict(entity)
+    is_asset = entity_types_service.is_asset_dict(entity)
     if is_asset:
         entity_kind = "Asset"
     else:
-        entity_type = entities_service.get_entity_type(
+        entity_type = entity_types_service.get_entity_type(
             entity["entity_type_id"]
         )
         entity_kind = entity_type["name"]
@@ -1711,9 +742,9 @@ def create_tasks_for_entity(entity, task_types=None):
         ).all()
     }
 
-    task_status = get_default_task_status(
+    task_status = task_types_service.get_default_task_status(
         for_concept=entity["entity_type_id"]
-        == concepts_service.get_concept_type()["id"]
+        == entity_types_service.get_concept_type()["id"]
     )
     current_user_id = None
     try:
@@ -1741,9 +772,9 @@ def create_task(task_type, entity, name="main"):
     """
     Create a new task for given task type and entity.
     """
-    task_status = get_default_task_status(
+    task_status = task_types_service.get_default_task_status(
         for_concept=entity["entity_type_id"]
-        == concepts_service.get_concept_type()["id"]
+        == entity_types_service.get_concept_type()["id"]
     )
     try:
         try:
@@ -1807,7 +838,9 @@ def update_task(task_id, data):
     if "task_status_id" in data and data["task_status_id"] != str(
         task.task_status_id
     ):
-        new_status = get_task_status_raw(data["task_status_id"])
+        new_status = task_types_service.get_task_status_raw(
+            data["task_status_id"]
+        )
         now = date_helpers.get_utc_now_datetime()
         # Rolling a task back from done/feedback must clear the matching
         # dates, otherwise stats keep counting the task as finished.
@@ -1823,217 +856,6 @@ def update_task(task_id, data):
         "task:update", {"task_id": task_id}, project_id=str(task.project_id)
     )
     return task.serialize()
-
-
-def get_or_create_task_status(
-    name,
-    short_name="",
-    color="#f5f5f5",
-    is_done=False,
-    is_retake=False,
-    is_feedback_request=False,
-    is_default=False,
-    is_wip=False,
-    for_concept=False,
-    is_artist_allowed=True,
-    is_client_allowed=True,
-):
-    """
-    Create a new task status if it doesn't exist. If it exists, it returns the
-    status from database.
-    """
-    if is_default:
-        task_status = TaskStatus.get_by(
-            is_default=is_default, for_concept=for_concept
-        )
-    else:
-        task_status = TaskStatus.get_by(name=name, for_concept=for_concept)
-    if task_status is None and len(short_name) > 0:
-        task_status = TaskStatus.get_by(
-            short_name=short_name, for_concept=for_concept
-        )
-
-    if task_status is None:
-        task_status = TaskStatus.create(
-            name=name,
-            short_name=short_name or name.lower(),
-            color=color,
-            is_done=is_done,
-            is_retake=is_retake,
-            is_feedback_request=is_feedback_request,
-            is_default=is_default,
-            for_concept=for_concept,
-            is_artist_allowed=is_artist_allowed,
-            is_client_allowed=is_client_allowed,
-            is_wip=is_wip,
-        )
-        clear_task_status_cache(str(task_status.id))
-        events.emit("task-status:new", {"task_status_id": task_status.id})
-    return task_status.serialize()
-
-
-def get_or_create_department(name, color="#000000"):
-    """
-    Create a new department it doesn't exist. If it exists, it returns the
-    department from database.
-    """
-    department = Department.get_by(name=name)
-    if department is None:
-        department = Department(name=name, color=color)
-        department.save()
-        clear_department_cache(department.id)
-        events.emit("department:new", {"department_id": department.id})
-    return department.serialize()
-
-
-def get_or_create_task_type(
-    department,
-    name,
-    color="#888888",
-    priority=1,
-    for_entity="Asset",
-    short_name="",
-    shotgun_id=None,
-):
-    """
-    Create a new task type if it doesn't exist. If it exists, it returns the
-    type from database. The name is matched regardless of case, so a
-    bootstrap or an import never creates a twin the clients cannot tell
-    apart (see check_task_type_name_is_unique).
-    """
-    task_type = TaskType.get_by_case_insensitive(
-        name=name, for_entity=for_entity
-    )
-    if task_type is None:
-        task_type = TaskType.create(
-            name=name,
-            short_name=short_name,
-            department_id=department["id"],
-            color=color,
-            priority=priority,
-            for_entity=for_entity,
-            shotgun_id=shotgun_id,
-        )
-        events.emit("task-type:new", {"task_type_id": task_type.id})
-        clear_task_type_cache(str(task_type.id))
-    return task_type.serialize()
-
-
-def _get_time_spent_raw(task_id, person_id, date):
-    """
-    Return the time spent recorded for given task, person and date.
-    """
-    try:
-        return TimeSpent.get_by(
-            task_id=task_id,
-            person_id=person_id,
-            date=func.cast(date, TimeSpent.date.type),
-        )
-    except DataError:
-        raise WrongDateFormatException
-
-
-def _apply_time_spent_duration(time_spent, duration, add, project_id):
-    """
-    Set the duration of an existing time spent and notify the change.
-    """
-    if add:
-        duration = time_spent.duration + duration
-    time_spent.update({"duration": duration})
-    events.emit(
-        "time-spent:update",
-        {"time_spent_id": str(time_spent.id)},
-        project_id=project_id,
-    )
-
-
-def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
-    """
-    Create a new time spent if it doesn't exist. If it exists, it update it
-    with the new duration and returns it from the database.
-    """
-    try:
-        return _create_or_update_time_spent(
-            task_id, person_id, date, duration, add
-        )
-    except (ObjectDeletedError, StaleDataError):
-        # A concurrent DELETE removed the row: before the UPDATE, it matches
-        # nothing (StaleDataError); after a commit, reading the expired row
-        # back finds nothing (ObjectDeletedError). The deleting request
-        # recomputes the task duration itself.
-        raise TimeSpentNotFoundException
-
-
-def _create_or_update_time_spent(task_id, person_id, date, duration, add):
-    time_spent = _get_time_spent_raw(task_id, person_id, date)
-
-    task = base_service.get_instance(Task, task_id, TaskNotFoundException)
-    project_id = str(task.project_id)
-    if time_spent is not None:
-        _apply_time_spent_duration(time_spent, duration, add, project_id)
-    else:
-        try:
-            time_spent = TimeSpent.create(
-                task_id=task_id,
-                person_id=person_id,
-                date=date,
-                duration=duration,
-            )
-            persons_service.update_person_last_presence(person_id)
-            events.emit(
-                "time-spent:new",
-                {"time_spent_id": str(time_spent.id)},
-                project_id=project_id,
-            )
-        except IntegrityError:
-            # A concurrent request inserted the same (person, task, date)
-            # between the read above and this insert: time_spent_uc rejects
-            # the loser, which updates the winning row instead of 500ing.
-            # BaseMixin.create already rolled the session back.
-            time_spent = _get_time_spent_raw(task_id, person_id, date)
-            if time_spent is None:
-                raise
-            _apply_time_spent_duration(time_spent, duration, add, project_id)
-
-    task.duration = sum(
-        time_spent.duration
-        for time_spent in TimeSpent.get_all_by(task_id=task_id)
-    )
-    task.save()
-    clear_task_cache(task_id)
-    events.emit("task:update", {"task_id": task_id}, project_id=project_id)
-
-    return time_spent.serialize()
-
-
-def delete_time_spent(task_id, person_id, date):
-    """
-    Delete time spent for given task, person and date.
-    """
-    time_spent = _get_time_spent_raw(task_id, person_id, date)
-
-    if time_spent is None:
-        raise TimeSpentNotFoundException
-
-    task = base_service.get_instance(Task, task_id, TaskNotFoundException)
-    project_id = str(task.project_id)
-    time_spent.duration = 0
-    time_spent.delete()
-    events.emit(
-        "time-spent:delete",
-        {"time_spent_id": str(time_spent.id)},
-        project_id=project_id,
-    )
-
-    task.duration = sum(
-        time_spent.duration
-        for time_spent in TimeSpent.get_all_by(task_id=task_id)
-    )
-    task.save()
-    clear_task_cache(task_id)
-    events.emit("task:update", {"task_id": task_id}, project_id=project_id)
-
-    return time_spent.serialize()
 
 
 def clear_assignation(task_id, person_id=None):
@@ -2106,7 +928,7 @@ def task_to_review(
     if preview_path is None:
         preview_path = {}
     task = get_task_raw(task_id)
-    to_review_status = get_to_review_status()
+    to_review_status = task_types_service.get_to_review_status()
     task_dict_before = task.serialize()
 
     if change_status:
@@ -2169,64 +991,6 @@ def check_revision_is_unique_for_task(
         )
 
 
-def add_preview_file_to_comment(comment_id, person_id, task_id, revision=None):
-    """
-    Add a preview to comment preview list. Auto set the revision field
-    (add 1 if it's a new preview, keep the preview revision in other cases).
-    A revision of None means "auto-pick the next revision"; an explicit 0
-    is a valid, stored revision.
-    """
-    comment = get_comment_raw(comment_id)
-    news = News.get_by(comment_id=comment_id)
-    task = Task.get(comment.object_id)
-    project_id = str(task.project_id)
-    # The next revision and position are read then written: two uploads
-    # on the same task at once would pick the same ones, and nothing in
-    # the schema refuses that. The lock serializes them per task.
-    with redis_lock.with_lock(f"preview_revision_lock:{task_id}"):
-        position = 1
-        if revision is None and len(comment.previews) == 0:
-            revision = get_next_preview_revision(task_id)
-        elif revision is None:
-            revision = comment.previews[0].revision
-            position = get_next_position(task_id, revision)
-        else:
-            if len(comment.previews) == 0:
-                check_revision_is_unique_for_task(task_id, revision)
-            position = get_next_position(task_id, revision)
-        if position > 1:
-            project = projects_service.get_project(project_id)
-            if project.get("is_single_preview_per_revision"):
-                raise TooManyPreviewFilesException(
-                    "Only one preview file is allowed per revision for this "
-                    "project."
-                )
-        preview_file = files_service.create_preview_file_raw(
-            str(uuid.uuid4())[:13],
-            revision,
-            task_id,
-            person_id,
-            position=position,
-        )
-    events.emit(
-        "preview-file:new",
-        {
-            "preview_file_id": preview_file.id,
-            "comment_id": comment_id,
-        },
-        project_id=project_id,
-    )
-    comment.previews.append(preview_file)
-    comment.save()
-    clear_comment_cache(comment_id)
-    if news is not None:
-        news.update({"preview_file_id": preview_file.id})
-    events.emit(
-        "comment:update", {"comment_id": comment.id}, project_id=project_id
-    )
-    return preview_file.serialize(relations=True)
-
-
 def update_preview_file_info(preview_file):
     """
     Refresh the task fields derived from its last preview: revision,
@@ -2240,33 +1004,11 @@ def update_preview_file_info(preview_file):
         project = projects_service.get_project(str(task.project_id))
 
         if project["is_set_preview_automated"]:
-            entity = entities_service.update_entity_preview(
+            entity = update_entity_preview(
                 task.entity_id,
                 preview_file["id"],
             )
     return entity
-
-
-def get_comments_for_project(project_id, page=0, limit=None):
-    """
-    Return all comments for given project.
-    """
-    query = (
-        Comment.query.join(Task, Task.id == Comment.object_id)
-        .filter(Task.project_id == project_id)
-        .order_by(Comment.updated_at.desc())
-    )
-    return query_utils.get_paginated_results(
-        query, page, limit, relations=True
-    )
-
-
-def get_time_spents_for_project(project_id, page=0):
-    """
-    Return all time spents for given project.
-    """
-    query = TimeSpent.query.join(Task).filter(Task.project_id == project_id)
-    return query_utils.get_paginated_results(query, page)
 
 
 def get_project_tasks_fingerprint(project_id):
@@ -2285,49 +1027,20 @@ def get_project_tasks_fingerprint(project_id):
     return f"{max_updated_at}:{task_count}"
 
 
-def get_tasks_for_project(
-    project_id, page=0, task_type_id=None, episode_id=None
-):
-    """
-    Return all tasks for given project.
-    """
-    query = (
-        Task.query.options(selectinload(Task.assignees).load_only(Person.id))
-        .filter(Task.project_id == project_id)
-        .order_by(Task.updated_at.desc())
-    )
-    if task_type_id is not None:
-        query = query.filter(Task.task_type_id == task_type_id)
-    if episode_id is not None:
-        Sequence = aliased(Entity, name="sequence")
-        query = (
-            query.join(Entity, Entity.id == Task.entity_id)
-            .join(Sequence, Sequence.id == Entity.parent_id)
-            .filter(Sequence.parent_id == episode_id)
-        )
-
-        if permissions.has_vendor_permissions():
-            query = query.filter(user_service.build_assignee_filter())
-        elif not permissions.has_admin_permissions():
-            query = query.join(Project).filter(
-                user_service.build_related_projects_filter()
-            )
-
-    return query_utils.get_paginated_results(query, page, relations=True)
-
-
 def get_full_task(task_id, user_id):
     """
     Return a task with everything the task page displays: entity, project,
     task type, status, assignees, time spents and subscription state.
     """
     task = get_task(task_id, relations=True)
-    task_type = get_task_type(task["task_type_id"])
+    task_type = task_types_service.get_task_type(task["task_type_id"])
     project = projects_service.get_project(task["project_id"])
-    task_status = get_task_status(task["task_status_id"])
+    task_status = task_types_service.get_task_status(task["task_status_id"])
     entity = entities_service.get_entity(task["entity_id"])
-    entity_type = entities_service.get_entity_type(entity["entity_type_id"])
-    is_subscribed = notifications_service.is_person_subscribed(
+    entity_type = entity_types_service.get_entity_type(
+        entity["entity_type_id"]
+    )
+    is_subscribed = subscriptions_service.is_person_subscribed(
         user_id, task_id
     )
     assignees = persons_service.get_persons_by_ids(task["assignees"])
@@ -2390,9 +1103,9 @@ def reset_task_data(task_id):
     end_date = None
     done_date = None
     entity = entities_service.get_entity(task.entity_id)
-    task_status_id = get_default_task_status(
+    task_status_id = task_types_service.get_default_task_status(
         for_concept=entity["entity_type_id"]
-        == concepts_service.get_concept_type()["id"]
+        == entity_types_service.get_concept_type()["id"]
     )["id"]
     comments = (
         Comment.query.join(TaskStatus)
@@ -2457,106 +1170,6 @@ def reset_task_data(task_id):
     return task.serialize(relations=True)
 
 
-def get_persons_tasks_dates(
-    project_id=None, project_ids=None, busy_project_ids=None
-):
-    """
-    For schedule usages, for each active person, it returns the first start
-    date of all tasks of assigned to this person and the last end date.
-
-    Scoping (project_id takes precedence over project_ids):
-    - project_id, when set, scopes the lookup to that single project and
-      nothing else. It is honoured directly -- including closed projects --
-      instead of being intersected with the open-project list, otherwise a
-      closed but legitimately accessible project would yield an empty result.
-      The caller is responsible for checking access to it.
-    - project_ids restricts the lookup to a set of projects. Only None (not an
-      empty list) triggers the studio-wide fallback below. An empty list is
-      honoured as-is and matches no project, which is how a manager with no
-      project gets an empty result -- the guard must stay an `is None` identity
-      test and never become `if not project_ids:`, otherwise such a manager
-      would leak the studio-wide view.
-    - busy_project_ids lists the projects the caller must not see in detail:
-      tasks found there come back as anonymous busy_periods, merged date
-      pairs carrying no production or task information, so a schedule can
-      show that a person is taken without leaking what they work on. A
-      person with only such tasks is listed with null
-      min_date / max_date.
-    """
-    if project_id is not None:
-        # An explicit, access-checked project scopes the lookup directly. This
-        # short-circuits the open-project fallback so a closed project the
-        # caller may legitimately see is not filtered out to an empty result.
-        project_ids = [project_id]
-    elif project_ids is None:
-        # Studio-wide fallback. Note this is the project-scoped helper, not
-        # user_service.get_open_project_ids() which is limited to the current
-        # user's projects.
-        project_ids = projects_service.open_project_ids()
-    query = (
-        Task.query.with_entities(
-            Person.id, func.min(Task.start_date), func.max(Task.due_date)
-        )
-        .filter(Person.active)
-        .filter(Task.project_id.in_(project_ids))
-        .group_by(Person.id)
-        .join(Task.assignees)
-    )
-
-    entries = {}
-    for person_id, min_date, max_date in query.all():
-        entries[str(person_id)] = {
-            "person_id": str(person_id),
-            "min_date": fields.serialize_value(min_date),
-            "max_date": fields.serialize_value(max_date),
-            "busy_periods": [],
-        }
-
-    if busy_project_ids:
-        busy_query = (
-            Task.query.with_entities(Person.id, Task.start_date, Task.due_date)
-            .filter(Person.active)
-            .filter(Task.project_id.in_(busy_project_ids))
-            .filter(Task.start_date != None)
-            .filter(Task.due_date != None)
-            .join(Task.assignees)
-        )
-        intervals_by_person = {}
-        for person_id, start_date, due_date in busy_query.all():
-            intervals_by_person.setdefault(str(person_id), []).append(
-                (start_date, due_date)
-            )
-        for person_id, intervals in intervals_by_person.items():
-            if person_id not in entries:
-                entries[person_id] = {
-                    "person_id": person_id,
-                    "min_date": None,
-                    "max_date": None,
-                    "busy_periods": [],
-                }
-            entries[person_id]["busy_periods"] = [
-                {"start_date": str(start), "end_date": str(end)}
-                for start, end in _merge_date_intervals(intervals)
-            ]
-
-    return list(entries.values())
-
-
-def _merge_date_intervals(intervals):
-    """
-    Merge overlapping (start, end) pairs into the smallest set of disjoint
-    intervals, so anonymous busy periods reveal neither the task count nor
-    how the underlying work is split.
-    """
-    merged = []
-    for start, end in sorted(intervals):
-        if merged and start <= merged[-1][1]:
-            merged[-1][1] = max(merged[-1][1], end)
-        else:
-            merged.append([start, end])
-    return [(start, end) for start, end in merged]
-
-
 @dataclasses.dataclass
 class OpenTasksFilters:
     """
@@ -2588,399 +1201,71 @@ class OpenTasksFilters:
         )
 
 
-def _apply_open_tasks_filters(query, filters):
+def update_entity_preview(entity_id, preview_file_id):
     """
-    Apply the open tasks pool scoping and filters. Shared by the listing,
-    its stats and the burndown aggregates so the three queries always
-    agree on which tasks are in the pool.
+    Update given entity main preview. If entity or preview is not found, it
+    raises an exception. The entity returned carries the status of that
+    preview, as the event does.
     """
-    if (
-        filters.project_id is not None
-        and permissions_service.check_project_access(filters.project_id)
-    ):
-        query = query.filter(Project.id == filters.project_id)
-    elif permissions.has_admin_permissions():
-        query = query.filter(ProjectStatus.name == "Open")
-    else:
-        query = query.filter(user_service.build_related_projects_filter())
+    entity = Entity.get(entity_id)
+    if entity is None:
+        raise EntityNotFoundException
 
-    if filters.task_type_id is not None:
-        query = query.filter(TaskType.id == filters.task_type_id)
-    else:
-        query = query.filter(TaskType.for_entity != "Concept")
+    entity_id = str(entity.id)
+    preview_file = PreviewFile.get(preview_file_id)
+    if preview_file is None:
+        raise PreviewFileNotFoundException
 
-    if filters.task_status_id is not None:
-        query = query.filter(TaskStatus.id == filters.task_status_id)
-
-    if filters.person_id is not None:
-        if filters.person_id == "unassigned":
-            query = query.filter(Task.assignees == None)
-        else:
-            query = query.filter(
-                Task.assignees.any(Person.id.in_(filters.person_id.split(",")))
-            )
-
-    if filters.studio_id is not None:
-        query = query.filter(Task.assignees.any(studio_id=filters.studio_id))
-
-    if filters.department_id is not None:
-        query = query.filter(
-            Task.assignees.any(
-                Person.departments.any(id=filters.department_id)
-            )
-        )
-
-    if filters.start_date is not None:
-        query = query.filter(
-            Task.start_date
-            >= func.cast(filters.start_date, Task.start_date.type)
-        )
-
-    if filters.due_date is not None:
-        query = query.filter(
-            Task.due_date <= func.cast(filters.due_date, Task.due_date.type)
-        )
-
-    if filters.priority is not None:
-        query = query.filter(TaskType.priority == filters.priority)
-
-    return query
-
-
-def get_open_tasks(filters, order_by=None, limit=200, page=None):
-    """
-    Return all tasks matching given filters from open projects.
-    """
-    Sequence = aliased(Entity, name="sequence")
-    Episode = aliased(Entity, name="episode")
-
-    from zou.app import db
-
-    query_stats = (
-        db.session.query(
-            func.count().label("amount"),
-            func.sum(Task.duration).label("total_duration"),
-            func.sum(Task.estimation).label("total_estimation"),
-        )
-        .join(TaskType, Task.task_type_id == TaskType.id)
-        .join(TaskStatus, Task.task_status_id == TaskStatus.id)
-        .join(Entity, Entity.id == Task.entity_id)
-        .join(EntityType, EntityType.id == Entity.entity_type_id)
-        .join(Project, Project.id == Task.project_id)
-        .join(ProjectStatus, ProjectStatus.id == Project.project_status_id)
-        .outerjoin(Sequence, Sequence.id == Entity.parent_id)
-        .outerjoin(Episode, Episode.id == Sequence.parent_id)
+    try:
+        entity.update({"preview_file_id": preview_file.id})
+    except IntegrityError:
+        raise PreviewFileNotFoundException
+    # Read after the commit, so that a job that made the preview ready in
+    # the meantime is seen. The column alone: reading preview_file now
+    # would load its annotations again.
+    preview_file_status = fields.serialize_value(
+        PreviewFile.query.with_entities(PreviewFile.status)
+        .filter(PreviewFile.id == preview_file_id)
+        .scalar()
     )
-    query = (
-        Task.query.join(TaskType, Task.task_type_id == TaskType.id)
-        .join(TaskStatus, Task.task_status_id == TaskStatus.id)
-        .join(Entity, Entity.id == Task.entity_id)
-        .join(EntityType, EntityType.id == Entity.entity_type_id)
-        .join(Project, Project.id == Task.project_id)
-        .join(ProjectStatus, ProjectStatus.id == Project.project_status_id)
-        .outerjoin(Sequence, Sequence.id == Entity.parent_id)
-        .outerjoin(Episode, Episode.id == Sequence.parent_id)
-        .add_columns(
-            Project.name,
-            Project.has_avatar,
-            Entity.id,
-            Entity.name,
-            Entity.description,
-            Entity.data,
-            Entity.preview_file_id,
-            EntityType.name,
-            Entity.canceled,
-            Entity.parent_id,
-            Entity.source_id,
-            Sequence.name,
-            Episode.id,
-            Episode.name,
-            TaskType.name,
-            TaskType.for_entity,
-            TaskStatus.name,
-            TaskType.color,
-            TaskStatus.color,
-            TaskStatus.short_name,
-        )
-    ).order_by(
-        Project.name,
-        Episode.name,
-        Sequence.name,
-        EntityType.name,
-        Entity.name,
-        TaskType.name,
-    )
-
-    query = _apply_open_tasks_filters(query, filters)
-    query_stats = _apply_open_tasks_filters(query_stats, filters)
-
-    limit = max(limit, 1)
-    if page is not None and int(page) > 0:
-        query = query.offset((page - 1) * limit)
-
-    if order_by is not None:
-        query = query.order_by(order_by)
-
-    query_stats_status = query_stats.group_by(TaskStatus.id).add_columns(
-        TaskStatus.id
-    )
-
-    tasks = []
-
-    for row in query.limit(limit).all():
-        (
-            task_dict,
-            task,
-            task_type_name,
-            task_status_name,
-            task_type_color,
-            task_status_color,
-            task_status_short_name,
-        ) = _resolve_episode_and_build_task_dict(*row)
-        task_dict.update(
-            {
-                "estimation": task.estimation,
-                "duration": task.duration,
-                "start_date": fields.serialize_value(task.start_date),
-                "due_date": fields.serialize_value(task.due_date),
-                "done_date": fields.serialize_value(task.done_date),
-                "type_name": task_type_name,
-                "status_name": task_status_name,
-                "type_color": task_type_color,
-                "status_color": task_status_color,
-                "status_short_name": task_status_short_name,
-            }
-        )
-        tasks.append(task_dict)
-
-    if tasks:
-        _attach_assignee_ids(tasks)
-
-    result = {
-        "data": [],
-        "stats": {
-            "total_duration": 0,
-            "total_estimation": 0,
-            "total": 0,
-            "status": [],
-        },
-        "limit": limit,
-        "is_more": False,
-        "page": page or 1,
-    }
-
-    if len(tasks) > 0:
-        count = query.count()
-        stats = query_stats.one()
-        stats_status = query_stats_status.all()
-        statuses_stats = [
-            {"task_status_id": stat.id, "amount": stat.amount}
-            for stat in stats_status
-        ]
-
-        result = {
-            "data": tasks,
-            "stats": {
-                "total_duration": stats.total_duration,
-                "total_estimation": stats.total_estimation,
-                "total": count,
-                "status": statuses_stats,
-            },
-            "limit": limit,
-            "is_more": (page or 1) * limit < count,
-            "page": page or 1,
-        }
-    return result
-
-
-def _fold_done_rows_before(done_rows, window_start):
-    """
-    Fold the activity days preceding the schedule window onto its first
-    day. A task carrying an imported done date (1899-12-31 and the like)
-    would otherwise drag the whole burndown window back to that date.
-    Folding rather than dropping them: those tasks count in the total, so
-    losing their done amount would keep the curve above zero.
-    """
-    if window_start is None:
-        return done_rows
-
-    early = [row for row in done_rows if row[0] < window_start]
-    if not early:
-        return done_rows
-
-    folded = early + [row for row in done_rows if row[0] == window_start]
-    return [
-        (
-            window_start,
-            sum(row[1] for row in folded),
-            sum(row[2] or 0 for row in folded),
-        )
-    ] + [row for row in done_rows if row[0] > window_start]
-
-
-def get_open_tasks_burndown(filters):
-    """
-    Return burndown aggregates for tasks matching given filters from open
-    projects: totals, schedule bounds and the amount of tasks done per day.
-    Schedule bounds come from the task dates and fall back to the
-    project dates when the tasks carry none. Activity days preceding that
-    window are folded onto its first day, as long as a start date exists
-    to anchor them, late ones extend it.
-    """
-    query = (
-        db.session.query(
-            Task.id,
-            Task.estimation,
-            Task.start_date,
-            Task.due_date,
-            Task.done_date,
-            Project.start_date.label("project_start_date"),
-            Project.end_date.label("project_end_date"),
-        )
-        .join(TaskType, Task.task_type_id == TaskType.id)
-        .join(TaskStatus, Task.task_status_id == TaskStatus.id)
-        .join(Entity, Entity.id == Task.entity_id)
-        .join(Project, Project.id == Task.project_id)
-        .join(ProjectStatus, ProjectStatus.id == Project.project_status_id)
-    )
-
-    query = _apply_open_tasks_filters(query, filters)
-
-    tasks = query.subquery()
-
-    (
-        total,
-        total_estimation,
-        first_start_date,
-        last_due_date,
-        first_project_start,
-        last_project_end,
-    ) = db.session.query(
-        func.count(),
-        func.sum(tasks.c.estimation),
-        func.cast(func.min(tasks.c.start_date), db.Date),
-        func.cast(func.max(tasks.c.due_date), db.Date),
-        func.min(tasks.c.project_start_date),
-        func.max(tasks.c.project_end_date),
-    ).one()
-
-    done_day = func.cast(tasks.c.done_date, db.Date)
-    done_rows = (
-        db.session.query(done_day, func.count(), func.sum(tasks.c.estimation))
-        .filter(tasks.c.done_date != None)
-        .group_by(done_day)
-        .order_by(done_day)
-        .all()
-    )
-
-    # each bound falls back to the project dates independently, so the
-    # two raw values can come out inverted: order them before anything
-    # reads them as a window
-    schedule_start = first_start_date or first_project_start
-    planning_dates = [
-        date
-        for date in (schedule_start, last_due_date or last_project_end)
-        if date is not None
-    ]
-    # the fold needs a start date to anchor on: a pool carrying due dates
-    # alone would otherwise see every day of its activity collapse onto
-    # the due date
-    window_start = min(planning_dates) if schedule_start is not None else None
-
-    done_rows = _fold_done_rows_before(done_rows, window_start)
-
-    bounds = list(planning_dates)
-    if done_rows:
-        bounds += [done_rows[0][0], done_rows[-1][0]]
-
-    return {
-        "total": total,
-        "total_estimation": total_estimation or 0,
-        "start_date": fields.serialize_value(min(bounds) if bounds else None),
-        "end_date": fields.serialize_value(max(bounds) if bounds else None),
-        "done_by_day": [
-            {
-                "date": fields.serialize_value(day),
-                "done": done,
-                "done_estimation": done_estimation or 0,
-            }
-            for day, done, done_estimation in done_rows
-        ],
-    }
-
-
-def get_open_tasks_stats():
-    """
-    Return the amount of tasks, done tasks, estimation, and duration for each
-    status in open projects. Aggregate the amounts for each project.
-    """
-    Sequence = aliased(Entity, name="sequence")
-    Episode = aliased(Entity, name="episode")
-
-    from zou.app import db
-
-    query_stats = (
-        db.session.query(
-            func.count().label("amount"),
-            func.count(case({TaskStatus.is_done: Task.id})).label(
-                "amount_done"
-            ),
-            func.sum(Task.duration).label("total_duration"),
-            func.sum(Task.estimation).label("total_estimation"),
-        )
-        .join(TaskType, Task.task_type_id == TaskType.id)
-        .join(TaskStatus, Task.task_status_id == TaskStatus.id)
-        .join(Entity, Entity.id == Task.entity_id)
-        .join(EntityType, EntityType.id == Entity.entity_type_id)
-        .join(Project, Project.id == Task.project_id)
-        .join(ProjectStatus, ProjectStatus.id == Project.project_status_id)
-        .filter(TaskType.for_entity != "Concept")
-        .group_by(Project.id, TaskType.id, TaskStatus.id)
-        .add_columns(
-            Project.id.label("project_id"),
-            TaskType.id.label("task_type_id"),
-            TaskStatus.id.label("task_status_id"),
-        )
-    )
-
-    if permissions.has_admin_permissions():
-        query_stats = query_stats.filter(ProjectStatus.name == "Open")
-    else:
-        query_stats = query_stats.filter(
-            user_service.build_related_projects_filter()
-        )
-
-    stats_status = query_stats.all()
-
-    statuses_stats = [
+    entities_service.clear_entity_cache(entity_id)
+    events.emit(
+        "preview-file:set-main",
         {
-            "task_status_id": stat.task_status_id,
-            "task_type_id": stat.task_type_id,
-            "project_id": stat.project_id,
-            "amount": stat.amount,
-            "amount_done": stat.amount_done,
-            "total_duration": stat.total_duration,
-            "total_estimation": stat.total_estimation,
-        }
-        for stat in stats_status
-    ]
+            "entity_id": entity_id,
+            "preview_file_id": preview_file_id,
+            "preview_file_status": preview_file_status,
+        },
+        project_id=str(entity.project_id),
+    )
+    entity_type = EntityType.get(entity.entity_type_id)
+    entity_type_name = "asset"
+    if entity_type.name in entities_service.TEMPORAL_ENTITY_TYPE_NAMES:
+        entity_type_name = entity_type.name.lower()
+    events.emit(
+        f"{entity_type_name}:update",
+        {f"{entity_type_name}_id": entity_id},
+        project_id=str(entity.project_id),
+    )
+    assets_service.clear_asset_cache(entity_id)
+    edits_service.clear_edit_cache(entity_id)
+    shots_service.clear_shot_cache(entity_id)
+    shots_service.clear_episode_cache(entity_id)
+    shots_service.clear_sequence_cache(entity_id)
+    return {**entity.serialize(), "preview_file_status": preview_file_status}
 
-    stats_map = {}
-    for stat in statuses_stats:
-        project_id = stat["project_id"]
-        if project_id not in stats_map:
-            stats_map[project_id] = {
-                "amount": 0,
-                "amount_done": 0,
-                "total_duration": 0,
-                "total_estimation": 0,
-                "task_types": [],
-            }
-        project_stats = stats_map[project_id]
-        project_stats["amount"] += stat["amount"]
-        project_stats["amount_done"] += stat["amount_done"]
-        project_stats["total_duration"] += stat["total_duration"]
-        project_stats["total_estimation"] += stat["total_estimation"]
-        project_stats["task_types"].append(stat)
 
-    return stats_map
+def get_entity_tasks(entity):
+    """
+    Get all tasks for a given entity.
+    """
+    entity_type = entity_types_service.get_entity_type(
+        entity_type_id=entity["entity_type_id"]
+    )
+    entity_type_name = entity_type["name"]
+    if entity_types_service.is_asset_type(entity_type):
+        entity_type_name = "Asset"
+    get_tasks = getattr(
+        tasks_service, "get_tasks_for_" + entity_type_name.lower()
+    )
+    return get_tasks(entity["id"])

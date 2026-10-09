@@ -10,7 +10,7 @@ from zou.app.services import (
     projects_service,
     shots_service,
     permissions_service,
-    user_service,
+    entity_types_service,
 )
 
 from zou.app.mixin import ArgsMixin
@@ -176,7 +176,7 @@ class AssetTypeCastingResource(MethodView):
         permissions_service.check_project_access(project_id)
         if permissions.has_vendor_permissions():
             raise permissions.PermissionDenied
-        assets_service.get_asset_type(asset_type_id)
+        entity_types_service.get_asset_type(asset_type_id)
         return breakdown_service.get_asset_type_casting(
             project_id, asset_type_id
         )
@@ -298,4 +298,4 @@ class ProjectEntityLinkResource(MethodView):
         permissions_service.check_entities_belong_to_project(
             [link["entity_in_id"]], project_id
         )
-        return entities_service.remove_entity_link(entity_link_id)
+        return breakdown_service.remove_entity_link(entity_link_id)

@@ -9,8 +9,8 @@ from zou.app.services import (
     concepts_service,
     tasks_service,
     permissions_service,
-    user_service,
     persons_service,
+    cascade_deletion_service,
 )
 
 from zou.app.mixin import ArgsMixin
@@ -51,7 +51,7 @@ class ConceptResource(MethodView, ArgsMixin):
             permissions_service.check_manager_project_access(
                 concept["project_id"]
             )
-        concepts_service.remove_concept(concept_id, force=force)
+        cascade_deletion_service.remove_concept(concept_id, force=force)
         return "", 204
 
 

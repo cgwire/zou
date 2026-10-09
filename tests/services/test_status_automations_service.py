@@ -9,7 +9,7 @@ from zou.app.services import (
     comments_service,
     projects_service,
     status_automations_service,
-    tasks_service,
+    task_types_service,
 )
 from zou.app.exceptions import StatusAutomationNotFoundException
 from zou.app.utils import fields
@@ -94,7 +94,7 @@ class StatusAutomationsServiceTestCase(ApiDBTestCase):
         )
 
     def wip_status_id(self):
-        return tasks_service.get_or_create_task_status(
+        return task_types_service.get_or_create_task_status(
             "Work In Progress", "wip", "#3273dc", is_wip=True
         )["id"]
 
@@ -132,7 +132,7 @@ class StatusAutomationsServiceTestCase(ApiDBTestCase):
         )
 
     def test_status_automation_to_status(self):
-        wip_status = tasks_service.get_or_create_task_status(
+        wip_status = task_types_service.get_or_create_task_status(
             "Work In Progress", "wip", "#3273dc", is_wip=True
         )
         comments_service.create_comment(

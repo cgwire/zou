@@ -1,6 +1,5 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.models.entity import Entity
 from zou.app.services import (
     assets_service,
     breakdown_service,
@@ -8,7 +7,15 @@ from zou.app.services import (
     projects_service,
     shots_service,
     tasks_service,
+    task_types_service,
+    cascade_deletion_service,
 )
+from tests.services.cases import AssetsTestCase
+from zou.app.exceptions import EntityLinkNotFoundException
+from zou.app.models.entity import Entity, EntityLink
+import pytest
+
+UNKNOWN = "00000000-0000-0000-0000-000000000000"
 
 
 class BreakdownTestCase(ApiDBTestCase):
@@ -783,7 +790,7 @@ class CastingReadyStatsTestCase(ApiDBTestCase):
         self.asset_id = str(self.asset.id)
         self.asset_character_id = str(self.asset_character.id)
 
-        compositing = tasks_service.get_or_create_task_type(
+        compositing = task_types_service.get_or_create_task_type(
             self.department_animation.serialize(),
             "compositing",
             color="#FFFFFF",
@@ -931,7 +938,7 @@ class CastingReadyStatsTestCase(ApiDBTestCase):
             entity_id=self.asset_id,
             task_type_id=self.layout_id,
         )
-        assets_service.remove_asset(self.asset_id, force=False)
+        cascade_deletion_service.remove_asset(self.asset_id, force=False)
 
         self.assert_ready_counts(1, 1, 1)
         self.assert_casting_size(1)
@@ -947,7 +954,85 @@ class CastingReadyStatsTestCase(ApiDBTestCase):
         )
         self.assert_ready_counts(2, 2, 1)
 
-        assets_service.remove_asset(temp_asset_id)
+        cascade_deletion_service.remove_asset(temp_asset_id)
 
         self.assert_ready_counts(1, 1, 1)
         self.assert_casting_size(1)
+
+
+class AssetReadTestCase(AssetsTestCase):
+    def test_get_asset_instance(self):
+        self.generate_fixture_scene()
+        self.generate_fixture_scene_asset_instance()
+        self.generate_fixture_shot_asset_instance(
+            self.shot, self.asset_instance
+        )
+        asset_instance = breakdown_service.get_asset_instance(
+            self.asset_instance.id
+        )
+        self.assertDictEqual(asset_instance, self.asset_instance.serialize())
+
+
+class EntityLinkTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+
+        self.generate_fixture_asset_type()
+        self.generate_fixture_asset()
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+        self.project_id = str(self.project.id)
+
+    def a_link(self, nb_occurences=1, label=""):
+        return EntityLink.create(
+            entity_in_id=self.shot.id,
+            entity_out_id=self.asset.id,
+            nb_occurences=nb_occurences,
+            label=label,
+        )
+
+    def test_remove_entity_link(self):
+        link = self.a_link()
+
+        removed = breakdown_service.remove_entity_link(str(link.id))
+
+        self.assertEqual(removed["id"], str(link.id))
+        with pytest.raises(EntityLinkNotFoundException):
+            entities_service.get_entity_link(str(link.id))
+
+    def test_remove_entity_link_refreshes_the_casting_of_the_shot(self):
+        """
+        Same path as uncasting from the breakdown: the shot counter the
+        shots page divides by, and the casting-update its listeners wait for.
+        """
+        link = self.a_link()
+        self.shot.update({"nb_entities_out": 1})
+        captured = self.capture_events("shot:casting-update")
+
+        breakdown_service.remove_entity_link(str(link.id))
+
+        self.assertEqual(Entity.get(self.shot.id).nb_entities_out, 0)
+        self.assertEqual(
+            [event["removed_asset_ids"] for event in captured],
+            [[str(self.asset.id)]],
+        )
+
+    def test_remove_entity_link_of_an_episode_leaves_its_shots_cast(self):
+        self.a_link()
+        episode = self.generate_fixture_episode("E99")
+        self.sequence.update({"parent_id": episode.id})
+        link = EntityLink.create(
+            entity_in_id=episode.id, entity_out_id=self.asset.id
+        )
+
+        breakdown_service.remove_entity_link(str(link.id))
+
+        self.assertIsNotNone(
+            EntityLink.get_by(
+                entity_in_id=self.shot.id, entity_out_id=self.asset.id
+            )
+        )
+
+    def test_remove_entity_link_that_is_not_there(self):
+        with pytest.raises(EntityLinkNotFoundException):
+            breakdown_service.remove_entity_link(UNKNOWN)

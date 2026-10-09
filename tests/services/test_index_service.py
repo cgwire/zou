@@ -10,11 +10,12 @@ from zou.app.services import (
     assets_service,
     index_service,
     projects_service,
+    cascade_deletion_service,
 )
-from zou.app.exceptions import (
-    EpisodeNotFoundException,
-    SequenceNotFoundException,
-)
+from tests.services.cases import AssetsTestCase
+from tests.services.cases import PersonsTestCase
+from tests.services.cases import ShotsTestCase
+from zou.app.services import persons_service
 
 # The gate is on the class that talks to the indexer, not on the module: the
 # document builders below need no Meilisearch and must run everywhere.
@@ -92,7 +93,7 @@ class SearchTestCase(ApiDBTestCase):
         )
         self.assertEqual(len(index_service.search_assets("girafe")), 1)
 
-        assets_service.remove_asset(asset["id"])
+        cascade_deletion_service.remove_asset(asset["id"])
 
         self.assertEqual(index_service.search_assets("girafe"), [])
 
@@ -240,11 +241,7 @@ class PrepareDocumentTestCase(ApiDBTestCase):
         self.assertIsNone(document["episode_id"])
 
     def test_prepare_shot_with_missing_sequence(self):
-        with patch.object(
-            index_service.shots_service,
-            "get_sequence",
-            side_effect=SequenceNotFoundException,
-        ):
+        with patch.object(index_service.Entity, "get", return_value=None):
             document = index_service.prepare_shot(self.shot)
 
         self.assertEqual(document["name"], "P01 P01")
@@ -252,16 +249,12 @@ class PrepareDocumentTestCase(ApiDBTestCase):
         self.assertEqual(document["episode_id"], "")
 
     def test_prepare_shot_with_missing_episode(self):
-        fake_sequence = {"name": "S01", "parent_id": "missing-episode-id"}
-        with patch.object(
-            index_service.shots_service,
-            "get_sequence",
-            return_value=fake_sequence,
-        ), patch.object(
-            index_service.shots_service,
-            "get_episode",
-            side_effect=EpisodeNotFoundException,
-        ):
+        sequence = self.sequence
+
+        def get(entity_id):
+            return sequence if str(entity_id) == str(sequence.id) else None
+
+        with patch.object(index_service.Entity, "get", side_effect=get):
             document = index_service.prepare_shot(self.shot)
 
         self.assertEqual(document["name"], "S01 P01 P01")
@@ -345,3 +338,31 @@ class WithoutIndexerTestCase(ApiDBTestCase):
         with patch.object(index_service.indexing, "get_index") as get_index:
             self.assertEqual(index_service.index_shots([]), [])
         get_index.assert_not_called()
+
+
+class AssetListTestCase(AssetsTestCase):
+    def test_get_all_raw_assets(self):
+        # The indexer walks every asset of the instance, productions included.
+        assets = index_service.get_all_raw_assets()
+        self.assertEqual([asset.id for asset in assets], [self.asset.id])
+
+
+class PersonListTestCase(PersonsTestCase):
+    def test_get_all_raw_active_persons(self):
+        persons_service.update_person(self.person_id, {"active": False})
+        self.assertNotIn(
+            self.person_id,
+            [
+                str(person.id)
+                for person in index_service.get_all_raw_active_persons()
+            ],
+        )
+
+
+class ListingTestCase(ShotsTestCase):
+    def test_every_shot_of_the_instance_is_walked_for_the_index(self):
+        # The indexer walks every shot, productions included.
+        self.assertEqual(
+            [shot.id for shot in index_service.get_all_raw_shots()],
+            [self.shot.id],
+        )

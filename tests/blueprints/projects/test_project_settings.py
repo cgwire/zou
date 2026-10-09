@@ -4,9 +4,8 @@ from zou.app.models.day_off import DayOff
 from zou.app.models.milestone import Milestone
 from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.services import (
-    budget_service,
     projects_service,
-    tasks_service,
+    time_spents_service,
 )
 from zou.app.utils import events, fields
 
@@ -422,7 +421,7 @@ class ProjectDataRoutesTestCase(ApiDBTestCase):
         self.assertEqual(
             self.get(f"/data/projects/{self.project_id}/time-spents"), []
         )
-        tasks_service.create_or_update_time_spent(
+        time_spents_service.create_or_update_time_spent(
             str(self.task.id), str(self.person.id), "2024-06-12", 120
         )
 
@@ -480,7 +479,7 @@ class ProjectDataRoutesTestCase(ApiDBTestCase):
         """
         here = self.task
         for date, duration in [("2024-06-12", 120), ("2024-06-13", 300)]:
-            tasks_service.create_or_update_time_spent(
+            time_spents_service.create_or_update_time_spent(
                 str(here.id), str(self.person.id), date, duration
             )
 
@@ -489,7 +488,7 @@ class ProjectDataRoutesTestCase(ApiDBTestCase):
         elsewhere = self.generate_fixture_task(
             name="Animation", task_type_id=self.task_type_animation.id
         )
-        tasks_service.create_or_update_time_spent(
+        time_spents_service.create_or_update_time_spent(
             str(elsewhere.id), str(self.person.id), "2024-06-12", 999
         )
         self.task = here

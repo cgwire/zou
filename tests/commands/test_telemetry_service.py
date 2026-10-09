@@ -9,7 +9,9 @@ from zou.app import config
 from zou.app.models.person import Person
 from zou.app.models.preview_file import PreviewFile
 from zou.app.commands import telemetry_service
-from zou.app.services import persons_service
+from zou.app.services import (
+    organisation_service,
+)
 
 
 class TelemetryServiceTestCase(ApiDBTestCase):
@@ -50,7 +52,7 @@ class TelemetryServiceTestCase(ApiDBTestCase):
     def test_send_main_infos_says_which_studio_it_is(self):
         # The two fields that identify the sender, and the two versions the
         # community estimate is broken down by.
-        organisation = persons_service.get_organisation()
+        organisation = organisation_service.get_organisation()
 
         payload = self.send().call_args.kwargs["json"]
 

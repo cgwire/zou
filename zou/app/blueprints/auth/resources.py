@@ -41,6 +41,7 @@ from zou.app.services import (
     auth_service,
     events_service,
     templates_service,
+    organisation_service,
 )
 
 from zou.app.utils.flask_utils import is_from_browser
@@ -110,7 +111,7 @@ class AuthenticatedResource(MethodView):
         person["fido_devices"] = (
             persons_service.get_current_user_fido_devices()
         )
-        organisation = persons_service.get_organisation(
+        organisation = organisation_service.get_organisation(
             sensitive=permissions.has_admin_permissions()
         )
         return {
@@ -168,7 +169,7 @@ def _build_login_response(user, email):
 
     ip_address = request.environ.get("HTTP_X_REAL_IP", request.remote_addr)
 
-    organisation = persons_service.get_organisation(
+    organisation = organisation_service.get_organisation(
         sensitive=user["role"] == "admin"
     )
 
@@ -226,7 +227,7 @@ class LoginResource(MethodView, ArgsMixin):
             )
 
             if auth_service.is_default_password(app, password):
-                token = auth_service.generate_reset_token()
+                token = persons_service.generate_reset_token()
                 auth_tokens_store.add(
                     f"reset-token-{email}", token, ttl=3600 * 2
                 )
@@ -429,7 +430,7 @@ class AppLoginTokenResource(MethodView):
         )
         return {
             "user": user,
-            "organisation": persons_service.get_organisation(
+            "organisation": organisation_service.get_organisation(
                 sensitive=user["role"] == "admin"
             ),
             "login": True,
@@ -460,7 +461,7 @@ class ChangePasswordResource(MethodView, ArgsMixin):
             current_app.logger.info(
                 f"User {user['email']} has changed his password"
             )
-            organisation = persons_service.get_organisation()
+            organisation = organisation_service.get_organisation()
             locale = user.get("locale") or getattr(
                 config, "DEFAULT_LOCALE", "en_US"
             )
@@ -589,7 +590,7 @@ class ResetPasswordResource(MethodView, ArgsMixin):
         if not user["active"]:
             return generic_response
 
-        token = auth_service.generate_reset_token()
+        token = persons_service.generate_reset_token()
         auth_tokens_store.add(f"reset-token-{body.email}", token, ttl=3600 * 2)
         reset_url = persons_service.build_password_reset_url(body.email, token)
         locale = user.get("locale") or getattr(
@@ -603,7 +604,7 @@ class ResetPasswordResource(MethodView, ArgsMixin):
             locale=locale,
         )
         person_IP = request.headers.get("X-Forwarded-For", None) or ""
-        organisation = persons_service.get_organisation()
+        organisation = organisation_service.get_organisation()
         subject = get_email_translation(
             locale,
             "auth_password_recovery_subject",

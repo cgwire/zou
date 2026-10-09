@@ -3,10 +3,10 @@ import pytest
 from tests.base import ApiDBTestCase
 
 from zou.app.models.entity import EntityVersion
-from zou.app.models.schedule_item import ScheduleItem
-from zou.app.services import edits_service
+from zou.app.services import (
+    edits_service,
+)
 from zou.app.exceptions import (
-    EditNotFoundException,
     WrongIdFormatException,
     WrongParameterException,
 )
@@ -27,10 +27,6 @@ class EditUtilsTestCase(ApiDBTestCase):
         self.generate_fixture_department()
         self.generate_fixture_task_status()
         self.generate_fixture_task_type()
-
-    def test_get_edit_type(self):
-        edit_type = edits_service.get_edit_type()
-        self.assertEqual(edit_type["name"], "Edit")
 
     def test_get_edits(self):
         edit_dict = self.edit.serialize(obj_type="Edit")
@@ -109,10 +105,6 @@ class EditUtilsTestCase(ApiDBTestCase):
         self.assertEqual(edit["episode_name"], self.episode.name)
         self.assertEqual(len(edit["tasks"]), 1)
 
-    def test_is_edit(self):
-        self.assertTrue(edits_service.is_edit(self.edit.serialize()))
-        self.assertFalse(edits_service.is_edit(self.asset.serialize()))
-
     def test_create_edit(self):
         edit_name = "Editor's Cut"
         parent_id = str(self.episode.id)
@@ -183,43 +175,3 @@ class EditUtilsTestCase(ApiDBTestCase):
         self.assertEqual(
             [version["name"] for version in versions], ["Second", "First"]
         )
-
-    def test_remove_edit_with_a_task_cancels_it(self):
-        # An edit someone has worked on is canceled rather than deleted.
-        self.the_chain_a_task_needs()
-        self.generate_fixture_edit_task()
-
-        edits_service.remove_edit(str(self.edit.id))
-
-        self.assertTrue(edits_service.get_edit(self.edit.id)["canceled"])
-
-    def test_remove_edit_with_a_task_can_be_forced(self):
-        self.the_chain_a_task_needs()
-        self.generate_fixture_edit_task()
-
-        edits_service.remove_edit(str(self.edit.id), force=True)
-
-        with pytest.raises(EditNotFoundException):
-            edits_service.get_edit(self.edit.id)
-
-    def test_remove_edit(self):
-        edit_id = str(self.edit.id)
-        self.assertIsNotNone(edit_id)
-        edits_service.get_edit(edit_id)
-
-        edits_service.remove_edit(edit_id)
-        with pytest.raises(EditNotFoundException):
-            edits_service.get_edit(edit_id)
-
-    def test_remove_edit_deletes_schedule_items(self):
-        self.generate_fixture_task_type()
-        edit_id = str(self.edit.id)
-        schedule_item = ScheduleItem.create(
-            project_id=self.project.id,
-            task_type_id=self.task_type.id,
-            object_id=self.edit.id,
-        )
-        schedule_item_id = schedule_item.id
-
-        edits_service.remove_edit(edit_id)
-        self.assertIsNone(ScheduleItem.get(schedule_item_id))

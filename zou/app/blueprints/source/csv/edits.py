@@ -10,11 +10,14 @@ from zou.app.services import (
     projects_service,
     shots_service,
     persons_service,
+    entity_types_service,
 )
 from zou.app.services.tasks_service import (
     create_task,
     create_tasks,
     get_tasks_for_edit,
+)
+from zou.app.services.task_types_service import (
     get_task_statuses,
     get_task_type,
 )
@@ -147,7 +150,7 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
                 "An episode column is present for a production that isn't a TV Show"
             )
 
-        edit_type_id = edits_service.get_edit_type()["id"]
+        edit_type_id = entity_types_service.get_edit_type()["id"]
 
         edit_values = {
             "name": edit_name,

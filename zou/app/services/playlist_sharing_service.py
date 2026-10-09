@@ -25,6 +25,8 @@ from zou.app.services import (
     playlists_service,
     tasks_service,
     projects_service,
+    task_types_service,
+    attachment_files_service,
 )
 from zou.app.exceptions import (
     PersonNotFoundException,
@@ -275,7 +277,7 @@ def _load_guest_comment(comment_id, guest_id, token):
     except Exception:
         raise GuestCommentForbidden
     try:
-        comment = tasks_service.get_comment(comment_id)
+        comment = comments_service.get_comment(comment_id)
     except Exception:
         raise GuestCommentNotFound
     if str(comment.get("person_id")) != str(guest_id):
@@ -320,7 +322,7 @@ def update_guest_comment(comment_id, guest_id, data, token):
     )
     if status_changed:
         try:
-            new_status = tasks_service.get_task_status(new_status_id)
+            new_status = task_types_service.get_task_status(new_status_id)
         except Exception:
             raise GuestCommentForbidden
         if not new_status.get("is_client_allowed", False):
@@ -339,8 +341,8 @@ def update_guest_comment(comment_id, guest_id, data, token):
 
     # reset_mentions walks the mentions table; feed it the relations-loaded
     # dict so it has the `mentions` / `department_mentions` keys it expects.
-    tasks_service.clear_comment_cache(comment_id)
-    updated = tasks_service.get_comment(comment_id, relations=True)
+    comments_service.clear_comment_cache(comment_id)
+    updated = comments_service.get_comment(comment_id, relations=True)
     comments_service.reset_mentions(updated)
 
     task_id = updated["object_id"]
@@ -357,7 +359,7 @@ def update_guest_comment(comment_id, guest_id, data, token):
             },
             project_id=task["project_id"],
         )
-    tasks_service.clear_comment_cache(comment_id)
+    comments_service.clear_comment_cache(comment_id)
     try:
         notifications_service.reset_notifications_for_mentions(updated)
     except KeyError:
@@ -390,7 +392,7 @@ def delete_guest_comment(comment_id, guest_id, token):
 
     deletion_service.remove_comment(comment_id)
     tasks_service.reset_task_data(task_id)
-    tasks_service.clear_comment_cache(comment_id)
+    comments_service.clear_comment_cache(comment_id)
 
     task_after = tasks_service.get_task(task_id)
     new_status_id = task_after["task_status_id"]
@@ -416,14 +418,14 @@ def _serialize_enriched_comment(comment_id):
     """
     from zou.app.models.attachment_file import AttachmentFile
 
-    comment = tasks_service.get_comment(comment_id, relations=True)
+    comment = comments_service.get_comment(comment_id, relations=True)
     ids = comment.get("attachment_files") or []
     if ids and all(isinstance(item, str) for item in ids):
         attachments = AttachmentFile.query.filter(
             AttachmentFile.id.in_(ids)
         ).all()
         comment["attachment_files"] = [af.present() for af in attachments]
-    tasks_service.embed_reply_authors([comment])
+    comments_service.embed_reply_authors([comment])
     return comment
 
 
@@ -448,12 +450,12 @@ def download_shared_attachment(token, attachment_id, file_name):
     """
     from flask import send_file as flask_send_file
 
-    attachment = comments_service.get_attachment_file(attachment_id)
+    attachment = attachment_files_service.get_attachment_file(attachment_id)
     comment_id = attachment.get("comment_id")
     if not comment_id:
         raise GuestCommentNotFound
 
-    comment = tasks_service.get_comment(comment_id)
+    comment = comments_service.get_comment(comment_id)
     task_id = comment.get("object_id")
     if not task_id:
         raise GuestCommentNotFound
@@ -476,7 +478,7 @@ def download_shared_attachment(token, attachment_id, file_name):
     if not (comment.get("for_client") or author_is_guest):
         raise GuestCommentNotFound
 
-    file_path = comments_service.get_attachment_file_path(attachment)
+    file_path = attachment_files_service.get_attachment_file_path(attachment)
     return flask_send_file(
         file_path,
         conditional=True,
@@ -505,7 +507,7 @@ def remove_guest_comment_attachment(
     attachment = AttachmentFile.get(attachment_id)
     if attachment is None or str(attachment.comment_id) != str(comment_id):
         raise GuestCommentNotFound
-    deletion_service.remove_attachment_file(attachment)
+    attachment_files_service.remove_attachment_file(attachment)
 
 
 def get_shared_task_comments(task_id):
@@ -513,14 +515,14 @@ def get_shared_task_comments(task_id):
     Return comments visible in the shared context for a task: those flagged
     `for_client=True` plus those posted by a guest, with their attachment
     files and the authors of their replies. Bypasses
-    tasks_service.get_comments which requires a JWT-authenticated current
+    comments_service.get_comments which requires a JWT-authenticated current
     user.
     """
 
-    query = tasks_service._prepare_query(
+    query = comments_service.prepare_query(
         task_id, is_client=True, is_manager=False
     )
-    comments, _ = tasks_service._run_task_comments_query(query)
+    comments, _ = comments_service.run_task_comments_query(query)
 
     guest_ids = {
         str(person_id)
@@ -539,14 +541,16 @@ def get_shared_task_comments(task_id):
         visible.append(comment)
 
     if visible:
-        attachment_file_map = tasks_service._build_attachment_map_for_comments(
-            [comment["id"] for comment in visible]
+        attachment_file_map = (
+            attachment_files_service.build_attachment_map_for_comments(
+                [comment["id"] for comment in visible]
+            )
         )
         for comment in visible:
             comment["attachment_files"] = attachment_file_map.get(
                 comment["id"], []
             )
-        tasks_service.embed_reply_authors(visible)
+        comments_service.embed_reply_authors(visible)
     return visible
 
 

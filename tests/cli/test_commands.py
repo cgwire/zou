@@ -598,7 +598,7 @@ class GeneratePreviewExtraOnlyMissingTilesTestCase(ApiDBTestCase):
             }
         )
         with patch.object(
-            commands.preview_files_service,
+            commands.preview_maintenance_service,
             "queue_missing_tiles",
             return_value=summary,
         ) as queue_missing_tiles:
@@ -615,7 +615,7 @@ class GeneratePreviewExtraOnlyMissingTilesTestCase(ApiDBTestCase):
 
     def test_tile_options_are_exclusive(self):
         with patch.object(
-            commands.preview_files_service, "queue_missing_tiles"
+            commands.preview_maintenance_service, "queue_missing_tiles"
         ) as queue_missing_tiles:
             result = self.run_command("--only-missing-tiles", "--with-tiles")
         self.assertNotEqual(result.exit_code, 0)
@@ -626,7 +626,7 @@ class GeneratePreviewExtraOnlyMissingTilesTestCase(ApiDBTestCase):
         from zou.app.exceptions import JobQueueDisabledException
 
         with patch.object(
-            commands.preview_files_service,
+            commands.preview_maintenance_service,
             "queue_missing_tiles",
             side_effect=JobQueueDisabledException("No job queue: ..."),
         ):
@@ -663,7 +663,7 @@ class ProgressOptionTestCase(ApiDBTestCase):
         from collections import Counter
 
         with patch.object(
-            commands.preview_files_service,
+            commands.preview_maintenance_service,
             "queue_missing_tiles",
             return_value=Counter(),
         ) as queue:
@@ -680,7 +680,7 @@ class ProgressOptionTestCase(ApiDBTestCase):
 
     def test_generate_preview_extra_reports_progress_on_demand(self):
         with patch.object(
-            commands.preview_files_service, "generate_preview_extra"
+            commands.preview_maintenance_service, "generate_preview_extra"
         ) as generate:
             self.invoke("generate-preview-extra", "--with-tiles")
             self.assertIsInstance(

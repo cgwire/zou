@@ -19,12 +19,12 @@ from zou.app.blueprints.comments.schemas import (
 from zou.app.services import (
     chats_service,
     comments_service,
-    deletion_service,
     entities_service,
     persons_service,
     tasks_service,
     permissions_service,
-    user_service,
+    task_types_service,
+    attachment_files_service,
 )
 from zou.app import config
 
@@ -37,11 +37,13 @@ class DownloadAttachmentResource(MethodView):
         """
         Download attachment file
         """
-        attachment_file = comments_service.get_attachment_file(
+        attachment_file = attachment_files_service.get_attachment_file(
             attachment_file_id
         )
         if attachment_file["comment_id"] is not None:
-            comment = tasks_service.get_comment(attachment_file["comment_id"])
+            comment = comments_service.get_comment(
+                attachment_file["comment_id"]
+            )
             permissions_service.check_task_access(comment["object_id"])
         elif attachment_file["chat_message_id"] is not None:
             message = chats_service.get_chat_message(
@@ -54,7 +56,7 @@ class DownloadAttachmentResource(MethodView):
         else:
             raise permissions.PermissionDenied()
         try:
-            file_path = comments_service.get_attachment_file_path(
+            file_path = attachment_files_service.get_attachment_file_path(
                 attachment_file
             )
             return flask_send_file(
@@ -171,13 +173,13 @@ class AttachmentResource(MethodView):
         Delete comment attachment
         """
         user = persons_service.get_current_user()
-        comment = tasks_service.get_comment(comment_id)
+        comment = comments_service.get_comment(comment_id)
         if comment["object_id"] != task_id:
             raise permissions.PermissionDenied()
         # The author branch below skips the project check, so the attachment
         # must be tied to the comment too: otherwise pointing at one's own
         # comment deletes any attachment whose id the caller knows.
-        attachment_file = comments_service.get_attachment_file(
+        attachment_file = attachment_files_service.get_attachment_file(
             attachment_file_id
         )
         if str(attachment_file["comment_id"]) != str(comment_id):
@@ -188,7 +190,9 @@ class AttachmentResource(MethodView):
                 task["project_id"]
             )
 
-        deletion_service.remove_attachment_file_by_id(attachment_file_id)
+        attachment_files_service.remove_attachment_file_by_id(
+            attachment_file_id
+        )
         return "", 204
 
 
@@ -200,7 +204,7 @@ class AddAttachmentToCommentResource(MethodView):
         Add comment attachments
         """
         user = persons_service.get_current_user()
-        comment = tasks_service.get_comment(comment_id)
+        comment = comments_service.get_comment(comment_id)
         if comment["object_id"] != task_id:
             raise permissions.PermissionDenied()
         if comment["person_id"] != user["id"]:
@@ -283,9 +287,9 @@ class CommentManyTasksResource(MethodView):
                     role_cache[project_id] == "supervisor"
                     and (
                         len(person["departments"]) == 0
-                        or tasks_service.get_task_type(task["task_type_id"])[
-                            "department_id"
-                        ]
+                        or task_types_service.get_task_type(
+                            task["task_type_id"]
+                        )["department_id"]
                         in person["departments"]
                     )
                 ) or person["id"] in task["assignees"]:
@@ -323,7 +327,7 @@ class ReplyCommentResource(MethodView, ArgsMixin):
         """
         Reply to comment
         """
-        comment = tasks_service.get_comment(comment_id)
+        comment = comments_service.get_comment(comment_id)
         if comment["object_id"] != task_id:
             raise permissions.PermissionDenied()
         current_user = persons_service.get_current_user()
@@ -391,7 +395,7 @@ class ProjectAttachmentFiles(MethodView):
         Get project attachment files
         """
         permissions.check_admin_permissions()
-        return comments_service.get_all_attachment_files_for_project(
+        return attachment_files_service.get_all_attachment_files_for_project(
             project_id
         )
 
@@ -405,7 +409,9 @@ class TaskAttachmentFiles(MethodView):
         Get task attachment files
         """
         permissions.check_admin_permissions()
-        return comments_service.get_all_attachment_files_for_task(task_id)
+        return attachment_files_service.get_all_attachment_files_for_task(
+            task_id
+        )
 
 
 class MoveCommentResource(MethodView):
@@ -420,7 +426,7 @@ class MoveCommentResource(MethodView):
         body = validation.validate_request_body(MoveCommentSchema)
         permissions_service.check_task_access(task_id)
         permissions_service.check_task_access(body.target_task_id)
-        comment = tasks_service.get_comment(comment_id)
+        comment = comments_service.get_comment(comment_id)
         if str(comment["object_id"]) != str(task_id):
             raise WrongParameterException(
                 "Comment does not belong to the given task."
