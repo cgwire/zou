@@ -517,7 +517,9 @@ class ShotRemovalTestCase(ShotsTestCase):
             )
         remove_task = deletion_service.remove_task
 
-        def delete_the_other_task_first(task_id, force=False):
+        def delete_the_other_task_first(
+            task_id, force=False, restore_main=True
+        ):
             # Straight on the table, out of sight of the session, as the
             # other request does.
             db.session.execute(
@@ -528,7 +530,7 @@ class ShotRemovalTestCase(ShotsTestCase):
                 {"shot_id": shot_id, "task_id": str(task_id)},
             )
             db.session.commit()
-            return remove_task(task_id, force=force)
+            return remove_task(task_id, force=force, restore_main=restore_main)
 
         with patch.object(
             deletion_service,
