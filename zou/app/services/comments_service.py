@@ -30,6 +30,7 @@ from zou.app.services import (
 from zou.app.exceptions import (
     WrongParameterException,
     AssetNotFoundException,
+    PreviewFileNotFoundException,
     ReplyNotFoundException,
 )
 
@@ -1123,6 +1124,28 @@ def get_comment(comment_id, relations=False):
     Return comment matching give id as a dict.
     """
     return get_comment_raw(comment_id).serialize(relations=relations)
+
+
+def get_comment_preview_file(task_id, comment_id, preview_file_id):
+    """
+    Return given preview file as a dict, provided it is attached to given
+    comment and both are on given task. Raise the not found exception of
+    the comment or of the preview otherwise: rights checked on a task say
+    nothing of the other ids a route receives along with it.
+    """
+    comment = get_comment_raw(comment_id)
+    if str(comment.object_id) != str(task_id):
+        raise CommentNotFoundException
+    preview_file = files_service.get_preview_file_raw(preview_file_id)
+    is_attached = (
+        CommentPreviewLink.query.filter_by(
+            comment=comment.id, preview_file=preview_file.id
+        ).first()
+        is not None
+    )
+    if str(preview_file.task_id) != str(task_id) or not is_attached:
+        raise PreviewFileNotFoundException
+    return preview_file.serialize()
 
 
 def get_comments_for_project(project_id, page=0, limit=None):
