@@ -374,6 +374,25 @@ class TimeSpentLookupTestCase(TimeSpentsTestCase):
             ),
         )
 
+    def test_get_time_spents_range_filters_by_project_and_department(self):
+        self.assertEqual(
+            time_spents_service.get_time_spents_range(
+                self.person_id, "2018-06-01", "2018-06-30", project_ids=[]
+            ),
+            [],
+        )
+        in_animation = time_spents_service.get_time_spents_range(
+            self.person_id,
+            "2018-06-01",
+            "2018-06-30",
+            project_ids=[str(self.task.project_id)],
+            department_ids=[str(self.department_animation.id)],
+        )
+        self.assertEqual(
+            [entry["task_id"] for entry in in_animation],
+            [self.shot_task_id],
+        )
+
     def test_get_time_spents_range_takes_both_bounds(self):
         time_spents = time_spents_service.get_time_spents_range(
             self.person_id, "2018-06-03", "2018-06-04"

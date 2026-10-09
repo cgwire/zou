@@ -1,7 +1,9 @@
 Get time spents
 ---
 description: Get all time spents for the given person. Optionally can
-  accept date range parameters.
+  accept date range parameters. Admins and the person themselves get every
+  entry. Managers only get the entries of their projects and supervisors only
+  those of their projects and departments. Other users get a 403.
 tags:
   - Persons
 parameters:

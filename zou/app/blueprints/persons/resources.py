@@ -170,11 +170,17 @@ class TimeSpentsResource(MethodView, ArgsMixin):
         Get time spents
         """
         permissions_service.check_person_is_not_bot(person_id)
-        permissions.check_admin_permissions()
+        project_ids, department_ids = (
+            _get_project_department_ids_for_person_access(person_id)
+        )
         arguments = self.get_args(["start_date", "end_date"])
         start_date, end_date = arguments["start_date"], arguments["end_date"]
         if not start_date and not end_date:
-            return time_spents_service.get_time_spents(person_id)
+            return time_spents_service.get_time_spents(
+                person_id,
+                project_ids=project_ids,
+                department_ids=department_ids,
+            )
 
         if None in [start_date, end_date]:
             raise WrongParameterException(
@@ -184,7 +190,11 @@ class TimeSpentsResource(MethodView, ArgsMixin):
 
         try:
             return time_spents_service.get_time_spents_range(
-                person_id, start_date, end_date
+                person_id,
+                start_date,
+                end_date,
+                project_ids=project_ids,
+                department_ids=department_ids,
             )
         except WrongDateFormatException:
             raise WrongParameterException(
