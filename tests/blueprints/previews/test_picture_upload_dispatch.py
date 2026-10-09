@@ -35,10 +35,14 @@ class BasePreviewDispatchTestCase(ApiDBTestCase):
         super().tearDown()
         self.delete_test_folder()
 
-    def create_preview_file(self):
+    def create_preview_file(self, **comment_fields):
         comment = self.post(
             f"/actions/tasks/{self.task_id}/comment/",
-            {"task_status_id": self.wip_status_id, "comment": "c"},
+            {
+                "task_status_id": self.wip_status_id,
+                "comment": "c",
+                **comment_fields,
+            },
         )
         preview_file = self.post(
             f"/actions/tasks/{self.task_id}"
@@ -144,6 +148,25 @@ class PictureUploadDispatchTestCase(BasePreviewDispatchTestCase):
 
         self.assertEqual(
             [update["task_id"] for update in updates], [self.task_id]
+        )
+
+    def test_a_picture_upload_names_its_comment_author_and_client_flag(self):
+        # A client may read only some comments: from the author and the
+        # client flag, Kitsu skips reloading the others. Someone other
+        # than the author uploads the picture.
+        author_id = str(self.person.id)
+        preview_file_id = self.create_preview_file(
+            person_id=author_id, for_client=True
+        )
+        updates = self.capture_events("comment:update")
+
+        self.upload_file(
+            f"/pictures/preview-files/{preview_file_id}", self.picture_path
+        )
+
+        self.assertEqual(
+            [(event["person_id"], event["for_client"]) for event in updates],
+            [(author_id, True)],
         )
 
     def test_a_synchronous_upload_updates_the_task_info_once(self):

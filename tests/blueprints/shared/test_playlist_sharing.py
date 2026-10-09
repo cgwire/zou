@@ -7,6 +7,7 @@ import pytest
 from tests.base import ApiDBTestCase, TEST_FOLDER
 
 from zou.app.models.attachment_file import AttachmentFile
+from zou.app.models.comment import Comment
 from zou.app.models.person import Person
 from zou.app.models.playlist import Playlist
 from zou.app.models.playlist import Playlist as PlaylistModel
@@ -868,6 +869,22 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
 
         replier = result["replies"][0]["person"]
         self.assertEqual(replier["id"], str(self.user["id"]))
+
+    def test_a_guest_edit_names_the_author_and_client_flag(self):
+        # A client may read only some comments: from the author and the
+        # client flag, Kitsu skips reloading the others.
+        link, guest, comment = self._guest_comment()
+        path = self.shared_path(link["token"], f"/comments/{comment['id']}")
+        updates = self.capture_events("comment:update")
+
+        self.put(path, {"guest_id": guest["id"], "text": "Second thought"})
+        Comment.get(comment["id"]).update({"for_client": True})
+        self.put(path, {"guest_id": guest["id"], "text": "Third thought"})
+
+        self.assertEqual(
+            [(event["person_id"], event["for_client"]) for event in updates],
+            [(guest["id"], False), (guest["id"], True)],
+        )
 
     def test_guest_deletes_own_comment(self):
         link, guest, comment = self._guest_comment()

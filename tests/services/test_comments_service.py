@@ -53,6 +53,17 @@ class NewCommentTestCase(CommentsTestCase):
             captured[0]["task_status_id"], str(self.task_status.id)
         )
 
+    def test_a_comment_names_its_author_and_client_flag(self):
+        # A client may read only some comments: from the author and the
+        # client flag, Kitsu skips reloading the others.
+        captured = self.capture_events("comment:new")
+        self.comment()
+        self.comment(person_id=self.person_id, for_client=True)
+        self.assertEqual(
+            [(event["person_id"], event["for_client"]) for event in captured],
+            [(self.user["id"], False), (self.person_id, True)],
+        )
+
     def test_a_date_can_be_forced_on_an_imported_comment(self):
         """
         Two formats are accepted, and a date that reads as neither is
@@ -933,6 +944,36 @@ class MoveCommentTestCase(CommentsTestCase):
         self.assertEqual(len(added), 1)
         self.assertEqual(added[0]["task_id"], str(self.target_task.id))
 
+    def test_a_moved_comment_names_the_task_it_leaves(self):
+        # Kitsu refreshes the last comment of the task the deletion names.
+        comment = self.comment("wrong task type")
+        removed = self.capture_events("comment:delete")
+
+        comments_service.move_comment_to_task(
+            comment["id"], str(self.target_task.id)
+        )
+
+        self.assertEqual(
+            [event["task_id"] for event in removed], [comment["object_id"]]
+        )
+
+    def test_a_moved_comment_names_its_author_and_client_flag(self):
+        # A client may read only some comments: from the author and the
+        # client flag, Kitsu skips reloading the others.
+        comment = self.comment(
+            "for the client", person_id=self.person_id, for_client=True
+        )
+        added = self.capture_events("comment:new")
+
+        comments_service.move_comment_to_task(
+            comment["id"], str(self.target_task.id)
+        )
+
+        self.assertEqual(
+            [(event["person_id"], event["for_client"]) for event in added],
+            [(self.person_id, True)],
+        )
+
     def test_a_comment_only_moves_inside_its_own_entity(self):
         other_task = self.generate_fixture_task(name="on the asset")
         comment = self.comment("wrong task type")
@@ -1056,6 +1097,33 @@ class PreviewFileWritesRecordStatesTestCase(PreviewFileTestCase):
             [update["task_id"] for update in updates], [str(self.task.id)]
         )
 
+    def test_a_copy_names_its_comment_author_and_client_flag(self):
+        # A client may read only some comments: from the author and the
+        # client flag, Kitsu skips reloading the others. Someone other
+        # than the author made the previews.
+        target = self.generate_fixture_preview_file(revision=2)
+        comment = Comment.get(
+            self.generate_fixture_comment(person=self.user)["id"]
+        )
+        comment.previews = [target]
+        comment.for_client = True
+        comment.save()
+        updates = self.capture_events("comment:update")
+
+        with patch.object(
+            preview_files_service,
+            "copy_preview_file_on_storage",
+            side_effect=lambda _b, _p, _e, _c, prefix, *_: prefix != "source",
+        ):
+            comments_service.copy_preview_file_in_another_one(
+                self.preview_file_id, str(target.id)
+            )
+
+        self.assertEqual(
+            [(event["person_id"], event["for_client"]) for event in updates],
+            [(self.user_id, True)],
+        )
+
 
 class CommentReaderTestCase(TaskTestCase):
     def test_get_comments_by_role(self):
@@ -1127,4 +1195,21 @@ class CommentReaderTestCase(TaskTestCase):
 
         self.assertEqual(
             [update["task_id"] for update in updates], [str(self.task_id)]
+        )
+
+    def test_a_preview_added_names_its_comment_author_and_client_flag(self):
+        # A client may read only some comments: from the author and the
+        # client flag, Kitsu skips reloading the others. Someone other
+        # than the author adds the preview.
+        comment_id = self.generate_fixture_comment(person=self.user)["id"]
+        Comment.get(comment_id).update({"for_client": True})
+        updates = self.capture_events("comment:update")
+
+        comments_service.add_preview_file_to_comment(
+            comment_id, self.person_id, self.task_id
+        )
+
+        self.assertEqual(
+            [(event["person_id"], event["for_client"]) for event in updates],
+            [(self.user["id"], True)],
         )
