@@ -368,7 +368,12 @@ def update_guest_comment(comment_id, guest_id, data, token):
         pass
     events.emit(
         "comment:update",
-        {"comment_id": updated["id"], "task_id": task_id},
+        {
+            "comment_id": updated["id"],
+            "task_id": task_id,
+            "person_id": updated["person_id"],
+            "for_client": updated["for_client"],
+        },
         project_id=task["project_id"],
     )
     return _serialize_enriched_comment(comment_id)

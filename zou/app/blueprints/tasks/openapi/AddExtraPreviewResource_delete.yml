@@ -2,8 +2,10 @@ Delete preview from comment
 ---
 tags:
 - Tasks
-description: Delete a preview from a comment. Use force query to delete
-  even if there are dependencies.
+description: Delete a preview from a comment of a task. The preview has to
+  be attached to the comment, and both have to be on the task. The caller
+  needs the access to the task actions that adding a preview requires, and
+  the read access to the comment.
 parameters:
   - in: path
     name: task_id
@@ -32,7 +34,14 @@ parameters:
     schema:
       type: boolean
       default: false
-    description: Force deletion even if preview has dependencies
+    description: Remove the stored files at once instead of leaving them to
+      the purge. Reserved to the managers of the production.
 responses:
     204:
       description: Preview deleted from comment
+    403:
+      description: No access to the task actions, or force asked by someone
+        who is not a manager of the production
+    404:
+      description: Task, comment or preview not found, comment not on the
+        task, or preview not attached to the comment

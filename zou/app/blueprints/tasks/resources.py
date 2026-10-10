@@ -108,9 +108,22 @@ class AddExtraPreviewResource(MethodView, ArgsMixin):
         self.check_id_parameter(comment_id)
         self.check_id_parameter(preview_file_id)
         task = tasks_service.get_task(task_id)
-        permissions_service.check_project_access(task["project_id"])
+        permissions_service.check_task_action_access(task_id)
+        comments_service.get_comment_preview_file(
+            task_id, comment_id, preview_file_id
+        )
+        # A client keeps out of the comments hidden from it, as an internal
+        # revision.
+        permissions_service.check_comment_access(comment_id)
+        force = self.get_force()
+        if force:
+            # Force purges the stored files at once, a right the preview file
+            # route keeps to the managers.
+            permissions_service.check_manager_project_access(
+                task["project_id"]
+            )
         deletion_service.remove_preview_file_by_id(
-            preview_file_id, force=self.get_force()
+            preview_file_id, force=force
         )
         return "", 204
 

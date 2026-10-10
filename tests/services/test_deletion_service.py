@@ -7,6 +7,7 @@ from sqlalchemy import text
 
 from zou.app import db
 from zou.app.models.comment import Comment
+from zou.app.models.entity import Entity
 from zou.app.models.task import Task
 from zou.app.models.notification import Notification
 from zou.app.models.output_file import OutputFile
@@ -17,9 +18,12 @@ from zou.app.models.time_spent import TimeSpent
 
 from zou.app.services import (
     deletion_service,
+    entities_service,
     news_service,
+    projects_service,
+    tasks_service,
 )
-from zou.app.utils import date_helpers
+from zou.app.utils import date_helpers, events
 from zou.app.exceptions import (
     CommentNotFoundException,
     PreviewBackgroundFileNotFoundException,
@@ -39,6 +43,18 @@ class RemoveCommentTestCase(DeletionTestCase):
 
         self.assertEqual(result["id"], comment_id)
         self.assertIsNone(Comment.get(comment_id))
+
+    def test_remove_comment_names_its_task(self):
+        # Kitsu refreshes the last comment of the task the event names.
+        self.generate_fixture_comment()
+        captured = self.capture_events("comment:delete")
+
+        deletion_service.remove_comment(self.comment["id"])
+
+        self.assertEqual(
+            [event["task_id"] for event in captured],
+            [self.comment["object_id"]],
+        )
 
     def test_remove_comment_with_deleted_task(self):
         # The task is read to refresh its status; it may already be gone.
@@ -196,7 +212,9 @@ class RemoveTaskTestCase(DeletionTestCase):
         """
         remove_task = deletion_service.remove_task
 
-        def remove_task_after_the_other(task_id, force=False):
+        def remove_task_after_the_other(
+            task_id, force=False, restore_main=True
+        ):
             for other_id in task_ids:
                 if other_id != str(task_id):
                     db.session.execute(
@@ -204,7 +222,7 @@ class RemoveTaskTestCase(DeletionTestCase):
                         {"task_id": other_id},
                     )
             db.session.commit()
-            return remove_task(task_id, force=force)
+            return remove_task(task_id, force=force, restore_main=restore_main)
 
         return mock.patch.object(
             deletion_service,
@@ -284,6 +302,327 @@ class RemovePreviewFileTestCase(DeletionTestCase):
     def test_remove_preview_background_file_not_found(self):
         with self.assertRaises(PreviewBackgroundFileNotFoundException):
             deletion_service.remove_preview_background_file_by_id(UNKNOWN)
+
+
+class RestoreMainPreviewTestCase(DeletionTestCase):
+    """
+    What an upload made current goes back to the previous main preview when
+    the preview is removed, and the clients hear of it.
+    """
+
+    def generate_preview(
+        self,
+        revision,
+        day,
+        name="main",
+        position=1,
+        status="ready",
+        extension="mp4",
+    ):
+        preview_file = self.generate_fixture_preview_file(
+            revision=revision, name=name, position=position, status=status
+        )
+        preview_file.update(
+            {
+                "created_at": datetime.datetime(2026, 1, day),
+                "extension": extension,
+            }
+        )
+        return preview_file
+
+    def show(self, preview_file):
+        self.task.update({"last_preview_file_id": preview_file.id})
+        Entity.get(self.asset.id).update({"preview_file_id": preview_file.id})
+
+    def automate_previews(self):
+        projects_service.update_project(
+            str(self.project.id), {"is_set_preview_automated": True}
+        )
+
+    def get_task_main(self):
+        return Task.get(self.task.id).last_preview_file_id
+
+    def get_entity_main(self):
+        return Entity.get(self.asset.id).preview_file_id
+
+    def read_through_caches(self):
+        return (
+            tasks_service.get_task(self.task.id)["last_preview_file_id"],
+            entities_service.get_entity(self.asset.id)["preview_file_id"],
+        )
+
+    def capture_in_order(self, *names):
+        """
+        Collect given events in one list, as (name, payload) pairs in the
+        order they come, see capture_events.
+        """
+        captured = []
+
+        class Handler:
+            def __init__(self, name):
+                self.name = name
+
+            def handle_event(self, data=None):
+                captured.append((self.name, data or {}))
+
+        events.unregister_all()
+        for name in names:
+            events.register(name, f"{name}_test_handler", Handler(name))
+        return captured
+
+    def generate_tasks_removed_together(self):
+        """
+        Two tasks of one type: the entity shows the preview of the first
+        and the second holds the next newest one. A task of another type
+        keeps an older one, which the entity must end up with. Return the
+        ids of the two tasks and that preview.
+        """
+        self.automate_previews()
+        self.generate_fixture_task(
+            name="Kept", task_type_id=self.task_type_modeling.id
+        )
+        kept = self.generate_preview(1, 1)
+        first_task = self.generate_fixture_task(name="First")
+        shown = self.generate_preview(1, 3)
+        second_task = self.generate_fixture_task(name="Second")
+        self.generate_preview(1, 2)
+        Entity.get(self.asset.id).update({"preview_file_id": shown.id})
+        return [str(first_task.id), str(second_task.id)], kept
+
+    def test_remove_main_preview_skips_the_extra_file_of_its_revision(self):
+        # The newest remaining preview is the extra file, which an upload
+        # never makes current: the task kept the removed preview and the
+        # entity was left without a thumbnail, both in silence.
+        self.automate_previews()
+        previous = self.generate_preview(1, 1)
+        main = self.generate_preview(2, 2)
+        self.generate_preview(2, 3, name="extra", position=2)
+        self.show(main)
+        captured = self.capture_events("preview-file:set-main")
+
+        deletion_service.remove_preview_file(main)
+
+        self.assertEqual(self.get_task_main(), previous.id)
+        self.assertEqual(self.get_entity_main(), previous.id)
+        self.assertEqual(
+            [
+                (event["entity_id"], event["preview_file_id"])
+                for event in captured
+            ],
+            [(str(self.asset.id), str(previous.id))],
+        )
+
+    def test_remove_comment_announces_the_restored_preview_once(self):
+        # Kitsu removes the whole comment when an extra file fails to
+        # upload after the main one went through.
+        self.automate_previews()
+        previous = self.generate_preview(1, 1)
+        main = self.generate_preview(2, 2)
+        extra = self.generate_preview(2, 3, name="extra", position=2)
+        self.show(main)
+        self.generate_fixture_comment()
+        comment = Comment.get(self.comment["id"])
+        comment.previews.extend([main, extra])
+        comment.save()
+        self.read_through_caches()
+        captured = self.capture_events("preview-file:set-main")
+
+        deletion_service.remove_comment(self.comment["id"])
+
+        self.assertEqual(self.get_entity_main(), previous.id)
+        self.assertEqual(
+            [event["preview_file_id"] for event in captured],
+            [str(previous.id)],
+        )
+        # The task reads of Kitsu and of the playlists go through the cache.
+        self.assertEqual(
+            self.read_through_caches(), (str(previous.id), str(previous.id))
+        )
+
+    def test_entity_goes_back_to_the_newest_main_preview_of_any_task(self):
+        # Before the removed upload, the entity showed the other task's
+        # preview, newer than the previous one of the same task.
+        self.automate_previews()
+        self.generate_preview(1, 1)
+        main = self.generate_preview(2, 3)
+        self.show(main)
+        task = self.task
+        self.generate_fixture_task(name="Second")
+        other_task_preview = self.generate_preview(1, 2)
+        self.task = task
+
+        deletion_service.remove_preview_file(main)
+
+        self.assertEqual(self.get_entity_main(), other_task_preview.id)
+
+    def test_restore_skips_the_previews_without_a_thumbnail(self):
+        # A generic file, a glb model for instance, is ready at once and
+        # gets no thumbnail.
+        self.automate_previews()
+        previous = self.generate_preview(1, 1)
+        self.generate_preview(2, 2, extension="glb")
+        main = self.generate_preview(3, 3)
+        self.show(main)
+
+        deletion_service.remove_preview_file(main)
+
+        self.assertEqual(self.get_task_main(), previous.id)
+        self.assertEqual(self.get_entity_main(), previous.id)
+
+    def test_restore_skips_the_previews_an_upload_never_made_current(self):
+        self.automate_previews()
+        previous = self.generate_preview(1, 1)
+        self.generate_preview(2, 2, status="broken")
+        main = self.generate_preview(3, 3)
+        self.show(main)
+
+        deletion_service.remove_preview_file(main)
+
+        self.assertEqual(self.get_task_main(), previous.id)
+        self.assertEqual(self.get_entity_main(), previous.id)
+
+    def test_manual_thumbnail_is_removed_but_not_replaced(self):
+        # Zou picks no thumbnail when the production sets them by hand; the
+        # task still follows its previews.
+        previous = self.generate_preview(1, 1)
+        main = self.generate_preview(2, 2)
+        self.show(main)
+        captured = self.capture_events("preview-file:set-main")
+
+        deletion_service.remove_preview_file(main)
+
+        self.assertEqual(self.get_task_main(), previous.id)
+        self.assertIsNone(self.get_entity_main())
+        self.assertEqual(
+            [
+                (event["entity_id"], event["preview_file_id"])
+                for event in captured
+            ],
+            [(str(self.asset.id), None)],
+        )
+
+    def test_removing_the_task_main_preview_announces_the_task(self):
+        # Kitsu reloads a task on task:update: without one, the task cards
+        # and lists of the other users kept asking for the removed preview.
+        # An older revision is not what the task shows: nothing to announce.
+        oldest = self.generate_preview(1, 1)
+        previous = self.generate_preview(2, 2)
+        main = self.generate_preview(3, 3)
+        self.show(main)
+        captured = self.capture_events("task:update")
+
+        deletion_service.remove_preview_file(oldest)
+        self.assertEqual(captured, [])
+
+        deletion_service.remove_preview_file(main)
+        self.assertEqual(self.get_task_main(), previous.id)
+        self.assertEqual(
+            [(event["task_id"], event["project_id"]) for event in captured],
+            [(str(self.task.id), str(self.project.id))],
+        )
+
+    def test_removing_the_only_preview_announces_an_empty_thumbnail(self):
+        self.automate_previews()
+        main = self.generate_preview(1, 1)
+        self.show(main)
+        captured = self.capture_events("preview-file:set-main")
+
+        deletion_service.remove_preview_file(main)
+
+        self.assertIsNone(self.get_task_main())
+        self.assertIsNone(self.get_entity_main())
+        self.assertEqual(
+            [event["preview_file_id"] for event in captured], [None]
+        )
+
+    def test_remove_task_announces_the_lost_thumbnail_once(self):
+        # Every preview of the task goes: restoring one after the other
+        # would announce previews about to be removed. The entity stays, so
+        # it is told once, after the last one. The shown one is inserted
+        # first, so that it is the first one removed.
+        self.automate_previews()
+        main = self.generate_preview(2, 2)
+        self.generate_preview(1, 1)
+        self.show(main)
+        entities_service.get_entity(self.asset.id)
+        captured = self.capture_events("preview-file:set-main")
+
+        deletion_service.remove_task(str(self.task.id), force=True)
+
+        self.assertIsNone(self.get_entity_main())
+        self.assertIsNone(
+            entities_service.get_entity(self.asset.id)["preview_file_id"]
+        )
+        self.assertEqual(
+            [event["preview_file_id"] for event in captured], [None]
+        )
+
+    def test_remove_task_hands_the_thumbnail_to_another_task(self):
+        # An upload on any task of the entity takes its thumbnail: once a
+        # task goes, the newest main preview of the others does.
+        self.automate_previews()
+        removed_task = self.task
+        other_task = self.generate_fixture_task(name="Other")
+        self.task = removed_task
+        other = self.generate_fixture_preview_file(task_id=other_task.id)
+        main = self.generate_preview(2, 2)
+        self.show(main)
+        captured = self.capture_events("preview-file:set-main")
+
+        deletion_service.remove_task(str(removed_task.id), force=True)
+
+        self.assertEqual(self.get_entity_main(), other.id)
+        self.assertEqual(
+            [event["preview_file_id"] for event in captured], [str(other.id)]
+        )
+
+    def test_bulk_removal_restores_the_entity_once_after_the_last_task(self):
+        # Restored after each task, the entity took the preview of the other
+        # one, about to go, and announced it. With the other one removed
+        # first, it was told before the batch was over: hence the order.
+        task_ids, kept = self.generate_tasks_removed_together()
+        captured = self.capture_in_order(
+            "task:delete", "preview-file:set-main"
+        )
+
+        deletion_service.remove_tasks(str(self.project.id), task_ids)
+
+        self.assertEqual(self.get_entity_main(), kept.id)
+        self.assertEqual(
+            [name for name, _ in captured],
+            ["task:delete", "task:delete", "preview-file:set-main"],
+        )
+        self.assertEqual(captured[-1][1]["preview_file_id"], str(kept.id))
+
+    def test_task_type_removal_restores_the_entity_once_at_the_end(self):
+        # The same through the removal of every task of the type, which
+        # takes the task of the base fixture too.
+        _, kept = self.generate_tasks_removed_together()
+        captured = self.capture_in_order(
+            "task:delete", "preview-file:set-main"
+        )
+
+        deletion_service.remove_tasks_for_project_and_task_type(
+            str(self.project.id), str(self.task_type.id)
+        )
+
+        self.assertEqual(self.get_entity_main(), kept.id)
+        self.assertEqual(
+            [name for name, _ in captured],
+            ["task:delete"] * 3 + ["preview-file:set-main"],
+        )
+        self.assertEqual(captured[-1][1]["preview_file_id"], str(kept.id))
+
+    def test_entity_removal_announces_no_preview(self):
+        # The entity goes with its tasks: nothing is left to show.
+        self.automate_previews()
+        main = self.generate_preview(1, 1)
+        self.show(main)
+        captured = self.capture_events("preview-file:set-main")
+
+        deletion_service.remove_tasks_for_entity(str(self.asset.id))
+
+        self.assertEqual(captured, [])
 
 
 class RemoveOldRowsTestCase(DeletionTestCase):

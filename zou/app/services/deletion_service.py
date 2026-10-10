@@ -36,8 +36,10 @@ from zou.app.utils import events, fields, date_helpers
 from zou.app.stores import file_store
 
 from zou.app.services import (
+    entities_service,
     files_service,
     news_service,
+    projects_service,
     tasks_service,
     attachment_files_service,
 )
@@ -48,6 +50,10 @@ from zou.app.exceptions import (
 )
 
 logger = logging.getLogger(__name__)
+
+# The previews with a thumbnail: pictures are stored as png and movies as
+# mp4, while the other files keep their own extension.
+THUMBNAIL_EXTENSIONS = ("png", "mp4")
 
 
 def _remove_older_than(model, date_column, days_old):
@@ -116,7 +122,7 @@ def remove_comment(comment_id):
     if task is not None:
         events.emit(
             "comment:delete",
-            {"comment_id": comment.id},
+            {"comment_id": comment.id, "task_id": str(task.id)},
             project_id=str(task.project_id),
         )
     else:
@@ -126,10 +132,16 @@ def remove_comment(comment_id):
     return comment.serialize()
 
 
-def remove_task(task_id, force=False):
+def remove_task(task_id, force=False, restore_main=True):
     """
     Remove given task. Force deletion if the task has some comments and files
     related. This will lead to the deletion of all of them.
+
+    An entity that showed a preview of the task gets the newest main preview
+    of its other tasks, see _restore_entity_main_preview. The removals of
+    the entity or of the project pass restore_main=False, since the entity
+    goes too, and so does _remove_task_batch, which restores it once at the
+    end.
     """
 
     task = Task.get(task_id)
@@ -160,9 +172,18 @@ def remove_task(task_id, force=False):
         for subscription in subscriptions:
             subscription.delete()
 
-        preview_files = PreviewFile.query.filter_by(task_id=task_id)
+        preview_files = PreviewFile.query.filter_by(task_id=task_id).all()
+        entity = Entity.get(task.entity_id)
+        is_entity_main = any(
+            preview_file.id == entity.preview_file_id
+            for preview_file in preview_files
+        )
+        # Restoring after each removal would announce previews about to go:
+        # the entity is told once, after the last one.
         for preview_file in preview_files:
-            remove_preview_file(preview_file)
+            remove_preview_file(preview_file, restore_main=False)
+        if restore_main and is_entity_main:
+            _restore_entity_main_preview(entity)
 
         time_spents = TimeSpent.query.filter_by(task_id=task_id)
         for time_spent in time_spents:
@@ -231,16 +252,24 @@ def remove_preview_file_by_id(preview_file_id, force=False):
     return remove_preview_file(preview_file, force=force)
 
 
-def remove_preview_file(preview_file, force=False):
+def remove_preview_file(preview_file, force=False, restore_main=True):
     """
     Remove all files related to given preview file, then remove the preview file
     entry from the database.
+
+    The task and the entity that showed it as their main preview get back the
+    previous one, see _restore_task_main_preview and
+    _restore_entity_main_preview. The bulk removals, which take every
+    preview of the task or of the project, pass restore_main=False: a
+    restore there would pick a preview about to go and announce it.
     """
     task = Task.get(preview_file.task_id)
     entity = Entity.get(task.entity_id)
     news = News.get_by(preview_file_id=preview_file.id)
+    is_task_main = task.last_preview_file_id == preview_file.id
+    is_entity_main = entity.preview_file_id == preview_file.id
 
-    if entity.preview_file_id == preview_file.id:
+    if is_entity_main:
         entity.update({"preview_file_id": None})
 
     if news is not None:
@@ -268,24 +297,81 @@ def remove_preview_file(preview_file, force=False):
     else:
         clear_generic_files(preview_file_id, force=force)
 
-    # Update last preview file uploaded on task
-    if task.last_preview_file_id == preview_file.id:
-        new_last_preview_file = (
-            PreviewFile.query.filter(
-                PreviewFile.task_id == preview_file.task_id
-            )
-            .order_by(PreviewFile.created_at.desc())
-            .first()
-        )
-        if new_last_preview_file is not None:
-
-            tasks_service.update_preview_file_info(
-                new_last_preview_file.serialize()
-            )
-        else:
-            task.update({"last_preview_file_id": None})
+    if restore_main:
+        if is_task_main:
+            _restore_task_main_preview(task)
+        if is_entity_main:
+            _restore_entity_main_preview(entity)
+    elif is_entity_main:
+        entities_service.clear_entity_cache(entity.id)
 
     return preview_file.serialize()
+
+
+def _get_last_main_preview_file(*criterions):
+    """
+    Return the newest main preview (position 1) matching given criterions
+    among the ready pictures and movies, the only ones an upload makes
+    current with a thumbnail, or None.
+    """
+    return (
+        PreviewFile.query.join(Task, PreviewFile.task_id == Task.id)
+        .filter(PreviewFile.position == 1)
+        .filter(PreviewFile.status == "ready")
+        .filter(PreviewFile.extension.in_(THUMBNAIL_EXTENSIONS))
+        .filter(*criterions)
+        .order_by(PreviewFile.created_at.desc())
+        .first()
+    )
+
+
+def _restore_task_main_preview(task):
+    """
+    Undo for a removed preview what its upload did to the task (see
+    tasks_service.update_preview_file_info): it goes back to its newest
+    remaining main preview, and the clients are told, so that they drop the
+    removed one.
+    """
+    last_preview_file = _get_last_main_preview_file(
+        PreviewFile.task_id == task.id
+    )
+    last_preview_file_id = None
+    if last_preview_file is not None:
+        last_preview_file_id = last_preview_file.id
+    task.update({"last_preview_file_id": last_preview_file_id})
+    tasks_service.clear_task_cache(task.id)
+    events.emit(
+        "task:update",
+        {"task_id": str(task.id)},
+        project_id=str(task.project_id),
+    )
+
+
+def _restore_entity_main_preview(entity):
+    """
+    Undo for a removed preview what its upload did to the entity: when the
+    project sets it automatically, it goes back to the newest main preview
+    among all its tasks, since an upload on any of them takes it. In a
+    project that sets it by hand, or with no such preview left, the entity
+    is left without one. Either way the clients are told, so that they drop
+    the removed thumbnail.
+    """
+    main_preview_file = None
+    project = projects_service.get_project(str(entity.project_id))
+    if project["is_set_preview_automated"]:
+        main_preview_file = _get_last_main_preview_file(
+            Task.entity_id == entity.id
+        )
+    if main_preview_file is not None:
+        try:
+            tasks_service.update_entity_preview(
+                entity.id, str(main_preview_file.id)
+            )
+        except PreviewFileNotFoundException:
+            # Removed meanwhile by another deletion.
+            main_preview_file = None
+    if main_preview_file is None:
+        tasks_service.remove_entity_preview(entity.id)
 
 
 def remove_preview_background_file_by_id(
@@ -392,25 +478,44 @@ def clear_generic_files(preview_file_id, force=False):
     )
 
 
+def _remove_task_batch(task_ids):
+    """
+    Remove fully given tasks. An entity that showed a preview of one of them
+    gets its main preview back once, after the last task: restored after
+    each one, it could take the preview of a task still to go and announce
+    it.
+    """
+    entity_ids = [
+        str(row[0])
+        for row in Entity.query.with_entities(Entity.id)
+        .join(PreviewFile, Entity.preview_file_id == PreviewFile.id)
+        .filter(PreviewFile.task_id.in_(task_ids))
+        .all()
+    ]
+    for task_id in task_ids:
+        remove_task(task_id, force=True, restore_main=False)
+    for entity_id in entity_ids:
+        _restore_entity_main_preview(Entity.get(entity_id))
+
+
 def remove_tasks(project_id, task_ids):
     """
     Remove fully given tasks and related for given project. The project id
     filter is there to facilitate right management.
     """
     task_ids = [task_id for task_id in task_ids if fields.is_valid_id(task_id)]
-    for task_id in get_task_ids(
-        Task.project_id == project_id, Task.id.in_(task_ids)
-    ):
-        remove_task(task_id, force=True)
+    _remove_task_batch(
+        get_task_ids(Task.project_id == project_id, Task.id.in_(task_ids))
+    )
     return task_ids
 
 
 def remove_tasks_for_entity(entity_id):
     """
-    Remove fully all tasks and related for given entity.
+    Remove fully all tasks and related for given entity, which goes next.
     """
     for task_id in get_task_ids(entity_id=entity_id):
-        remove_task(task_id, force=True)
+        remove_task(task_id, force=True, restore_main=False)
 
 
 def remove_tasks_for_project_and_task_type(project_id, task_type_id):
@@ -418,8 +523,7 @@ def remove_tasks_for_project_and_task_type(project_id, task_type_id):
     Remove fully all tasks and related for given project and task type.
     """
     task_ids = get_task_ids(project_id=project_id, task_type_id=task_type_id)
-    for task_id in task_ids:
-        remove_task(task_id, force=True)
+    _remove_task_batch(task_ids)
     return task_ids
 
 
