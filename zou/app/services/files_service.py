@@ -121,6 +121,13 @@ def _apply_output_file_filters(
     return query
 
 
+def clear_file_status_cache():
+    """
+    Drop the memoized default file status.
+    """
+    cache.cache.delete_memoized(get_default_file_status)
+
+
 @cache.memoize_function(240)
 def get_default_file_status():
     """

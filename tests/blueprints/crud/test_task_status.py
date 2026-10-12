@@ -1,6 +1,7 @@
 from tests.base import ApiDBTestCase
 from zou.app.models.task_status import TaskStatus
 
+from zou.app.services import task_types_service
 from zou.app.utils import fields
 
 
@@ -43,3 +44,19 @@ class TaskStatusTestCase(ApiDBTestCase):
         task_statuss = self.get("data/task-status")
         self.assertEqual(len(task_statuss), 2)
         self.delete_404(f"data/task-status/{fields.gen_uuid()}")
+
+    def test_update_default_task_status_drops_cached_default(self):
+        TaskStatus.query.update({"is_default": False})
+        old = TaskStatus.create(
+            name="Todo", short_name="todo", color="#000000", is_default=True
+        )
+        new = TaskStatus.create(
+            name="Ready", short_name="rdy", color="#000000"
+        )
+        self.assertEqual(
+            task_types_service.get_default_task_status()["id"], str(old.id)
+        )
+        self.put(f"data/task-status/{new.id}", {"is_default": True})
+        self.assertEqual(
+            task_types_service.get_default_task_status()["id"], str(new.id)
+        )

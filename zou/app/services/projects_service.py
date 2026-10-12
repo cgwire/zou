@@ -345,6 +345,15 @@ def get_closed_status():
     return get_or_create_project_status("Closed")
 
 
+def clear_project_status_cache():
+    """
+    Drop the memoized project status list and the open and closed lookups.
+    """
+    cache.cache.delete_memoized(get_project_statuses)
+    cache.cache.delete_memoized(get_open_status)
+    cache.cache.delete_memoized(get_closed_status)
+
+
 def get_or_create_project_status(name):
     """
     Return given status. If it does not exist, it creates it.
@@ -353,6 +362,7 @@ def get_or_create_project_status(name):
     if project_status is None:
         project_status = ProjectStatus(name=name, color="#000000")
         project_status.save()
+        clear_project_status_cache()
     return project_status.serialize()
 
 

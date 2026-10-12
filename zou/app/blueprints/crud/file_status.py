@@ -2,12 +2,17 @@ from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
 from zou.app.models.file_status import FileStatus
+from zou.app.services import files_service
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 
 class FileStatusesResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, FileStatus)
+
+    def post_creation(self, instance):
+        files_service.clear_file_status_cache()
+        return super().post_creation(instance)
 
     def check_read_permissions(self, options=None):
         return True
@@ -32,6 +37,14 @@ class FileStatusesResource(BaseModelsResource):
 class FileStatusResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, FileStatus)
+
+    def post_update(self, instance_dict, data):
+        files_service.clear_file_status_cache()
+        return instance_dict
+
+    def post_delete(self, instance_dict):
+        files_service.clear_file_status_cache()
+        return instance_dict
 
     def check_read_permissions(self, instance):
         return True

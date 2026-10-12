@@ -14,10 +14,13 @@ from zou.app.services import base_service
 
 def clear_task_status_cache(task_status_id):
     """
-    Drop the memoized serialization of given task status, and the list.
+    Drop the memoized serialization of given task status, the list, and
+    the default and to-review lookups (the status may have become one).
     """
     cache.cache.delete_memoized(get_task_status, task_status_id)
     cache.cache.delete_memoized(get_task_statuses)
+    cache.cache.delete_memoized(get_default_task_status)
+    cache.cache.delete_memoized(get_to_review_status)
 
 
 def clear_task_type_cache(task_type_id):
