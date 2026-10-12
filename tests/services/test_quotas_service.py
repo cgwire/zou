@@ -227,3 +227,167 @@ class QuotaTestCase(ShotsTestCase):
             ),
             [],
         )
+
+    def test_a_weighted_shot_counts_as_the_share_logged_each_day(self):
+        """
+        In weighted mode a shot is split over the days time was logged on
+        it, the same way its frames are: the shares add up to one shot.
+        """
+        task = self.generate_shot_task()
+        self.shot.update({"nb_frames": 100})
+        task.update({"end_date": fields.get_date_object("2024-06-10")})
+        time_spents_service.create_or_update_time_spent(
+            str(task.id), str(self.person.id), "2024-06-03", 60
+        )
+        time_spents_service.create_or_update_time_spent(
+            str(task.id), str(self.person.id), "2024-06-04", 40
+        )
+
+        quotas = quotas_service.get_weighted_quotas(
+            str(self.project.id), str(self.task_type_animation.id)
+        )
+
+        entry = quotas[str(self.person.id)]
+        self.assertEqual(
+            entry["day"]["frames"], {"2024-06-03": 60, "2024-06-04": 40}
+        )
+        self.assertEqual(
+            entry["day"]["count"], {"2024-06-03": 0.6, "2024-06-04": 0.4}
+        )
+        self.assertEqual(entry["week"]["count"], {"2024-23": 1})
+        self.assertEqual(entry["month"]["count"], {"2024-06": 1})
+
+    def test_a_shot_without_time_spent_is_split_over_its_working_days(self):
+        """
+        Without time spent, the shot is spread over the business days from
+        the wip date to the feedback date, like its frames.
+        """
+        task = self.generate_shot_task()
+        self.shot.update({"nb_frames": 90})
+        task.update(
+            {
+                "real_start_date": datetime.datetime(2024, 6, 3, 10, 0),
+                "end_date": datetime.datetime(2024, 6, 5, 10, 0),
+            }
+        )
+
+        quotas = quotas_service.get_weighted_quotas(
+            str(self.project.id), str(self.task_type_animation.id)
+        )
+
+        entry = quotas[str(self.person.id)]
+        self.assertEqual(
+            entry["day"]["count"],
+            {"2024-06-03": 0.33, "2024-06-04": 0.33, "2024-06-05": 0.33},
+        )
+        self.assertAlmostEqual(entry["month"]["count"]["2024-06"], 1)
+
+    def test_a_person_quota_counts_tasks_without_time_spent(self):
+        """
+        The person quotas query no task type: the pass for tasks without
+        time spent used to filter on a null task type and drop them all.
+        """
+        task = self.generate_shot_task()
+        self.shot.update({"nb_frames": 100})
+        task.update(
+            {
+                "real_start_date": datetime.datetime(2024, 6, 3, 10, 0),
+                "end_date": datetime.datetime(2024, 6, 3, 18, 0),
+            }
+        )
+
+        quotas = quotas_service.get_weighted_quotas(
+            str(self.project.id), person_id=str(self.person.id)
+        )
+
+        for entry in [str(self.task_type_animation.id), "total"]:
+            self.assertEqual(
+                quotas[entry]["day"]["frames"], {"2024-06-03": 100}
+            )
+            self.assertEqual(quotas[entry]["day"]["count"], {"2024-06-03": 1})
+
+    def test_the_quota_shots_of_every_task_type_without_a_filter(self):
+        """
+        Without a task type, the listing holds the shots of every task type
+        the person worked on.
+        """
+        self.generate_shot_task()
+        # generate_fixture_shot repoints self.shot, hence the local.
+        anim_shot = self.shot
+        layout_shot = self.generate_fixture_shot("L01")
+        layout_task = self.generate_fixture_shot_task(
+            name="layout",
+            shot_id=layout_shot.id,
+            task_type_id=self.task_type_layout.id,
+        )
+        anim_task = self.generate_fixture_shot_task(
+            name="anim", shot_id=anim_shot.id
+        )
+        for task in [anim_task, layout_task]:
+            task.update(
+                {
+                    "real_start_date": datetime.datetime(2024, 6, 3, 10, 0),
+                    "end_date": fields.get_date_object("2024-06-04"),
+                }
+            )
+
+        for weighted in [True, False]:
+            with self.subTest(weighted=weighted):
+                shots = quotas_service.get_month_quota_shots(
+                    str(self.person.id),
+                    2024,
+                    6,
+                    project_id=str(self.project.id),
+                    weighted=weighted,
+                )
+                self.assertEqual(
+                    [shot["name"] for shot in shots], ["L01", "P01"]
+                )
+
+    def test_the_quota_shots_of_every_project_without_a_filter(self):
+        """
+        Without a project, the listing holds the shots of every production,
+        each one carrying its project so a client can link to it.
+        """
+        task = self.generate_shot_task()
+        other_task = self.generate_fixture_shot_task_standard()
+        for each in [task, other_task]:
+            each.update(
+                {
+                    "real_start_date": datetime.datetime(2024, 6, 3, 10, 0),
+                    "end_date": fields.get_date_object("2024-06-04"),
+                }
+            )
+
+        for weighted in [True, False]:
+            with self.subTest(weighted=weighted):
+                shots = quotas_service.get_month_quota_shots(
+                    str(self.person.id),
+                    2024,
+                    6,
+                    task_type_id=str(self.task_type_animation.id),
+                    weighted=weighted,
+                )
+                self.assertEqual(
+                    sorted(shot["project_id"] for shot in shots),
+                    sorted(
+                        [str(self.project.id), str(self.project_standard.id)]
+                    ),
+                )
+
+    def test_a_week_is_keyed_by_its_iso_year(self):
+        """
+        2025-12-30 belongs to ISO week 1 of 2026: keying it with the
+        calendar year made it "2025-1", the first week of the year before.
+        The month and year buckets stay on the calendar year.
+        """
+        quotas = {}
+        quotas_service._add_quota_entry(
+            quotas, "person", datetime.date(2025, 12, 30), "UTC", 100, 2, 25
+        )
+        entry = quotas["person"]
+        self.assertEqual(entry["week"]["frames"], {"2026-1": 100})
+        self.assertEqual(entry["week"]["entries"], {"2026": 1})
+        self.assertEqual(entry["month"]["frames"], {"2025-12": 100})
+        self.assertEqual(entry["month"]["entries"], {"2025": 1})
+        self.assertEqual(entry["year"]["frames"], {"2025": 100})

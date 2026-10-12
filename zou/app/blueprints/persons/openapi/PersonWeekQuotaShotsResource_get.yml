@@ -36,6 +36,26 @@ parameters:
       enum: [weighted, weighteddone, feedback, done]
     description: Count mode for quota calculation
     example: weighted
+  - in: query
+    name: project_id
+    required: false
+    schema:
+      type: string
+      format: uuid
+    description: >-
+      Restrict the shots to this production. Without it, the shots of every
+      production are listed; a manager can then only read their own quotas.
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+  - in: query
+    name: task_type_id
+    required: false
+    schema:
+      type: string
+      format: uuid
+    description: >-
+      Restrict the shots to this task type. Without it, the shots of every
+      task type are listed.
+    example: b35b7fb5-df86-5776-b181-68564193d361
 responses:
   200:
     description: Ended shots used for quota calculation of this week
@@ -45,5 +65,8 @@ responses:
           type: array
           items:
             type: object
+            description: >-
+              A serialized shot, with its project_id, full_name and the
+              weight it carries in the period.
   400:
     description: Wrong date format or invalid count mode

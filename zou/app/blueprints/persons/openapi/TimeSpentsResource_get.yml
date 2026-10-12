@@ -1,7 +1,9 @@
 Get time spents
 ---
 description: Get all time spents for the given person. Optionally can
-  accept date range parameters.
+  accept date range parameters. Admins and the person themselves get every
+  entry. Managers only get the entries of their projects and supervisors only
+  those of their projects and departments. Other users get a 403.
 tags:
   - Persons
 parameters:
@@ -49,6 +51,16 @@ responses:
                 format: uuid
                 description: Person unique identifier
                 example: b35b7fb5-df86-5776-b181-68564193d360
+              project_id:
+                type: string
+                format: uuid
+                description: Project of the task
+                example: d57d91d7-f1a8-7998-d3a3-8a786315f581
+              task_type_id:
+                type: string
+                format: uuid
+                description: Task type of the task
+                example: e68ea2e8-a2b9-8aa9-e4b4-9b897426a692
               duration:
                 type: number
                 format: float
