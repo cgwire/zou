@@ -1,6 +1,5 @@
 from sqlalchemy.exc import IntegrityError, StatementError
 
-from zou.app.models.project import Project
 from zou.app.models.entity import Entity
 from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
@@ -149,25 +148,6 @@ def unsubscribe_from_sequence(person_id, sequence_id, task_type_id):
         return {}
     subscription.delete()
     return subscription.serialize()
-
-
-def get_all_sequence_subscriptions(person_id, project_id, task_type_id):
-    """
-    Return list of sequence ids for which given person has subscribed for
-    given project and task type.
-    """
-    subscriptions = (
-        Subscription.query.join(Entity)
-        .join(Project)
-        .filter(Project.id == project_id)
-        .filter(Subscription.task_type_id == task_type_id)
-        .filter(Subscription.person_id == person_id)
-        .all()
-    )
-
-    return fields.serialize_value(
-        [subscription.entity_id for subscription in subscriptions]
-    )
 
 
 def get_subscriptions_for_project(project_id):

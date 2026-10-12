@@ -754,12 +754,6 @@ class UserNotificationTestCase(UserContextTestCase):
         )
         self.assertTrue(self.get(deprecated_path))
 
-        listing_path = (
-            f"/data/user/projects/{self.project_id}"
-            f'/task-types/{self.task_type_dict["id"]}/sequence-subscriptions'
-        )
-        self.assertEqual(self.get(listing_path), [self.sequence_dict["id"]])
-
     def test_unsubscribe_sequence(self):
         path = f'/actions/user/sequences/{self.sequence_dict["id"]}/task-types/{self.task_type_dict["id"]}/'
         self.post(path + "subscribe", {})

@@ -4,7 +4,6 @@ from zou.app.models.output_type import OutputType
 
 from zou.app.services import (
     files_service,
-    task_types_service,
 )
 
 
@@ -208,13 +207,6 @@ class NewOutputFileTestCase(OutputFileTestCase):
     def test_create_same_output_file(self):
         self.publish(revision=66)
         self.publish(revision=66, code=400)
-
-    def test_to_review(self):
-        data = {"person_id": str(self.person_id)}
-        status_id = str(task_types_service.get_to_review_status()["id"])
-        self.put(f"/actions/tasks/{self.task_id}/to-review", data)
-        task = self.get(f"data/tasks/{self.task_id}")
-        self.assertEqual(task["task_status_id"], status_id)
 
     def test_get_next_revision(self):
         self.generate_fixture_output_type()

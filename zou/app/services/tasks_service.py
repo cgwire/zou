@@ -917,56 +917,6 @@ def assign_task(task_id, person_id, assigner_id=None):
     return task_dict
 
 
-def task_to_review(
-    task_id, person, comment, preview_path=None, change_status=True
-):
-    """
-    Deprecated
-    Change the task status to "waiting for approval" if it is not already the
-    case. It emits a *task:to-review* event.
-    """
-    if preview_path is None:
-        preview_path = {}
-    task = get_task_raw(task_id)
-    to_review_status = task_types_service.get_to_review_status()
-    task_dict_before = task.serialize()
-
-    if change_status:
-        task.update({"task_status_id": to_review_status["id"]})
-        task.save()
-        clear_task_cache(task_id)
-
-    project = Project.get(task.project_id)
-    entity = Entity.get(task.entity_id)
-    entity_type = EntityType.get(entity.entity_type_id)
-
-    task_dict_after = task.serialize()
-    task_dict_after["project"] = project.serialize()
-    task_dict_after["entity"] = entity.serialize()
-    task_dict_after["entity_type"] = entity_type.serialize()
-    task_dict_after["person"] = person
-    task_dict_after["comment"] = comment
-    task_dict_after["preview_path"] = preview_path
-
-    events.emit(
-        "task:to-review",
-        {
-            "task_id": task_id,
-            "task_shotgun_id": task_dict_before["shotgun_id"],
-            "entity_type_name": entity_type.name,
-            "previous_task_status_id": task_dict_before["task_status_id"],
-            "entity_shotgun_id": entity.shotgun_id,
-            "project_shotgun_id": project.shotgun_id,
-            "person_shotgun_id": person["shotgun_id"],
-            "comment": comment,
-            "preview_path": preview_path,
-            "change_status": change_status,
-        },
-    )
-
-    return task_dict_after
-
-
 def check_revision_is_unique_for_task(
     task_id, revision, exclude_preview_id=None
 ):

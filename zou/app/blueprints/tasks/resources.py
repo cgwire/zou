@@ -10,7 +10,6 @@ from zou.app.exceptions import (
     CommentNotFoundException,
     TaskNotFoundException,
     PersonNotFoundException,
-    MalformedFileTreeException,
     WrongDateFormatException,
     WrongParameterException,
 )
@@ -20,7 +19,6 @@ from zou.app.services import (
     edits_service,
     entities_service,
     files_service,
-    file_tree_service,
     notifications_service,
     persons_service,
     preview_files_service,
@@ -52,7 +50,6 @@ from zou.app.blueprints.tasks.schemas import (
     CommentPreviewSchema,
     SetTasksMainPreviewSchema,
     SetTasksPrioritySchema,
-    ToReviewSchema,
     UnassignTasksSchema,
     AssignTasksSchema,
     AssignPersonSchema,
@@ -437,55 +434,6 @@ class CreateEditTasksResource(MethodView):
 
         tasks = tasks_service.create_tasks(task_type, edits)
         return tasks, 201
-
-
-class ToReviewResource(MethodView, ArgsMixin):
-
-    @jwt_required()
-    @swag_from("openapi/ToReviewResource_put.yml")
-    def put(self, task_id):
-        """
-        Set task to review
-        """
-        body = validation.validate_request_body(ToReviewSchema)
-        person_id = body.person_id
-        comment = body.comment
-        name = body.name
-        revision = body.revision
-        change_status = body.change_status
-
-        try:
-            task = tasks_service.get_task(task_id)
-            permissions_service.check_project_access(task["project_id"])
-            permissions_service.check_entity_access(task["entity_id"])
-
-            if person_id is not None:
-                person = persons_service.get_person(person_id)
-            else:
-                person = persons_service.get_current_user()
-
-            preview_path = self.get_preview_path(task, name, revision)
-
-            task = tasks_service.task_to_review(
-                task_id, person, comment, preview_path, change_status
-            )
-        except PersonNotFoundException:
-            return {"error": True, "message": "Cannot find given person."}, 400
-
-        return task
-
-    def get_preview_path(self, task, name, revision):
-        try:
-            folder_path = file_tree_service.get_working_folder_path(
-                task, name=name, mode="preview", revision=revision
-            )
-            file_name = file_tree_service.get_working_file_name(
-                task, name=name, mode="preview", revision=revision
-            )
-        except MalformedFileTreeException:  # No template for preview files.
-            return {"folder_path": "", "file_name": ""}
-
-        return {"folder_path": folder_path, "file_name": file_name}
 
 
 class ClearAssignationResource(MethodView, ArgsMixin):

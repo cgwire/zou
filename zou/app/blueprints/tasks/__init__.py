@@ -14,7 +14,6 @@ from zou.app.blueprints.tasks.resources import (
     PersonRelatedTasksResource,
     PersonTasksResource,
     PersonDoneTasksResource,
-    ToReviewResource,
     TaskCommentsResource,
     TaskCommentResource,
     TaskPreviewsResource,
@@ -101,7 +100,6 @@ routes = [
         "/actions/tasks/<task_id>/comments/<comment_id>/preview-files/<preview_file_id>",
         AddExtraPreviewResource,
     ),
-    ("/actions/tasks/<task_id>/to-review", ToReviewResource),
     (
         "/actions/projects/<project_id>/task-types/<task_type_id>/shots/create-tasks",
         CreateShotTasksResource,

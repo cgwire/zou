@@ -3,7 +3,6 @@ Pydantic schemas for request body validation in the tasks blueprint.
 """
 
 from typing import List, Optional
-from uuid import UUID
 
 from pydantic import Field
 
@@ -16,18 +15,6 @@ class CommentPreviewSchema(BaseSchema):
     """
 
     revision: Optional[int] = Field(None, ge=0)
-
-
-class ToReviewSchema(BaseSchema):
-    """
-    Body for setting a task to review.
-    """
-
-    person_id: Optional[str] = None
-    comment: Optional[str] = ""
-    name: Optional[str] = "main"
-    revision: int = Field(1, ge=0)
-    change_status: Optional[bool] = True
 
 
 class UnassignTasksSchema(BaseSchema):

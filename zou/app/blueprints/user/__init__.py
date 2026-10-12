@@ -45,7 +45,6 @@ from zou.app.blueprints.user.resources import (
     TaskTimeSpentResource,
     TimeSpentsResource,
     HasSequenceSubscribedResource,
-    SequenceSubscriptionsResource,
     SequenceSubscribeResource,
     SequenceUnsubscribeResource,
 )
@@ -112,10 +111,6 @@ routes = [
     (
         "/data/user/entities/<sequence_id>/task-types/<task_type_id>/subscribed",
         HasSequenceSubscribedResource,
-    ),
-    (
-        "/data/user/projects/<project_id>/task-types/<task_type_id>/sequence-subscriptions",
-        SequenceSubscriptionsResource,
     ),
     (
         "/actions/user/sequences/<sequence_id>/task-types/<task_type_id>/subscribe",

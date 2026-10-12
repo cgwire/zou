@@ -785,17 +785,6 @@ def unsubscribe_from_sequence(sequence_id, task_type_id):
     )
 
 
-def get_sequence_subscriptions(project_id, task_type_id):
-    """
-    Return list of sequence ids for which the current user has subscriptions
-    for given project and task type.
-    """
-    current_user = persons_service.get_current_user()
-    return subscriptions_service.get_all_sequence_subscriptions(
-        current_user["id"], project_id, task_type_id
-    )
-
-
 def get_project_roles():
     """
     Return a dict mapping project ids to the explicit role the current user

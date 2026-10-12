@@ -390,8 +390,8 @@ class TokenTestCase(FileTreeTestCase):
 
     def test_a_field_the_templates_do_not_allow_falls_back_to_the_name(self):
         """
-        The field comes from the template, which comes from the client on
-        the set-file-tree route: only the four listed fields are read.
+        The field comes from the template, which a manager writes in the
+        project file tree: only the four listed fields are read.
         """
         self.assertEqual(
             file_tree_service.update_variable(

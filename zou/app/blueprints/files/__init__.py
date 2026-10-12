@@ -24,7 +24,6 @@ from zou.app.blueprints.files.resources import (
     EntityOutputFilesResource,
     ProjectOutputFilesResource,
     InstanceOutputFilesResource,
-    SetTreeResource,
     FileResource,
     WorkingFileFileResource,
     GuessFromPathResource,
@@ -105,7 +104,6 @@ routes = [
         "/data/working-files/<working_file_id>/file",
         WorkingFileFileResource,
     ),
-    ("/actions/projects/<project_id>/set-file-tree", SetTreeResource),
     (
         "/actions/working-files/<working_file_id>/comment",
         CommentWorkingFileResource,

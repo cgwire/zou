@@ -581,18 +581,6 @@ class SequenceUnsubscribeResource(MethodView):
         return "", 204
 
 
-class SequenceSubscriptionsResource(MethodView):
-
-    @swag_from("openapi/SequenceSubscriptionsResource_get.yml")
-    def get(self, project_id, task_type_id):
-        """
-        Get sequence subscriptions
-        """
-        return user_service.get_sequence_subscriptions(
-            project_id, task_type_id
-        )
-
-
 class TimeSpentsResource(MethodView, ArgsMixin):
     """
     Get all time spents for the current user.
