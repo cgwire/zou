@@ -219,7 +219,9 @@ jobs:
 
   publish-test:
     name: Publish to TestPyPI 📦
-    needs: test
+    # Unlike the release, the dev build does not wait for the tests: no
+    # workflow installs it, and a commit that fails them only leaves an
+    # unused build on TestPyPI.
     if: github.ref == 'refs/heads/main' && github.repository == 'cgwire/zou'
     runs-on: ubuntu-latest
     permissions:
