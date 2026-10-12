@@ -3,6 +3,7 @@ import re
 
 from sqlalchemy.exc import IntegrityError
 
+from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.comment import Comment
 from zou.app.models.department import Department
 from zou.app.models.notification import Notification
@@ -1157,9 +1158,38 @@ def get_comments_for_project(project_id, page=0, limit=None):
         .filter(Task.project_id == project_id)
         .order_by(Comment.updated_at.desc())
     )
-    return query_utils.get_paginated_results(
-        query, page, limit, relations=True
-    )
+    result = query_utils.get_paginated_results(query, page, limit)
+    comments = result["data"] if isinstance(result, dict) else result
+    _add_relation_ids_to_comments(comments)
+    return result
+
+
+def _add_relation_ids_to_comments(comments):
+    """
+    Same relation id lists as Comment.serialize(relations=True), read in
+    one query per relation for the whole list instead of five per comment.
+    """
+    comment_ids = [comment["id"] for comment in comments]
+    link_maps = {
+        "previews": _build_link_map_for_comments(
+            comment_ids, CommentPreviewLink.__table__, "preview_file"
+        ),
+        "mentions": _build_mention_map_for_comments(comment_ids),
+        "department_mentions": _build_department_mention_map_for_comments(
+            comment_ids
+        ),
+        "acknowledgements": _build_ack_map_for_comments(comment_ids),
+        "attachment_files": {},
+    }
+    for attachment_id, comment_id in db.session.query(
+        AttachmentFile.id, AttachmentFile.comment_id
+    ).filter(AttachmentFile.comment_id.in_(comment_ids)):
+        link_maps["attachment_files"].setdefault(str(comment_id), []).append(
+            str(attachment_id)
+        )
+    for comment in comments:
+        for attr, link_map in link_maps.items():
+            comment[attr] = link_map.get(comment["id"], [])
 
 
 def add_preview_file_to_comment(comment_id, person_id, task_id, revision=None):
