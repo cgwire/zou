@@ -225,6 +225,19 @@ class BaseMixin(object):
         return result
 
     @classmethod
+    def delete_all_by_no_commit(cls, *criterions, **kw):
+        """
+        Shorthand to delete data by using filters, without committing. The
+        loaded instances are expired, as the commit of delete_all_by does:
+        a many-to-many collection loaded earlier would still hold the
+        objects linked by the deleted rows, and the flush deleting its owner
+        would delete those rows again, find none and raise a StaleDataError.
+        """
+        result = cls.query.filter(*criterions).filter_by(**kw).delete()
+        db.session.expire_all()
+        return result
+
+    @classmethod
     def commit(cls):
         """
         Commit the pending changes, rolling back the session on failure so

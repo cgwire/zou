@@ -186,10 +186,12 @@ def remove_project(project_id):
         .all()
     )
     for preview_file in preview_files:
-        deletion_service.remove_preview_file(preview_file, force=True)
+        deletion_service.remove_preview_file(
+            preview_file, force=True, restore_main=False
+        )
 
     for task_id in deletion_service.get_task_ids(project_id=project_id):
-        deletion_service.remove_task(task_id, force=True)
+        deletion_service.remove_task(task_id, force=True, restore_main=False)
 
     budgets = Budget.get_all_by(project_id=project_id)
     for budget in budgets:

@@ -238,12 +238,18 @@ class EntityResource(BaseModelResource, EntityEventMixin):
         )
 
     def pre_delete(self, entity):
+        """
+        Delete the links of the entity, and the subscriptions of a sequence,
+        without committing: the deletion of the entity commits them along,
+        or its refusal by the database (tasks, versions, child entities)
+        rolls them back.
+        """
         if entity_types_service.is_sequence(entity):
-            Subscription.delete_all_by(entity_id=entity["id"])
-        EntityLink.delete_all_by(entity_in_id=entity["id"])
-        EntityLink.delete_all_by(entity_out_id=entity["id"])
-        EntityConceptLink.delete_all_by(entity_in_id=entity["id"])
-        EntityConceptLink.delete_all_by(entity_out_id=entity["id"])
+            Subscription.delete_all_by_no_commit(entity_id=entity["id"])
+        EntityLink.delete_all_by_no_commit(entity_in_id=entity["id"])
+        EntityLink.delete_all_by_no_commit(entity_out_id=entity["id"])
+        EntityConceptLink.delete_all_by_no_commit(entity_in_id=entity["id"])
+        EntityConceptLink.delete_all_by_no_commit(entity_out_id=entity["id"])
         return entity
 
     @jwt_required()

@@ -30,6 +30,7 @@ from zou.app.services import (
 from zou.app.exceptions import (
     WrongParameterException,
     AssetNotFoundException,
+    PreviewFileNotFoundException,
     ReplyNotFoundException,
 )
 
@@ -448,6 +449,8 @@ def new_comment(
             "comment_id": comment["id"],
             "task_id": task_id,
             "task_status_id": task_status_id,
+            "person_id": comment["person_id"],
+            "for_client": comment["for_client"],
         },
         project_id=task["project_id"],
     )
@@ -499,7 +502,7 @@ def move_comment_to_task(comment_id, target_task_id):
 
     events.emit(
         "comment:delete",
-        {"comment_id": str(comment.id)},
+        {"comment_id": str(comment.id), "task_id": str(source_task["id"])},
         project_id=source_task["project_id"],
     )
     events.emit(
@@ -508,6 +511,8 @@ def move_comment_to_task(comment_id, target_task_id):
             "comment_id": str(comment.id),
             "task_id": str(target_task["id"]),
             "task_status_id": comment_dict["task_status_id"],
+            "person_id": comment_dict["person_id"],
+            "for_client": comment_dict["for_client"],
         },
         project_id=target_task["project_id"],
     )
@@ -1121,6 +1126,28 @@ def get_comment(comment_id, relations=False):
     return get_comment_raw(comment_id).serialize(relations=relations)
 
 
+def get_comment_preview_file(task_id, comment_id, preview_file_id):
+    """
+    Return given preview file as a dict, provided it is attached to given
+    comment and both are on given task. Raise the not found exception of
+    the comment or of the preview otherwise: rights checked on a task say
+    nothing of the other ids a route receives along with it.
+    """
+    comment = get_comment_raw(comment_id)
+    if str(comment.object_id) != str(task_id):
+        raise CommentNotFoundException
+    preview_file = files_service.get_preview_file_raw(preview_file_id)
+    is_attached = (
+        CommentPreviewLink.query.filter_by(
+            comment=comment.id, preview_file=preview_file.id
+        ).first()
+        is not None
+    )
+    if str(preview_file.task_id) != str(task_id) or not is_attached:
+        raise PreviewFileNotFoundException
+    return preview_file.serialize()
+
+
 def get_comments_for_project(project_id, page=0, limit=None):
     """
     Return all comments for given project.
@@ -1190,7 +1217,14 @@ def add_preview_file_to_comment(comment_id, person_id, task_id, revision=None):
     if news is not None:
         news.update({"preview_file_id": preview_file.id})
     events.emit(
-        "comment:update", {"comment_id": comment.id}, project_id=project_id
+        "comment:update",
+        {
+            "comment_id": comment.id,
+            "task_id": comment.object_id,
+            "person_id": comment.person_id,
+            "for_client": comment.for_client,
+        },
+        project_id=project_id,
     )
     return preview_file.serialize(relations=True)
 
@@ -1303,7 +1337,12 @@ def copy_preview_file_in_another_one(
         comment_id = comment["id"]
         events.emit(
             "comment:update",
-            {"comment_id": comment_id},
+            {
+                "comment_id": comment_id,
+                "task_id": comment["object_id"],
+                "person_id": comment["person_id"],
+                "for_client": comment["for_client"],
+            },
             project_id=task["project_id"],
         )
         events.emit(

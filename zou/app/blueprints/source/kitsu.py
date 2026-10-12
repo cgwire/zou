@@ -111,9 +111,16 @@ class ImportKitsuCommentsResource(BaseImportKitsuResource):
 
     def emit_event(self, event_type, entry):
         task = tasks_service.get_task(str(entry["object_id"]))
+        # As stored: an imported update may leave the client flag out.
+        comment = Comment.get(entry["id"]).serialize()
         events.emit(
             f"comment:{event_type}",
-            {"comment_id": entry["id"]},
+            {
+                "comment_id": entry["id"],
+                "task_id": task["id"],
+                "person_id": comment["person_id"],
+                "for_client": comment["for_client"],
+            },
             project_id=task["project_id"],
         )
 

@@ -101,25 +101,30 @@ jobs:
           - 6379:6379
     steps:
       - uses: actions/checkout@v6
+      # The key follows the runner image: the cached debs match the
+      # packages it ships, and a new image downloads them again. Its
+      # version is only in the environment of the runner, out of reach of
+      # an expression.
+      - name: Read the runner image version
+        id: image
+        run: echo "version=$ImageOS-$ImageVersion" >> "$GITHUB_OUTPUT"
       - name: Cache APT packages
         uses: actions/cache@v5
-        id: apt-cache
         with:
           path: ~/apt-cache
-          key: apt-ffmpeg-${{ runner.os }}
+          key: apt-ffmpeg-${{ steps.image.outputs.version }}
+      # The image leaves the APT archives empty: the cache keeps every
+      # package the install downloads, the dependencies of ffmpeg
+      # included, and a hit installs them without the network.
       - name: Install ffmpeg
         run: |
-          if [ -d ~/apt-cache ] && ls ~/apt-cache/*.deb 1>/dev/null 2>&1; then
-            sudo dpkg -i ~/apt-cache/*.deb 2>/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -f --no-install-recommends)
+          if ls ~/apt-cache/*.deb > /dev/null 2>&1; then
+            sudo dpkg -i ~/apt-cache/*.deb
           else
             sudo apt-get update -qq
             sudo apt-get install -y --no-install-recommends ffmpeg
-            sudo apt-get autoclean -y
             mkdir -p ~/apt-cache
-            cp /var/cache/apt/archives/ffmpeg*.deb ~/apt-cache/ 2>/dev/null || true
-            cp /var/cache/apt/archives/libav*.deb ~/apt-cache/ 2>/dev/null || true
-            cp /var/cache/apt/archives/libsw*.deb ~/apt-cache/ 2>/dev/null || true
-            cp /var/cache/apt/archives/libpostproc*.deb ~/apt-cache/ 2>/dev/null || true
+            cp /var/cache/apt/archives/*.deb ~/apt-cache/
           fi
       - name: Set up Python 🐍
         uses: actions/setup-python@v6
@@ -219,7 +224,9 @@ jobs:
 
   publish-test:
     name: Publish to TestPyPI 📦
-    needs: test
+    # Unlike the release, the dev build does not wait for the tests: no
+    # workflow installs it, and a commit that fails them only leaves an
+    # unused build on TestPyPI.
     if: github.ref == 'refs/heads/main' && github.repository == 'cgwire/zou'
     runs-on: ubuntu-latest
     permissions:

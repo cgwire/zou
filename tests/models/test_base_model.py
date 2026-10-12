@@ -1,6 +1,7 @@
 # -*- coding: UTF-8 -*-
 from tests.base import ApiDBTestCase
 
+from zou.app.models.entity import Entity, EntityConceptLink
 from zou.app.models.project import Project
 
 
@@ -50,6 +51,29 @@ class BaseModelTestCase(ApiDBTestCase):
         self.assertIn("Second project", project_map)
         project_id_again = project_map["Second project"]
         self.assertEqual(project_id_again, project_id)
+
+    def test_delete_all_by_no_commit(self):
+        """
+        delete_all_by_no_commit() expires the loaded instances, as a commit
+        does: a collection still holding the objects linked by the deleted
+        rows would make the flush deleting its owner delete those rows
+        again, find none and fail.
+        """
+        asset = self.generate_fixture_asset()
+        concept = Entity.create(
+            name="Concept",
+            project_id=self.project.id,
+            entity_type_id=self.asset_type.id,
+            entity_concept_links=[asset],
+        )
+        concept_id = concept.id
+        self.assertEqual(len(concept.entity_concept_links), 1)
+        EntityConceptLink.delete_all_by_no_commit(entity_in_id=concept_id)
+        concept.delete()
+        self.assertIsNone(Entity.get(concept_id))
+        self.assertEqual(
+            EntityConceptLink.get_all_by(entity_in_id=concept_id), []
+        )
 
     def save(self):
         self.generate_fixture_project_status()
