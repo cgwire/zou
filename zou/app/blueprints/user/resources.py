@@ -10,6 +10,7 @@ from zou.app.services import (
     persons_service,
     projects_service,
     shots_service,
+    tasks_service,
     time_spents_service,
     permissions_service,
     user_service,
@@ -491,6 +492,8 @@ class TaskSubscribeResource(MethodView):
         """
         Subscribe to task
         """
+        task = tasks_service.get_task(task_id)
+        permissions_service.check_project_access(task["project_id"])
         return user_service.subscribe_to_task(task_id), 201
 
 
@@ -513,6 +516,9 @@ class TasksSubscribeResource(MethodView):
         Subscribe to several tasks
         """
         body = validation.validate_request_body(SubscribeTasksSchema)
+        for task_id in body.task_ids:
+            task = tasks_service.get_task(task_id)
+            permissions_service.check_project_access(task["project_id"])
         return [
             user_service.subscribe_to_task(task_id)
             for task_id in body.task_ids
@@ -551,6 +557,8 @@ class SequenceSubscribeResource(MethodView):
         """
         Subscribe to sequence
         """
+        sequence = shots_service.get_sequence(sequence_id)
+        permissions_service.check_project_access(sequence["project_id"])
         subscription = user_service.subscribe_to_sequence(
             sequence_id, task_type_id
         )
