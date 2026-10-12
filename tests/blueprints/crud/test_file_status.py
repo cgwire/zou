@@ -2,6 +2,7 @@ from tests.base import ApiDBTestCase
 
 from zou.app.models.file_status import FileStatus
 
+from zou.app.services import files_service
 from zou.app.utils import fields
 
 
@@ -44,3 +45,10 @@ class FileStatusTestCase(ApiDBTestCase):
         file_statuss = self.get("data/file-status")
         self.assertEqual(len(file_statuss), 2)
         self.delete_404(f"data/file-status/{fields.gen_uuid()}")
+
+    def test_update_default_file_status_drops_cached_default(self):
+        default = files_service.get_default_file_status()
+        self.put(f"data/file-status/{default['id']}", {"color": "#FF0000"})
+        self.assertEqual(
+            files_service.get_default_file_status()["color"], "#FF0000"
+        )

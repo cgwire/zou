@@ -2,12 +2,17 @@ from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
 from zou.app.models.project_status import ProjectStatus
+from zou.app.services import projects_service
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 
 class ProjectStatussResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, ProjectStatus)
+
+    def post_creation(self, instance):
+        projects_service.clear_project_status_cache()
+        return super().post_creation(instance)
 
     def check_read_permissions(self, options=None):
         return True
@@ -32,6 +37,14 @@ class ProjectStatussResource(BaseModelsResource):
 class ProjectStatusResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, ProjectStatus)
+
+    def post_update(self, instance_dict, data):
+        projects_service.clear_project_status_cache()
+        return instance_dict
+
+    def post_delete(self, instance_dict):
+        projects_service.clear_project_status_cache()
+        return instance_dict
 
     def check_read_permissions(self, instance):
         return True

@@ -1,6 +1,7 @@
 from tests.base import ApiDBTestCase
 from zou.app.models.project_status import ProjectStatus
 
+from zou.app.services import projects_service
 from zou.app.utils import fields
 
 
@@ -47,3 +48,19 @@ class ProjectStatusTestCase(ApiDBTestCase):
         project_statuss = self.get("data/project-status")
         self.assertEqual(len(project_statuss), 2)
         self.delete_404(f"data/project-status/{fields.gen_uuid()}")
+
+    def test_create_project_status_drops_cached_list(self):
+        self.assertEqual(len(projects_service.get_project_statuses()), 3)
+        self.post(
+            "data/project-status", {"name": "Archived", "color": "#000000"}
+        )
+        self.assertEqual(len(projects_service.get_project_statuses()), 4)
+
+    def test_update_open_status_drops_cached_open_status(self):
+        open_status = projects_service.get_open_status()
+        self.put(
+            f"data/project-status/{open_status['id']}", {"color": "#FF0000"}
+        )
+        self.assertEqual(
+            projects_service.get_open_status()["color"], "#FF0000"
+        )
