@@ -5,7 +5,10 @@ from flask_jwt_extended import create_access_token
 from tests.base import ApiDBTestCase
 
 from zou.app.services import auth_service
-from zou.app.utils.socket_auth import identity_from_socket_auth
+from zou.app.utils.socket_auth import (
+    identity_from_socket_auth,
+    load_socket_token,
+)
 
 
 class SocketAuthTestCase(ApiDBTestCase):
@@ -58,3 +61,23 @@ class SocketAuthTestCase(ApiDBTestCase):
         header, payload, signature = self.access_token.split(".")
         forged = ".".join([header, payload, signature[::-1]])
         self.assertIsNone(identity_from_socket_auth({"token": forged}))
+
+    def test_load_socket_token_makes_it_the_jwt_of_the_event(self):
+        from flask_jwt_extended import current_user, get_jwt_identity
+
+        with self.flask_app.test_request_context():
+            load_socket_token(self.access_token)
+            self.assertEqual(get_jwt_identity(), self.user["id"])
+            self.assertEqual(str(current_user.id), self.user["id"])
+
+    def test_load_socket_token_refuses_a_token_revoked_after_the_connection(
+        self,
+    ):
+        from flask_jwt_extended import decode_token
+        from flask_jwt_extended.exceptions import RevokedTokenError
+
+        jti = decode_token(self.access_token)["jti"]
+        auth_service.revoke_tokens(self.flask_app, jti)
+        with self.flask_app.test_request_context():
+            with self.assertRaises(RevokedTokenError):
+                load_socket_token(self.access_token)
