@@ -7,6 +7,7 @@ from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.comment import Comment
 from zou.app.models.news import News
 from zou.app.models.notification import Notification
+from zou.app.models.person import Person
 
 from zou.app.services import (
     comments_service,
@@ -1153,6 +1154,50 @@ class CommentReaderTestCase(TaskTestCase):
                 self.task_id, is_client=True
             )
         self.assertEqual(len(comments), 1)
+
+    def test_project_comments_cost_the_same_whatever_their_number(self):
+        """
+        Each comment is serialized with its relations: loaded one comment
+        at a time, they cost five queries per comment.
+        """
+        self.generate_fixture_comment()
+        with self.collect_statements() as statements:
+            comments_service.get_comments_for_project(self.project_id)
+        one_comment = len(statements)
+
+        for _ in range(5):
+            self.generate_fixture_comment()
+        with self.collect_statements() as statements:
+            comments = comments_service.get_comments_for_project(
+                self.project_id
+            )
+
+        self.assertEqual(len(comments), 6)
+        self.assertEqual(len(statements), one_comment)
+
+    def test_project_comments_carry_the_ids_of_their_relations(self):
+        """
+        Same payload as a comment serialized with its relations.
+        """
+        comment_id = self.generate_fixture_comment()["id"]
+        comment = Comment.get(comment_id)
+        comment.mentions = [Person.get(self.person_id)]
+        comment.acknowledgements = [Person.get(self.person_id)]
+        comment.department_mentions = [self.department]
+        comment.save()
+        comments_service.add_preview_file_to_comment(
+            comment_id, self.person_id, self.task_id
+        )
+        AttachmentFile.create(
+            name="ref", extension="png", size=1, comment_id=comment_id
+        )
+
+        (listed,) = comments_service.get_comments_for_project(self.project_id)
+
+        expected = Comment.get(comment_id).serialize(relations=True)
+        self.assertEqual(listed, expected)
+        for attr in ("previews", "mentions", "attachment_files"):
+            self.assertEqual(len(listed[attr]), 1)
 
     def test_a_preview_added_to_a_comment_takes_the_task_lock(self):
         # The next revision and position are read then written: two
