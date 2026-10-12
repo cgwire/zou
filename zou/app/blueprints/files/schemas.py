@@ -92,18 +92,6 @@ class NextRevisionSchema(BaseSchema):
     task_type_id: str = Field(..., min_length=1)
 
 
-class SetTreeSchema(BaseSchema):
-    """
-    Body for setting a project file tree.
-    """
-
-    tree_name: str = Field(
-        ...,
-        min_length=1,
-        description="The name of the tree to set is required.",
-    )
-
-
 class GuessFilePathSchema(BaseSchema):
     """
     Body for guessing file tree template from path.

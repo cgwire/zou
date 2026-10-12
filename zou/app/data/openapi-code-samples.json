@@ -7120,24 +7120,6 @@
         ]
       }
     },
-    "/actions/projects/{project_id}/set-file-tree": {
-      "post": {
-        "summary": "Set project file tree",
-        "description": "Define a template file to use for a given project. Template files are located on the server side and each template has a name for selection.",
-        "x-codeSamples": [
-          {
-            "lang": "bash",
-            "label": "curl",
-            "source": "curl -X POST \"http://api.example.com/actions/projects/a24a6ea4-ce75-4665-a070-57453082c25/set-file-tree\" \\\n  -H \"Authorization: Bearer YOUR_API_TOKEN\" \\\n  -H \"Accept: application/json\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"tree_name\": \"default\"\n}'"
-          },
-          {
-            "lang": "python",
-            "label": "Python",
-            "source": "import requests\n\nurl = \"http://api.example.com/actions/projects/a24a6ea4-ce75-4665-a070-57453082c25/set-file-tree\"\nheaders = {\n    \"Authorization\": \"Bearer YOUR_API_TOKEN\",\n    \"Accept\": \"application/json\",\n    \"Content-Type\": \"application/json\"\n}\nparams = {}\npayload = {\n    \"tree_name\": \"default\"\n}\n\nresponse = requests.post(\n    url,\n    headers=headers,\n    params=params,\n    json=payload\n)\n\nresponse.raise_for_status()\n\nif response.content:\n    print(response.json())"
-          }
-        ]
-      }
-    },
     "/data/projects/news": {
       "get": {
         "summary": "Get open projects news",
@@ -10804,24 +10786,6 @@
         ]
       }
     },
-    "/actions/tasks/{task_id}/to-review": {
-      "put": {
-        "summary": "Set task to review",
-        "description": "Create a new preview file entry and set the path from the disk. Optionally change the task status.",
-        "x-codeSamples": [
-          {
-            "lang": "bash",
-            "label": "curl",
-            "source": "curl -X PUT \"http://api.example.com/actions/tasks/a24a6ea4-ce75-4665-a070-57453082c25/to-review\" \\\n  -H \"Authorization: Bearer YOUR_API_TOKEN\" \\\n  -H \"Accept: application/json\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"person_id\": \"a24a6ea4-ce75-4665-a070-57453082c25\",\n  \"comment\": \"Please check this version\",\n  \"name\": \"main\",\n  \"revision\": 1,\n  \"change_status\": true\n}'"
-          },
-          {
-            "lang": "python",
-            "label": "Python",
-            "source": "import requests\n\nurl = \"http://api.example.com/actions/tasks/a24a6ea4-ce75-4665-a070-57453082c25/to-review\"\nheaders = {\n    \"Authorization\": \"Bearer YOUR_API_TOKEN\",\n    \"Accept\": \"application/json\",\n    \"Content-Type\": \"application/json\"\n}\nparams = {}\npayload = {\n    \"person_id\": \"a24a6ea4-ce75-4665-a070-57453082c25\",\n    \"comment\": \"Please check this version\",\n    \"name\": \"main\",\n    \"revision\": 1,\n    \"change_status\": true\n}\n\nresponse = requests.put(\n    url,\n    headers=headers,\n    params=params,\n    json=payload\n)\n\nresponse.raise_for_status()\n\nif response.content:\n    print(response.json())"
-          }
-        ]
-      }
-    },
     "/actions/tasks/{task_id}/set-main-preview": {
       "put": {
         "summary": "Set main preview from task",
@@ -11767,24 +11731,6 @@
             "lang": "python",
             "label": "Python",
             "source": "import requests\n\nurl = \"http://api.example.com/data/user/entities/a24a6ea4-ce75-4665-a070-57453082c25/task-types/b35b7fb5-df86-5776-b181-68564193d36/subscribed\"\nheaders = {\n    \"Authorization\": \"Bearer YOUR_API_TOKEN\",\n    \"Accept\": \"application/json\"\n}\nparams = {}\npayload = None\n\nresponse = requests.get(\n    url,\n    headers=headers,\n    params=params,\n    json=payload\n)\n\nresponse.raise_for_status()\n\nif response.content:\n    print(response.json())"
-          }
-        ]
-      }
-    },
-    "/data/user/projects/{project_id}/task-types/{task_type_id}/sequence-subscriptions": {
-      "get": {
-        "summary": "Get sequence subscriptions",
-        "description": "Retrieve list of sequence IDs to which the current user has subscribed for a given task type within a specific project.",
-        "x-codeSamples": [
-          {
-            "lang": "bash",
-            "label": "curl",
-            "source": "curl -X GET \"http://api.example.com/data/user/projects/a24a6ea4-ce75-4665-a070-57453082c25/task-types/b35b7fb5-df86-5776-b181-68564193d36/sequence-subscriptions\" \\\n  -H \"Authorization: Bearer YOUR_API_TOKEN\" \\\n  -H \"Accept: application/json\""
-          },
-          {
-            "lang": "python",
-            "label": "Python",
-            "source": "import requests\n\nurl = \"http://api.example.com/data/user/projects/a24a6ea4-ce75-4665-a070-57453082c25/task-types/b35b7fb5-df86-5776-b181-68564193d36/sequence-subscriptions\"\nheaders = {\n    \"Authorization\": \"Bearer YOUR_API_TOKEN\",\n    \"Accept\": \"application/json\"\n}\nparams = {}\npayload = None\n\nresponse = requests.get(\n    url,\n    headers=headers,\n    params=params,\n    json=payload\n)\n\nresponse.raise_for_status()\n\nif response.content:\n    print(response.json())"
           }
         ]
       }

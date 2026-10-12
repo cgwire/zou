@@ -179,38 +179,6 @@ class SubscriptionTestCase(NotificationsTestCase):
             {},
         )
 
-    def test_get_all_sequence_subscriptions(self):
-        """
-        Scoped three ways: the person, the task type, and the production
-        the sequence belongs to.
-        """
-        person_id = self.outsider_id
-        task_type_id = self.task_type_dict["id"]
-        subscriptions_service.subscribe_to_sequence(
-            person_id, self.sequence_dict["id"], task_type_id
-        )
-        # Same sequence, another task type.
-        subscriptions_service.subscribe_to_sequence(
-            person_id, self.sequence_dict["id"], str(self.task_type_layout.id)
-        )
-        # Same sequence, someone else.
-        subscriptions_service.subscribe_to_sequence(
-            self.assignee_id, self.sequence_dict["id"], task_type_id
-        )
-        # A sequence of another production, subscribed the same way.
-        self.generate_fixture_project_standard()
-        other_sequence = self.generate_fixture_sequence(
-            name="SQ99", project_id=self.project_standard.id
-        )
-        subscriptions_service.subscribe_to_sequence(
-            person_id, str(other_sequence.id), task_type_id
-        )
-
-        result = subscriptions_service.get_all_sequence_subscriptions(
-            person_id, str(self.project.id), task_type_id
-        )
-        self.assertEqual(result, [self.sequence_dict["id"]])
-
     def test_get_subscriptions_for_project(self):
         """
         Task subscriptions of one production. A sequence subscription

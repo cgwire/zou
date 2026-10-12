@@ -17,7 +17,6 @@ from zou.app.blueprints.files.schemas import (
     WorkingFileCommentSchema,
     NewOutputFileSchema,
     NextRevisionSchema,
-    SetTreeSchema,
     GuessFilePathSchema,
 )
 from zou.app.stores import file_store
@@ -25,7 +24,6 @@ from zou.app.services import (
     file_tree_service,
     files_service,
     persons_service,
-    projects_service,
     assets_service,
     tasks_service,
     entities_service,
@@ -39,8 +37,6 @@ from zou.app.exceptions import (
     MalformedFileTreeException,
     OutputTypeNotFoundException,
     PersonNotFoundException,
-    WrongFileTreeFileException,
-    WrongParameterException,
     WorkingFileNotFoundException,
 )
 
@@ -1035,28 +1031,6 @@ class FileResource(MethodView):
 
         permissions_service.check_project_access(project_id)
         return file_dict
-
-
-class SetTreeResource(MethodView, ArgsMixin):
-
-    @jwt_required()
-    @swag_from("openapi/SetTreeResource_post.yml")
-    def post(self, project_id):
-        """
-        Set project file tree
-        """
-        body = validation.validate_request_body(SetTreeSchema)
-
-        try:
-            permissions_service.check_manager_project_access(project_id)
-            tree = file_tree_service.get_tree_from_file(body.tree_name)
-            project = projects_service.update_project(
-                project_id, {"file_tree": tree}
-            )
-        except WrongFileTreeFileException:
-            raise WrongParameterException("Selected tree is not available")
-
-        return project
 
 
 class EntityWorkingFilesResource(MethodView, ArgsMixin):

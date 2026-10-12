@@ -124,13 +124,3 @@ class FileRoutesTestCase(ApiDBTestCase):
         self.assertEqual(
             alias, self.post("/data/entities/guess-from-path", body, 200)
         )
-
-    def test_set_file_tree(self):
-        result = self.post(
-            f"/actions/projects/{self.project.id}/set-file-tree",
-            {"tree_name": "default"},
-            200,
-        )
-        self.assertIsNotNone(result)
-        project = self.get(f"/data/projects/{self.project.id}")
-        self.assertIsNotNone(project.get("file_tree"))

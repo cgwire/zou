@@ -163,23 +163,6 @@ class TaskUpdateTestCase(TaskTestCase):
             str(wip_status.id),
         )
 
-    def test_publish_task(self):
-        events = self.capture_events("task:to-review")
-
-        tasks_service.task_to_review(
-            self.task.id, self.person.serialize(), "my comment"
-        )
-
-        self.assertEqual(
-            str(Task.get(self.task.id).task_status_id),
-            self.to_review_status_id,
-        )
-        self.assertEqual(len(events), 1)
-        self.assertEqual(
-            events[0]["previous_task_status_id"], self.open_status_id
-        )
-        self.assertEqual(events[0]["comment"], "my comment")
-
     def test_reset_tasks_data(self):
         """
         The command that rebuilds the fields derived from the comment
