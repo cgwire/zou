@@ -2,6 +2,8 @@ from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
 
+from zou.app.models.entity import EntityConceptLink
+from zou.app.services import concepts_service, subscriptions_service
 from zou.app.utils import fields
 
 
@@ -105,6 +107,91 @@ class EntityTestCase(ApiDBTestCase):
         entities = self.get("data/entities")
         self.assertEqual(len(entities), 2)
         self.delete_404(f"data/entities/{fields.gen_uuid()}")
+
+    def test_delete_entity_removes_its_links(self):
+        """
+        A deletion removes the links of the entity along with it: its
+        casting in a shot and the concept tagging it.
+        """
+        self.generate_fixture_shot()
+        shot_id = str(self.shot.id)
+        self.post(
+            "data/entity-links",
+            {"entity_in_id": shot_id, "entity_out_id": self.asset_1_id},
+        )
+        concept = concepts_service.create_concept(
+            self.project_id, "Concept", entity_concept_links=[self.asset_1_id]
+        )
+        self.delete(f"data/entities/{self.asset_1_id}")
+        self.get_404(f"data/entities/{self.asset_1_id}")
+        self.assertEqual(self.get("data/entity-links"), [])
+        self.assertEqual(
+            EntityConceptLink.get_all_by(entity_out_id=self.asset_1_id), []
+        )
+        self.get(f"data/entities/{shot_id}")
+        self.get(f"data/entities/{concept['id']}")
+
+    def test_delete_sequence_removes_its_subscriptions(self):
+        """
+        A deletion removes the subscriptions of a sequence along with it.
+        """
+        self.generate_fixture_sequence()
+        self.generate_fixture_task_type()
+        sequence_id = str(self.sequence.id)
+        task_type_id = str(self.task_type_animation.id)
+        subscriptions_service.subscribe_to_sequence(
+            self.user["id"], sequence_id, task_type_id
+        )
+        self.delete(f"data/entities/{sequence_id}")
+        self.get_404(f"data/entities/{sequence_id}")
+        self.assertFalse(
+            subscriptions_service.has_sequence_subscription(
+                self.user["id"], sequence_id, task_type_id
+            )
+        )
+
+    def test_refused_entity_deletion_keeps_its_links(self):
+        """
+        The links of an entity were removed and committed before the
+        database refused to delete the entity itself: a shot with a task
+        stayed, without its casting and its concept links.
+        """
+        self.generate_fixture_shot_task()
+        shot_id = str(self.shot.id)
+        self.post(
+            "data/entity-links",
+            {"entity_in_id": shot_id, "entity_out_id": self.asset_1_id},
+        )
+        concepts_service.create_concept(
+            self.project_id, "Concept", entity_concept_links=[shot_id]
+        )
+        self.spare_fixtures_from_rollbacks()
+        self.delete(f"data/entities/{shot_id}", 400)
+        self.get(f"data/entities/{shot_id}")
+        self.assertEqual(len(self.get("data/entity-links")), 1)
+        self.assertEqual(
+            len(EntityConceptLink.get_all_by(entity_out_id=shot_id)), 1
+        )
+
+    def test_refused_sequence_deletion_keeps_its_subscriptions(self):
+        """
+        The subscriptions of a sequence were removed and committed before
+        the database refused to delete the sequence, here for its shots.
+        """
+        self.generate_fixture_shot()
+        self.generate_fixture_task_type()
+        sequence_id = str(self.sequence.id)
+        task_type_id = str(self.task_type_animation.id)
+        subscriptions_service.subscribe_to_sequence(
+            self.user["id"], sequence_id, task_type_id
+        )
+        self.spare_fixtures_from_rollbacks()
+        self.delete(f"data/entities/{sequence_id}", 400)
+        self.assertTrue(
+            subscriptions_service.has_sequence_subscription(
+                self.user["id"], sequence_id, task_type_id
+            )
+        )
 
     def test_delete_entity_link(self):
         entity_link = {

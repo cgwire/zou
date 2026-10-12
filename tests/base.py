@@ -364,7 +364,7 @@ class ApiDBTestCase(
       project.team.append() is the common one: use
       projects_service.add_team_member().
 
-    Two more, about the request rather than the fixtures:
+    Three more, about the request rather than the fixtures:
 
     - Driving a service directly as a given role means opening a request
       context with that person's token, since the permission helpers read
@@ -381,6 +381,10 @@ class ApiDBTestCase(
       break setUp is to give a helper of your own a name this class
       already uses: setUp calls log_in itself, so redefining it with
       another signature raises before a single fixture exists.
+    - A request the database refuses rolls back the test transaction, and
+      every fixture with it: the session joins that transaction instead of
+      opening its own. Call spare_fixtures_from_rollbacks() first to check
+      what such a request leaves behind.
     """
 
     # Schema is created once per session in conftest.py.
@@ -432,6 +436,18 @@ class ApiDBTestCase(
             self._db_transaction.rollback()
         self._db_connection.close()
         self._db_session.remove()
+
+    def spare_fixtures_from_rollbacks(self):
+        """
+        Run the next transactions of the session in savepoints, as each
+        request runs in its own transaction outside the tests: a refused
+        write then rolls back its savepoint only, not the test transaction
+        holding every fixture. The commit first ends the transaction the
+        session has open, which is joined to the test one. The rollback of
+        release_db_transaction still discards everything.
+        """
+        db.session.commit()
+        self._db_connection.begin_nested()
 
     def generate_data(self, cls, number, **kwargs):
         """
