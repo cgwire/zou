@@ -25,6 +25,30 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
         tmp_dir = self.app.application.config["TMP_DIR"]
         return {name for name in os.listdir(tmp_dir) if name.endswith(".csv")}
 
+    def _assert_contractors(self, shots):
+        """
+        Each shot of shots.csv keeps the contractor of its own row. Three
+        of them are named S01 and get_shots sorts on the name only, so
+        their order is the one the database returns, which an index can
+        change: the first listed shot is not always the first row.
+        """
+        self.assertEqual(
+            sorted(
+                (
+                    shot["sequence_name"],
+                    shot["name"],
+                    shot["data"].get("contractor"),
+                )
+                for shot in shots
+            ),
+            [
+                ("SE01", "S01", "contractor 1"),
+                ("SE01", "S01", "contractor 1"),
+                ("SE01", "S02", "contractor 2"),
+                ("SE02", "S01", "contractor 2"),
+            ],
+        )
+
     def test_import_leaves_no_file_behind(self):
         path = f"/import/csv/projects/{self.project.id}/shots"
         self.project.update({"production_type": "tvshow"})
@@ -102,8 +126,7 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
             len(shots),
         )
 
-        shot = shots[0]
-        self.assertEqual(shot["data"].get("contractor", None), "contractor 1")
+        self._assert_contractors(shots)
 
         # nb_frames is derived from the imported frame range (all fixture
         # rows cover 100-frame ranges).
@@ -126,8 +149,8 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
         entity_types = EntityType.query.all()
         self.assertEqual(len(entity_types), 4)
 
-        shot = shots[0]
-        self.assertEqual(shot["data"].get("contractor", None), "contractor 1")
+        # The second file has no contractor column: the update keeps them.
+        self._assert_contractors(shots)
 
     def test_import_shots_assignations(self):
         db.session.add(

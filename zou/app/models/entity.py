@@ -198,6 +198,12 @@ class Entity(db.Model, BaseMixin, SerializerMixin):
             "entity_type_id",
             "status",
         ),
+        db.Index(
+            "ix_entity_entity_type_parent", "entity_type_id", "parent_id"
+        ),
+        db.Index(
+            "ix_entity_entity_type_project", "entity_type_id", "project_id"
+        ),
     )
 
     def set_entities_out(self, entity_ids):
