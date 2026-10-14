@@ -1,3 +1,7 @@
+import smtplib
+
+from unittest.mock import patch
+
 from tests.base import ApiDBTestCase
 
 from zou.app import app
@@ -62,18 +66,43 @@ class EmailsLineLengthTestCase(ApiDBTestCase):
 
 
 class EmailsSendFailureTestCase(ApiDBTestCase):
-    def test_smtp_failure_is_logged_as_error(self):
-        from unittest.mock import patch
-
+    def _send_with_failure(self, error):
+        """
+        Send an email while the SMTP layer raises given error and return
+        the records logged at warning level or above.
+        """
         with patch.dict(app.config, {"MAIL_ENABLED": True}):
-            with patch(
-                "zou.app.utils.emails.mail.send",
-                side_effect=Exception("SMTP down"),
-            ):
-                with self.assertLogs(app.logger, level="ERROR") as logs:
+            with patch("zou.app.utils.emails.mail.send", side_effect=error):
+                with self.assertLogs(app.logger, level="WARNING") as logs:
                     emails.send_email(
                         "Subject", "<p>Hello</p>", "recipient@example.com"
                     )
-        self.assertTrue(
-            any("recipient@example.com" in line for line in logs.output)
+        return logs.records
+
+    def test_smtp_failure_is_logged_as_error(self):
+        records = self._send_with_failure(Exception("SMTP down"))
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0].levelname, "ERROR")
+        self.assertIn("recipient@example.com", records[0].getMessage())
+        self.assertIsNotNone(records[0].exc_info)
+
+    def test_refused_recipient_is_logged_as_warning(self):
+        error = smtplib.SMTPRecipientsRefused(
+            {"recipient@example.com": (550, b"User unknown")}
         )
+        records = self._send_with_failure(error)
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0].levelname, "WARNING")
+        self.assertIn("recipient@example.com", records[0].getMessage())
+
+    def test_permanent_rejection_is_logged_as_warning(self):
+        error = smtplib.SMTPDataError(550, b"Mailbox unavailable")
+        records = self._send_with_failure(error)
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0].levelname, "WARNING")
+
+    def test_temporary_smtp_error_is_logged_as_error(self):
+        error = smtplib.SMTPDataError(451, b"Try again later")
+        records = self._send_with_failure(error)
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0].levelname, "ERROR")
