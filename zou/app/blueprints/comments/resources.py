@@ -11,6 +11,7 @@ from zou.app.exceptions import (
 from zou.app.utils import permissions, date_helpers, validation
 from zou.app.blueprints.comments.schemas import (
     BatchCommentItemSchema,
+    CopyClientCommentsSchema,
     CommentCreateSchema,
     CommentReplySchema,
     MoveCommentSchema,
@@ -433,4 +434,26 @@ class MoveCommentResource(MethodView):
             )
         return comments_service.move_comment_to_task(
             comment_id, body.target_task_id
+        )
+
+
+class CopyClientCommentsResource(MethodView):
+
+    @jwt_required()
+    @swag_from("openapi/CopyClientCommentsResource_post.yml")
+    def post(self, project_id):
+        """
+        Copy the last client comment of each given task
+        """
+        body = validation.validate_request_body(CopyClientCommentsSchema)
+        permissions_service.check_manager_project_access(project_id)
+        person = persons_service.get_current_user()
+        return (
+            comments_service.copy_last_client_comments(
+                project_id,
+                [str(task_id) for task_id in body.task_ids],
+                person["id"],
+                body.prefix,
+            ),
+            201,
         )
