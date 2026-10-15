@@ -194,7 +194,7 @@ Meilisearch is optional; the search routes answer nothing when `INDEXER_KEY` is 
 | `MAIL_DEFAULT_SENDER` | no-reply@your-studio.com | From address |
 | `MAIL_DEBUG` | false | Flask-Mail debug mode |
 | `MAIL_DEBUG_BODY` | false | Log the body of every email sent |
-| `MAIL_CHECK_DELIVERABILITY` | true | Check the domain of an email address when creating an account |
+| `MAIL_CHECK_DELIVERABILITY` | true | Check that the domain of a person's email accepts email (the CSV import and playlist invitations skip it). Off, a dotless domain, like `jdoe@studio`, is accepted too |
 
 ## Storage
 

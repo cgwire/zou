@@ -12,7 +12,7 @@ from zou.app.models.person import (
     normalize_country,
 )
 from zou.app.services import persons_service
-from zou.app.utils import permissions
+from zou.app.utils import auth, permissions
 
 from zou.app.utils.string import strtobool
 
@@ -45,7 +45,7 @@ class PersonsCsvImportResource(BaseCsvImportResource):
     def import_row(self, row):
         first_name = row["First Name"]
         last_name = row["Last Name"]
-        email = row["Email"]
+        email = (row["Email"] or "").strip()
         phone = row.get("Phone", None)
         role = row.get("Role", None)
         contract_type = row.get("Contract Type", None)
@@ -56,6 +56,14 @@ class PersonsCsvImportResource(BaseCsvImportResource):
         studio_name = row.get("Studio", None)
         departments_value = row.get("Departments", None)
         active = row.get("Active", None)
+
+        # The person routes refuse an email like "jdoe", which breaks the
+        # people search of Kitsu. No deliverability check: it would cost a
+        # DNS query per row.
+        try:
+            email = auth.validate_email(email, check_deliverability=False)
+        except auth.EmailNotValidException as e:
+            raise ValueError(f"Email: {email} ({e})")
 
         data = {"first_name": first_name, "last_name": last_name}
         if role:
