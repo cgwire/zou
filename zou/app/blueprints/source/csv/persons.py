@@ -62,8 +62,8 @@ class PersonsCsvImportResource(BaseCsvImportResource):
         # DNS query per row.
         try:
             email = auth.validate_email(email, check_deliverability=False)
-        except auth.EmailNotValidException:
-            raise ValueError(f"Email: {email}")
+        except auth.EmailNotValidException as e:
+            raise ValueError(f"Email: {email} ({e})")
 
         data = {"first_name": first_name, "last_name": last_name}
         if role:

@@ -162,6 +162,8 @@ class ImportCsvPersonsTestCase(ApiDBTestCase):
         for email in ["jdoe", "jdoe@", "jdoe@studio", ""]:
             error = self._upload_csv(self._csv(Email=email), code=400)
             self.assertIn(f"Email: {email}", error["message"])
+            # The reason of the validator, even for an empty cell.
+            self.assertIn("@-sign", error["message"])
             self.assertIsNone(Person.get_by(email=email))
 
     def test_import_persons_dotless_email_domain(self):
