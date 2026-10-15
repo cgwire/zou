@@ -64,6 +64,11 @@ class TasksResource(BaseModelsResource, ArgsMixin):
             )
         return query
 
+    def serialize_list(self, entries, relations=False):
+        return entities_service.blank_tasks_for_current_user(
+            super().serialize_list(entries, relations=relations)
+        )
+
     def build_filters(self, options):
         (
             many_join_filter,
@@ -172,6 +177,12 @@ class TaskResource(BaseModelResource, ArgsMixin):
     def check_read_permissions(self, task):
         permissions_service.check_project_access(task["project_id"])
         permissions_service.check_entity_access(task["entity_id"])
+
+    def clean_get_result(self, task):
+        # Runs after the read check resolved the role on the project.
+        if permissions.has_client_permissions():
+            return entities_service.blank_task_for_client(task)
+        return task
 
     @jwt_required()
     @swag_from("openapi/TaskResource_get.yml")

@@ -38,10 +38,11 @@ MINIMAL_PERSON_FILTER_FIELDS = [
     "is_guest",
 ]
 from zou.app.services import (
-    index_service,
-    persons_service,
-    organisation_service,
     cascade_deletion_service,
+    index_service,
+    organisation_service,
+    persons_service,
+    user_service,
 )
 from zou.app.utils import permissions, auth, date_helpers
 from zou.app.utils.fields import serialize_value
@@ -148,6 +149,12 @@ class PersonsResource(BaseModelsResource):
                     person.serialize_safe(relations=relations)
                     for person in query.all()
                 ]
+        elif permissions.has_client_permissions():
+            team_ids = user_service.get_client_team_person_ids()
+            return [
+                person.present_client()
+                for person in query.filter(Person.id.in_(team_ids)).all()
+            ]
         else:
             return [
                 person.present_minimal(relations=relations)
@@ -264,6 +271,11 @@ class PersonResource(BaseModelResource, ArgsMixin):
         self.protected_fields += ["password", "jti"]
 
     def check_read_permissions(self, instance):
+        if (
+            permissions.has_client_permissions()
+            and instance["id"] not in user_service.get_client_team_person_ids()
+        ):
+            raise permissions.PermissionDenied
         return True
 
     @jwt_required()
@@ -378,6 +390,8 @@ class PersonResource(BaseModelResource, ArgsMixin):
     def serialize_instance(self, instance, relations=True):
         if permissions.has_manager_permissions():
             return instance.serialize_safe(relations=relations)
+        elif permissions.has_client_permissions():
+            return instance.present_client()
         else:
             return instance.present_minimal(relations=relations)
 

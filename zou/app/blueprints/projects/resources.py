@@ -119,6 +119,8 @@ class ProductionTeamResource(MethodView, ArgsMixin):
         for person in projects_service.get_team_raw(project_id):
             if permissions.has_manager_permissions():
                 data = person.serialize_safe(relations=True)
+            elif permissions.has_client_permissions():
+                data = person.present_client()
             else:
                 data = person.present_minimal()
             data["project_role"] = role_map.get(str(person.id))
@@ -742,6 +744,7 @@ class ProductionTimeSpentsResource(MethodView):
         Get production time spents
         """
         permissions_service.check_project_access(project_id)
+        permissions_service.block_access_to_client()
         return time_spents_service.get_time_spents_for_project(project_id)
 
 
@@ -757,6 +760,7 @@ class ProductionMilestonesResource(MethodView):
         Get production milestones
         """
         permissions_service.check_project_access(project_id)
+        permissions_service.block_access_to_client()
         return schedule_service.get_milestones_for_project(project_id)
 
 
@@ -772,6 +776,7 @@ class ProductionScheduleItemsResource(MethodView):
         Get production schedule items
         """
         permissions_service.check_project_access(project_id)
+        permissions_service.block_access_to_client()
         permissions_service.block_access_to_vendor()
         return schedule_service.get_schedule_items(project_id)
 

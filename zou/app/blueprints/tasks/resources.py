@@ -572,6 +572,10 @@ class TaskFullResource(MethodView):
         )
         permissions_service.check_project_access(task["project_id"])
         permissions_service.check_entity_access(task["entity_id"])
+        if permissions.has_client_permissions():
+            task = entities_service.blank_task_for_client(task)
+            task["persons"] = []
+            task.pop("assigner", None)
         return task
 
 

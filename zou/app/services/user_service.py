@@ -69,6 +69,30 @@ def build_related_projects_filter():
         return Project.id.in_(["00000000-0000-0000-0000-000000000000"])
 
 
+def get_client_team_person_ids():
+    """
+    Return the ids of the people in the teams of the open projects the
+    current user, a client, is part of: the only people they meet.
+    """
+    return {
+        str(person.id)
+        for project in related_projects_raw()
+        for person in project.team
+    }
+
+
+def get_persons_for_client():
+    """
+    Return the people a client meets, as present_client dicts, by name.
+    """
+    persons = {
+        str(person.id): person.present_client()
+        for project in related_projects_raw()
+        for person in project.team
+    }
+    return sorted(persons.values(), key=lambda person: person["full_name"])
+
+
 def related_projects():
     """
     Return all projects related to current user: open projects of which the user
@@ -833,6 +857,13 @@ def get_context():
     task types, statuses, departments, persons, custom actions and the
     user's own filters. Scoped to the current user throughout.
     """
+    if permissions.has_client_permissions():
+        persons = get_persons_for_client()
+    elif permissions.has_manager_permissions():
+        persons = persons_service.get_persons()
+    else:
+        persons = persons_service.get_persons(minimal=True)
+
     context = {
         "asset_types": entity_types_service.get_asset_types(),
         "custom_actions": custom_actions_service.get_custom_actions(),
@@ -840,9 +871,7 @@ def get_context():
         "departments": departments_service.get_departments(),
         "studios": task_types_service.get_studios(),
         "notification_count": get_unread_notifications_count(),
-        "persons": persons_service.get_persons(
-            minimal=not permissions.has_manager_permissions()
-        ),
+        "persons": persons,
         "project_status": projects_service.get_project_statuses(),
         "project_roles": get_project_roles(),
         "projects": get_open_projects(),

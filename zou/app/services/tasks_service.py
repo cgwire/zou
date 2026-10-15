@@ -289,7 +289,7 @@ def _convert_rows_to_detailed_tasks(rows, relations=False):
     )
     if relations and task_dicts:
         attach_assignee_ids(task_dicts)
-    return task_dicts
+    return entities_service.blank_tasks_for_current_user(task_dicts)
 
 
 def attach_assignee_ids(task_dicts):
@@ -549,7 +549,9 @@ def get_tasks_for_entity_and_task_type(entity_id, task_type_id):
         .order_by(Task.name)
         .all()
     )
-    return Task.serialize_list(tasks)
+    return entities_service.blank_tasks_for_current_user(
+        Task.serialize_list(tasks)
+    )
 
 
 def get_tasks_for_project_and_task_type(project_id, task_type_id):

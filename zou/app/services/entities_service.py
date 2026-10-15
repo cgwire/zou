@@ -1,3 +1,5 @@
+import copy
+
 from sqlalchemy import cast, func, Text
 
 from zou.app.services import (
@@ -69,6 +71,28 @@ _TASK_FIELD_BUILDERS = {
     "difficulty": lambda row: row.difficulty,
     "nb_drawings": lambda row: row.nb_drawings,
     "data": lambda row: fields.serialize_value(row.data),
+}
+
+# The studio side of a task, blank: who works on it, how long it takes,
+# when it is due, how often it came back. A client never reads these; the
+# keys stay so that every consumer keeps the response shape.
+CLIENT_BLANK_TASK_VALUES = {
+    "assignees": [],
+    "assigner_id": None,
+    "completion_rate": 0,
+    "difficulty": None,
+    "done_date": None,
+    "due_date": None,
+    "duration": 0,
+    "end_date": None,
+    "estimation": 0,
+    "last_comment_date": None,
+    "nb_assets_ready": 0,
+    "nb_drawings": 0,
+    "priority": 0,
+    "real_start_date": None,
+    "retake_count": 0,
+    "start_date": None,
 }
 
 ENTITIES_AND_TASKS_TASK_FIELDS = [
@@ -394,6 +418,38 @@ def get_entity_links_for_project(
     return results
 
 
+def blank_task_for_client(task):
+    """
+    Return given task dict with its studio fields blank, for a client.
+    """
+    return {
+        **task,
+        **{
+            name: value
+            for name, value in CLIENT_BLANK_TASK_VALUES.items()
+            if name in task
+        },
+    }
+
+
+def blank_tasks_for_current_user(tasks):
+    """
+    Blank the studio fields of given task dicts when the current user is a
+    client on the resolved project, else return them as they are.
+    """
+    if not permissions.has_client_permissions():
+        return tasks
+    return [blank_task_for_client(task) for task in tasks]
+
+
+def _blank_builder(name):
+    """
+    Return a task field builder serving the blank value of given field to
+    every row, a copy each time so that no row shares a list.
+    """
+    return lambda row: copy.copy(CLIENT_BLANK_TASK_VALUES[name])
+
+
 def fetch_entity_task_map(
     apply_filters,
     subscription_map,
@@ -412,7 +468,9 @@ def fetch_entity_task_map(
     task_fields, so every view keeps its exact response shape; with
     compact=True the builder produces a list of values in the order of
     task_fields instead. With assigned_to=True only the tasks assigned to
-    the current user are fetched.
+    the current user are fetched. A client gets the studio fields blank,
+    as CLIENT_BLANK_TASK_VALUES lists them: the role is read here, so the
+    caller resolves the project before.
     """
     task_query = apply_filters(
         Task.query.join(Entity, Task.entity_id == Entity.id)
@@ -476,6 +534,13 @@ def fetch_entity_task_map(
         )
         for name in task_fields
     ]
+    if permissions.has_client_permissions():
+        client_builders = []
+        for name, builder in builders:
+            if name in CLIENT_BLANK_TASK_VALUES:
+                builder = _blank_builder(name)
+            client_builders.append((name, builder))
+        builders = client_builders
 
     if compact:
 

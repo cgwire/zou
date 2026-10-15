@@ -121,10 +121,13 @@ def check_belong_to_project(project_id):
         g.project_role = None
         return False
 
-    if current_user["role"] != "admin":
-        # Single slot: a request touching two projects keeps the role of the
-        # last access check performed, which always precedes the role checks
-        # it guards.
+    # Single slot: a request touching two projects keeps the role of the
+    # last access check performed, which always precedes the role checks
+    # it guards. An admin keeps the global role, so the slot is cleared
+    # rather than left to whatever was resolved before.
+    if current_user["role"] == "admin":
+        g.project_role = None
+    else:
         g.project_role = get_project_role(current_user["id"], project_id)
     return True
 
@@ -145,9 +148,12 @@ def has_project_access(project_id):
     Return true if current user is an admin or has a task assigned for this
     project.
     """
-    return permissions.has_admin_permissions() or check_belong_to_project(
-        project_id
-    )
+    if permissions.has_admin_permissions():
+        # An admin keeps the global role: clear the slot so that nothing
+        # resolved before applies.
+        g.project_role = None
+        return True
+    return check_belong_to_project(project_id)
 
 
 def check_project_access(project_id):
@@ -166,6 +172,16 @@ def block_access_to_vendor():
     Raise PermissionDenied if current user has a vendor role.
     """
     if permissions.has_vendor_permissions():
+        raise permissions.PermissionDenied
+    return True
+
+
+def block_access_to_client():
+    """
+    Raise PermissionDenied if current user has a client role. Call it after
+    the project access check, which resolves the role on the project.
+    """
+    if permissions.has_client_permissions():
         raise permissions.PermissionDenied
     return True
 
