@@ -394,6 +394,63 @@ def get_entity_links_for_project(
     return results
 
 
+def client_blank_task_values():
+    """
+    Return the studio side of a task, blank: who works on it, how long it
+    takes, when it is due, how often it came back. A client never reads
+    these; the keys stay so that every consumer keeps the response shape.
+    """
+    return {
+        "assignees": [],
+        "assigner_id": None,
+        "completion_rate": 0,
+        "difficulty": None,
+        "done_date": None,
+        "due_date": None,
+        "duration": 0,
+        "end_date": None,
+        "estimation": 0,
+        "last_comment_date": None,
+        "nb_assets_ready": 0,
+        "nb_drawings": 0,
+        "priority": 0,
+        "real_start_date": None,
+        "retake_count": 0,
+        "start_date": None,
+    }
+
+
+def blank_task_for_client(task):
+    """
+    Return given task dict with its studio fields blank, for a client.
+    """
+    blanks = client_blank_task_values()
+    return {
+        **task,
+        **{name: value for name, value in blanks.items() if name in task},
+    }
+
+
+def blank_tasks_for_current_user(tasks):
+    """
+    Blank the studio fields of given task dicts when the current user is a
+    client on the resolved project, else return them as they are.
+    """
+    if not permissions.has_client_permissions():
+        return tasks
+    return [blank_task_for_client(task) for task in tasks]
+
+
+def _blank_builder(value):
+    """
+    Return a task field builder yielding given blank value, a fresh list
+    per row when the value is a list.
+    """
+    if isinstance(value, list):
+        return lambda row: []
+    return lambda row: value
+
+
 def fetch_entity_task_map(
     apply_filters,
     subscription_map,
@@ -412,7 +469,9 @@ def fetch_entity_task_map(
     task_fields, so every view keeps its exact response shape; with
     compact=True the builder produces a list of values in the order of
     task_fields instead. With assigned_to=True only the tasks assigned to
-    the current user are fetched.
+    the current user are fetched. A client gets the studio fields blank,
+    as client_blank_task_values lists them: the role is read here, so the
+    caller resolves the project before.
     """
     task_query = apply_filters(
         Task.query.join(Entity, Task.entity_id == Entity.id)
@@ -476,6 +535,12 @@ def fetch_entity_task_map(
         )
         for name in task_fields
     ]
+    if permissions.has_client_permissions():
+        blanks = client_blank_task_values()
+        builders = [
+            (name, _blank_builder(blanks[name]) if name in blanks else builder)
+            for name, builder in builders
+        ]
 
     if compact:
 
