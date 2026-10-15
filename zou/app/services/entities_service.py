@@ -71,6 +71,28 @@ _TASK_FIELD_BUILDERS = {
     "data": lambda row: fields.serialize_value(row.data),
 }
 
+# The studio side of a task, blank: who works on it, how long it takes,
+# when it is due, how often it came back. A client never reads these; the
+# keys stay so that every consumer keeps the response shape.
+CLIENT_BLANK_TASK_VALUES = {
+    "assignees": [],
+    "assigner_id": None,
+    "completion_rate": 0,
+    "difficulty": None,
+    "done_date": None,
+    "due_date": None,
+    "duration": 0,
+    "end_date": None,
+    "estimation": 0,
+    "last_comment_date": None,
+    "nb_assets_ready": 0,
+    "nb_drawings": 0,
+    "priority": 0,
+    "real_start_date": None,
+    "retake_count": 0,
+    "start_date": None,
+}
+
 ENTITIES_AND_TASKS_TASK_FIELDS = [
     "id",
     "estimation",
@@ -394,40 +416,17 @@ def get_entity_links_for_project(
     return results
 
 
-def client_blank_task_values():
-    """
-    Return the studio side of a task, blank: who works on it, how long it
-    takes, when it is due, how often it came back. A client never reads
-    these; the keys stay so that every consumer keeps the response shape.
-    """
-    return {
-        "assignees": [],
-        "assigner_id": None,
-        "completion_rate": 0,
-        "difficulty": None,
-        "done_date": None,
-        "due_date": None,
-        "duration": 0,
-        "end_date": None,
-        "estimation": 0,
-        "last_comment_date": None,
-        "nb_assets_ready": 0,
-        "nb_drawings": 0,
-        "priority": 0,
-        "real_start_date": None,
-        "retake_count": 0,
-        "start_date": None,
-    }
-
-
 def blank_task_for_client(task):
     """
     Return given task dict with its studio fields blank, for a client.
     """
-    blanks = client_blank_task_values()
     return {
         **task,
-        **{name: value for name, value in blanks.items() if name in task},
+        **{
+            name: value
+            for name, value in CLIENT_BLANK_TASK_VALUES.items()
+            if name in task
+        },
     }
 
 
@@ -470,7 +469,7 @@ def fetch_entity_task_map(
     compact=True the builder produces a list of values in the order of
     task_fields instead. With assigned_to=True only the tasks assigned to
     the current user are fetched. A client gets the studio fields blank,
-    as client_blank_task_values lists them: the role is read here, so the
+    as CLIENT_BLANK_TASK_VALUES lists them: the role is read here, so the
     caller resolves the project before.
     """
     task_query = apply_filters(
@@ -536,9 +535,15 @@ def fetch_entity_task_map(
         for name in task_fields
     ]
     if permissions.has_client_permissions():
-        blanks = client_blank_task_values()
         builders = [
-            (name, _blank_builder(blanks[name]) if name in blanks else builder)
+            (
+                name,
+                (
+                    _blank_builder(CLIENT_BLANK_TASK_VALUES[name])
+                    if name in CLIENT_BLANK_TASK_VALUES
+                    else builder
+                ),
+            )
             for name, builder in builders
         ]
 
