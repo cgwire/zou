@@ -1,3 +1,5 @@
+import copy
+
 from sqlalchemy import cast, func, Text
 
 from zou.app.services import (
@@ -440,14 +442,12 @@ def blank_tasks_for_current_user(tasks):
     return [blank_task_for_client(task) for task in tasks]
 
 
-def _blank_builder(value):
+def _blank_builder(name):
     """
-    Return a task field builder yielding given blank value, a fresh list
-    per row when the value is a list.
+    Return a task field builder serving the blank value of given field to
+    every row, a copy each time so that no row shares a list.
     """
-    if isinstance(value, list):
-        return lambda row: []
-    return lambda row: value
+    return lambda row: copy.copy(CLIENT_BLANK_TASK_VALUES[name])
 
 
 def fetch_entity_task_map(
@@ -535,14 +535,12 @@ def fetch_entity_task_map(
         for name in task_fields
     ]
     if permissions.has_client_permissions():
+        # The studio fields serve their blank value, the others stay.
         builders = [
             (
-                name,
-                (
-                    _blank_builder(CLIENT_BLANK_TASK_VALUES[name])
-                    if name in CLIENT_BLANK_TASK_VALUES
-                    else builder
-                ),
+                (name, _blank_builder(name))
+                if name in CLIENT_BLANK_TASK_VALUES
+                else (name, builder)
             )
             for name, builder in builders
         ]
