@@ -1,8 +1,11 @@
 import os
 import tempfile
 
+from unittest import mock
+
 from tests.base import ApiDBTestCase
 
+from zou.app import config
 from zou.app.models.person import Person
 from zou.app.models.studio import Studio
 
@@ -152,6 +155,7 @@ class ImportCsvPersonsTestCase(ApiDBTestCase):
     def test_import_persons_invalid_country(self):
         self._upload_csv(self._csv(Country="France"), code=400)
 
+    @mock.patch.object(config, "MAIL_CHECK_DELIVERABILITY", True)
     def test_import_persons_invalid_email(self):
         # Kitsu indexes the domain of every email: one without it broke the
         # people search for every manager of the studio.
@@ -159,6 +163,13 @@ class ImportCsvPersonsTestCase(ApiDBTestCase):
             error = self._upload_csv(self._csv(Email=email), code=400)
             self.assertIn(f"Email: {email}", error["message"])
             self.assertIsNone(Person.get_by(email=email))
+
+    def test_import_persons_dotless_email_domain(self):
+        # Refused above, a dotless domain passes on an instance that does not
+        # check deliverability, like the person routes.
+        with mock.patch.object(config, "MAIL_CHECK_DELIVERABILITY", False):
+            self._upload_csv(self._csv(Email="jdoe@studio"))
+        self.assertIsNotNone(Person.get_by(email="jdoe@studio"))
 
     def test_import_persons_email_is_stripped(self):
         self._upload_csv(self._csv(Email=" test.user@gmail.com "))

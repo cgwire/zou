@@ -1,8 +1,11 @@
+from unittest import mock
+
 import flask_bcrypt as bcrypt
 import pytest
 
 from tests.base import ApiDBTestCase
 
+from zou.app import config
 from zou.app.utils import auth
 
 # These assert on the hashing itself, so they need the real bcrypt.
@@ -42,6 +45,22 @@ class AuthUtilsTestCase(ApiDBTestCase):
         self.assertRaises(
             auth.EmailNotValidException, auth.validate_email, "johngmail.com"
         )
+
+    def test_validate_email_dotless_domain(self):
+        # A dotless domain only reaches a local mail server: it is refused
+        # unless the instance turned the deliverability check off.
+        with mock.patch.object(config, "MAIL_CHECK_DELIVERABILITY", True):
+            self.assertRaises(
+                auth.EmailNotValidException,
+                auth.validate_email,
+                "jdoe@studio",
+                check_deliverability=False,
+            )
+        with mock.patch.object(config, "MAIL_CHECK_DELIVERABILITY", False):
+            self.assertEqual(auth.validate_email("jdoe@studio"), "jdoe@studio")
+            self.assertRaises(
+                auth.EmailNotValidException, auth.validate_email, "jdoe"
+            )
 
     def test_validate_password(self):
         self.assertRaises(
