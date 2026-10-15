@@ -62,7 +62,7 @@ class CheckAuthTestCase(AuthTestCase):
             WrongUserException,
             auth_service.check_auth,
             app,
-            "john.doe@yahoo.com",
+            "nobody@example.com",
             "secretpassword",
         )
 

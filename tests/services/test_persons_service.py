@@ -246,14 +246,14 @@ class PersonListTestCase(PersonsTestCase):
             first_name="Alice",
             last_name="Zulu",
             desktop_login="alice.zulu",
-            email="alice.zulu@gmail.com",
+            email="alice.zulu@example.com",
         )
         # A third John, so the last name is what breaks the tie.
         self.generate_fixture_person(
             first_name="John",
             last_name="Aaa",
             desktop_login="john.aaa",
-            email="john.aaa@gmail.com",
+            email="john.aaa@example.com",
         )
         self.assertEqual(
             [
@@ -379,7 +379,7 @@ class PersonWriteTestCase(PersonsTestCase):
         # unique, so an empty lookup used to return the first account
         # without a desktop login.
         persons_service.create_person(
-            "no.login@gmail.com",
+            "no.login@example.com",
             auth.encrypt_password("passwordhash"),
             "No",
             "Login",
@@ -409,7 +409,7 @@ class PersonWriteTestCase(PersonsTestCase):
 
     def test_create_person(self):
         person = persons_service.create_person(
-            "john.doe2@gmail.com",
+            "john.doe2@example.com",
             auth.encrypt_password("passwordhash"),
             "John",
             "Doe",
@@ -425,17 +425,17 @@ class PersonWriteTestCase(PersonsTestCase):
         it, and the email is the login.
         """
         persons_service.create_person(
-            " john.doe3@gmail.com \n",
+            " john.doe3@example.com \n",
             auth.encrypt_password("passwordhash"),
             "John",
             "Doe",
         )
-        person = persons_service.get_person_by_email("john.doe3@gmail.com")
+        person = persons_service.get_person_by_email("john.doe3@example.com")
         self.assertEqual(person["first_name"], "John")
 
     def test_create_person_with_an_empty_department(self):
         person = persons_service.create_person(
-            "john.doe4@gmail.com",
+            "john.doe4@example.com",
             auth.encrypt_password("passwordhash"),
             "John",
             "Doe",

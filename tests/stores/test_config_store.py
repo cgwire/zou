@@ -69,7 +69,7 @@ class ConfigStoreTestCase(ApiDBTestCase):
         data = {
             "first_name": "Test",
             "last_name": "User",
-            "email": "test.limit@gmail.com",
+            "email": "test.limit@example.com",
         }
         resp = self.post("data/persons", data, 400)
         self.assertEqual(resp["data"]["limit"], 1)
@@ -82,7 +82,7 @@ class ConfigStoreTestCase(ApiDBTestCase):
         data = {
             "first_name": "Test",
             "last_name": "User",
-            "email": "test.limit@gmail.com",
+            "email": "test.limit@example.com",
         }
         resp = self.post("data/persons", data, 201)
         self.assertEqual(resp["first_name"], "Test")

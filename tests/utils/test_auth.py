@@ -41,7 +41,7 @@ class AuthUtilsTestCase(ApiDBTestCase):
 
     def test_validate_email(self):
         self.assertEqual(
-            auth.validate_email("john@gmail.com"), "john@gmail.com"
+            auth.validate_email("john@example.com"), "john@example.com"
         )
         self.assertRaises(
             auth.EmailNotValidException, auth.validate_email, "johngmail.com"

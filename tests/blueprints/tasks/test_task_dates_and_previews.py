@@ -178,7 +178,7 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
         foreign_person = Person.create(
             first_name="Foreign",
             last_name="Artist",
-            email="foreign.artist@gmail.com",
+            email="foreign.artist@example.com",
         )
         for name, start_date, due_date in [
             ("Foreign task", "2017-02-20", "2017-02-28"),
@@ -263,7 +263,7 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
         closed_person = Person.create(
             first_name="Closed",
             last_name="Artist",
-            email="closed.artist@gmail.com",
+            email="closed.artist@example.com",
         )
         Task.create(
             name="Closed task",

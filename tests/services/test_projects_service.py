@@ -433,7 +433,7 @@ class ProjectServiceTestCase(ApiDBTestCase):
             first_name="Alice",
             last_name="Zulu",
             desktop_login="alice.zulu",
-            email="alice.zulu@gmail.com",
+            email="alice.zulu@example.com",
         )
         projects_service.add_team_member(self.project.id, here.id)
         projects_service.add_team_member(

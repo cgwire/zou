@@ -510,7 +510,7 @@ class MentionTestCase(CommentsTestCase):
         production must not be pulled into its comments.
         """
         outsider = self.generate_fixture_person(
-            first_name="Alan", last_name="Smithee", email="alan@gmail.com"
+            first_name="Alan", last_name="Smithee", email="alan@example.com"
         )
         self.assertEqual(
             comments_service.get_comment_mentions(

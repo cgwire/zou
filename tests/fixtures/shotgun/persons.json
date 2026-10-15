@@ -1,6 +1,6 @@
 [
   {
-    "email": "johndoe@gmail.com",
+    "email": "johndoe@example.com",
     "firstname": "John",
     "lastname": "Doe",
     "id": 1,
@@ -8,7 +8,7 @@
     "type": "HumanUser"
   },
   {
-    "email": "ema.peel@gmail.com",
+    "email": "ema.peel@example.com",
     "firstname": "Ema",
     "lastname": "Peel",
     "id": 2,

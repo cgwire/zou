@@ -876,7 +876,7 @@ class TaskListingTestCase(TaskTestCase):
         self.assertEqual(len(tasks["data"]), 1)
 
         jane = self.generate_fixture_person(
-            "Jane", "Doe", "jane.doe", "jane.doe@gmail.com"
+            "Jane", "Doe", "jane.doe", "jane.doe@example.com"
         )
         data = {"person_id": jane.id}
         self.put(f"/actions/tasks/{task_id}/assign", data, 200)
