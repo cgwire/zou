@@ -857,6 +857,13 @@ def get_context():
     task types, statuses, departments, persons, custom actions and the
     user's own filters. Scoped to the current user throughout.
     """
+    if permissions.has_client_permissions():
+        persons = get_persons_for_client()
+    elif permissions.has_manager_permissions():
+        persons = persons_service.get_persons()
+    else:
+        persons = persons_service.get_persons(minimal=True)
+
     context = {
         "asset_types": entity_types_service.get_asset_types(),
         "custom_actions": custom_actions_service.get_custom_actions(),
@@ -864,13 +871,7 @@ def get_context():
         "departments": departments_service.get_departments(),
         "studios": task_types_service.get_studios(),
         "notification_count": get_unread_notifications_count(),
-        "persons": (
-            get_persons_for_client()
-            if permissions.has_client_permissions()
-            else persons_service.get_persons(
-                minimal=not permissions.has_manager_permissions()
-            )
-        ),
+        "persons": persons,
         "project_status": projects_service.get_project_statuses(),
         "project_roles": get_project_roles(),
         "projects": get_open_projects(),
