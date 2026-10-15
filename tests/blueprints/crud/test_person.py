@@ -1,7 +1,11 @@
 # -*- coding: UTF-8 -*-
 import unittest
 
+from unittest import mock
+
 from tests.base import ApiDBTestCase
+from tests.fake_dns import NO_MX_DOMAIN
+from zou.app import config
 from zou.app.models.department import Department
 from zou.app.models.person import (
     Person,
@@ -193,6 +197,17 @@ class PersonTestCase(PersonFixtureTestCase):
         }
         response = self.post("data/persons", data, 400)
         self.assertIn("Email already in use", response["message"])
+
+    @mock.patch.object(config, "MAIL_CHECK_DELIVERABILITY", True)
+    def test_create_person_with_email_domain_without_mx(self):
+        data = {
+            "first_name": "John",
+            "last_name": "NoMx",
+            "email": f"john.nomx@{NO_MX_DOMAIN}",
+        }
+        response = self.post("data/persons", data, 400)
+        self.assertIn("does not accept email", response["message"])
+        self.assertIsNone(Person.get_by(email=data["email"]))
 
     def test_create_bot_can_share_email_with_person(self):
         data = {

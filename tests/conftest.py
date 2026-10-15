@@ -5,6 +5,7 @@ import flask_bcrypt
 import pytest
 from sqlalchemy_utils import create_database, database_exists
 
+from tests.fake_dns import FakeDnsResolver
 from tests.fake_stores import seed_fake_stores
 
 # Must be set before zou.app is imported.
@@ -57,6 +58,16 @@ def _skip_bcrypt_check(request, monkeypatch):
             "flask_bcrypt.check_password_hash",
             lambda *args, **kwargs: True,
         )
+
+
+@pytest.fixture(autouse=True)
+def _fake_dns_resolver(monkeypatch):
+    """
+    Keep email deliverability checks off the network.
+    """
+    monkeypatch.setattr(
+        "dns.resolver.get_default_resolver", lambda: FakeDnsResolver()
+    )
 
 
 def _is_xdist_controller(config):
