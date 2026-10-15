@@ -1389,3 +1389,47 @@ def copy_preview_file_in_another_one(
         )
 
     return preview_file_to_update
+
+
+def get_last_client_comments(project_id, task_ids):
+    """
+    Return the last comment written by a client of the project on each given
+    task of the project, in one query. The client is the one whose project
+    role, or global role without it, is client.
+    """
+    return [
+        comment.serialize()
+        for comment in Comment.query.join(Task, Comment.object_id == Task.id)
+        .join(Person, Comment.person_id == Person.id)
+        .outerjoin(
+            ProjectPersonLink,
+            and_(
+                ProjectPersonLink.person_id == Person.id,
+                ProjectPersonLink.project_id == Task.project_id,
+            ),
+        )
+        .filter(Task.project_id == project_id)
+        .filter(Comment.object_id.in_(task_ids))
+        .filter(func.coalesce(ProjectPersonLink.role, Person.role) == "client")
+        .order_by(Comment.object_id, Comment.created_at.desc())
+        .distinct(Comment.object_id)
+        .all()
+    ]
+
+
+def copy_last_client_comments(project_id, task_ids, person_id, prefix=""):
+    """
+    Copy the last client comment of each given task into a new comment of
+    given person, so the artists who do not see the client comments get it.
+    The task keeps its status. A task without client comment is skipped.
+    """
+    result = []
+    for client_comment in get_last_client_comments(project_id, task_ids):
+        task = tasks_service.get_task(client_comment["object_id"])
+        text = client_comment["text"]
+        if prefix:
+            text = f"{prefix}\n\n{text}"
+        result.append(
+            create_comment(person_id, task["id"], task["task_status_id"], text)
+        )
+    return result

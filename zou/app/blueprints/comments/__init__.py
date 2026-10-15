@@ -8,6 +8,7 @@ from zou.app.blueprints.comments.resources import (
     AttachmentResource,
     CommentTaskResource,
     CommentManyTasksResource,
+    CopyClientCommentsResource,
     DownloadAttachmentResource,
     MoveCommentResource,
     ProjectAttachmentFiles,
@@ -48,6 +49,10 @@ routes = [
     (
         "/actions/projects/<project_id>/tasks/comment-many",
         CommentManyTasksResource,
+    ),
+    (
+        "/actions/projects/<project_id>/tasks/copy-client-comments",
+        CopyClientCommentsResource,
     ),
 ]
 

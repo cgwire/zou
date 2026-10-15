@@ -6,6 +6,7 @@ from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.comment import Comment
 from zou.app.models.notification import Notification
 from zou.app.models.person import Person
+from zou.app.models.project import Project
 from zou.app.models.task import Task
 from zou.app.services import (
     comments_service,
@@ -868,3 +869,132 @@ class TaskCommentRouteTestCase(CommentTestCase):
         comment = self.get(path)
         self.assertEqual(comment["id"], self.comment["id"])
         self.assertEqual(comment["text"], "first comment")
+
+
+class CopyClientCommentsTestCase(CommentTestCase):
+    """
+    Artists do not see the client comments: a manager copies the last one
+    of each selected task into a studio comment.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_user_manager()
+        self.generate_fixture_user_supervisor()
+        project_id = str(self.project.id)
+        for person in (self.user_manager, self.user_supervisor):
+            projects_service.add_team_member(project_id, person["id"])
+        projects_service.add_team_member(project_id, self.user_client["id"])
+        self.path = (
+            f"/actions/projects/{self.project.id}/tasks/copy-client-comments"
+        )
+
+    def new_comment(self, task_id, person_id, text, created_at):
+        return comments_service.new_comment(
+            task_id,
+            self.task_status.id,
+            person_id,
+            text,
+            created_at=created_at,
+        )
+
+    def copy(self, task_ids, code=201, **data):
+        return self.post(
+            self.path, {"task_ids": [str(t) for t in task_ids], **data}, code
+        )
+
+    def test_copy_the_last_client_comment(self):
+        self.new_comment(
+            self.task.id, self.user_client["id"], "Old", "2026-01-01 10:00:00"
+        )
+        self.new_comment(
+            self.task.id, self.user_client["id"], "Last", "2026-01-02 10:00:00"
+        )
+        # a studio answer after the client keeps the client one copied
+        self.new_comment(
+            self.task.id, self.user["id"], "Studio", "2026-01-03 10:00:00"
+        )
+        self.log_in_manager()
+        result = self.copy([self.task.id])
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["text"], "Last")
+        self.assertEqual(result[0]["person_id"], self.user_manager["id"])
+        self.assertEqual(
+            result[0]["task_status_id"], str(self.task.task_status_id)
+        )
+        self.assertFalse(result[0]["for_client"])
+        # the artists now read the copy, the managers both comments
+        artist_texts = [
+            c["text"] for c in comments_service.get_comments(self.task.id)
+        ]
+        self.assertEqual(artist_texts.count("Last"), 1)
+        manager_texts = [
+            c["text"]
+            for c in comments_service.get_comments(
+                self.task.id, is_manager=True
+            )
+        ]
+        self.assertEqual(manager_texts.count("Last"), 2)
+
+    def test_copy_with_a_prefix(self):
+        self.new_comment(
+            self.task.id, self.user_client["id"], "Redo", "2026-01-01 10:00:00"
+        )
+        self.log_in_manager()
+        result = self.copy([self.task.id], prefix="Client feedback:")
+        self.assertEqual(result[0]["text"], "Client feedback:\n\nRedo")
+
+    def test_skip_a_task_without_client_comment(self):
+        sibling = self._make_sibling_task()
+        self.new_comment(
+            sibling.id, self.user_client["id"], "Redo", "2026-01-01 10:00:00"
+        )
+        self.log_in_manager()
+        result = self.copy([self.task.id, sibling.id])
+        self.assertEqual([c["object_id"] for c in result], [str(sibling.id)])
+
+    def test_project_role_makes_a_client(self):
+        projects_service.update_team_member_role(
+            str(self.project.id), self.user_supervisor["id"], "client"
+        )
+        self.new_comment(
+            self.task.id,
+            self.user_supervisor["id"],
+            "From the client",
+            "2026-01-01 10:00:00",
+        )
+        self.log_in_manager()
+        result = self.copy([self.task.id])
+        self.assertEqual(result[0]["text"], "From the client")
+
+    def test_ignore_a_task_of_another_project(self):
+        self.new_comment(
+            self.task.id, self.user_client["id"], "Redo", "2026-01-01 10:00:00"
+        )
+        other_project = Project.create(
+            name="Other project", project_status_id=self.open_status.id
+        )
+        self.log_in_manager()
+        self.post(
+            f"/actions/projects/{other_project.id}/tasks/copy-client-comments",
+            {"task_ids": [str(self.task.id)]},
+            403,
+        )
+        projects_service.add_team_member(
+            str(other_project.id), self.user_manager["id"]
+        )
+        result = self.post(
+            f"/actions/projects/{other_project.id}/tasks/copy-client-comments",
+            {"task_ids": [str(self.task.id)]},
+            201,
+        )
+        self.assertEqual(result, [])
+
+    def test_supervisor_cannot_copy(self):
+        self.log_in_supervisor()
+        self.copy([self.task.id], 403)
+
+    def test_refuse_a_malformed_body(self):
+        self.log_in_manager()
+        self.post(self.path, {"task_ids": "not a list"}, 400)
+        self.post(self.path, {"task_ids": ["not-a-uuid"]}, 400)

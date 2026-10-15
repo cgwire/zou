@@ -12,6 +12,11 @@ from pydantic import Field, field_validator
 from zou.app.utils.validation import BaseSchema
 
 
+class CopyClientCommentsSchema(BaseSchema):
+    task_ids: List[UUID] = Field(..., min_length=1)
+    prefix: str = ""
+
+
 class BatchCommentItemSchema(BaseSchema):
     """
     One entry of the batch comment bodies. An entry missing its task,
