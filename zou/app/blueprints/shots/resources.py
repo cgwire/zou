@@ -603,6 +603,7 @@ class ProjectEpisodeRetakeStatsResource(MethodView):
         """
         projects_service.get_project(project_id)
         permissions_service.check_project_access(project_id)
+        permissions_service.block_access_to_client()
         return stats_service.get_episode_retake_stats_for_project(
             project_id, only_assigned=permissions.has_vendor_permissions()
         )
@@ -934,6 +935,7 @@ class ProjectQuotasResource(MethodView, ArgsMixin):
         """
         projects_service.get_project(project_id)
         permissions_service.check_project_access(project_id)
+        permissions_service.block_access_to_client()
         args = self.get_args(
             [
                 ("count_mode", "weighted", False, str),
@@ -978,6 +980,7 @@ class ProjectPersonQuotasResource(MethodView, ArgsMixin):
         """
         projects_service.get_project(project_id)
         permissions_service.resolve_project_role(project_id)
+        permissions_service.block_access_to_client()
         if (
             permissions.has_manager_permissions()
             or permissions.has_supervisor_permissions()

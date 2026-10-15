@@ -94,6 +94,7 @@ class ProjectNewsResource(MethodView, NewsMixin, ArgsMixin):
         """
         projects_service.get_project(project_id)
         permissions_service.check_project_access(project_id)
+        permissions_service.block_access_to_client()
         return self.get_news([project_id])
 
 

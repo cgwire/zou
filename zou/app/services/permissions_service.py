@@ -176,6 +176,16 @@ def block_access_to_vendor():
     return True
 
 
+def block_access_to_client():
+    """
+    Raise PermissionDenied if current user has a client role. Call it after
+    the project access check, which resolves the role on the project.
+    """
+    if permissions.has_client_permissions():
+        raise permissions.PermissionDenied
+    return True
+
+
 def scope_criterions_to_vendor(criterions):
     """
     Narrow a listing to what a vendor is allowed to see, in place. Anyone
