@@ -535,15 +535,12 @@ def fetch_entity_task_map(
         for name in task_fields
     ]
     if permissions.has_client_permissions():
-        # The studio fields serve their blank value, the others stay.
-        builders = [
-            (
-                (name, _blank_builder(name))
-                if name in CLIENT_BLANK_TASK_VALUES
-                else (name, builder)
-            )
-            for name, builder in builders
-        ]
+        client_builders = []
+        for name, builder in builders:
+            if name in CLIENT_BLANK_TASK_VALUES:
+                builder = _blank_builder(name)
+            client_builders.append((name, builder))
+        builders = client_builders
 
     if compact:
 
