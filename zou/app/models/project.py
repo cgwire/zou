@@ -70,6 +70,41 @@ class ProjectTaskTypeLink(db.Model, BaseMixin, SerializerMixin):
     )
 
 
+class ProjectTaskTypeSoftwareLink(db.Model, BaseMixin, SerializerMixin):
+    """
+    Software that the artists of a project use for a task type.
+    """
+
+    __tablename__ = "project_task_type_software_link"
+    project_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("project.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
+    )
+    task_type_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("task_type.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
+    )
+    software_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("software.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "project_id",
+            "task_type_id",
+            "software_id",
+            name="project_task_type_software_uc",
+        ),
+    )
+
+
 class ProjectTaskStatusLink(db.Model, BaseMixin, SerializerMixin):
     __tablename__ = "project_task_status_link"
     project_id = db.Column(
