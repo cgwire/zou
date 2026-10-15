@@ -38,10 +38,10 @@ MINIMAL_PERSON_FILTER_FIELDS = [
     "is_guest",
 ]
 from zou.app.services import (
-    index_service,
-    persons_service,
-    organisation_service,
     cascade_deletion_service,
+    index_service,
+    organisation_service,
+    persons_service,
     user_service,
 )
 from zou.app.utils import permissions, auth, date_helpers
