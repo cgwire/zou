@@ -152,6 +152,18 @@ class ImportCsvPersonsTestCase(ApiDBTestCase):
     def test_import_persons_invalid_country(self):
         self._upload_csv(self._csv(Country="France"), code=400)
 
+    def test_import_persons_invalid_email(self):
+        # Kitsu indexes the domain of every email: one without it broke the
+        # people search for every manager of the studio.
+        for email in ["jdoe", "jdoe@", "jdoe@studio", ""]:
+            error = self._upload_csv(self._csv(Email=email), code=400)
+            self.assertIn(f"Email: {email}", error["message"])
+            self.assertIsNone(Person.get_by(email=email))
+
+    def test_import_persons_email_is_stripped(self):
+        self._upload_csv(self._csv(Email=" test.user@gmail.com "))
+        self.assertIsNotNone(Person.get_by(email="test.user@gmail.com"))
+
     def test_import_persons_invalid_position(self):
         error = self._upload_csv(self._csv(Position="Boss"), code=400)
         self.assertIn("accepted values", error["message"])
