@@ -377,6 +377,23 @@ class Person(db.Model, BaseMixin, SerializerMixin):
             "is_bot": self.is_bot,
         }
 
+    def present_client(self):
+        """
+        Build the person dict a client reads: a name and an avatar to put
+        on a comment, nothing of how the studio is organised.
+        """
+        return {
+            "id": str(self.id),
+            "type": "Person",
+            "first_name": self.first_name,
+            "last_name": self.last_name,
+            "full_name": self.full_name,
+            "has_avatar": self.has_avatar,
+            "active": self.active,
+            "role": fields.serialize_value(self.role),
+            "is_bot": self.is_bot,
+        }
+
     def set_departments(self, department_ids):
         self.departments = []
         for department_id in department_ids:

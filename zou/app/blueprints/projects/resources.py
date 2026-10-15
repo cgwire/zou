@@ -119,6 +119,8 @@ class ProductionTeamResource(MethodView, ArgsMixin):
         for person in projects_service.get_team_raw(project_id):
             if permissions.has_manager_permissions():
                 data = person.serialize_safe(relations=True)
+            elif permissions.has_client_permissions():
+                data = person.present_client()
             else:
                 data = person.present_minimal()
             data["project_role"] = role_map.get(str(person.id))
