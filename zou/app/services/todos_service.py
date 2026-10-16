@@ -1,7 +1,7 @@
 from sqlalchemy import or_, func
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import case
-from sqlalchemy.orm import aliased, selectinload
+from sqlalchemy.orm import aliased, subqueryload
 
 from zou.app import db
 from zou.app.utils import fields, query as query_utils, permissions
@@ -852,7 +852,9 @@ def get_tasks_for_project(
     Return all tasks for given project.
     """
     query = (
-        Task.query.options(selectinload(Task.assignees).load_only(Person.id))
+        # subqueryload: one query whatever the size, selectinload sends
+        # one IN of 500 ids per batch on large projects.
+        Task.query.options(subqueryload(Task.assignees).load_only(Person.id))
         .filter(Task.project_id == project_id)
         .order_by(Task.updated_at.desc())
     )

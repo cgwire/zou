@@ -4,6 +4,8 @@ from zou.app.services import (
     task_types_service,
     todos_service,
 )
+from zou.app import db
+from zou.app.models.task import Task
 from tests.services.cases import TaskTestCase
 
 
@@ -28,6 +30,39 @@ class TaskReaderTestCase(TaskTestCase):
         self.assertTrue(person_link_statements)
         for statement in person_link_statements:
             self.assertNotIn("person.password", statement)
+
+    def test_get_tasks_for_project_loads_assignees_in_one_query(self):
+        # selectinload batches 500 ids per IN, a large project sent
+        # one query per batch (KITSU-API-4W3).
+        tasks = [
+            Task(
+                name=f"Bulk {index}",
+                project_id=self.task.project_id,
+                task_type_id=self.task.task_type_id,
+                task_status_id=self.task.task_status_id,
+                entity_id=self.task.entity_id,
+                assigner_id=self.task.assigner_id,
+                assignees=[self.person],
+            )
+            for index in range(600)
+        ]
+        db.session.add_all(tasks)
+        db.session.commit()
+
+        with self.collect_statements() as statements:
+            result = todos_service.get_tasks_for_project(self.project.id)
+
+        self.assertEqual(len(result), 602)
+        bulk = [task for task in result if task["name"].startswith("Bulk")]
+        self.assertTrue(
+            all(task["assignees"] == [self.person_id] for task in bulk)
+        )
+        person_link_statements = [
+            statement
+            for statement in statements
+            if "task_person_link" in statement.lower()
+        ]
+        self.assertEqual(len(person_link_statements), 1)
 
 
 class PersonTaskTestCase(TaskTestCase):
