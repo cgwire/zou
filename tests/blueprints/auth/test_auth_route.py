@@ -1208,6 +1208,17 @@ class TOTPTestCase(ApiDBTestCase):
         )
         self.assertTrue(data["wrong_OTP"])
 
+    def test_recovery_codes_without_code(self):
+        """
+        PUT /auth/recovery-codes without any code answers like a wrong
+        code, not with a server error.
+        """
+        _, headers = self.login()
+        self.enable_totp(headers)
+
+        data = self.call_2fa("put", "auth/recovery-codes", headers, status=400)
+        self.assertTrue(data["wrong_OTP"])
+
 
 class ChangePasswordErrorsTestCase(ApiDBTestCase):
     def setUp(self):

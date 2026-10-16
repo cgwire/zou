@@ -11,6 +11,7 @@ from zou.app.models.person import (
     ROLE_TYPES,
     SENSITIVE_FIELDS,
     TWO_FACTOR_AUTHENTICATION_TYPES,
+    TWO_FACTOR_FIELDS,
     Person,
     normalize_country,
     normalize_locale,
@@ -264,7 +265,7 @@ class PersonsResource(BaseModelsResource):
 class PersonResource(BaseModelResource, ArgsMixin):
     def __init__(self):
         BaseModelResource.__init__(self, Person)
-        self.protected_fields += ["password", "jti"]
+        self.protected_fields += ["password", "jti", *TWO_FACTOR_FIELDS]
 
     def check_read_permissions(self, instance):
         if (

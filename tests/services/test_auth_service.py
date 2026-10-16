@@ -389,6 +389,50 @@ class TwoFactorMethodTestCase(AuthTestCase):
         self.assertIsNone(self.person.preferred_two_factor_authentication)
         self.assertIsNone(self.person.otp_recovery_codes)
 
+    def test_unregister_fido_keeps_it_preferred_while_a_key_remains(self):
+        """
+        Removing one key of two leaves FIDO on, so it stays the preferred
+        method: only the last key falls back to another method.
+        """
+        self.enable("fido", "totp")
+        self.person.update(
+            {
+                "fido_credentials": [
+                    {"device_name": "security-key"},
+                    {"device_name": "backup-key"},
+                ]
+            }
+        )
+
+        auth_service.unregister_fido(self.person_id, "security-key")
+
+        person = Person.get(self.person_id)
+        self.assertTrue(person.fido_enabled)
+        self.assertEqual(person.preferred_two_factor_authentication, "fido")
+        self.assertEqual(
+            [key["device_name"] for key in person.fido_credentials],
+            ["backup-key"],
+        )
+
+        auth_service.unregister_fido(self.person_id, "backup-key")
+
+        person = Person.get(self.person_id)
+        self.assertFalse(person.fido_enabled)
+        self.assertEqual(person.preferred_two_factor_authentication, "totp")
+
+    def test_unregister_fido_of_an_unknown_key_changes_nothing(self):
+        self.enable("fido", "totp")
+        self.person.update(
+            {"fido_credentials": [{"device_name": "security-key"}]}
+        )
+
+        auth_service.unregister_fido(self.person_id, "lost-key")
+
+        person = Person.get(self.person_id)
+        self.assertTrue(person.fido_enabled)
+        self.assertEqual(person.preferred_two_factor_authentication, "fido")
+        self.assertEqual(len(person.fido_credentials), 1)
+
     def test_disable_two_factor_authentication_for_person(self):
         """
         The admin escape hatch: it turns every method off at once, for a

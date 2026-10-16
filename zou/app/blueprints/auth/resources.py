@@ -963,7 +963,11 @@ class FIDOResource(MethodView, ArgsMixin):
             return {"success": True}
         except (WrongOTPException, MissingOTPException):
             return (
-                {"error": True, "message": "Wrong OTP."},
+                {
+                    "error": True,
+                    "message": "OTP verification failed.",
+                    "wrong_OTP": True,
+                },
                 400,
             )
         except FIDONotEnabledException:
@@ -1002,7 +1006,7 @@ class RecoveryCodesResource(MethodView, ArgsMixin):
                 person["id"]
             )
             return {"otp_recovery_codes": otp_recovery_codes}
-        except WrongOTPException:
+        except (WrongOTPException, MissingOTPException):
             return (
                 {
                     "error": True,

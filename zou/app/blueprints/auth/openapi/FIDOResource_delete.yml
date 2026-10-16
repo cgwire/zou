@@ -1,7 +1,7 @@
 Unregister FIDO device
 ---
 description: Unregister a FIDO device from WebAuthn authentication.
-  The user must be authenticated.
+  It requires two-factor authentication verification.
 tags:
     - Authentication
 requestBody:
@@ -14,10 +14,22 @@ requestBody:
           device_name:
             type: string
             description: Name of the FIDO device to unregister
+          totp:
+            type: string
+            description: TOTP verification code
+          email_otp:
+            type: string
+            description: Email OTP verification code
+          fido_authentication_response:
+            type: object
+            description: FIDO authentication response
+          recovery_code:
+            type: string
+            description: Recovery code for two-factor authentication
         required:
           - device_name
 responses:
   200:
     description: FIDO device unregistered
   400:
-    description: FIDO not enabled
+    description: FIDO not enabled or verification failed

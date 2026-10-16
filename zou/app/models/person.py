@@ -87,6 +87,18 @@ SENSITIVE_FIELDS = [
     "saml_subject",
 ]
 
+# The two-factor settings: only the auth routes change them.
+TWO_FACTOR_FIELDS = [
+    "totp_enabled",
+    "totp_secret",
+    "email_otp_enabled",
+    "email_otp_secret",
+    "fido_enabled",
+    "fido_credentials",
+    "otp_recovery_codes",
+    "preferred_two_factor_authentication",
+]
+
 
 def normalize_country(value):
     """

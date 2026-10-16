@@ -5,7 +5,8 @@ tags:
 description: Update a person with data provided in the request
   body. JSON format is expected. Users can only update themselves
   unless they have admin permissions. Non-admins cannot change
-  certain protected fields. Validates role, contract_type,
+  certain protected fields. The password and the two-factor
+  settings are left to the auth routes. Validates role, contract_type,
   two_factor_authentication, email, and expiration_date. Checks
   user limit when activating non-bot users. Protected accounts
   have restrictions.
