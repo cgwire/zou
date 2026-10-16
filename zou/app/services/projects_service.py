@@ -1138,7 +1138,9 @@ def get_project_task_statuses(project_id):
 
 def get_project_status_automations(project_id):
     """
-    Return the status automations configured on given project.
+    Return the status automations configured on given project, in the
+    order they were created: the automations a status change fires apply
+    in that order.
     """
     project = get_project_raw(project_id)
     return Project.serialize_list(project.status_automations)

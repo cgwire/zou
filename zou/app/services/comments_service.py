@@ -1,6 +1,7 @@
 import re
 import uuid
 
+from flask import current_app
 from sqlalchemy import and_
 from sqlalchemy.exc import IntegrityError, StatementError
 from sqlalchemy.orm import aliased
@@ -12,6 +13,8 @@ from zou.app.exceptions import (
     CommentNotFoundException,
     PreviewFileNotFoundException,
     ReplyNotFoundException,
+    TaskStatusNotFoundException,
+    TaskTypeNotFoundException,
     TooManyPreviewFilesException,
     WrongParameterException,
 )
@@ -44,6 +47,7 @@ from zou.app.services import (
     preview_file_states_service,
     preview_files_service,
     projects_service,
+    status_automations_service,
     task_types_service,
     tasks_service,
 )
@@ -55,6 +59,10 @@ from zou.app.utils import (
     fields,
     query as query_utils,
 )
+
+# Chained status automations stop past this number of nested automation
+# comments: a cycle the fired set misses, or a runaway chain.
+MAX_AUTOMATION_DEPTH = 10
 
 # Raster image types that are safe to display inline. Paired with the global
 # X-Content-Type-Options: nosniff header, the browser honors the declared type
@@ -92,9 +100,14 @@ def create_comment(
     links=None,
     with_hashtags=True,
     for_client=False,
+    _fired_automations=None,
+    _automation_depth=0,
 ):
     """
     Create a new comment and related: news, notifications and events.
+
+    The two private arguments carry a cascade of status automations to the
+    comments the automations post; callers leave them out.
     """
     if checklist is None:
         checklist = []
@@ -124,17 +137,23 @@ def create_comment(
     if with_hashtags:
         _handle_hashtags(author, task_type, task, text)
 
+    # Read from the row: get_task is memoized, and a sync import updates the
+    # row without dropping that cache.
+    previous_task_status_id = str(
+        tasks_service.get_task_raw(task_id).task_status_id
+    )
     task, status_changed = _manage_status_change(task_status, task, comment)
     _manage_subscriptions(task, comment, status_changed)
     comment["task_status"] = task_status
     comment["person"] = author
 
-    status_automations = projects_service.get_project_status_automations(
-        task["project_id"]
+    _run_status_automations(
+        task,
+        previous_task_status_id,
+        person_id,
+        set() if _fired_automations is None else _fired_automations,
+        _automation_depth,
     )
-    for automation in status_automations:
-        _run_status_automation(automation, task, person_id)
-
     return comment
 
 
@@ -297,99 +316,422 @@ def _manage_subscriptions(task, comment, status_changed):
         )
 
 
-def _run_status_automation(automation, task, person_id):
+def _run_status_automations(
+    task, previous_task_status_id, person_id, fired_automations, depth
+):
     """
-    Apply one status automation: when the task matches the trigger, post
-    the comment that moves the target task type to the target status.
+    Run the status automations of the task project after a comment. Only a
+    status change can fire one: an automation fires when the change turns
+    its trigger from false to true. They are all decided on the tasks as
+    the change leaves them, before any of them applies its change, so that
+    none is decided on what another changed. They then apply in the order
+    they were created: on a target they share, each one finds what the
+    previous ones set. A failing automation never fails the comment, which
+    is already saved.
+
+    The comments posted by automations run the automations again. Within
+    one user action, an automation applies its change at most once per
+    entity, and the chain stops past MAX_AUTOMATION_DEPTH nested comments.
     """
-    if (
-        automation["archived"]
-        or task["task_type_id"] != automation["in_task_type_id"]
-        or task["task_status_id"] != automation["in_task_status_id"]
+    if str(task["task_status_id"]) == previous_task_status_id:
+        return
+    candidates = []
+    for automation in projects_service.get_project_status_automations(
+        task["project_id"]
     ):
+        trigger = None
+        if not automation["archived"]:
+            trigger = status_automations_service.get_trigger(automation)
+        if trigger is not None and any(
+            condition["task_type_id"] == task["task_type_id"]
+            for condition in trigger["conditions"]
+        ):
+            candidates.append((automation, trigger))
+    if len(candidates) == 0:
         return
 
+    try:
+        fired = _get_fired_status_automations(
+            candidates, task, previous_task_status_id, depth
+        )
+    except Exception:
+        db.session.rollback()
+        current_app.logger.error(
+            f"Status automations failed on task {task['id']}", exc_info=True
+        )
+        return
+    for automation, trigger, conditions, tasks_by_type in fired:
+        try:
+            _apply_status_automation(
+                automation,
+                trigger,
+                conditions,
+                task,
+                tasks_by_type,
+                person_id,
+                fired_automations,
+                depth,
+            )
+        except WrongParameterException as exception:
+            # The change was refused before any write, for instance by the
+            # retake cap of the target task.
+            current_app.logger.warning(
+                f"Status automation {automation['id']} skipped: {exception}"
+            )
+        except Exception:
+            db.session.rollback()
+            current_app.logger.error(
+                f"Status automation {automation['id']} failed on task "
+                f"{task['id']}",
+                exc_info=True,
+            )
+
+
+def _is_automation_for_entity_type(automation, entity_type):
+    wanted = (automation.get("entity_type") or "").lower()
+    if wanted == "asset":
+        return entity_types_service.is_asset_type(entity_type)
+    return entity_type["name"].lower() == wanted
+
+
+def _get_fired_status_automations(
+    candidates, task, previous_task_status_id, depth
+):
+    """
+    Return the candidate automations the status change of given task
+    fires, each with its conditions as the runner reads them and the tasks
+    it was decided on. Those tasks are read once, as the change leaves
+    them; "before" puts the previous status of the task back.
+    """
     entity = entities_service.get_entity(task["entity_id"])
     entity_type = entity_types_service.get_entity_type(
         entity["entity_type_id"]
     )
-    wanted = (automation.get("entity_type") or "").lower()
-    if wanted == "asset":
-        if not entity_types_service.is_asset_type(entity_type):
-            return
-    elif entity_type["name"].lower() != wanted:
-        return
-
-    priorities = projects_service.get_task_type_priority_map(
-        task["project_id"], automation["entity_type"].capitalize()
-    )
-    in_priority = priorities.get(automation["in_task_type_id"], 0) or 0
-    out_priority = priorities.get(automation["out_task_type_id"], 0) or 0
-    is_rollback = (
-        priorities is not None
-        and automation["out_field_type"] != "ready_for"
-        and in_priority > out_priority
-    )
-    if is_rollback:  # Do not apply rollback to avoid change cycles.
-        return
-
-    if automation["out_field_type"] == "status":
-        tasks_to_update = tasks_service.get_tasks_for_entity_and_task_type(
-            task["entity_id"], automation["out_task_type_id"]
+    candidates = [
+        (automation, trigger)
+        for automation, trigger in candidates
+        if _is_automation_for_entity_type(automation, entity_type)
+    ]
+    if len(candidates) == 0:
+        return []
+    priority_maps = {}
+    triggered = []
+    for automation, trigger in candidates:
+        conditions = _get_effective_conditions(
+            automation,
+            trigger,
+            _get_priority_map(task["project_id"], automation, priority_maps),
         )
-        if len(tasks_to_update) > 0:
-            task_to_update = tasks_to_update[0]
-            task_type = task_types_service.get_task_type(
-                automation["in_task_type_id"]
-            )
-            task_status = task_types_service.get_task_status(
-                automation["in_task_status_id"]
-            )
-            new_comment = create_comment(
-                person_id,
-                task_to_update["id"],
-                automation["out_task_status_id"],
-                f"Change triggered by {task_type['name']} set to {task_status['name']}",
-                [],
-                {},
-                None,
-            )
-            if automation["import_last_revision"]:
-                preview_file = (
-                    preview_files_service.get_last_preview_file_for_task(
-                        task["id"]
-                    )
-                )
-                if preview_file is not None:
-                    preview_files = (
-                        preview_files_service.get_preview_files_for_revision(
-                            preview_file["task_id"], preview_file["revision"]
-                        )
-                    )
+        if any(
+            condition["is_trigger"]
+            and condition["task_type_id"] == task["task_type_id"]
+            for condition in conditions
+        ):
+            triggered.append((automation, trigger, conditions))
+    if len(triggered) == 0:
+        return []
 
-                    for preview_file in preview_files:
-                        new_preview_file = add_preview_file_to_comment(
-                            new_comment["id"],
-                            new_comment["person_id"],
-                            task_to_update["id"],
-                        )
+    tasks_by_type = _get_condition_tasks(
+        task["entity_id"],
+        [
+            condition
+            for _, _, conditions in triggered
+            for condition in conditions
+        ],
+    )
+    previous_statuses = {task["id"]: previous_task_status_id}
+    fired = [
+        (automation, trigger, conditions, tasks_by_type)
+        for automation, trigger, conditions in triggered
+        if _is_trigger_met(trigger["operator"], conditions, tasks_by_type, {})
+        and not _is_trigger_met(
+            trigger["operator"], conditions, tasks_by_type, previous_statuses
+        )
+    ]
+    if len(fired) > 0 and depth >= MAX_AUTOMATION_DEPTH:
+        current_app.logger.warning(
+            f"Status automations stopped on task {task['id']}: "
+            f"{MAX_AUTOMATION_DEPTH} chained automation comments reached."
+        )
+        return []
+    return fired
 
-                        copy_preview_file_in_another_one(
-                            preview_file["id"], new_preview_file["id"]
-                        )
 
+def _apply_status_automation(
+    automation,
+    trigger,
+    conditions,
+    task,
+    tasks_by_type,
+    person_id,
+    fired_automations,
+    depth,
+):
+    """
+    Apply the change of an automation the status change of given task
+    fired.
+    """
+    if automation["out_field_type"] == "status":
+        _apply_status_change(
+            automation,
+            trigger,
+            conditions,
+            task,
+            tasks_by_type,
+            person_id,
+            fired_automations,
+            depth,
+        )
     elif automation["out_field_type"] == "ready_for":
-        try:
-            data = {"ready_for": automation["out_task_type_id"]}
-            asset = assets_service.update_asset(task["entity_id"], data)
-            events.emit(
-                "asset:update",
-                {"asset_id": task["entity_id"], "data": data},
-                project_id=task["project_id"],
+        if _record_fire(automation, task, fired_automations):
+            try:
+                asset = assets_service.update_asset(
+                    task["entity_id"],
+                    {"ready_for": automation["out_task_type_id"]},
+                )
+                breakdown_service.refresh_casting_stats(asset)
+            except AssetNotFoundException:
+                pass
+
+
+def _record_fire(automation, task, fired_automations):
+    """
+    Record that given automation applies its change on the entity of the
+    task, and return False when it already did for this user action: a
+    cycle, stopped there.
+    """
+    fired_key = (automation["id"], task["entity_id"])
+    if fired_key in fired_automations:
+        current_app.logger.warning(
+            f"Status automation {automation['id']} already fired on entity "
+            f"{task['entity_id']} for this action: cycle stopped."
+        )
+        return False
+    fired_automations.add(fired_key)
+    return True
+
+
+def _get_effective_conditions(automation, trigger, priorities):
+    """
+    Return the conditions of a trigger as the runner reads them.
+
+    With a status output, a condition on a task type that comes after the
+    output in the production (a strictly higher priority, a missing one
+    counting as 0) never fires the automation, to avoid change cycles.
+    Under "and" it still has to be met; under "or" it is left out, since
+    once met it would keep the trigger met and block every other change.
+    A task type that no longer exists makes its condition false, and a
+    status that no longer exists is dropped from its condition.
+    """
+    is_status_output = automation["out_field_type"] != "ready_for"
+    out_priority = priorities.get(automation["out_task_type_id"], 0) or 0
+    conditions = []
+    for condition in trigger["conditions"]:
+        task_type_id = condition["task_type_id"]
+        is_guard_only = (
+            is_status_output
+            and (priorities.get(task_type_id, 0) or 0) > out_priority
+        )
+        if not is_guard_only or trigger["operator"] == "and":
+            conditions.append(
+                {
+                    "task_type_id": task_type_id,
+                    "task_status_ids": {
+                        task_status_id
+                        for task_status_id in condition["task_status_ids"]
+                        if _is_task_status(task_status_id)
+                    },
+                    "is_known": _is_task_type(task_type_id),
+                    "is_trigger": not is_guard_only,
+                }
             )
-            breakdown_service.refresh_casting_stats(asset)
-        except AssetNotFoundException:
-            pass
+    return conditions
+
+
+def _get_priority_map(project_id, automation, priority_maps):
+    """
+    Return the task type priorities given automation reads, as the
+    single-condition runner did: those of the task types for its entity
+    type. An old row naming an asset type ("props") finds none, so it fires
+    whatever the priorities. ``priority_maps`` keeps the maps already read.
+    """
+    for_entity = automation["entity_type"].capitalize()
+    if for_entity not in priority_maps:
+        priority_maps[for_entity] = (
+            projects_service.get_task_type_priority_map(project_id, for_entity)
+        )
+    return priority_maps[for_entity]
+
+
+def _is_task_type(task_type_id):
+    try:
+        task_types_service.get_task_type(task_type_id)
+        return True
+    except TaskTypeNotFoundException:
+        return False
+
+
+def _is_task_status(task_status_id):
+    try:
+        task_types_service.get_task_status(task_status_id)
+        return True
+    except TaskStatusNotFoundException:
+        return False
+
+
+def _get_condition_tasks(entity_id, conditions):
+    """
+    Return the tasks of given entity for the task types of the conditions,
+    grouped by task type and ordered by name.
+    """
+    task_type_ids = {
+        condition["task_type_id"]
+        for condition in conditions
+        if condition["is_known"]
+    }
+    tasks_by_type = {}
+    for task in (
+        Task.query.filter(Task.entity_id == entity_id)
+        .filter(Task.task_type_id.in_(task_type_ids))
+        .order_by(Task.name)
+    ):
+        tasks_by_type.setdefault(str(task.task_type_id), []).append(
+            {"id": str(task.id), "task_status_id": str(task.task_status_id)}
+        )
+    return tasks_by_type
+
+
+def _is_trigger_met(operator, conditions, tasks_by_type, status_overrides):
+    """
+    Tell whether a trigger is met. A condition is met when every task of
+    its task type has one of its statuses; a condition on a task type the
+    entity has no task of is ignored. With no condition left, the trigger
+    is not met.
+    """
+    values = []
+    for condition in conditions:
+        tasks = tasks_by_type.get(condition["task_type_id"], [])
+        if not condition["is_known"]:
+            values.append(False)
+        elif len(tasks) > 0:
+            values.append(
+                all(
+                    status_overrides.get(task["id"], task["task_status_id"])
+                    in condition["task_status_ids"]
+                    for task in tasks
+                )
+            )
+    if len(values) == 0:
+        return False
+    return all(values) if operator == "and" else any(values)
+
+
+def _apply_status_change(
+    automation,
+    trigger,
+    conditions,
+    task,
+    tasks_by_type,
+    person_id,
+    fired_automations,
+    depth,
+):
+    """
+    Post the comment moving the first task, by name, of the output task
+    type to the output status, authored by the author of the triggering
+    comment.
+    """
+    tasks_to_update = tasks_service.get_tasks_for_entity_and_task_type(
+        task["entity_id"], automation["out_task_type_id"]
+    )
+    if len(tasks_to_update) == 0:
+        return
+    task_to_update = tasks_to_update[0]
+    if not _record_fire(automation, task, fired_automations):
+        return
+    new_comment = create_comment(
+        person_id,
+        task_to_update["id"],
+        automation["out_task_status_id"],
+        _get_automation_comment_text(trigger, conditions, task, tasks_by_type),
+        [],
+        {},
+        None,
+        _fired_automations=fired_automations,
+        _automation_depth=depth + 1,
+    )
+    if automation["import_last_revision"]:
+        _import_last_revision(
+            _get_revision_source_task_id(
+                trigger, conditions, task, tasks_by_type
+            ),
+            new_comment,
+            task_to_update["id"],
+        )
+
+
+def _get_automation_comment_text(trigger, conditions, task, tasks_by_type):
+    """
+    Name the change that fired the automation. With several conditions all
+    to be met, name every condition the entity has, in their order: the
+    commented task for its own, the first task by name for the others.
+    """
+    if trigger["operator"] == "and" and len(trigger["conditions"]) > 1:
+        changes = [
+            _describe_status(
+                condition["task_type_id"],
+                (
+                    task
+                    if condition["task_type_id"] == task["task_type_id"]
+                    else tasks[0]
+                ),
+            )
+            for condition in conditions
+            for tasks in [tasks_by_type.get(condition["task_type_id"], [])]
+            if len(tasks) > 0
+        ]
+    else:
+        changes = [_describe_status(task["task_type_id"], task)]
+    return f"Change triggered by {' and '.join(changes)}"
+
+
+def _describe_status(task_type_id, task):
+    task_type = task_types_service.get_task_type(task_type_id)
+    task_status = task_types_service.get_task_status(task["task_status_id"])
+    return f"{task_type['name']} set to {task_status['name']}"
+
+
+def _get_revision_source_task_id(trigger, conditions, task, tasks_by_type):
+    """
+    Return the task whose last revision the automation imports: under
+    "and", the task of the first condition the entity has, the commented
+    task when it is of that type; under "or", the commented task.
+    """
+    if trigger["operator"] == "and":
+        for condition in conditions:
+            tasks = tasks_by_type.get(condition["task_type_id"], [])
+            if len(tasks) > 0:
+                if condition["task_type_id"] == task["task_type_id"]:
+                    return task["id"]
+                return tasks[0]["id"]
+    return task["id"]
+
+
+def _import_last_revision(source_task_id, new_comment, task_id):
+    preview_file = preview_files_service.get_last_preview_file_for_task(
+        source_task_id
+    )
+    if preview_file is None:
+        return
+    for revision_file in preview_files_service.get_preview_files_for_revision(
+        preview_file["task_id"], preview_file["revision"]
+    ):
+        new_preview_file = add_preview_file_to_comment(
+            new_comment["id"], new_comment["person_id"], task_id
+        )
+        copy_preview_file_in_another_one(
+            revision_file["id"], new_preview_file["id"]
+        )
 
 
 def new_comment(

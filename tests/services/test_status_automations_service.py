@@ -1,20 +1,31 @@
 # -*- coding: UTF-8 -*-
+import datetime
+from unittest import mock
+
 from flask import current_app
+from sqlalchemy import text
 
 from tests.base import ApiDBTestCase
+from zou.app import db
 from zou.app.exceptions import (
     StatusAutomationNotFoundException,
     WrongParameterException,
 )
+from zou.app.models.comment import Comment
 from zou.app.models.entity import Entity
+from zou.app.models.entity_type import EntityType
+from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.models.status_automation import StatusAutomation
 from zou.app.models.task import Task
+from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
 from zou.app.services import (
+    assets_service,
     comments_service,
     projects_service,
     status_automations_service,
     task_types_service,
+    tasks_service,
 )
 from zou.app.utils import fields
 
@@ -1074,3 +1085,929 @@ class StatusAutomationTriggerTestCase(ApiDBTestCase):
         self.assertEqual(
             service.get_automations_using_task_status(self.retake_id), []
         )
+
+
+class StatusAutomationRunnerTestCase(ApiDBTestCase):
+    """
+    An automation fires on the status change that turns its trigger from
+    false to true.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project()
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
+        self.generate_fixture_department()
+        self.generate_fixture_shot()
+        self.generate_fixture_asset()
+        self.todo = TaskStatus.create(
+            name="Todo", short_name="todo", color="#FFFFFF", is_default=True
+        )
+        self.ready = TaskStatus.create(
+            name="Ready", short_name="ready", color="#FFFFFF"
+        )
+        self.wip = TaskStatus.create(
+            name="WIP", short_name="wip", color="#FFFFFF", is_wip=True
+        )
+        self.done = TaskStatus.create(
+            name="Done", short_name="done", color="#FFFFFF", is_done=True
+        )
+        self.na = TaskStatus.create(
+            name="NA", short_name="na", color="#FFFFFF", is_done=True
+        )
+        self.retake = TaskStatus.create(
+            name="Retake", short_name="rtk", color="#FFFFFF", is_retake=True
+        )
+
+    def a_task_type(self, name, for_entity="Shot", priority=None):
+        task_type = TaskType.create(
+            name=name,
+            short_name=name.lower()[:8],
+            color="#FFFFFF",
+            for_entity=for_entity,
+            department_id=self.department.id,
+        )
+        if priority is not None:
+            ProjectTaskTypeLink.create(
+                project_id=self.project.id,
+                task_type_id=task_type.id,
+                priority=priority,
+            )
+        return task_type
+
+    def a_task(self, entity, task_type, name=None, status=None, **extra):
+        return Task.create(
+            name=name or task_type.name,
+            project_id=self.project.id,
+            task_type_id=task_type.id,
+            task_status_id=(status or self.todo).id,
+            entity_id=entity.id,
+            assigner_id=self.assigner.id,
+            **extra,
+        )
+
+    def an_automation(
+        self,
+        entity_type,
+        operator,
+        conditions,
+        out_task_type,
+        out_task_status=None,
+        out_field_type="status",
+        **extra,
+    ):
+        automation = StatusAutomation.create(
+            **extra,
+            entity_type=entity_type,
+            in_conditions={
+                "operator": operator,
+                "conditions": [
+                    {
+                        "task_type_id": str(task_type.id),
+                        "task_status_ids": [
+                            str(task_status.id) for task_status in statuses
+                        ],
+                    }
+                    for task_type, statuses in conditions
+                ],
+            },
+            out_field_type=out_field_type,
+            out_task_type_id=out_task_type.id,
+            out_task_status_id=(
+                out_task_status.id if out_task_status else None
+            ),
+        )
+        projects_service.add_status_automation_setting(
+            self.project.id, automation.id
+        )
+        return automation
+
+    def automations_in_order(self, *automations):
+        """
+        Date the automations in given order, a minute apart: the runner
+        applies them in the order they were created, and a test whose point
+        is a chain or a failure needs the automation that starts it to come
+        first, whatever the clock.
+        """
+        start = datetime.datetime(2026, 1, 1)
+        for index, automation in enumerate(automations):
+            automation.update(
+                {"created_at": start + datetime.timedelta(minutes=index)}
+            )
+
+    def comment(self, task, task_status, text="Test", created_at=""):
+        return comments_service.create_comment(
+            str(self.person.id),
+            str(task.id),
+            str(task_status.id),
+            text,
+            [],
+            {},
+            created_at,
+        )
+
+    def assert_status(self, task, task_status):
+        self.assertEqual(
+            str(Task.get(task.id).task_status_id), str(task_status.id)
+        )
+
+    def comment_texts(self, task):
+        return [
+            comment.text
+            for comment in Comment.query.filter_by(object_id=task.id)
+            .order_by(Comment.created_at)
+            .all()
+        ]
+
+    def test_and_fires_when_the_last_condition_is_met(self):
+        lighting = self.a_task_type("Lighting")
+        fx = self.a_task_type("FX")
+        compositing = self.a_task_type("Compositing")
+        lighting_task = self.a_task(self.shot, lighting)
+        fx_task = self.a_task(self.shot, fx)
+        compositing_task = self.a_task(self.shot, compositing)
+        self.an_automation(
+            "shot",
+            "and",
+            [(lighting, [self.done]), (fx, [self.done])],
+            compositing,
+            self.ready,
+        )
+
+        self.comment(fx_task, self.done)
+        self.assert_status(compositing_task, self.todo)
+        self.comment(lighting_task, self.done)
+
+        self.assert_status(compositing_task, self.ready)
+        self.assertEqual(
+            self.comment_texts(compositing_task),
+            ["Change triggered by Lighting set to Done and FX set to Done"],
+        )
+
+    def test_a_comment_without_status_change_does_not_fire(self):
+        """
+        A plain note on a task already at a trigger status used to post the
+        output status again, over the work in progress.
+        """
+        layout = self.a_task_type("Layout")
+        animation = self.a_task_type("Animation")
+        layout_task = self.a_task(self.shot, layout)
+        animation_task = self.a_task(self.shot, animation)
+        self.an_automation(
+            "shot", "and", [(layout, [self.done])], animation, self.ready
+        )
+        self.comment(layout_task, self.done)
+        self.comment(animation_task, self.wip)
+
+        self.comment(layout_task, self.done, "Just a note")
+
+        self.assert_status(animation_task, self.wip)
+        self.assertEqual(len(self.comment_texts(animation_task)), 2)
+
+    def test_an_archived_automation_does_not_fire(self):
+        animation = self.a_task_type("Animation")
+        lighting = self.a_task_type("Lighting")
+        animation_task = self.a_task(self.shot, animation)
+        lighting_task = self.a_task(self.shot, lighting)
+        self.an_automation(
+            "shot",
+            "and",
+            [(animation, [self.done])],
+            lighting,
+            self.ready,
+            archived=True,
+        )
+
+        self.comment(animation_task, self.done)
+
+        self.assert_status(lighting_task, self.todo)
+
+    def test_a_missing_task_type_is_ignored(self):
+        lighting = self.a_task_type("Lighting")
+        fx = self.a_task_type("FX")
+        compositing = self.a_task_type("Compositing")
+        lighting_task = self.a_task(self.shot, lighting)
+        compositing_task = self.a_task(self.shot, compositing)
+        self.an_automation(
+            "shot",
+            "and",
+            [(lighting, [self.done]), (fx, [self.done])],
+            compositing,
+            self.ready,
+        )
+
+        self.comment(lighting_task, self.done)
+
+        self.assert_status(compositing_task, self.ready)
+
+    def test_or_does_not_fire_on_a_second_condition(self):
+        concept = self.a_task_type("Concept", "Asset")
+        sculpt = self.a_task_type("Sculpt", "Asset")
+        modeling = self.a_task_type("Modeling", "Asset")
+        concept_task = self.a_task(self.asset, concept)
+        sculpt_task = self.a_task(self.asset, sculpt)
+        modeling_task = self.a_task(self.asset, modeling)
+        self.an_automation(
+            "asset",
+            "or",
+            [(concept, [self.done]), (sculpt, [self.done])],
+            modeling,
+            self.ready,
+        )
+
+        self.comment(concept_task, self.done)
+        self.assert_status(modeling_task, self.ready)
+        self.assertEqual(
+            self.comment_texts(modeling_task),
+            ["Change triggered by Concept set to Done"],
+        )
+        self.comment(modeling_task, self.wip)
+        self.comment(sculpt_task, self.done)
+
+        self.assert_status(modeling_task, self.wip)
+
+    def test_every_task_of_a_condition_type_has_to_match(self):
+        lighting = self.a_task_type("Lighting")
+        fx = self.a_task_type("FX")
+        compositing = self.a_task_type("Compositing")
+        self.a_task(self.shot, lighting, status=self.done)
+        main_fx_task = self.a_task(self.shot, fx, "FX main")
+        extra_fx_task = self.a_task(self.shot, fx, "FX extra")
+        compositing_task = self.a_task(self.shot, compositing)
+        self.an_automation(
+            "shot",
+            "and",
+            [(lighting, [self.done]), (fx, [self.done, self.na])],
+            compositing,
+            self.ready,
+        )
+
+        self.comment(main_fx_task, self.na)
+        self.assert_status(compositing_task, self.todo)
+        self.comment(extra_fx_task, self.done)
+
+        self.assert_status(compositing_task, self.ready)
+
+    def test_a_downstream_condition_never_fires_under_and(self):
+        lighting = self.a_task_type("Lighting", priority=1)
+        compositing = self.a_task_type("Compositing", priority=2)
+        fx = self.a_task_type("FX", priority=3)
+        lighting_task = self.a_task(self.shot, lighting)
+        fx_task = self.a_task(self.shot, fx)
+        compositing_task = self.a_task(self.shot, compositing)
+        self.an_automation(
+            "shot",
+            "and",
+            [(lighting, [self.done]), (fx, [self.done])],
+            compositing,
+            self.ready,
+        )
+
+        self.comment(lighting_task, self.done)
+        self.comment(fx_task, self.done)
+        self.assert_status(compositing_task, self.todo)
+        self.comment(lighting_task, self.wip)
+        self.comment(lighting_task, self.done)
+
+        self.assert_status(compositing_task, self.ready)
+
+    def test_a_downstream_condition_is_left_out_under_or(self):
+        """
+        Once met, a downstream condition would keep the trigger met and
+        block every later change.
+        """
+        lighting = self.a_task_type("Lighting", priority=1)
+        compositing = self.a_task_type("Compositing", priority=2)
+        fx = self.a_task_type("FX", priority=3)
+        lighting_task = self.a_task(self.shot, lighting)
+        fx_task = self.a_task(self.shot, fx)
+        compositing_task = self.a_task(self.shot, compositing)
+        self.an_automation(
+            "shot",
+            "or",
+            [(lighting, [self.done]), (fx, [self.done])],
+            compositing,
+            self.ready,
+        )
+
+        self.comment(fx_task, self.done)
+        self.assert_status(compositing_task, self.todo)
+        self.comment(lighting_task, self.done)
+
+        self.assert_status(compositing_task, self.ready)
+
+    def test_a_ready_for_fires_on_a_downstream_condition(self):
+        """
+        Only a status output can start a cycle: a ready for reads every
+        condition the same, whatever its place in the production.
+        """
+        modeling = self.a_task_type("Modeling", "Asset", priority=2)
+        layout = self.a_task_type("Layout")
+        modeling_task = self.a_task(self.asset, modeling)
+        self.an_automation(
+            "asset",
+            "and",
+            [(modeling, [self.done])],
+            layout,
+            out_field_type="ready_for",
+        )
+
+        self.comment(modeling_task, self.done)
+
+        self.assertEqual(
+            str(Entity.get(self.asset.id).ready_for), str(layout.id)
+        )
+
+    def test_equal_priorities_fire(self):
+        layout = self.a_task_type("Layout", priority=2)
+        animation = self.a_task_type("Animation", priority=2)
+        layout_task = self.a_task(self.shot, layout)
+        animation_task = self.a_task(self.shot, animation)
+        self.an_automation(
+            "shot", "and", [(layout, [self.done])], animation, self.ready
+        )
+
+        self.comment(layout_task, self.done)
+
+        self.assert_status(animation_task, self.ready)
+
+    def test_revision_source(self):
+        lighting_id = str(fields.gen_uuid())
+        fx_id = str(fields.gen_uuid())
+        conditions = [
+            {"task_type_id": lighting_id, "is_known": True},
+            {"task_type_id": fx_id, "is_known": True},
+        ]
+        tasks_by_type = {
+            lighting_id: [{"id": "lighting-1", "task_status_id": ""}],
+            fx_id: [{"id": "fx-1", "task_status_id": ""}],
+        }
+        fx_task = {"id": "fx-1", "task_type_id": fx_id}
+        get_source = comments_service._get_revision_source_task_id
+
+        self.assertEqual(
+            get_source(
+                {"operator": "and"}, conditions, fx_task, tasks_by_type
+            ),
+            "lighting-1",
+        )
+        self.assertEqual(
+            get_source(
+                {"operator": "and"},
+                conditions,
+                fx_task,
+                {fx_id: tasks_by_type[fx_id]},
+            ),
+            "fx-1",
+        )
+        self.assertEqual(
+            get_source({"operator": "or"}, conditions, fx_task, tasks_by_type),
+            "fx-1",
+        )
+
+    def test_a_single_condition_keeps_its_comment_text(self):
+        concept = self.a_task_type("Concept", "Asset")
+        modeling = self.a_task_type("Modeling", "Asset")
+        concept_task = self.a_task(self.asset, concept)
+        modeling_task = self.a_task(self.asset, modeling)
+        self.an_automation(
+            "asset", "and", [(concept, [self.done])], modeling, self.wip
+        )
+
+        self.comment(concept_task, self.done)
+        self.comment(concept_task, self.done, "Same status again")
+
+        self.assertEqual(
+            self.comment_texts(modeling_task),
+            ["Change triggered by Concept set to Done"],
+        )
+
+    def test_a_back_dated_comment_fires_on_a_replayed_change_only(self):
+        layout = self.a_task_type("Layout")
+        animation = self.a_task_type("Animation")
+        layout_task = self.a_task(self.shot, layout)
+        animation_task = self.a_task(self.shot, animation)
+        self.comment(layout_task, self.wip)
+        self.an_automation(
+            "shot", "and", [(layout, [self.done])], animation, self.ready
+        )
+
+        self.comment(
+            layout_task, self.done, "Old", created_at="2020-01-01 10:00:00"
+        )
+        self.assert_status(layout_task, self.wip)
+        self.assert_status(animation_task, self.todo)
+
+        # Changed without a comment: the replay goes back to the status of
+        # the last comment.
+        tasks_service.update_task(
+            str(layout_task.id), {"task_status_id": str(self.done.id)}
+        )
+        self.an_automation(
+            "shot", "and", [(layout, [self.wip])], animation, self.retake
+        )
+        self.comment(
+            layout_task, self.na, "Older", created_at="2020-01-01 09:00:00"
+        )
+        self.assert_status(layout_task, self.wip)
+        self.assert_status(animation_task, self.retake)
+
+    def test_unknown_ids(self):
+        lighting = self.a_task_type("Lighting")
+        compositing = self.a_task_type("Compositing")
+        lighting_task = self.a_task(self.shot, lighting)
+        compositing_task = self.a_task(self.shot, compositing)
+        automation = self.an_automation(
+            "shot", "and", [(lighting, [self.done])], compositing, self.ready
+        )
+        condition = {
+            "task_type_id": str(lighting.id),
+            "task_status_ids": [str(self.done.id), str(fields.gen_uuid())],
+        }
+        unknown_condition = {
+            "task_type_id": str(fields.gen_uuid()),
+            "task_status_ids": [str(self.done.id)],
+        }
+        automation.update(
+            {
+                "in_conditions": {
+                    "operator": "and",
+                    "conditions": [condition, unknown_condition],
+                }
+            }
+        )
+
+        self.comment(lighting_task, self.done)
+        self.assert_status(compositing_task, self.todo)
+
+        automation.update(
+            {"in_conditions": {"operator": "and", "conditions": [condition]}}
+        )
+        self.comment(lighting_task, self.wip)
+        self.comment(lighting_task, self.done)
+        self.assert_status(compositing_task, self.ready)
+
+    def test_a_malformed_trigger_does_not_fail_the_comment(self):
+        lighting = self.a_task_type("Lighting")
+        compositing = self.a_task_type("Compositing")
+        review = self.a_task_type("Review")
+        lighting_task = self.a_task(self.shot, lighting)
+        compositing_task = self.a_task(self.shot, compositing)
+        review_task = self.a_task(self.shot, review)
+        automation = self.an_automation(
+            "shot", "and", [(lighting, [self.done])], compositing, self.ready
+        )
+        automation.update(
+            {"in_conditions": {"operator": "and", "conditions": "broken"}}
+        )
+        healthy = self.an_automation(
+            "shot", "and", [(lighting, [self.done])], review, self.ready
+        )
+
+        self.automations_in_order(automation, healthy)
+        with self.assertLogs(current_app.logger, level="WARNING") as logs:
+            self.comment(lighting_task, self.done)
+
+        self.assert_status(lighting_task, self.done)
+        self.assert_status(compositing_task, self.todo)
+        self.assert_status(review_task, self.ready)
+        self.assertIn(
+            f"Status automation {automation.id} has a malformed trigger",
+            "\n".join(logs.output),
+        )
+
+    def test_a_failing_automation_does_not_stop_the_others(self):
+        """
+        An automation that fails in the database as it applies its change
+        is logged, and what it had not saved yet is rolled back: the comment
+        stays, and the next automation still reaches the database to apply
+        its own.
+        """
+        lighting = self.a_task_type("Lighting")
+        compositing = self.a_task_type("Compositing")
+        review = self.a_task_type("Review")
+        lighting_task = self.a_task(self.shot, lighting)
+        self.a_task(self.shot, compositing)
+        review_task = self.a_task(self.shot, review)
+        broken = self.an_automation(
+            "shot", "and", [(lighting, [self.done])], compositing, self.ready
+        )
+        broken.update({"import_last_revision": True})
+        healthy = self.an_automation(
+            "shot", "and", [(lighting, [self.done])], review, self.ready
+        )
+
+        def fail_in_the_database(*args):
+            db.session.execute(text("SELECT 1 / 0"))
+
+        self.automations_in_order(broken, healthy)
+        self.spare_fixtures_from_rollbacks()
+        with mock.patch.object(
+            comments_service,
+            "_import_last_revision",
+            side_effect=fail_in_the_database,
+        ), self.assertLogs(current_app.logger, level="ERROR") as logs:
+            comment = self.comment(lighting_task, self.done)
+
+        self.assertEqual(comment["task_status_id"], str(self.done.id))
+        self.assertEqual(len(self.comment_texts(lighting_task)), 1)
+        self.assert_status(lighting_task, self.done)
+        self.assert_status(review_task, self.ready)
+        self.assertIn(
+            f"Status automation {broken.id} failed on task {lighting_task.id}",
+            "\n".join(logs.output),
+        )
+
+    def test_a_hashtag_copy_does_not_fire(self):
+        lighting = self.a_task_type("Lighting")
+        fx = self.a_task_type("FX")
+        compositing = self.a_task_type("Compositing")
+        lighting_task = self.a_task(self.shot, lighting)
+        fx_task = self.a_task(self.shot, fx, status=self.done)
+        compositing_task = self.a_task(self.shot, compositing)
+        self.an_automation(
+            "shot", "or", [(fx, [self.done])], compositing, self.ready
+        )
+
+        self.comment(lighting_task, self.wip, "#fx please check")
+
+        self.assertEqual(len(self.comment_texts(fx_task)), 1)
+        self.assert_status(compositing_task, self.todo)
+
+    def test_a_retake_cap_on_the_target_skips_the_output(self):
+        self.project.update({"max_retakes": 1})
+        layout = self.a_task_type("Layout")
+        animation = self.a_task_type("Animation")
+        layout_task = self.a_task(self.shot, layout)
+        animation_task = self.a_task(self.shot, animation, retake_count=1)
+        self.an_automation(
+            "shot", "and", [(layout, [self.done])], animation, self.retake
+        )
+
+        self.comment(layout_task, self.done)
+
+        self.assert_status(layout_task, self.done)
+        self.assert_status(animation_task, self.todo)
+
+    def test_ready_for_with_several_conditions(self):
+        modeling = self.a_task_type("Modeling", "Asset")
+        rigging = self.a_task_type("Rigging", "Asset")
+        layout = self.a_task_type("Layout")
+        modeling_task = self.a_task(self.asset, modeling)
+        rigging_task = self.a_task(self.asset, rigging)
+        self.an_automation(
+            "asset",
+            "and",
+            [(modeling, [self.done]), (rigging, [self.done])],
+            layout,
+            out_field_type="ready_for",
+        )
+
+        self.comment(modeling_task, self.done)
+        self.assertIsNone(Entity.get(self.asset.id).ready_for)
+        self.comment(rigging_task, self.done)
+
+        self.assertEqual(
+            str(Entity.get(self.asset.id).ready_for), str(layout.id)
+        )
+
+    def test_a_cycle_fires_each_automation_once(self):
+        """
+        Between two task types of equal priority, statuses can alternate
+        forever: each automation fires once per entity for one action.
+        """
+        first = self.a_task_type("First")
+        second = self.a_task_type("Second")
+        first_task = self.a_task(self.shot, first)
+        second_task = self.a_task(self.shot, second)
+        self.an_automation(
+            "shot", "and", [(first, [self.done])], second, self.ready
+        )
+        self.an_automation(
+            "shot", "and", [(second, [self.ready])], first, self.wip
+        )
+        self.an_automation(
+            "shot", "and", [(first, [self.wip])], second, self.todo
+        )
+        self.an_automation(
+            "shot", "and", [(second, [self.todo])], first, self.done
+        )
+
+        with self.assertLogs(current_app.logger, level="WARNING") as logs:
+            self.comment(first_task, self.done)
+
+        self.assert_status(first_task, self.done)
+        self.assert_status(second_task, self.todo)
+        self.assertEqual(len(self.comment_texts(first_task)), 3)
+        self.assertEqual(len(self.comment_texts(second_task)), 2)
+        self.assertTrue(
+            any("cycle stopped" in line for line in logs.output), logs.output
+        )
+
+    def test_a_cycle_sets_the_ready_for_once(self):
+        """
+        A ready for fires like a status change: once per entity for one
+        action, however often a cycle meets its trigger again.
+        """
+        first = self.a_task_type("First", "Asset")
+        second = self.a_task_type("Second", "Asset")
+        layout = self.a_task_type("Layout")
+        first_task = self.a_task(self.asset, first)
+        self.a_task(self.asset, second)
+        self.an_automation(
+            "asset", "and", [(first, [self.done])], second, self.ready
+        )
+        self.an_automation(
+            "asset", "and", [(second, [self.ready])], first, self.wip
+        )
+        self.an_automation(
+            "asset", "and", [(first, [self.wip])], second, self.todo
+        )
+        self.an_automation(
+            "asset", "and", [(second, [self.todo])], first, self.done
+        )
+        self.an_automation(
+            "asset",
+            "and",
+            [(first, [self.done])],
+            layout,
+            out_field_type="ready_for",
+        )
+
+        with mock.patch.object(
+            assets_service, "update_asset", wraps=assets_service.update_asset
+        ) as update_asset:
+            self.comment(first_task, self.done)
+
+        self.assertEqual(update_asset.call_count, 1)
+
+    def test_a_chain_stops_after_ten_automation_comments(self):
+        task_types = [self.a_task_type(f"Step {index}") for index in range(12)]
+        tasks = [self.a_task(self.shot, task_type) for task_type in task_types]
+        for source, target in zip(task_types, task_types[1:]):
+            self.an_automation(
+                "shot", "and", [(source, [self.done])], target, self.done
+            )
+
+        with self.assertLogs(current_app.logger, level="WARNING") as logs:
+            self.comment(tasks[0], self.done)
+
+        self.assert_status(tasks[10], self.done)
+        self.assert_status(tasks[11], self.todo)
+        self.assertTrue(
+            any("chained automation comments" in line for line in logs.output),
+            logs.output,
+        )
+
+    def test_the_chain_cap_warns_only_about_a_fire_it_stops(self):
+        task_types = [self.a_task_type(f"Step {index}") for index in range(11)]
+        tasks = [self.a_task(self.shot, task_type) for task_type in task_types]
+        for source, target in zip(task_types, task_types[1:]):
+            self.an_automation(
+                "shot", "and", [(source, [self.done])], target, self.done
+            )
+        # The tenth automation comment, on the last step, meets a trigger
+        # that does not fire.
+        other = self.a_task_type("Other")
+        self.a_task(self.shot, other)
+        self.an_automation(
+            "shot", "and", [(task_types[10], [self.wip])], other, self.done
+        )
+
+        with self.assertNoLogs(current_app.logger, level="WARNING"):
+            self.comment(tasks[0], self.done)
+
+        self.assert_status(tasks[10], self.done)
+
+    def test_an_or_trigger_is_decided_before_the_cascade(self):
+        """
+        Every automation of a comment is decided on the tasks as the comment
+        leaves them: what an automation listed first changes does not make
+        the trigger look met before.
+        """
+        layout = self.a_task_type("Layout")
+        animation = self.a_task_type("Animation")
+        lighting = self.a_task_type("Lighting")
+        layout_task = self.a_task(self.shot, layout, status=self.wip)
+        self.a_task(self.shot, animation)
+        lighting_task = self.a_task(self.shot, lighting)
+        cascade = self.an_automation(
+            "shot", "and", [(layout, [self.done])], animation, self.ready
+        )
+        either = self.an_automation(
+            "shot",
+            "or",
+            [(layout, [self.done]), (animation, [self.ready])],
+            lighting,
+            self.ready,
+        )
+
+        self.automations_in_order(cascade, either)
+        self.comment(layout_task, self.done)
+
+        self.assert_status(lighting_task, self.ready)
+        self.assertEqual(
+            self.comment_texts(lighting_task),
+            ["Change triggered by Layout set to Done"],
+        )
+
+    def test_an_or_trigger_met_before_does_not_fire_after_a_cascade(self):
+        layout = self.a_task_type("Layout")
+        animation = self.a_task_type("Animation")
+        lighting = self.a_task_type("Lighting")
+        layout_task = self.a_task(self.shot, layout, status=self.wip)
+        self.a_task(self.shot, animation, status=self.ready)
+        lighting_task = self.a_task(self.shot, lighting, status=self.wip)
+        cascade = self.an_automation(
+            "shot", "and", [(layout, [self.done])], animation, self.wip
+        )
+        either = self.an_automation(
+            "shot",
+            "or",
+            [(layout, [self.done]), (animation, [self.ready])],
+            lighting,
+            self.ready,
+        )
+
+        self.automations_in_order(cascade, either)
+        self.comment(layout_task, self.done)
+
+        self.assert_status(lighting_task, self.wip)
+
+    def test_a_later_change_of_the_commented_task_does_not_cancel_a_fire(
+        self,
+    ):
+        """
+        As before the trigger groups, each automation reads the status the
+        comment set, even once a chain has moved the task again.
+        """
+        layout = self.a_task_type("Layout")
+        animation = self.a_task_type("Animation")
+        lighting = self.a_task_type("Lighting")
+        layout_task = self.a_task(self.shot, layout)
+        self.a_task(self.shot, animation)
+        lighting_task = self.a_task(self.shot, lighting)
+        cascade = self.an_automation(
+            "shot", "and", [(layout, [self.done])], animation, self.ready
+        )
+        back = self.an_automation(
+            "shot", "and", [(animation, [self.ready])], layout, self.wip
+        )
+        later = self.an_automation(
+            "shot", "and", [(layout, [self.done])], lighting, self.ready
+        )
+
+        self.automations_in_order(cascade, back, later)
+        self.comment(layout_task, self.done)
+
+        self.assert_status(layout_task, self.wip)
+        self.assert_status(lighting_task, self.ready)
+
+    def test_automations_apply_in_the_order_they_were_created(self):
+        """
+        The automations a change fires apply in the order they were
+        created, whatever the order they were added in: on the same target,
+        the last one created sets the status.
+        """
+        animation = self.a_task_type("Animation")
+        lighting = self.a_task_type("Lighting")
+        animation_task = self.a_task(self.shot, animation)
+        lighting_task = self.a_task(self.shot, lighting)
+        self.an_automation(
+            "shot",
+            "and",
+            [(animation, [self.done])],
+            lighting,
+            self.ready,
+            created_at=datetime.datetime(2026, 1, 2),
+        )
+        self.an_automation(
+            "shot",
+            "and",
+            [(animation, [self.done])],
+            lighting,
+            self.wip,
+            created_at=datetime.datetime(2026, 1, 1),
+        )
+
+        self.comment(animation_task, self.done)
+
+        self.assert_status(lighting_task, self.ready)
+        self.assertEqual(
+            self.comment_texts(lighting_task),
+            ["Change triggered by Animation set to Done"] * 2,
+        )
+
+    def test_a_project_lists_its_automations_in_the_order_they_apply(self):
+        """
+        The order they were created, whatever the order they were added
+        in: the settings route and the ids Kitsu reads on the project both
+        show it.
+        """
+        animation = self.a_task_type("Animation")
+        lighting = self.a_task_type("Lighting")
+        created, earlier, latest = (
+            self.an_automation(
+                "shot",
+                "and",
+                [(animation, [self.done])],
+                lighting,
+                self.ready,
+                created_at=datetime.datetime(2026, 1, day),
+            )
+            for day in (2, 1, 3)
+        )
+        expected = [str(earlier.id), str(created.id), str(latest.id)]
+
+        settings = projects_service.get_project_status_automations(
+            self.project.id
+        )
+        project = projects_service.get_project_raw(self.project.id)
+
+        self.assertEqual([row["id"] for row in settings], expected)
+        self.assertEqual(
+            project.serialize(relations=True)["status_automations"], expected
+        )
+
+    def test_the_comment_text_names_the_commented_task(self):
+        """
+        With two tasks of a condition type, the text gives the status of the
+        task the comment changed.
+        """
+        lighting = self.a_task_type("Lighting")
+        fx = self.a_task_type("FX")
+        compositing = self.a_task_type("Compositing")
+        self.a_task(self.shot, lighting, status=self.done)
+        self.a_task(self.shot, fx, "FX a", status=self.na)
+        fx_b = self.a_task(self.shot, fx, "FX b", status=self.wip)
+        compositing_task = self.a_task(self.shot, compositing)
+        self.an_automation(
+            "shot",
+            "and",
+            [(lighting, [self.done]), (fx, [self.done, self.na])],
+            compositing,
+            self.ready,
+        )
+
+        self.comment(fx_b, self.done)
+
+        self.assertEqual(
+            self.comment_texts(compositing_task),
+            ["Change triggered by Lighting set to Done and FX set to Done"],
+        )
+
+    def test_the_priorities_follow_the_entity_type(self):
+        """
+        Each row reads the priorities of the task types for its own entity
+        type, as before conditions. An old row naming an asset type
+        ("props") finds none, so it fires whatever the priorities, while an
+        "asset" row on the same change does not.
+        """
+        modeling = self.a_task_type("Modeling", "Asset", priority=1)
+        rigging = self.a_task_type("Rigging", "Asset", priority=2)
+        concept = self.a_task_type("Concept", "Asset", priority=3)
+        concept_task = self.a_task(self.asset, concept)
+        modeling_task = self.a_task(self.asset, modeling)
+        rigging_task = self.a_task(self.asset, rigging)
+        asset_type = EntityType.get(self.asset.entity_type_id).name.lower()
+        self.an_automation(
+            asset_type, "and", [(concept, [self.done])], modeling, self.wip
+        )
+        self.an_automation(
+            "asset", "and", [(concept, [self.done])], rigging, self.ready
+        )
+
+        self.comment(concept_task, self.done)
+
+        self.assert_status(modeling_task, self.wip)
+        self.assert_status(rigging_task, self.todo)
+
+    def test_a_chain_into_an_and_trigger_is_no_cycle(self):
+        """
+        An automation fired down a chain is not fired again by the comment
+        that started it, so no cycle is reported.
+        """
+        layout = self.a_task_type("Layout")
+        animation = self.a_task_type("Animation")
+        lighting = self.a_task_type("Lighting")
+        layout_task = self.a_task(self.shot, layout)
+        self.a_task(self.shot, animation)
+        lighting_task = self.a_task(self.shot, lighting)
+        cascade = self.an_automation(
+            "shot", "and", [(layout, [self.done])], animation, self.ready
+        )
+        both = self.an_automation(
+            "shot",
+            "and",
+            [(layout, [self.done]), (animation, [self.ready])],
+            lighting,
+            self.ready,
+        )
+
+        self.automations_in_order(cascade, both)
+        with self.assertNoLogs(current_app.logger, level="WARNING"):
+            self.comment(layout_task, self.done)
+
+        self.assert_status(lighting_task, self.ready)
+        self.assertEqual(len(self.comment_texts(lighting_task)), 1)
