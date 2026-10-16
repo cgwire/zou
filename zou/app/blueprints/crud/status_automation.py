@@ -41,6 +41,11 @@ class StatusAutomationsResource(BaseModelsResource):
         """
         return super().post()
 
+    def update_data(self, data):
+        # First: it refuses a body the base method cannot read.
+        data = status_automations_service.normalize_trigger(data)
+        return super().update_data(data)
+
     def post_creation(self, status_automation):
         status_automations_service.clear_status_automation_cache()
         return status_automation.serialize(relations=True)
@@ -65,6 +70,13 @@ class StatusAutomationResource(BaseModelResource):
         Update status automation
         """
         return super().put(instance_id)
+
+    def update_data(self, data, instance_id):
+        # First: it refuses a body the base method cannot read.
+        data = status_automations_service.normalize_trigger(
+            data, self.instance.serialize()
+        )
+        return super().update_data(data, instance_id)
 
     def post_update(self, status_automation, data):
         status_automations_service.clear_status_automation_cache()

@@ -466,6 +466,25 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
         automation_ids = [a["id"] for a in automations]
         self.assertIn(str(self.status_automation_to_status.id), automation_ids)
 
+    def test_project_status_automations_carry_their_conditions(self):
+        self.generate_fixture_status_automation_to_status()
+        group = {
+            "operator": "and",
+            "conditions": [
+                {
+                    "task_type_id": str(self.task_type_concept.id),
+                    "task_status_ids": [str(self.task_status_done.id)],
+                }
+            ],
+        }
+        self.status_automation_to_status.update({"in_conditions": group})
+
+        automations = self.get(
+            f"/data/projects/{self.project_id}/settings/status-automations"
+        )
+
+        self.assertEqual(automations[0]["in_conditions"], group)
+
     def test_delete_project_status_automation(self):
         self.generate_fixture_status_automation_to_status()
         self.post(
