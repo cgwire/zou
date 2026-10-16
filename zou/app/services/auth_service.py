@@ -703,9 +703,10 @@ def unregister_fido(person_id, device_name):
             del person.fido_credentials[i]
             break
     flag_modified(person, "fido_credentials")
+    # The keys left keep FIDO on, and the preferred method with it.
     if len(person.fido_credentials) == 0:
         person.fido_enabled = False
-    _disable_two_factor_method(person, "fido")
+        _disable_two_factor_method(person, "fido")
     person.commit()
     persons_service.clear_person_cache()
     return True
