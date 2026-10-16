@@ -1780,6 +1780,88 @@ class StatusAutomationRunnerTestCase(ApiDBTestCase):
 
         self.assert_status(tasks[10], self.done)
 
+    def test_the_target_guard_keeps_the_work_in_progress(self):
+        """
+        Without a guard, a retake of the input followed by done again sets
+        the target back to the output status, over the work in progress.
+        """
+        animation = self.a_task_type("Animation")
+        lighting = self.a_task_type("Lighting")
+        animation_task = self.a_task(self.shot, animation)
+        lighting_task = self.a_task(self.shot, lighting)
+        automation = self.an_automation(
+            "shot", "and", [(animation, [self.done])], lighting, self.ready
+        )
+        automation.update(
+            {
+                "out_only_if_task_status_ids": [
+                    str(self.todo.id),
+                    str(self.ready.id),
+                ]
+            }
+        )
+
+        self.comment(animation_task, self.done)
+        self.assert_status(lighting_task, self.ready)
+        self.comment(lighting_task, self.wip)
+        self.comment(animation_task, self.retake)
+        self.comment(animation_task, self.done)
+
+        self.assert_status(lighting_task, self.wip)
+        self.assertEqual(len(self.comment_texts(lighting_task)), 2)
+
+    def test_without_a_target_guard_the_target_is_overwritten(self):
+        animation = self.a_task_type("Animation")
+        lighting = self.a_task_type("Lighting")
+        animation_task = self.a_task(self.shot, animation)
+        lighting_task = self.a_task(self.shot, lighting, status=self.wip)
+        self.an_automation(
+            "shot", "and", [(animation, [self.done])], lighting, self.ready
+        )
+
+        self.comment(animation_task, self.done)
+
+        self.assert_status(lighting_task, self.ready)
+
+    def test_an_empty_target_guard_is_no_guard(self):
+        animation = self.a_task_type("Animation")
+        lighting = self.a_task_type("Lighting")
+        animation_task = self.a_task(self.shot, animation)
+        lighting_task = self.a_task(self.shot, lighting, status=self.wip)
+        automation = self.an_automation(
+            "shot", "and", [(animation, [self.done])], lighting, self.ready
+        )
+        automation.update({"out_only_if_task_status_ids": []})
+
+        self.comment(animation_task, self.done)
+
+        self.assert_status(lighting_task, self.ready)
+
+    def test_a_malformed_target_guard_reads_as_none(self):
+        """
+        A guard that is not a list, which only a direct write stores, reads
+        as none, as in Kitsu and on a write: the change applies, with a
+        warning.
+        """
+        animation = self.a_task_type("Animation")
+        lighting = self.a_task_type("Lighting")
+        animation_task = self.a_task(self.shot, animation)
+        lighting_task = self.a_task(self.shot, lighting, status=self.wip)
+        automation = self.an_automation(
+            "shot", "and", [(animation, [self.done])], lighting, self.ready
+        )
+        automation.update({"out_only_if_task_status_ids": str(self.todo.id)})
+
+        with self.assertLogs(current_app.logger, level="WARNING") as logs:
+            self.comment(animation_task, self.done)
+
+        self.assert_status(lighting_task, self.ready)
+        self.assertIn(
+            f"Status automation {automation.id} has a malformed target "
+            "guard, read as none",
+            "\n".join(logs.output),
+        )
+
     def test_an_or_trigger_is_decided_before_the_cascade(self):
         """
         Every automation of a comment is decided on the tasks as the comment
@@ -2011,3 +2093,39 @@ class StatusAutomationRunnerTestCase(ApiDBTestCase):
 
         self.assert_status(lighting_task, self.ready)
         self.assertEqual(len(self.comment_texts(lighting_task)), 1)
+
+    def test_a_change_the_target_guard_skips_is_no_fire(self):
+        """
+        Skipped by its target guard, an automation can still apply its
+        change later in the same action.
+        """
+        first = self.a_task_type("First")
+        second = self.a_task_type("Second")
+        third = self.a_task_type("Third")
+        first_task = self.a_task(self.shot, first)
+        second_task = self.a_task(self.shot, second, status=self.wip)
+        self.a_task(self.shot, third)
+        guarded = self.an_automation(
+            "shot", "and", [(first, [self.done])], second, self.ready
+        )
+        guarded.update({"out_only_if_task_status_ids": [str(self.todo.id)]})
+        chain = [
+            self.an_automation(
+                "shot", "and", [(first, [self.done])], second, self.todo
+            ),
+            self.an_automation(
+                "shot", "and", [(second, [self.todo])], first, self.wip
+            ),
+            self.an_automation(
+                "shot", "and", [(first, [self.wip])], third, self.done
+            ),
+            self.an_automation(
+                "shot", "and", [(third, [self.done])], first, self.done
+            ),
+        ]
+
+        self.automations_in_order(guarded, *chain)
+        self.comment(first_task, self.done)
+
+        self.assert_status(first_task, self.done)
+        self.assert_status(second_task, self.ready)

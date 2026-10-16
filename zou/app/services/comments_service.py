@@ -326,8 +326,8 @@ def _run_status_automations(
     the change leaves them, before any of them applies its change, so that
     none is decided on what another changed. They then apply in the order
     they were created: on a target they share, each one finds what the
-    previous ones set. A failing automation never fails the comment, which
-    is already saved.
+    previous ones set, and its target guard reads that. A failing automation
+    never fails the comment, which is already saved.
 
     The comments posted by automations run the automations again. Within
     one user action, an automation applies its change at most once per
@@ -647,6 +647,8 @@ def _apply_status_change(
     if len(tasks_to_update) == 0:
         return
     task_to_update = tasks_to_update[0]
+    if not _is_target_status_allowed(automation, task_to_update):
+        return
     if not _record_fire(automation, task, fired_automations):
         return
     new_comment = create_comment(
@@ -668,6 +670,29 @@ def _apply_status_change(
             new_comment,
             task_to_update["id"],
         )
+
+
+def _is_target_status_allowed(automation, task):
+    """
+    Tell whether the target guard of an automation lets its change apply:
+    when statuses are listed, only to a target task in one of them, so that
+    an automation does not overwrite the work in progress. A guard that is
+    not a list, which only a direct write stores, reads as none, as Kitsu
+    shows it and a write reads it.
+    """
+    allowed_task_status_ids = automation.get("out_only_if_task_status_ids")
+    if allowed_task_status_ids is None:
+        return True
+    if not isinstance(allowed_task_status_ids, list):
+        current_app.logger.warning(
+            f"Status automation {automation['id']} has a malformed target "
+            f"guard, read as none: {allowed_task_status_ids}"
+        )
+        return True
+    allowed_ids = {
+        str(task_status_id) for task_status_id in allowed_task_status_ids
+    }
+    return len(allowed_ids) == 0 or str(task["task_status_id"]) in allowed_ids
 
 
 def _get_automation_comment_text(trigger, conditions, task, tasks_by_type):
