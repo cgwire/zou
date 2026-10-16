@@ -282,6 +282,56 @@ class PersonTestCase(PersonFixtureTestCase):
         self.assertEqual(data["first_name"], person_again["first_name"])
         self.put_404(f"data/persons/{fields.gen_uuid()}", data)
 
+    def test_update_person_leaves_the_two_factor_settings(self):
+        """
+        The 2FA settings change through the auth routes only: the person
+        update ignores them, for the person themselves and for an admin.
+        """
+        artist_id = self.generate_fixture_user_cg_artist()["id"]
+        # Logged in first: with TOTP on, the login would ask for a code.
+        self.log_in_cg_artist()
+        settings = {
+            "totp_enabled": True,
+            "totp_secret": "JBSWY3DPEHPK3PXP",
+            "preferred_two_factor_authentication": "totp",
+            "otp_recovery_codes": [b"$2b$12$notarealrecoverycodehash"],
+        }
+        Person.get(artist_id).update(settings)
+        data = {
+            "first_name": "Jane",
+            "totp_enabled": False,
+            "totp_secret": "KRSXG5CTMVRXEZLU",
+            "email_otp_enabled": True,
+            "email_otp_secret": "KRSXG5CTMVRXEZLU",
+            "fido_enabled": True,
+            "fido_credentials": [{"device_name": "other-key"}],
+            "otp_recovery_codes": [],
+            "preferred_two_factor_authentication": "fido",
+        }
+
+        def check_settings_kept():
+            person = Person.get(artist_id)
+            self.assertEqual(person.first_name, "Jane")
+            self.assertTrue(person.totp_enabled)
+            self.assertEqual(person.totp_secret, settings["totp_secret"])
+            self.assertFalse(person.email_otp_enabled)
+            self.assertIsNone(person.email_otp_secret)
+            self.assertFalse(person.fido_enabled)
+            self.assertIsNone(person.fido_credentials)
+            self.assertEqual(
+                person.otp_recovery_codes, settings["otp_recovery_codes"]
+            )
+            self.assertEqual(
+                person.preferred_two_factor_authentication, "totp"
+            )
+
+        self.put(f"data/persons/{artist_id}", data)
+        check_settings_kept()
+
+        self.log_in_admin()
+        self.put(f"data/persons/{artist_id}", data)
+        check_settings_kept()
+
     def test_person_display_preferences_round_trip(self):
         person = self.get_first("data/persons")
         self.put(
