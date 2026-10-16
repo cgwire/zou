@@ -1,6 +1,12 @@
 [tool.black]
 line-length = 79
 
+[tool.isort]
+profile = "black"
+line_length = 79
+combine_as_imports = true
+known_first_party = ["zou"]
+
 [tool.pytest.ini_options]
 # A bare `py.test` (what the CI runs) would otherwise collect the plugin
 # packages under plugins/, which are separate test suites with their own
