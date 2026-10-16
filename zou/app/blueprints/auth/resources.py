@@ -1006,7 +1006,7 @@ class RecoveryCodesResource(MethodView, ArgsMixin):
                 person["id"]
             )
             return {"otp_recovery_codes": otp_recovery_codes}
-        except WrongOTPException:
+        except (WrongOTPException, MissingOTPException):
             return (
                 {
                     "error": True,
