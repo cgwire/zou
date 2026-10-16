@@ -1,8 +1,8 @@
 from flasgger import swag_from
 from flask import abort
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
-from flask.views import MethodView
 from zou.app.utils import csv_utils, permissions
 
 

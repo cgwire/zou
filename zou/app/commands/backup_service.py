@@ -1,20 +1,18 @@
-import logging
 import gzip
+import logging
 import os
 import subprocess
-
-from zou.app.models.organisation import Organisation
-from zou.app.models.person import Person
-from zou.app.models.preview_file import PreviewFile
-from zou.app.models.project import Project
-
-from zou.app.exceptions import BackupFailedException
-from zou.app.stores import file_store
-from zou.app.utils import date_helpers
 
 from flask_fs.backends.local import LocalBackend
 
 from zou.app import config
+from zou.app.exceptions import BackupFailedException
+from zou.app.models.organisation import Organisation
+from zou.app.models.person import Person
+from zou.app.models.preview_file import PreviewFile
+from zou.app.models.project import Project
+from zou.app.stores import file_store
+from zou.app.utils import date_helpers
 
 logger = logging.getLogger(__name__)
 

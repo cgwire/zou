@@ -5,57 +5,54 @@ zou/cli.py parses the arguments and calls here; the functions carry the
 application logic and print their progress.
 """
 
-import os
 import datetime
-import tempfile
-import sys
+import os
 import shutil
+import sys
+import tempfile
+
 import click
 import orjson as json
-
+from ldap3 import ALL, NTLM, SIMPLE, Connection, Server
+from sqlalchemy.sql.expression import not_
 from tabulate import tabulate
-from ldap3 import Server, Connection, ALL, NTLM, SIMPLE
-from zou.app.utils import thumbnail as thumbnail_utils, auth
-from zou.app.utils.progress import NullProgress
-from zou.app.stores import auth_tokens_store, file_store
+
+from zou.app import app, config
 from zou.app.commands import (
     backup_service,
     sync_files_service,
     sync_service,
     sync_verify_service,
 )
-from zou.app.services import (
-    breakdown_service,
-    deletion_service,
-    index_service,
-    persons_service,
-    preview_file_states_service,
-    preview_files_service,
-    projects_service,
-    tasks_service,
-    departments_service,
-    entity_types_service,
-    organisation_service,
-    task_types_service,
-    preview_annotations_service,
-    preview_maintenance_service,
+from zou.app.exceptions import (
+    IsUserLimitReachedException,
+    PersonNotFoundException,
 )
 from zou.app.models.entity import Entity
 from zou.app.models.person import Person
+from zou.app.models.plugin import Plugin
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
 from zou.app.models.task import Task
-from zou.app.models.plugin import Plugin
-from sqlalchemy.sql.expression import not_
-
-from zou.app.exceptions import (
-    PersonNotFoundException,
-    IsUserLimitReachedException,
+from zou.app.services import (
+    breakdown_service,
+    deletion_service,
+    departments_service,
+    entity_types_service,
+    index_service,
+    organisation_service,
+    persons_service,
+    preview_annotations_service,
+    preview_file_states_service,
+    preview_files_service,
+    preview_maintenance_service,
+    projects_service,
+    task_types_service,
+    tasks_service,
 )
-
-from zou.app import config
-
-from zou.app import app
+from zou.app.stores import auth_tokens_store, file_store
+from zou.app.utils import auth, thumbnail as thumbnail_utils
+from zou.app.utils.progress import NullProgress
 
 # Departments (name, color) and task types (department, name, color,
 # priority, for_entity) that init-data creates, per studio domain. The

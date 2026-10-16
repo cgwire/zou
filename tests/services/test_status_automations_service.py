@@ -1,6 +1,6 @@
 # -*- coding: UTF-8 -*-
 from tests.base import ApiDBTestCase
-
+from zou.app.exceptions import StatusAutomationNotFoundException
 from zou.app.models.entity import Entity
 from zou.app.models.status_automation import StatusAutomation
 from zou.app.models.task import Task
@@ -11,7 +11,6 @@ from zou.app.services import (
     status_automations_service,
     task_types_service,
 )
-from zou.app.exceptions import StatusAutomationNotFoundException
 from zou.app.utils import fields
 
 

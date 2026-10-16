@@ -1,12 +1,12 @@
 import pytest
-from tests.base import ApiDBTestCase
 
-from zou.app.services import entity_types_service, concepts_service
+from tests.base import ApiDBTestCase
+from tests.services.cases import AssetsTestCase, ShotsTestCase
 from zou.app.exceptions import (
     AssetTypeNotFoundException,
     EntityTypeNotFoundException,
 )
-from tests.services.cases import AssetsTestCase, ShotsTestCase
+from zou.app.services import concepts_service, entity_types_service
 
 UNKNOWN = "00000000-0000-0000-0000-000000000000"
 

@@ -1,11 +1,9 @@
 import os
 import tempfile
-
 from io import BytesIO
 from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
-
 from zou.app.models.task import Task
 from zou.app.services import index_service, projects_service, shots_service
 

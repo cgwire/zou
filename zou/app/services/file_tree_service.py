@@ -1,36 +1,35 @@
 import os
 import re
-import orjson as json
-
 from collections import OrderedDict
+
+import orjson as json
 from slugify import slugify
 
-from zou.app.models.asset_instance import AssetInstance
-from zou.app.models.entity import Entity
-from zou.app.models.entity_type import EntityType
-from zou.app.models.output_type import OutputType
-from zou.app.models.task_type import TaskType
-from zou.app.models.task import Task
-from zou.app.models.department import Department
-from zou.app.models.project import Project
-
-from zou.app.services import (
-    entities_service,
-    files_service,
-    shots_service,
-    projects_service,
-    tasks_service,
-    departments_service,
-    entity_types_service,
-    task_types_service,
-)
 from zou.app.exceptions import (
     EpisodeNotFoundException,
     MalformedFileTreeException,
     SequenceNotFoundException,
+    TaskNotFoundException,
     WrongFileTreeFileException,
     WrongPathFormatException,
-    TaskNotFoundException,
+)
+from zou.app.models.asset_instance import AssetInstance
+from zou.app.models.department import Department
+from zou.app.models.entity import Entity
+from zou.app.models.entity_type import EntityType
+from zou.app.models.output_type import OutputType
+from zou.app.models.project import Project
+from zou.app.models.task import Task
+from zou.app.models.task_type import TaskType
+from zou.app.services import (
+    departments_service,
+    entities_service,
+    entity_types_service,
+    files_service,
+    projects_service,
+    shots_service,
+    task_types_service,
+    tasks_service,
 )
 
 ALLOWED_FIELDS = {"short_name", "name", "number", "id"}

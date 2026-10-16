@@ -1,15 +1,15 @@
 from zou.app import config
-from zou.app.utils import events, cache, fields
-from zou.app.models.task_type import TaskType
-from zou.app.models.task_status import TaskStatus
-from zou.app.models.studio import Studio
 from zou.app.exceptions import (
+    StudioNotFoundException,
     TaskStatusNotFoundException,
     TaskTypeNotFoundException,
     WrongParameterException,
-    StudioNotFoundException,
 )
+from zou.app.models.studio import Studio
+from zou.app.models.task_status import TaskStatus
+from zou.app.models.task_type import TaskType
 from zou.app.services import base_service
+from zou.app.utils import cache, events, fields
 
 
 def clear_task_status_cache(task_status_id):

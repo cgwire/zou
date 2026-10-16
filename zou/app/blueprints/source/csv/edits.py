@@ -1,28 +1,28 @@
 from flasgger import swag_from
+
 from zou.app.blueprints.source.csv.base import (
     BaseCsvProjectImportResource,
     RowException,
 )
-
+from zou.app.exceptions import WrongParameterException
 from zou.app.services import (
     edits_service,
     entities_service,
+    entity_types_service,
+    persons_service,
     projects_service,
     shots_service,
-    persons_service,
-    entity_types_service,
+)
+from zou.app.services.comments_service import create_comment
+from zou.app.services.task_types_service import (
+    get_task_statuses,
+    get_task_type,
 )
 from zou.app.services.tasks_service import (
     create_task,
     create_tasks,
     get_tasks_for_edit,
 )
-from zou.app.services.task_types_service import (
-    get_task_statuses,
-    get_task_type,
-)
-from zou.app.services.comments_service import create_comment
-from zou.app.exceptions import WrongParameterException
 
 
 class EditsCsvImportResource(BaseCsvProjectImportResource):

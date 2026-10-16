@@ -1,75 +1,78 @@
-from flasgger import swag_from
 import hmac
 import secrets
 
-from flask import request, jsonify, current_app, redirect, make_response
+from babel.dates import format_datetime
+from flasgger import swag_from
+from flask import current_app, jsonify, make_response, redirect, request
 from flask.views import MethodView
 from flask_jwt_extended import (
-    jwt_required,
     create_access_token,
+    get_jwt,
+    jwt_required,
     set_access_cookies,
     set_refresh_cookies,
     unset_jwt_cookies,
     unset_refresh_cookies,
-    get_jwt,
 )
-
+from saml2 import client_base, entity
 from sqlalchemy.exc import OperationalError, TimeoutError
-from babel.dates import format_datetime
-from saml2 import entity, client_base
 
 from zou.app import app, config
-from zou.app.mixin import ArgsMixin
-from zou.app.utils import auth, emails, permissions, date_helpers, validation
 from zou.app.blueprints.auth.schemas import (
     AppLoginCodeSchema,
     AppLoginTokenSchema,
-    LoginSchema,
     ChangePasswordSchema,
+    EmailOtpSchema,
+    FidoRegisterSchema,
+    FidoUnregisterSchema,
+    LoginSchema,
     ResetPasswordSchema,
     SendPasswordResetSchema,
     TotpSchema,
     TwoFactorAuthSchema,
-    EmailOtpSchema,
-    FidoRegisterSchema,
-    FidoUnregisterSchema,
 )
-from zou.app.utils.email_i18n import get_email_translation
-from zou.app.models.person import normalize_country
-from zou.app.services import (
-    persons_service,
-    auth_service,
-    events_service,
-    templates_service,
-    organisation_service,
-)
-
-from zou.app.utils.flask_utils import is_from_browser
-from zou.app.utils.saml import get_subject_from_ava, saml_client_for
-from zou.app.utils import oidc
-
-from zou.app.stores import auth_tokens_store
 from zou.app.exceptions import (
     EmailOTPAlreadyEnabledException,
     EmailOTPNotEnabledException,
     FIDONoPreregistrationException,
     FIDONotEnabledException,
     FIDOServerException,
+    InactiveUserException,
     MissingOTPException,
     NoAuthStrategyConfigured,
     NoTwoFactorAuthenticationEnabled,
-    SSOIdentityMismatchException,
     PersonInProtectedAccounts,
     PersonNotFoundException,
+    SSOIdentityMismatchException,
     TooManyLoginFailedAttempts,
     TOTPAlreadyEnabledException,
     TOTPNotEnabledException,
-    InactiveUserException,
     UserCantConnectDueToNoFallback,
     WrongOTPException,
     WrongPasswordException,
     WrongUserException,
 )
+from zou.app.mixin import ArgsMixin
+from zou.app.models.person import normalize_country
+from zou.app.services import (
+    auth_service,
+    events_service,
+    organisation_service,
+    persons_service,
+    templates_service,
+)
+from zou.app.stores import auth_tokens_store
+from zou.app.utils import (
+    auth,
+    date_helpers,
+    emails,
+    oidc,
+    permissions,
+    validation,
+)
+from zou.app.utils.email_i18n import get_email_translation
+from zou.app.utils.flask_utils import is_from_browser
+from zou.app.utils.saml import get_subject_from_ava, saml_client_for
 
 SSO_REFUSED = {
     "error": "This account cannot be signed in to with this identity. "

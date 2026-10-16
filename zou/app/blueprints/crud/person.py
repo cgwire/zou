@@ -1,17 +1,17 @@
-from flasgger import swag_from
 import datetime
 
 import sqlalchemy.orm as orm
+from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 from sqlalchemy.inspection import inspect
 
 from zou.app.models.person import (
-    Person,
-    ROLE_TYPES,
     CONTRACT_TYPES,
     DISPLAY_DATE_FORMATS,
+    ROLE_TYPES,
     SENSITIVE_FIELDS,
     TWO_FACTOR_AUTHENTICATION_TYPES,
+    Person,
     normalize_country,
     normalize_locale,
 )
@@ -37,6 +37,13 @@ MINIMAL_PERSON_FILTER_FIELDS = [
     "is_bot",
     "is_guest",
 ]
+from zou.app import config
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
+from zou.app.exceptions import (
+    PersonInProtectedAccounts,
+    WrongParameterException,
+)
+from zou.app.mixin import ArgsMixin
 from zou.app.services import (
     cascade_deletion_service,
     index_service,
@@ -44,19 +51,8 @@ from zou.app.services import (
     persons_service,
     user_service,
 )
-from zou.app.utils import permissions, auth, date_helpers
+from zou.app.utils import auth, date_helpers, permissions
 from zou.app.utils.fields import serialize_value
-
-from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
-
-from zou.app.mixin import ArgsMixin
-
-from zou.app.exceptions import (
-    WrongParameterException,
-    PersonInProtectedAccounts,
-)
-
-from zou.app import config
 
 
 def check_country(data):

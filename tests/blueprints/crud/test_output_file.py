@@ -1,11 +1,7 @@
 from tests.base import ApiDBTestCase
-
 from zou.app.models.output_file import OutputFile
-
-from zou.app.utils import events
-
-from zou.app.utils import fields
 from zou.app.services import projects_service
+from zou.app.utils import events, fields
 
 
 class OutputFileTestCase(ApiDBTestCase):

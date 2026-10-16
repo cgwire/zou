@@ -3,7 +3,12 @@
 
 from sqlalchemy import event
 
+from tests.services.cases import UserContextTestCase
 from zou.app import db
+from zou.app.exceptions import (
+    NotificationNotFoundException,
+    WrongParameterException,
+)
 from zou.app.models.entity import Entity
 from zou.app.models.notification import Notification
 from zou.app.models.person import Person
@@ -15,11 +20,6 @@ from zou.app.services import (
     tasks_service,
     user_service,
 )
-from zou.app.exceptions import (
-    NotificationNotFoundException,
-    WrongParameterException,
-)
-from tests.services.cases import UserContextTestCase
 
 UNKNOWN = "00000000-0000-0000-0000-000000000000"
 

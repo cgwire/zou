@@ -1,16 +1,16 @@
 from flasgger import swag_from
-from flask.views import MethodView
 from flask import request
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 from slugify import slugify
 
 from zou.app.services import (
     assets_service,
-    projects_service,
+    metadata_descriptors_service,
     permissions_service,
     persons_service,
+    projects_service,
     task_types_service,
-    metadata_descriptors_service,
 )
 from zou.app.utils import csv_utils, query
 

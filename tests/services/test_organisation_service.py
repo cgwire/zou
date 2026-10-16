@@ -1,5 +1,5 @@
-from zou.app.services import organisation_service
 from tests.services.cases import PersonsTestCase
+from zou.app.services import organisation_service
 
 
 class OrganisationTestCase(PersonsTestCase):

@@ -1,21 +1,20 @@
-import uuid
-import os
 import csv
+import os
+import uuid
 
-from sqlalchemy.exc import IntegrityError
-
-from flask import request, current_app
+from flask import current_app, request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
+from sqlalchemy.exc import IntegrityError
 
-from zou.app.mixin import ArgsMixin
 from zou.app import app
-from zou.app.utils import permissions, string
+from zou.app.mixin import ArgsMixin
 from zou.app.services import (
+    metadata_descriptors_service,
     permissions_service,
     persons_service,
-    metadata_descriptors_service,
 )
+from zou.app.utils import permissions, string
 
 
 class ImportRowException(Exception):

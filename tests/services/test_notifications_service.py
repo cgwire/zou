@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-
+from tests.services.cases import NotificationsTestCase
 from zou.app.models.notification import Notification
 from zou.app.models.person import Person
 from zou.app.services import (
@@ -9,7 +9,6 @@ from zou.app.services import (
     projects_service,
     subscriptions_service,
 )
-from tests.services.cases import NotificationsTestCase
 
 
 class NotificationRecipientTestCase(NotificationsTestCase):

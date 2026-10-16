@@ -1,7 +1,7 @@
-from zou.app.models.status_automation import StatusAutomation
-from zou.app.utils import cache, fields
-from zou.app.services import base_service
 from zou.app.exceptions import StatusAutomationNotFoundException
+from zou.app.models.status_automation import StatusAutomation
+from zou.app.services import base_service
+from zou.app.utils import cache, fields
 
 
 def clear_status_automation_cache():

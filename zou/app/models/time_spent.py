@@ -1,7 +1,8 @@
 from sqlalchemy_utils import UUIDType
+
 from zou.app import db
-from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
+from zou.app.models.serializer import SerializerMixin
 
 
 class TimeSpent(db.Model, BaseMixin, SerializerMixin):

@@ -1,59 +1,60 @@
 import re
+import uuid
 
+from sqlalchemy import and_
+from sqlalchemy.exc import IntegrityError, StatementError
+from sqlalchemy.orm import aliased
+from sqlalchemy.sql import func
 
-from sqlalchemy.exc import IntegrityError
-
+from zou.app import db
+from zou.app.exceptions import (
+    AssetNotFoundException,
+    CommentNotFoundException,
+    PreviewFileNotFoundException,
+    ReplyNotFoundException,
+    TooManyPreviewFilesException,
+    WrongParameterException,
+)
 from zou.app.models.attachment_file import AttachmentFile
-from zou.app.models.comment import Comment
+from zou.app.models.comment import (
+    Comment,
+    CommentPreviewLink,
+    acknowledgements_table,
+    department_mentions_table,
+    mentions_table,
+)
 from zou.app.models.department import Department
+from zou.app.models.news import News
 from zou.app.models.notification import Notification
 from zou.app.models.person import Person
-from zou.app.models.project import Project
+from zou.app.models.preview_file import PreviewFile
+from zou.app.models.project import Project, ProjectPersonLink
 from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
-
 from zou.app.services import (
     assets_service,
+    attachment_files_service,
     breakdown_service,
     entities_service,
+    entity_types_service,
+    files_service,
     news_service,
     notifications_service,
     persons_service,
-    projects_service,
-    tasks_service,
-    preview_files_service,
-    entity_types_service,
-    task_types_service,
-    files_service,
     preview_file_states_service,
-    attachment_files_service,
+    preview_files_service,
+    projects_service,
+    task_types_service,
+    tasks_service,
 )
-from zou.app.exceptions import (
-    WrongParameterException,
-    AssetNotFoundException,
-    PreviewFileNotFoundException,
-    ReplyNotFoundException,
+from zou.app.stores import file_store, redis_lock
+from zou.app.utils import (
+    cache,
+    date_helpers,
+    events,
+    fields,
+    query as query_utils,
 )
-
-from zou.app.utils import cache, date_helpers, events, fields
-from zou.app.stores import file_store
-from zou.app.exceptions import CommentNotFoundException
-from zou.app.models.comment import CommentPreviewLink
-from zou.app.models.news import News
-from zou.app.models.preview_file import PreviewFile
-from zou.app.models.project import ProjectPersonLink
-from sqlalchemy.exc import StatementError
-from zou.app.exceptions import TooManyPreviewFilesException
-from zou.app.models.comment import acknowledgements_table
-from sqlalchemy.orm import aliased
-from sqlalchemy import and_
-from zou.app import db
-from zou.app.models.comment import department_mentions_table
-from sqlalchemy.sql import func
-from zou.app.models.comment import mentions_table
-from zou.app.utils import query as query_utils
-from zou.app.stores import redis_lock
-import uuid
 
 # Raster image types that are safe to display inline. Paired with the global
 # X-Content-Type-Options: nosniff header, the browser honors the declared type

@@ -15,11 +15,12 @@ Create Date: 2026-05-22 00:00:00.000000
 
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy import orm
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy_utils import UUIDType
+
 from zou.migrations.utils.base import BaseMixin
 
 # revision identifiers, used by Alembic.

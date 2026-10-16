@@ -1,16 +1,11 @@
-import pytest
-
 from unittest.mock import patch
 
+import pytest
 from sqlalchemy import event
 
 from tests.base import ApiDBTestCase
-
+from tests.services.cases import FilesTestCase
 from zou.app import app, db
-from zou.app.models.file_status import FileStatus
-from zou.app.models.software import Software
-from zou.app.models.working_file import WorkingFile
-from zou.app.services import deletion_service, files_service
 from zou.app.exceptions import (
     EntryAlreadyExistsException,
     OutputFileNotFoundException,
@@ -20,9 +15,12 @@ from zou.app.exceptions import (
     SoftwareNotFoundException,
     WorkingFileNotFoundException,
 )
+from zou.app.models.file_status import FileStatus
+from zou.app.models.software import Software
+from zou.app.models.working_file import WorkingFile
+from zou.app.services import deletion_service, files_service
 from zou.app.stores import file_store
 from zou.app.utils import cache, fields
-from tests.services.cases import FilesTestCase
 
 
 class DefaultFileStatusTestCase(ApiDBTestCase):

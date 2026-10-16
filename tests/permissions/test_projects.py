@@ -1,13 +1,13 @@
 from flask_jwt_extended import verify_jwt_in_request
 
+from tests.permissions.cases import DemotedRoleTestCase
 from zou.app import app
 from zou.app.services import (
     entities_service,
-    permissions_service,
     metadata_descriptors_service,
+    permissions_service,
 )
 from zou.app.utils import permissions
-from tests.permissions.cases import DemotedRoleTestCase
 
 
 class ProjectReadRoleTestCase(DemotedRoleTestCase):

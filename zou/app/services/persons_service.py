@@ -1,40 +1,37 @@
 import datetime
 import logging
+import random
+import string
 import urllib.parse
-
 from calendar import monthrange
-from dateutil import relativedelta
 
+from dateutil import relativedelta
+from flask_jwt_extended import create_access_token, current_user, get_jti
 from sqlalchemy.exc import StatementError
 from sqlalchemy.orm import selectinload
 
-from flask_jwt_extended import create_access_token, get_jti, current_user
-
+from zou.app import config, db, file_store
+from zou.app.exceptions import (
+    PersonInProtectedAccounts,
+    PersonNotFoundException,
+    SSOIdentityMismatchException,
+    WrongParameterException,
+)
 from zou.app.models.department import Department
 from zou.app.models.desktop_login_log import DesktopLoginLog
 from zou.app.models.person import Person
+from zou.app.models.project import ProjectPersonLink
 from zou.app.models.studio import Studio
 from zou.app.models.task import Task
 from zou.app.models.time_spent import TimeSpent
-
-from zou.app import config, file_store, db
-from zou.app.utils import fields, events, cache, emails, date_helpers
-from zou.app.utils.email_i18n import get_email_translation
 from zou.app.services import (
     index_service,
-    templates_service,
     organisation_service,
+    templates_service,
 )
 from zou.app.stores import auth_tokens_store
-from zou.app.exceptions import (
-    PersonNotFoundException,
-    SSOIdentityMismatchException,
-    PersonInProtectedAccounts,
-    WrongParameterException,
-)
-from zou.app.models.project import ProjectPersonLink
-import random
-import string
+from zou.app.utils import cache, date_helpers, emails, events, fields
+from zou.app.utils.email_i18n import get_email_translation
 
 logger = logging.getLogger(__name__)
 

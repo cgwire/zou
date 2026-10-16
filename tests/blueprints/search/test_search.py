@@ -1,12 +1,11 @@
 import pytest
 
 from tests.base import ApiDBTestCase, indexer_is_up
-
 from zou.app.services import (
     index_service,
+    metadata_descriptors_service,
     projects_service,
     tasks_service,
-    metadata_descriptors_service,
 )
 
 pytestmark = [

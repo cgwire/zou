@@ -1,9 +1,8 @@
 from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
-from zou.app.models.search_filter_group import SearchFilterGroup
-
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
+from zou.app.models.search_filter_group import SearchFilterGroup
 
 
 class SearchFilterGroupsResource(BaseModelsResource):

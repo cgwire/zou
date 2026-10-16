@@ -1,19 +1,18 @@
 from flasgger import swag_from
+
 from zou.app.blueprints.source.csv.base import (
     BaseCsvImportResource,
     RowException,
 )
-
 from zou.app.models.person import (
-    ROLE_TYPES,
     CONTRACT_TYPES,
     POSITION_TYPES,
+    ROLE_TYPES,
     SENIORITY_TYPES,
     normalize_country,
 )
 from zou.app.services import persons_service
 from zou.app.utils import auth, permissions
-
 from zou.app.utils.string import strtobool
 
 

@@ -1,11 +1,9 @@
 from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
-from zou.app.models.milestone import Milestone
-from zou.app.services import permissions_service
-from zou.app.services import user_service
-
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
+from zou.app.models.milestone import Milestone
+from zou.app.services import permissions_service, user_service
 
 
 class MilestonesResource(BaseModelsResource):

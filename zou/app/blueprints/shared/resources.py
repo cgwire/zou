@@ -1,7 +1,7 @@
 from flasgger import swag_from
 from flask import current_app, g, request
-from flask_fs.errors import FileNotFound
 from flask.views import MethodView
+from flask_fs.errors import FileNotFound
 
 from zou.app.blueprints.previews.resources import (
     ALLOWED_FILE_EXTENSION,
@@ -21,22 +21,22 @@ from zou.app.blueprints.shared.schemas import (
     GuestActionSchema,
     UpdateGuestAnnotationsSchema,
 )
-from zou.app.services import (
-    comments_service,
-    files_service,
-    persons_service,
-    playlist_sharing_service,
-    playlists_service,
-    tasks_service,
-    task_types_service,
-    preview_annotations_service,
-)
 from zou.app.exceptions import (
     AttachmentFileNotFoundException,
     PersonNotFoundException,
     PlaylistShareLinkNotFoundException,
     PreviewFileNotFoundException,
     WrongParameterException,
+)
+from zou.app.services import (
+    comments_service,
+    files_service,
+    persons_service,
+    playlist_sharing_service,
+    playlists_service,
+    preview_annotations_service,
+    task_types_service,
+    tasks_service,
 )
 from zou.app.utils import date_helpers, permissions, validation
 

@@ -1,38 +1,37 @@
 from datetime import date, timedelta
+
+from sqlalchemy import Text, and_, cast, delete, func, literal, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import aliased
-from sqlalchemy import Text, and_, cast, delete, func, literal, select, update
 
-
+from zou.app import db
+from zou.app.exceptions import (
+    ProductionScheduleVersionNotFoundException,
+    WrongParameterException,
+)
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.milestone import Milestone
-from zou.app.models.project import Project
-from zou.app.models.schedule_item import ScheduleItem
-from zou.app.models.task import Task, TaskPersonLink
-from zou.app.models.task_type import TaskType
+from zou.app.models.person import Person
 from zou.app.models.production_schedule_version import (
     ProductionScheduleVersion,
     ProductionScheduleVersionTaskLink,
     ProductionScheduleVersionTaskLinkPersonLink,
 )
-from zou.app.utils import events, fields, cache
+from zou.app.models.project import Project
+from zou.app.models.schedule_item import ScheduleItem
+from zou.app.models.task import Task, TaskPersonLink
+from zou.app.models.task_type import TaskType
 from zou.app.services import (
     assets_service,
     base_service,
     edits_service,
+    entity_types_service,
+    projects_service,
     shots_service,
     tasks_service,
-    projects_service,
-    entity_types_service,
 )
-from zou.app import db
-
-from zou.app.exceptions import (
-    ProductionScheduleVersionNotFoundException,
-    WrongParameterException,
-)
-from zou.app.models.person import Person
+from zou.app.utils import cache, events, fields
 
 
 def clear_production_schedule_version_cache(production_schedule_version_id):

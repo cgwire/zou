@@ -2,14 +2,13 @@ from flasgger import swag_from
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
-from zou.app.mixin import ArgsMixin
-from zou.app.utils import fields, permissions
-
-from zou.app.services import events_service, permissions_service, user_service
 from zou.app.exceptions import (
     ProjectNotFoundException,
     WrongParameterException,
 )
+from zou.app.mixin import ArgsMixin
+from zou.app.services import events_service, permissions_service, user_service
+from zou.app.utils import fields, permissions
 
 
 class EventsResource(MethodView, ArgsMixin):

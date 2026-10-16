@@ -1,28 +1,24 @@
 from flasgger import swag_from
 from flask import current_app
 from flask_jwt_extended import jwt_required
-
 from sqlalchemy.exc import IntegrityError
-
-from zou.app.models.project import Project
-from zou.app.models.entity import Entity
-from zou.app.models.entity_type import EntityType
 
 from zou.app.blueprints.source.shotgun.base import (
     BaseImportShotgunResource,
     ImportRemoveShotgunBaseResource,
 )
-
+from zou.app.exceptions import AssetNotFoundException
+from zou.app.models.entity import Entity
+from zou.app.models.entity_type import EntityType
+from zou.app.models.project import Project
 from zou.app.services import (
     assets_service,
+    cascade_deletion_service,
     deletion_service,
-    tasks_service,
     files_service,
     persons_service,
-    cascade_deletion_service,
+    tasks_service,
 )
-
-from zou.app.exceptions import AssetNotFoundException
 
 
 class ImportShotgunAssetsResource(BaseImportShotgunResource):

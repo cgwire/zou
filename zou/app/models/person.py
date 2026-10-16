@@ -1,27 +1,26 @@
 import logging
 
+from babel import Locale
+from babel.core import UnknownLocaleError
+from pytz import timezone as pytz_timezone
+from sqlalchemy import Index, func
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm import validates
 from sqlalchemy_utils import (
-    UUIDType,
+    ChoiceType,
     EmailType,
     LocaleType,
     TimezoneType,
-    ChoiceType,
+    UUIDType,
 )
-from sqlalchemy import func, Index
-from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import validates
-from sqlalchemy.dialects.postgresql import JSONB
 
-from pytz import timezone as pytz_timezone
-from babel import Locale
-from babel.core import UnknownLocaleError
-
-from zou.app.models.serializer import SerializerMixin
-from zou.app.utils import fields
-from zou.app.models.department import Department
-from zou.app.models.base import BaseMixin
 from zou.app import db
+from zou.app.models.base import BaseMixin
+from zou.app.models.department import Department
+from zou.app.models.serializer import SerializerMixin
 from zou.app.stores import config_store
+from zou.app.utils import fields
 
 logger = logging.getLogger(__name__)
 

@@ -4,23 +4,21 @@ import uuid
 
 import pytest
 
-from tests.base import ApiDBTestCase, TEST_FOLDER
-
+from tests.base import TEST_FOLDER, ApiDBTestCase
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.comment import Comment
 from zou.app.models.person import Person
-from zou.app.models.playlist import Playlist
-from zou.app.models.playlist import Playlist as PlaylistModel
+from zou.app.models.playlist import Playlist, Playlist as PlaylistModel
 from zou.app.models.playlist_share_link import PlaylistShareLink
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
 from zou.app.services import (
     comments_service,
+    playlist_sharing_service,
+    preview_file_states_service as states_service,
     tasks_service,
 )
-from zou.app.services import playlist_sharing_service
-from zou.app.services import preview_file_states_service as states_service
 from zou.app.stores import file_store
 from zou.app.utils import fs
 

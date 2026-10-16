@@ -1,59 +1,58 @@
-from flasgger import swag_from
 import datetime
 
-
+from flasgger import swag_from
 from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
-from zou.app.exceptions import (
-    CommentNotFoundException,
-    TaskNotFoundException,
-    PersonNotFoundException,
-    WrongDateFormatException,
-    WrongParameterException,
-)
-from zou.app.services import (
-    assets_service,
-    deletion_service,
-    edits_service,
-    entities_service,
-    files_service,
-    notifications_service,
-    persons_service,
-    preview_files_service,
-    projects_service,
-    shots_service,
-    tasks_service,
-    permissions_service,
-    user_service,
-    concepts_service,
-    entity_types_service,
-    subscriptions_service,
-    task_types_service,
-    comments_service,
-    schedule_service,
-    time_spents_service,
-    todos_service,
-)
-from zou.app.utils import (
-    events,
-    http_cache,
-    query,
-    permissions,
-    date_helpers,
-    validation,
-    fields,
-)
-from zou.app.mixin import ArgsMixin
 from zou.app.blueprints.tasks.schemas import (
+    AssignPersonSchema,
+    AssignTasksSchema,
     CommentPreviewSchema,
     SetTasksMainPreviewSchema,
     SetTasksPrioritySchema,
-    UnassignTasksSchema,
-    AssignTasksSchema,
-    AssignPersonSchema,
     TimeSpentSchema,
+    UnassignTasksSchema,
+)
+from zou.app.exceptions import (
+    CommentNotFoundException,
+    PersonNotFoundException,
+    TaskNotFoundException,
+    WrongDateFormatException,
+    WrongParameterException,
+)
+from zou.app.mixin import ArgsMixin
+from zou.app.services import (
+    assets_service,
+    comments_service,
+    concepts_service,
+    deletion_service,
+    edits_service,
+    entities_service,
+    entity_types_service,
+    files_service,
+    notifications_service,
+    permissions_service,
+    persons_service,
+    preview_files_service,
+    projects_service,
+    schedule_service,
+    shots_service,
+    subscriptions_service,
+    task_types_service,
+    tasks_service,
+    time_spents_service,
+    todos_service,
+    user_service,
+)
+from zou.app.utils import (
+    date_helpers,
+    events,
+    fields,
+    http_cache,
+    permissions,
+    query,
+    validation,
 )
 
 

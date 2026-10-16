@@ -1,6 +1,6 @@
 from zou.app import db
-from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
+from zou.app.models.serializer import SerializerMixin
 
 
 class OutputType(db.Model, BaseMixin, SerializerMixin):

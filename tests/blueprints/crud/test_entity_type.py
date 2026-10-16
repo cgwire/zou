@@ -1,12 +1,9 @@
 from tests.base import ApiDBTestCase
-
 from zou.app.models.entity_type import EntityType
 from zou.app.models.task_type import TaskType
-
 from zou.app.services import (
     entity_types_service,
 )
-
 from zou.app.utils import fields
 
 

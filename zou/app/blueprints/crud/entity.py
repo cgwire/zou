@@ -1,18 +1,23 @@
-from flasgger import swag_from
 import copy
 import re
 
+from flasgger import swag_from
 from flask import current_app
 from flask_jwt_extended import jwt_required
-
 from sqlalchemy.exc import StatementError
 
+from zou.app.blueprints.crud.base import (
+    BaseModelResource,
+    BaseModelsResource,
+    build_db_error_message,
+)
+from zou.app.exceptions import WrongParameterException
 from zou.app.models.entity import (
-    Entity,
-    EntityVersion,
-    EntityLink,
-    EntityConceptLink,
     ENTITY_STATUSES,
+    Entity,
+    EntityConceptLink,
+    EntityLink,
+    EntityVersion,
 )
 from zou.app.models.project import Project
 from zou.app.models.subscription import Subscription
@@ -20,25 +25,17 @@ from zou.app.models.task import Task
 from zou.app.services import (
     assets_service,
     breakdown_service,
-    entities_service,
+    concepts_service,
     edits_service,
+    entities_service,
+    entity_types_service,
     index_service,
+    permissions_service,
     persons_service,
     shots_service,
-    permissions_service,
     user_service,
-    concepts_service,
-    entity_types_service,
 )
 from zou.app.utils import date_helpers, events, fields, permissions
-
-from zou.app.exceptions import WrongParameterException
-
-from zou.app.blueprints.crud.base import (
-    BaseModelResource,
-    BaseModelsResource,
-    build_db_error_message,
-)
 
 # A shot version takes the next change of its author up to a minute after
 # its last change, and up to five minutes after its creation, when that

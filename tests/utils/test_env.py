@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from zou.app.utils.env import envtobool, env_with_semicolon_to_list
+from zou.app.utils.env import env_with_semicolon_to_list, envtobool
 
 
 class EnvTestCase(unittest.TestCase):

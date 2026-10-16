@@ -1,8 +1,9 @@
+from urllib.parse import urlparse
+
+from fido2.server import Fido2Server
 from fido2.webauthn import (
     PublicKeyCredentialRpEntity,
 )
-from fido2.server import Fido2Server
-from urllib.parse import urlparse
 
 from zou.app import config
 

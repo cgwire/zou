@@ -2,33 +2,33 @@ import base64
 import hashlib
 import hmac
 import json
-import pyotp
 import random
 import secrets
 import string
-
 from datetime import timedelta
 
-from flask import request, session, current_app
+import pyotp
+from babel.dates import format_datetime
+from fido2.utils import bytes2int, int2bytes
+from fido2.webauthn import (
+    AttestedCredentialData,
+    PublicKeyCredentialUserEntity,
+)
+from flask import current_app, request, session
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
     get_jti,
 )
-from babel.dates import format_datetime
+from sqlalchemy.orm.attributes import flag_modified
 
-
-from zou.app.services import (
-    persons_service,
-    templates_service,
-    organisation_service,
-)
-from zou.app.models.person import Person, SENSITIVE_FIELDS
+from zou.app import config
 from zou.app.exceptions import (
     EmailOTPAlreadyEnabledException,
     EmailOTPNotEnabledException,
     FIDONoPreregistrationException,
     FIDOServerException,
+    InactiveUserException,
     MissingOTPException,
     NoAuthStrategyConfigured,
     PersonNotFoundException,
@@ -36,24 +36,20 @@ from zou.app.exceptions import (
     TOTPAlreadyEnabledException,
     TOTPNotEnabledException,
     TwoFactorAuthenticationNotEnabledException,
-    InactiveUserException,
     UserCantConnectDueToNoFallback,
     WrongOTPException,
     WrongPasswordException,
     WrongUserException,
 )
-from zou.app import config
+from zou.app.models.person import SENSITIVE_FIELDS, Person
+from zou.app.services import (
+    organisation_service,
+    persons_service,
+    templates_service,
+)
 from zou.app.stores import auth_tokens_store
 from zou.app.utils import auth, date_helpers, emails
 from zou.app.utils.email_i18n import get_email_translation
-
-from fido2.webauthn import (
-    PublicKeyCredentialUserEntity,
-)
-from sqlalchemy.orm.attributes import flag_modified
-
-from fido2.utils import bytes2int, int2bytes
-from fido2.webauthn import AttestedCredentialData
 
 MAX_LOGIN_FAILED_ATTEMPS = 5
 LOGIN_LOCKOUT_DELAY = timedelta(minutes=1)
@@ -226,10 +222,10 @@ def ldap_auth_strategy(person, password, app):
     (only if fallback is activated (via LDAP_FALLBACK flag) in configuration)
     """
     if person["is_generated_from_ldap"]:
-        from ldap3 import Server, Connection, ALL, NTLM, SIMPLE
+        from ldap3 import ALL, NTLM, SIMPLE, Connection, Server
         from ldap3.core.exceptions import (
-            LDAPSocketOpenError,
             LDAPInvalidCredentialsResult,
+            LDAPSocketOpenError,
         )
 
         try:

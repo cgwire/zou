@@ -3,16 +3,14 @@ import tempfile
 import threading
 import unittest
 import uuid
-
 from unittest import mock
 
 from tests.base import ApiDBTestCase
-
-from zou.app.models.preview_file_storage_state import (
-    PreviewFileStorageState,
-)
 from zou.app.commands import (
     sync_files_service,
+)
+from zou.app.models.preview_file_storage_state import (
+    PreviewFileStorageState,
 )
 from zou.app.stores import file_store
 

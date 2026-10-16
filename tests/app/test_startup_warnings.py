@@ -1,5 +1,4 @@
 import unittest
-
 from unittest.mock import MagicMock, patch
 
 from zou.app import warn_about_overridden_settings

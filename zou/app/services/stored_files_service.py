@@ -7,7 +7,6 @@ between instances nor serialized to the clients.
 """
 
 import logging
-
 from datetime import timedelta
 
 from sqlalchemy import tuple_

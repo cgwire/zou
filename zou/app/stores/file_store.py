@@ -1,14 +1,15 @@
 import logging
 import os
 import time
-import flask_fs
 from contextlib import contextmanager
+
+import flask_fs
 from flask import current_app, has_request_context
-from werkzeug.utils import cached_property
-from zou.app import config
 from flask_fs.backends.local import LocalBackend
 from werkzeug.exceptions import RequestedRangeNotSatisfiable
+from werkzeug.utils import cached_property
 
+from zou.app import config
 from zou.app.stores import swift_auth_store
 from zou.app.utils import fs
 

@@ -1,7 +1,6 @@
 import time
+
 from tests.base import ApiTestCase
-
-
 from zou.app.stores import auth_tokens_store
 
 

@@ -6,7 +6,9 @@ warnings.filterwarnings("ignore")
 import logging
 import os
 import sys
+
 import click
+
 from zou.app.services import (
     organisation_service,
 )
@@ -213,7 +215,7 @@ def upgrade_db(no_telemetry=False):
 
     from alembic import command
     from alembic.script import ScriptDirectory
-    from sqlalchemy import create_engine, text, pool
+    from sqlalchemy import create_engine, pool, text
 
     cfg = _get_alembic_config()
 
@@ -303,12 +305,12 @@ def create_admin(email, password):
     """
     from sqlalchemy.exc import IntegrityError
 
-    from zou.app.utils import auth
-    from zou.app.services import persons_service
     from zou.app.exceptions import (
         IsUserLimitReachedException,
         PersonNotFoundException,
     )
+    from zou.app.services import persons_service
+    from zou.app.utils import auth
 
     with _get_app().app_context():
         try:
@@ -390,11 +392,11 @@ def disable_two_factor_authentication(email_or_desktop_login):
     """
     Disable two factor authentication for given user.
     """
-    from zou.app.services import persons_service, auth_service
     from zou.app.exceptions import (
         PersonNotFoundException,
         TwoFactorAuthenticationNotEnabledException,
     )
+    from zou.app.services import auth_service, persons_service
 
     with _get_app().app_context():
         try:
@@ -424,8 +426,8 @@ def change_password(email, password):
     """
     Change the password of given user.
     """
-    from zou.app.utils import auth
     from zou.app.services import persons_service
+    from zou.app.utils import auth
 
     with _get_app().app_context():
         try:
@@ -445,11 +447,11 @@ def set_person_as_active(email, unactive):
     """
     Set a person as active.
     """
-    from zou.app.services import persons_service
     from zou.app.exceptions import (
         IsUserLimitReachedException,
         PersonNotFoundException,
     )
+    from zou.app.services import persons_service
 
     with _get_app().app_context():
         try:

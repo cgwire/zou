@@ -1,39 +1,34 @@
+import collections
 import datetime
-
-from dateutil import relativedelta
 from collections import defaultdict
 
+from dateutil import relativedelta
 from sqlalchemy import func
-from sqlalchemy.exc import DataError
+from sqlalchemy.exc import DataError, IntegrityError
 from sqlalchemy.orm import aliased
+from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
 
+from zou.app.exceptions import (
+    TaskNotFoundException,
+    TimeSpentNotFoundException,
+    WrongDateFormatException,
+)
 from zou.app.models.day_off import DayOff
 from zou.app.models.department import Department
+from zou.app.models.entity import Entity
+from zou.app.models.entity_type import EntityType
+from zou.app.models.person import Person
 from zou.app.models.project import Project
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 from zou.app.models.time_spent import TimeSpent
-from zou.app.models.entity import Entity
-from zou.app.models.entity_type import EntityType
-from zou.app.models.person import Person
-
-from zou.app.utils import fields, date_helpers
-
 from zou.app.services import (
-    projects_service,
-    persons_service,
     base_service,
+    persons_service,
+    projects_service,
     tasks_service,
 )
-from zou.app.exceptions import WrongDateFormatException
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm.exc import ObjectDeletedError
-from sqlalchemy.orm.exc import StaleDataError
-from zou.app.exceptions import TaskNotFoundException
-from zou.app.exceptions import TimeSpentNotFoundException
-import collections
-from zou.app.utils import events
-from zou.app.utils import query as query_utils
+from zou.app.utils import date_helpers, events, fields, query as query_utils
 
 
 def _apply_time_spent_filters(

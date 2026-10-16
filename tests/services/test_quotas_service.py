@@ -1,8 +1,8 @@
 import datetime
 
+from tests.services.cases import ShotsTestCase
 from zou.app.services import quotas_service, time_spents_service
 from zou.app.utils import fields
-from tests.services.cases import ShotsTestCase
 
 
 class QuotaTestCase(ShotsTestCase):

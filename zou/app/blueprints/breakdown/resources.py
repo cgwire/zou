@@ -3,23 +3,22 @@ from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
-from zou.app.services import (
-    assets_service,
-    breakdown_service,
-    entities_service,
-    projects_service,
-    shots_service,
-    permissions_service,
-    entity_types_service,
-)
-
-from zou.app.mixin import ArgsMixin
-from zou.app.utils import permissions, validation
 from zou.app.blueprints.breakdown.schemas import (
     AddAssetInstanceSchema,
     AddSceneAssetInstanceSchema,
     CastAssetSchema,
 )
+from zou.app.mixin import ArgsMixin
+from zou.app.services import (
+    assets_service,
+    breakdown_service,
+    entities_service,
+    entity_types_service,
+    permissions_service,
+    projects_service,
+    shots_service,
+)
+from zou.app.utils import permissions, validation
 
 
 class CastingResource(MethodView):

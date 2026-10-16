@@ -1,11 +1,11 @@
 from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.models.task_status import TaskStatus
 from zou.app.services import (
     task_types_service,
 )
-from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 
 class TaskStatusesResource(BaseModelsResource):

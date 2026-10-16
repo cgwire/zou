@@ -5,9 +5,9 @@ import uuid
 from babel import Locale
 from pytz import timezone
 
-from zou.app.utils import fields
 from zou.app.models.person import Person
 from zou.app.models.task import Task
+from zou.app.utils import fields
 
 
 class FieldsTestCase(unittest.TestCase):

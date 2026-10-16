@@ -1,14 +1,11 @@
+from zou.app.exceptions import (
+    BudgetEntryNotFoundException,
+    BudgetNotFoundException,
+)
 from zou.app.models.budget import Budget
 from zou.app.models.budget_entry import BudgetEntry
-
 from zou.app.services import base_service
-from zou.app.exceptions import (
-    BudgetNotFoundException,
-    BudgetEntryNotFoundException,
-)
-
-from zou.app.utils import events
-from zou.app.utils import fields
+from zou.app.utils import events, fields
 
 
 def _clean_exceptions(data):

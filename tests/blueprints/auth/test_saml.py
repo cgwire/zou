@@ -8,7 +8,6 @@ the auth cookies.
 from unittest import mock
 
 from tests.base import ApiDBTestCase
-
 from zou.app import config
 from zou.app.models.person import Person
 from zou.app.services import auth_service, persons_service

@@ -4,23 +4,23 @@ from sqlalchemy.exc import IntegrityError, StatementError
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.exc import ObjectDeletedError
 
-from zou.app.services import (
-    base_service,
-    projects_service,
-    entity_types_service,
-)
-from zou.app.utils import events, fields
-from zou.app.models.entity import Entity
-from zou.app.models.project import Project
-from zou.app.models.task import Task
 from zou.app.exceptions import (
-    MetadataDescriptorNotFoundException,
     DepartmentNotFoundException,
+    MetadataDescriptorNotFoundException,
     WrongParameterException,
 )
-from zou.app.models.metadata_descriptor import MetadataDescriptor
-from zou.app.models.project_status import ProjectStatus
 from zou.app.models.department import Department
+from zou.app.models.entity import Entity
+from zou.app.models.metadata_descriptor import MetadataDescriptor
+from zou.app.models.project import Project
+from zou.app.models.project_status import ProjectStatus
+from zou.app.models.task import Task
+from zou.app.services import (
+    base_service,
+    entity_types_service,
+    projects_service,
+)
+from zou.app.utils import events, fields
 
 
 def _migrate_metadata_field_name(model, old_key, new_key):

@@ -1,53 +1,28 @@
-from flasgger import swag_from
 import os
 import unicodedata
 from urllib.parse import quote
-import orjson as json
 
-from flask import request, current_app, jsonify, Response
-from flask import send_file as flask_send_file
+import orjson as json
+from flasgger import swag_from
+from flask import (
+    Response,
+    current_app,
+    jsonify,
+    request,
+    send_file as flask_send_file,
+)
 from flask.views import MethodView
-from flask_jwt_extended import jwt_required
 from flask_fs.errors import FileNotFound
+from flask_jwt_extended import jwt_required
 from werkzeug.exceptions import NotFound
 from werkzeug.wsgi import FileWrapper as WerkzeugFileWrapper
 
 from zou.app import config
-from zou.app.mixin import ArgsMixin
-from zou.app.utils import validation as validation_utils
 from zou.app.blueprints.previews.schemas import (
     AnnotationsUpdateSchema,
     ExtractAnnotatedFrameSchema,
-    PreviewFileUploadSchema,
     PreviewFilePositionSchema,
-)
-from zou.app.stores import file_store
-from zou.app.services import (
-    comments_service,
-    chats_service,
-    deletion_service,
-    entities_service,
-    files_service,
-    persons_service,
-    projects_service,
-    preview_file_states_service,
-    preview_files_service,
-    tasks_service,
-    permissions_service,
-    organisation_service,
-    task_types_service,
-    preview_annotations_service,
-    preview_maintenance_service,
-    attachment_files_service,
-)
-from zou.utils import movie
-from zou.app.utils import (
-    fields,
-    fs,
-    events,
-    permissions,
-    thumbnail as thumbnail_utils,
-    date_helpers,
+    PreviewFileUploadSchema,
 )
 from zou.app.exceptions import (
     PreviewBackgroundFileNotFoundException,
@@ -56,6 +31,36 @@ from zou.app.exceptions import (
     PreviewProcessingFailedException,
     WrongParameterException,
 )
+from zou.app.mixin import ArgsMixin
+from zou.app.services import (
+    attachment_files_service,
+    chats_service,
+    comments_service,
+    deletion_service,
+    entities_service,
+    files_service,
+    organisation_service,
+    permissions_service,
+    persons_service,
+    preview_annotations_service,
+    preview_file_states_service,
+    preview_files_service,
+    preview_maintenance_service,
+    projects_service,
+    task_types_service,
+    tasks_service,
+)
+from zou.app.stores import file_store
+from zou.app.utils import (
+    date_helpers,
+    events,
+    fields,
+    fs,
+    permissions,
+    thumbnail as thumbnail_utils,
+    validation as validation_utils,
+)
+from zou.utils import movie
 
 ALLOWED_PICTURE_EXTENSION = {"jpe", "jpeg", "jpg", "png"}
 ALLOWED_MOVIE_EXTENSION = {

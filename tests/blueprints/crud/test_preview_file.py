@@ -1,12 +1,11 @@
 from tests.base import ApiDBTestCase
-
-from zou.app.utils import fields
 from zou.app.models.task import Task
 from zou.app.services import (
-    tasks_service,
     persons_service,
     projects_service,
+    tasks_service,
 )
+from zou.app.utils import fields
 
 
 class PreviewFileTestCase(ApiDBTestCase):

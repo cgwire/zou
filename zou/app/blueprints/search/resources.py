@@ -1,17 +1,16 @@
 from flasgger import swag_from
 from flask.views import MethodView
-
 from flask_jwt_extended import jwt_required
 
+from zou.app.blueprints.search.schemas import SearchSchema
 from zou.app.mixin import ArgsMixin
-from zou.app.utils import permissions, validation
 from zou.app.services import (
     index_service,
     permissions_service,
     projects_service,
     user_service,
 )
-from zou.app.blueprints.search.schemas import SearchSchema
+from zou.app.utils import permissions, validation
 
 
 class SearchResource(MethodView, ArgsMixin):

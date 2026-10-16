@@ -1,12 +1,11 @@
 from flask import Blueprint
 
-from zou.app.utils.api import configure_api_from_blueprint
-
 from zou.app.blueprints.chats.resources import (
-    ChatResource,
-    ChatMessagesResource,
     ChatMessageResource,
+    ChatMessagesResource,
+    ChatResource,
 )
+from zou.app.utils.api import configure_api_from_blueprint
 
 routes = [
     ("/data/entities/<entity_id>/chat", ChatResource),

@@ -2,7 +2,6 @@ import os
 import tempfile
 
 from tests.base import ApiDBTestCase
-
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.task import Task
 from zou.app.services import (

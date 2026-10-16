@@ -1,12 +1,12 @@
-from zou.app.services import (
-    comments_service,
-    tasks_service,
-    task_types_service,
-    todos_service,
-)
+from tests.services.cases import TaskTestCase
 from zou.app import db
 from zou.app.models.task import Task
-from tests.services.cases import TaskTestCase
+from zou.app.services import (
+    comments_service,
+    task_types_service,
+    tasks_service,
+    todos_service,
+)
 
 
 class TaskReaderTestCase(TaskTestCase):

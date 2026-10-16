@@ -2,8 +2,8 @@ import importlib
 import sys
 
 from zou.app import config
-from zou.app.utils.plugins import load_plugins
 from zou.app.utils import events
+from zou.app.utils.plugins import load_plugins
 
 # Blueprint packages of zou.app.blueprints to register, in registration
 # order. Each package exposes a `blueprint` object.

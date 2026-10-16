@@ -1,9 +1,9 @@
 from flask import Blueprint
-from zou.app.utils.api import configure_api_from_blueprint
 
 from zou.app.blueprints.admin.resources import (
     ConfigCheckResource,
 )
+from zou.app.utils.api import configure_api_from_blueprint
 
 routes = [
     ("/admin/config/check", ConfigCheckResource),

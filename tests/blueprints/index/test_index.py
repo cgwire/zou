@@ -1,9 +1,7 @@
 import subprocess
-
 from unittest.mock import patch
 
 from tests.base import ApiDBTestCase, ApiTestCase
-
 from zou import __version__
 from zou.app import app, config
 

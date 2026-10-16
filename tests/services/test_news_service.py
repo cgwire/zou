@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 from freezegun import freeze_time
 
 from tests.base import ApiDBTestCase
-
 from zou.app.models.entity import Entity
 from zou.app.models.news import News
 from zou.app.models.project import Project

@@ -2,15 +2,15 @@ from flasgger import swag_from
 from flask import current_app
 from flask_jwt_extended import jwt_required
 
-from zou.app.models.task_status import TaskStatus
-from zou.app.utils import colors
-from zou.app.services import (
-    task_types_service,
-)
 from zou.app.blueprints.source.shotgun.base import (
     BaseImportShotgunResource,
     ImportRemoveShotgunBaseResource,
 )
+from zou.app.models.task_status import TaskStatus
+from zou.app.services import (
+    task_types_service,
+)
+from zou.app.utils import colors
 
 
 class ImportShotgunStatusResource(BaseImportShotgunResource):

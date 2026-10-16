@@ -1,7 +1,6 @@
 from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
-
 from zou.app.services import index_service
 
 # No pytestmark here: unlike test_search.py these tests stub the indexer out,

@@ -3,17 +3,17 @@ import shutil
 import tempfile
 from unittest.mock import MagicMock, patch
 from zipfile import ZipFile
-from tests.base import ApiDBTestCase
 
+from tests.base import ApiDBTestCase
 from zou.app import config
 from zou.app.models.build_job import BuildJob
 from zou.app.models.playlist import Playlist
-from zou.app.stores import file_store
 from zou.app.services import (
-    playlists_service,
     playlist_builds_service,
+    playlists_service,
     preview_files_service,
 )
+from zou.app.stores import file_store
 from zou.app.utils import fields, fs, remote_job
 from zou.utils import movie
 from zou.utils.movie import EncodingParameters

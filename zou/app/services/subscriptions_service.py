@@ -4,10 +4,10 @@ from zou.app.models.entity import Entity
 from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 from zou.app.services import (
-    persons_service,
     entity_types_service,
+    persons_service,
 )
-from zou.app.utils import fields, cache
+from zou.app.utils import cache, fields
 
 
 def _get_subscription_raw(**criterions):

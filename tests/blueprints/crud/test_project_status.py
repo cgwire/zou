@@ -1,6 +1,5 @@
 from tests.base import ApiDBTestCase
 from zou.app.models.project_status import ProjectStatus
-
 from zou.app.services import projects_service
 from zou.app.utils import fields
 

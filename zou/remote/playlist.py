@@ -1,21 +1,21 @@
 #!/usr/bin/env python
 import base64
-import orjson as json
 import os
 import sys
 import tempfile
 import zlib
 
+import orjson as json
+
 from zou.remote.config_payload import (
     check_config_version,
     get_config_from_payload,
-    get_storage,
     get_file_from_storage,
-    put_file_to_storage,
+    get_storage,
     make_key,
+    put_file_to_storage,
     setup_logging,
 )
-
 from zou.utils.movie import (
     EncodingParameters,
     build_playlist_movie,

@@ -1,7 +1,6 @@
-from zou.app.utils import auth
-
 from zou.app.models.department import Department
 from zou.app.models.person import Person
+from zou.app.utils import auth
 
 # Pre-computed once for the default test password: bcrypt per
 # user per test is what made the suite slow.

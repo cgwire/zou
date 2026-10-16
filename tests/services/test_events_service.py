@@ -3,11 +3,10 @@ from datetime import datetime, timedelta
 from freezegun import freeze_time
 
 from tests.base import ApiDBTestCase
-
+from zou.app.exceptions import WrongParameterException
 from zou.app.models.event import ApiEvent
 from zou.app.models.login_log import LoginLog
 from zou.app.services import events_service
-from zou.app.exceptions import WrongParameterException
 from zou.app.utils import events
 
 UNKNOWN = "00000000-0000-0000-0000-000000000000"

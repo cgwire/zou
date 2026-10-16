@@ -1,21 +1,21 @@
 from sqlalchemy import or_
 
+from zou.app.exceptions import (
+    SearchFilterGroupNotFoundException,
+    SearchFilterNotFoundException,
+    WrongParameterException,
+)
 from zou.app.models.project import Project
+from zou.app.models.project_status import ProjectStatus
 from zou.app.models.search_filter import SearchFilter
 from zou.app.models.search_filter_group import SearchFilterGroup
-from zou.app.utils import cache, permissions
 from zou.app.services import (
+    departments_service,
     permissions_service,
     persons_service,
     projects_service,
-    departments_service,
 )
-from zou.app.exceptions import (
-    SearchFilterNotFoundException,
-    SearchFilterGroupNotFoundException,
-    WrongParameterException,
-)
-from zou.app.models.project_status import ProjectStatus
+from zou.app.utils import cache, permissions
 
 
 def get_filters():

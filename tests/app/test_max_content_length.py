@@ -1,5 +1,4 @@
 from tests.base import ApiTestCase
-
 from zou.app import app
 
 

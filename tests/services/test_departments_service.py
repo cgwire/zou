@@ -1,12 +1,10 @@
 from tests.base import ApiDBTestCase
-
-from zou.app.models.hardware_item import HardwareItem
 from zou.app.exceptions import (
     DepartmentNotFoundException,
-    SoftwareNotFoundException,
     HardwareItemNotFoundException,
+    SoftwareNotFoundException,
 )
-
+from zou.app.models.hardware_item import HardwareItem
 from zou.app.services import departments_service
 
 UNKNOWN = "00000000-0000-0000-0000-000000000000"

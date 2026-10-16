@@ -1,19 +1,19 @@
-from tests.base import ApiDBTestCase
+import os
+import tempfile
 
-from zou.app.models.project import Project
-from zou.app.models.project_status import ProjectStatus
-from zou.app.services import (
-    breakdown_service,
-    projects_service,
-    cascade_deletion_service,
-)
+from tests.base import ApiDBTestCase
+from tests.services.cases import PreviewFileTestCase
 from zou.app.exceptions import (
     ProjectNotFoundException,
     WrongParameterException,
 )
-import os
-import tempfile
-from tests.services.cases import PreviewFileTestCase
+from zou.app.models.project import Project
+from zou.app.models.project_status import ProjectStatus
+from zou.app.services import (
+    breakdown_service,
+    cascade_deletion_service,
+    projects_service,
+)
 
 
 class ProjectServiceTestCase(ApiDBTestCase):
@@ -95,6 +95,7 @@ class ProjectServiceTestCase(ApiDBTestCase):
 
     def test_add_team_member_swallows_concurrent_insert(self):
         from unittest import mock
+
         from sqlalchemy.exc import IntegrityError
 
         self.generate_fixture_person()

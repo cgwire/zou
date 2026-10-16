@@ -1,21 +1,20 @@
 from flask import Blueprint
 
-from zou.app.utils.api import configure_api_from_blueprint
-
 from zou.app.blueprints.comments.resources import (
     AckCommentResource,
     AddAttachmentToCommentResource,
     AttachmentResource,
-    CommentTaskResource,
     CommentManyTasksResource,
+    CommentTaskResource,
     CopyClientCommentsResource,
+    DeleteReplyCommentResource,
     DownloadAttachmentResource,
     MoveCommentResource,
     ProjectAttachmentFiles,
-    TaskAttachmentFiles,
     ReplyCommentResource,
-    DeleteReplyCommentResource,
+    TaskAttachmentFiles,
 )
+from zou.app.utils.api import configure_api_from_blueprint
 
 routes = [
     ("/data/tasks/<task_id>/comments/<comment_id>/ack", AckCommentResource),

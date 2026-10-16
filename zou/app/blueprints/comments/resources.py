@@ -1,33 +1,32 @@
 from flasgger import swag_from
-from flask import request, send_file as flask_send_file, current_app
+from flask import current_app, request, send_file as flask_send_file
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
-from zou.app.mixin import ArgsMixin
+from zou.app import config
+from zou.app.blueprints.comments.schemas import (
+    BatchCommentItemSchema,
+    CommentCreateSchema,
+    CommentReplySchema,
+    CopyClientCommentsSchema,
+    MoveCommentSchema,
+)
 from zou.app.exceptions import (
     AttachmentFileNotFoundException,
     WrongParameterException,
 )
-from zou.app.utils import permissions, date_helpers, validation
-from zou.app.blueprints.comments.schemas import (
-    BatchCommentItemSchema,
-    CopyClientCommentsSchema,
-    CommentCreateSchema,
-    CommentReplySchema,
-    MoveCommentSchema,
-)
-
+from zou.app.mixin import ArgsMixin
 from zou.app.services import (
+    attachment_files_service,
     chats_service,
     comments_service,
     entities_service,
-    persons_service,
-    tasks_service,
     permissions_service,
+    persons_service,
     task_types_service,
-    attachment_files_service,
+    tasks_service,
 )
-from zou.app import config
+from zou.app.utils import date_helpers, permissions, validation
 
 
 class DownloadAttachmentResource(MethodView):

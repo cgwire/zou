@@ -1,7 +1,5 @@
 from tests.base import ApiDBTestCase
-
 from zou.app.models.file_status import FileStatus
-
 from zou.app.services import files_service
 from zou.app.utils import fields
 

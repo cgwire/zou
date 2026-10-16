@@ -1,24 +1,22 @@
 from flasgger import swag_from
 from flask import current_app
 from flask_jwt_extended import jwt_required
-
 from sqlalchemy.exc import IntegrityError, StatementError
 
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.models.preview_file import PreviewFile
-from zou.app.models.task import Task
 from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
+from zou.app.models.task import Task
 from zou.app.services import (
+    deletion_service,
     permissions_service,
-    user_service,
-    tasks_service,
     persons_service,
     projects_service,
+    tasks_service,
+    user_service,
 )
 from zou.app.utils import permissions
-
-from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
-from zou.app.services import deletion_service
 
 
 class PreviewFilesResource(BaseModelsResource):

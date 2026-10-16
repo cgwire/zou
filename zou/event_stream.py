@@ -23,7 +23,7 @@ from flask_jwt_extended import (
     jwt_required,
     verify_jwt_in_request,
 )
-from flask_socketio import SocketIO, disconnect, join_room, leave_room, emit
+from flask_socketio import SocketIO, disconnect, emit, join_room, leave_room
 
 from zou.app import config, create_app
 from zou.app.utils.redis import get_redis_url

@@ -1,5 +1,6 @@
 import unittest
-from zou.app.utils.email_i18n import get_email_translation, EMAIL_TRANSLATIONS
+
+from zou.app.utils.email_i18n import EMAIL_TRANSLATIONS, get_email_translation
 
 
 class EmailI18nTestCase(unittest.TestCase):

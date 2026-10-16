@@ -1,16 +1,13 @@
 from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
-from zou.app.models.attachment_file import AttachmentFile
-
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
-
+from zou.app.models.attachment_file import AttachmentFile
 from zou.app.services import (
     chats_service,
-    permissions_service,
     comments_service,
+    permissions_service,
 )
-
 from zou.app.utils.permissions import PermissionDenied
 
 

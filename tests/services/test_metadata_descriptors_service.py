@@ -1,15 +1,14 @@
 from tests.base import ApiDBTestCase
-
-from zou.app.models.entity import Entity
-from zou.app.services import metadata_descriptors_service
 from zou.app.exceptions import (
     DepartmentNotFoundException,
     MetadataDescriptorNotFoundException,
     WrongParameterException,
 )
-from zou.app.models.project import Project
+from zou.app.models.entity import Entity
 from zou.app.models.metadata_descriptor import MetadataDescriptor
+from zou.app.models.project import Project
 from zou.app.models.task import Task
+from zou.app.services import metadata_descriptors_service
 
 
 class VendorMetadataTestCase(ApiDBTestCase):
@@ -487,6 +486,7 @@ class ProjectMetadataDescriptorTestCase(ApiDBTestCase):
         # commits can come first: the asset query creates the entity types
         # the fixtures lack, such as Concept.
         from unittest import mock
+
         from zou.app import db
 
         task = self.generate_fixture_task()

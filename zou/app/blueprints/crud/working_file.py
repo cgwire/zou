@@ -1,13 +1,10 @@
 from flasgger import swag_from
 from flask import current_app
-
+from flask_jwt_extended import jwt_required
 from sqlalchemy.exc import StatementError
 
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.exceptions import WrongParameterException
-from flask_jwt_extended import jwt_required
-
-from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
-
 from zou.app.models.entity import Entity
 from zou.app.models.project import Project
 from zou.app.models.working_file import WorkingFile

@@ -3,15 +3,15 @@ from flask import current_app
 from flask_jwt_extended import jwt_required
 
 from zou.app import db
-from zou.app.models.department import Department
-from zou.app.models.person import Person, DepartmentLink
-from zou.app.blueprints.source.shotgun.exception import (
-    ShotgunEntryImportFailed,
-)
 from zou.app.blueprints.source.shotgun.base import (
     BaseImportShotgunResource,
     ImportRemoveShotgunBaseResource,
 )
+from zou.app.blueprints.source.shotgun.exception import (
+    ShotgunEntryImportFailed,
+)
+from zou.app.models.department import Department
+from zou.app.models.person import DepartmentLink, Person
 from zou.app.services import (
     departments_service,
 )

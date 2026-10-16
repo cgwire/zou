@@ -1,8 +1,8 @@
 import unittest
 
+from zou.app.exceptions import WrongParameterException
 from zou.app.utils import query
 from zou.app.utils.query import check_criterion_id_format
-from zou.app.exceptions import WrongParameterException
 
 
 class GetQueryCriterionsTestCase(unittest.TestCase):

@@ -1,7 +1,8 @@
 import logging
-import redis
 
+import redis
 from rq import Queue
+
 from zou.app import config
 
 logger = logging.getLogger(__name__)

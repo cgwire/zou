@@ -1,9 +1,8 @@
 from tests.base import ApiDBTestCase
-
 from zou.app.services import (
+    metadata_descriptors_service,
     persons_service,
     projects_service,
-    metadata_descriptors_service,
 )
 from zou.app.utils import fields
 

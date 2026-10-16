@@ -6,12 +6,12 @@ from zou.app.blueprints.crud.base import (
     BaseModelResource,
     BaseModelsResource,
 )
-from zou.app.models.project_template import ProjectTemplate
-from zou.app.services import project_templates_service
 from zou.app.exceptions import (
     ProjectTemplateNotFoundException,
     WrongParameterException,
 )
+from zou.app.models.project_template import ProjectTemplate
+from zou.app.services import project_templates_service
 from zou.app.utils import permissions
 
 

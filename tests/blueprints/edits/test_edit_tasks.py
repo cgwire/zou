@@ -1,10 +1,10 @@
 from tests.blueprints.edits.base import BaseEditTestCase
 from zou.app.services import (
+    edits_service,
+    metadata_descriptors_service,
+    persons_service,
     projects_service,
     tasks_service,
-    edits_service,
-    persons_service,
-    metadata_descriptors_service,
 )
 
 

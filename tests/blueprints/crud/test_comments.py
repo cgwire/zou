@@ -1,10 +1,8 @@
 from tests.base import ApiDBTestCase
-
 from zou.app import db
 from zou.app.models.comment import Comment
 from zou.app.models.event import ApiEvent
 from zou.app.services import projects_service, tasks_service
-
 from zou.app.utils import fields
 
 

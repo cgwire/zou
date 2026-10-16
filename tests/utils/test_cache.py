@@ -1,5 +1,5 @@
-import uuid
 import unittest
+import uuid
 
 from zou.app.utils import cache
 

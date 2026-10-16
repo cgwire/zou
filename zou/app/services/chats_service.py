@@ -4,23 +4,20 @@ import string
 from flask import current_app
 from sqlalchemy.exc import IntegrityError
 
+from zou.app.exceptions import ChatNotFoundException
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.chat import Chat
 from zou.app.models.chat_message import ChatMessage
 from zou.app.models.entity import Entity
 from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
-
-from zou.app.utils import cache, events, fs, thumbnail
-
-from zou.app.stores import file_store
-
 from zou.app.services import (
     base_service,
-    persons_service,
     entities_service,
+    persons_service,
 )
-from zou.app.exceptions import ChatNotFoundException
+from zou.app.stores import file_store
+from zou.app.utils import cache, events, fs, thumbnail
 
 
 def clear_chat_message_cache(chat_message_id):

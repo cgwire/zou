@@ -1,12 +1,17 @@
 import logging
 import os
-import redis
 from collections import Counter
+
+import redis
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from zou.app import config
-from zou.app.stores import config_store, file_store, queue_store, redis_client
+from zou.app.exceptions import (
+    EpisodeNotFoundException,
+    JobQueueDisabledException,
+    ProjectNotFoundException,
+)
 from zou.app.models.entity import Entity
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.preview_file_storage_state import PreviewFileStorageState
@@ -14,22 +19,18 @@ from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.task import Task
 from zou.app.services import (
+    entity_types_service,
     files_service,
     preview_file_states_service,
-    shots_service,
-    projects_service,
-    stored_files_service,
-    entity_types_service,
     preview_files_service,
+    projects_service,
+    shots_service,
+    stored_files_service,
 )
-from zou.utils import movie
-from zou.app.utils import fields, remote_job, thumbnail as thumbnail_utils, fs
-from zou.app.exceptions import (
-    JobQueueDisabledException,
-    ProjectNotFoundException,
-    EpisodeNotFoundException,
-)
+from zou.app.stores import config_store, file_store, queue_store, redis_client
+from zou.app.utils import fields, fs, remote_job, thumbnail as thumbnail_utils
 from zou.app.utils.progress import NullProgress
+from zou.utils import movie
 
 logger = logging.getLogger(__name__)
 

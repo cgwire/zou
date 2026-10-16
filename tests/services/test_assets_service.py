@@ -1,14 +1,14 @@
+from tests.services.cases import AssetsTestCase
+from zou.app.exceptions import (
+    AssetNotFoundException,
+)
 from zou.app.models.entity import Entity
 from zou.app.services import (
     assets_service,
     breakdown_service,
-    entity_types_service,
     cascade_deletion_service,
+    entity_types_service,
 )
-from zou.app.exceptions import (
-    AssetNotFoundException,
-)
-from tests.services.cases import AssetsTestCase
 
 
 class AssetListTestCase(AssetsTestCase):

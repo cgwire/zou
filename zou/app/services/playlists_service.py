@@ -1,37 +1,30 @@
 import logging
-
-
 from operator import itemgetter
 
 from sqlalchemy import or_
 from sqlalchemy.exc import StatementError
 from sqlalchemy.orm import defer, joinedload
 
-
+from zou.app.exceptions import (
+    PlaylistLockTimeoutException,
+    PlaylistNotFoundException,
+)
 from zou.app.models.playlist import Playlist
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
-
-from zou.app.utils import fields, events
-from zou.app.utils import query as query_utils
-from zou.app.stores.redis_lock import with_playlist_lock
-
 from zou.app.services import (
     assets_service,
     base_service,
     edits_service,
     entities_service,
+    entity_types_service,
     projects_service,
     shots_service,
     tasks_service,
-    entity_types_service,
 )
-
-from zou.app.exceptions import (
-    PlaylistLockTimeoutException,
-    PlaylistNotFoundException,
-)
+from zou.app.stores.redis_lock import with_playlist_lock
+from zou.app.utils import events, fields, query as query_utils
 
 logger = logging.getLogger(__name__)
 

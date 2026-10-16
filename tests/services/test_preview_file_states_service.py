@@ -2,7 +2,6 @@ import datetime
 from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
-
 from zou.app import db
 from zou.app.models.preview_file_storage_state import (
     PreviewFileStorageState,

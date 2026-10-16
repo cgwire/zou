@@ -3,7 +3,6 @@ from unittest import mock
 import redis
 
 from tests.base import ApiDBTestCase
-
 from zou.app.stores import redis_lock
 
 

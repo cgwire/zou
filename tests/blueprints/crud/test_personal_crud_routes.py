@@ -1,5 +1,4 @@
 from tests.base import ApiDBTestCase
-
 from zou.app.models.chat import Chat
 from zou.app.models.news import News
 from zou.app.models.notification import Notification

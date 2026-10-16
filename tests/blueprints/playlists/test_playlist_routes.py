@@ -1,7 +1,6 @@
 from flask import g
 
 from tests.base import ApiDBTestCase
-
 from zou.app.models.build_job import BuildJob
 from zou.app.models.notification import Notification
 from zou.app.models.person import Person

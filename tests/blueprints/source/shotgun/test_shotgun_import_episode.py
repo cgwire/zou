@@ -1,5 +1,4 @@
 from tests.blueprints.source.shotgun.base import ShotgunTestCase
-
 from zou.app.models.project import Project
 
 

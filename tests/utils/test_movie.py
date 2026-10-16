@@ -1,15 +1,14 @@
+import math
 import os
 import shutil
 import tempfile
 import unittest
-from PIL import Image
-import math
-
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
 import ffmpeg
+from PIL import Image
 
 from zou.utils import movie
 

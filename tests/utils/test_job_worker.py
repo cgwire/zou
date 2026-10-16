@@ -1,11 +1,9 @@
 import os
 import signal
 import unittest
-
 from unittest.mock import patch
 
 import fakeredis
-
 from rq import Queue, get_current_job
 from rq.job import JobStatus
 

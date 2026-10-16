@@ -2,40 +2,24 @@ from flasgger import swag_from
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
-
-from zou.app.services import (
-    budget_service,
-    task_types_service,
-    metadata_descriptors_service,
-)
-from zou.app.mixin import ArgsMixin
-from zou.app.services import (
-    persons_service,
-    projects_service,
-    schedule_service,
-    time_spents_service,
-    permissions_service,
-    user_service,
-)
-from zou.app.utils import permissions, validation
 from zou.app.blueprints.projects.schemas import (
-    ProjectTeamSchema,
-    ProjectTeamRoleSchema,
-    ProjectAssetTypeSchema,
-    ProjectTaskTypeSchema,
-    ProjectTaskStatusSchema,
-    ProjectSettingsBatchSchema,
-    ProjectStatusAutomationSchema,
-    ProjectPreviewBackgroundSchema,
-    MetadataDescriptorSchema,
-    MetadataDescriptorUpdateSchema,
-    MetadataDescriptorOrderSchema,
-    AllProjectsMetadataDescriptorUpdateSchema,
     AllProjectsMetadataDescriptorOrderSchema,
-    BudgetSchema,
-    BudgetUpdateSchema,
+    AllProjectsMetadataDescriptorUpdateSchema,
     BudgetEntrySchema,
     BudgetEntryUpdateSchema,
+    BudgetSchema,
+    BudgetUpdateSchema,
+    MetadataDescriptorOrderSchema,
+    MetadataDescriptorSchema,
+    MetadataDescriptorUpdateSchema,
+    ProjectAssetTypeSchema,
+    ProjectPreviewBackgroundSchema,
+    ProjectSettingsBatchSchema,
+    ProjectStatusAutomationSchema,
+    ProjectTaskStatusSchema,
+    ProjectTaskTypeSchema,
+    ProjectTeamRoleSchema,
+    ProjectTeamSchema,
     ScheduleVersionCopySchema,
 )
 from zou.app.exceptions import (
@@ -44,7 +28,20 @@ from zou.app.exceptions import (
     WrongDateFormatException,
     WrongParameterException,
 )
+from zou.app.mixin import ArgsMixin
 from zou.app.models.metadata_descriptor import METADATA_DESCRIPTOR_TYPES
+from zou.app.services import (
+    budget_service,
+    metadata_descriptors_service,
+    permissions_service,
+    persons_service,
+    projects_service,
+    schedule_service,
+    task_types_service,
+    time_spents_service,
+    user_service,
+)
+from zou.app.utils import permissions, validation
 
 VALID_METADATA_ENTITY_TYPES = [
     "Asset",

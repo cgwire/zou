@@ -3,15 +3,14 @@ import os
 import tempfile
 
 from tests.base import ApiDBTestCase
-
-from zou.app.models.entity import Entity
-from zou.app.services import file_tree_service, files_service
 from zou.app.exceptions import (
     MalformedFileTreeException,
     TaskNotFoundException,
     WrongFileTreeFileException,
     WrongPathFormatException,
 )
+from zou.app.models.entity import Entity
+from zou.app.services import file_tree_service, files_service
 
 
 class FileTreeTestCase(ApiDBTestCase):

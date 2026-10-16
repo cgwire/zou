@@ -1,34 +1,35 @@
 import base64
 import logging
-import orjson as json
 import os
 import shutil
 import tempfile
 import zlib
-from flask import current_app
 from pathlib import Path
 from shutil import copyfile
 from zipfile import ZipFile
+
+import orjson as json
+from flask import current_app
 from slugify import slugify
 
 from zou.app import config
-from zou.app.stores import config_store, file_store
+from zou.app.exceptions import BuildJobNotFoundException
 from zou.app.models.build_job import BuildJob
 from zou.app.models.playlist import Playlist
-from zou.utils import movie
-from zou.app.utils import fields, events, fs, remote_job, emails
 from zou.app.services import (
     base_service,
     files_service,
+    organisation_service,
+    persons_service,
+    playlists_service,
     preview_files_service,
     shots_service,
     stored_files_service,
-    persons_service,
     templates_service,
-    organisation_service,
-    playlists_service,
 )
-from zou.app.exceptions import BuildJobNotFoundException
+from zou.app.stores import config_store, file_store
+from zou.app.utils import emails, events, fields, fs, remote_job
+from zou.utils import movie
 
 logger = logging.getLogger(__name__)
 

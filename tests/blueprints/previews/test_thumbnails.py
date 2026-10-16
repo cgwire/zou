@@ -1,16 +1,15 @@
-import os
 import hashlib
-
-from tests.base import ApiDBTestCase, TEST_FOLDER
-
-from zou.app.utils import fs, thumbnail
-from zou.app.services import (
-    assets_service,
-    projects_service,
-    organisation_service,
-)
+import os
 
 from PIL import Image
+
+from tests.base import TEST_FOLDER, ApiDBTestCase
+from zou.app.services import (
+    assets_service,
+    organisation_service,
+    projects_service,
+)
+from zou.app.utils import fs, thumbnail
 
 
 def get_file_md5hash(file_path):

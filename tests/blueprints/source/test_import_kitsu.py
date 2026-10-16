@@ -1,5 +1,4 @@
 from tests.base import ApiDBTestCase
-
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.build_job import BuildJob
 from zou.app.models.comment import Comment
@@ -12,8 +11,8 @@ from zou.app.models.playlist import Playlist
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
 from zou.app.models.schedule_item import ScheduleItem
-from zou.app.models.task import Task
 from zou.app.models.subscription import Subscription
+from zou.app.models.task import Task
 from zou.app.models.time_spent import TimeSpent
 from zou.app.utils import fields
 

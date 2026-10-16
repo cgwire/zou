@@ -1,7 +1,7 @@
 from flasgger import swag_from
-from zou.app.blueprints.export.csv.base import BaseCsvExport
 from flask_jwt_extended import jwt_required
 
+from zou.app.blueprints.export.csv.base import BaseCsvExport
 from zou.app.models.department import Department
 from zou.app.models.task_type import TaskType
 

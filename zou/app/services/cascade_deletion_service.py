@@ -2,6 +2,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
 from zou.app import config
+from zou.app.exceptions import (
+    EntityNotFoundException,
+    ModelWithRelationsDeletionException,
+    PersonInProtectedAccounts,
+    ProjectNotFoundException,
+)
 from zou.app.models.budget import Budget
 from zou.app.models.budget_entry import BudgetEntry
 from zou.app.models.build_job import BuildJob
@@ -30,28 +36,22 @@ from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 from zou.app.models.time_spent import TimeSpent
 from zou.app.models.working_file import WorkingFile
-from zou.app.utils import events
 from zou.app.services import (
-    playlist_builds_service,
-    playlists_service,
+    assets_service,
     base_service,
     breakdown_service,
+    concepts_service,
     deletion_service,
+    edits_service,
+    entities_service,
     entity_types_service,
     index_service,
+    playlist_builds_service,
+    playlists_service,
     search_filters_service,
     shots_service,
-    entities_service,
-    assets_service,
-    concepts_service,
-    edits_service,
 )
-from zou.app.exceptions import (
-    EntityNotFoundException,
-    ModelWithRelationsDeletionException,
-    PersonInProtectedAccounts,
-    ProjectNotFoundException,
-)
+from zou.app.utils import events
 
 
 def remove_playlist_dependents(playlist_dict):

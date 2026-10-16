@@ -32,17 +32,16 @@ from zou.app.models.comment import (
 from zou.app.models.person import DepartmentLink
 from zou.app.models.project import Project, ProjectPersonLink
 from zou.app.models.task import Task
-
 from zou.app.services import (
+    comments_service,
     entities_service,
+    entity_types_service,
+    metadata_descriptors_service,
     persons_service,
     playlists_service,
     projects_service,
-    tasks_service,
-    entity_types_service,
     task_types_service,
-    comments_service,
-    metadata_descriptors_service,
+    tasks_service,
 )
 from zou.app.utils import permissions
 

@@ -1,5 +1,4 @@
 from tests.base import ApiDBTestCase
-
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.metadata_descriptor import (
     DepartmentMetadataDescriptorLink,

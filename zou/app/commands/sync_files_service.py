@@ -7,29 +7,13 @@ up on failure so a partial download never lands in the store.
 import os
 import time
 import traceback
+from http.client import responses as http_responses
+from multiprocessing.pool import ThreadPool as Pool
+from threading import RLock
 
 import gazu
-
 from flask_fs.backends.local import LocalBackend
-from http.client import responses as http_responses
-from threading import RLock
-from multiprocessing.pool import ThreadPool as Pool
 
-from zou.app.models.attachment_file import AttachmentFile
-from zou.app.models.comment import Comment
-from zou.app.models.organisation import Organisation
-from zou.app.models.person import Person
-from zou.app.models.preview_background_file import PreviewBackgroundFile
-from zou.app.models.preview_file import PreviewFile
-from zou.app.models.project import Project
-from zou.app.models.task import Task
-
-from zou.app.services import (
-    preview_file_states_service,
-    projects_service,
-)
-from zou.app.stores import file_store
-from zou.app.utils import fs
 from zou.app import config
 from zou.app.commands.sync_service import (
     _add_time_window,
@@ -38,6 +22,20 @@ from zou.app.commands.sync_service import (
     forward_local_event,
     logger,
 )
+from zou.app.models.attachment_file import AttachmentFile
+from zou.app.models.comment import Comment
+from zou.app.models.organisation import Organisation
+from zou.app.models.person import Person
+from zou.app.models.preview_background_file import PreviewBackgroundFile
+from zou.app.models.preview_file import PreviewFile
+from zou.app.models.project import Project
+from zou.app.models.task import Task
+from zou.app.services import (
+    preview_file_states_service,
+    projects_service,
+)
+from zou.app.stores import file_store
+from zou.app.utils import fs
 
 lock = RLock()
 
@@ -644,6 +642,7 @@ def _record_synced_preview_states(preview_file_id, extension):
     files_service.probe_and_record_movie_prefixes does.
     """
     from flask import has_app_context
+
     from zou.app import app
 
     def run():

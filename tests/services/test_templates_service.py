@@ -1,10 +1,9 @@
 import unittest
-
 from unittest import mock
 
 from zou.app.services import (
-    templates_service,
     organisation_service,
+    templates_service,
 )
 
 

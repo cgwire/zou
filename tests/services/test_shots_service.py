@@ -1,26 +1,24 @@
 import datetime
-
 from unittest.mock import patch
 
 from sqlalchemy.exc import IntegrityError
 
 from tests.base import ApiDBTestCase
-
-from zou.app.models.entity import Entity, EntityVersion
-from zou.app.models.task import Task
-from zou.app.services import (
-    persons_service,
-    shots_service,
-    entity_types_service,
-)
-from zou.app.utils import fields
+from tests.services.cases import ShotsTestCase
 from zou.app.exceptions import (
     EpisodeNotFoundException,
     SceneNotFoundException,
-    ShotNotFoundException,
     SequenceNotFoundException,
+    ShotNotFoundException,
 )
-from tests.services.cases import ShotsTestCase
+from zou.app.models.entity import Entity, EntityVersion
+from zou.app.models.task import Task
+from zou.app.services import (
+    entity_types_service,
+    persons_service,
+    shots_service,
+)
+from zou.app.utils import fields
 
 
 class FirstEpisodeTestCase(ApiDBTestCase):

@@ -6,6 +6,6 @@ from pathlib import Path
 # regardless of the caller's working directory.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from tests.base import ApiTestCase, ApiDBTestCase  # noqa: E402
+from tests.base import ApiDBTestCase, ApiTestCase  # noqa: E402
 
 __all__ = ["ApiTestCase", "ApiDBTestCase"]

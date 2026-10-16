@@ -1,16 +1,13 @@
 from flasgger import swag_from
 from flask_jwt_extended import jwt_required
-
 from sqlalchemy import func
 
-from zou.app.utils import events
-
-from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
-from zou.app.services import permissions_service, tasks_service, user_service
-
-from zou.app.models.time_spent import TimeSpent
-from zou.app.models.task import Task
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.exceptions import WrongParameterException
+from zou.app.models.task import Task
+from zou.app.models.time_spent import TimeSpent
+from zou.app.services import permissions_service, tasks_service, user_service
+from zou.app.utils import events
 
 
 class TimeSpentsResource(BaseModelsResource):

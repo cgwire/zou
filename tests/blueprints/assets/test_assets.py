@@ -1,11 +1,9 @@
 from tests.base import ApiDBTestCase
-
+from zou.app.models.entity import Entity
 from zou.app.services import (
     assets_service,
     entity_types_service,
 )
-from zou.app.models.entity import Entity
-
 from zou.app.utils import events
 
 

@@ -1,7 +1,6 @@
 import os
 
 from tests.base import ApiDBTestCase
-
 from zou.app.services import (
     assets_service,
     persons_service,

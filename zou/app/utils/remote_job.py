@@ -1,10 +1,10 @@
-import nomad
 import base64
-import orjson as json
 import signal
 import textwrap
 import time
 
+import nomad
+import orjson as json
 from nomad.api.exceptions import URLNotFoundNomadException
 from rq import get_current_job
 

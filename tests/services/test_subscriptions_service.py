@@ -1,9 +1,10 @@
 from unittest.mock import patch
+
 from sqlalchemy.exc import IntegrityError
 
+from tests.services.cases import NotificationsTestCase
 from zou.app.models.subscription import Subscription
 from zou.app.services import notifications_service, subscriptions_service
-from tests.services.cases import NotificationsTestCase
 
 
 class NotificationRecipientTestCase(NotificationsTestCase):

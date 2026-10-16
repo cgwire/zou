@@ -5,19 +5,17 @@ from flask import g
 from flask_jwt_extended import verify_jwt_in_request
 
 from tests.base import ApiDBTestCase
-
 from zou.app import app
+from zou.app.exceptions import PlaylistNotFoundException
 from zou.app.models.entity import Entity
 from zou.app.services import (
     comments_service,
     permissions_service,
     persons_service,
     projects_service,
-    tasks_service,
     task_types_service,
+    tasks_service,
 )
-
-from zou.app.exceptions import PlaylistNotFoundException
 from zou.app.utils import permissions
 
 UNKNOWN = "00000000-0000-0000-0000-000000000000"

@@ -1,44 +1,44 @@
-from flasgger import swag_from
 import datetime
 import ipaddress
 
-from flask import request, current_app
+from flasgger import swag_from
+from flask import current_app, request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
-from zou.app.mixin import ArgsMixin
-from zou.app.services import (
-    persons_service,
-    time_spents_service,
-    permissions_service,
-    user_service,
-    departments_service,
-    quotas_service,
-    emails_service,
-)
-from zou.app.utils import (
-    permissions,
-    csv_utils,
-    auth,
-    fields,
-    date_helpers,
-    validation,
-)
 from zou.app.blueprints.persons.schemas import (
-    DesktopLoginCreateSchema,
     AddToDepartmentSchema,
     ChangePasswordSchema,
+    DesktopLoginCreateSchema,
 )
 from zou.app.exceptions import (
     DepartmentNotFoundException,
+    InactiveUserException,
+    PersonInProtectedAccounts,
+    TwoFactorAuthenticationNotEnabledException,
     WrongDateFormatException,
     WrongParameterException,
-    InactiveUserException,
-    TwoFactorAuthenticationNotEnabledException,
-    PersonInProtectedAccounts,
+)
+from zou.app.mixin import ArgsMixin
+from zou.app.services import (
+    departments_service,
+    emails_service,
+    permissions_service,
+    persons_service,
+    quotas_service,
+    time_spents_service,
+    user_service,
 )
 from zou.app.services.auth_service import (
     disable_two_factor_authentication_for_person,
+)
+from zou.app.utils import (
+    auth,
+    csv_utils,
+    date_helpers,
+    fields,
+    permissions,
+    validation,
 )
 
 

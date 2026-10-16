@@ -1,23 +1,20 @@
 # -*- coding: UTF-8 -*-
 import unittest
-
+from operator import itemgetter
 from unittest import mock
+from urllib.parse import quote
 
 from tests.base import ApiDBTestCase
 from tests.fake_dns import NO_MX_DOMAIN
 from zou.app import config
 from zou.app.models.department import Department
 from zou.app.models.person import (
-    Person,
     SENSITIVE_FIELDS,
+    Person,
     normalize_country,
     normalize_locale,
 )
-
 from zou.app.utils import fields
-
-from operator import itemgetter
-from urllib.parse import quote
 
 
 class NormalizeCountryTestCase(unittest.TestCase):

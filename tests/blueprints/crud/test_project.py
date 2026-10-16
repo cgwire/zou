@@ -1,15 +1,14 @@
 from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
-
 from zou.app import config
-from zou.app.utils import fields
 from zou.app.models.project import Project
 from zou.app.services import (
+    metadata_descriptors_service,
     projects_service,
     shots_service,
-    metadata_descriptors_service,
 )
+from zou.app.utils import fields
 
 
 class ProjectTestCase(ApiDBTestCase):

@@ -1,29 +1,25 @@
 from flasgger import swag_from
 from flask import request
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
-from flask.views import MethodView
-
-
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
+from zou.app.exceptions import WrongParameterException
 from zou.app.mixin import ArgsMixin
-from zou.app.models.project import Project, PROJECT_STYLES
+from zou.app.models.project import PROJECT_STYLES, Project
 from zou.app.models.project_status import ProjectStatus
 from zou.app.services import (
+    cascade_deletion_service,
+    files_service,
+    metadata_descriptors_service,
+    permissions_service,
+    persons_service,
     project_templates_service,
     projects_service,
     shots_service,
-    permissions_service,
     user_service,
-    persons_service,
-    files_service,
-    metadata_descriptors_service,
-    cascade_deletion_service,
 )
-from zou.app.utils import events, permissions, fields
-
-from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
-
-from zou.app.exceptions import WrongParameterException
+from zou.app.utils import events, fields, permissions
 
 
 class ProjectsResource(BaseModelsResource):

@@ -1,10 +1,9 @@
 import os
 
-from tests.base import ApiDBTestCase, TEST_FOLDER
-
-from zou.app.utils import fs
-
 from PIL import Image
+
+from tests.base import TEST_FOLDER, ApiDBTestCase
+from zou.app.utils import fs
 
 
 class RouteTileTestCase(ApiDBTestCase):

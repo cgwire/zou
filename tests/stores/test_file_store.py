@@ -1,6 +1,5 @@
-import unittest
 import os
-
+import unittest
 from unittest.mock import Mock
 
 import pytest
@@ -235,6 +234,7 @@ class ReadMovieRangeTestCase(unittest.TestCase):
 
     def test_refused_range_is_a_416(self):
         from unittest.mock import patch
+
         from werkzeug.exceptions import RequestedRangeNotSatisfiable
 
         class ClientError(Exception):
@@ -545,8 +545,9 @@ class SharedSwiftAuthTestCase(unittest.TestCase):
         )
 
     def test_redis_failure_falls_back_to_keystone(self):
-        import redis
         from unittest.mock import patch
+
+        import redis
 
         with patch.object(
             self.store.swift_auth_store,

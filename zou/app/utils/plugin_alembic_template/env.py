@@ -13,10 +13,10 @@ The plugin path is passed in via ``alembic_cfg.attributes['plugin_path']`` by
 import importlib.util
 import logging
 import sys
-
-from alembic import context
 from logging.config import fileConfig
 from pathlib import Path
+
+from alembic import context
 from sqlalchemy import create_engine, pool
 
 from zou.app import db

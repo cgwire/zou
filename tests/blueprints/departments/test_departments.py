@@ -1,5 +1,4 @@
 from tests.base import ApiDBTestCase
-
 from zou.app.models.hardware_item import HardwareItem
 from zou.app.services import departments_service, persons_service
 

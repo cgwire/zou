@@ -1,18 +1,18 @@
 from flask import Blueprint
-from zou.app.utils.api import configure_api_from_blueprint
 
 from zou.app.blueprints.concepts.resources import (
-    ConceptFolderResource,
-    ConceptResource,
     AllConceptsResource,
-    ConceptsAndTasksResource,
+    ConceptFolderResource,
     ConceptPreviewsResource,
-    ConceptTaskTypesResource,
+    ConceptResource,
+    ConceptsAndTasksResource,
     ConceptTasksResource,
+    ConceptTaskTypesResource,
     MoveConceptsResource,
     ProjectConceptFoldersResource,
     ProjectConceptsResource,
 )
+from zou.app.utils.api import configure_api_from_blueprint
 
 routes = [
     ("/data/concepts", AllConceptsResource),

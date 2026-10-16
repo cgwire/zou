@@ -15,26 +15,25 @@ import logging
 import os
 import sys
 import time
-import requests
 
 import gazu
+import requests
 import sqlalchemy
-
 
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.build_job import BuildJob
-from zou.app.models.custom_action import CustomAction
 from zou.app.models.comment import Comment
+from zou.app.models.custom_action import CustomAction
 from zou.app.models.day_off import DayOff
 from zou.app.models.department import Department
 from zou.app.models.entity import Entity, EntityLink
 from zou.app.models.entity_type import EntityType
 from zou.app.models.event import ApiEvent
-from zou.app.models.organisation import Organisation
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.milestone import Milestone
 from zou.app.models.news import News
 from zou.app.models.notification import Notification
+from zou.app.models.organisation import Organisation
 from zou.app.models.person import Person
 from zou.app.models.playlist import Playlist
 from zou.app.models.preview_background_file import PreviewBackgroundFile
@@ -42,21 +41,20 @@ from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.schedule_item import ScheduleItem
-from zou.app.models.subscription import Subscription
 from zou.app.models.search_filter import SearchFilter
 from zou.app.models.search_filter_group import SearchFilterGroup
+from zou.app.models.status_automation import StatusAutomation
+from zou.app.models.studio import Studio
+from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
 from zou.app.models.time_spent import TimeSpent
-from zou.app.models.studio import Studio
-from zou.app.models.status_automation import StatusAutomation
-
 from zou.app.services import (
     deletion_service,
     tasks_service,
 )
-from zou.app.utils import events, date_helpers
+from zou.app.utils import date_helpers, events
 
 logger = logging.getLogger()
 logger.setLevel(os.environ.get("LOGLEVEL", "INFO").upper())

@@ -2,15 +2,15 @@ from sqlalchemy import func
 from sqlalchemy.exc import StatementError
 
 from zou.app import db
-from zou.app.utils import events, cache, query as query_utils
+from zou.app.exceptions import (
+    AssetTypeNotFoundException,
+    EntityTypeNotFoundException,
+    WrongParameterException,
+)
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.services import base_service
-from zou.app.exceptions import (
-    AssetTypeNotFoundException,
-    WrongParameterException,
-    EntityTypeNotFoundException,
-)
+from zou.app.utils import cache, events, query as query_utils
 
 
 @cache.memoize_function(1200)

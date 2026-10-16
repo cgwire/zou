@@ -2,7 +2,6 @@ from flasgger import swag_from
 from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
-
 from sqlalchemy.exc import StatementError
 from werkzeug.exceptions import NotFound
 

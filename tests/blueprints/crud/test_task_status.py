@@ -1,6 +1,5 @@
 from tests.base import ApiDBTestCase
 from zou.app.models.task_status import TaskStatus
-
 from zou.app.services import task_types_service
 from zou.app.utils import fields
 

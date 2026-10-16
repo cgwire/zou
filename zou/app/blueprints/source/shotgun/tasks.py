@@ -2,18 +2,16 @@ from flasgger import swag_from
 from flask import current_app
 from flask_jwt_extended import jwt_required
 
-from zou.app.models.task_type import TaskType
-from zou.app.models.task_status import TaskStatus
-from zou.app.models.project import Project
-from zou.app.models.person import Person
-from zou.app.models.task import Task
-
-from zou.app.services import deletion_service, tasks_service
-
 from zou.app.blueprints.source.shotgun.base import (
     BaseImportShotgunResource,
     ImportRemoveShotgunBaseResource,
 )
+from zou.app.models.person import Person
+from zou.app.models.project import Project
+from zou.app.models.task import Task
+from zou.app.models.task_status import TaskStatus
+from zou.app.models.task_type import TaskType
+from zou.app.services import deletion_service, tasks_service
 
 
 class ImportShotgunTasksResource(BaseImportShotgunResource):

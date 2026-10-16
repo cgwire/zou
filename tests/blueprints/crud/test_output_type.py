@@ -1,7 +1,5 @@
 from tests.base import ApiDBTestCase
-
 from zou.app.models.output_type import OutputType
-
 from zou.app.utils import fields
 
 

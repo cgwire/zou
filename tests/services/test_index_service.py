@@ -3,19 +3,15 @@ from unittest.mock import patch
 import pytest
 
 from tests.base import ApiDBTestCase, indexer_is_up
-
+from tests.services.cases import AssetsTestCase, PersonsTestCase, ShotsTestCase
 from zou.app.models.entity import Entity
-
 from zou.app.services import (
     assets_service,
-    index_service,
-    projects_service,
     cascade_deletion_service,
+    index_service,
+    persons_service,
+    projects_service,
 )
-from tests.services.cases import AssetsTestCase
-from tests.services.cases import PersonsTestCase
-from tests.services.cases import ShotsTestCase
-from zou.app.services import persons_service
 
 # The gate is on the class that talks to the indexer, not on the module: the
 # document builders below need no Meilisearch and must run everywhere.

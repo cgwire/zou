@@ -1,7 +1,6 @@
 import os
 
 from tests.base import ApiDBTestCase
-
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.comment import Comment
 from zou.app.models.notification import Notification
@@ -11,8 +10,8 @@ from zou.app.models.task import Task
 from zou.app.services import (
     comments_service,
     projects_service,
-    tasks_service,
     task_types_service,
+    tasks_service,
 )
 
 

@@ -1,21 +1,21 @@
-import logging
 import importlib
-import semver
+import logging
 import shutil
 import sys
-
 from pathlib import Path
+
+import semver
 
 from zou.app import config
 from zou.app.models.plugin import Plugin
 from zou.app.utils.plugins import (
     PluginManifest,
-    run_plugin_migrations,
-    downgrade_plugin_migrations,
-    uninstall_plugin_files,
-    install_plugin_files,
     clone_git_repo,
+    downgrade_plugin_migrations,
     download_zip_url,
+    install_plugin_files,
+    run_plugin_migrations,
+    uninstall_plugin_files,
 )
 
 logger = logging.getLogger(__name__)

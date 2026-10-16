@@ -5,7 +5,7 @@ to verify a project synchronization.
 
 import gazu
 
-
+from zou.app.commands.sync_service import logger
 from zou.app.models.asset_instance import AssetInstance
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.budget import Budget
@@ -28,14 +28,12 @@ from zou.app.models.production_schedule_version import (
 )
 from zou.app.models.project import Project
 from zou.app.models.schedule_item import ScheduleItem
-from zou.app.models.subscription import Subscription
 from zou.app.models.search_filter import SearchFilter
 from zou.app.models.search_filter_group import SearchFilterGroup
+from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 from zou.app.models.time_spent import TimeSpent
 from zou.app.models.working_file import WorkingFile
-
-from zou.app.commands.sync_service import logger
 
 
 def _project_sync_specs(pid):

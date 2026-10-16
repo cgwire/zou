@@ -3,13 +3,12 @@ from unittest import mock
 from sqlalchemy.exc import IntegrityError
 
 from tests.base import ApiDBTestCase
-
 from zou.app.models.entity import Entity, EntityLink
 from zou.app.models.news import News
-from zou.app.models.project import Project
 from zou.app.models.person import Person
 from zou.app.models.playlist import Playlist
 from zou.app.models.preview_file import PreviewFile
+from zou.app.models.project import Project
 from zou.app.models.task import Task
 
 

@@ -1,19 +1,19 @@
-from tests.base import ApiDBTestCase
+import pytest
 
-from zou.app.services import (
-    assets_service,
-    breakdown_service,
-    entities_service,
-    projects_service,
-    shots_service,
-    tasks_service,
-    task_types_service,
-    cascade_deletion_service,
-)
+from tests.base import ApiDBTestCase
 from tests.services.cases import AssetsTestCase
 from zou.app.exceptions import EntityLinkNotFoundException
 from zou.app.models.entity import Entity, EntityLink
-import pytest
+from zou.app.services import (
+    assets_service,
+    breakdown_service,
+    cascade_deletion_service,
+    entities_service,
+    projects_service,
+    shots_service,
+    task_types_service,
+    tasks_service,
+)
 
 UNKNOWN = "00000000-0000-0000-0000-000000000000"
 

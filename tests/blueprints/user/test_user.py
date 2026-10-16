@@ -1,8 +1,7 @@
 from tests.base import ApiDBTestCase
-
-from zou.app.services import tasks_service, projects_service
 from zou.app.models.person import Person
 from zou.app.models.project import Project
+from zou.app.services import projects_service, tasks_service
 
 
 class UserRoutesTestCase(ApiDBTestCase):

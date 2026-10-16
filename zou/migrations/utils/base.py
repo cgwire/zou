@@ -1,6 +1,7 @@
-from sqlalchemy_utils import UUIDType
-from zou.app.utils import fields, date_helpers
 import sqlalchemy as sa
+from sqlalchemy_utils import UUIDType
+
+from zou.app.utils import date_helpers, fields
 
 
 class BaseMixin(object):

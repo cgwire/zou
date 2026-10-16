@@ -1,7 +1,10 @@
 import slugify
-
 from sqlalchemy.exc import IntegrityError, StatementError
 
+from zou.app.exceptions import (
+    ProjectTemplateNotFoundException,
+    WrongParameterException,
+)
 from zou.app.models.entity_type import EntityType
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.preview_background_file import PreviewBackgroundFile
@@ -16,16 +19,10 @@ from zou.app.models.project_template import (
 from zou.app.models.status_automation import StatusAutomation
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
-
 from zou.app.services import (
-    projects_service,
     metadata_descriptors_service,
+    projects_service,
 )
-from zou.app.exceptions import (
-    ProjectTemplateNotFoundException,
-    WrongParameterException,
-)
-
 from zou.app.utils import events, fields
 
 # Production-setting fields that are copied between Project and

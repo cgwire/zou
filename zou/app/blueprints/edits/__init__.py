@@ -1,18 +1,18 @@
 from flask import Blueprint
-from zou.app.utils.api import configure_api_from_blueprint
 
 from zou.app.blueprints.edits.resources import (
-    EditResource,
     AllEditsResource,
-    EditsAndTasksResource,
     EditPreviewsResource,
-    EditTaskTypesResource,
+    EditResource,
+    EditsAndTasksResource,
     EditTasksResource,
+    EditTaskTypesResource,
     EditVersionsResource,
-    ProjectEditsResource,
     EpisodeEditsResource,
     EpisodeEditTasksResource,
+    ProjectEditsResource,
 )
+from zou.app.utils.api import configure_api_from_blueprint
 
 routes = [
     ("/data/edits", AllEditsResource),

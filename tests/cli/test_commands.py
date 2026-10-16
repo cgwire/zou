@@ -1,24 +1,22 @@
 import datetime
 import io
 import json as stdlib_json
-from contextlib import redirect_stdout
 import unittest
+from contextlib import redirect_stdout
 from unittest.mock import MagicMock, patch
 
 from alembic.script import ScriptDirectory
 from click.testing import CliRunner
 
 from tests.base import ApiDBTestCase
-
-from zou.app.models.person import Person
-from zou.app.services import preview_files_service
-from zou.app.stores import auth_tokens_store, file_store
 from zou.app.commands import commands_service as commands
-from zou.app.utils import fields
-from zou.app.utils import progress as progress_utils
 from zou.app.models.entity_type import EntityType
+from zou.app.models.person import Person
 from zou.app.models.plugin import Plugin
 from zou.app.models.task_type import TaskType
+from zou.app.services import preview_files_service
+from zou.app.stores import auth_tokens_store, file_store
+from zou.app.utils import fields, progress as progress_utils
 from zou.cli import _get_alembic_config, cli
 
 

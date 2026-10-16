@@ -1,7 +1,6 @@
 from tests.base import ApiDBTestCase
-from zou.app.models.task import Task
 from zou.app.models.person import Person
-
+from zou.app.models.task import Task
 from zou.app.utils import fields
 
 

@@ -18,13 +18,20 @@ from typing import Optional
 from sqlalchemy import and_, any_, cast
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.sql import func
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm.exc import StaleDataError
+from sqlalchemy.sql import func
 
 from zou.app import db
-from zou.app.utils import events
-
+from zou.app.exceptions import (
+    EntityNotFoundException,
+    EpisodeNotFoundException,
+    PersonNotFoundException,
+    PreviewFileNotFoundException,
+    RevisionAlreadyExistsException,
+    TaskNotFoundException,
+    WrongParameterException,
+)
 from zou.app.models.comment import (
     Comment,
 )
@@ -38,43 +45,31 @@ from zou.app.models.project import (
     ProjectTaskTypeLink,
 )
 from zou.app.models.task import Task, TaskPersonLink
-from zou.app.models.task_type import TaskType
 from zou.app.models.task_status import TaskStatus
+from zou.app.models.task_type import TaskType
 from zou.app.models.time_spent import TimeSpent
-
-from zou.app.utils import (
-    cache,
-    fields,
-    date_helpers,
-)
-
-
-from zou.app.exceptions import (
-    EpisodeNotFoundException,
-    PersonNotFoundException,
-    RevisionAlreadyExistsException,
-    TaskNotFoundException,
-    WrongParameterException,
-)
-
 from zou.app.services import (
     assets_service,
     base_service,
     concepts_service,
+    departments_service,
     edits_service,
     entities_service,
+    entity_types_service,
     files_service,
     persons_service,
     projects_service,
     shots_service,
-    departments_service,
-    entity_types_service,
     subscriptions_service,
     task_types_service,
+    tasks_service,
 )
-from zou.app.exceptions import EntityNotFoundException
-from zou.app.exceptions import PreviewFileNotFoundException
-from zou.app.services import tasks_service
+from zou.app.utils import (
+    cache,
+    date_helpers,
+    events,
+    fields,
+)
 
 
 def clear_task_cache(task_id):

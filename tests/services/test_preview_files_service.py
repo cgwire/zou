@@ -8,28 +8,22 @@ from unittest.mock import patch
 from sqlalchemy.orm.exc import StaleDataError
 
 from tests.base import ApiDBTestCase
-
-
-from zou.app.models.preview_file import PreviewFile
-from zou.app.models.project import ProjectTaskTypeLink
-from zou.app.services import (
-    files_service,
-    preview_files_service,
-    preview_annotations_service,
-    preview_maintenance_service,
-    projects_service,
-)
-from zou.app.services import preview_file_states_service as states_service
-from zou.app.stores import file_store
-from zou.app.utils import fields, remote_job
+from tests.services.cases import PreviewFileTestCase
 from zou.app.exceptions import (
     AnnotationNotFoundException,
     PreviewFileNotFoundException,
     WrongParameterException,
 )
-from zou.app.services.projects_service import (
-    is_valid_resolution,
-    is_valid_partial_resolution,
+from zou.app.models.entity import Entity
+from zou.app.models.preview_file import PreviewFile
+from zou.app.models.project import ProjectTaskTypeLink
+from zou.app.services import (
+    files_service,
+    preview_annotations_service,
+    preview_file_states_service as states_service,
+    preview_files_service,
+    preview_maintenance_service,
+    projects_service,
 )
 from zou.app.services.preview_annotations_service import (
     extract_all_annotation_frames_from_preview_file,
@@ -42,8 +36,12 @@ from zou.app.services.preview_files_service import (
     get_preview_file_dimensions,
     get_preview_file_fps,
 )
-from tests.services.cases import PreviewFileTestCase
-from zou.app.models.entity import Entity
+from zou.app.services.projects_service import (
+    is_valid_partial_resolution,
+    is_valid_resolution,
+)
+from zou.app.stores import file_store
+from zou.app.utils import fields, remote_job
 
 
 class PreviewFileServiceTestCase(PreviewFileTestCase):

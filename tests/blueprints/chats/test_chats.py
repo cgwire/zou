@@ -1,7 +1,6 @@
 import os
 
 from tests.base import ApiDBTestCase
-
 from zou.app.services import chats_service
 from zou.app.stores import file_store
 from zou.app.utils import thumbnail

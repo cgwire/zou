@@ -3,9 +3,9 @@ from sqlalchemy.exc import StatementError
 from sqlalchemy.orm import aliased
 
 from zou.app import db
-from zou.app.utils import events, fields, cache
-from zou.app.utils import query as query_utils
-
+from zou.app.exceptions import (
+    AssetNotFoundException,
+)
 from zou.app.models.entity import (
     Entity,
     EntityLink,
@@ -13,20 +13,16 @@ from zou.app.models.entity import (
 from zou.app.models.entity_type import EntityType
 from zou.app.models.project import Project
 from zou.app.models.task import Task
-
 from zou.app.services import (
-    index_service,
-    projects_service,
     entities_service,
     entity_types_service,
-    persons_service,
-    subscriptions_service,
+    index_service,
     metadata_descriptors_service,
+    persons_service,
+    projects_service,
+    subscriptions_service,
 )
-
-from zou.app.exceptions import (
-    AssetNotFoundException,
-)
+from zou.app.utils import cache, events, fields, query as query_utils
 
 # Field orders of the compact encoding of the with-tasks views. Clients
 # must map values by reading these names from the response header, never

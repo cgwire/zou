@@ -1,10 +1,9 @@
 from tests.base import ApiDBTestCase
-
 from zou.app import db
+from zou.app.exceptions import WrongParameterException
 from zou.app.models.person import Person
 from zou.app.models.project import ProjectPersonLink
 from zou.app.services import projects_service
-from zou.app.exceptions import WrongParameterException
 
 
 class TeamRoleServiceTestCase(ApiDBTestCase):

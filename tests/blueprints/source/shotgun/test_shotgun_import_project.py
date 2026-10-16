@@ -1,8 +1,7 @@
 from tests.blueprints.source.shotgun.base import ShotgunTestCase
-
 from zou.app.config import DEFAULT_FILE_TREE
-from zou.app.services import file_tree_service
 from zou.app.models.project_status import ProjectStatus
+from zou.app.services import file_tree_service
 
 
 class ImportShotgunProjectTestCase(ShotgunTestCase):

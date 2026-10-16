@@ -4,11 +4,15 @@ import os
 import shutil
 import tempfile
 import zipfile
+
 from PIL import Image
 
 from zou.app import config
-from zou.app.stores import file_store
-from zou.app.stores.redis_lock import with_preview_file_lock
+from zou.app.exceptions import (
+    AnnotationLockTimeoutException,
+    AnnotationNotFoundException,
+    WrongParameterException,
+)
 from zou.app.models.entity import Entity
 from zou.app.models.project import Project
 from zou.app.models.task import Task
@@ -16,16 +20,13 @@ from zou.app.services import (
     files_service,
     preview_files_service,
 )
+from zou.app.stores import file_store
+from zou.app.stores.redis_lock import with_preview_file_lock
 from zou.app.utils import (
     annotations as annotations_renderer,
     events,
     fields,
     fs,
-)
-from zou.app.exceptions import (
-    AnnotationLockTimeoutException,
-    AnnotationNotFoundException,
-    WrongParameterException,
 )
 
 ANNOTATED_PICTURE_EXTENSIONS = ("jpg", "jpeg", "jpe", "png")

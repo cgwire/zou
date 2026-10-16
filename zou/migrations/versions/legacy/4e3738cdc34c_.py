@@ -6,12 +6,14 @@ Create Date: 2021-07-30 15:22:32.641313
 
 """
 
-from sqlalchemy.orm.session import Session
-from alembic import op
+import uuid
+
 import sqlalchemy as sa
 import sqlalchemy_utils
-import uuid
+from alembic import op
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm.session import Session
+
 from zou.migrations.utils.base import BaseMixin
 
 # revision identifiers, used by Alembic.

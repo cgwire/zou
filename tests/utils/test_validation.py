@@ -2,11 +2,11 @@ import unittest
 
 from pydantic import BaseModel
 
+from zou.app.exceptions import WrongParameterException
 from zou.app.utils.validation import (
     _format_validation_errors,
     validate_request_body,
 )
-from zou.app.exceptions import WrongParameterException
 
 
 class SampleSchema(BaseModel):
