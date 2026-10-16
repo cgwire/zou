@@ -195,7 +195,7 @@ class NotificationsTestCase(ApiDBTestCase):
         self.assignee_id = str(self.person.id)
         self.outsider_id = str(
             self.generate_fixture_person(
-                first_name="Jane", email="jane.doe@gmail.com"
+                first_name="Jane", email="jane.doe@example.com"
             ).id
         )
         self.admin_id = self.user["id"]
@@ -317,7 +317,7 @@ class CommentsTestCase(ApiDBTestCase):
         self.task = self.generate_fixture_shot_task()
         self.person_id = str(self.person.id)
         self.person_dict = self.generate_fixture_person(
-            first_name="Jane", email="jane.doe@gmail.com"
+            first_name="Jane", email="jane.doe@example.com"
         ).serialize()
         self.wfa_status = self.generate_fixture_task_status_wfa()
         self.project_id = str(self.project.id)

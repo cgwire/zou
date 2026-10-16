@@ -51,7 +51,7 @@ class AssetSearchTestCase(ApiDBTestCase):
         return self.post(
             "data/persons",
             {
-                "email": "alicia@cg-wire.com",
+                "email": "alicia@example.com",
                 "first_name": "Alicia",
                 "last_name": "Parker",
                 "role": "manager",

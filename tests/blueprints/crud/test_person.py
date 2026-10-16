@@ -1,7 +1,11 @@
 # -*- coding: UTF-8 -*-
 import unittest
 
+from unittest import mock
+
 from tests.base import ApiDBTestCase
+from tests.fake_dns import NO_MX_DOMAIN
+from zou.app import config
 from zou.app.models.department import Department
 from zou.app.models.person import (
     Person,
@@ -81,13 +85,13 @@ class PersonFixtureTestCase(ApiDBTestCase):
             first_name="Ema",
             last_name="Doe",
             desktop_login="ema.doe",
-            email="ema.doe@gmail.com",
+            email="ema.doe@example.com",
         )
         self.generate_fixture_person(
             first_name="Jérémy",
             last_name="Utêfœuit",
             desktop_login="jeremy.utf8",
-            email="jeremy.utf8@gmail.com",
+            email="jeremy.utf8@example.com",
         )
         self.generate_fixture_person()
 
@@ -125,7 +129,7 @@ class PersonTestCase(PersonFixtureTestCase):
         data = {
             "first_name": "John2",
             "last_name": "Doe",
-            "email": "john3.doe@gmail.com",
+            "email": "john3.doe@example.com",
         }
         self.person = self.post("data/persons", data)
         self.assertIsNotNone(self.person["id"])
@@ -140,7 +144,7 @@ class PersonTestCase(PersonFixtureTestCase):
         data = {
             "first_name": "John3",
             "last_name": "Doe",
-            "email": "john3.doe@gmail.com",
+            "email": "john3.doe@example.com",
         }
         resp = self.post("data/persons", data, 400)
         self.assertEqual(resp["data"]["limit"], 4)
@@ -166,7 +170,7 @@ class PersonTestCase(PersonFixtureTestCase):
         data = {
             "first_name": "John2",
             "last_name": "Doe",
-            "email": "john2.doe@gmail.com",
+            "email": "john2.doe@example.com",
             "departments": departments,
         }
 
@@ -189,16 +193,27 @@ class PersonTestCase(PersonFixtureTestCase):
         data = {
             "first_name": "John2",
             "last_name": "Doe",
-            "email": "ema.doe@gmail.com",
+            "email": "ema.doe@example.com",
         }
         response = self.post("data/persons", data, 400)
         self.assertIn("Email already in use", response["message"])
+
+    @mock.patch.object(config, "MAIL_CHECK_DELIVERABILITY", True)
+    def test_create_person_with_email_domain_without_mx(self):
+        data = {
+            "first_name": "John",
+            "last_name": "NoMx",
+            "email": f"john.nomx@{NO_MX_DOMAIN}",
+        }
+        response = self.post("data/persons", data, 400)
+        self.assertIn("does not accept email", response["message"])
+        self.assertIsNone(Person.get_by(email=data["email"]))
 
     def test_create_bot_can_share_email_with_person(self):
         data = {
             "first_name": "Bot",
             "last_name": "Bot",
-            "email": "ema.doe@gmail.com",
+            "email": "ema.doe@example.com",
             "is_bot": True,
         }
         person = self.post("data/persons", data)
@@ -208,7 +223,7 @@ class PersonTestCase(PersonFixtureTestCase):
         data = {
             "first_name": "Bot",
             "last_name": "Bot",
-            "email": "ema.doe@gmail.com",
+            "email": "ema.doe@example.com",
             "is_bot": True,
         }
         bot = self.post("data/persons", data)
@@ -219,7 +234,7 @@ class PersonTestCase(PersonFixtureTestCase):
         )
         bot_again = self.get(f"data/persons/{bot['id']}")
         self.assertEqual(bot_again["first_name"], "Renamed Bot")
-        self.assertEqual(bot_again["email"], "ema.doe@gmail.com")
+        self.assertEqual(bot_again["email"], "ema.doe@example.com")
 
     def test_update_expired_person_keeps_its_own_expiration_date(self):
         import datetime
@@ -228,7 +243,7 @@ class PersonTestCase(PersonFixtureTestCase):
         bot = Person.create(
             first_name="Expired",
             last_name="Bot",
-            email="expired.bot@gmail.com",
+            email="expired.bot@example.com",
             is_bot=True,
             expiration_date=yesterday,
         )
@@ -296,7 +311,7 @@ class PersonTestCase(PersonFixtureTestCase):
             {
                 "first_name": "Bad",
                 "last_name": "Format",
-                "email": "bad.format@gmail.com",
+                "email": "bad.format@example.com",
                 "display_date_format": "MM-DD",
             },
             400,
@@ -400,7 +415,7 @@ class PersonCountryTestCase(PersonFixtureTestCase):
         data = {
             "first_name": "Country",
             "last_name": "Tester",
-            "email": "country.tester@gmail.com",
+            "email": "country.tester@example.com",
             "country": "fr",  # lower-case input is normalized to "FR"
         }
         person = self.post("data/persons", data)
@@ -438,7 +453,7 @@ class PersonCountryTestCase(PersonFixtureTestCase):
         data = {
             "first_name": "NoCountry",
             "last_name": "Doe",
-            "email": "no.country@gmail.com",
+            "email": "no.country@example.com",
         }
         person = self.post("data/persons", data)
         self.assertIsNone(person["country"])
@@ -447,7 +462,7 @@ class PersonCountryTestCase(PersonFixtureTestCase):
         data = {
             "first_name": "Bad",
             "last_name": "Country",
-            "email": "bad.country@gmail.com",
+            "email": "bad.country@example.com",
             "country": "France",
         }
         self.post("data/persons", data, 400)
@@ -464,7 +479,7 @@ class PersonCountryTestCase(PersonFixtureTestCase):
         # Direct writes (SSO sign-in, imports, scripts) bypass the API guard,
         # so the model validator must silently discard bad input instead of
         # raising.
-        person = Person.get_by(email="ema.doe@gmail.com")
+        person = Person.get_by(email="ema.doe@example.com")
         person.update({"country": ["FR"]})
         self.assertIsNone(person.country)
         person.update({"country": 123})
@@ -477,7 +492,7 @@ class PersonCountryTestCase(PersonFixtureTestCase):
     def test_country_not_exposed_in_present_minimal(self):
         # The minimal representation is served to non-managers (including
         # external client/vendor roles), so it must not leak the country.
-        person = Person.get_by(email="ema.doe@gmail.com")
+        person = Person.get_by(email="ema.doe@example.com")
         person.update({"country": "FR"})
         self.assertNotIn("country", person.present_minimal())
         safe = person.serialize_safe()
@@ -493,7 +508,7 @@ class PersonLocaleTestCase(PersonFixtureTestCase):
         data = {
             "first_name": "Locale",
             "last_name": "Tester",
-            "email": "locale.tester@gmail.com",
+            "email": "locale.tester@example.com",
             "locale": "fr_FR",
         }
         person = self.post("data/persons", data)
@@ -525,7 +540,7 @@ class PersonLocaleTestCase(PersonFixtureTestCase):
         data = {
             "first_name": "Bad",
             "last_name": "Locale",
-            "email": "bad.locale@gmail.com",
+            "email": "bad.locale@example.com",
             "locale": "zz_ZZ",
         }
         self.post("data/persons", data, 400)
@@ -549,7 +564,7 @@ class PersonLocaleTestCase(PersonFixtureTestCase):
         # Direct writes (SSO sign-in, imports, scripts) bypass the API guard,
         # so the model validator must silently discard bad input instead of
         # persisting a value that would break later reads.
-        person = Person.get_by(email="ema.doe@gmail.com")
+        person = Person.get_by(email="ema.doe@example.com")
         person.update({"locale": "zz_ZZ"})
         self.assertIsNone(person.locale)
         person.update({"locale": ["fr_FR"]})
@@ -589,7 +604,7 @@ class PersonColumnExposureTestCase(PersonFixtureTestCase):
             {
                 "first_name": "No",
                 "last_name": "Secret",
-                "email": "no.secret@gmail.com",
+                "email": "no.secret@example.com",
             },
         )
         for field in SENSITIVE_FIELDS:
@@ -608,7 +623,7 @@ class PersonColumnExposureTestCase(PersonFixtureTestCase):
         # present_minimal stays answerable by equality unless the filter
         # keys are narrowed too: ?daily_salary=320 would walk the payroll.
         # A refused filter must be an error, never a wider result set.
-        person = Person.get_by(email="ema.doe@gmail.com")
+        person = Person.get_by(email="ema.doe@example.com")
         person.update({"daily_salary": 320, "phone": "0600000000"})
         self.generate_fixture_user_cg_artist()
         self.log_in_cg_artist()
@@ -620,24 +635,24 @@ class PersonColumnExposureTestCase(PersonFixtureTestCase):
         # gazu.person.get_person_by_email() reads the first row of this
         # route, so dropping the filter handed out an arbitrary person
         # instead of no match.
-        person = Person.get_by(email="ema.doe@gmail.com")
+        person = Person.get_by(email="ema.doe@example.com")
         self.generate_fixture_user_cg_artist()
         self.log_in_cg_artist()
 
-        persons = self.get("data/persons?email=ema.doe@gmail.com")
+        persons = self.get("data/persons?email=ema.doe@example.com")
         self.assertEqual(len(persons), 1)
         self.assertEqual(persons[0]["id"], str(person.id))
 
-        self.assertEqual(self.get("data/persons?email=nobody@gmail.com"), [])
+        self.assertEqual(self.get("data/persons?email=nobody@example.com"), [])
 
     def test_guest_flag_stays_filterable_for_non_admins(self):
         # Kitsu loads the studio people with ?is_guest=false: refusing the
         # filter left every non-admin with the people of the login context.
-        person = Person.get_by(email="ema.doe@gmail.com")
+        person = Person.get_by(email="ema.doe@example.com")
         guest = Person.create(
             first_name="Guest",
             last_name="Doe",
-            email="guest.doe@gmail.com",
+            email="guest.doe@example.com",
             is_guest=True,
         )
         self.generate_fixture_user_cg_artist()
@@ -657,7 +672,7 @@ class PersonColumnExposureTestCase(PersonFixtureTestCase):
         # a trim, two functions SQLAlchemy types as NullType: casting the
         # value to it raised a CompileError, and the route answered
         # gazu.person.get_person_by_full_name() with a 500.
-        person = Person.get_by(email="ema.doe@gmail.com")
+        person = Person.get_by(email="ema.doe@example.com")
         path = f"data/persons?full_name={quote('Ema Doe')}"
 
         persons = self.get(path)
@@ -671,7 +686,7 @@ class PersonColumnExposureTestCase(PersonFixtureTestCase):
         self.assertEqual(persons[0]["id"], str(person.id))
 
     def test_visible_columns_stay_filterable(self):
-        person = Person.get_by(email="ema.doe@gmail.com")
+        person = Person.get_by(email="ema.doe@example.com")
         self.generate_fixture_user_cg_artist()
         self.log_in_cg_artist()
         persons = self.get(f"data/persons?first_name={person.first_name}")
@@ -679,13 +694,13 @@ class PersonColumnExposureTestCase(PersonFixtureTestCase):
         self.assertEqual(persons[0]["id"], str(person.id))
 
     def test_admin_still_filters_on_the_safe_columns(self):
-        person = Person.get_by(email="ema.doe@gmail.com")
+        person = Person.get_by(email="ema.doe@example.com")
         person.update({"daily_salary": 320})
         persons = self.get("data/persons?daily_salary=320")
         self.assertEqual(len(persons), 1)
         self.assertEqual(persons[0]["id"], str(person.id))
 
     def test_secrets_are_never_filterable(self):
-        person = Person.get_by(email="ema.doe@gmail.com")
+        person = Person.get_by(email="ema.doe@example.com")
         person.update({"totp_secret": "SECRETSEED"})
         self.get("data/persons?totp_secret=SECRETSEED", 400)

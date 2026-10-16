@@ -4,6 +4,7 @@ import flask_bcrypt as bcrypt
 import pytest
 
 from tests.base import ApiDBTestCase
+from tests.fake_dns import NO_MX_DOMAIN
 
 from zou.app import config
 from zou.app.utils import auth
@@ -40,10 +41,21 @@ class AuthUtilsTestCase(ApiDBTestCase):
 
     def test_validate_email(self):
         self.assertEqual(
-            auth.validate_email("john@gmail.com"), "john@gmail.com"
+            auth.validate_email("john@example.com"), "john@example.com"
         )
         self.assertRaises(
             auth.EmailNotValidException, auth.validate_email, "johngmail.com"
+        )
+
+    @mock.patch.object(config, "MAIL_CHECK_DELIVERABILITY", True)
+    def test_validate_email_domain_without_mx(self):
+        email = f"john@{NO_MX_DOMAIN}"
+        with self.assertRaises(auth.EmailNotValidException) as context:
+            auth.validate_email(email)
+        self.assertIn("does not accept email", str(context.exception))
+        # The format alone is valid: only the DNS check refuses it.
+        self.assertEqual(
+            auth.validate_email(email, check_deliverability=False), email
         )
 
     def test_validate_email_dotless_domain(self):

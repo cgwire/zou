@@ -295,7 +295,7 @@ class AuthTestCase(ApiDBTestCase):
 
     def test_register_route_is_gone(self):
         subscription_data = {
-            "email": "alice@doe.com",
+            "email": "alice@example.com",
             "password": "12345678",
             "password_2": "12345678",
             "first_name": "Alice",
@@ -399,7 +399,7 @@ class AuthTestCase(ApiDBTestCase):
         self.assertIsNotAuthenticated({}, code=422)
         # Unknown and known emails must return the same response so the
         # endpoint cannot be used to enumerate accounts.
-        data = {"email": "fake_email@test.com"}
+        data = {"email": "fake_email@example.com"}
         response = self.post("auth/reset-password", data, 200)
         self.assertTrue(response["success"])
         data = {"email": email}
@@ -463,7 +463,7 @@ class AuthTestCase(ApiDBTestCase):
 
         self.log_in(user_artist["email"])
         self.log_in(user_manager["email"])
-        self.log_in("john.did@gmail.com")
+        self.log_in("john.did@example.com")
         login_logs = self.get("/data/events/login-logs/last")
         self.assertEqual(len(login_logs), 4)
         login_logs = self.get("/data/events/login-logs/last?limit=2")
@@ -933,7 +933,7 @@ class EmailOTPTestCase(ApiDBTestCase):
         known = self.app.get(
             f"auth/email-otp?email={self.credentials['email']}"
         )
-        unknown = self.app.get("auth/email-otp?email=unknown@test.com")
+        unknown = self.app.get("auth/email-otp?email=unknown@example.com")
         self.assertEqual(unknown.status_code, 200)
         self.assertEqual(unknown.data, known.data)
 

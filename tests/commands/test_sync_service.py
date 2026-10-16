@@ -595,7 +595,7 @@ class CheckSyncAccountTestCase(unittest.TestCase):
     def test_a_manager_account_is_only_warned_about(self):
         self.assertFalse(
             self.check_with_user(
-                {"role": "manager", "email": "bot@studio.com"}
+                {"role": "manager", "email": "bot@example.com"}
             )
         )
 

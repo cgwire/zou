@@ -363,7 +363,7 @@ class PlaylistNotificationTestCase(NotificationsTestCase):
         elsewhere = Person.create(
             first_name="Other",
             last_name="Client",
-            email="other.client@gmail.com",
+            email="other.client@example.com",
             role="client",
         )
         projects_service.add_team_member(
@@ -373,7 +373,7 @@ class PlaylistNotificationTestCase(NotificationsTestCase):
         bot = Person.create(
             first_name="Bot",
             last_name="Client",
-            email="bot.client@gmail.com",
+            email="bot.client@example.com",
             role="client",
             is_bot=True,
         )
@@ -402,7 +402,7 @@ class PlaylistNotificationTestCase(NotificationsTestCase):
         other_client = Person.create(
             first_name="Studio",
             last_name="Client",
-            email="studio.client@gmail.com",
+            email="studio.client@example.com",
             role="client",
             studio_id=studio.id,
         )
@@ -424,7 +424,7 @@ class PlaylistNotificationTestCase(NotificationsTestCase):
         other_client = Person.create(
             first_name="Loose",
             last_name="Client",
-            email="loose.client@gmail.com",
+            email="loose.client@example.com",
             role="client",
         )
         projects_service.add_team_member(

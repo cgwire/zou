@@ -53,7 +53,7 @@ class FidoRoutesTestCase(ApiDBTestCase):
     def test_get_challenge_unknown_user(self):
         # Answering 404 here and 400 below told a registered address from
         # an unknown one, unauthenticated, in a single request.
-        unknown = self.get("auth/fido?email=ghost@nowhere.com", 400)
+        unknown = self.get("auth/fido?email=ghost@example.com", 400)
         known = self.get(f"auth/fido?email={self.user['email']}", 400)
         self.assertEqual(unknown, known)
 

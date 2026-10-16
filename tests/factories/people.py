@@ -18,7 +18,7 @@ class PeopleFactories:
             first_name="John",
             last_name="Did",
             role="admin",
-            email="john.did@gmail.com",
+            email="john.did@example.com",
             password=_CACHED_PASSWORD_HASH,
         ).serialize()
         return self.user
@@ -30,7 +30,7 @@ class PeopleFactories:
             first_name="John",
             last_name="Did2",
             role="manager",
-            email="john.did.manager@gmail.com",
+            email="john.did.manager@example.com",
             password=_CACHED_PASSWORD_HASH,
         ).serialize()
         return self.user_manager
@@ -41,7 +41,7 @@ class PeopleFactories:
         self.user_cg_artist = Person.create(
             first_name="John",
             last_name="Did3",
-            email="john.did.cg.artist@gmail.com",
+            email="john.did.cg.artist@example.com",
             role="user",
             password=_CACHED_PASSWORD_HASH,
         ).serialize(relations=True)
@@ -54,7 +54,7 @@ class PeopleFactories:
             first_name="John",
             last_name="Did4",
             role="client",
-            email="john.did.client@gmail.com",
+            email="john.did.client@example.com",
             password=_CACHED_PASSWORD_HASH,
         ).serialize()
         return self.user_client
@@ -66,7 +66,7 @@ class PeopleFactories:
             first_name="John",
             last_name="Did5",
             role="vendor",
-            email="john.did.vendor@gmail.com",
+            email="john.did.vendor@example.com",
             password=_CACHED_PASSWORD_HASH,
         ).serialize()
         return self.user_vendor
@@ -78,7 +78,7 @@ class PeopleFactories:
             first_name="John",
             last_name="Did6",
             role="supervisor",
-            email="john.did.supervisor@gmail.com",
+            email="john.did.supervisor@example.com",
             password=_CACHED_PASSWORD_HASH,
         ).serialize()
         return self.user_supervisor
@@ -90,7 +90,7 @@ class PeopleFactories:
             first_name="John",
             last_name="Did7",
             role="supervisor",
-            email="john.did.supervisor2@gmail.com",
+            email="john.did.supervisor2@example.com",
             password=_CACHED_PASSWORD_HASH,
         ).serialize()
         return self.user_supervisor_2
@@ -100,7 +100,7 @@ class PeopleFactories:
         first_name="John",
         last_name="Doe",
         desktop_login="john.doe",
-        email="john.doe@gmail.com",
+        email="john.doe@example.com",
         country=None,
     ):
         self.person = Person.get_by(email=email)

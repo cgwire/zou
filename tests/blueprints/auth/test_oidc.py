@@ -28,8 +28,8 @@ class OIDCClaimMappingTestCase(ApiDBTestCase):
     def test_get_email_overridden_claim(self):
         with mock.patch.object(config, "OIDC_EMAIL_CLAIM", "mail"):
             self.assertEqual(
-                oidc.get_email_from_claims({"mail": "jane@corp.com"}),
-                "jane@corp.com",
+                oidc.get_email_from_claims({"mail": "jane@example.com"}),
+                "jane@example.com",
             )
 
     def test_map_claims_default_claims(self):

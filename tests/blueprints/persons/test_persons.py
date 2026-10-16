@@ -415,7 +415,7 @@ class PersonRoutesTestCase(ApiDBTestCase):
             first_name="Other",
             last_name="Admin",
             role="admin",
-            email="other.admin@gmail.com",
+            email="other.admin@example.com",
             **overrides,
         )
 

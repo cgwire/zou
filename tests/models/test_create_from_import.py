@@ -161,7 +161,7 @@ class CreateFromImportTestCase(ApiDBTestCase):
             "updated_at": "2019-06-29T15:05:22",
             "first_name": "John",
             "last_name": "Doe",
-            "email": "jhon01@gmail.com",
+            "email": "jhon01@example.com",
             "phone": "",
             "active": True,
             "desktop_login": "",
