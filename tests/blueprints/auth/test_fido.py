@@ -126,4 +126,18 @@ class FidoRoutesTestCase(ApiDBTestCase):
             headers=self.post_headers,
         )
         self.assertEqual(response.status_code, 400)
+        # The flag the clients read to tell a wrong code from another error,
+        # as on the TOTP and email OTP routes.
+        self.assertTrue(json.loads(response.data)["wrong_OTP"])
+        self.assertTrue(Person.get(self.user["id"]).fido_enabled)
+
+    def test_unregister_device_without_code(self):
+        self._register_device()
+        response = self.app.delete(
+            "auth/fido",
+            data=json.dumps({"device_name": "security-key"}),
+            headers=self.post_headers,
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertTrue(json.loads(response.data)["wrong_OTP"])
         self.assertTrue(Person.get(self.user["id"]).fido_enabled)

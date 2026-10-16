@@ -963,7 +963,11 @@ class FIDOResource(MethodView, ArgsMixin):
             return {"success": True}
         except (WrongOTPException, MissingOTPException):
             return (
-                {"error": True, "message": "Wrong OTP."},
+                {
+                    "error": True,
+                    "message": "OTP verification failed.",
+                    "wrong_OTP": True,
+                },
                 400,
             )
         except FIDONotEnabledException:
