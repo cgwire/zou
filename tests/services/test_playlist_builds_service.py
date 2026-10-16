@@ -462,12 +462,52 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         )
 
     def test_end_build_job_of_a_deleted_job(self):
-        # The job row may be gone by the time the build ends: the clients
-        # still get the event, and the caller an empty dict rather than a
-        # crash inside the queue worker.
+        # The job row may be gone by the time the build ends: its files
+        # were removed before the build stored the movie, so they must
+        # not stay orphaned, and the caller gets an empty dict rather
+        # than a crash inside the queue worker.
         playlist = self.generate_fixture_playlists()
         job = playlist_builds_service.start_build_job(playlist)
-        BuildJob.get(job["id"]).delete()
-        self.assertEqual(
-            playlist_builds_service.end_build_job(playlist, job, True), {}
+        movie_file_path = playlist_builds_service.get_playlist_movie_file_path(
+            job
         )
+        with open(movie_file_path, "w") as movie_file:
+            movie_file.write("movie")
+        BuildJob.get(job["id"]).delete()
+
+        with (
+            patch.object(playlist_builds_service.events, "emit") as emit,
+            patch.object(
+                playlist_builds_service.file_store, "remove_movie"
+            ) as remove_movie,
+        ):
+            self.assertEqual(
+                playlist_builds_service.end_build_job(playlist, job, True),
+                {},
+            )
+
+        emit.assert_not_called()
+        remove_movie.assert_called_once_with("playlists", job["id"])
+        self.assertFalse(os.path.exists(movie_file_path))
+
+    def test_build_playlist_job_of_a_deleted_job(self):
+        # KITSU-API-52Q: a build deleted while running ended in a KeyError
+        # that flagged the queue job as failed.
+        playlist = self.generate_fixture_playlists()
+        job = playlist_builds_service.start_build_job(playlist)
+
+        with (
+            patch.object(
+                playlist_builds_service,
+                "build_playlist_movie_file",
+                return_value={},
+            ),
+            patch.object(
+                playlist_builds_service.emails, "send_email"
+            ) as send_email,
+        ):
+            playlist_builds_service.build_playlist_job(
+                playlist, job, [], None, self.user["email"], False, False
+            )
+
+        send_email.assert_not_called()

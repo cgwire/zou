@@ -343,6 +343,10 @@ def end_build_job(playlist, job, success, message=None):
     Register in database that a build is finished. Emits an event to notify
     clients that the build is done. The optional message explains a
     degraded or failed build.
+
+    The job may have been deleted while the build was running: its files
+    were removed before the build stored the movie, so they are removed
+    again here, and an empty dict is returned.
     """
     if success:
         status = "succeeded"
@@ -350,8 +354,15 @@ def end_build_job(playlist, job, success, message=None):
         status = "failed"
 
     build_job = BuildJob.get(job["id"])
-    if build_job is not None:
-        build_job.end(status=status, message=message)
+    if build_job is None:
+        current_app.logger.warning(
+            f"Build job {job['id']} was deleted while running, "
+            "its movie is discarded."
+        )
+        remove_build_job_files(job)
+        return {}
+
+    build_job.end(status=status, message=message)
     events.emit(
         "build-job:update",
         {
@@ -362,10 +373,7 @@ def end_build_job(playlist, job, success, message=None):
         },
         project_id=playlist["project_id"],
     )
-    if build_job is not None:
-        return build_job.serialize()
-    else:
-        return {}
+    return build_job.serialize()
 
 
 def build_playlist_job(playlist, job, shots, params, email, full, remote):
@@ -374,12 +382,13 @@ def build_playlist_job(playlist, job, shots, params, email, full, remote):
     aimed at being run as a job in a job queue.
     """
     # The job dict handed to the queue still says "running": the status
-    # to test is the one end_build_job returns.
+    # to test is the one end_build_job returns, empty when the job was
+    # deleted during the build.
     job = build_playlist_movie_file(playlist, job, shots, params, full, remote)
 
     # Just in case, since rq jobs which encounter an error raise an
     # exception in order to be flagged as failed.
-    if job["status"] == "succeeded":
+    if job.get("status") == "succeeded":
         person = persons_service.get_person_by_email_raw(email)
         organisation = organisation_service.get_organisation()
         playlist_url = (
@@ -457,10 +466,10 @@ def get_build_job(build_job_id):
     return get_build_job_raw(build_job_id).serialize()
 
 
-def remove_build_job_impl(playlist, job_dict):
+def remove_build_job_files(job_dict):
     """
-    Remove one build job (file + DB record + event). Caller must pass
-    serialized job dict to avoid re-fetching when deleting multiple jobs.
+    Remove the movie of given build job from the cache and the storage.
+    Return the path of the cache file.
     """
     build_job_id = job_dict["id"]
     movie_file_path = get_playlist_movie_file_path(job_dict)
@@ -472,6 +481,16 @@ def remove_build_job_impl(playlist, job_dict):
         current_app.logger.error(
             f"Playlist file can't be deleted: {build_job_id}"
         )
+    return movie_file_path
+
+
+def remove_build_job_impl(playlist, job_dict):
+    """
+    Remove one build job (file + DB record + event). Caller must pass
+    serialized job dict to avoid re-fetching when deleting multiple jobs.
+    """
+    build_job_id = job_dict["id"]
+    movie_file_path = remove_build_job_files(job_dict)
     job = BuildJob.get(build_job_id)
     if job is not None:
         job.delete()
