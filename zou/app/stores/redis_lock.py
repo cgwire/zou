@@ -3,8 +3,9 @@ Redis-based distributed lock: thin wrapper around redis-py's native Lock.
 """
 
 import logging
-import redis
 from contextlib import contextmanager
+
+import redis
 
 from zou.app import config
 from zou.app.stores import redis_client

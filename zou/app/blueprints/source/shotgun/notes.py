@@ -1,17 +1,16 @@
-from flasgger import swag_from
 import datetime
 
+from flasgger import swag_from
 from flask import current_app
 from flask_jwt_extended import jwt_required
-
-from zou.app.models.task import Task
-from zou.app.models.comment import Comment
-from zou.app.models.person import Person
 
 from zou.app.blueprints.source.shotgun.base import (
     BaseImportShotgunResource,
     ImportRemoveShotgunBaseResource,
 )
+from zou.app.models.comment import Comment
+from zou.app.models.person import Person
+from zou.app.models.task import Task
 
 
 class ImportShotgunNotesResource(BaseImportShotgunResource):

@@ -1,7 +1,8 @@
 from unittest import mock
-from flask import g
-from tests.base import ApiDBTestCase
 
+from flask import g
+
+from tests.base import ApiDBTestCase
 from zou.app import app, db
 from zou.app.models.project import ProjectPersonLink
 from zou.app.services import permissions_service, user_service

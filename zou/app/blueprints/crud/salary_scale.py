@@ -1,15 +1,11 @@
 from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
-from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
-
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.exceptions import WrongParameterException
-
 from zou.app.models.department import Department
-from zou.app.models.salary_scale import SalaryScale
-
-
 from zou.app.models.person import POSITION_TYPES, SENIORITY_TYPES
+from zou.app.models.salary_scale import SalaryScale
 
 
 class SalaryScalesResource(BaseModelsResource):

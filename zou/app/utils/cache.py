@@ -18,12 +18,11 @@ leaves the cached object untouched.
 import copy
 import logging
 import uuid
-
-import redis
-
 from functools import wraps
 
+import redis
 from flask_caching import Cache
+
 from zou.app import config
 
 logger = logging.getLogger(__name__)

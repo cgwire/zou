@@ -4,7 +4,6 @@ from unittest import TestCase, mock
 from flask import g
 
 from tests.base import ApiDBTestCase
-
 from zou.app import app
 from zou.app.services import projects_service
 from zou.app.utils import permissions

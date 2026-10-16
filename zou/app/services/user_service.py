@@ -1,9 +1,14 @@
 from collections import defaultdict
 
-from sqlalchemy.orm import aliased, selectinload
-from sqlalchemy import func, and_
+from sqlalchemy import and_, func
 from sqlalchemy.exc import DataError
+from sqlalchemy.orm import aliased, selectinload
 
+from zou.app.exceptions import (
+    NotificationNotFoundException,
+    ProjectNotFoundException,
+    WrongParameterException,
+)
 from zou.app.models.comment import Comment
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
@@ -15,29 +20,23 @@ from zou.app.models.project_status import ProjectStatus
 from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
-
 from zou.app.services import (
     custom_actions_service,
+    departments_service,
+    entities_service,
+    entity_types_service,
+    files_service,
+    organisation_service,
     permissions_service,
     persons_service,
     plugins_service,
     projects_service,
+    search_filters_service,
     status_automations_service,
-    files_service,
-    departments_service,
-    entity_types_service,
-    organisation_service,
     subscriptions_service,
     task_types_service,
-    search_filters_service,
-    entities_service,
 )
-from zou.app.exceptions import (
-    NotificationNotFoundException,
-    WrongParameterException,
-    ProjectNotFoundException,
-)
-from zou.app.utils import cache, fields, permissions, events
+from zou.app.utils import cache, events, fields, permissions
 
 
 def clear_open_projects_cache():
@@ -733,6 +732,7 @@ def mark_notifications_as_read():
     to mark a list of notifications as read after an user retrieved them.
     """
     from sqlalchemy import update
+
     from zou.app import db
 
     current_user = persons_service.get_current_user()

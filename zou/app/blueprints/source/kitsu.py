@@ -1,10 +1,11 @@
 from flasgger import swag_from
-from sqlalchemy.exc import IntegrityError
-
 from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
+from sqlalchemy.exc import IntegrityError
 
+from zou.app.exceptions import WrongParameterException
+from zou.app.mixin import ArgsMixin
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.build_job import BuildJob
 from zou.app.models.comment import Comment
@@ -20,14 +21,12 @@ from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 from zou.app.models.time_spent import TimeSpent
-from zou.app.mixin import ArgsMixin
-from zou.app.utils import events, fields, permissions
-from zou.app.exceptions import WrongParameterException
 from zou.app.services import (
     entities_service,
-    tasks_service,
     entity_types_service,
+    tasks_service,
 )
+from zou.app.utils import events, fields, permissions
 
 
 def _project_id_from_task(entry):

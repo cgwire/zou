@@ -1,5 +1,4 @@
 import contextlib
-import ffmpeg
 import logging
 import math
 import os
@@ -7,9 +6,10 @@ import shutil
 import subprocess
 import tempfile
 import uuid
-
 from collections import namedtuple
 from fractions import Fraction
+
+import ffmpeg
 
 logger = logging.getLogger(__name__)
 loghandler = logging.StreamHandler()

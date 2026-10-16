@@ -1,16 +1,14 @@
 import platform
+
 import requests
 
 from zou import __version__
-
-from zou.app.models.person import Person
-
-from zou.app.services import (
-    stats_service,
-    organisation_service,
-)
-
 from zou.app import config
+from zou.app.models.person import Person
+from zou.app.services import (
+    organisation_service,
+    stats_service,
+)
 
 
 def send_main_infos():

@@ -4,8 +4,8 @@ from collections import OrderedDict
 from flask import current_app
 from flask_jwt_extended import current_user
 
-from zou.app.stores import publisher_store
 from zou.app.models.event import ApiEvent
+from zou.app.stores import publisher_store
 from zou.app.utils import fields
 
 logger = logging.getLogger(__name__)

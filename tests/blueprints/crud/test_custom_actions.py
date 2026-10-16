@@ -1,7 +1,6 @@
 # -*- coding: UTF-8 -*-
 from tests.base import ApiDBTestCase
 from zou.app.models.custom_action import CustomAction
-
 from zou.app.utils import fields
 
 

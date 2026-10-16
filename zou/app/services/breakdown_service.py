@@ -1,31 +1,30 @@
+from flask import current_app
 from slugify import slugify
 from sqlalchemy import desc
-from sqlalchemy.orm import aliased
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm.exc import StaleDataError, DetachedInstanceError
+from sqlalchemy.orm import aliased
+from sqlalchemy.orm.exc import DetachedInstanceError, StaleDataError
 
+from zou.app.exceptions import (
+    AssetInstanceNotFoundException,
+    AssetNotFoundException,
+    EntityLinkNotFoundException,
+)
 from zou.app.models.asset_instance import AssetInstance
 from zou.app.models.entity import Entity, EntityLink
 from zou.app.models.entity_type import EntityType
+from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
-from zou.app.models.project import ProjectTaskTypeLink
-
-from zou.app.utils import fields, events
-
 from zou.app.services import (
     base_service,
     entities_service,
+    entity_types_service,
     projects_service,
     shots_service,
     tasks_service,
-    entity_types_service,
 )
-from zou.app.exceptions import AssetNotFoundException
-
-from flask import current_app
-from zou.app.exceptions import AssetInstanceNotFoundException
-from zou.app.exceptions import EntityLinkNotFoundException
+from zou.app.utils import events, fields
 
 """
 Breakdown can be represented in two ways:

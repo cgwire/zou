@@ -1,5 +1,4 @@
 from flask import Blueprint
-from zou.app.utils.api import configure_api_from_blueprint
 
 from zou.app.blueprints.auth.resources import (
     AppLoginCodeResource,
@@ -10,15 +9,16 @@ from zou.app.blueprints.auth.resources import (
     FIDOResource,
     LoginResource,
     LogoutResource,
+    OIDCCallbackResource,
+    OIDCLoginResource,
     RecoveryCodesResource,
     RefreshTokenResource,
     ResetPasswordResource,
-    TOTPResource,
-    SAMLSSOResource,
     SAMLLoginResource,
-    OIDCLoginResource,
-    OIDCCallbackResource,
+    SAMLSSOResource,
+    TOTPResource,
 )
+from zou.app.utils.api import configure_api_from_blueprint
 
 routes = [
     ("/auth/login", LoginResource),

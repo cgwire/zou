@@ -1,11 +1,10 @@
 from tests.base import ApiDBTestCase, rebuild_from_compact
-
 from zou.app.services import (
+    metadata_descriptors_service,
     persons_service,
     projects_service,
-    tasks_service,
     shots_service,
-    metadata_descriptors_service,
+    tasks_service,
 )
 
 

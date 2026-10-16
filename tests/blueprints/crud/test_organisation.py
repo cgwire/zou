@@ -1,5 +1,5 @@
 from tests.base import ApiDBTestCase
-from zou.app.models.organisation import Organisation, SENSITIVE_FIELDS
+from zou.app.models.organisation import SENSITIVE_FIELDS, Organisation
 from zou.app.utils import fields
 
 

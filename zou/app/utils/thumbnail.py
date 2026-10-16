@@ -1,8 +1,7 @@
+import logging
+import math
 import os
 import shutil
-import math
-import logging
-
 from io import BytesIO
 from pathlib import Path
 

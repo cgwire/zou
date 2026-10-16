@@ -1,15 +1,13 @@
 import math
-import unittest
 import os
+import unittest
 
 from PIL import Image, ImageCms
-
 from werkzeug.datastructures import FileStorage
 
 from tests.base import TEST_FOLDER
-
 from zou.app.exceptions import WrongParameterException
-from zou.app.utils import thumbnail, fs
+from zou.app.utils import fs, thumbnail
 
 
 class ThumbnailTestCase(unittest.TestCase):

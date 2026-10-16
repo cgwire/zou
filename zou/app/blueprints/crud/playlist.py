@@ -2,18 +2,17 @@ from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 from sqlalchemy import or_
 
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
+from zou.app.exceptions import WrongParameterException
 from zou.app.models.playlist import Playlist
 from zou.app.services import (
+    cascade_deletion_service,
     permissions_service,
     persons_service,
     playlists_service,
     preview_files_service,
     user_service,
-    cascade_deletion_service,
 )
-from zou.app.exceptions import WrongParameterException
-
-from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.utils import fields, permissions
 
 

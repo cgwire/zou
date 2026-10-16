@@ -1,23 +1,21 @@
 import datetime
 import unittest
 import uuid
-
 from unittest import mock
 
 from tests.base import ApiDBTestCase
-
+from zou.app.commands import (
+    sync_service,
+)
 from zou.app.models.comment import Comment
 from zou.app.models.entity import Entity
+from zou.app.models.entity_type import EntityType
 from zou.app.models.event import ApiEvent
 from zou.app.models.news import News
-from zou.app.models.entity_type import EntityType
 from zou.app.models.playlist import Playlist
 from zou.app.models.project import Project
 from zou.app.models.studio import Studio
 from zou.app.models.task_status import TaskStatus
-from zou.app.commands import (
-    sync_service,
-)
 from zou.app.services import news_service
 
 

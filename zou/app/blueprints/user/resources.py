@@ -2,35 +2,35 @@ from flasgger import swag_from
 from flask import jsonify, request
 from flask.views import MethodView
 
-from zou.app.mixin import ArgsMixin
-from zou.app.services import (
-    assets_service,
-    chats_service,
-    entities_service,
-    persons_service,
-    projects_service,
-    shots_service,
-    tasks_service,
-    time_spents_service,
-    permissions_service,
-    user_service,
-    entity_types_service,
-    search_filters_service,
-    todos_service,
-)
-from zou.app.utils import date_helpers, validation
 from zou.app.blueprints.user.schemas import (
-    CreateSearchFilterSchema,
-    UpdateSearchFilterSchema,
     CreateSearchFilterGroupSchema,
-    UpdateSearchFilterGroupSchema,
+    CreateSearchFilterSchema,
     NotificationUpdateSchema,
     SubscribeTasksSchema,
+    UpdateSearchFilterGroupSchema,
+    UpdateSearchFilterSchema,
 )
 from zou.app.exceptions import (
     WrongDateFormatException,
     WrongParameterException,
 )
+from zou.app.mixin import ArgsMixin
+from zou.app.services import (
+    assets_service,
+    chats_service,
+    entities_service,
+    entity_types_service,
+    permissions_service,
+    persons_service,
+    projects_service,
+    search_filters_service,
+    shots_service,
+    tasks_service,
+    time_spents_service,
+    todos_service,
+    user_service,
+)
+from zou.app.utils import date_helpers, validation
 
 
 class AssetTasksResource(MethodView):

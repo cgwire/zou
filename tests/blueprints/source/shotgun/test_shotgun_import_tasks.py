@@ -1,10 +1,8 @@
 from tests.blueprints.source.shotgun.base import ShotgunTestCase
-
-from zou.app.models.project import Project
 from zou.app.models.person import Person
-from zou.app.models.task_type import TaskType
+from zou.app.models.project import Project
 from zou.app.models.task_status import TaskStatus
-
+from zou.app.models.task_type import TaskType
 from zou.app.services import assets_service, shots_service, tasks_service
 
 

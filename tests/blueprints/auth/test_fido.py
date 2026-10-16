@@ -4,13 +4,12 @@ through the real fido2 server; only the cryptographic attestation check
 (register_complete) is mocked, since it requires a hardware authenticator.
 """
 
+from unittest import mock
+
 import orjson as json
 import pytest
 
-from unittest import mock
-
 from tests.base import ApiDBTestCase
-
 from zou.app.models.person import Person
 from zou.app.services import persons_service
 

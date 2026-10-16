@@ -6,8 +6,8 @@ from flask import jsonify
 
 from zou import __version__
 from zou.app.openapi_schemas import (
-    AssetSchema,
     AssetInstanceSchema,
+    AssetSchema,
     AssetTypeSchema,
     AttachmentFileSchema,
     BuildJobSchema,
@@ -39,8 +39,8 @@ from zou.app.openapi_schemas import (
     ShotSchema,
     SoftwareSchema,
     StatusAutomationSchema,
-    SubscriptionToNotificationsSchema,
     StudioSchema,
+    SubscriptionToNotificationsSchema,
     TaskSchema,
     TaskStatusSchema,
     TaskTypeSchema,

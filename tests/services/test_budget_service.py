@@ -1,14 +1,12 @@
 import datetime
 
 from tests.base import ApiDBTestCase
-
+from zou.app.exceptions import (
+    BudgetEntryNotFoundException,
+    BudgetNotFoundException,
+)
 from zou.app.models.budget import Budget
 from zou.app.models.budget_entry import BudgetEntry
-from zou.app.exceptions import (
-    BudgetNotFoundException,
-    BudgetEntryNotFoundException,
-)
-
 from zou.app.services import budget_service
 
 

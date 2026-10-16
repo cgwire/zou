@@ -1,7 +1,6 @@
 from tests.base import ApiDBTestCase
-
-from zou.app.utils import fields
 from zou.app.models.project_template import ProjectTemplate
+from zou.app.utils import fields
 
 
 class ProjectTemplateTestCase(ApiDBTestCase):

@@ -1,10 +1,8 @@
 import os
 import tempfile
-
 from unittest import mock
 
 from tests.base import ApiDBTestCase
-
 from zou.app import config
 from zou.app.models.person import Person
 from zou.app.models.studio import Studio

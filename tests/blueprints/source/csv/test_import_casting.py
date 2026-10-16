@@ -1,7 +1,5 @@
 from tests.base import ApiDBTestCase
-
 from zou.app.models.entity import EntityLink
-
 from zou.app.services.shots_service import get_shot
 
 

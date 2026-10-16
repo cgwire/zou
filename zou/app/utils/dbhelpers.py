@@ -1,13 +1,13 @@
 from sqlalchemy import create_engine, inspect, text
-from sqlalchemy_utils import database_exists, create_database
 from sqlalchemy.orm import close_all_sessions
+from sqlalchemy_utils import create_database, database_exists
 
 
 def create_all():
     """
     Create all database tables.
     """
-    from zou.app import db, config
+    from zou.app import config, db
 
     engine = create_engine(config.SQLALCHEMY_DATABASE_URI)
     if not database_exists(engine.url):

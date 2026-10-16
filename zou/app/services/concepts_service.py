@@ -1,15 +1,15 @@
-from sqlalchemy import cast, Text
+from sqlalchemy import Text, cast
 from sqlalchemy.exc import StatementError
 from sqlalchemy.orm import selectinload
 
-from zou.app.utils import (
-    cache,
-    events,
-    fields,
-    query as query_utils,
-)
-
 from zou.app import db
+from zou.app.exceptions import (
+    ConceptFolderNotFoundException,
+    ConceptNotFoundException,
+    EntityNotFoundException,
+    WrongIdFormatException,
+    WrongParameterException,
+)
 from zou.app.models.entity import (
     Entity,
     EntityConceptLink,
@@ -17,7 +17,6 @@ from zou.app.models.entity import (
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
 from zou.app.models.task import Task
-
 from zou.app.services import (
     base_service,
     entities_service,
@@ -25,12 +24,11 @@ from zou.app.services import (
     persons_service,
     subscriptions_service,
 )
-from zou.app.exceptions import (
-    ConceptFolderNotFoundException,
-    ConceptNotFoundException,
-    WrongIdFormatException,
-    WrongParameterException,
-    EntityNotFoundException,
+from zou.app.utils import (
+    cache,
+    events,
+    fields,
+    query as query_utils,
 )
 
 CONCEPTS_AND_TASKS_TASK_FIELDS = [

@@ -1,20 +1,31 @@
-import logging
 import itertools
+import logging
 from operator import itemgetter
 
-from zou.app.models.file_status import FileStatus
-from zou.app import config
+from sqlalchemy import desc, func
+from sqlalchemy.exc import IntegrityError, StatementError
+from sqlalchemy.sql.expression import and_
 
+from zou.app import config
+from zou.app.exceptions import (
+    EntryAlreadyExistsException,
+    NoOutputFileException,
+    OutputFileNotFoundException,
+    OutputTypeNotFoundException,
+    PreviewBackgroundFileNotFoundException,
+    PreviewFileNotFoundException,
+    SoftwareNotFoundException,
+    WorkingFileNotFoundException,
+)
 from zou.app.models.entity import Entity
+from zou.app.models.file_status import FileStatus
 from zou.app.models.output_file import OutputFile
 from zou.app.models.output_type import OutputType
-from zou.app.models.preview_file import PreviewFile
 from zou.app.models.preview_background_file import PreviewBackgroundFile
+from zou.app.models.preview_file import PreviewFile
 from zou.app.models.software import Software
 from zou.app.models.task import Task
 from zou.app.models.working_file import WorkingFile
-
-
 from zou.app.services import (
     entities_service,
 )
@@ -22,25 +33,8 @@ from zou.app.services.base_service import (
     get_instance,
     get_or_create_instance_by_name,
 )
-
-from zou.app.exceptions import (
-    WorkingFileNotFoundException,
-    OutputFileNotFoundException,
-    OutputTypeNotFoundException,
-    PreviewFileNotFoundException,
-    SoftwareNotFoundException,
-    NoOutputFileException,
-    EntryAlreadyExistsException,
-    PreviewBackgroundFileNotFoundException,
-)
-
 from zou.app.stores import file_store, queue_store
-
-from zou.app.utils import cache, fields, fs, events, query as query_utils
-
-from sqlalchemy import desc, func
-from sqlalchemy.exc import StatementError, IntegrityError
-from sqlalchemy.sql.expression import and_
+from zou.app.utils import cache, events, fields, fs, query as query_utils
 
 logger = logging.getLogger(__name__)
 
@@ -950,6 +944,7 @@ def probe_and_record_movie_prefixes(
     own app context when there is none.
     """
     from flask import has_app_context
+
     from zou.app import app
 
     def run():

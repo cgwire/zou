@@ -1,23 +1,21 @@
 import os
 import tempfile
-
 from types import SimpleNamespace
 from unittest import mock
 
 from tests.base import ApiDBTestCase
-
 from zou.app import config, db
+from zou.app.exceptions import PreviewProcessingFailedException
 from zou.app.models.department import Department
 from zou.app.models.stored_file import StoredFile
 from zou.app.services import (
     deletion_service,
-    preview_files_service,
-    stored_files_service,
     playlist_builds_service,
+    preview_files_service,
     preview_maintenance_service,
+    stored_files_service,
 )
 from zou.app.stores import file_store
-from zou.app.exceptions import PreviewProcessingFailedException
 from zou.app.utils import fields
 
 

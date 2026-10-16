@@ -1,6 +1,6 @@
 import csv
-
 from io import StringIO
+
 from flask import Response, make_response, stream_with_context
 from slugify import slugify
 

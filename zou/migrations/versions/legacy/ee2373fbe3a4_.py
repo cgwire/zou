@@ -6,12 +6,12 @@ Create Date: 2018-05-24 11:24:22.019457
 
 """
 
-from alembic import op
+import uuid
+
 import sqlalchemy as sa
 import sqlalchemy_utils
+from alembic import op
 from sqlalchemy.dialects import postgresql
-import sqlalchemy_utils
-import uuid
 
 # revision identifiers, used by Alembic.
 revision = "ee2373fbe3a4"

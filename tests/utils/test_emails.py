@@ -1,9 +1,7 @@
 import smtplib
-
 from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
-
 from zou.app import app
 from zou.app.utils import emails
 

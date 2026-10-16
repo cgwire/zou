@@ -5,11 +5,11 @@ from slugify import slugify
 
 from zou.app.services import (
     edits_service,
-    projects_service,
+    metadata_descriptors_service,
     permissions_service,
     persons_service,
+    projects_service,
     task_types_service,
-    metadata_descriptors_service,
 )
 from zou.app.utils import csv_utils
 

@@ -1,17 +1,15 @@
 import urllib.parse
-
 from unittest import mock
 
 from tests.base import ApiDBTestCase
-
 from zou.app.models.day_off import DayOff
 from zou.app.models.person import Person
-from zou.app.stores import auth_tokens_store
 from zou.app.services import (
     persons_service,
     projects_service,
     tasks_service,
 )
+from zou.app.stores import auth_tokens_store
 from zou.app.utils import auth, fields
 
 

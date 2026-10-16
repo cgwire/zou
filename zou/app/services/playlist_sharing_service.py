@@ -3,8 +3,12 @@ import uuid
 
 from sqlalchemy import or_
 
-from zou.app.utils import auth, events, fields
-
+from zou.app.exceptions import (
+    PersonNotFoundException,
+    PlaylistShareLinkNotFoundException,
+    PreviewFileNotFoundException,
+    WrongParameterException,
+)
 from zou.app.models.comment import Comment
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
@@ -16,6 +20,7 @@ from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
 from zou.app.services import (
+    attachment_files_service,
     comments_service,
     deletion_service,
     emails_service,
@@ -23,17 +28,11 @@ from zou.app.services import (
     notifications_service,
     persons_service,
     playlists_service,
-    tasks_service,
     projects_service,
     task_types_service,
-    attachment_files_service,
+    tasks_service,
 )
-from zou.app.exceptions import (
-    PersonNotFoundException,
-    PlaylistShareLinkNotFoundException,
-    PreviewFileNotFoundException,
-    WrongParameterException,
-)
+from zou.app.utils import auth, events, fields
 
 # Entity types for which "parent" is a parent record (shot/seq/episode/…).
 # For other types, we show the entity type name as the logical parent

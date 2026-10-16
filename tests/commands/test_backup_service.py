@@ -3,17 +3,15 @@ import gzip
 import os
 import tempfile
 import unittest
-
 from unittest import mock
 
 from tests.base import ApiDBTestCase
-
-from zou.app.models.organisation import Organisation
 from zou.app.commands import backup_service
+from zou.app.exceptions import BackupFailedException
+from zou.app.models.organisation import Organisation
 from zou.app.services import (
     organisation_service,
 )
-from zou.app.exceptions import BackupFailedException
 
 
 class FakeStdout:

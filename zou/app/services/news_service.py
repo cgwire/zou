@@ -11,13 +11,12 @@ from zou.app.models.news import News
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
 from zou.app.models.task import Task
-
-from zou.app.utils import cache, events, fields
 from zou.app.services import (
+    entities_service,
     persons_service,
     tasks_service,
-    entities_service,
 )
+from zou.app.utils import cache, events, fields
 
 
 @dataclasses.dataclass

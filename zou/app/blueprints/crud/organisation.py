@@ -1,15 +1,13 @@
 from flasgger import swag_from
 from flask_jwt_extended import jwt_required
-
 from sqlalchemy.inspection import inspect
 
-from zou.app.models.organisation import Organisation, SENSITIVE_FIELDS
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
-
+from zou.app.exceptions import WrongParameterException
+from zou.app.models.organisation import SENSITIVE_FIELDS, Organisation
 from zou.app.services import (
     organisation_service,
 )
-from zou.app.exceptions import WrongParameterException
 from zou.app.utils.permissions import has_admin_permissions
 
 

@@ -5,7 +5,6 @@ import pytest
 
 from tests.base import ApiDBTestCase
 from tests.fake_dns import NO_MX_DOMAIN
-
 from zou.app import config
 from zou.app.utils import auth
 

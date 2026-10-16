@@ -4,17 +4,18 @@ fixtures its tests need and holds no test of its own.
 """
 
 import io
-from sqlalchemy import event
-from tests.base import ApiDBTestCase
 from contextlib import contextmanager
+
 from flask import g
 from flask_jwt_extended import verify_jwt_in_request
+from sqlalchemy import event
 from werkzeug.datastructures import FileStorage
 
-from zou.app import db, app
-from zou.app.services import comments_service, auth_service
-from zou.app.models.person import Person
+from tests.base import ApiDBTestCase
+from zou.app import app, db
 from zou.app.models.notification import Notification
+from zou.app.models.person import Person
+from zou.app.services import auth_service, comments_service
 from zou.app.utils import auth
 
 

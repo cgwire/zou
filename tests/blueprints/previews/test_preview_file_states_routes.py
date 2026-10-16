@@ -1,19 +1,19 @@
 import datetime
 import os
-
 from unittest.mock import MagicMock, patch
 
 from tests.base import ApiDBTestCase
-from zou.app import db
+from zou.app import config, db
 from zou.app.blueprints.previews import resources as preview_resources
 from zou.app.models.preview_file_storage_state import (
     PreviewFileStorageState,
 )
-from zou.app.services import files_service
-from zou.app.services import preview_file_states_service as states_service
-from zou.app.services import preview_files_service
+from zou.app.services import (
+    files_service,
+    preview_file_states_service as states_service,
+    preview_files_service,
+)
 from zou.app.stores import file_store, queue_store, redis_client
-from zou.app import config
 from zou.app.utils import date_helpers, fs
 
 

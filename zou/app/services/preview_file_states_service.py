@@ -6,7 +6,6 @@ nor serialized to the clients.
 """
 
 import logging
-
 from collections import Counter
 
 from sqlalchemy.dialects.postgresql import insert

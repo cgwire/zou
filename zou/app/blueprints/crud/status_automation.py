@@ -3,10 +3,9 @@ from flask import current_app
 from flask_jwt_extended import jwt_required
 from sqlalchemy.exc import IntegrityError, StatementError
 
-from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
-
-from zou.app.models.status_automation import StatusAutomation
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.models.project import ProjectStatusAutomationLink
+from zou.app.models.status_automation import StatusAutomation
 from zou.app.services import (
     permissions_service,
     status_automations_service,

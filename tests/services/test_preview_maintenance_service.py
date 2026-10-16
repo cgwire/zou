@@ -1,20 +1,20 @@
 import os
 from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
-from tests.base import ApiDBTestCase
 
+from tests.base import ApiDBTestCase
+from tests.services.cases import PreviewFileTestCase, SpyProgress
+from zou.app import config
 from zou.app.models.preview_file import PreviewFile
 from zou.app.services import (
     files_service,
+    preview_file_states_service as states_service,
     preview_files_service,
     preview_maintenance_service,
-    preview_file_states_service as states_service,
 )
-from zou.app import config
 from zou.app.stores import file_store, queue_store, redis_client
 from zou.app.utils import thumbnail as thumbnail_utils
 from zou.utils import movie
-from tests.services.cases import PreviewFileTestCase, SpyProgress
 
 
 class ResetPictureFilesMetadataTestCase(ApiDBTestCase):

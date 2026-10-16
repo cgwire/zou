@@ -2,11 +2,9 @@ import base64
 import hashlib
 import secrets
 import time
-
 from unittest import mock
 
 from tests.base import ApiDBTestCase
-
 from zou.app.models.login_log import LoginLog
 from zou.app.models.person import Person
 from zou.app.services import auth_service, persons_service

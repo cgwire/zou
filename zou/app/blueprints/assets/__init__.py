@@ -1,31 +1,31 @@
 from flask import Blueprint
-from zou.app.utils.api import configure_api_from_blueprint
 
 from zou.app.blueprints.assets.resources import (
-    AssetsAndTasksResource,
+    AllAssetsResource,
     AssetAssetInstancesResource,
-    AssetResource,
     AssetAssetsResource,
     AssetCastingResource,
     AssetCastInResource,
-    AssetShotAssetInstancesResource,
+    AssetResource,
+    AssetsAndTasksResource,
     AssetSceneAssetInstancesResource,
-    AssetTypeResource,
-    AssetTypesResource,
+    AssetShotAssetInstancesResource,
     AssetTasksResource,
     AssetTaskTypesResource,
-    AllAssetsResource,
+    AssetTypeResource,
+    AssetTypesResource,
     NewAssetResource,
     ProjectAssetsResource,
+    ProjectAssetsSharedUsedResource,
     ProjectAssetTypeAssetsResource,
     ProjectAssetTypesResource,
-    ShotAssetTypesResource,
+    ProjectEpisodeAssetsSharedUsedResource,
+    SetSharedAssetsResource,
     SetSharedProjectAssetsResource,
     SetSharedProjectAssetTypeAssetsResource,
-    SetSharedAssetsResource,
-    ProjectAssetsSharedUsedResource,
-    ProjectEpisodeAssetsSharedUsedResource,
+    ShotAssetTypesResource,
 )
+from zou.app.utils.api import configure_api_from_blueprint
 
 routes = [
     ("/data/asset-types", AssetTypesResource),

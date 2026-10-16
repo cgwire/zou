@@ -3,15 +3,14 @@ from datetime import datetime
 from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
-
 from zou.app import db
+from zou.app.exceptions import PlaylistLockTimeoutException
 from zou.app.models.playlist import Playlist
 from zou.app.services import (
-    playlists_service,
     entities_service,
+    playlists_service,
     projects_service,
 )
-from zou.app.exceptions import PlaylistLockTimeoutException
 
 
 class PlaylistsServiceTestCase(ApiDBTestCase):

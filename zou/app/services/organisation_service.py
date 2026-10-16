@@ -1,7 +1,7 @@
-from zou.app.models.organisation import Organisation
-from zou.app.utils import events, cache
-from zou.app.services import base_service
 from zou.app.exceptions import OrganisationNotFoundException
+from zou.app.models.organisation import Organisation
+from zou.app.services import base_service
+from zou.app.utils import cache, events
 
 
 @cache.memoize_function(120)

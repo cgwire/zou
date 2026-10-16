@@ -23,25 +23,24 @@ matching error handler. Integrity/statement errors are caught here and
 returned as sanitized 400s (see build_db_error_message).
 """
 
-from flasgger import swag_from
 import datetime
 import math
+
 import orjson as json
 import sqlalchemy.orm as orm
-
-from flask import request, current_app
+from flasgger import swag_from
+from flask import current_app, request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
-
+from sqlalchemy import types as sa_types
 from sqlalchemy.exc import IntegrityError, StatementError
 from sqlalchemy.inspection import inspect
-from sqlalchemy import types as sa_types
 
-from zou.app.mixin import ArgsMixin
-from zou.app.utils import events, fields, permissions, query
 from zou.app.exceptions import (
     WrongParameterException,
 )
+from zou.app.mixin import ArgsMixin
+from zou.app.utils import events, fields, permissions, query
 
 
 def build_db_error_message(exception):

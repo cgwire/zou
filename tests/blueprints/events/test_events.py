@@ -8,9 +8,8 @@ from zou.app.models.event import ApiEvent
 from zou.app.models.login_log import LoginLog
 from zou.app.models.person import Person
 from zou.app.models.project import Project, ProjectPersonLink
-from zou.app.utils import fields
-
 from zou.app.services import assets_service
+from zou.app.utils import fields
 
 
 # Frozen mid-day time: these tests build date-boundary filters (before/

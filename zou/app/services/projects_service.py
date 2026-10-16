@@ -1,38 +1,35 @@
+import re
 from collections import defaultdict
-from sqlalchemy.exc import IntegrityError
 
-from zou.app.models.preview_background_file import PreviewBackgroundFile
-from zou.app.models.entity import Entity
-from zou.app.models.entity_type import EntityType
-from zou.app.models.metadata_descriptor import MetadataDescriptor
-from zou.app.models.person import Person, DepartmentLink, ROLE_TYPES
-from zou.app.models.project import (
-    Project,
-    ProjectPersonLink,
-    ProjectTaskTypeLink,
-    ProjectTaskStatusLink,
-)
-from zou.app.models.project_status import ProjectStatus
-from zou.app.models.status_automation import StatusAutomation
-from zou.app.models.task_type import TaskType
-from zou.app.models.task_status import TaskStatus
-from zou.app.models.department import Department
-from zou.app.services import (
-    entity_types_service,
-)
+from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError, StatementError
+from sqlalchemy.orm import joinedload, selectinload
+
+from zou.app import config, db
 from zou.app.exceptions import (
     ProjectNotFoundException,
     WrongParameterException,
 )
-
-from zou.app.utils import fields, events, cache
-from zou.app import db
-
-from sqlalchemy.exc import StatementError
-from sqlalchemy.orm import joinedload, selectinload
-from sqlalchemy import or_
-from zou.app import config
-import re
+from zou.app.models.department import Department
+from zou.app.models.entity import Entity
+from zou.app.models.entity_type import EntityType
+from zou.app.models.metadata_descriptor import MetadataDescriptor
+from zou.app.models.person import ROLE_TYPES, DepartmentLink, Person
+from zou.app.models.preview_background_file import PreviewBackgroundFile
+from zou.app.models.project import (
+    Project,
+    ProjectPersonLink,
+    ProjectTaskStatusLink,
+    ProjectTaskTypeLink,
+)
+from zou.app.models.project_status import ProjectStatus
+from zou.app.models.status_automation import StatusAutomation
+from zou.app.models.task_status import TaskStatus
+from zou.app.models.task_type import TaskType
+from zou.app.services import (
+    entity_types_service,
+)
+from zou.app.utils import cache, events, fields
 
 # Lower bound of a project movie bitrate in Mbit/s. The upper bound is the
 # instance high definition bitrate, MOVIE_HIGHDEF_BITRATE.

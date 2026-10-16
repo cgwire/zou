@@ -1,25 +1,25 @@
-from sqlalchemy import or_, func
+from sqlalchemy import func, or_
+from sqlalchemy.orm import aliased, subqueryload
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import case
-from sqlalchemy.orm import aliased, subqueryload
 
 from zou.app import db
-from zou.app.utils import fields, query as query_utils, permissions
 from zou.app.models.entity import Entity, EntityLink
 from zou.app.models.entity_type import EntityType
 from zou.app.models.person import Person
 from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.task import Task, TaskPersonLink
-from zou.app.models.task_type import TaskType
 from zou.app.models.task_status import TaskStatus
+from zou.app.models.task_type import TaskType
 from zou.app.services import (
+    permissions_service,
     persons_service,
     projects_service,
-    permissions_service,
-    user_service,
     tasks_service,
+    user_service,
 )
+from zou.app.utils import fields, permissions, query as query_utils
 
 
 def get_person_done_tasks(person_id, projects):

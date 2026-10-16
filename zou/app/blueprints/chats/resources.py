@@ -4,16 +4,15 @@ from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.chats.schemas import ChatMessageSchema
-from zou.app.utils import permissions, validation
-
+from zou.app.exceptions import WrongParameterException
 from zou.app.services import (
     chats_service,
     entities_service,
-    persons_service,
     permissions_service,
+    persons_service,
     user_service,
 )
-from zou.app.exceptions import WrongParameterException
+from zou.app.utils import permissions, validation
 
 
 class ChatResource(MethodView):

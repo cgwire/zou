@@ -1,7 +1,7 @@
 from flask import request
 
-from zou.app.utils import date_helpers, fields
 from zou.app.exceptions import WrongParameterException
+from zou.app.utils import date_helpers, fields
 
 
 class ArgsMixin(object):

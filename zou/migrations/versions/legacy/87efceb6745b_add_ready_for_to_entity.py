@@ -6,11 +6,11 @@ Create Date: 2021-11-09 00:13:49.912704
 
 """
 
-from alembic import op
+import uuid
+
 import sqlalchemy as sa
 import sqlalchemy_utils
-import sqlalchemy_utils
-import uuid
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "87efceb6745b"

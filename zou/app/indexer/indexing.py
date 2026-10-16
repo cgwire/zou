@@ -1,9 +1,9 @@
 import meilisearch
+from flask import current_app
 from meilisearch.errors import MeilisearchApiError
 
 from zou.app import config
 from zou.app.utils import cache
-from flask import current_app
 
 
 def init_client():

@@ -1,18 +1,17 @@
 from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
-
 from zou.app.models.comment import Comment
 from zou.app.models.person import Person
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.task import Task
 from zou.app.services import (
+    comments_service,
     concepts_service,
     deletion_service,
     persons_service,
     projects_service,
     tasks_service,
-    comments_service,
 )
 from zou.app.utils import fields
 

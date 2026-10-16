@@ -1,5 +1,4 @@
 from tests.base import ApiDBTestCase
-
 from zou.app.models.production_schedule_version import (
     ProductionScheduleVersion,
     ProductionScheduleVersionTaskLink,

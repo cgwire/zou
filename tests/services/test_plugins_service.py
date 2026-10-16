@@ -1,14 +1,12 @@
 # -*- coding: UTF-8 -*-
 import os
-import tempfile
 import shutil
+import tempfile
 import zipfile
-
 from pathlib import Path
 from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
-
 from zou.app import config
 from zou.app.models.plugin import Plugin
 from zou.app.services import plugins_service

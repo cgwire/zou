@@ -1,26 +1,24 @@
 import datetime
+from unittest import mock
 
 import pytest
 
-from unittest import mock
-
-
+from tests.services.cases import AuthTestCase
 from zou.app import app
-from zou.app.models.person import Person, SENSITIVE_FIELDS
-from zou.app.stores import auth_tokens_store
-from zou.app.services import persons_service, auth_service
 from zou.app.exceptions import (
+    InactiveUserException,
     MissingOTPException,
     NoAuthStrategyConfigured,
     TooManyLoginFailedAttempts,
     TwoFactorAuthenticationNotEnabledException,
-    InactiveUserException,
     UserCantConnectDueToNoFallback,
     WrongPasswordException,
     WrongUserException,
 )
+from zou.app.models.person import SENSITIVE_FIELDS, Person
+from zou.app.services import auth_service, persons_service
+from zou.app.stores import auth_tokens_store
 from zou.app.utils import auth, date_helpers
-from tests.services.cases import AuthTestCase
 
 # The whole point of these is what a password check accepts and refuses.
 pytestmark = pytest.mark.real_bcrypt

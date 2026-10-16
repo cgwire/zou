@@ -1,13 +1,12 @@
 from tests.base import ApiDBTestCase, rebuild_from_compact
-
 from zou.app.models.entity import EntityLink
 from zou.app.models.person import Person
 from zou.app.services import (
+    assets_service,
+    metadata_descriptors_service,
+    persons_service,
     projects_service,
     tasks_service,
-    assets_service,
-    persons_service,
-    metadata_descriptors_service,
 )
 
 

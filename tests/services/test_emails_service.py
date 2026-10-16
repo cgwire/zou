@@ -1,11 +1,11 @@
 from unittest.mock import MagicMock, patch
+
 from babel import Locale
 
 from tests.base import ApiDBTestCase
-
+from zou.app import config
 from zou.app.models.comment import Comment
 from zou.app.models.person import Person
-from zou.app import config
 from zou.app.services import (
     emails_service,
     organisation_service,

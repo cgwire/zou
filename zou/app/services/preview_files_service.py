@@ -3,22 +3,20 @@ import os
 import shutil
 import time
 
-
 import ffmpeg
 import redis
+import slugify
 from rq import Queue, Retry, get_current_job
 from rq.timeouts import BaseTimeoutException
-
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm.exc import StaleDataError
 
 from zou.app import config
-from zou.app.stores import (
-    config_store,
-    file_store,
-    queue_store,
+from zou.app.exceptions import (
+    PreviewFileNotFoundException,
+    PreviewProcessingFailedException,
+    WrongParameterException,
 )
-
 from zou.app.models.entity import Entity
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project, ProjectTaskTypeLink
@@ -26,29 +24,28 @@ from zou.app.models.project_status import ProjectStatus
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 from zou.app.services import (
+    entities_service,
     files_service,
+    organisation_service,
     preview_file_states_service,
     projects_service,
     stored_files_service,
-    tasks_service,
-    entities_service,
-    organisation_service,
     task_types_service,
+    tasks_service,
 )
-from zou.utils import movie
+from zou.app.stores import (
+    config_store,
+    file_store,
+    queue_store,
+)
 from zou.app.utils import (
     events,
     fields,
+    fs,
     remote_job,
     thumbnail as thumbnail_utils,
 )
-from zou.app.exceptions import (
-    WrongParameterException,
-    PreviewFileNotFoundException,
-    PreviewProcessingFailedException,
-)
-from zou.app.utils import fs
-import slugify
+from zou.utils import movie
 
 logger = logging.getLogger(__name__)
 
@@ -478,6 +475,7 @@ def prepare_and_store_picture(preview_file_id, original_picture_path):
     brings its own app context when there is none.
     """
     from flask import has_app_context
+
     from zou.app import app
 
     original_picture_path = _resolve_upload_path(original_picture_path)
@@ -1209,6 +1207,7 @@ def replace_extracted_frame_for_preview_file(preview_file, frame_number):
     thumbnail in place: nothing is broken, only unchanged.
     """
     from flask import has_app_context
+
     from zou.app import app
 
     def run():

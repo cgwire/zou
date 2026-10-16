@@ -1,17 +1,17 @@
+from tests.services.cases import AuthTestCase, PersonsTestCase
 from zou.app import config
-from zou.app.models.person import Person
-from zou.app.services import (
-    persons_service,
-    time_spents_service,
-    index_service,
-)
 from zou.app.exceptions import (
     PersonInProtectedAccounts,
     PersonNotFoundException,
     WrongParameterException,
 )
+from zou.app.models.person import Person
+from zou.app.services import (
+    index_service,
+    persons_service,
+    time_spents_service,
+)
 from zou.app.utils import auth, fields
-from tests.services.cases import PersonsTestCase, AuthTestCase
 
 
 class PersonReadTestCase(PersonsTestCase):

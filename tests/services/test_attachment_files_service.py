@@ -1,11 +1,11 @@
 import os
 from unittest.mock import patch
 
+from tests.services.cases import CommentsTestCase
 from zou.app import config
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.services import attachment_files_service
 from zou.app.utils import fields
-from tests.services.cases import CommentsTestCase
 
 
 class AttachmentTestCase(CommentsTestCase):

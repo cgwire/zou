@@ -1,9 +1,8 @@
 from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
-from zou.app.models.notification import Notification
-
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
+from zou.app.models.notification import Notification
 
 
 class NotificationsResource(BaseModelsResource):

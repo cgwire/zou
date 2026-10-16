@@ -3,30 +3,30 @@ from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
+from zou.app.blueprints.assets.schemas import (
+    AssetInstanceSchema,
+    CastingEntrySchema,
+    NewAssetSchema,
+    SetSharedAssetsSchema,
+)
+from zou.app.mixin import ArgsMixin
+from zou.app.services import (
+    assets_service,
+    breakdown_service,
+    cascade_deletion_service,
+    entities_service,
+    entity_types_service,
+    permissions_service,
+    persons_service,
+    shots_service,
+    tasks_service,
+)
 from zou.app.utils import (
     flask_utils,
     http_cache,
     permissions,
     query,
     validation,
-)
-from zou.app.mixin import ArgsMixin
-from zou.app.services import (
-    assets_service,
-    breakdown_service,
-    entities_service,
-    persons_service,
-    shots_service,
-    tasks_service,
-    permissions_service,
-    entity_types_service,
-    cascade_deletion_service,
-)
-from zou.app.blueprints.assets.schemas import (
-    CastingEntrySchema,
-    NewAssetSchema,
-    AssetInstanceSchema,
-    SetSharedAssetsSchema,
 )
 
 

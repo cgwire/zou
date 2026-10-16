@@ -3,16 +3,15 @@ from zou.app.models.entity import Entity
 from zou.app.models.project import Project, ProjectTaskTypeLink
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
-
 from zou.app.services import (
     comments_service,
+    entity_types_service,
     news_service,
     notifications_service,
     persons_service,
     projects_service,
-    tasks_service,
-    entity_types_service,
     task_types_service,
+    tasks_service,
     time_spents_service,
 )
 

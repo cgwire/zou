@@ -2,9 +2,7 @@ import datetime
 import random
 
 from tests.base import ApiDBTestCase
-
 from zou.app.models.time_spent import TimeSpent
-
 from zou.app.utils import fields
 
 

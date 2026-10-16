@@ -1,9 +1,7 @@
 import os
-
 from unittest import mock
 
 from tests.base import ApiDBTestCase
-
 from zou.app.services import preview_files_service
 
 

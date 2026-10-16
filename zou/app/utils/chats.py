@@ -1,8 +1,9 @@
-from zou.app import config
-from zou.app.utils.string import mask_secret
-from urllib.parse import urlsplit
 import asyncio
 import logging
+from urllib.parse import urlsplit
+
+from zou.app import config
+from zou.app.utils.string import mask_secret
 
 logger = logging.getLogger(__name__)
 loghandler = logging.StreamHandler()
@@ -87,8 +88,8 @@ def send_to_mattermost(webhook, userid, message):
 def send_to_discord(token, userid, message):
     from discord import (
         Client as DiscordClient,
-        Intents as DiscordIntents,
         Embed as DiscordEmbed,
+        Intents as DiscordIntents,
     )
 
     async def send_to_discord_async(token, userid, message):

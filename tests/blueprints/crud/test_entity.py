@@ -1,7 +1,6 @@
 from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
-
 from zou.app.models.entity import EntityConceptLink
 from zou.app.services import concepts_service, subscriptions_service
 from zou.app.utils import fields

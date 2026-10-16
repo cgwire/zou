@@ -3,20 +3,19 @@ from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
+from zou.app.blueprints.edits.schemas import NewEditSchema
+from zou.app.mixin import ArgsMixin
 from zou.app.services import (
-    persons_service,
-    projects_service,
-    playlists_service,
+    cascade_deletion_service,
     edits_service,
+    permissions_service,
+    persons_service,
+    playlists_service,
+    projects_service,
     shots_service,
     tasks_service,
-    permissions_service,
-    cascade_deletion_service,
 )
-
-from zou.app.mixin import ArgsMixin
 from zou.app.utils import permissions, query, validation
-from zou.app.blueprints.edits.schemas import NewEditSchema
 
 
 class EditResource(MethodView, ArgsMixin):

@@ -1,5 +1,4 @@
 from tests.base import ApiDBTestCase
-
 from zou.app.models.time_spent import TimeSpent
 from zou.app.services import (
     projects_service,

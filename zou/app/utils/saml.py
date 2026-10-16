@@ -1,5 +1,4 @@
 import requests
-
 from saml2 import (
     BINDING_HTTP_POST,
     BINDING_HTTP_REDIRECT,

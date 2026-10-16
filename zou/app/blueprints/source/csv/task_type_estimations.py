@@ -1,19 +1,18 @@
 from flasgger import swag_from
 from slugify import slugify
+
 from zou.app.blueprints.source.csv.base import (
     BaseCsvProjectImportResource,
     RowException,
 )
-
 from zou.app.services import (
     assets_service,
-    shots_service,
-    tasks_service,
-    permissions_service,
     organisation_service,
+    permissions_service,
+    shots_service,
     task_types_service,
+    tasks_service,
 )
-
 from zou.app.utils import date_helpers
 
 

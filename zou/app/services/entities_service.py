@@ -1,33 +1,30 @@
 import copy
 
-from sqlalchemy import cast, func, Text
+from sqlalchemy import Text, cast, func
 
-from zou.app.services import (
-    base_service,
-    persons_service,
-    entity_types_service,
-    subscriptions_service,
+from zou.app import db
+from zou.app.exceptions import (
+    EntityLinkNotFoundException,
+    EntityNotFoundException,
 )
-from zou.app.utils import (
-    date_helpers,
-    cache,
-    fields,
-    http_cache,
-    permissions,
-    query as query_utils,
-)
-
-from zou.app.models.entity import Entity, EntityLink, EntityConceptLink
+from zou.app.models.entity import Entity, EntityConceptLink, EntityLink
 from zou.app.models.entity_type import EntityType
 from zou.app.models.project import Project
 from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task, TaskPersonLink
-
-from zou.app import db
-
-from zou.app.exceptions import (
-    EntityLinkNotFoundException,
-    EntityNotFoundException,
+from zou.app.services import (
+    base_service,
+    entity_types_service,
+    persons_service,
+    subscriptions_service,
+)
+from zou.app.utils import (
+    cache,
+    date_helpers,
+    fields,
+    http_cache,
+    permissions,
+    query as query_utils,
 )
 
 # Entity types positioned in time, as opposed to the asset types. Their

@@ -1,5 +1,4 @@
 import hashlib
-
 from urllib.parse import urlsplit
 
 

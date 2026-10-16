@@ -1,12 +1,11 @@
 import json
 
 from tests.base import ApiDBTestCase
-
 from zou.app.services import (
+    metadata_descriptors_service,
     persons_service,
     projects_service,
     tasks_service,
-    metadata_descriptors_service,
 )
 
 

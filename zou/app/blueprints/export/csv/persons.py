@@ -1,9 +1,9 @@
 from flasgger import swag_from
-from zou.app.blueprints.export.csv.base import BaseCsvExport
 from flask_jwt_extended import jwt_required
 from sqlalchemy import func
 from sqlalchemy.orm import selectinload
 
+from zou.app.blueprints.export.csv.base import BaseCsvExport
 from zou.app.models.person import Person
 from zou.app.models.studio import Studio
 

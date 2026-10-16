@@ -1,11 +1,10 @@
 from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
-from zou.app.models.preview_background_file import PreviewBackgroundFile
-from zou.app.exceptions import WrongParameterException
-from zou.app.services import files_service, deletion_service
-
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
+from zou.app.exceptions import WrongParameterException
+from zou.app.models.preview_background_file import PreviewBackgroundFile
+from zou.app.services import deletion_service, files_service
 
 
 class PreviewBackgroundFilesResource(BaseModelsResource):

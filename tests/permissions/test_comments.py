@@ -1,9 +1,8 @@
 from tests.base import ApiDBTestCase
-
+from tests.permissions.cases import DemotedRoleTestCase
 from zou.app.models.person import Person
 from zou.app.models.studio import Studio
 from zou.app.services import comments_service, projects_service, tasks_service
-from tests.permissions.cases import DemotedRoleTestCase
 
 
 class TaskCommentDeleteRoleTestCase(DemotedRoleTestCase):

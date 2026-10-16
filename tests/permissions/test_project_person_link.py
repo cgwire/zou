@@ -1,5 +1,4 @@
 from tests.base import ApiDBTestCase
-
 from zou.app import db
 from zou.app.models.project import ProjectPersonLink
 

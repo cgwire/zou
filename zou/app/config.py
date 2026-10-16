@@ -1,11 +1,11 @@
+import datetime
 import os
 import sys
-import datetime
 import tempfile
 
 from sqlalchemy.engine.url import URL
 
-from zou.app.utils.env import envtobool, env_with_semicolon_to_list
+from zou.app.utils.env import env_with_semicolon_to_list, envtobool
 
 PROPAGATE_EXCEPTIONS = True
 DEBUG = envtobool("DEBUG", False)

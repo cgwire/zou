@@ -1,15 +1,16 @@
 import random
 import string
+
 from flask import current_app
 
+from zou.app import config
+from zou.app.exceptions import AttachmentFileNotFoundException
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.comment import Comment
 from zou.app.models.task import Task
 from zou.app.services import base_service, files_service
-from zou.app.exceptions import AttachmentFileNotFoundException
-from zou.app.utils import cache, fs, fields
 from zou.app.stores import file_store
-from zou.app import config
+from zou.app.utils import cache, fields, fs
 
 
 def get_attachment_file_raw(attachment_file_id):

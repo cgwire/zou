@@ -1,11 +1,11 @@
+import json
+
+import orjson
+from flask import Response, abort, request
+from flask.json.provider import JSONProvider
 from ua_parser import user_agent_parser
 from werkzeug.user_agent import UserAgent
 from werkzeug.utils import cached_property
-from flask.json.provider import JSONProvider
-from flask import Response, request, abort
-
-import json
-import orjson
 
 orjson_options = orjson.OPT_NON_STR_KEYS
 

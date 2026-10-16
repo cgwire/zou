@@ -1,9 +1,9 @@
 from contextlib import contextmanager
 from unittest.mock import patch
 
-from zou.app.services import files_service, preview_annotations_service
-from zou.app.exceptions import AnnotationLockTimeoutException
 from tests.services.cases import PreviewFileTestCase
+from zou.app.exceptions import AnnotationLockTimeoutException
+from zou.app.services import files_service, preview_annotations_service
 
 
 class PreviewFileAnnotationsTestCase(PreviewFileTestCase):

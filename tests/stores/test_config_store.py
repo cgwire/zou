@@ -1,11 +1,10 @@
 from tests.base import ApiDBTestCase
-
 from zou.app import config
-from zou.app.stores import config_store
 from zou.app.services import (
-    persons_service,
     organisation_service,
+    persons_service,
 )
+from zou.app.stores import config_store
 
 
 class ConfigStoreTestCase(ApiDBTestCase):

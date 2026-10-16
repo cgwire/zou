@@ -1,5 +1,4 @@
 import unittest
-
 from unittest.mock import MagicMock, patch
 
 from nomad.api.exceptions import URLNotFoundNomadException

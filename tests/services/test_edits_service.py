@@ -1,14 +1,13 @@
 import pytest
 
 from tests.base import ApiDBTestCase
-
-from zou.app.models.entity import EntityVersion
-from zou.app.services import (
-    edits_service,
-)
 from zou.app.exceptions import (
     WrongIdFormatException,
     WrongParameterException,
+)
+from zou.app.models.entity import EntityVersion
+from zou.app.services import (
+    edits_service,
 )
 
 

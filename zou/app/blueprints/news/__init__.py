@@ -1,11 +1,11 @@
 from flask import Blueprint
-from zou.app.utils.api import configure_api_from_blueprint
 
 from zou.app.blueprints.news.resources import (
     NewsResource,
     ProjectNewsResource,
     ProjectSingleNewsResource,
 )
+from zou.app.utils.api import configure_api_from_blueprint
 
 routes = [
     ("/data/projects/news", NewsResource),

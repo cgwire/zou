@@ -1,10 +1,8 @@
 import os
-
 from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
 from zou.app import db
-
 from zou.app.models.comment import Comment
 from zou.app.models.entity_type import EntityType
 from zou.app.models.metadata_descriptor import MetadataDescriptor

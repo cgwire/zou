@@ -1,10 +1,9 @@
 from tests.base import ApiDBTestCase
-
+from zou.app.exceptions import ConceptNotFoundException
 from zou.app.models.entity import Entity
 from zou.app.services import (
     concepts_service,
 )
-from zou.app.exceptions import ConceptNotFoundException
 
 
 class ConceptsServiceTestCase(ApiDBTestCase):

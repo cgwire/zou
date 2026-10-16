@@ -1,13 +1,11 @@
-from sqlalchemy_utils import UUIDType, ChoiceType
-
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy_utils import ChoiceType, UUIDType
 
 from zou.app import db
-from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
-
 from zou.app.models.person import ROLE_TYPES
 from zou.app.models.project import PROJECT_STYLES
+from zou.app.models.serializer import SerializerMixin
 
 
 class ProjectTemplateTaskTypeLink(db.Model, BaseMixin, SerializerMixin):

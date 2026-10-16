@@ -1,38 +1,36 @@
-from sqlalchemy.orm import aliased
+from sqlalchemy import Text, cast, func
 from sqlalchemy.exc import IntegrityError, StatementError
-from sqlalchemy import cast, func, Text
+from sqlalchemy.orm import aliased
 
+from zou.app.exceptions import (
+    EpisodeNotFoundException,
+    SceneNotFoundException,
+    SequenceNotFoundException,
+    ShotNotFoundException,
+    WrongIdFormatException,
+)
+from zou.app.models.entity import (
+    Entity,
+    EntityVersion,
+)
+from zou.app.models.preview_file import PreviewFile
+from zou.app.models.project import Project
+from zou.app.models.task import Task
+from zou.app.services import (
+    base_service,
+    entities_service,
+    entity_types_service,
+    index_service,
+    metadata_descriptors_service,
+    persons_service,
+    projects_service,
+    subscriptions_service,
+)
 from zou.app.utils import (
     cache,
     events,
     fields,
     query as query_utils,
-)
-
-from zou.app.models.entity import (
-    Entity,
-    EntityVersion,
-)
-from zou.app.models.project import Project
-from zou.app.models.preview_file import PreviewFile
-from zou.app.models.task import Task
-
-from zou.app.services import (
-    base_service,
-    entities_service,
-    persons_service,
-    projects_service,
-    index_service,
-    entity_types_service,
-    subscriptions_service,
-    metadata_descriptors_service,
-)
-from zou.app.exceptions import (
-    EpisodeNotFoundException,
-    SequenceNotFoundException,
-    SceneNotFoundException,
-    ShotNotFoundException,
-    WrongIdFormatException,
 )
 
 # Field orders of the compact encoding of the with-tasks view. Clients

@@ -1,5 +1,4 @@
 import os
-
 from unittest.mock import MagicMock, patch
 
 from tests.base import ApiDBTestCase

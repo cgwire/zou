@@ -2,8 +2,9 @@ import logging
 import re
 import smtplib
 from email import charset as email_charset
-from io import StringIO
 from html.parser import HTMLParser
+from io import StringIO
+
 from flask_mail import Message
 
 from zou.app import mail

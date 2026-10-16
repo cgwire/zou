@@ -1,11 +1,9 @@
 from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
-from zou.app.models.custom_action import CustomAction
-
-from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.exceptions import WrongParameterException
-
+from zou.app.models.custom_action import CustomAction
 from zou.app.services import (
     custom_actions_service,
     permissions_service,

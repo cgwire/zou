@@ -1,8 +1,9 @@
 import logging
 
-from sqlalchemy_utils import UUIDType
 from sqlalchemy import func, orm
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy_utils import UUIDType
+
 from zou.app import db
 from zou.app.utils import date_helpers, fields
 

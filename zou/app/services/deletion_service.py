@@ -9,17 +9,22 @@ module level: importing them here at module level would close the cycle
 they open by importing this module.
 """
 
-import logging
 import datetime
+import logging
 
+from zou.app.exceptions import (
+    CommentNotFoundException,
+    PreviewBackgroundFileNotFoundException,
+    PreviewFileNotFoundException,
+)
 from zou.app.models.comment import Comment
 from zou.app.models.entity import (
     Entity,
 )
 from zou.app.models.event import ApiEvent
 from zou.app.models.login_log import LoginLog
-from zou.app.models.notification import Notification
 from zou.app.models.news import News
+from zou.app.models.notification import Notification
 from zou.app.models.output_file import OutputFile
 from zou.app.models.preview_background_file import PreviewBackgroundFile
 from zou.app.models.preview_file import PreviewFile
@@ -31,23 +36,16 @@ from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 from zou.app.models.time_spent import TimeSpent
 from zou.app.models.working_file import WorkingFile
-
-from zou.app.utils import events, fields, date_helpers
-from zou.app.stores import file_store
-
 from zou.app.services import (
+    attachment_files_service,
     entities_service,
     files_service,
     news_service,
     projects_service,
     tasks_service,
-    attachment_files_service,
 )
-from zou.app.exceptions import (
-    CommentNotFoundException,
-    PreviewBackgroundFileNotFoundException,
-    PreviewFileNotFoundException,
-)
+from zou.app.stores import file_store
+from zou.app.utils import date_helpers, events, fields
 
 logger = logging.getLogger(__name__)
 

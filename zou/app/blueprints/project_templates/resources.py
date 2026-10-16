@@ -1,17 +1,9 @@
 from flasgger import swag_from
 from flask import request
-from flask_jwt_extended import jwt_required
 from flask.views import MethodView
+from flask_jwt_extended import jwt_required
 
-from zou.app.services import project_templates_service
-from zou.app.exceptions import (
-    ProjectNotFoundException,
-    ProjectTemplateNotFoundException,
-    WrongParameterException,
-)
-from zou.app.utils import permissions, validation
 from zou.app.blueprints.project_templates.schemas import (
-    SetDefaultBackgroundSchema,
     AddAssetTypeSchema,
     AddBackgroundSchema,
     AddStatusAutomationSchema,
@@ -20,8 +12,16 @@ from zou.app.blueprints.project_templates.schemas import (
     CreateTemplateFromProjectSchema,
     ReorderTaskStatusesSchema,
     ReorderTaskTypesSchema,
+    SetDefaultBackgroundSchema,
     SetMetadataDescriptorsSchema,
 )
+from zou.app.exceptions import (
+    ProjectNotFoundException,
+    ProjectTemplateNotFoundException,
+    WrongParameterException,
+)
+from zou.app.services import project_templates_service
+from zou.app.utils import permissions, validation
 
 # ---------------------------------------------------------------------------
 # Link management

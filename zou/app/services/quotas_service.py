@@ -1,19 +1,20 @@
 from datetime import datetime, timedelta
 from operator import itemgetter
+
 from sqlalchemy import func
 
-from zou.app.utils import date_helpers
 from zou.app.models.entity import Entity
 from zou.app.models.person import Person
 from zou.app.models.project import Project
 from zou.app.models.task import Task
 from zou.app.models.time_spent import TimeSpent
 from zou.app.services import (
+    entities_service,
+    entity_types_service,
     persons_service,
     projects_service,
-    entity_types_service,
-    entities_service,
 )
+from zou.app.utils import date_helpers
 
 
 def get_weighted_quotas(

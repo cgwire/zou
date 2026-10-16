@@ -1,32 +1,28 @@
-from flasgger import swag_from
 import os
 import pathlib
 import re
-
 from string import Template
 
-from flask import request, current_app
+from flasgger import swag_from
+from flask import current_app, request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app import config
-
-from zou.app.mixin import ArgsMixin
 from zou.app.exceptions import WrongParameterException
-from zou.app.utils import fields
+from zou.app.mixin import ArgsMixin
 from zou.app.services import (
     index_service,
-    shots_service,
-    projects_service,
     permissions_service,
-    user_service,
     persons_service,
+    projects_service,
+    shots_service,
+    user_service,
 )
-
-
 from zou.app.services.tasks_service import (
     create_tasks,
 )
+from zou.app.utils import fields
 
 mapping_substitutions_to_regex = {
     "${project_name}": r"(?P<project_name>\w*)",

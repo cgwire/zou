@@ -1,6 +1,6 @@
-import orjson as json
 from unittest.mock import patch
 
+import orjson as json
 from sqlalchemy.exc import ProgrammingError
 
 from tests.base import ApiDBTestCase

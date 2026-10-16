@@ -1,9 +1,7 @@
 # -*- coding: UTF-8 -*-
 from tests.blueprints.source.shotgun.base import ShotgunTestCase
-
-from zou.app.models.project import Project
 from zou.app.models.entity import Entity
-
+from zou.app.models.project import Project
 from zou.app.services import assets_service
 
 

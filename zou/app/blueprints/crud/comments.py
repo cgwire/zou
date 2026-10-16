@@ -1,22 +1,19 @@
 from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
-
-from zou.app.models.comment import Comment
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.models.attachment_file import AttachmentFile
-
+from zou.app.models.comment import Comment
 from zou.app.services import (
     comments_service,
     deletion_service,
     notifications_service,
-    persons_service,
-    tasks_service,
     permissions_service,
+    persons_service,
     task_types_service,
+    tasks_service,
 )
 from zou.app.utils import events, permissions
-
-from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 
 class CommentsResource(BaseModelsResource):

@@ -2,16 +2,16 @@ from flasgger import swag_from
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
+from zou.app.blueprints.departments.schemas import (
+    AddHardwareToDepartmentSchema,
+    AddSoftwareToDepartmentSchema,
+)
 from zou.app.exceptions import SoftwareNotFoundException
-from zou.app.utils import permissions, validation
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
     departments_service,
 )
-from zou.app.blueprints.departments.schemas import (
-    AddSoftwareToDepartmentSchema,
-    AddHardwareToDepartmentSchema,
-)
+from zou.app.utils import permissions, validation
 
 
 class AllDepartmentSoftwareResource(MethodView, ArgsMixin):

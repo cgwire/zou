@@ -1,33 +1,31 @@
-from sqlalchemy import cast, Text
-from sqlalchemy.orm import aliased
+from sqlalchemy import Text, cast
 from sqlalchemy.exc import StatementError
-
-from zou.app.utils import (
-    cache,
-    events,
-    fields,
-    query as query_utils,
-)
+from sqlalchemy.orm import aliased
 
 from zou.app import db
+from zou.app.exceptions import (
+    EditNotFoundException,
+    WrongIdFormatException,
+)
 from zou.app.models.entity import (
     Entity,
     EntityVersion,
 )
 from zou.app.models.project import Project
 from zou.app.models.task import Task
-
 from zou.app.services import (
     base_service,
     entities_service,
     entity_types_service,
+    metadata_descriptors_service,
     persons_service,
     subscriptions_service,
-    metadata_descriptors_service,
 )
-from zou.app.exceptions import (
-    EditNotFoundException,
-    WrongIdFormatException,
+from zou.app.utils import (
+    cache,
+    events,
+    fields,
+    query as query_utils,
 )
 
 EDITS_AND_TASKS_TASK_FIELDS = [

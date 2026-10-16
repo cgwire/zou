@@ -1,6 +1,5 @@
 # -*- coding: UTF-8 -*-
 from tests.base import ApiDBTestCase
-
 from zou.app.models.preview_file import PreviewFile
 
 

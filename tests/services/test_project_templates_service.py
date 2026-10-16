@@ -1,5 +1,9 @@
 from tests.base import ApiDBTestCase
-
+from zou.app.exceptions import (
+    ProjectNotFoundException,
+    ProjectTemplateNotFoundException,
+    WrongParameterException,
+)
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.project import (
     Project,
@@ -14,14 +18,9 @@ from zou.app.models.project_template import (
     ProjectTemplateTaskTypeLink,
 )
 from zou.app.services import (
+    metadata_descriptors_service,
     project_templates_service,
     projects_service,
-    metadata_descriptors_service,
-)
-from zou.app.exceptions import (
-    ProjectNotFoundException,
-    ProjectTemplateNotFoundException,
-    WrongParameterException,
 )
 
 

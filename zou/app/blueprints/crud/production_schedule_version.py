@@ -1,12 +1,12 @@
 from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
+from zou.app.exceptions import WrongParameterException
 from zou.app.models.production_schedule_version import (
     ProductionScheduleVersion,
     ProductionScheduleVersionTaskLink,
 )
-
-from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
 from zou.app.services import (
     permissions_service,
     schedule_service,
@@ -14,7 +14,6 @@ from zou.app.services import (
     user_service,
 )
 from zou.app.utils import fields, permissions
-from zou.app.exceptions import WrongParameterException
 
 
 class ProductionScheduleVersionsResource(BaseModelsResource):

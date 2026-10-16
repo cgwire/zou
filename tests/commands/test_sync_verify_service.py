@@ -1,11 +1,9 @@
 import io
 import uuid
-
 from contextlib import redirect_stdout
 from unittest import mock
 
 from tests.base import ApiDBTestCase
-
 from zou.app.commands import (
     sync_verify_service,
 )

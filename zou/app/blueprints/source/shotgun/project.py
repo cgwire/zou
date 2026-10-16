@@ -2,17 +2,14 @@ from flasgger import swag_from
 from flask import current_app
 from flask_jwt_extended import jwt_required
 
-from zou.app.models.project import Project
-from zou.app.models.project_status import ProjectStatus
-
-from zou.app.services import file_tree_service, projects_service
-
 from zou.app.blueprints.source.shotgun.base import (
     BaseImportShotgunResource,
     ImportRemoveShotgunBaseResource,
 )
-
 from zou.app.exceptions import WrongFileTreeFileException
+from zou.app.models.project import Project
+from zou.app.models.project_status import ProjectStatus
+from zou.app.services import file_tree_service, projects_service
 
 
 class ImportShotgunProjectsResource(BaseImportShotgunResource):

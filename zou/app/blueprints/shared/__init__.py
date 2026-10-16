@@ -1,26 +1,25 @@
 from flask import Blueprint
 
-from zou.app.utils.api import configure_api_from_blueprint
-
 from zou.app.blueprints.shared.resources import (
-    SharedPlaylistResource,
-    SharedPlaylistGuestResource,
-    SharedPlaylistCommentsResource,
-    SharedPlaylistCommentResource,
-    SharedPlaylistCommentAttachmentsResource,
-    SharedPlaylistCommentAttachmentResource,
-    SharedPlaylistAttachmentFileResource,
     SharedPlaylistAnnotationsResource,
-    SharedPlaylistPreviewFileResource,
-    SharedPlaylistPreviewFileMovieResource,
-    SharedPlaylistPreviewFileThumbnailResource,
-    SharedPlaylistPersonThumbnailResource,
-    SharedPlaylistPreviewFileOriginalResource,
-    SharedPlaylistPreviewFileExtensionResource,
-    SharedPlaylistPreviewFileTileResource,
-    SharedPlaylistPreviewFileDownloadResource,
+    SharedPlaylistAttachmentFileResource,
+    SharedPlaylistCommentAttachmentResource,
+    SharedPlaylistCommentAttachmentsResource,
+    SharedPlaylistCommentResource,
+    SharedPlaylistCommentsResource,
     SharedPlaylistContextResource,
+    SharedPlaylistGuestResource,
+    SharedPlaylistPersonThumbnailResource,
+    SharedPlaylistPreviewFileDownloadResource,
+    SharedPlaylistPreviewFileExtensionResource,
+    SharedPlaylistPreviewFileMovieResource,
+    SharedPlaylistPreviewFileOriginalResource,
+    SharedPlaylistPreviewFileResource,
+    SharedPlaylistPreviewFileThumbnailResource,
+    SharedPlaylistPreviewFileTileResource,
+    SharedPlaylistResource,
 )
+from zou.app.utils.api import configure_api_from_blueprint
 
 routes = [
     (

@@ -1,20 +1,18 @@
 import orjson as json
 
 from tests.base import ApiDBTestCase
-
+from zou.app.models.person import Person
+from zou.app.models.project import Project
+from zou.app.models.task import Task
 from zou.app.services import (
-    tasks_service,
+    metadata_descriptors_service,
     notifications_service,
     persons_service,
     projects_service,
     task_types_service,
-    metadata_descriptors_service,
+    tasks_service,
     time_spents_service,
 )
-
-from zou.app.models.project import Project
-from zou.app.models.person import Person
-from zou.app.models.task import Task
 
 
 class UserContextTestCase(ApiDBTestCase):

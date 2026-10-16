@@ -3,24 +3,34 @@ from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
+from zou.app.blueprints.shots.schemas import (
+    AddShotToSceneSchema,
+    NewEpisodeSchema,
+    NewSceneSchema,
+    NewSequenceSchema,
+    NewShotSchema,
+    UpdateShotSchema,
+)
+from zou.app.exceptions import (
+    WrongParameterException,
+)
+from zou.app.mixin import ArgsMixin
 from zou.app.services import (
     breakdown_service,
+    cascade_deletion_service,
     entities_service,
+    entity_types_service,
+    permissions_service,
     persons_service,
-    projects_service,
     playlists_service,
+    projects_service,
+    quotas_service,
     scenes_service,
     shots_service,
     stats_service,
     tasks_service,
-    permissions_service,
     user_service,
-    entity_types_service,
-    quotas_service,
-    cascade_deletion_service,
 )
-
-from zou.app.mixin import ArgsMixin
 from zou.app.utils import (
     fields,
     flask_utils,
@@ -28,17 +38,6 @@ from zou.app.utils import (
     permissions,
     query,
     validation,
-)
-from zou.app.blueprints.shots.schemas import (
-    NewShotSchema,
-    UpdateShotSchema,
-    NewSequenceSchema,
-    NewEpisodeSchema,
-    NewSceneSchema,
-    AddShotToSceneSchema,
-)
-from zou.app.exceptions import (
-    WrongParameterException,
 )
 
 

@@ -1,9 +1,7 @@
 from tests.base import ApiDBTestCase
-
 from zou.app.models.working_file import WorkingFile
-
-from zou.app.utils import fields
 from zou.app.services import projects_service
+from zou.app.utils import fields
 
 
 class WorkingFileTestCase(ApiDBTestCase):

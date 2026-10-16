@@ -4,15 +4,14 @@ from flask import g
 
 from tests.base import ApiDBTestCase
 from zou.app import app
-
 from zou.app.models.notification import Notification
 from zou.app.models.person import Person
 from zou.app.models.playlist_share_link import PlaylistShareLink
 from zou.app.services import (
-    playlist_sharing_service,
-    projects_service,
     cascade_deletion_service,
     playlist_builds_service,
+    playlist_sharing_service,
+    projects_service,
 )
 
 

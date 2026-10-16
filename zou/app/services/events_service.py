@@ -1,10 +1,11 @@
 import re
 
+from sqlalchemy import distinct, func, or_
+
+from zou.app.exceptions import WrongParameterException
 from zou.app.models.event import ApiEvent
 from zou.app.models.login_log import LoginLog
 from zou.app.utils import cache, events, fields
-from zou.app.exceptions import WrongParameterException
-from sqlalchemy import distinct, func, or_
 
 # Event names are made of lowercase words, digits and dashes on both sides of
 # the colon separator. Anything else is rejected before it can reach a LIKE

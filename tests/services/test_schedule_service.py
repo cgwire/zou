@@ -1,23 +1,22 @@
 from datetime import datetime
 
 from tests.base import ApiDBTestCase
-
 from zou.app import db
+from zou.app.exceptions import (
+    ProductionScheduleVersionNotFoundException,
+    WrongParameterException,
+)
 from zou.app.models.entity import Entity
 from zou.app.models.milestone import Milestone
-from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.production_schedule_version import (
     ProductionScheduleVersion,
     ProductionScheduleVersionTaskLink,
     ProductionScheduleVersionTaskLinkPersonLink,
 )
+from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 from zou.app.services import projects_service, schedule_service, tasks_service
-from zou.app.exceptions import (
-    ProductionScheduleVersionNotFoundException,
-    WrongParameterException,
-)
 
 
 class ScheduleTestCase(ApiDBTestCase):

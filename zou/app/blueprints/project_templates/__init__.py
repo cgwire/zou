@@ -1,5 +1,4 @@
 from flask import Blueprint
-from zou.app.utils.api import configure_api_from_blueprint
 
 from zou.app.blueprints.project_templates.resources import (
     ApplyProjectTemplateResource,
@@ -12,13 +11,14 @@ from zou.app.blueprints.project_templates.resources import (
     ProjectTemplateMetadataDescriptorsResource,
     ProjectTemplateStatusAutomationResource,
     ProjectTemplateStatusAutomationsResource,
-    ProjectTemplateTaskStatusResource,
-    ProjectTemplateTaskStatusesResource,
     ProjectTemplateTaskStatusesReorderResource,
+    ProjectTemplateTaskStatusesResource,
+    ProjectTemplateTaskStatusResource,
     ProjectTemplateTaskTypeResource,
-    ProjectTemplateTaskTypesResource,
     ProjectTemplateTaskTypesReorderResource,
+    ProjectTemplateTaskTypesResource,
 )
+from zou.app.utils.api import configure_api_from_blueprint
 
 routes = [
     (

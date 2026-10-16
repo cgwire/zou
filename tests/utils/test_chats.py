@@ -1,5 +1,4 @@
 import unittest
-
 from unittest import mock
 
 from zou.app.utils import chats

@@ -1,5 +1,4 @@
 from tests.base import ApiDBTestCase
-
 from zou.app.models.person import Person
 from zou.app.services import comments_service, projects_service
 

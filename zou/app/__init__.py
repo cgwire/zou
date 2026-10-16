@@ -1,27 +1,23 @@
 import traceback
 
-from flask import Flask, jsonify, current_app, request
+from babel.core import UnknownLocaleError
 from flasgger import Swagger
+from flask import Flask, current_app, jsonify, request
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
 from flask_mail import Mail
-
-from werkzeug.exceptions import HTTPException
+from flask_migrate import Migrate
+from flask_sqlalchemy import SQLAlchemy
 from jwt import ExpiredSignatureError
-from babel.core import UnknownLocaleError
 from meilisearch.errors import (
     MeilisearchApiError,
     MeilisearchCommunicationError,
 )
+from werkzeug.exceptions import HTTPException
 
-from zou.app import config
-from zou.app import swagger as swagger_module
-from zou.app.swagger import configure_openapi_route
-from zou.app.stores import auth_tokens_store, config_store, file_store
-from zou.app.indexer import indexing
+from zou.app import config, swagger as swagger_module
 from zou.app.exceptions import (
+    InactiveUserException,
     ModelWithRelationsDeletionException,
     PersonNotFoundException,
     PreviewProcessingFailedException,
@@ -29,19 +25,19 @@ from zou.app.exceptions import (
     WrongIdFormatException,
     WrongParameterException,
     WrongTaskTypeForEntityException,
-    InactiveUserException,
 )
-
+from zou.app.indexer import indexing
+from zou.app.stores import auth_tokens_store, config_store, file_store
+from zou.app.swagger import configure_openapi_route
 from zou.app.utils import cache, fs, media_slots, monitoring
+from zou.app.utils.fido import get_fido_server
 from zou.app.utils.flask_utils import (
-    ParsedUserAgent,
     ORJSONProvider,
+    ParsedUserAgent,
     wrong_auth_handler,
 )
-
-from zou.app.utils.saml import saml_client_for
 from zou.app.utils.oidc import oidc_client_for
-from zou.app.utils.fido import get_fido_server
+from zou.app.utils.saml import saml_client_for
 
 # Extensions are created unbound and attached to an app in create_app().
 # Models are declared against `db.Model`, which is available without an

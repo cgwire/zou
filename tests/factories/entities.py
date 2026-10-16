@@ -1,10 +1,9 @@
-from zou.app.services import (
-    breakdown_service,
-)
-
 from zou.app.models.asset_instance import AssetInstance
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
+from zou.app.services import (
+    breakdown_service,
+)
 
 
 class EntityFactories:

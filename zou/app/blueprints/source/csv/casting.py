@@ -1,16 +1,15 @@
 from flasgger import swag_from
 from slugify import slugify
-from zou.app.blueprints.source.csv.base import BaseCsvProjectImportResource
 
+from zou.app.blueprints.source.csv.base import BaseCsvProjectImportResource
 from zou.app.services import (
     assets_service,
-    projects_service,
-    shots_service,
     breakdown_service,
     entities_service,
     entity_types_service,
+    projects_service,
+    shots_service,
 )
-
 from zou.app.utils import events
 
 

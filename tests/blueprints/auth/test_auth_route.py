@@ -1,15 +1,14 @@
-import pyotp
-import pytest
-import orjson as json
-
 from datetime import timedelta
 
-from tests.base import ApiDBTestCase
+import orjson as json
+import pyotp
+import pytest
 
-from zou.app.utils import auth, date_helpers, fields
+from tests.base import ApiDBTestCase
 from zou.app.models.person import Person
-from zou.app.stores import auth_tokens_store
 from zou.app.services import auth_service, persons_service
+from zou.app.stores import auth_tokens_store
+from zou.app.utils import auth, date_helpers, fields
 
 pytestmark = pytest.mark.real_bcrypt
 

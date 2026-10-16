@@ -1,14 +1,14 @@
 from flask import Blueprint
-from zou.app.utils.api import configure_api_from_blueprint
 
 from zou.app.blueprints.entities.resources import (
-    EntityPreviewFilesResource,
+    EntitiesLinkedWithTasksResource,
     EntityNewsResource,
+    EntityPreviewFilesResource,
     EntityTaskCreationResource,
     EntityTimeSpentsResource,
-    EntitiesLinkedWithTasksResource,
     ProjectDeleteEntitiesResource,
 )
+from zou.app.utils.api import configure_api_from_blueprint
 
 routes = [
     (

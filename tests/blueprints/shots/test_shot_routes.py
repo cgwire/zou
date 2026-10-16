@@ -1,8 +1,7 @@
 import datetime
+
 from tests.base import ApiDBTestCase
-
 from zou.app.models.studio import Studio
-
 from zou.app.services import tasks_service
 from zou.app.utils import fields
 

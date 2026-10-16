@@ -1,17 +1,16 @@
 import logging
+
 from flask import current_app
 
 from zou.app.indexer import indexing
-
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.person import Person
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
-
 from zou.app.services import (
-    projects_service,
     entity_types_service,
+    projects_service,
 )
 
 logger = logging.getLogger(__name__)

@@ -4,7 +4,6 @@ import pathlib
 import subprocess
 import sys
 import unittest
-
 from concurrent.futures import ThreadPoolExecutor
 
 SERVICES = pathlib.Path(__file__).parents[2] / "zou" / "app" / "services"

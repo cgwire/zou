@@ -1,20 +1,20 @@
-from flasgger import swag_from
 import datetime
 
 import psutil
 import redis
 import requests
+from flasgger import swag_from
 from flask import Response
-from flask_jwt_extended import jwt_required
 from flask.views import MethodView
+from flask_jwt_extended import jwt_required
 
 from zou import __version__
 from zou.app import app, config
 from zou.app.indexer import indexing
 from zou.app.services import (
+    organisation_service,
     projects_service,
     stats_service,
-    organisation_service,
 )
 from zou.app.stores import redis_client
 from zou.app.utils import date_helpers, permissions

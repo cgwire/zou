@@ -6,9 +6,9 @@ Create Date: 2026-07-22
 
 """
 
-from alembic import op
 import sqlalchemy as sa
 import sqlalchemy_utils
+from alembic import op
 
 from zou.app.models.person import ROLE_TYPES
 

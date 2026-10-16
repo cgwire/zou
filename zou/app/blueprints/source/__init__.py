@@ -4,70 +4,12 @@ keyword.
 """
 
 from flask import Blueprint
-from zou.app.utils.api import configure_api_from_blueprint
 
-from zou.app.blueprints.source.shotgun.project import (
-    ImportShotgunProjectsResource,
-    ImportRemoveShotgunProjectResource,
-)
-from zou.app.blueprints.source.shotgun.person import (
-    ImportShotgunPersonsResource,
-    ImportRemoveShotgunPersonResource,
-)
-from zou.app.blueprints.source.shotgun.shot import (
-    ImportShotgunShotsResource,
-    ImportRemoveShotgunShotResource,
-)
-from zou.app.blueprints.source.shotgun.scene import (
-    ImportShotgunScenesResource,
-    ImportRemoveShotgunSceneResource,
-)
-from zou.app.blueprints.source.shotgun.sequence import (
-    ImportShotgunSequencesResource,
-    ImportRemoveShotgunSequenceResource,
-)
-from zou.app.blueprints.source.shotgun.episode import (
-    ImportShotgunEpisodesResource,
-    ImportRemoveShotgunEpisodeResource,
-)
-from zou.app.blueprints.source.shotgun.assets import (
-    ImportShotgunAssetsResource,
-    ImportRemoveShotgunAssetResource,
-)
-from zou.app.blueprints.source.shotgun.steps import (
-    ImportShotgunStepsResource,
-    ImportRemoveShotgunStepResource,
-)
-from zou.app.blueprints.source.shotgun.status import (
-    ImportShotgunStatusResource,
-    ImportRemoveShotgunStatusResource,
-)
-from zou.app.blueprints.source.shotgun.tasks import (
-    ImportShotgunTasksResource,
-    ImportRemoveShotgunTaskResource,
-)
-from zou.app.blueprints.source.shotgun.versions import (
-    ImportShotgunVersionsResource,
-    ImportRemoveShotgunVersionResource,
-)
-from zou.app.blueprints.source.shotgun.import_errors import (
-    ShotgunImportErrorsResource,
-    ShotgunImportErrorResource,
-)
-from zou.app.blueprints.source.shotgun.notes import (
-    ImportShotgunNotesResource,
-    ImportRemoveShotgunNoteResource,
-)
-from zou.app.blueprints.source.shotgun.team import (
-    ImportShotgunProjectConnectionsResource,
-    ImportRemoveShotgunProjectConnectionResource,
-)
-
-from zou.app.blueprints.source.csv.persons import PersonsCsvImportResource
 from zou.app.blueprints.source.csv.assets import AssetsCsvImportResource
-from zou.app.blueprints.source.csv.edits import EditsCsvImportResource
-from zou.app.blueprints.source.csv.shots import ShotsCsvImportResource
 from zou.app.blueprints.source.csv.casting import CastingCsvImportResource
+from zou.app.blueprints.source.csv.edits import EditsCsvImportResource
+from zou.app.blueprints.source.csv.persons import PersonsCsvImportResource
+from zou.app.blueprints.source.csv.shots import ShotsCsvImportResource
 from zou.app.blueprints.source.csv.task_type_estimations import (
     TaskTypeEstimationsCsvImportResource,
     TaskTypeEstimationsEpisodeCsvImportResource,
@@ -90,11 +32,67 @@ from zou.app.blueprints.source.kitsu import (
     ImportKitsuTasksResource,
     ImportKitsuTimeSpentsResource,
 )
-
 from zou.app.blueprints.source.otio import (
-    OTIOImportResource,
     OTIOImportEpisodeResource,
+    OTIOImportResource,
 )
+from zou.app.blueprints.source.shotgun.assets import (
+    ImportRemoveShotgunAssetResource,
+    ImportShotgunAssetsResource,
+)
+from zou.app.blueprints.source.shotgun.episode import (
+    ImportRemoveShotgunEpisodeResource,
+    ImportShotgunEpisodesResource,
+)
+from zou.app.blueprints.source.shotgun.import_errors import (
+    ShotgunImportErrorResource,
+    ShotgunImportErrorsResource,
+)
+from zou.app.blueprints.source.shotgun.notes import (
+    ImportRemoveShotgunNoteResource,
+    ImportShotgunNotesResource,
+)
+from zou.app.blueprints.source.shotgun.person import (
+    ImportRemoveShotgunPersonResource,
+    ImportShotgunPersonsResource,
+)
+from zou.app.blueprints.source.shotgun.project import (
+    ImportRemoveShotgunProjectResource,
+    ImportShotgunProjectsResource,
+)
+from zou.app.blueprints.source.shotgun.scene import (
+    ImportRemoveShotgunSceneResource,
+    ImportShotgunScenesResource,
+)
+from zou.app.blueprints.source.shotgun.sequence import (
+    ImportRemoveShotgunSequenceResource,
+    ImportShotgunSequencesResource,
+)
+from zou.app.blueprints.source.shotgun.shot import (
+    ImportRemoveShotgunShotResource,
+    ImportShotgunShotsResource,
+)
+from zou.app.blueprints.source.shotgun.status import (
+    ImportRemoveShotgunStatusResource,
+    ImportShotgunStatusResource,
+)
+from zou.app.blueprints.source.shotgun.steps import (
+    ImportRemoveShotgunStepResource,
+    ImportShotgunStepsResource,
+)
+from zou.app.blueprints.source.shotgun.tasks import (
+    ImportRemoveShotgunTaskResource,
+    ImportShotgunTasksResource,
+)
+from zou.app.blueprints.source.shotgun.team import (
+    ImportRemoveShotgunProjectConnectionResource,
+    ImportShotgunProjectConnectionsResource,
+)
+from zou.app.blueprints.source.shotgun.versions import (
+    ImportRemoveShotgunVersionResource,
+    ImportShotgunVersionsResource,
+)
+from zou.app.utils.api import configure_api_from_blueprint
 
 routes = [
     ("/import/shotgun/persons", ImportShotgunPersonsResource),

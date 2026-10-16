@@ -1,14 +1,12 @@
 import platform
-
 from unittest import mock
 
 from tests.base import ApiDBTestCase
-
 from zou import __version__
 from zou.app import config
+from zou.app.commands import telemetry_service
 from zou.app.models.person import Person
 from zou.app.models.preview_file import PreviewFile
-from zou.app.commands import telemetry_service
 from zou.app.services import (
     organisation_service,
 )

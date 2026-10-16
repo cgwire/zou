@@ -1,9 +1,9 @@
+from sqlalchemy.sql import expression
 from sqlalchemy_utils import UUIDType
 
 from zou.app import db
-from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
-from sqlalchemy.sql import expression
+from zou.app.models.serializer import SerializerMixin
 
 
 class SearchFilter(db.Model, BaseMixin, SerializerMixin):

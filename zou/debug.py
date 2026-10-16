@@ -2,9 +2,11 @@ from gevent import monkey
 
 monkey.patch_all()
 
-from zou.app import config, create_app
-from flask_socketio import SocketIO
 import logging
+
+from flask_socketio import SocketIO
+
+from zou.app import config, create_app
 
 app = create_app()
 

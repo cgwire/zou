@@ -1,21 +1,19 @@
 from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
-from zou.app.models.metadata_descriptor import (
-    MetadataDescriptor,
-    METADATA_DESCRIPTOR_TYPES,
-)
-
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
-from zou.app.utils import permissions
-from zou.app.services import (
-    user_service,
-    metadata_descriptors_service,
-)
-
 from zou.app.exceptions import (
     WrongParameterException,
 )
+from zou.app.models.metadata_descriptor import (
+    METADATA_DESCRIPTOR_TYPES,
+    MetadataDescriptor,
+)
+from zou.app.services import (
+    metadata_descriptors_service,
+    user_service,
+)
+from zou.app.utils import permissions
 
 
 class MetadataDescriptorsResource(BaseModelsResource):

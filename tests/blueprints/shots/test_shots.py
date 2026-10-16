@@ -1,7 +1,6 @@
 from freezegun import freeze_time
 
 from tests.base import ApiDBTestCase
-
 from zou.app.services import projects_service, shots_service, tasks_service
 from zou.app.utils import date_helpers
 

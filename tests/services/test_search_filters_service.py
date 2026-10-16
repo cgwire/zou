@@ -1,17 +1,17 @@
+from tests.services.cases import UserContextTestCase
+from zou.app.exceptions import (
+    DepartmentNotFoundException,
+    SearchFilterGroupNotFoundException,
+    SearchFilterNotFoundException,
+    WrongParameterException,
+)
 from zou.app.models.search_filter import SearchFilter
 from zou.app.models.search_filter_group import SearchFilterGroup
 from zou.app.services import (
+    cascade_deletion_service,
     projects_service,
     search_filters_service,
-    cascade_deletion_service,
 )
-from zou.app.exceptions import (
-    DepartmentNotFoundException,
-    SearchFilterNotFoundException,
-    SearchFilterGroupNotFoundException,
-    WrongParameterException,
-)
-from tests.services.cases import UserContextTestCase
 
 UNKNOWN = "00000000-0000-0000-0000-000000000000"
 

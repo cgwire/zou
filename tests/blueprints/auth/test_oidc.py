@@ -1,13 +1,13 @@
 import time
-
 from unittest import mock
 
 from authlib.oidc.core import CodeIDToken
-from flask_jwt_extended import create_access_token as real_create_access_token
-from flask_jwt_extended import decode_token
+from flask_jwt_extended import (
+    create_access_token as real_create_access_token,
+    decode_token,
+)
 
 from tests.base import ApiDBTestCase
-
 from zou.app import config
 from zou.app.models.person import Person
 from zou.app.services import auth_service, persons_service

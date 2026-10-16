@@ -1,5 +1,6 @@
-from tests.base import ApiDBTestCase
 from mixer.backend.flask import mixer
+
+from tests.base import ApiDBTestCase
 from zou.app.utils import date_helpers
 
 

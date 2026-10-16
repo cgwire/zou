@@ -1,15 +1,14 @@
 import copy
-from sqlalchemy import func
 
+from sqlalchemy import func
 from sqlalchemy.orm import aliased
 
-from zou.app.models.entity import Entity
 from zou.app.models.comment import Comment
+from zou.app.models.entity import Entity
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
 from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
-
 from zou.app.services import (
     persons_service,
 )

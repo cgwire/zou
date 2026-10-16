@@ -1,9 +1,11 @@
 import datetime
-
 from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
-
+from zou.app.exceptions import (
+    PlaylistShareLinkNotFoundException,
+    WrongParameterException,
+)
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.comment import Comment
 from zou.app.models.person import Person
@@ -11,15 +13,10 @@ from zou.app.models.playlist import Playlist
 from zou.app.models.playlist_share_link import PlaylistShareLink
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.task import Task
-
 from zou.app.services import (
+    attachment_files_service,
     comments_service,
     playlist_sharing_service,
-    attachment_files_service,
-)
-from zou.app.exceptions import (
-    PlaylistShareLinkNotFoundException,
-    WrongParameterException,
 )
 from zou.app.services.playlist_sharing_service import GuestCommentNotFound
 

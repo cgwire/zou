@@ -6,7 +6,6 @@ from typing import List, Optional
 from uuid import UUID
 
 import orjson as json
-
 from pydantic import Field, field_validator
 
 from zou.app.utils.validation import BaseSchema

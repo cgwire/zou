@@ -1,23 +1,21 @@
 # -*- coding: UTF-8 -*-
 import os
-import tempfile
 import shutil
+import tempfile
 import zipfile
-
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from tests.base import ApiDBTestCase
-
 from zou.app.utils.plugins import (
     PluginManifest,
     _build_plugin_alembic_config,
-    install_plugin_files,
-    uninstall_plugin_files,
+    add_static_routes,
     create_plugin_package,
     create_plugin_skeleton,
-    add_static_routes,
     download_zip_url,
+    install_plugin_files,
+    uninstall_plugin_files,
 )
 
 

@@ -1,15 +1,12 @@
 from flasgger import swag_from
-from flask import request, current_app
+from flask import current_app, request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
+from sqlalchemy.exc import DataError, IntegrityError
 
-from zou.app.utils import fields, permissions
 from zou.app.blueprints.source.shotgun.exception import (
     ShotgunEntryImportFailed,
 )
-
-from zou.app.services import assets_service, shots_service, tasks_service
-
 from zou.app.exceptions import (
     AssetNotFoundException,
     EpisodeNotFoundException,
@@ -18,8 +15,8 @@ from zou.app.exceptions import (
     ShotNotFoundException,
     TaskNotFoundException,
 )
-
-from sqlalchemy.exc import IntegrityError, DataError
+from zou.app.services import assets_service, shots_service, tasks_service
+from zou.app.utils import fields, permissions
 
 
 class BaseImportShotgunResource(MethodView):

@@ -1,21 +1,24 @@
 import datetime
-
 from unittest import mock
 
 from sqlalchemy import text
 
-
+from tests.services.cases import DeletionTestCase, FilesTestCase
 from zou.app import db
+from zou.app.exceptions import (
+    CommentNotFoundException,
+    PreviewBackgroundFileNotFoundException,
+    PreviewFileNotFoundException,
+)
 from zou.app.models.comment import Comment
 from zou.app.models.entity import Entity
-from zou.app.models.task import Task
+from zou.app.models.event import ApiEvent
+from zou.app.models.login_log import LoginLog
 from zou.app.models.notification import Notification
 from zou.app.models.output_file import OutputFile
 from zou.app.models.preview_file import PreviewFile
-from zou.app.models.event import ApiEvent
-from zou.app.models.login_log import LoginLog
+from zou.app.models.task import Task
 from zou.app.models.time_spent import TimeSpent
-
 from zou.app.services import (
     deletion_service,
     entities_service,
@@ -24,12 +27,6 @@ from zou.app.services import (
     tasks_service,
 )
 from zou.app.utils import date_helpers, events
-from zou.app.exceptions import (
-    CommentNotFoundException,
-    PreviewBackgroundFileNotFoundException,
-    PreviewFileNotFoundException,
-)
-from tests.services.cases import DeletionTestCase, FilesTestCase
 
 UNKNOWN = "00000000-0000-0000-0000-000000000000"
 

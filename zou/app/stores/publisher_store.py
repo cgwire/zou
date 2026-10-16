@@ -1,5 +1,4 @@
 import redis
-
 from flask_socketio import SocketIO
 
 from zou.app import config

@@ -1,37 +1,21 @@
-from flasgger import swag_from
 import os
 
-from flask import request, current_app
-from flask import send_file as flask_send_file
+from flasgger import swag_from
+from flask import current_app, request, send_file as flask_send_file
 from flask.views import MethodView
-from flask_jwt_extended import jwt_required
 from flask_fs.errors import FileNotFound
+from flask_jwt_extended import jwt_required
+
 from zou.app import config
-
-from zou.app.mixin import ArgsMixin
-from zou.app.utils import fs, date_helpers, validation
 from zou.app.blueprints.files.schemas import (
-    WorkingFilePathSchema,
-    OutputFilePathSchema,
-    NewWorkingFileSchema,
-    WorkingFileCommentSchema,
-    NewOutputFileSchema,
-    NextRevisionSchema,
     GuessFilePathSchema,
+    NewOutputFileSchema,
+    NewWorkingFileSchema,
+    NextRevisionSchema,
+    OutputFilePathSchema,
+    WorkingFileCommentSchema,
+    WorkingFilePathSchema,
 )
-from zou.app.stores import file_store
-from zou.app.services import (
-    file_tree_service,
-    files_service,
-    persons_service,
-    assets_service,
-    tasks_service,
-    entities_service,
-    permissions_service,
-    task_types_service,
-    breakdown_service,
-)
-
 from zou.app.exceptions import (
     EntryAlreadyExistsException,
     MalformedFileTreeException,
@@ -39,6 +23,20 @@ from zou.app.exceptions import (
     PersonNotFoundException,
     WorkingFileNotFoundException,
 )
+from zou.app.mixin import ArgsMixin
+from zou.app.services import (
+    assets_service,
+    breakdown_service,
+    entities_service,
+    file_tree_service,
+    files_service,
+    permissions_service,
+    persons_service,
+    task_types_service,
+    tasks_service,
+)
+from zou.app.stores import file_store
+from zou.app.utils import date_helpers, fs, validation
 
 
 def send_storage_file(

@@ -4,8 +4,8 @@ import unittest
 import pytest
 from freezegun import freeze_time
 
-from zou.app.utils import date_helpers
 from zou.app.exceptions import WrongDateFormatException
+from zou.app.utils import date_helpers
 
 
 class DateHelpersTestCase(unittest.TestCase):

@@ -1,5 +1,5 @@
-import flask_bcrypt
 import email_validator
+import flask_bcrypt
 
 from zou.app import config
 

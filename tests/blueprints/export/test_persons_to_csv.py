@@ -1,5 +1,4 @@
 from tests.base import ApiDBTestCase
-
 from zou.app.models.person import Person
 from zou.app.models.studio import Studio
 

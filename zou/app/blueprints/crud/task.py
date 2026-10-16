@@ -1,35 +1,31 @@
 from flasgger import swag_from
-from flask import request, current_app
+from flask import current_app, request
 from flask_jwt_extended import jwt_required
-
-from sqlalchemy.orm import aliased
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import aliased
 
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
+from zou.app.exceptions import (
+    WrongParameterException,
+    WrongTaskTypeForEntityException,
+)
 from zou.app.mixin import ArgsMixin
 from zou.app.models.entity import Entity
 from zou.app.models.person import Person
 from zou.app.models.project import Project
 from zou.app.models.task import Task
-
 from zou.app.services import (
-    permissions_service,
-    user_service,
-    tasks_service,
     deletion_service,
     entities_service,
-    notifications_service,
-    persons_service,
     entity_types_service,
+    notifications_service,
+    permissions_service,
+    persons_service,
     task_types_service,
+    tasks_service,
+    user_service,
 )
 from zou.app.utils import events, fields, permissions
-
-from zou.app.exceptions import (
-    WrongParameterException,
-    WrongTaskTypeForEntityException,
-)
-
-from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
 
 
 class TasksResource(BaseModelsResource, ArgsMixin):

@@ -1,21 +1,20 @@
+from babel.dates import format_datetime
+
 from zou.app import config
 from zou.app.exceptions import EpisodeNotFoundException
-from zou.app.utils import emails, chats
-from zou.app.utils.email_i18n import get_email_translation
-from zou.app.utils.string import mask_secret
-
 from zou.app.services import (
     entities_service,
+    organisation_service,
     persons_service,
     projects_service,
     shots_service,
-    templates_service,
-    organisation_service,
     task_types_service,
+    templates_service,
 )
 from zou.app.stores import queue_store
-from zou.app.utils import date_helpers
-from babel.dates import format_datetime
+from zou.app.utils import chats, date_helpers, emails
+from zou.app.utils.email_i18n import get_email_translation
+from zou.app.utils.string import mask_secret
 
 # Chat channels a person can be notified on: the suffix used by the person
 # columns, the message keys and the chats sender, then the organisation field

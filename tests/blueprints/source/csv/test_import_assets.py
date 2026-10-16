@@ -1,10 +1,8 @@
 import os
-
 from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
 from zou.app import db
-
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.metadata_descriptor import MetadataDescriptor
@@ -14,13 +12,12 @@ from zou.app.models.project import (
 )
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
-
 from zou.app.services import (
     assets_service,
+    entity_types_service,
     index_service,
     projects_service,
     shots_service,
-    entity_types_service,
     task_types_service,
 )
 

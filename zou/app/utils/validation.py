@@ -8,8 +8,7 @@ validation error raises WrongParameterException with a 400-style payload
 """
 
 from flask import request
-
-from pydantic import TypeAdapter, BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
 
 from zou.app.exceptions import WrongParameterException
 from zou.app.utils import fields

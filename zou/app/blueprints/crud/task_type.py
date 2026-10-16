@@ -3,16 +3,15 @@ from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
-from zou.app.models.task_type import TaskType
-from zou.app.models.schedule_item import ScheduleItem
-from zou.app.models.project import ProjectTaskTypeLink
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.exceptions import WrongParameterException
+from zou.app.models.project import ProjectTaskTypeLink
+from zou.app.models.schedule_item import ScheduleItem
+from zou.app.models.task_type import TaskType
 from zou.app.services import (
     task_types_service,
 )
 from zou.app.utils import permissions
-
-from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 
 class TaskTypesResource(BaseModelsResource):

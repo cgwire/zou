@@ -1,11 +1,10 @@
 from tests.base import ApiDBTestCase
-
+from tests.services.cases import TaskTestCase
+from zou.app.exceptions import StudioNotFoundException
 from zou.app.models.studio import Studio
 from zou.app.models.task_type import TaskType
 from zou.app.services import departments_service, task_types_service
 from zou.app.utils import fields
-from zou.app.exceptions import StudioNotFoundException
-from tests.services.cases import TaskTestCase
 
 
 class TaskReaderTestCase(TaskTestCase):

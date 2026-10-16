@@ -1,9 +1,9 @@
 from flasgger import swag_from
-from zou.app.blueprints.export.csv.base import BaseCsvExport
 from flask_jwt_extended import jwt_required
 
-from zou.app.models.project_status import ProjectStatus
+from zou.app.blueprints.export.csv.base import BaseCsvExport
 from zou.app.models.project import Project
+from zou.app.models.project_status import ProjectStatus
 
 
 class ProjectsCsvExport(BaseCsvExport):

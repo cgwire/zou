@@ -1,14 +1,38 @@
-import pytest
-from tests.services.cases import (
-    AssetsTestCase,
-    ShotsTestCase,
-    DeletionTestCase,
-)
-from tests.base import ApiDBTestCase
-from sqlalchemy import text
 from unittest.mock import patch
 
+import pytest
+from sqlalchemy import text
+
+from tests.base import ApiDBTestCase
+from tests.services.cases import (
+    AssetsTestCase,
+    DeletionTestCase,
+    ShotsTestCase,
+)
+from zou.app import db
+from zou.app.exceptions import (
+    AssetNotFoundException,
+    ConceptNotFoundException,
+    EditNotFoundException,
+    EpisodeNotFoundException,
+    ModelWithRelationsDeletionException,
+    SceneNotFoundException,
+    SequenceNotFoundException,
+    ShotNotFoundException,
+)
 from zou.app.models.entity import Entity, EntityLink
+from zou.app.models.output_file import OutputFile
+from zou.app.models.person import Person
+from zou.app.models.preview_file import PreviewFile
+from zou.app.models.production_schedule_version import (
+    ProductionScheduleVersion,
+    ProductionScheduleVersionTaskLink,
+)
+from zou.app.models.project import Project
+from zou.app.models.schedule_item import ScheduleItem
+from zou.app.models.search_filter import SearchFilter
+from zou.app.models.search_filter_group import SearchFilterGroup
+from zou.app.models.task import Task
 from zou.app.services import (
     assets_service,
     breakdown_service,
@@ -18,29 +42,6 @@ from zou.app.services import (
     edits_service,
     shots_service,
 )
-from zou.app.exceptions import (
-    AssetNotFoundException,
-    ConceptNotFoundException,
-    EpisodeNotFoundException,
-    ModelWithRelationsDeletionException,
-    EditNotFoundException,
-    SceneNotFoundException,
-    ShotNotFoundException,
-    SequenceNotFoundException,
-)
-from zou.app import db
-from zou.app.models.task import Task
-from zou.app.models.output_file import OutputFile
-from zou.app.models.person import Person
-from zou.app.models.preview_file import PreviewFile
-from zou.app.models.production_schedule_version import (
-    ProductionScheduleVersion,
-    ProductionScheduleVersionTaskLink,
-)
-from zou.app.models.project import Project
-from zou.app.models.search_filter import SearchFilter
-from zou.app.models.search_filter_group import SearchFilterGroup
-from zou.app.models.schedule_item import ScheduleItem
 
 UNKNOWN = "00000000-0000-0000-0000-000000000000"
 

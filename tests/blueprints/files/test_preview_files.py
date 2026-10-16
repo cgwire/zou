@@ -3,7 +3,6 @@ import tempfile
 from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
-
 from zou.app.blueprints.previews.resources import BaseNewPreviewFilePicture
 from zou.app.exceptions import WrongParameterException
 

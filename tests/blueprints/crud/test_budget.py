@@ -1,8 +1,6 @@
 from tests.base import ApiDBTestCase
-
 from zou.app.models.budget import Budget
 from zou.app.models.budget_entry import BudgetEntry
-
 from zou.app.utils import fields
 
 

@@ -1,5 +1,5 @@
-from zou.app.services import tasks_service
 from tests.permissions.cases import DemotedRoleTestCase
+from zou.app.services import tasks_service
 
 
 class AllShotsRoleTestCase(DemotedRoleTestCase):

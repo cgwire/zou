@@ -3,23 +3,22 @@ from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
-from zou.app.services import (
-    projects_service,
-    playlists_service,
-    concepts_service,
-    tasks_service,
-    permissions_service,
-    persons_service,
-    cascade_deletion_service,
-)
-
-from zou.app.mixin import ArgsMixin
-from zou.app.utils import query, permissions, validation
 from zou.app.blueprints.concepts.schemas import (
     ConceptFolderSchema,
     MoveConceptsSchema,
     NewConceptSchema,
 )
+from zou.app.mixin import ArgsMixin
+from zou.app.services import (
+    cascade_deletion_service,
+    concepts_service,
+    permissions_service,
+    persons_service,
+    playlists_service,
+    projects_service,
+    tasks_service,
+)
+from zou.app.utils import permissions, query, validation
 
 
 class ConceptResource(MethodView, ArgsMixin):

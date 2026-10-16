@@ -1,22 +1,21 @@
 from flasgger import swag_from
 from flask.views import MethodView
-
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.entities.schemas import CreateEntityTasksSchema
-from zou.app.mixin import ArgsMixin
 from zou.app.exceptions import EntityNotFoundException
+from zou.app.mixin import ArgsMixin
 from zou.app.services import (
+    cascade_deletion_service,
     entities_service,
     news_service,
+    permissions_service,
     persons_service,
     preview_files_service,
     projects_service,
+    task_types_service,
     tasks_service,
     time_spents_service,
-    permissions_service,
-    task_types_service,
-    cascade_deletion_service,
 )
 from zou.app.utils import permissions, validation
 

@@ -1,10 +1,9 @@
-from zou.app.services import (
-    file_tree_service,
-)
-
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
+from zou.app.services import (
+    file_tree_service,
+)
 
 
 class ProductionFactories:

@@ -1,8 +1,7 @@
-from flasgger import swag_from
-import slugify
-
 import os
 
+import slugify
+from flasgger import swag_from
 from flask import (
     after_this_request,
     request,
@@ -10,10 +9,9 @@ from flask import (
 )
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
+from rq.exceptions import DuplicateJobError
 
 from zou.app import config
-from zou.app.mixin import ArgsMixin
-
 from zou.app.blueprints.playlists.schemas import (
     AddEntitiesToPlaylistSchema,
     AddEntityToPlaylistSchema,
@@ -22,23 +20,23 @@ from zou.app.blueprints.playlists.schemas import (
     NotifyClientsPlaylistSchema,
     TempPlaylistCreateSchema,
 )
-from zou.app.services import (
-    entities_service,
-    notifications_service,
-    playlist_sharing_service,
-    playlists_service,
-    persons_service,
-    preview_files_service,
-    projects_service,
-    shots_service,
-    permissions_service,
-    playlist_builds_service,
-)
 from zou.app.exceptions import (
     BuildJobNotFoundException,
     PlaylistShareLinkNotFoundException,
 )
-from rq.exceptions import DuplicateJobError
+from zou.app.mixin import ArgsMixin
+from zou.app.services import (
+    entities_service,
+    notifications_service,
+    permissions_service,
+    persons_service,
+    playlist_builds_service,
+    playlist_sharing_service,
+    playlists_service,
+    preview_files_service,
+    projects_service,
+    shots_service,
+)
 from zou.app.stores import file_store, queue_store
 from zou.app.utils import fs, permissions, validation
 from zou.utils.movie import EncodingParameters

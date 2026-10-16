@@ -1,24 +1,23 @@
 from sqlalchemy.orm import selectinload
 
+from zou.app.exceptions import (
+    DepartmentNotFoundException,
+    HardwareItemNotFoundException,
+    SoftwareNotFoundException,
+)
 from zou.app.models.department import (
     Department,
-    SoftwareDepartmentLink,
     HardwareItemDepartmentLink,
+    SoftwareDepartmentLink,
 )
 from zou.app.models.hardware_item import HardwareItem
 from zou.app.models.person import DepartmentLink, Person
 from zou.app.models.software import Software
-from zou.app.utils import cache, events, fields
-
-from zou.app.exceptions import (
-    DepartmentNotFoundException,
-    SoftwareNotFoundException,
-    HardwareItemNotFoundException,
-)
 from zou.app.services import (
     base_service,
     task_types_service,
 )
+from zou.app.utils import cache, events, fields
 
 
 def _check_department_exists(department_id):

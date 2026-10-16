@@ -1,17 +1,23 @@
-from tests.base import ApiDBTestCase
+import datetime
+from unittest import mock
 
-from zou.app import db
-from zou.app.models.studio import Studio
-from zou.app.services import tasks_service, time_spents_service
-from zou.app.exceptions import WrongDateFormatException
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
-from unittest import mock
-from zou.app.exceptions import TimeSpentNotFoundException
-from zou.app.models.time_spent import TimeSpent
-from zou.app.services import persons_service, tasks_service
-import datetime
+
+from tests.base import ApiDBTestCase
 from tests.services.cases import TaskTestCase
+from zou.app import db
+from zou.app.exceptions import (
+    TimeSpentNotFoundException,
+    WrongDateFormatException,
+)
+from zou.app.models.studio import Studio
+from zou.app.models.time_spent import TimeSpent
+from zou.app.services import (
+    persons_service,
+    tasks_service,
+    time_spents_service,
+)
 
 
 class TimeSpentsTestCase(ApiDBTestCase):
