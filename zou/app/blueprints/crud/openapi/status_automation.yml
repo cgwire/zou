@@ -3,7 +3,7 @@ StatusAutomationResource_delete:
   tags:
     - Crud
   description: Delete a status automation. You cannot delete an automation
-    that a project uses. You must be an administrator.
+    that a project or a project template uses. You must be an administrator.
   parameters:
     - in: path
       name: instance_id
@@ -17,7 +17,7 @@ StatusAutomationResource_delete:
     204:
       description: The status automation is deleted
     400:
-      description: A project uses this automation
+      description: A project or a project template uses this automation
     403:
       description: You are not an administrator
     404:

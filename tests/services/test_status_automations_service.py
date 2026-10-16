@@ -1,6 +1,9 @@
 # -*- coding: UTF-8 -*-
 from tests.base import ApiDBTestCase
-from zou.app.exceptions import StatusAutomationNotFoundException
+from zou.app.exceptions import (
+    StatusAutomationNotFoundException,
+    WrongParameterException,
+)
 from zou.app.models.entity import Entity
 from zou.app.models.status_automation import StatusAutomation
 from zou.app.models.task import Task
@@ -114,6 +117,65 @@ class StatusAutomationsServiceTestCase(ApiDBTestCase):
     def test_created_status_automation(self):
         self.assertEqual(
             len(status_automations_service.get_status_automations()), 2
+        )
+
+    def ids_using_task_type(self, task_type):
+        service = status_automations_service
+        automations = service.get_automations_using_task_type(task_type.id)
+        return sorted(automation["id"] for automation in automations)
+
+    def ids_using_task_status(self, task_status):
+        service = status_automations_service
+        automations = service.get_automations_using_task_status(task_status.id)
+        return sorted(automation["id"] for automation in automations)
+
+    def test_get_automations_using_task_type(self):
+        """
+        Both ends of an automation count, archived automations too.
+        """
+        self.status_automation_to_status.update({"archived": True})
+        to_status = str(self.status_automation_to_status.id)
+        to_ready_for = str(self.status_automation_to_ready_for.id)
+
+        self.assertEqual(
+            self.ids_using_task_type(self.task_type_concept), [to_status]
+        )
+        self.assertEqual(
+            self.ids_using_task_type(self.task_type_modeling),
+            sorted([to_status, to_ready_for]),
+        )
+        self.assertEqual(
+            self.ids_using_task_type(self.task_type_layout), [to_ready_for]
+        )
+        self.assertEqual(
+            self.ids_using_task_type(self.task_type_animation), []
+        )
+
+    def test_get_automations_using_task_status(self):
+        to_status = str(self.status_automation_to_status.id)
+        to_ready_for = str(self.status_automation_to_ready_for.id)
+
+        self.assertEqual(
+            self.ids_using_task_status(self.task_status_done),
+            sorted([to_status, to_ready_for]),
+        )
+        self.assertEqual(
+            self.ids_using_task_status(self.task_status_wip), [to_status]
+        )
+        self.assertEqual(self.ids_using_task_status(self.task_status), [])
+
+    def test_guard_task_type_deletion(self):
+        with self.assertRaises(WrongParameterException) as context:
+            status_automations_service.guard_task_type_deletion(
+                self.task_type_modeling.serialize()
+            )
+        self.assertEqual(
+            str(context.exception),
+            "Task type Modeling is used by 2 status automations. Remove it "
+            "from them first.",
+        )
+        status_automations_service.guard_task_type_deletion(
+            self.task_type_animation.serialize()
         )
 
     def test_get_status_automation_raw(self):

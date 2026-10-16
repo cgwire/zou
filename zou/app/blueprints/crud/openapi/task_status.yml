@@ -2,7 +2,9 @@ TaskStatusResource_delete:
   summary: Delete a task status
   tags:
     - Crud
-  description: Delete a task status. You must be an administrator.
+  description: Delete a task status. If status automations use the task
+    status, archived ones included, the request fails. You must be an
+    administrator.
   parameters:
     - in: path
       name: instance_id
@@ -16,7 +18,8 @@ TaskStatusResource_delete:
     204:
       description: The task status is deleted
     400:
-      description: Other data uses this row
+      description: Status automations use the task status, or other data uses
+        this row
     403:
       description: You are not an administrator
     404:
