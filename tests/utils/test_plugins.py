@@ -129,6 +129,8 @@ license = "MIT"
             "license": "MIT",
             "frontend_project_enabled": True,
             "frontend_studio_enabled": False,
+            "frontend_task_enabled": True,
+            "frontend_project_admin_enabled": True,
             "icon": "test-icon",
         }
 
@@ -141,7 +143,24 @@ license = "MIT"
         self.assertEqual(model_dict["license"], "MIT")
         self.assertTrue(model_dict["frontend_project_enabled"])
         self.assertFalse(model_dict["frontend_studio_enabled"])
+        self.assertTrue(model_dict["frontend_task_enabled"])
+        self.assertTrue(model_dict["frontend_project_admin_enabled"])
         self.assertEqual(model_dict["icon"], "test-icon")
+
+    def test_plugin_manifest_defaults_new_frontend_flags_to_false(self):
+        manifest = PluginManifest(
+            {
+                "id": "legacy_plugin",
+                "name": "Legacy Plugin",
+                "version": "0.1.0",
+                "license": "MIT",
+            }
+        )
+
+        model_dict = manifest.to_model_dict()
+
+        self.assertFalse(model_dict["frontend_task_enabled"])
+        self.assertFalse(model_dict["frontend_project_admin_enabled"])
 
     def test_plugin_manifest_write_to_path(self):
         manifest_data = {
@@ -430,6 +449,41 @@ class PluginStaticRoutesTestCase(ApiDBTestCase):
         add_static_routes(manifest, routes)
 
         self.assertEqual(routes, [])
+
+    def test_add_static_routes_with_task_extension_only(self):
+        manifest = PluginManifest(
+            {
+                "id": "task_plugin",
+                "name": "Task Plugin",
+                "version": "0.1.0",
+                "license": "MIT",
+                "frontend_task_enabled": True,
+            }
+        )
+        routes = []
+
+        add_static_routes(manifest, routes)
+
+        self.assertEqual(
+            [route[0] for route in routes],
+            ["/frontend", "/frontend/<path:filename>"],
+        )
+
+    def test_add_static_routes_with_project_admin_only(self):
+        manifest = PluginManifest(
+            {
+                "id": "admin_plugin",
+                "name": "Admin Plugin",
+                "version": "0.1.0",
+                "license": "MIT",
+                "frontend_project_admin_enabled": True,
+            }
+        )
+        routes = []
+
+        add_static_routes(manifest, routes)
+
+        self.assertEqual(len(routes), 2)
 
 
 class PluginAlembicConfigTestCase(ApiDBTestCase):

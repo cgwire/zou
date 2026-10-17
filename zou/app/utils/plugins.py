@@ -98,6 +98,10 @@ class PluginManifest(MutableMapping):
             self.data["frontend_project_enabled"] = False
         if "frontend_studio_enabled" not in self.data:
             self.data["frontend_studio_enabled"] = False
+        if "frontend_task_enabled" not in self.data:
+            self.data["frontend_task_enabled"] = False
+        if "frontend_project_admin_enabled" not in self.data:
+            self.data["frontend_project_admin_enabled"] = False
 
     def to_model_dict(self):
         return {
@@ -114,6 +118,12 @@ class PluginManifest(MutableMapping):
             ),
             "frontend_studio_enabled": self.data.get(
                 "frontend_studio_enabled", False
+            ),
+            "frontend_task_enabled": self.data.get(
+                "frontend_task_enabled", False
+            ),
+            "frontend_project_admin_enabled": self.data.get(
+                "frontend_project_admin_enabled", False
             ),
             "icon": self.data.get("icon", ""),
         }
@@ -501,6 +511,8 @@ def add_static_routes(manifest, routes):
     if (
         manifest["frontend_project_enabled"]
         or manifest["frontend_studio_enabled"]
+        or manifest["frontend_task_enabled"]
+        or manifest["frontend_project_admin_enabled"]
     ):
         routes.append(("/frontend", PluginIndexStaticResource))
         routes.append(("/frontend/<path:filename>", PluginStaticResource))

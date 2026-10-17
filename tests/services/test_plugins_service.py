@@ -81,6 +81,19 @@ class PluginsServiceTestCase(ApiDBTestCase):
         self.assertTrue(installed_path.exists())
         self.assertTrue((installed_path / "manifest.toml").exists())
 
+    def test_install_plugin_persists_task_and_project_admin_frontends(self):
+        plugin_path = self._create_test_plugin("task_plugin", "0.1.0")
+        manifest = PluginManifest.from_file(plugin_path / "manifest.toml")
+        manifest["frontend_task_enabled"] = True
+        manifest["frontend_project_admin_enabled"] = True
+        manifest.write_to_path(plugin_path)
+
+        plugins_service.install_plugin(str(plugin_path))
+
+        plugin = Plugin.query.filter_by(plugin_id="task_plugin").one()
+        self.assertTrue(plugin.present()["frontend_task_enabled"])
+        self.assertTrue(plugin.present()["frontend_project_admin_enabled"])
+
     def test_install_plugin_keeps_existing_loggers_enabled(self):
         from zou.app import app
 
