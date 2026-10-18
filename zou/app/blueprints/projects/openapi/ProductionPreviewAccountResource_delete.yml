@@ -15,5 +15,3 @@ parameters:
 responses:
   204:
     description: Preview account deleted
-  404:
-    description: The production has no preview account

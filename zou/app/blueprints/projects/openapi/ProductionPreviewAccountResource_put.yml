@@ -31,20 +31,20 @@ responses:
       application/json:
         schema:
           type: object
-              properties:
-                id:
-                  type: string
-                  format: uuid
-                email:
-                  type: string
-                  example: preview-0a1b2c3d4e5f@preview.kitsu.invalid
-                full_name:
-                  type: string
-                  example: Preview Cosmos Landromat
-                preview_open_until:
-                  type: string
-                  format: date-time
-                  nullable: true
-                  description: End of the access window, null when closed
+          properties:
+            id:
+              type: string
+              format: uuid
+            email:
+              type: string
+              example: preview-0a1b2c3d4e5f@preview.kitsu.invalid
+            full_name:
+              type: string
+              example: Preview Cosmos Landromat
+            preview_open_until:
+              type: string
+              format: date-time
+              nullable: true
+              description: End of the access window, null when closed
   404:
     description: The production has no preview account

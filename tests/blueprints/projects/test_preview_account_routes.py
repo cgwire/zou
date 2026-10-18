@@ -71,13 +71,44 @@ class PreviewAccountRoutesTestCase(ApiDBTestCase):
         self.assertTrue(self.get("config")["preview_accounts_enabled"])
 
     def test_parity_with_real_client(self):
+        from zou.app.models.metadata_descriptor import MetadataDescriptor
+        from zou.app.services import comments_service
+
         self.generate_fixture_asset_type()
         self.generate_fixture_asset()
         self.generate_fixture_task()
-        self.generate_fixture_comment()
-        self.generate_fixture_metadata_descriptor()
-        self.generate_fixture_playlist("Client playlist", for_client=True)
+        self.generate_fixture_task_status()
         project_id = str(self.project.id)
+        visible_playlist = self.generate_fixture_playlist(
+            "Client playlist", for_client=True
+        )
+        hidden_playlist = self.generate_fixture_playlist(
+            "Internal playlist", for_client=False
+        )
+        descriptors = {}
+        for name, for_client in (("visible", True), ("hidden", False)):
+            descriptors[name] = str(
+                MetadataDescriptor.create(
+                    project_id=self.project.id,
+                    name=name,
+                    data_type="string",
+                    field_name=name,
+                    entity_type="Asset",
+                    for_client=for_client,
+                ).id
+            )
+        comments = {}
+        for name, for_client in (("visible", True), ("hidden", False)):
+            comments[name] = comments_service.create_comment(
+                self.user_manager["id"],
+                str(self.task.id),
+                str(self.task_status.id),
+                name,
+                [],
+                {},
+                "",
+                for_client=for_client,
+            )["id"]
         service = preview_accounts_service
         account, password = service.create_or_reset_preview_account(project_id)
         service.set_preview_account_open(project_id, True)
@@ -87,14 +118,23 @@ class PreviewAccountRoutesTestCase(ApiDBTestCase):
             f"data/projects/{project_id}/metadata-descriptors",
             f"data/tasks/{self.task.id}/comments",
         ]
+        hidden = {
+            paths[1]: str(hidden_playlist["id"]),
+            paths[2]: descriptors["hidden"],
+            paths[3]: comments["hidden"],
+        }
 
         def ids(path):
             return sorted(entry["id"] for entry in self.get(path))
 
         self.log_in_client()
         expected = {path: ids(path) for path in paths}
-        self.assertTrue(expected[paths[0]] and expected[paths[1]])
         self.log_out()
+        for path in paths:
+            self.assertTrue(expected[path], path)
+        self.assertIn(str(visible_playlist["id"]), expected[paths[1]])
+        self.assertIn(descriptors["visible"], expected[paths[2]])
+        self.assertIn(comments["visible"], expected[paths[3]])
         tokens = self.post(
             "auth/login",
             {"email": account["email"], "password": password},
@@ -102,4 +142,6 @@ class PreviewAccountRoutesTestCase(ApiDBTestCase):
         )
         self.base_headers["Authorization"] = f"Bearer {tokens['access_token']}"
         for path in paths:
-            self.assertEqual(ids(path), expected[path], path)
+            preview_ids = ids(path)
+            self.assertEqual(preview_ids, expected[path], path)
+            self.assertNotIn(hidden.get(path), preview_ids, path)
