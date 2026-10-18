@@ -73,11 +73,17 @@ class EventStreamAuthTestCase(unittest.TestCase):
     def test_connect_reads_the_auth_payload(self):
         node = function_node("connected")
         self.assertEqual([arg.arg for arg in node.args.args], ["auth"])
-        self.assertIn("identity_from_socket_auth", called_names(node))
+        self.assertIn("socket_token", called_names(node))
+        self.assertIn("load_socket_token", called_names(node))
 
     def test_connect_keeps_the_identity_of_the_connection(self):
         node = function_node("connected")
         self.assertIn("_set_connection_identity", called_names(node))
+
+    def test_a_refused_connection_tells_why(self):
+        node = function_node("connected")
+        self.assertIn("auth_error_message", called_names(node))
+        self.assertIn("ConnectionRefusedError", called_names(node))
 
     def test_the_handlers_use_the_identity_of_the_connection(self):
         handlers = socket_handlers()

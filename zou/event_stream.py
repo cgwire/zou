@@ -30,8 +30,9 @@ from flask_socketio import SocketIO, disconnect, join_room, leave_room, emit
 from zou.app import config, create_app
 from zou.app.utils.redis import get_redis_url
 from zou.app.utils.socket_auth import (
-    identity_from_socket_auth,
+    auth_error_message,
     load_socket_token,
+    socket_token,
 )
 
 app = create_app()
@@ -214,15 +215,19 @@ def _connection_identity():
 def authenticated(handler):
     """
     Run given handler only for an authenticated connection, as
-    @jwt_required() did for the handshake request only.
+    @jwt_required() did for the handshake request only. A connection whose
+    token is not valid any more is closed: its reconnection then gets the
+    reason in its connect_error.
     """
 
     @functools.wraps(handler)
     def wrapper(*args, **kwargs):
         try:
             _authenticate()
-        except Exception:
-            app.logger.info("Websocket event refused (no valid token)")
+        except Exception as error:
+            message = auth_error_message(error)
+            app.logger.info(f"Websocket event refused: {message}")
+            disconnect()
             return None
         return handler(*args, **kwargs)
 
@@ -231,14 +236,24 @@ def authenticated(handler):
 
 @socketio.on("connect", namespace="/events")
 def connected(auth):
+    """
+    Accept the handshake request (cookie or header), else the access token
+    of the auth payload. A refused connection gets the reason in its
+    connect_error.
+    """
     try:
-        verify_jwt_in_request()
-    except Exception:
-        if identity_from_socket_auth(auth) is None:
-            app.logger.info("New websocket client failed to connect")
-            disconnect()
-            return False
-        _set_connection_identity(auth["token"])
+        try:
+            verify_jwt_in_request()
+        except Exception as request_error:
+            token = socket_token(auth)
+            if token is None:
+                raise request_error
+            load_socket_token(token)
+            _set_connection_identity(token)
+    except Exception as error:
+        message = auth_error_message(error)
+        app.logger.info(f"New websocket client refused: {message}")
+        raise ConnectionRefusedError(message)
     server_stats["nb_connections"] += 1
     app.logger.info("New websocket client connected")
 
