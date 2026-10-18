@@ -486,6 +486,12 @@ def update_team_member_role(project_id, person_id, role):
     inheritance of the person's global role.
     """
     _check_project_role(role)
+    person = Person.get(person_id)
+    # A preview account must show exactly what a client sees.
+    if person is not None and person.preview_project_id is not None:
+        raise WrongParameterException(
+            "A preview account keeps its client role"
+        )
     link = ProjectPersonLink.query.filter_by(
         project_id=project_id, person_id=person_id
     ).first()

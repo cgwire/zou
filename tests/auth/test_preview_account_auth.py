@@ -3,6 +3,7 @@ import datetime
 from tests.base import ApiDBTestCase
 
 from zou.app.models.person import Person
+from zou.app.models.project import ProjectPersonLink
 from zou.app.services import (
     auth_service,
     persons_service,
@@ -131,3 +132,14 @@ class PreviewAccountAuthTestCase(ApiDBTestCase):
             f"data/persons/{self.account['id']}", {"role": "manager"}, 403
         )
         self.assertEqual(Person.get(self.account["id"]).role.code, "client")
+
+    def test_admin_cannot_set_preview_project_role(self):
+        self.put(
+            f"data/projects/{self.project.id}/team/{self.account['id']}",
+            {"role": "manager"},
+            400,
+        )
+        link = ProjectPersonLink.query.filter_by(
+            project_id=self.project.id, person_id=self.account["id"]
+        ).first()
+        self.assertIsNone(link.role)
