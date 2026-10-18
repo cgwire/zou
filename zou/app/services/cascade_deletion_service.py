@@ -238,6 +238,10 @@ def remove_project(project_id):
     project = base_service.get_instance(
         Project, project_id, ProjectNotFoundException
     )
+    # Local import: the preview service itself uses this module
+    from zou.app.services import preview_accounts_service
+
+    preview_accounts_service.delete_preview_account(project_id)
     project.delete()
     events.emit("project:delete", {"project_id": project.id})
     return project_id

@@ -280,6 +280,7 @@ def notify_clients_playlist_ready(
     query = (
         Person.query.join(ProjectPersonLink)
         .filter(Person.is_bot == False)
+        .filter(Person.preview_project_id.is_(None))
         .filter(func.coalesce(ProjectPersonLink.role, Person.role) == "client")
         .filter(ProjectPersonLink.project_id == project_id)
     )

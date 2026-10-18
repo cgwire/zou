@@ -346,6 +346,14 @@ class EntryAlreadyExistsException(Exception):
     pass
 
 
+class PreviewAccountsUnavailableException(BadRequest):
+    pass
+
+
+class PreviewAccountNotFoundException(NotFound):
+    pass
+
+
 class WrongParameterException(Exception):
     def __init__(self, message, dict=None):
         super().__init__(message)
