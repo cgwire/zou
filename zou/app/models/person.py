@@ -255,6 +255,15 @@ class Person(db.Model, BaseMixin, SerializerMixin):
 
     is_bot = db.Column(db.Boolean(), default=False, nullable=False)
     is_guest = db.Column(db.Boolean(), default=False, nullable=False)
+    preview_project_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("project.id"),
+        nullable=True,
+        unique=True,
+        index=True,
+    )
+    preview_opened_at = db.Column(db.DateTime, nullable=True)
+    preview_open_until = db.Column(db.DateTime, nullable=True)
     jti = db.Column(db.String(60), nullable=True, unique=True)
     expiration_date = db.Column(db.Date(), nullable=True)
     is_generated_from_ldap = db.Column(db.Boolean(), default=False)
