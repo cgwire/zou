@@ -395,6 +395,10 @@ class PersonResource(BaseModelResource, ArgsMixin):
             return instance.present_minimal(relations=relations)
 
     def pre_update(self, instance_dict, data):
+        # Preview accounts are managed by their own routes only, a role or
+        # email change would turn one into a regular account.
+        if instance_dict.get("preview_project_id") is not None:
+            raise permissions.PermissionDenied
         if (
             not instance_dict.get("active", False)
             and data.get("active", False)

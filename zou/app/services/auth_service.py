@@ -45,6 +45,7 @@ from zou.app.models.person import SENSITIVE_FIELDS, Person
 from zou.app.services import (
     organisation_service,
     persons_service,
+    preview_accounts_service,
     templates_service,
 )
 from zou.app.stores import auth_tokens_store
@@ -144,6 +145,13 @@ def check_auth(
     # Past the password, and before the second factor: a deactivated
     # account does not hand out the list of its enabled 2FA methods.
     if not person.get("active", False):
+        raise InactiveUserException()
+    if person.get("preview_project_id") is not None and not (
+        preview_accounts_service.is_available()
+        and preview_accounts_service.is_preview_session_valid(
+            persons_service.get_person_raw(person["id"]), None
+        )
+    ):
         raise InactiveUserException()
 
     if not no_otp and person_two_factor_authentication_enabled(person):
@@ -368,6 +376,8 @@ def is_user_exempt_from_2fa(person, app):
     """
     Check if user is exempt from mandatory 2FA requirement.
     """
+    if person.get("preview_project_id") is not None:
+        return True
     exempt_users = app.config.get("TWO_FA_EXEMPT_USERS", [])
     return person.get("email", "") in exempt_users
 
