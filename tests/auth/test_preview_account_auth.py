@@ -143,3 +143,61 @@ class PreviewAccountAuthTestCase(ApiDBTestCase):
             project_id=self.project.id, person_id=self.account["id"]
         ).first()
         self.assertIsNone(link.role)
+
+    def test_old_refresh_token_refused_after_reopen(self):
+        self.open_window()
+        tokens = self.preview_login()
+        person = Person.get(self.account["id"])
+        person.update(
+            {
+                "preview_opened_at": date_helpers.get_utc_now_datetime()
+                + datetime.timedelta(seconds=5)
+            }
+        )
+        persons_service.clear_person_cache()
+        self.base_headers = {
+            "Authorization": f"Bearer {tokens['refresh_token']}"
+        }
+        self.get("auth/refresh-token", 401)
+
+    def test_deleted_account_refused(self):
+        self.open_window()
+        self.preview_login()
+        preview_headers = self.base_headers
+        self.read_project()
+        self.base_headers = self.admin_headers
+        self.delete(f"data/projects/{self.project.id}/preview-account")
+        self.base_headers = preview_headers
+        self.read_project(401)
+
+    def test_crud_cannot_set_preview_fields(self):
+        now = date_helpers.get_utc_now_datetime()
+        preview_fields = {
+            "preview_project_id": str(self.project.id),
+            "preview_opened_at": now.isoformat(),
+            "preview_open_until": (now + datetime.timedelta(days=1))
+            .replace(microsecond=0)
+            .isoformat(),
+        }
+
+        def assert_not_preview(person_id):
+            person = Person.get(person_id)
+            self.assertIsNone(person.preview_project_id)
+            self.assertIsNone(person.preview_opened_at)
+            self.assertIsNone(person.preview_open_until)
+
+        self.put(f"data/persons/{self.user_manager['id']}", preview_fields)
+        assert_not_preview(self.user_manager["id"])
+        created = self.post(
+            "data/persons",
+            {
+                "first_name": "New",
+                "last_name": "Person",
+                "email": "new.person@example.com",
+                **preview_fields,
+            },
+        )
+        assert_not_preview(created["id"])
+        self.log_in(self.user_manager["email"])
+        self.put(f"data/persons/{self.user_manager['id']}", preview_fields)
+        assert_not_preview(self.user_manager["id"])

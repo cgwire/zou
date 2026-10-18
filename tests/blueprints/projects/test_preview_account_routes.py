@@ -1,5 +1,7 @@
 from tests.base import ApiDBTestCase
 
+from zou.app.models.event import ApiEvent
+from zou.app.models.person import Person
 from zou.app.services import preview_accounts_service, projects_service
 
 
@@ -145,3 +147,14 @@ class PreviewAccountRoutesTestCase(ApiDBTestCase):
             preview_ids = ids(path)
             self.assertEqual(preview_ids, expected[path], path)
             self.assertNotIn(hidden.get(path), preview_ids, path)
+
+    def test_delete_project_without_force(self):
+        self.generate_fixture_project_closed()
+        account, _ = preview_accounts_service.create_or_reset_preview_account(
+            self.project_closed.id
+        )
+        # The team change event pins any project to a forced delete, which
+        # is outside what this test checks.
+        ApiEvent.delete_all_by(project_id=self.project_closed.id)
+        self.delete(f"data/projects/{self.project_closed.id}")
+        self.assertIsNone(Person.get(account["id"]))

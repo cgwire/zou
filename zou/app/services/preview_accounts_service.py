@@ -121,9 +121,7 @@ def delete_preview_account(project_id):
     """
     Remove the preview account of given project, if any.
     """
-    person = get_preview_account_raw(project_id)
-    if person is not None:
-        cascade_deletion_service.remove_person(str(person.id), force=True)
+    cascade_deletion_service.remove_preview_account(project_id)
 
 
 def _to_epoch(value):

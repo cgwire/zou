@@ -55,6 +55,14 @@ from zou.app.services import (
 from zou.app.utils import auth, date_helpers, permissions
 from zou.app.utils.fields import serialize_value
 
+# Set only by preview_accounts_service: through CRUD they would turn a
+# regular account into a seat-free one admins can no longer edit.
+PREVIEW_FIELDS = [
+    "preview_project_id",
+    "preview_opened_at",
+    "preview_open_until",
+]
+
 
 def check_country(data):
     """
@@ -101,9 +109,15 @@ def check_display_date_format(data):
 class PersonsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, Person)
+        self.protected_fields += PREVIEW_FIELDS
 
     def get_relations_eager_load(self):
         return [Person.departments]
+
+    def add_project_permission_filter(self, query):
+        # Applied before pagination: all_entries gets an already limited
+        # query on paginated calls.
+        return query.filter(Person.preview_project_id.is_(None))
 
     @jwt_required()
     @swag_from("openapi/PersonsResource_get.yml")
@@ -128,8 +142,6 @@ class PersonsResource(BaseModelsResource):
         if relations:
             for relationship in self.get_relations_eager_load():
                 query = query.options(orm.selectinload(relationship))
-
-        query = query.filter(Person.preview_project_id.is_(None))
 
         if permissions.has_admin_permissions():
             if self.get_bool_parameter("with_pass_hash"):
@@ -267,7 +279,12 @@ class PersonsResource(BaseModelsResource):
 class PersonResource(BaseModelResource, ArgsMixin):
     def __init__(self):
         BaseModelResource.__init__(self, Person)
-        self.protected_fields += ["password", "jti", *TWO_FACTOR_FIELDS]
+        self.protected_fields += [
+            "password",
+            "jti",
+            *TWO_FACTOR_FIELDS,
+            *PREVIEW_FIELDS,
+        ]
 
     def check_read_permissions(self, instance):
         if (

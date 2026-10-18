@@ -898,6 +898,8 @@ def assign_task(task_id, person_id, assigner_id=None):
     task = get_task_raw(task_id)
     project_id = str(task.project_id)
     person = persons_service.get_person_raw(person_id)
+    if person.preview_project_id is not None:
+        raise WrongParameterException("A preview account can't be assigned")
     if person not in task.assignees:
         task.assignees.append(person)
     if assigner_id is not None:

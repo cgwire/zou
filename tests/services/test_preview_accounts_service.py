@@ -11,10 +11,12 @@ from zou.app.exceptions import (
 from zou.app.models.person import Person
 from zou.app.services import (
     cascade_deletion_service,
+    comments_service,
     notifications_service,
     persons_service,
     preview_accounts_service,
     projects_service,
+    tasks_service,
 )
 from zou.app.utils import auth, date_helpers
 
@@ -195,3 +197,22 @@ class PreviewAccountsServiceTestCase(ApiDBTestCase):
         self.log_in(client.email)
         ids = [p["id"] for p in self.get("data/persons")]
         self.assertNotIn(account["id"], ids)
+
+    def test_preview_not_mentionable(self):
+        account, _ = preview_accounts_service.create_or_reset_preview_account(
+            self.project.id
+        )
+        mentions = comments_service.get_comment_mentions(
+            self.project.id, f"Hi @{account['full_name']}"
+        )
+        self.assertEqual(mentions, [])
+
+    def test_preview_not_assignable(self):
+        self.generate_base_context()
+        self.generate_fixture_asset()
+        self.generate_fixture_task()
+        account, _ = preview_accounts_service.create_or_reset_preview_account(
+            self.project.id
+        )
+        with self.assertRaises(WrongParameterException):
+            tasks_service.assign_task(self.task.id, account["id"])
