@@ -9,6 +9,7 @@ from zou.app.exceptions import (
     WrongParameterException,
 )
 from zou.app.models.person import Person
+from zou.app.models.task import Task
 from zou.app.services import (
     cascade_deletion_service,
     comments_service,
@@ -216,3 +217,44 @@ class PreviewAccountsServiceTestCase(ApiDBTestCase):
         )
         with self.assertRaises(WrongParameterException):
             tasks_service.assign_task(self.task.id, account["id"])
+
+    def test_preview_not_assignable_through_routes(self):
+        self.generate_base_context()
+        self.generate_fixture_asset()
+        self.generate_fixture_task()
+        account, _ = preview_accounts_service.create_or_reset_preview_account(
+            self.project.id
+        )
+        preview_id = account["id"]
+        self.post(
+            "data/tasks",
+            {
+                "name": "Other",
+                "project_id": str(self.project.id),
+                "task_type_id": str(self.task_type.id),
+                "task_status_id": str(self.task_status.id),
+                "entity_id": str(self.asset.id),
+                "assignees": [preview_id],
+            },
+            400,
+        )
+        self.assertEqual(
+            Task.query.filter(Task.assignees.any(id=preview_id)).count(), 0
+        )
+        self.assertEqual(Task.query.count(), 1)
+        self.put(
+            f"data/tasks/{self.task.id}", {"assignees": [preview_id]}, 400
+        )
+        self.put(
+            f"actions/tasks/{self.task.id}/assign",
+            {"person_id": preview_id},
+            400,
+        )
+        self.put(
+            f"actions/persons/{preview_id}/assign",
+            {"task_ids": [str(self.task.id)]},
+            400,
+        )
+        self.assertEqual(
+            Task.query.filter(Task.assignees.any(id=preview_id)).count(), 0
+        )

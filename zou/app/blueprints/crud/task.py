@@ -143,6 +143,7 @@ class TasksResource(BaseModelsResource, ArgsMixin):
 
             if is_assignees:
                 assignees = data["assignees"]
+                tasks_service.check_no_preview_assignee(assignees)
                 persons = Person.query.filter(Person.id.in_(assignees)).all()
                 del data["assignees"]
 
@@ -204,6 +205,7 @@ class TaskResource(BaseModelResource, ArgsMixin):
 
     def pre_update(self, instance_dict, data):
         if "assignees" in data:
+            tasks_service.check_no_preview_assignee(data["assignees"])
             self._previous_assignees = {
                 str(person.id) for person in self.instance.assignees
             }
