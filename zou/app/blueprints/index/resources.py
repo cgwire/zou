@@ -13,6 +13,7 @@ from zou.app import app, config
 from zou.app.indexer import indexing
 from zou.app.services import (
     organisation_service,
+    preview_accounts_service,
     projects_service,
     stats_service,
 )
@@ -268,6 +269,7 @@ class ConfigResource(MethodView):
             "enforce_2fa": config.ENFORCE_2FA,
             "movie_highdef_bitrate": config.MOVIE_HIGHDEF_BITRATE,
             "movie_lowdef_bitrate": config.MOVIE_LOWDEF_BITRATE,
+            "preview_accounts_enabled": preview_accounts_service.is_available(),
         }
         if config.SENTRY_KITSU_ENABLED:
             conf["sentry"] = {

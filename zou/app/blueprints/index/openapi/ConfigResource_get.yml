@@ -43,6 +43,10 @@ responses:
               type: integer
               description: Default bitrate of the low definition movies in Mbit/s
               example: 6
+            preview_accounts_enabled:
+              type: boolean
+              description: Whether projects can have a preview account, only true with the local authentication strategy
+              example: true
             sentry:
               type: object
               properties:
