@@ -2,8 +2,8 @@ from sqlalchemy.exc import IntegrityError
 
 from tests.base import ApiDBTestCase
 
-from zou.app.models.person import Person
 from zou.app import db
+from zou.app.models.person import Person
 
 
 class PersonPreviewTestCase(ApiDBTestCase):
