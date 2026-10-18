@@ -129,6 +129,8 @@ class PersonsResource(BaseModelsResource):
             for relationship in self.get_relations_eager_load():
                 query = query.options(orm.selectinload(relationship))
 
+        query = query.filter(Person.preview_project_id.is_(None))
+
         if permissions.has_admin_permissions():
             if self.get_bool_parameter("with_pass_hash"):
                 # Only the password hash is re-added (needed for Kitsu ->

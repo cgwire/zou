@@ -142,7 +142,7 @@ def is_preview_session_valid(person, issued_at):
     if (
         issued_at is not None
         and person.preview_opened_at is not None
-        and issued_at < _to_epoch(person.preview_opened_at)
+        and issued_at < int(_to_epoch(person.preview_opened_at))
     ):
         return False
     return True

@@ -105,6 +105,17 @@ class PreviewAccountsServiceTestCase(ApiDBTestCase):
         ).timestamp()
         self.assertTrue(service.is_preview_session_valid(person, opened))
         self.assertFalse(service.is_preview_session_valid(person, opened - 5))
+        # JWT iat has whole-second precision
+        person.preview_opened_at = person.preview_opened_at.replace(
+            microsecond=700000
+        )
+        opened = person.preview_opened_at.replace(
+            tzinfo=datetime.timezone.utc
+        ).timestamp()
+        self.assertTrue(service.is_preview_session_valid(person, int(opened)))
+        self.assertFalse(
+            service.is_preview_session_valid(person, int(opened) - 1)
+        )
         person.preview_open_until = (
             date_helpers.get_utc_now_datetime() - datetime.timedelta(seconds=1)
         )
@@ -165,3 +176,22 @@ class PreviewAccountsServiceTestCase(ApiDBTestCase):
         self.assertEqual(
             Notification.query.filter_by(person_id=account["id"]).count(), 0
         )
+
+    def test_preview_absent_from_persons_list(self):
+        account, _ = preview_accounts_service.create_or_reset_preview_account(
+            self.project.id
+        )
+        ids = [p["id"] for p in self.get("data/persons")]
+        self.assertNotIn(account["id"], ids)
+        client = self.generate_fixture_person(
+            first_name="Cli",
+            last_name="Ent",
+            desktop_login="cli.ent",
+            email="cli.ent@example.com",
+        )
+        client.update({"role": "client"})
+        projects_service.add_team_member(self.project.id, client.id)
+        persons_service.clear_person_cache()
+        self.log_in(client.email)
+        ids = [p["id"] for p in self.get("data/persons")]
+        self.assertNotIn(account["id"], ids)
