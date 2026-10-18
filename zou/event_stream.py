@@ -17,7 +17,9 @@ from gevent import monkey
 
 monkey.patch_all()
 
-from flask import jsonify
+import functools
+
+from flask import jsonify, request
 from flask_jwt_extended import (
     get_jwt_identity,
     jwt_required,
@@ -27,12 +29,20 @@ from flask_socketio import SocketIO, disconnect, emit, join_room, leave_room
 
 from zou.app import config, create_app
 from zou.app.utils.redis import get_redis_url
+from zou.app.utils.socket_auth import (
+    auth_error_message,
+    load_socket_token,
+    socket_token,
+)
 
 app = create_app()
 
 from zou.app.services.permissions_service import check_playlist_room_access
 
 server_stats = {"nb_connections": 0}
+# The access token of the connections that sent it in the socket.io auth
+# payload, by socket id. The other connections use the handshake request.
+socket_tokens = {}
 rooms_data = {}
 user_rooms = {}
 
@@ -182,23 +192,77 @@ def stats():
     return jsonify(server_stats)
 
 
-@socketio.on("connect", namespace="/events")
-def connected(_):
-    try:
+def _set_connection_identity(token):
+    socket_tokens[request.sid] = token
+
+
+def _authenticate():
+    """
+    Load the JWT of the connection for the current event: the token of the
+    auth payload, or the cookie or the header of the handshake request.
+    """
+    token = socket_tokens.get(request.sid)
+    if token is None:
         verify_jwt_in_request()
-        server_stats["nb_connections"] += 1
-        app.logger.info("New websocket client connected")
-    except Exception:
-        app.logger.info("New websocket client failed to connect")
-        disconnect()
-        return False
+    else:
+        load_socket_token(token)
+
+
+def _connection_identity():
+    return get_jwt_identity()
+
+
+def authenticated(handler):
+    """
+    Run given handler only for an authenticated connection, as
+    @jwt_required() did for the handshake request only. A connection whose
+    token is not valid any more is closed: its reconnection then gets the
+    reason in its connect_error.
+    """
+
+    @functools.wraps(handler)
+    def wrapper(*args, **kwargs):
+        try:
+            _authenticate()
+        except Exception as error:
+            message = auth_error_message(error)
+            app.logger.info(f"Websocket event refused: {message}")
+            disconnect()
+            return None
+        return handler(*args, **kwargs)
+
+    return wrapper
+
+
+@socketio.on("connect", namespace="/events")
+def connected(auth):
+    """
+    Accept the handshake request (cookie or header), else the access token
+    of the auth payload. A refused connection gets the reason in its
+    connect_error.
+    """
+    try:
+        try:
+            verify_jwt_in_request()
+        except Exception as request_error:
+            token = socket_token(auth)
+            if token is None:
+                raise request_error
+            load_socket_token(token)
+            _set_connection_identity(token)
+    except Exception as error:
+        message = auth_error_message(error)
+        app.logger.info(f"New websocket client refused: {message}")
+        raise ConnectionRefusedError(message)
+    server_stats["nb_connections"] += 1
+    app.logger.info("New websocket client connected")
 
 
 @socketio.on("disconnect", namespace="/events")
 def disconnected(_):
     try:
-        verify_jwt_in_request()
-        user_id = get_jwt_identity()
+        _authenticate()
+        user_id = _connection_identity()
         room_ids = list(user_rooms.get(user_id, set()))
         for room_id in room_ids:
             _leave_room(room_id, user_id)
@@ -206,6 +270,7 @@ def disconnected(_):
         app.logger.info("Websocket client disconnected")
     except Exception:
         app.logger.info("Websocket client disconnected (no valid token)")
+    socket_tokens.pop(request.sid, None)
     server_stats["nb_connections"] -= 1
     if server_stats["nb_connections"] < 0:
         server_stats["nb_connections"] = 0
@@ -226,7 +291,7 @@ def rooms():
 
 
 @socketio.on("preview-room:open-playlist", namespace="/events")
-@jwt_required()
+@authenticated
 def on_open_playlist(data):
     """
     when a person opens the playlist page he immediately enters the
@@ -243,7 +308,7 @@ def on_open_playlist(data):
 
 
 @socketio.on("preview-room:close-playlist", namespace="/events")
-@jwt_required()
+@authenticated
 def on_close_playlist(data):
     """
     when a person closes the playlist page he immediately leaves the
@@ -254,13 +319,13 @@ def on_close_playlist(data):
 
 
 @socketio.on("preview-room:join", namespace="/events")
-@jwt_required()
+@authenticated
 def on_join(data):
     """
     When a person joins the review room, we notify all its members that a
     new person is added to the room.
     """
-    user_id = get_jwt_identity()
+    user_id = _connection_identity()
     room, room_id = _get_room_from_data(data)
     if not _check_room_access(room_id):
         return
@@ -276,15 +341,15 @@ def on_join(data):
 
 
 @socketio.on("preview-room:leave", namespace="/events")
-@jwt_required()
+@authenticated
 def on_leave(data):
-    user_id = get_jwt_identity()
+    user_id = _connection_identity()
     room_id = data.get("playlist_id", "")
     _leave_room(room_id, user_id)
 
 
 @socketio.on("preview-room:room-updated", namespace="/events")
-@jwt_required()
+@authenticated
 def on_room_updated(data, only_newcomer=False):
     room, room_id = _get_room_from_data(data)
     rooms_data[room_id] = _update_room_playing_status(data, room)
@@ -293,42 +358,42 @@ def on_room_updated(data, only_newcomer=False):
 
 
 @socketio.on("preview-room:add-annotation", namespace="/events")
-@jwt_required()
+@authenticated
 def on_add_annotation(data):
     room_id = data.get("playlist_id", "")
     emit("preview-room:add-annotation", data, room=room_id)
 
 
 @socketio.on("preview-room:remove-annotation", namespace="/events")
-@jwt_required()
+@authenticated
 def on_remove_annotation(data):
     room_id = data.get("playlist_id", "")
     emit("preview-room:remove-annotation", data, room=room_id)
 
 
 @socketio.on("preview-room:update-annotation", namespace="/events")
-@jwt_required()
+@authenticated
 def on_update_annotation(data):
     room_id = data.get("playlist_id", "")
     emit("preview-room:update-annotation", data, room=room_id)
 
 
 @socketio.on("preview-room:change-version", namespace="/events")
-@jwt_required()
+@authenticated
 def on_change_version(data):
     room_id = data.get("playlist_id", "")
     emit("preview-room:change-version", data, room=room_id)
 
 
 @socketio.on("preview-room:panzoom-changed", namespace="/events")
-@jwt_required()
+@authenticated
 def on_panzoom_changed(data):
     room_id = data.get("playlist_id", "")
     emit("preview-room:panzoom-changed", data, room=room_id)
 
 
 @socketio.on("preview-room:comparison-panzoom-changed", namespace="/events")
-@jwt_required()
+@authenticated
 def on_comparison_panzoom_changed(data):
     room_id = data.get("playlist_id", "")
     emit("preview-room:comparison-panzoom-changed", data, room=room_id)
