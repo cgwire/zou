@@ -55,6 +55,7 @@ class ProjectTaskTypeSchema(BaseSchema):
     priority: Optional[int] = None
     hd_bitrate_compression: Optional[int] = Field(None, ge=1)
     ld_bitrate_compression: Optional[int] = Field(None, ge=1)
+    is_client_visible: Optional[bool] = None
 
     def bitrates(self):
         """

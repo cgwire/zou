@@ -43,6 +43,9 @@ PRODUCTION_SETTING_FIELDS = [
     "homepage",
     "hd_bitrate_compression",
     "ld_bitrate_compression",
+    "is_client_stats_visible",
+    "is_client_task_list_visible",
+    "is_client_task_panel_visible",
 ]
 
 
@@ -206,13 +209,18 @@ def get_template_task_types(template_id):
             data["priority"] = link.priority
             data["hd_bitrate_compression"] = link.hd_bitrate_compression
             data["ld_bitrate_compression"] = link.ld_bitrate_compression
+            data["is_client_visible"] = link.is_client_visible
         result.append(data)
     result.sort(key=lambda t: (t.get("priority") or 0, t.get("name", "")))
     return result
 
 
 def add_task_type_to_template(
-    template_id, task_type_id, priority=None, bitrates=None
+    template_id,
+    task_type_id,
+    priority=None,
+    bitrates=None,
+    is_client_visible=None,
 ):
     """
     Link a task type to given template, or update its priority and its
@@ -227,6 +235,11 @@ def add_task_type_to_template(
         )
     if priority is not None:
         priority = int(priority)
+    visibility = (
+        {}
+        if is_client_visible is None
+        else {"is_client_visible": is_client_visible}
+    )
     link = ProjectTemplateTaskTypeLink.get_by(
         project_template_id=template_id, task_type_id=task_type_id
     )
@@ -236,9 +249,10 @@ def add_task_type_to_template(
             task_type_id=task_type_id,
             priority=priority,
             **(bitrates or {}),
+            **visibility,
         )
     else:
-        update_data = dict(bitrates or {})
+        update_data = {**(bitrates or {}), **visibility}
         if priority is not None:
             update_data["priority"] = priority
         if update_data:
@@ -622,6 +636,7 @@ def create_template_from_project(project_id, name, description=None):
             priority=link.priority,
             hd_bitrate_compression=link.hd_bitrate_compression,
             ld_bitrate_compression=link.ld_bitrate_compression,
+            is_client_visible=link.is_client_visible,
         )
 
     task_status_links = ProjectTaskStatusLink.get_all_by(project_id=project_id)
@@ -761,6 +776,7 @@ def apply_template_to_project(project_id, template_id, override_settings=None):
                 priority=link.priority,
                 hd_bitrate_compression=link.hd_bitrate_compression,
                 ld_bitrate_compression=link.ld_bitrate_compression,
+                is_client_visible=link.is_client_visible,
             )
 
     for link in ProjectTemplateTaskStatusLink.get_all_by(

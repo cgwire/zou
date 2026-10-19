@@ -488,6 +488,46 @@ class ProjectTemplateServiceTestCase(ApiDBTestCase):
         self.assertEqual(link.hd_bitrate_compression, 20)
         self.assertEqual(link.ld_bitrate_compression, 4)
 
+    def test_template_carries_client_visibility(self):
+        self.project.update(
+            {
+                "is_client_stats_visible": False,
+                "is_client_task_list_visible": False,
+                "is_client_task_panel_visible": False,
+            }
+        )
+        ProjectTaskTypeLink.create(
+            project_id=self.project_id,
+            task_type_id=self.task_type_modeling.id,
+            is_client_visible=False,
+        )
+        template = project_templates_service.create_template_from_project(
+            str(self.project_id), name="Hidden from clients"
+        )
+        self.assertIs(template["is_client_stats_visible"], False)
+        self.assertIs(template["is_client_task_list_visible"], False)
+        self.assertIs(template["is_client_task_panel_visible"], False)
+        template_link = ProjectTemplateTaskTypeLink.get_by(
+            project_template_id=template["id"],
+            task_type_id=self.task_type_modeling.id,
+        )
+        self.assertIs(template_link.is_client_visible, False)
+
+        target = Project.create(
+            name="Target", project_status_id=self.open_status.id
+        )
+        project_templates_service.apply_template_to_project(
+            str(target.id), template["id"]
+        )
+        target = Project.get(target.id)
+        self.assertIs(target.is_client_stats_visible, False)
+        self.assertIs(target.is_client_task_list_visible, False)
+        self.assertIs(target.is_client_task_panel_visible, False)
+        link = ProjectTaskTypeLink.get_by(
+            project_id=target.id, task_type_id=self.task_type_modeling.id
+        )
+        self.assertIs(link.is_client_visible, False)
+
     def test_template_keeps_the_unset_bitrates_of_its_project(self):
         self.project.update(
             {"hd_bitrate_compression": None, "ld_bitrate_compression": None}

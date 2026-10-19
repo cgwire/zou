@@ -287,6 +287,7 @@ class ProductionTaskTypeResource(MethodView, ArgsMixin):
             body.task_type_id,
             body.priority,
             bitrates=body.bitrates(),
+            is_client_visible=body.is_client_visible,
         )
         return project, 201
 

@@ -80,6 +80,7 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
                 "priority": 3,
                 "hd_bitrate_compression": 20,
                 "ld_bitrate_compression": 4,
+                "is_client_visible": True,
             },
         )
         self.assertEqual(project["task_types_priority"][task_type_id], 3)
@@ -130,6 +131,50 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
         self.assertEqual(
             (link.hd_bitrate_compression, link.ld_bitrate_compression),
             (4, None),
+        )
+
+    def _open_project_link(self, task_type_id):
+        project = next(
+            project
+            for project in self.get("/data/projects/open")
+            if project["id"] == self.project_id
+        )
+        return project["task_type_links"][task_type_id]
+
+    def test_set_task_type_client_visibility(self):
+        path = f"/data/projects/{self.project_id}/settings/task-types"
+        task_type_id = str(self.task_type.id)
+        self.post(
+            path,
+            {
+                "task_type_id": task_type_id,
+                "priority": 3,
+                "hd_bitrate_compression": 20,
+            },
+        )
+        self.post(
+            path, {"task_type_id": task_type_id, "is_client_visible": False}
+        )
+        link = self._open_project_link(task_type_id)
+        self.assertIs(link["is_client_visible"], False)
+        self.assertEqual(link["priority"], 3)
+        self.assertEqual(link["hd_bitrate_compression"], 20)
+
+    def test_task_type_setting_without_visibility_keeps_it(self):
+        path = f"/data/projects/{self.project_id}/settings/task-types"
+        task_type_id = str(self.task_type.id)
+        self.post(path, {"task_type_id": task_type_id, "priority": 3})
+        self.assertIs(
+            self._open_project_link(task_type_id)["is_client_visible"], True
+        )
+        self.post(
+            path, {"task_type_id": task_type_id, "is_client_visible": False}
+        )
+        self.post(
+            path, {"task_type_id": task_type_id, "hd_bitrate_compression": 20}
+        )
+        self.assertIs(
+            self._open_project_link(task_type_id)["is_client_visible"], False
         )
 
     def test_delete_project_task_type(self):

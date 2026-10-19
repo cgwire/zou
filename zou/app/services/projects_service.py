@@ -163,6 +163,7 @@ def _fetch_task_type_links_by_project(project_ids):
             "priority": link.priority,
             "hd_bitrate_compression": link.hd_bitrate_compression,
             "ld_bitrate_compression": link.ld_bitrate_compression,
+            "is_client_visible": link.is_client_visible,
         }
     return task_types_by_project
 
@@ -571,10 +572,12 @@ def add_task_type_setting(
     task_type_id,
     priority=None,
     bitrates=None,
+    is_client_visible=None,
 ):
     """
     Add a task type listed in database to the the project task types. An
-    existing link keeps its priority and gets the bitrates when given.
+    existing link keeps its priority and gets the bitrates and the client
+    visibility when given.
     """
     project_id = str(project_id)
     task_type_id = str(task_type_id)
@@ -589,15 +592,21 @@ def add_task_type_setting(
     link = ProjectTaskTypeLink.get_by(
         task_type_id=task_type_id, project_id=project_id
     )
+    visibility = (
+        {}
+        if is_client_visible is None
+        else {"is_client_visible": is_client_visible}
+    )
     if not link:
         ProjectTaskTypeLink.create(
             task_type_id=task_type_id,
             project_id=project_id,
             priority=priority,
             **(bitrates or {}),
+            **visibility,
         )
-    elif bitrates is not None:
-        link.update(bitrates)
+    elif bitrates is not None or visibility:
+        link.update({**(bitrates or {}), **visibility})
     return _save_project(project)
 
 
