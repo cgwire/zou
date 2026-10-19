@@ -1,9 +1,10 @@
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
-from sqlalchemy_utils import UUIDType
+from sqlalchemy_utils import ChoiceType, UUIDType
 
 from zou.app import db
 from zou.app.models.base import BaseMixin
+from zou.app.models.preview_file import VALIDATION_STATUSES
 from zou.app.models.serializer import SerializerMixin
 
 
@@ -23,6 +24,9 @@ class WorkingFile(db.Model, BaseMixin, SerializerMixin):
     checksum = db.Column(db.Integer())
     path = db.Column(db.String(400))
     data = db.Column(JSONB)
+    validation_status = db.Column(
+        ChoiceType(VALIDATION_STATUSES), default="neutral", nullable=False
+    )
 
     task_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("task.id"), index=True
