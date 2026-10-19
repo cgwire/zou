@@ -1,6 +1,6 @@
 Get production task type schedule items
 ---
-description: Retrieve task type schedule items for given production.
+description: Retrieve the schedule items of the task types with tasks in given production. When the production has task type settings, the other task types are left out.
 tags:
   - Projects
 parameters:
@@ -14,7 +14,7 @@ parameters:
     example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
   200:
-    description: All task types schedule items of given production
+    description: Task type schedule items of given production
     content:
       application/json:
         schema:

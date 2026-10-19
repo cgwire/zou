@@ -9,7 +9,6 @@ from zou.app.models.status_automation import StatusAutomation
 from zou.app.services import (
     permissions_service,
     status_automations_service,
-    user_service,
 )
 
 
