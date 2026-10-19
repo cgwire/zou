@@ -21,6 +21,7 @@ from zou.app.blueprints.projects.resources import (
     ProductionMetadataDescriptorsResource,
     ProductionMilestonesResource,
     ProductionMonthTimeSpentsResource,
+    ProductionPreviewAccountResource,
     ProductionPreviewBackgroundFileRemoveResource,
     ProductionPreviewBackgroundFileResource,
     ProductionScheduleItemsResource,
@@ -61,6 +62,10 @@ routes = [
     (
         "/data/projects/<project_id>/team/<person_id>",
         ProductionTeamMemberResource,
+    ),
+    (
+        "/data/projects/<project_id>/preview-account",
+        ProductionPreviewAccountResource,
     ),
     (
         "/data/projects/<project_id>/settings/asset-types",

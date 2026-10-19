@@ -1,4 +1,5 @@
 from flasgger import swag_from
+from flask import jsonify
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
@@ -12,6 +13,7 @@ from zou.app.blueprints.projects.schemas import (
     MetadataDescriptorOrderSchema,
     MetadataDescriptorSchema,
     MetadataDescriptorUpdateSchema,
+    PreviewAccountOpenSchema,
     ProjectAssetTypeSchema,
     ProjectPreviewBackgroundSchema,
     ProjectSettingsBatchSchema,
@@ -35,6 +37,7 @@ from zou.app.services import (
     metadata_descriptors_service,
     permissions_service,
     persons_service,
+    preview_accounts_service,
     projects_service,
     schedule_service,
     task_types_service,
@@ -164,6 +167,56 @@ class ProductionTeamMemberResource(MethodView):
         return projects_service.update_team_member_role(
             project_id, person_id, body.role
         )
+
+
+class ProductionPreviewAccountResource(MethodView):
+
+    @jwt_required()
+    @swag_from("openapi/ProductionPreviewAccountResource_get.yml")
+    def get(self, project_id):
+        """
+        Get the preview account of a production
+        """
+        permissions_service.check_manager_project_access(project_id)
+        return jsonify(
+            preview_accounts_service.get_preview_account(project_id)
+        )
+
+    @jwt_required()
+    @swag_from("openapi/ProductionPreviewAccountResource_post.yml")
+    def post(self, project_id):
+        """
+        Create the preview account of a production or reset its password
+        """
+        permissions_service.check_manager_project_access(project_id)
+        account, password = (
+            preview_accounts_service.create_or_reset_preview_account(
+                project_id
+            )
+        )
+        return {**account, "password": password}, 201
+
+    @jwt_required()
+    @swag_from("openapi/ProductionPreviewAccountResource_put.yml")
+    def put(self, project_id):
+        """
+        Open or close the access window of the preview account
+        """
+        body = validation.validate_request_body(PreviewAccountOpenSchema)
+        permissions_service.check_manager_project_access(project_id)
+        return preview_accounts_service.set_preview_account_open(
+            project_id, body.is_open
+        )
+
+    @jwt_required()
+    @swag_from("openapi/ProductionPreviewAccountResource_delete.yml")
+    def delete(self, project_id):
+        """
+        Delete the preview account of a production
+        """
+        permissions_service.check_manager_project_access(project_id)
+        preview_accounts_service.delete_preview_account(project_id)
+        return "", 204
 
 
 class ProductionAssetTypeResource(MethodView, ArgsMixin):

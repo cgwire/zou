@@ -21,6 +21,7 @@ import functools
 
 from flask import jsonify, request
 from flask_jwt_extended import (
+    get_current_user,
     get_jwt_identity,
     jwt_required,
     verify_jwt_in_request,
@@ -348,9 +349,19 @@ def on_leave(data):
     _leave_room(room_id, user_id)
 
 
+def _is_preview_user():
+    """
+    Preview accounts watch a review room, they do not drive it. The HTTP
+    read-only rule does not apply here: request.method is the handshake GET.
+    """
+    return get_current_user().preview_project_id is not None
+
+
 @socketio.on("preview-room:room-updated", namespace="/events")
 @authenticated
 def on_room_updated(data, only_newcomer=False):
+    if _is_preview_user():
+        return
     room, room_id = _get_room_from_data(data)
     rooms_data[room_id] = _update_room_playing_status(data, room)
     event_data = {"only_newcomer": only_newcomer, **rooms_data[room_id]}
@@ -360,6 +371,8 @@ def on_room_updated(data, only_newcomer=False):
 @socketio.on("preview-room:add-annotation", namespace="/events")
 @authenticated
 def on_add_annotation(data):
+    if _is_preview_user():
+        return
     room_id = data.get("playlist_id", "")
     emit("preview-room:add-annotation", data, room=room_id)
 
@@ -367,6 +380,8 @@ def on_add_annotation(data):
 @socketio.on("preview-room:remove-annotation", namespace="/events")
 @authenticated
 def on_remove_annotation(data):
+    if _is_preview_user():
+        return
     room_id = data.get("playlist_id", "")
     emit("preview-room:remove-annotation", data, room=room_id)
 
@@ -374,6 +389,8 @@ def on_remove_annotation(data):
 @socketio.on("preview-room:update-annotation", namespace="/events")
 @authenticated
 def on_update_annotation(data):
+    if _is_preview_user():
+        return
     room_id = data.get("playlist_id", "")
     emit("preview-room:update-annotation", data, room=room_id)
 
@@ -381,6 +398,8 @@ def on_update_annotation(data):
 @socketio.on("preview-room:change-version", namespace="/events")
 @authenticated
 def on_change_version(data):
+    if _is_preview_user():
+        return
     room_id = data.get("playlist_id", "")
     emit("preview-room:change-version", data, room=room_id)
 
@@ -388,6 +407,8 @@ def on_change_version(data):
 @socketio.on("preview-room:panzoom-changed", namespace="/events")
 @authenticated
 def on_panzoom_changed(data):
+    if _is_preview_user():
+        return
     room_id = data.get("playlist_id", "")
     emit("preview-room:panzoom-changed", data, room=room_id)
 
@@ -395,6 +416,8 @@ def on_panzoom_changed(data):
 @socketio.on("preview-room:comparison-panzoom-changed", namespace="/events")
 @authenticated
 def on_comparison_panzoom_changed(data):
+    if _is_preview_user():
+        return
     room_id = data.get("playlist_id", "")
     emit("preview-room:comparison-panzoom-changed", data, room=room_id)
 

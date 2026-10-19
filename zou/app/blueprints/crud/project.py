@@ -298,6 +298,7 @@ class ProjectResource(BaseModelResource, ArgsMixin):
             if force:
                 cascade_deletion_service.remove_project(instance_id)
             else:
+                cascade_deletion_service.remove_preview_account(instance_id)
                 project.delete()
                 events.emit("project:delete", {"project_id": project.id})
             self.post_delete(project_dict)

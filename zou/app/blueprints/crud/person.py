@@ -55,6 +55,14 @@ from zou.app.services import (
 from zou.app.utils import auth, date_helpers, permissions
 from zou.app.utils.fields import serialize_value
 
+# Set only by preview_accounts_service: through CRUD they would turn a
+# regular account into a seat-free one admins can no longer edit.
+PREVIEW_FIELDS = [
+    "preview_project_id",
+    "preview_opened_at",
+    "preview_open_until",
+]
+
 
 def check_country(data):
     """
@@ -101,9 +109,15 @@ def check_display_date_format(data):
 class PersonsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, Person)
+        self.protected_fields += PREVIEW_FIELDS
 
     def get_relations_eager_load(self):
         return [Person.departments]
+
+    def add_project_permission_filter(self, query):
+        # Applied before pagination: all_entries gets an already limited
+        # query on paginated calls.
+        return query.filter(Person.preview_project_id.is_(None))
 
     @jwt_required()
     @swag_from("openapi/PersonsResource_get.yml")
@@ -265,7 +279,12 @@ class PersonsResource(BaseModelsResource):
 class PersonResource(BaseModelResource, ArgsMixin):
     def __init__(self):
         BaseModelResource.__init__(self, Person)
-        self.protected_fields += ["password", "jti", *TWO_FACTOR_FIELDS]
+        self.protected_fields += [
+            "password",
+            "jti",
+            *TWO_FACTOR_FIELDS,
+            *PREVIEW_FIELDS,
+        ]
 
     def check_read_permissions(self, instance):
         if (
@@ -393,6 +412,10 @@ class PersonResource(BaseModelResource, ArgsMixin):
             return instance.present_minimal(relations=relations)
 
     def pre_update(self, instance_dict, data):
+        # Preview accounts are managed by their own routes only, a role or
+        # email change would turn one into a regular account.
+        if instance_dict.get("preview_project_id") is not None:
+            raise permissions.PermissionDenied
         if (
             not instance_dict.get("active", False)
             and data.get("active", False)

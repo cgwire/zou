@@ -71,3 +71,65 @@ class EventStreamRoomAccessTestCase(unittest.TestCase):
                         break
                     self.assertFalse(called_names(statement) & ROOM_WRITES)
                 self.assertTrue(checked)
+
+
+def returns_for_preview(statement):
+    """
+    Tell whether given statement is `if _is_preview_user():` followed by a
+    return.
+    """
+    return (
+        isinstance(statement, ast.If)
+        and isinstance(statement.test, ast.Call)
+        and isinstance(statement.test.func, ast.Name)
+        and statement.test.func.id == "_is_preview_user"
+        and any(isinstance(child, ast.Return) for child in statement.body)
+    )
+
+
+class EventStreamPreviewAccountTestCase(unittest.TestCase):
+    """
+    The handlers read the identity through a live socket, which this suite
+    cannot open (see function_node), so the guards are checked on the source.
+    A preview account watches a review: it joins and leaves rooms, it does
+    not drive them.
+    """
+
+    WRITE_HANDLERS = (
+        "on_room_updated",
+        "on_add_annotation",
+        "on_remove_annotation",
+        "on_update_annotation",
+        "on_change_version",
+        "on_panzoom_changed",
+        "on_comparison_panzoom_changed",
+    )
+    WATCH_HANDLERS = (
+        "connected",
+        "disconnected",
+        "on_open_playlist",
+        "on_close_playlist",
+        "on_join",
+        "on_leave",
+    )
+
+    def test_preview_user_is_read_from_the_token_identity(self):
+        node = function_node("_is_preview_user")
+        self.assertIn("get_current_user", called_names(node))
+        self.assertIn(
+            "preview_project_id",
+            {n.attr for n in ast.walk(node) if isinstance(n, ast.Attribute)},
+        )
+
+    def test_preview_cannot_annotate_room(self):
+        for handler in self.WRITE_HANDLERS:
+            with self.subTest(handler=handler):
+                first = function_node(handler).body[0]
+                self.assertTrue(returns_for_preview(first))
+
+    def test_preview_can_join_room(self):
+        for handler in self.WATCH_HANDLERS:
+            with self.subTest(handler=handler):
+                self.assertNotIn(
+                    "_is_preview_user", called_names(function_node(handler))
+                )

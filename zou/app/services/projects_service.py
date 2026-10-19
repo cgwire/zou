@@ -457,6 +457,15 @@ def add_team_member(project_id, person_id, role=None):
     created so an invalid role leaves no partial state behind.
     """
     _check_project_role(role)
+    person = Person.get(person_id)
+    if (
+        person is not None
+        and person.preview_project_id is not None
+        and str(person.preview_project_id) != str(project_id)
+    ):
+        raise WrongParameterException(
+            "A preview account can only belong to its own project"
+        )
     project = _add_to_list_attr(project_id, Person, person_id, "team")
     if role is not None:
         update_team_member_role(project_id, person_id, role)
@@ -477,6 +486,12 @@ def update_team_member_role(project_id, person_id, role):
     inheritance of the person's global role.
     """
     _check_project_role(role)
+    person = Person.get(person_id)
+    # A preview account must show exactly what a client sees.
+    if person is not None and person.preview_project_id is not None:
+        raise WrongParameterException(
+            "A preview account keeps its client role"
+        )
     link = ProjectPersonLink.query.filter_by(
         project_id=project_id, person_id=person_id
     ).first()

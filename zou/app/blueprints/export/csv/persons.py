@@ -42,7 +42,11 @@ class PersonsCsvExport(BaseCsvExport):
     def build_query(self):
         return (
             Person.query.options(selectinload(Person.departments))
-            .filter(Person.is_bot.isnot(True), Person.is_guest.isnot(True))
+            .filter(
+                Person.is_bot.isnot(True),
+                Person.is_guest.isnot(True),
+                Person.preview_project_id.is_(None),
+            )
             .order_by(
                 func.lower(Person.first_name),
                 func.lower(Person.last_name),

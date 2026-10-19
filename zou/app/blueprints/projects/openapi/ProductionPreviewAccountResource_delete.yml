@@ -1,0 +1,17 @@
+Delete the preview account of a production
+---
+description: Delete the preview account of the production. Restricted to managers of the production.
+tags:
+  - Projects
+parameters:
+  - in: path
+    name: project_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Project unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+responses:
+  204:
+    description: Preview account deleted

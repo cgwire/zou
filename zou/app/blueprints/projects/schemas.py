@@ -208,3 +208,11 @@ class ScheduleVersionCopySchema(BaseSchema):
     """
 
     production_schedule_version_id: str = Field(..., min_length=1)
+
+
+class PreviewAccountOpenSchema(BaseSchema):
+    """
+    Body for opening or closing the access window of a preview account.
+    """
+
+    is_open: bool

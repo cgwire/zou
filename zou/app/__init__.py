@@ -219,8 +219,9 @@ def register_error_handlers(app):
 
 
 def configure_auth(app):
-    from zou.app.services import persons_service
+    from zou.app.services import persons_service, preview_accounts_service
     from zou.app.services.auth_service import logout
+    from zou.app.utils import permissions
 
     def check_active_identity(identity, identity_type, jti, refresh_jti=None):
         if not identity.active:
@@ -257,6 +258,17 @@ def configure_auth(app):
             jti=payload["jti"],
             refresh_jti=payload.get("refresh_jti"),
         )
+
+        if identity.preview_project_id is not None:
+            if not (
+                preview_accounts_service.is_available()
+                and preview_accounts_service.is_preview_session_valid(
+                    identity, payload.get("iat")
+                )
+            ):
+                raise InactiveUserException
+            if request.method not in ("GET", "HEAD", "OPTIONS"):
+                raise permissions.PermissionDenied
 
         if payload.get("requires_2fa_setup"):
             allowed_paths = {

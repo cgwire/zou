@@ -46,6 +46,7 @@ from zou.app.services import (
     entities_service,
     entity_types_service,
     index_service,
+    persons_service,
     playlist_builds_service,
     playlists_service,
     search_filters_service,
@@ -238,9 +239,21 @@ def remove_project(project_id):
     project = base_service.get_instance(
         Project, project_id, ProjectNotFoundException
     )
+    remove_preview_account(project_id)
     project.delete()
     events.emit("project:delete", {"project_id": project.id})
     return project_id
+
+
+def remove_preview_account(project_id):
+    """
+    Remove the preview account of given project, if any.
+    """
+    preview_account = Person.get_by(preview_project_id=project_id)
+    if preview_account is not None:
+        remove_person(str(preview_account.id), force=True)
+        # The cached person would keep authenticating until its TTL.
+        persons_service.clear_person_cache()
 
 
 def remove_person(person_id, force=True):

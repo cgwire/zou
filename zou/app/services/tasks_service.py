@@ -891,6 +891,28 @@ def clear_assignation(task_id, person_id=None):
     return task_dict
 
 
+def check_no_preview_assignee(assignees):
+    """
+    Refuse an assignment that includes a preview account. Assignees can be
+    ids or dicts holding an id, like the task update payload accepts.
+    """
+    person_ids = [
+        str(assignee["id"] if isinstance(assignee, dict) else assignee)
+        for assignee in assignees or []
+    ]
+    person_ids = [
+        person_id for person_id in person_ids if fields.is_valid_id(person_id)
+    ]
+    if (
+        person_ids
+        and Person.query.filter(
+            Person.id.in_(person_ids), Person.preview_project_id.isnot(None)
+        ).count()
+        > 0
+    ):
+        raise WrongParameterException("A preview account can't be assigned")
+
+
 def assign_task(task_id, person_id, assigner_id=None):
     """
     Assign given person to given task. Emit a *task:assign* event.
@@ -898,6 +920,7 @@ def assign_task(task_id, person_id, assigner_id=None):
     task = get_task_raw(task_id)
     project_id = str(task.project_id)
     person = persons_service.get_person_raw(person_id)
+    check_no_preview_assignee([person_id])
     if person not in task.assignees:
         task.assignees.append(person)
     if assigner_id is not None:

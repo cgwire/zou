@@ -20,7 +20,9 @@ def send_main_infos():
     organisation = organisation_service.get_organisation()
     stats = stats_service.get_main_stats()
     nb_active_users = Person.query.filter(
-        Person.active, Person.is_guest.isnot(True)
+        Person.active,
+        Person.is_guest.isnot(True),
+        Person.preview_project_id.is_(None),
     ).count()
 
     data = {

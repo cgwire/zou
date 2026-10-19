@@ -730,7 +730,8 @@ def get_comment_mentions(project_id, text):
     return [
         person
         for person in project.team
-        if re.search(f"@{re.escape(person.full_name)}( |$)", text) is not None
+        if person.preview_project_id is None
+        and re.search(f"@{re.escape(person.full_name)}( |$)", text) is not None
     ]
 
 

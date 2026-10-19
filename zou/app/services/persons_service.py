@@ -71,6 +71,7 @@ def get_persons(minimal=False, include_guests=False):
     """
     persons = []
     query = Person.query.options(selectinload(Person.departments))
+    query = query.filter(Person.preview_project_id.is_(None))
     if not include_guests:
         query = query.filter(Person.is_guest.is_(False))
     for person in query.all():
@@ -87,7 +88,11 @@ def get_active_persons():
     Return all persons with flag active set to True. Guests are excluded.
     """
     persons = (
-        Person.query.filter(Person.active, Person.is_guest.isnot(True))
+        Person.query.filter(
+            Person.active,
+            Person.is_guest.isnot(True),
+            Person.preview_project_id.is_(None),
+        )
         .order_by(Person.first_name)
         .order_by(Person.last_name)
         .all()
@@ -251,6 +256,7 @@ def count_active_users():
         Person.active,
         Person.is_bot.isnot(True),
         Person.is_guest.isnot(True),
+        Person.preview_project_id.is_(None),
     ).count()
 
 
@@ -823,6 +829,7 @@ def is_user_limit_reached():
         Person.active,
         Person.is_bot.isnot(True),
         Person.is_guest.isnot(True),
+        Person.preview_project_id.is_(None),
     ).count()
     return nb_active_users >= organisation_service.get_user_limit()
 

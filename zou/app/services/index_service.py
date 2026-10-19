@@ -413,8 +413,10 @@ def index_asset(asset):
 
 def index_person(person):
     """
-    Register person into the index.
+    Register person into the index. Preview accounts are never indexed.
     """
+    if person.preview_project_id is not None:
+        return None
     return _index_entry(get_person_index, prepare_person, person)
 
 
@@ -575,5 +577,7 @@ def get_all_raw_active_persons():
     Return all active persons without serialization. Guests are excluded.
     """
     return Person.query.filter(
-        Person.active, Person.is_guest.isnot(True)
+        Person.active,
+        Person.is_guest.isnot(True),
+        Person.preview_project_id.is_(None),
     ).all()
