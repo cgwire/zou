@@ -133,7 +133,12 @@ class TaskPreviewsResource(MethodView):
         Get task previews
         """
         permissions_service.check_task_access(task_id)
-        return files_service.get_preview_files_for_task(task_id)
+        previews = files_service.get_preview_files_for_task(task_id)
+        if permissions.has_client_permissions():
+            previews = [
+                p for p in previews if p["validation_status"] != "rejected"
+            ]
+        return previews
 
 
 class TaskCommentsResource(MethodView):

@@ -1159,6 +1159,25 @@ class TaskListingTestCase(TaskTestCase):
         self.assertEqual(len(previews), 1)
         self.assertEqual(previews[0]["task_id"], str(task.id))
 
+    def test_get_task_previews_hides_rejected_for_client(self):
+        task = self.generate_fixture_task()
+        self.generate_fixture_preview_file(task_id=task.id, revision=1)
+        rejected = self.generate_fixture_preview_file(
+            task_id=task.id, revision=2
+        )
+        rejected.update({"validation_status": "rejected"})
+        path = f"/data/tasks/{task.id}/previews"
+        self.assertEqual(len(self.get(path)), 2)
+
+        self.generate_fixture_user_client()
+        projects_service.add_team_member(
+            str(self.project.id), self.user_client["id"]
+        )
+        self.log_in_client()
+        previews = self.get(path)
+        self.assertEqual(len(previews), 1)
+        self.assertEqual(previews[0]["validation_status"], "neutral")
+
     def test_get_task_time_spents_route(self):
         """
         The aggregate behind this route is tested on its own since it was
