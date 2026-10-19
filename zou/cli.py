@@ -15,9 +15,12 @@ from zou.app.services import (
 
 
 def _get_app():
-    from zou.app import app
+    import zou.app
 
-    return app
+    # Plugins only add HTTP routes, which no CLI command serves.
+    return zou.app.__dict__.get("app") or zou.app.create_app(
+        with_plugins=False
+    )
 
 
 def _get_db_uri():

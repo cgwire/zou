@@ -287,16 +287,16 @@ def configure_auth(app):
         return identity
 
 
-def load_api(app):
+def load_api(app, with_plugins=True):
     from zou.app import api
 
-    api.configure(app)
+    api.configure(app, with_plugins=with_plugins)
 
     fs.mkdir_p(app.config["TMP_DIR"])
     configure_auth(app)
 
 
-def create_app(config_object=config):
+def create_app(config_object=config, with_plugins=True):
     """
     Build and wire a Zou Flask application: extensions, JSON provider,
     error handlers, auth, storages and API routes. Nothing is built at
@@ -361,7 +361,7 @@ def create_app(config_object=config):
 
     file_store.configure_storages(app)
     config_store.sync_config()
-    load_api(app)
+    load_api(app, with_plugins=with_plugins)
     warn_about_overridden_settings(app, config_object)
 
     return app
