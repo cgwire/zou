@@ -646,6 +646,7 @@ def create_template_from_project(project_id, name, description=None):
             task_status_id=link.task_status_id,
             priority=link.priority,
             roles_for_board=link.roles_for_board,
+            is_client_allowed=link.is_client_allowed,
         )
 
     from zou.app import db
@@ -791,6 +792,7 @@ def apply_template_to_project(project_id, template_id, override_settings=None):
                 task_status_id=link.task_status_id,
                 priority=link.priority,
                 roles_for_board=link.roles_for_board,
+                is_client_allowed=link.is_client_allowed,
             )
 
     for link in ProjectTemplateAssetTypeLink.query.filter_by(

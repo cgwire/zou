@@ -35,6 +35,7 @@ from zou.app.services import (
     playlist_sharing_service,
     playlists_service,
     preview_annotations_service,
+    projects_service,
     task_types_service,
     tasks_service,
 )
@@ -142,7 +143,12 @@ class SharedPlaylistCommentsResource(MethodView):
             task_status = task_types_service.get_task_status(task_status_id)
         except Exception:
             return {"error": "Task status not found"}, 400
-        if not task_status.get("is_client_allowed", False):
+        project_id = playlists_service.get_playlist(share_link["playlist_id"])[
+            "project_id"
+        ]
+        if not projects_service.is_task_status_client_allowed(
+            project_id, task_status
+        ):
             return {"error": "Task status not allowed for guests"}, 400
 
         comment = comments_service.create_comment(

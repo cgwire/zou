@@ -9,6 +9,7 @@ from zou.app import config, db
 from zou.app.exceptions import (
     ProjectNotFoundException,
     SoftwareNotFoundException,
+    TaskStatusNotFoundException,
     WrongParameterException,
 )
 from zou.app.models.department import Department
@@ -180,6 +181,7 @@ def _fetch_task_status_links_by_project(project_ids):
         task_statuses_by_project[link.project_id][str(link.task_status_id)] = {
             "priority": link.priority,
             "roles_for_board": fields.serialize_list(link.roles_for_board),
+            "is_client_allowed": link.is_client_allowed,
         }
     return task_statuses_by_project
 
@@ -893,6 +895,44 @@ def create_project_task_status_link(
     task_status_link_dict = task_status_link.serialize()
     _notify_project_settings_change(task_status_link_dict["project_id"])
     return task_status_link_dict
+
+
+def set_task_status_client_allowed(project_id, task_status_id, value):
+    """
+    Override, for given project, whether its clients may set given task
+    status. None reverts to the studio value. The status has to be linked
+    to the project.
+    """
+    link = ProjectTaskStatusLink.get_by(
+        project_id=project_id, task_status_id=task_status_id
+    )
+    if link is None:
+        raise TaskStatusNotFoundException()
+    link.update({"is_client_allowed": value})
+    _notify_project_settings_change(project_id)
+    return link.serialize()
+
+
+def get_client_allowed_overrides(project_id):
+    """
+    Return the task status ids of given project whose client permission is
+    overridden, mapped to the override.
+    """
+    links = ProjectTaskStatusLink.query.filter(
+        ProjectTaskStatusLink.project_id == project_id,
+        ProjectTaskStatusLink.is_client_allowed.isnot(None),
+    ).all()
+    return {str(link.task_status_id): link.is_client_allowed for link in links}
+
+
+def is_task_status_client_allowed(project_id, task_status):
+    """
+    Return whether clients of given project may set given task status: the
+    project override when there is one, the studio value otherwise.
+    """
+    return get_client_allowed_overrides(project_id).get(
+        str(task_status["id"]), bool(task_status.get("is_client_allowed"))
+    )
 
 
 def set_project_task_type_link_priorities(project_id, task_type_ids):

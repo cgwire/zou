@@ -76,6 +76,15 @@ class ProjectTaskStatusSchema(BaseSchema):
     task_status_id: str = Field(..., min_length=1)
 
 
+class ProjectTaskStatusClientAllowedSchema(BaseSchema):
+    """
+    Body for overriding whether the clients of a project may set a task
+    status. The field is required, a null reverts to the studio value.
+    """
+
+    is_client_allowed: Optional[bool] = Field(...)
+
+
 class ProjectSettingsBatchSchema(BaseSchema):
     """
     Body for adding several task types, task statuses and asset types to a

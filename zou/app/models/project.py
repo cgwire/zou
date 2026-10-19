@@ -125,6 +125,8 @@ class ProjectTaskStatusLink(db.Model, BaseMixin, SerializerMixin):
         db.ARRAY(ChoiceType(ROLE_TYPES)),
         default=["user", "admin", "supervisor", "manager", "vendor"],
     )
+    # Null inherits the studio value, TaskStatus.is_client_allowed.
+    is_client_allowed = db.Column(db.Boolean(), nullable=True, default=None)
 
     __table_args__ = (
         db.UniqueConstraint(

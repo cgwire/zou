@@ -18,6 +18,7 @@ from zou.app.blueprints.projects.schemas import (
     ProjectPreviewBackgroundSchema,
     ProjectSettingsBatchSchema,
     ProjectStatusAutomationSchema,
+    ProjectTaskStatusClientAllowedSchema,
     ProjectTaskStatusSchema,
     ProjectTaskTypeSchema,
     ProjectTaskTypeSoftwareSchema,
@@ -395,8 +396,22 @@ class ProductionTaskStatusResource(MethodView, ArgsMixin):
 
 class ProductionTaskStatusRemoveResource(MethodView):
     """
-    Allow to remove a task status linked to a production.
+    Allow to update or remove a task status linked to a production.
     """
+
+    @jwt_required()
+    @swag_from("openapi/ProductionTaskStatusRemoveResource_put.yml")
+    def put(self, project_id, task_status_id):
+        """
+        Set production task status client permission
+        """
+        body = validation.validate_request_body(
+            ProjectTaskStatusClientAllowedSchema
+        )
+        permissions_service.check_manager_project_access(project_id)
+        return projects_service.set_task_status_client_allowed(
+            project_id, task_status_id, body.is_client_allowed
+        )
 
     @jwt_required()
     @swag_from("openapi/ProductionTaskStatusRemoveResource_delete.yml")

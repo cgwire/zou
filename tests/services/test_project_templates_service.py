@@ -528,6 +528,32 @@ class ProjectTemplateServiceTestCase(ApiDBTestCase):
         )
         self.assertIs(link.is_client_visible, False)
 
+    def test_template_carries_the_client_allowed_override(self):
+        ProjectTaskStatusLink.create(
+            project_id=self.project_id,
+            task_status_id=self.task_status.id,
+            is_client_allowed=False,
+        )
+        template = project_templates_service.create_template_from_project(
+            str(self.project_id), name="Client overrides"
+        )
+        template_link = ProjectTemplateTaskStatusLink.get_by(
+            project_template_id=template["id"],
+            task_status_id=self.task_status.id,
+        )
+        self.assertIs(template_link.is_client_allowed, False)
+
+        target = Project.create(
+            name="Target", project_status_id=self.open_status.id
+        )
+        project_templates_service.apply_template_to_project(
+            str(target.id), template["id"]
+        )
+        link = ProjectTaskStatusLink.get_by(
+            project_id=target.id, task_status_id=self.task_status.id
+        )
+        self.assertIs(link.is_client_allowed, False)
+
     def test_template_keeps_the_unset_bitrates_of_its_project(self):
         self.project.update(
             {"hd_bitrate_compression": None, "ld_bitrate_compression": None}
