@@ -91,7 +91,7 @@ def get_task_types_schedule_items(project_id):
     }
 
     new_schedule_items = set()
-    schedule_item_to_remove = {
+    left_out_schedule_items = {
         schedule_item
         for schedule_item in schedule_items
         if schedule_item.task_type_id is not None
@@ -114,7 +114,7 @@ def get_task_types_schedule_items(project_id):
             )
 
     schedule_items = (
-        schedule_items.union(new_schedule_items) - schedule_item_to_remove
+        schedule_items.union(new_schedule_items) - left_out_schedule_items
     )
     return sorted(
         [schedule_item.present() for schedule_item in schedule_items],
@@ -279,7 +279,7 @@ def get_entity_schedule_items(
     }
 
     new_schedule_items = set()
-    schedule_item_to_remove = {
+    left_out_schedule_items = {
         schedule_item
         for schedule_item in existing_schedule_items
         if schedule_item.object_id is not None
@@ -304,7 +304,7 @@ def get_entity_schedule_items(
 
     schedule_items = (
         existing_schedule_items.union(new_schedule_items)
-        - schedule_item_to_remove
+        - left_out_schedule_items
     )
 
     results = []
