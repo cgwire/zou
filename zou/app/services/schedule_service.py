@@ -56,15 +56,28 @@ def get_schedule_items(project_id):
 
 def get_task_types_schedule_items(project_id):
     """
-    Return all schedule items for given project. If no schedule item exists
-    for a given task type, it creates one.
+    Return the schedule items of the task types given project has tasks
+    for. If no schedule item exists for one of them, it creates one. When
+    the project settings list task types, the other ones are left out: a
+    task type removed from the settings keeps its tasks and its schedule
+    item, which comes back if the task type is added again.
     """
+    project_task_type_ids = {
+        str(task_type.id)
+        for task_type in projects_service.get_project_task_types_raw(
+            project_id
+        )
+    }
     task_types = tasks_service.get_task_types_for_project(project_id)
     task_types = [
         task_type
         for task_type in task_types
         if task_type["for_entity"]
         in ["Asset", "Shot", "Sequence", "Episode", "Edit"]
+        and (
+            not project_task_type_ids
+            or task_type["id"] in project_task_type_ids
+        )
     ]
     task_type_map = base_service.get_model_map_from_array(task_types)
     schedule_items = set(

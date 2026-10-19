@@ -323,6 +323,39 @@ class ScheduleItemTestCase(ScheduleTestCase):
             [item["task_type_id"] for item in items], [self.task_type_id]
         )
 
+    def test_get_task_types_schedule_items_ignores_removed_task_types(self):
+        """
+        A task type removed from the production settings keeps its tasks,
+        yet leaves the schedule. Its row stays stored: added back, the task
+        type finds it again. A production with no task type settings keeps
+        every task type with tasks (test_get_schedule_items).
+        """
+        self.generate_fixture_shot_task()
+        animation_id = str(self.task_type_animation.id)
+        projects_service.add_task_type_setting(
+            self.project_id, self.task_type_id
+        )
+        projects_service.add_task_type_setting(self.project_id, animation_id)
+        items = schedule_service.get_task_types_schedule_items(self.project_id)
+        animation_item_id = next(
+            item["id"]
+            for item in items
+            if item["task_type_id"] == animation_id
+        )
+
+        projects_service.remove_task_type_setting(
+            self.project_id, animation_id
+        )
+        items = schedule_service.get_task_types_schedule_items(self.project_id)
+        self.assertEqual(
+            [item["task_type_id"] for item in items], [self.task_type_id]
+        )
+
+        projects_service.add_task_type_setting(self.project_id, animation_id)
+        items = schedule_service.get_task_types_schedule_items(self.project_id)
+        self.assertIn(animation_item_id, [item["id"] for item in items])
+        self.assertEqual(len(items), 2)
+
     def test_get_task_types_schedule_items_ignores_concepts(self):
         """
         Only the task types of the entities a schedule lays out get a row.
