@@ -867,6 +867,12 @@ ProjectSchema = {
             "default": "False",
             "description": "True if the clients are isolated from the project, False otherwise",
         },
+        "is_client_stats_visible": {"type": "boolean", "default": "True"},
+        "is_client_task_list_visible": {"type": "boolean", "default": "True"},
+        "is_client_task_panel_visible": {
+            "type": "boolean",
+            "default": "True",
+        },
     },
 }
 
