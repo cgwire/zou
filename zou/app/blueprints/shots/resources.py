@@ -586,8 +586,13 @@ class ProjectEpisodeStatsResource(MethodView):
         """
         Get episode stats
         """
-        projects_service.get_project(project_id)
+        project = projects_service.get_project(project_id)
         permissions_service.check_project_access(project_id)
+        if (
+            permissions.has_client_permissions()
+            and project.get("is_client_stats_visible") is False
+        ):
+            raise permissions.PermissionDenied
         return stats_service.get_episode_stats_for_project(
             project_id, only_assigned=permissions.has_vendor_permissions()
         )
