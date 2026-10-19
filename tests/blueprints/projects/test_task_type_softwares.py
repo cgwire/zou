@@ -78,6 +78,13 @@ class TaskTypeSoftwaresTestCase(ApiDBTestCase):
         self.assertEqual(self.get(self.list_path), [])
         self.assertEqual(len(self.events), 2)
 
+    def test_remove_returns_the_deleted_link(self):
+        self.add_link()
+        args = (self.project_id, self.task_type_id, self.software_id)
+        removed = projects_service.remove_task_type_software(*args)
+        self.assertEqual(removed, self.link)
+        self.assertIsNone(projects_service.remove_task_type_software(*args))
+
     def test_the_list_is_scoped_to_the_project(self):
         self.add_link()
         self.generate_fixture_project_standard()

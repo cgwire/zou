@@ -1282,8 +1282,8 @@ def add_task_type_software(project_id, task_type_id, software_id):
 
 def remove_task_type_software(project_id, task_type_id, software_id):
     """
-    Unlink given software from given task type of given project. Nothing
-    happens when the link does not exist.
+    Unlink given software from given task type of given project. Return the
+    deleted link, or None when the link does not exist.
     """
     _check_task_type_software_ids(task_type_id, software_id)
     project = get_project_raw(project_id)
@@ -1293,6 +1293,9 @@ def remove_task_type_software(project_id, task_type_id, software_id):
         task_type_id=task_type_id,
         software_id=software_id,
     )
-    if link is not None:
-        link.delete()
-        events.emit("project:update", {}, project_id=project_id)
+    if link is None:
+        return None
+    removed = _serialize_task_type_software_link(link)
+    link.delete()
+    events.emit("project:update", {}, project_id=project_id)
+    return removed
