@@ -38,6 +38,14 @@ class ProjectAssetTypeSchema(BaseSchema):
     asset_type_id: str = Field(..., min_length=1)
 
 
+class ProjectTaskTypeSoftwareSchema(BaseSchema):
+    """
+    Body for linking a software to a task type of a project.
+    """
+
+    software_id: str = Field(..., min_length=1)
+
+
 class ProjectTaskTypeSchema(BaseSchema):
     """
     Body for adding a task type to a project.

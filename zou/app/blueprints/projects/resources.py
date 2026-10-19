@@ -20,6 +20,7 @@ from zou.app.blueprints.projects.schemas import (
     ProjectStatusAutomationSchema,
     ProjectTaskStatusSchema,
     ProjectTaskTypeSchema,
+    ProjectTaskTypeSoftwareSchema,
     ProjectTeamRoleSchema,
     ProjectTeamSchema,
     ScheduleVersionCopySchema,
@@ -303,6 +304,62 @@ class ProductionTaskTypeRemoveResource(MethodView):
         """
         permissions_service.check_manager_project_access(project_id)
         projects_service.remove_task_type_setting(project_id, task_type_id)
+        return "", 204
+
+
+class ProductionTaskTypeSoftwaresResource(MethodView):
+    """
+    Allow to list the softwares set for the task types of a production.
+    """
+
+    @jwt_required()
+    @swag_from("openapi/ProductionTaskTypeSoftwaresResource_get.yml")
+    def get(self, project_id):
+        """
+        Get production task type softwares
+        """
+        permissions_service.check_project_access(project_id)
+        return projects_service.get_task_type_software_links(project_id)
+
+
+class ProductionTaskTypeSoftwareResource(MethodView):
+    """
+    Allow to link a software to a task type of a production.
+    """
+
+    @jwt_required()
+    @swag_from("openapi/ProductionTaskTypeSoftwareResource_post.yml")
+    def post(self, project_id, task_type_id):
+        """
+        Add software to production task type
+        """
+        body = validation.validate_request_body(ProjectTaskTypeSoftwareSchema)
+        permissions_service.check_supervisor_project_task_type_access(
+            project_id, task_type_id
+        )
+        link = projects_service.add_task_type_software(
+            project_id, task_type_id, body.software_id
+        )
+        return link, 201
+
+
+class ProductionTaskTypeSoftwareRemoveResource(MethodView):
+    """
+    Allow to unlink a software from a task type of a production.
+    """
+
+    @jwt_required()
+    @swag_from("openapi/ProductionTaskTypeSoftwareRemoveResource_delete.yml")
+    def delete(self, project_id, task_type_id, software_id):
+        """
+        Remove software from production task type
+        """
+        permissions_service.check_supervisor_project_task_type_access(
+            project_id, task_type_id
+        )
+        projects_service.remove_task_type_software(
+            project_id, task_type_id, software_id
+        )
         return "", 204
 
 

@@ -8,6 +8,7 @@ from sqlalchemy.orm import joinedload, selectinload
 from zou.app import config, db
 from zou.app.exceptions import (
     ProjectNotFoundException,
+    SoftwareNotFoundException,
     WrongParameterException,
 )
 from zou.app.models.department import Department
@@ -21,14 +22,17 @@ from zou.app.models.project import (
     ProjectPersonLink,
     ProjectTaskStatusLink,
     ProjectTaskTypeLink,
+    ProjectTaskTypeSoftwareLink,
 )
 from zou.app.models.project_status import ProjectStatus
+from zou.app.models.software import Software
 from zou.app.models.status_automation import StatusAutomation
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
 from zou.app.services import (
     entity_types_service,
 )
+from zou.app.services.base_service import get_instance
 from zou.app.utils import cache, events, fields
 
 # Lower bound of a project movie bitrate in Mbit/s. The upper bound is the
@@ -1210,3 +1214,88 @@ def get_movie_bitrates(project, task_type_link=None):
     highdef = min(bitrates[0], config.MOVIE_HIGHDEF_BITRATE)
     lowdef = min(bitrates[1], highdef)
     return highdef, lowdef
+
+
+def _check_task_type_software_ids(task_type_id, software_id):
+    if not fields.is_valid_id(task_type_id) or not fields.is_valid_id(
+        software_id
+    ):
+        raise WrongParameterException(
+            "task_type_id and software_id must be valid UUIDs."
+        )
+
+
+def _serialize_task_type_software_link(link):
+    return {
+        "project_id": str(link.project_id),
+        "task_type_id": str(link.task_type_id),
+        "software_id": str(link.software_id),
+    }
+
+
+def get_task_type_software_links(project_id):
+    """
+    Return the softwares set for each task type of given project, as
+    project_id, task_type_id and software_id dicts.
+    """
+    links = ProjectTaskTypeSoftwareLink.query.filter_by(
+        project_id=project_id
+    ).order_by(
+        ProjectTaskTypeSoftwareLink.task_type_id,
+        ProjectTaskTypeSoftwareLink.software_id,
+    )
+    return [_serialize_task_type_software_link(link) for link in links]
+
+
+def add_task_type_software(project_id, task_type_id, software_id):
+    """
+    Link given software to given task type of given project. The task type
+    must be one of the project, the software must not be archived. An
+    existing link is returned as is.
+    """
+    _check_task_type_software_ids(task_type_id, software_id)
+    project = get_project_raw(project_id)
+    project_id = str(project.id)
+    if not ProjectTaskTypeLink.get_by(
+        project_id=project_id, task_type_id=task_type_id
+    ):
+        raise WrongParameterException(
+            "The task type is not a task type of the project."
+        )
+    software = get_instance(Software, software_id, SoftwareNotFoundException)
+    if software.archived:
+        raise WrongParameterException("The software is archived.")
+    link = ProjectTaskTypeSoftwareLink.get_by(
+        project_id=project_id,
+        task_type_id=task_type_id,
+        software_id=software_id,
+    )
+    if link is None:
+        link = ProjectTaskTypeSoftwareLink.create(
+            project_id=project_id,
+            task_type_id=task_type_id,
+            software_id=software_id,
+        )
+        events.emit("project:update", {}, project_id=project_id)
+    return _serialize_task_type_software_link(link)
+
+
+def remove_task_type_software(project_id, task_type_id, software_id):
+    """
+    Unlink given software from given task type of given project. Return the
+    deleted link, or None when the link does not exist.
+    """
+    _check_task_type_software_ids(task_type_id, software_id)
+    project = get_project_raw(project_id)
+    project_id = str(project.id)
+    link = ProjectTaskTypeSoftwareLink.get_by(
+        project_id=project_id,
+        task_type_id=task_type_id,
+        software_id=software_id,
+    )
+    if link is None:
+        return None
+    removed = _serialize_task_type_software_link(link)
+    link.delete()
+    events.emit("project:update", {}, project_id=project_id)
+    return removed
