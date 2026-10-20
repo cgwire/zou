@@ -1,4 +1,4 @@
-from sqlalchemy import or_
+from sqlalchemy import and_, or_
 from sqlalchemy.exc import StatementError
 from sqlalchemy.orm import aliased
 
@@ -14,6 +14,7 @@ from zou.app.models.entity_type import EntityType
 from zou.app.models.project import Project
 from zou.app.models.task import Task
 from zou.app.services import (
+    base_service,
     entities_service,
     entity_types_service,
     index_service,
@@ -81,11 +82,14 @@ def clear_asset_cache(asset_id):
     entities_service.clear_entity_cache(asset_id)
 
 
-def get_assets(criterions=None, only_user_projects=False):
+def get_assets(
+    criterions=None, only_user_projects=False, page=None, limit=None
+):
     """
-    Get all assets for given criterions. Set only_user_projects on routes
-    taking their criterions from a client: criterions carrying no project
-    restrict nothing.
+    Get all assets for given criterions, or the requested page of them when
+    a page is given. Set only_user_projects on routes taking their
+    criterions from a client: criterions carrying no project restrict
+    nothing.
     """
     if criterions is None:
         criterions = {}
@@ -99,6 +103,16 @@ def get_assets(criterions=None, only_user_projects=False):
         episode_id = criterions["episode_id"]
         del criterions["episode_id"]
     query = query_utils.apply_criterions_to_db_query(Entity, query, criterions)
+    if page is not None:
+        return _get_assets_page(
+            query,
+            criterions,
+            assigned_to,
+            episode_id,
+            only_user_projects,
+            page,
+            limit,
+        )
     if assigned_to:
         query = query.outerjoin(Task)
         query = query.filter(persons_service.build_assignee_filter())
@@ -125,6 +139,8 @@ def get_assets(criterions=None, only_user_projects=False):
         query = query_utils.apply_criterions_to_db_query(
             Entity, query, criterions
         )
+        if assigned_to:
+            query = query.filter(entities_service.build_assigned_task_filter())
         if team_filter is not None:
             query = query.filter(team_filter)
         # Add non duplicated assets to the list.
@@ -140,6 +156,48 @@ def get_assets(criterions=None, only_user_projects=False):
         criterions.get("vendor_departments"),
         Entity.serialize_list(result, obj_type="Asset"),
     )
+
+
+def _get_assets_page(
+    query, criterions, assigned_to, episode_id, only_user_projects, page, limit
+):
+    """
+    The requested page of get_assets, as a single query. The two lookups of
+    the episode case become one OR: the assets belonging to the episode,
+    and the assets cast in it unless they belong to it. The assignation
+    narrows both sides. EXISTS clauses replace the joins so that an asset
+    is counted, and paged, once.
+    """
+    if assigned_to:
+        query = query.filter(entities_service.build_assigned_task_filter())
+    if episode_id is not None:
+        belongs_to_episode = Entity.source_id == episode_id
+        cast_in_episode = (
+            db.session.query(EntityLink.entity_out_id)
+            .filter(EntityLink.entity_out_id == Entity.id)
+            .filter(EntityLink.entity_in_id == episode_id)
+            .exists()
+        )
+        query = query.filter(
+            or_(
+                belongs_to_episode,
+                and_(
+                    cast_in_episode,
+                    Entity.source_id.is_distinct_from(episode_id),
+                ),
+            )
+        )
+    if only_user_projects:
+        query = query.filter(
+            persons_service.build_team_exists_filter(Entity.project_id)
+        )
+    result = base_service.get_paginated_typed_results(
+        query, page, limit, obj_type="Asset"
+    )
+    metadata_descriptors_service.remove_not_allowed_metadata_for_vendor(
+        "Asset", criterions.get("vendor_departments"), result["data"]
+    )
+    return result
 
 
 def _apply_asset_and_tasks_criterions(
@@ -199,6 +257,46 @@ def prepare_assets_and_tasks(
 ):
     """
     Run the with-tasks queries and return a generator yielding one asset
+    at a time, in display order. See _prepare_assets_and_tasks.
+    """
+    rows, _ = _prepare_assets_and_tasks(
+        criterions, with_episode_ids, compact, only_user_projects
+    )
+    return rows
+
+
+def get_assets_and_tasks_page(
+    criterions,
+    page,
+    limit=None,
+    compact=False,
+    only_user_projects=False,
+):
+    """
+    Return the envelope of the requested page of the with-tasks assets.
+    Its data holds the asset dicts of the full listing, or their compact
+    rows when compact is set.
+    """
+    rows, total = _prepare_assets_and_tasks(
+        criterions,
+        compact=compact,
+        only_user_projects=only_user_projects,
+        page=page,
+        limit=limit,
+    )
+    return entities_service.build_entities_page(rows, total, page, limit)
+
+
+def _prepare_assets_and_tasks(
+    criterions=None,
+    with_episode_ids=False,
+    compact=False,
+    only_user_projects=False,
+    page=None,
+    limit=None,
+):
+    """
+    Run the with-tasks queries and build a generator yielding one asset
     at a time, in display order. With compact=True each item is a list of
     values aligned on ASSETS_AND_TASKS_ASSET_FIELDS (tasks aligned on
     ASSETS_AND_TASKS_TASK_FIELDS) instead of a dict, which halves the
@@ -214,6 +312,10 @@ def prepare_assets_and_tasks(
     returns: the generator is pure formatting, so a streaming response
     can consume it after the request context is gone, without the whole
     response ever being held in memory.
+
+    Returns (rows, total): total is None unless a page is requested, in
+    which case only the assets of that page are fetched, with their tasks
+    and episode links, and total counts the assets of every page.
     """
     if criterions is None:
         criterions = {}
@@ -226,7 +328,12 @@ def prepare_assets_and_tasks(
     if assigned_to:
         del criterions["assigned_to"]
 
-    asset_rows = (
+    def apply_task_filters(query):
+        return _apply_asset_and_tasks_criterions(
+            query, criterions, assigned_to, only_user_projects
+        )
+
+    asset_rows, total, apply_task_filters = entities_service.fetch_entity_rows(
         _apply_asset_and_tasks_criterions(
             Entity.query.join(
                 EntityType, Entity.entity_type_id == EntityType.id
@@ -250,14 +357,11 @@ def prepare_assets_and_tasks(
             Entity.project_id,
             EntityType.name.label("asset_type_name"),
         )
-        .order_by(EntityType.name, Entity.name)
-        .all()
+        .order_by(EntityType.name, Entity.name),
+        apply_task_filters,
+        page,
+        limit,
     )
-
-    def apply_task_filters(query):
-        return _apply_asset_and_tasks_criterions(
-            query, criterions, assigned_to, only_user_projects
-        )
 
     tasks_by_entity, build_task = entities_service.fetch_entity_task_map(
         apply_task_filters,
@@ -292,6 +396,10 @@ def prepare_assets_and_tasks(
         if "id" in criterions:
             episode_links_query = episode_links_query.filter(
                 EntityLink.entity_out_id == criterions["id"]
+            )
+        if page is not None:
+            episode_links_query = episode_links_query.filter(
+                EntityLink.entity_out_id.in_([row.id for row in asset_rows])
             )
 
         for link in episode_links_query.all():
@@ -358,7 +466,7 @@ def prepare_assets_and_tasks(
                     "tasks": tasks,
                 }
 
-    return iterate()
+    return iterate(), total
 
 
 def get_assets_and_tasks(
@@ -600,9 +708,12 @@ def set_shared_assets(
     return Entity.serialize_list(assets, obj_type="Asset")
 
 
-def get_shared_assets_used_in_project(project_id, episode_id=None):
+def get_shared_assets_used_in_project(
+    project_id, episode_id=None, page=None, limit=None
+):
     """
-    Get all shared assets used in a project.
+    Get all shared assets used in a project, or the requested page of them
+    when a page is given.
     """
     Shot = aliased(Entity, name="shot")
     Sequence = aliased(Entity, name="sequence")
@@ -621,4 +732,13 @@ def get_shared_assets_used_in_project(project_id, episode_id=None):
     if episode_id is not None and episode_id not in ["main", "all"]:
         assets = assets.filter(Sequence.parent_id == episode_id)
 
+    if page is not None:
+        # An asset cast in several shots comes back once per shot from
+        # the joins: page over the distinct ids instead.
+        query = Entity.query.filter(
+            Entity.id.in_(assets.with_entities(Entity.id))
+        )
+        return base_service.get_paginated_typed_results(
+            query, page, limit, obj_type="Asset"
+        )
     return Entity.serialize_list(assets.all(), obj_type="Asset")

@@ -111,6 +111,8 @@ INDEXER = {
 }
 
 NB_RECORDS_PER_PAGE = int(os.getenv("NB_RECORDS_PER_PAGE", 100))
+# Upper bound of the page size a client may request with ?limit=.
+MAX_RECORDS_PER_PAGE = int(os.getenv("MAX_RECORDS_PER_PAGE", 5000))
 
 PREVIEW_FOLDER = os.getenv(
     "PREVIEW_FOLDER",

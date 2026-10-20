@@ -33,7 +33,7 @@ from zou.app.services import (
 from zou.app.utils import date_helpers, validation
 
 
-class AssetTasksResource(MethodView):
+class AssetTasksResource(MethodView, ArgsMixin):
 
     @swag_from("openapi/AssetTasksResource_get.yml")
     def get(self, asset_id):
@@ -41,7 +41,10 @@ class AssetTasksResource(MethodView):
         Get asset tasks
         """
         assets_service.get_asset(asset_id)
-        return user_service.get_tasks_for_entity(asset_id)
+        page, limit = self.get_pagination()
+        return user_service.get_tasks_for_entity(
+            asset_id, page=page, limit=limit
+        )
 
 
 class AssetTaskTypesResource(MethodView):
@@ -171,7 +174,7 @@ class SequenceScenesResource(MethodView):
         return user_service.get_scenes_for_sequence(sequence_id)
 
 
-class ShotTasksResource(MethodView):
+class ShotTasksResource(MethodView, ArgsMixin):
 
     @swag_from("openapi/ShotTasksResource_get.yml")
     def get(self, shot_id):
@@ -179,10 +182,13 @@ class ShotTasksResource(MethodView):
         Get shot tasks
         """
         shots_service.get_shot(shot_id)
-        return user_service.get_tasks_for_entity(shot_id)
+        page, limit = self.get_pagination()
+        return user_service.get_tasks_for_entity(
+            shot_id, page=page, limit=limit
+        )
 
 
-class SceneTasksResource(MethodView):
+class SceneTasksResource(MethodView, ArgsMixin):
 
     @swag_from("openapi/SceneTasksResource_get.yml")
     def get(self, scene_id):
@@ -190,10 +196,13 @@ class SceneTasksResource(MethodView):
         Get scene tasks
         """
         shots_service.get_scene(scene_id)
-        return user_service.get_tasks_for_entity(scene_id)
+        page, limit = self.get_pagination()
+        return user_service.get_tasks_for_entity(
+            scene_id, page=page, limit=limit
+        )
 
 
-class SequenceTasksResource(MethodView):
+class SequenceTasksResource(MethodView, ArgsMixin):
 
     @swag_from("openapi/SequenceTasksResource_get.yml")
     def get(self, sequence_id):
@@ -201,17 +210,21 @@ class SequenceTasksResource(MethodView):
         Get sequence tasks
         """
         shots_service.get_sequence(sequence_id)
-        return user_service.get_tasks_for_entity(sequence_id)
+        page, limit = self.get_pagination()
+        return user_service.get_tasks_for_entity(
+            sequence_id, page=page, limit=limit
+        )
 
 
-class TodosResource(MethodView):
+class TodosResource(MethodView, ArgsMixin):
 
     @swag_from("openapi/TodosResource_get.yml")
     def get(self):
         """
         Get my tasks
         """
-        return todos_service.get_todos()
+        page, limit = self.get_pagination()
+        return todos_service.get_todos(page=page, limit=limit)
 
 
 class ToChecksResource(MethodView, ArgsMixin):
@@ -232,9 +245,15 @@ class ToChecksResource(MethodView, ArgsMixin):
                 ("due_date_until", None, False, str),
                 ("order_by", None, False, str),
                 ("page", None, False, int),
-                ("limit", 100, False, int),
+                ("limit", None, False, int),
             ]
         )
+        # A limit alone asks for the first page, like on every other
+        # paginated route; without it, the page size stays 100.
+        if args["limit"] is None:
+            args["limit"] = 100
+        elif args["page"] is None and args["limit"] > 0:
+            args["page"] = 1
         for field in (
             "project_id",
             "task_type_id",
@@ -261,14 +280,15 @@ class ToChecksFilterValuesResource(MethodView):
         return todos_service.get_tasks_to_check_filter_values()
 
 
-class DoneResource(MethodView):
+class DoneResource(MethodView, ArgsMixin):
 
     @swag_from("openapi/DoneResource_get.yml")
     def get(self):
         """
         Get done tasks
         """
-        return todos_service.get_done_tasks()
+        page, limit = self.get_pagination()
+        return todos_service.get_done_tasks(page=page, limit=limit)
 
 
 class FiltersResource(MethodView, ArgsMixin):
@@ -392,7 +412,10 @@ class DesktopLoginLogsResource(MethodView, ArgsMixin):
         Get desktop login logs
         """
         current_user = persons_service.get_current_user()
-        return persons_service.get_desktop_login_logs(current_user["id"])
+        page, limit = self.get_pagination()
+        return persons_service.get_desktop_login_logs(
+            current_user["id"], page=page, limit=limit
+        )
 
     @swag_from("openapi/DesktopLoginLogsResource_post.yml")
     def post(self):
@@ -595,8 +618,11 @@ class TimeSpentsResource(MethodView, ArgsMixin):
         arguments = self.get_args(["start_date", "end_date"])
         start_date, end_date = arguments["start_date"], arguments["end_date"]
         current_user = persons_service.get_current_user()
+        page, limit = self.get_pagination()
         if not start_date and not end_date:
-            return time_spents_service.get_time_spents(current_user["id"])
+            return time_spents_service.get_time_spents(
+                current_user["id"], page=page, limit=limit
+            )
 
         if None in [start_date, end_date]:
             raise WrongParameterException(
@@ -606,7 +632,11 @@ class TimeSpentsResource(MethodView, ArgsMixin):
 
         try:
             return time_spents_service.get_time_spents_range(
-                current_user["id"], start_date, end_date
+                current_user["id"],
+                start_date,
+                end_date,
+                page=page,
+                limit=limit,
             )
         except WrongDateFormatException:
             raise WrongParameterException(
@@ -682,7 +712,7 @@ class ClearAvatarResource(MethodView):
         return "", 204
 
 
-class ChatsResource(MethodView):
+class ChatsResource(MethodView, ArgsMixin):
 
     @swag_from("openapi/ChatsResource_get.yml")
     def get(self):
@@ -690,7 +720,10 @@ class ChatsResource(MethodView):
         Get chats
         """
         user = persons_service.get_current_user()
-        return chats_service.get_chats_for_person(user["id"])
+        page, limit = self.get_pagination()
+        return chats_service.get_chats_for_person(
+            user["id"], page=page, limit=limit
+        )
 
 
 class JoinChatResource(MethodView):

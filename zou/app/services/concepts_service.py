@@ -95,9 +95,10 @@ def get_full_concept(concept_id):
     return concept
 
 
-def get_concepts(criterions=None):
+def get_concepts(criterions=None, page=None, limit=None):
     """
-    Get all concepts for given criterions.
+    Get all concepts for given criterions, or the requested page of them
+    when a page is given.
     """
     if criterions is None:
         criterions = {}
@@ -116,11 +117,18 @@ def get_concepts(criterions=None):
     )
 
     if is_only_assignation:
-        query = query.outerjoin(Task, Task.entity_id == Entity.id)
-        query = query.filter(persons_service.build_assignee_filter())
+        if page is None:
+            query = query.outerjoin(Task, Task.entity_id == Entity.id)
+            query = query.filter(persons_service.build_assignee_filter())
+        else:
+            query = query.filter(entities_service.build_assigned_task_filter())
 
     try:
-        data = query.all()
+        if page is None:
+            data = query.all()
+        else:
+            total = query.count()
+            data = query_utils.paginate_query(query, page, limit).all()
     except StatementError:  # Occurs when an id is not properly formatted
         raise WrongIdFormatException
 
@@ -130,15 +138,20 @@ def get_concepts(criterions=None):
         concept["project_name"] = project_name
         concepts.append(concept)
 
-    return concepts
+    if page is None:
+        return concepts
+    return query_utils.build_page(
+        concepts, total, page, query_utils.get_page_limit(limit)
+    )
 
 
-def get_concepts_and_tasks(criterions=None):
+def get_concepts_and_tasks(criterions=None, page=None, limit=None):
     """
     Get all concepts for given criterions with related tasks for each
     concept, as a list of dicts. Flat narrow queries through
     entities_service.fetch_entity_task_map instead of a row-multiplying
-    join; response shape unchanged.
+    join; response shape unchanged. With a page, only the requested page
+    is fetched, with its tasks, and returned as an envelope.
     """
     if criterions is None:
         criterions = {}
@@ -169,13 +182,12 @@ def get_concepts_and_tasks(criterions=None):
 
     # The variants of an uploaded picture are built by a background job:
     # the status tells a concept whose picture is not stored yet.
-    concept_rows = (
+    concept_rows, total, apply_filters = entities_service.fetch_entity_rows(
         apply_filters(
             Entity.query.join(
                 Project, Project.id == Entity.project_id
             ).outerjoin(PreviewFile, PreviewFile.id == Entity.preview_file_id)
-        )
-        .with_entities(
+        ).with_entities(
             cast(Entity.id, Text).label("id"),
             Entity.name,
             Entity.description,
@@ -194,8 +206,10 @@ def get_concepts_and_tasks(criterions=None):
             Entity.updated_at,
             cast(Entity.project_id, Text).label("project_id"),
             Project.name.label("project_name"),
-        )
-        .all()
+        ),
+        apply_filters,
+        page,
+        limit,
     )
 
     tasks_by_entity, build_task = entities_service.fetch_entity_task_map(
@@ -253,18 +267,27 @@ def get_concepts_and_tasks(criterions=None):
                 "created_by": row.created_by,
             }
         )
+    if page is not None:
+        return entities_service.build_entities_page(
+            concepts, total, page, limit
+        )
     return concepts
 
 
-def get_concepts_for_project(project_id, only_assigned=False):
+def get_concepts_for_project(
+    project_id, only_assigned=False, page=None, limit=None
+):
     """
-    Retrieve all concepts related to given project.
+    Retrieve all concepts related to given project, or the requested page
+    of them when a page is given.
     """
     return entities_service.get_entities_for_project(
         project_id,
         entity_types_service.get_concept_type()["id"],
         "Concept",
         only_assigned=only_assigned,
+        page=page,
+        limit=limit,
     )
 
 

@@ -60,3 +60,13 @@ class ProjectTasksConditionalGetTestCase(ApiDBTestCase):
         self.log_in_cg_artist()
         second = self.get_response(headers={"If-None-Match": etag})
         self.assertEqual(second.status_code, 200)
+
+    def test_the_validator_is_bound_to_the_page(self):
+        first = self.get_response()
+        etag = first.headers.get("ETag")
+        self.assertIsNotNone(etag)
+        self.path = f"{self.path}?page=1&limit=1"
+        second = self.get_response(headers={"If-None-Match": etag})
+        self.assertEqual(second.status_code, 200)
+        self.assertNotEqual(second.headers.get("ETag"), etag)
+        self.assertEqual(second.get_json()["total"], 1)

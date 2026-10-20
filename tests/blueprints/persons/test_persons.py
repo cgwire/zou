@@ -115,6 +115,27 @@ class PersonRoutesTestCase(ApiDBTestCase):
         )
         self.assertIsNotNone(result)
 
+    def test_person_day_offs_paginate(self):
+        for day in ["2024-06-10", "2024-06-12", "2024-06-14"]:
+            DayOff.create(date=day, end_date=day, person_id=self.person.id)
+        path = f"/data/persons/{self.person_id}/day-offs"
+        self.assert_opt_in_pagination(path)
+        full = self.assert_pages_match_full_list(path, ordered=False)
+        self.assertEqual(len(full), 3)
+
+        # A supervisor of their department reads the dates only, paginated
+        # or not.
+        supervisor = self.generate_fixture_user_supervisor()
+        projects_service.add_team_member(self.project.id, supervisor["id"])
+        animation = str(self.department_animation.id)
+        persons_service.add_to_department(animation, supervisor["id"])
+        persons_service.add_to_department(animation, self.person_id)
+        self.log_in_supervisor()
+        page = self.get(f"{path}?limit=2")
+        self.assertEqual(page["total"], 3)
+        self.assertEqual(len(page["data"]), 2)
+        self.assertTrue(all("description" not in d for d in page["data"]))
+
     def test_reading_the_day_offs_of_somebody_else(self):
         """
         Leave is read by the person, the admins, the managers of a

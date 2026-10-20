@@ -1,4 +1,5 @@
 from tests.blueprints.edits.base import BaseEditTestCase
+from zou.app.models.entity import EntityVersion
 
 
 class EditRoutesTestCase(BaseEditTestCase):
@@ -67,3 +68,19 @@ class EditRoutesTestCase(BaseEditTestCase):
         self.get("/data/edits/with-tasks?project_id=not-a-uuid", 400)
         self.get("/data/edits/with-tasks?episode_id=not-a-uuid", 400)
         self.get("/data/edits/with-tasks?id=not-a-uuid", 400)
+
+    def test_edit_listings_paginate_on_demand(self):
+        self.generate_fixture_edit("Edit 2", parent_id=self.episode_id)
+        for index in range(2):
+            EntityVersion.create(
+                name="Edit", entity_id=self.edit_id, data={"index": index}
+            )
+        for path in [
+            f"/data/projects/{self.project.id}/edits",
+            f"/data/episodes/{self.episode_id}/edits",
+            "/data/edits",
+            f"/data/edits/all?project_id={self.project.id}",
+            f"/data/edits/{self.edit_id}/versions",
+        ]:
+            with self.subTest(path=path):
+                self.assert_opt_in_pagination(path)

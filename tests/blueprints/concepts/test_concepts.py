@@ -42,6 +42,16 @@ class ConceptRoutesTestCase(ApiDBTestCase):
         self.assertEqual(result[0]["name"], "Concept With Tasks")
         self.assertEqual(result[0]["tasks"], [])
 
+    def test_get_concepts_with_tasks_paginated(self):
+        for name in ["Concept A", "Concept B", "Concept C"]:
+            self.create_concept_with_task(name)
+        path = f"/data/concepts/with-tasks?project_id={self.project.id}"
+        self.assert_opt_in_pagination(path)
+        full = self.assert_pages_match_full_list(path, ordered=False)
+        self.assertEqual(len(full), 3)
+        self.assertTrue(all(len(row["tasks"]) == 1 for row in full))
+        self.assert_pages_match_full_list(path, limit=2, ordered=False)
+
     def test_get_concept(self):
         concept = self.create_concept("Single Concept")
         result = self.get(f"/data/concepts/{concept['id']}")
@@ -87,6 +97,18 @@ class ConceptRoutesTestCase(ApiDBTestCase):
         result = self.get(f"/data/concepts/{concept['id']}/tasks")
         self.assertEqual([t["id"] for t in result], [str(task.id)])
 
+    def test_get_concept_tasks_paginated(self):
+        concept, _ = self.create_concept_with_task("With Tasks")
+        self.generate_fixture_task(
+            name="Secondary",
+            entity_id=concept["id"],
+            task_type_id=self.task_type.id,
+        )
+        path = f"/data/concepts/{concept['id']}/tasks"
+        self.assert_opt_in_pagination(path)
+        full = self.assert_pages_match_full_list(path, ordered=False)
+        self.assertEqual(len(full), 2)
+
     def test_get_concept_preview_files(self):
         # Keyed by task type, and a task type is there only once it has a
         # preview: a concept with no preview answers nothing at all.
@@ -123,3 +145,14 @@ class ConceptRoutesTestCase(ApiDBTestCase):
         self.assertEqual(result["description"], "A cool concept")
         fetched = self.get(f"/data/concepts/{result['id']}")
         self.assertEqual(fetched["description"], "A cool concept")
+
+    def test_concept_listings_paginate_on_demand(self):
+        self.create_concept("Concept A")
+        self.create_concept("Concept B")
+        for path in [
+            f"/data/projects/{self.project.id}/concepts",
+            "/data/concepts",
+            f"/data/concepts?project_id={self.project.id}",
+        ]:
+            with self.subTest(path=path):
+                self.assert_opt_in_pagination(path)

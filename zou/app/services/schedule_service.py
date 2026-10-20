@@ -31,7 +31,7 @@ from zou.app.services import (
     shots_service,
     tasks_service,
 )
-from zou.app.utils import cache, events, fields
+from zou.app.utils import cache, events, fields, query as query_utils
 
 
 def clear_production_schedule_version_cache(production_schedule_version_id):
@@ -46,12 +46,15 @@ def clear_production_schedule_version_cache(production_schedule_version_id):
     )
 
 
-def get_schedule_items(project_id):
+def get_schedule_items(project_id, page=None, limit=None):
     """
-    Get all project schedule items (mainly for sync purpose).
+    Get all project schedule items (mainly for sync purpose), or the
+    requested page of them when a page is given.
     """
-    schedule_items = ScheduleItem.query.filter_by(project_id=project_id).all()
-    return fields.serialize_list(schedule_items)
+    query = ScheduleItem.query.filter_by(project_id=project_id)
+    if page is None:
+        return fields.serialize_list(query.all())
+    return query_utils.get_paginated_results(query, page, limit)
 
 
 def get_task_types_schedule_items(project_id):
@@ -348,10 +351,15 @@ def get_production_schedule_version(
 
 
 def get_production_schedule_version_task_links(
-    production_schedule_version_id, task_type_id=None, relations=False
+    production_schedule_version_id,
+    task_type_id=None,
+    relations=False,
+    page=None,
+    limit=None,
 ):
     """
-    Get all task links for given production schedule version.
+    Get all task links for given production schedule version, or the
+    requested page of them when a page is given.
     """
     query = ProductionScheduleVersionTaskLink.query.filter_by(
         production_schedule_version_id=production_schedule_version_id
@@ -364,7 +372,11 @@ def get_production_schedule_version_task_links(
             .filter(Task.task_type_id == task_type_id)
         )
 
-    return fields.serialize_models(query.all(), relations=relations)
+    if page is None:
+        return fields.serialize_models(query.all(), relations=relations)
+    return query_utils.get_paginated_results(
+        query, page, limit, relations=relations
+    )
 
 
 def detach_production_schedule_version(production_schedule_version_id):

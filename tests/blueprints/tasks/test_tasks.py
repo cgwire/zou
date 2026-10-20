@@ -758,6 +758,51 @@ class TaskListingTestCase(TaskTestCase):
         self.assertEqual(self.get(f"/data/persons/{vendor_id}/done-tasks"), [])
         self.get(f"/data/persons/{self.person.id}/tasks", 403)
 
+    def test_a_vendor_lists_only_their_project_tasks(self):
+        """
+        A vendor listing the tasks of a production gets the ones they are
+        assigned to. Without an episode filter, they used to get every
+        task of the production.
+        """
+        assigned_task = self.generate_fixture_task()
+        self.generate_fixture_shot_task()
+        vendor_id = self.generate_fixture_user_vendor()["id"]
+        projects_service.add_team_member(self.project_id, vendor_id)
+        tasks_service.assign_task(assigned_task.id, vendor_id)
+        self.log_in_vendor()
+
+        path = f"/data/projects/{self.project_id}/tasks"
+        self.assertEqual(
+            [task["id"] for task in self.get(path)], [str(assigned_task.id)]
+        )
+        self.assertEqual(self.get(f"{path}?page=1&limit=10")["total"], 1)
+
+    def test_related_tasks_stay_in_the_caller_scope(self):
+        """
+        The related tasks of a person come from the productions the caller
+        belongs to, and a vendor only gets the ones assigned to them. They
+        used to come from every open production of the studio.
+        """
+        task_type_id = str(self.task_type.id)
+        vendor_task = self.generate_fixture_task()
+        self.generate_fixture_task(name="Second")
+        path = f"/data/persons/{self.person.id}/related-tasks/{task_type_id}"
+        self.assertEqual(len(self.get(path)), 2)
+
+        self.generate_fixture_user_client()
+        self.log_in_client()
+        self.assertEqual(self.get(path), [])
+        self.assertEqual(self.get(f"{path}?page=1&limit=10")["total"], 0)
+
+        vendor_id = self.generate_fixture_user_vendor()["id"]
+        projects_service.add_team_member(self.project_id, vendor_id)
+        tasks_service.assign_task(vendor_task.id, vendor_id)
+        self.log_in_vendor()
+        path = f"/data/persons/{vendor_id}/related-tasks/{task_type_id}"
+        self.assertEqual(
+            [task["id"] for task in self.get(path)], [str(vendor_task.id)]
+        )
+
     def test_get_related_tasks_for_person(self):
         task_type_id = str(self.task_type_animation.id)
         self.generate_fixture_task()
@@ -1151,6 +1196,59 @@ class TaskListingTestCase(TaskTestCase):
         self.generate_fixture_user_cg_artist()
         self.log_in_cg_artist()
         self.get(f"/data/projects/{self.project_id}/tasks", 403)
+
+    def test_person_and_entity_task_lists_paginate_on_demand(self):
+        tasks = [
+            self.generate_fixture_task(name=name)
+            for name in ["Master", "Secondary", "Tertiary"]
+        ]
+        for task in tasks[:2]:
+            tasks_service.update_task(
+                task.id, {"task_status_id": self.done_status_id}
+            )
+        tasks.append(self.generate_fixture_task(name="Fourth"))
+        for path in [
+            f"/data/persons/{self.person.id}/tasks",
+            f"/data/persons/{self.person.id}/done-tasks",
+            f"/data/persons/{self.person.id}/related-tasks/{self.task_type_id}",
+            f"/data/entities/{self.asset_id}/task-types/{self.task_type_id}"
+            "/tasks",
+        ]:
+            with self.subTest(path=path):
+                self.assert_opt_in_pagination(path)
+                full = self.assert_pages_match_full_list(path, ordered=False)
+                self.assertGreaterEqual(len(full), 2)
+
+        self.generate_fixture_user_client()
+        projects_service.add_team_member(
+            self.project_id, self.user_client["id"]
+        )
+        self.log_in_client()
+        page = self.get(f"/data/persons/{self.person.id}/tasks?limit=2")
+        self.assertEqual(page["data"], [])
+        self.assertEqual(page["total"], 0)
+        self.assertEqual(page["limit"], 2)
+
+    def test_get_task_previews_paginated(self):
+        task = self.generate_fixture_task()
+        for revision in [1, 2, 3]:
+            preview = self.generate_fixture_preview_file(
+                task_id=task.id, revision=revision
+            )
+        preview.update({"validation_status": "rejected"})
+        path = f"/data/tasks/{task.id}/previews"
+        self.assert_opt_in_pagination(path)
+        full = self.assert_pages_match_full_list(path)
+        self.assertEqual(len(full), 3)
+
+        self.generate_fixture_user_client()
+        projects_service.add_team_member(
+            self.project_id, self.user_client["id"]
+        )
+        self.log_in_client()
+        self.assert_opt_in_pagination(path)
+        full = self.assert_pages_match_full_list(path)
+        self.assertEqual(len(full), 2)
 
     def test_get_task_previews(self):
         task = self.generate_fixture_task()

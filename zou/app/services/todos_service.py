@@ -22,20 +22,32 @@ from zou.app.services import (
 from zou.app.utils import fields, permissions, query as query_utils
 
 
-def get_person_done_tasks(person_id, projects):
+def get_person_done_tasks(person_id, projects, page=None, limit=None):
     """
-    Return all finished tasks performed by a person.
+    Return all finished tasks performed by a person, or the requested page
+    of them when a page is given.
     """
-    return get_person_tasks(person_id, projects, is_done=True)
+    return get_person_tasks(
+        person_id, projects, is_done=True, page=page, limit=limit
+    )
 
 
-def get_person_related_tasks(person_id, task_type_id):
+def get_person_related_tasks(
+    person_id,
+    task_type_id,
+    projects,
+    only_assigned=False,
+    page=None,
+    limit=None,
+):
     """
     Retrieve all tasks for given task types and to entiities
-    that have at least one person assignation.
+    that have at least one person assignation, or the requested page of
+    them when a page is given. Only the entities of given projects are
+    looked at, and with only_assigned only the tasks assigned to the
+    current user are returned.
     """
     person = Person.get(person_id)
-    projects = projects_service.open_projects()
     project_ids = [project["id"] for project in projects]
 
     entities = (
@@ -45,18 +57,22 @@ def get_person_related_tasks(person_id, task_type_id):
     ).all()
 
     entity_ids = [entity.id for entity in entities]
-    tasks = (
-        Task.query.filter(Task.entity_id.in_(entity_ids)).filter(
-            Task.task_type_id == task_type_id
-        )
-    ).all()
+    query = Task.query.filter(Task.entity_id.in_(entity_ids)).filter(
+        Task.task_type_id == task_type_id
+    )
+    if only_assigned:
+        query = query.filter(persons_service.build_assignee_filter())
+    if page is not None:
+        return query_utils.get_paginated_results(query, page, limit)
 
-    return fields.serialize_models(tasks)
+    return fields.serialize_models(query.all())
 
 
-def get_person_tasks(person_id, projects, is_done=None):
+def get_person_tasks(person_id, projects, is_done=None, page=None, limit=None):
     """
-    Retrieve all tasks for given person and projects.
+    Retrieve all tasks for given person and projects, or the requested page
+    of them when a page is given: the page is cut in SQL (task id as last
+    sort key) and the side queries only run for its tasks.
     """
     Person.get(person_id)
     project_ids = [project["id"] for project in projects]
@@ -106,7 +122,12 @@ def get_person_tasks(person_id, projects, is_done=None):
         query = query.filter(TaskStatus.is_done == False)
 
     # Execute query once and reuse results
-    query_results = query.all()
+    if page is None:
+        query_results = query.all()
+    else:
+        limit = query_utils.get_page_limit(limit)
+        total = query.count()
+        query_results = query_utils.paginate_query(query, page, limit).all()
 
     # Add episodes linked to assets
     asset_ids = []
@@ -168,6 +189,8 @@ def get_person_tasks(person_id, projects, is_done=None):
     if tasks:
         tasks_service.attach_assignee_ids(tasks)
     tasks_service.add_last_comments_to_tasks(tasks)
+    if page is not None:
+        return query_utils.build_page(tasks, total, page, limit)
     return tasks
 
 
@@ -846,10 +869,17 @@ def _fold_done_rows_before(done_rows, window_start):
 
 
 def get_tasks_for_project(
-    project_id, page=0, task_type_id=None, episode_id=None
+    project_id,
+    page=None,
+    task_type_id=None,
+    episode_id=None,
+    limit=None,
+    only_assigned=False,
 ):
     """
-    Return all tasks for given project.
+    Return all tasks for given project, or the requested page of them when
+    a page is given. With only_assigned, only the tasks assigned to the
+    current user are returned.
     """
     query = (
         # subqueryload: one query whatever the size, selectinload sends
@@ -868,32 +898,36 @@ def get_tasks_for_project(
             .filter(Sequence.parent_id == episode_id)
         )
 
-        if permissions.has_vendor_permissions():
-            query = query.filter(persons_service.build_assignee_filter())
-        elif not permissions.has_admin_permissions():
-            query = query.join(Project).filter(
-                user_service.build_related_projects_filter()
-            )
+    if only_assigned:
+        query = query.filter(persons_service.build_assignee_filter())
 
-    return query_utils.get_paginated_results(query, page, relations=True)
+    return query_utils.get_paginated_results(
+        query, page or -1, limit, relations=True
+    )
 
 
-def get_todos():
+def get_todos(page=None, limit=None):
     """
-    Get all unfinished tasks assigned to current user.
-    """
-    current_user = persons_service.get_current_user()
-    projects = user_service.related_projects()
-    return get_person_tasks(current_user["id"], projects)
-
-
-def get_done_tasks():
-    """
-    Get all finished tasks assigned to current user for open projects.
+    Get all unfinished tasks assigned to current user, or the requested page
+    of them when a page is given.
     """
     current_user = persons_service.get_current_user()
     projects = user_service.related_projects()
-    return get_person_done_tasks(current_user["id"], projects)
+    return get_person_tasks(
+        current_user["id"], projects, page=page, limit=limit
+    )
+
+
+def get_done_tasks(page=None, limit=None):
+    """
+    Get all finished tasks assigned to current user for open projects, or
+    the requested page of them when a page is given.
+    """
+    current_user = persons_service.get_current_user()
+    projects = user_service.related_projects()
+    return get_person_done_tasks(
+        current_user["id"], projects, page=page, limit=limit
+    )
 
 
 def _get_tasks_to_check_scope():

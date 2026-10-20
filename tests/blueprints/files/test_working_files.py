@@ -229,6 +229,24 @@ class WorkingFilesTestCase(ApiDBTestCase):
         for new_file in new_files:
             self.assertEqual(new_file["entity_id"], entity_id)
 
+    def test_working_file_listings_paginate(self):
+        """
+        The task and entity listings of working files answer the plain list
+        without page nor limit, and the paginated envelope with them.
+        """
+        for revision in [1, 2, 3]:
+            self.generate_fixture_working_file(name="main", revision=revision)
+        paths = [
+            f"data/tasks/{self.task.id}/working-files",
+            f"data/entities/{self.asset.id}/working-files",
+            f"data/entities/{self.asset.id}/working-files?name=main",
+        ]
+        for path in paths:
+            with self.subTest(path=path):
+                self.assert_opt_in_pagination(path)
+                full = self.assert_pages_match_full_list(path, limit=2)
+                self.assertEqual(len(full), 3)
+
     def test_working_file_round_trip(self):
         """
         The two verbs of the file route: the DCC pushes the scene file, then

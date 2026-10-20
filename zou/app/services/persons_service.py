@@ -30,7 +30,14 @@ from zou.app.services import (
     templates_service,
 )
 from zou.app.stores import auth_tokens_store
-from zou.app.utils import cache, date_helpers, emails, events, fields
+from zou.app.utils import (
+    cache,
+    date_helpers,
+    emails,
+    events,
+    fields,
+    query as query_utils,
+)
 from zou.app.utils.email_i18n import get_email_translation
 
 logger = logging.getLogger(__name__)
@@ -622,16 +629,17 @@ def update_person(person_id, data, bypass_protected_accounts=False):
         return person.serialize()
 
 
-def get_desktop_login_logs(person_id):
+def get_desktop_login_logs(person_id, page=None, limit=None):
     """
-    Get all logs for user desktop logins.
+    Get all logs for user desktop logins, or the requested page of them when
+    a page is given.
     """
-    logs = (
-        DesktopLoginLog.query.filter(DesktopLoginLog.person_id == person_id)
-        .order_by(DesktopLoginLog.date.desc())
-        .all()
-    )
-    return fields.serialize_list(logs)
+    query = DesktopLoginLog.query.filter(
+        DesktopLoginLog.person_id == person_id
+    ).order_by(DesktopLoginLog.date.desc())
+    if page is None:
+        return fields.serialize_list(query.all())
+    return query_utils.get_paginated_results(query, page, limit)
 
 
 def create_desktop_login_logs(person_id, date):

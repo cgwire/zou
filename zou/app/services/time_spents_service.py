@@ -80,16 +80,19 @@ def _get_interval_time_spents(
     return build_results(entries)
 
 
-def get_time_spents_for_entity(entity_id):
+def get_time_spents_for_entity(entity_id, page=None, limit=None):
     """
-    Return all time spents related to given entity.
+    Return all time spents related to given entity, or the requested page
+    of them when a page is given.
     """
     query = (
         TimeSpent.query.join(Task)
         .filter(Task.entity_id == entity_id)
         .order_by(TimeSpent.date.desc())
     )
-    return TimeSpent.serialize_list(query.all())
+    if page is None:
+        return TimeSpent.serialize_list(query.all())
+    return query_utils.get_paginated_results(query, page, limit)
 
 
 def get_year_table(
@@ -271,10 +274,16 @@ def get_table_from_time_spents(time_spents, detail_level="month"):
 
 
 def get_time_spents(
-    person_id, date=None, project_ids=None, department_ids=None
+    person_id,
+    date=None,
+    project_ids=None,
+    department_ids=None,
+    page=None,
+    limit=None,
 ):
     """
-    Return time spents for given person and date.
+    Return time spents for given person and date, or the requested page of
+    them when a page is given.
     """
     try:
         query = TimeSpent.query.filter_by(
@@ -293,6 +302,8 @@ def get_time_spents(
 
         # Inside the try: the query is lazy, so a date the driver rejects
         # raises here and not while the filters are being stacked.
+        if page is not None:
+            return query_utils.get_paginated_results(query, page, limit)
         time_spents = query.all()
     except DataError:
         raise WrongDateFormatException
@@ -300,12 +311,19 @@ def get_time_spents(
 
 
 def get_time_spents_range(
-    person_id, start_date, end_date, project_ids=None, department_ids=None
+    person_id,
+    start_date,
+    end_date,
+    project_ids=None,
+    department_ids=None,
+    page=None,
+    limit=None,
 ):
     """
     Returns time spents for person and date range, with the project and the
     task type of their task. The rows can be restricted to some projects and
-    some departments.
+    some departments. When a page is given, only the requested page of them
+    is returned.
     """
     try:
         query = (
@@ -327,10 +345,15 @@ def get_time_spents_range(
             query = query.join(TaskType, TaskType.id == Task.task_type_id)
             query = query.filter(TaskType.department_id.in_(department_ids))
 
-        rows = query.all()
+        if page is None:
+            rows = query.all()
+        else:
+            limit = query_utils.get_page_limit(limit)
+            total = query.count()
+            rows = query_utils.paginate_query(query, page, limit).all()
     except DataError:
         raise WrongDateFormatException
-    return [
+    time_spents = [
         {
             **time_spent.serialize(),
             "project_id": str(project_id),
@@ -338,6 +361,9 @@ def get_time_spents_range(
         }
         for time_spent, project_id, task_type_id in rows
     ]
+    if page is None:
+        return time_spents
+    return query_utils.build_page(time_spents, total, page, limit)
 
 
 def get_time_spent(person_id, task_id, date):
@@ -579,11 +605,17 @@ def get_person_day_offs_for_year(person_id, year):
 
 
 def get_day_offs_between(
-    start=None, end=None, person_id=None, exclude_id=None, person_ids=None
+    start=None,
+    end=None,
+    person_id=None,
+    exclude_id=None,
+    person_ids=None,
+    page=None,
+    limit=None,
 ):
     """
     Get all day off entries for given person, or given persons, start and
-    end date.
+    end date, or the requested page of them when a page is given.
     """
     query = DayOff.query
     if person_id is not None:
@@ -601,7 +633,9 @@ def get_day_offs_between(
     if exclude_id is not None:
         query = query.filter(DayOff.id != exclude_id)
 
-    return DayOff.serialize_list(query.all())
+    if page is None:
+        return DayOff.serialize_list(query.all())
+    return query_utils.get_paginated_results(query, page, limit)
 
 
 def get_timezoned_interval(start, end):
@@ -841,9 +875,10 @@ def get_time_spents_for_task(task_id, date=None):
     return result
 
 
-def get_time_spents_for_project(project_id, page=0):
+def get_time_spents_for_project(project_id, page=None, limit=None):
     """
-    Return all time spents for given project.
+    Return all time spents for given project, or the requested page of
+    them when a page is given.
     """
     query = TimeSpent.query.join(Task).filter(Task.project_id == project_id)
-    return query_utils.get_paginated_results(query, page)
+    return query_utils.get_paginated_results(query, page or -1, limit)

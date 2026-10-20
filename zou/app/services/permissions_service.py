@@ -215,16 +215,18 @@ def get_vendor_departments():
 
 def mask_metadata_for_vendor(entity_type, entities, project_id=None):
     """
-    Hide from a listing the metadata a vendor may not see, in place. Anyone
-    else is left untouched.
+    Hide from a listing, or from the page of a paginated one, the metadata
+    a vendor may not see, in place. Anyone else is left untouched.
 
     The listings built from criterions carry the departments along in them.
     These take no criterions, so the scope is read here, in the layer that
     still knows who is asking.
     """
-    return metadata_descriptors_service.remove_not_allowed_metadata_for_vendor(
-        entity_type, get_vendor_departments(), entities, project_id
+    rows = entities["data"] if isinstance(entities, dict) else entities
+    metadata_descriptors_service.remove_not_allowed_metadata_for_vendor(
+        entity_type, get_vendor_departments(), rows, project_id
     )
+    return entities
 
 
 def check_entity_access(entity_id):

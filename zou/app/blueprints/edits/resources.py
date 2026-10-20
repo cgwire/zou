@@ -48,7 +48,7 @@ class EditResource(MethodView, ArgsMixin):
         return "", 204
 
 
-class AllEditsResource(MethodView):
+class AllEditsResource(MethodView, ArgsMixin):
     @jwt_required()
     @swag_from("openapi/AllEditsResource_get.yml")
     def get(self):
@@ -60,7 +60,8 @@ class AllEditsResource(MethodView):
             criterions.get("project_id", None)
         )
         permissions_service.scope_criterions_to_vendor(criterions)
-        return edits_service.get_edits(criterions)
+        page, limit = self.get_pagination()
+        return edits_service.get_edits(criterions, page=page, limit=limit)
 
 
 class EditTaskTypesResource(MethodView):
@@ -87,7 +88,10 @@ class EditTasksResource(MethodView, ArgsMixin):
         permissions_service.check_project_access(edit["project_id"])
         permissions_service.check_entity_access(edit["id"])
         relations = self.get_relations()
-        return tasks_service.get_tasks_for_edit(edit_id, relations=relations)
+        page, limit = self.get_pagination()
+        return tasks_service.get_tasks_for_edit(
+            edit_id, relations=relations, page=page, limit=limit
+        )
 
 
 class EpisodeEditTasksResource(MethodView, ArgsMixin):
@@ -103,8 +107,9 @@ class EpisodeEditTasksResource(MethodView, ArgsMixin):
         if permissions.has_vendor_permissions():
             raise permissions.PermissionDenied
         relations = self.get_relations()
+        page, limit = self.get_pagination()
         return tasks_service.get_edit_tasks_for_episode(
-            episode_id, relations=relations
+            episode_id, relations=relations, page=page, limit=limit
         )
 
 
@@ -119,10 +124,11 @@ class EpisodeEditsResource(MethodView, ArgsMixin):
         permissions_service.check_project_access(episode["project_id"])
         permissions_service.check_entity_access(episode["id"])
         relations = self.get_relations()
+        page, limit = self.get_pagination()
         return permissions_service.mask_metadata_for_vendor(
             "Edit",
             edits_service.get_edits_for_episode(
-                episode_id, relations=relations
+                episode_id, relations=relations, page=page, limit=limit
             ),
         )
 
@@ -140,7 +146,7 @@ class EditPreviewsResource(MethodView):
         return playlists_service.get_entity_previews_by_task_type(edit_id)
 
 
-class EditsAndTasksResource(MethodView):
+class EditsAndTasksResource(MethodView, ArgsMixin):
     @jwt_required()
     @swag_from("openapi/EditsAndTasksResource_get.yml")
     def get(self):
@@ -153,7 +159,10 @@ class EditsAndTasksResource(MethodView):
             criterions.get("project_id", None)
         )
         permissions_service.scope_criterions_to_vendor(criterions)
-        return edits_service.get_edits_and_tasks(criterions)
+        page, limit = self.get_pagination()
+        return edits_service.get_edits_and_tasks(
+            criterions, page=page, limit=limit
+        )
 
 
 class ProjectEditsResource(MethodView, ArgsMixin):
@@ -165,10 +174,14 @@ class ProjectEditsResource(MethodView, ArgsMixin):
         """
         projects_service.get_project(project_id)
         permissions_service.check_project_access(project_id)
+        page, limit = self.get_pagination()
         return permissions_service.mask_metadata_for_vendor(
             "Edit",
             edits_service.get_edits_for_project(
-                project_id, only_assigned=permissions.has_vendor_permissions()
+                project_id,
+                only_assigned=permissions.has_vendor_permissions(),
+                page=page,
+                limit=limit,
             ),
             project_id,
         )
@@ -194,7 +207,7 @@ class ProjectEditsResource(MethodView, ArgsMixin):
         return edit, 201
 
 
-class EditVersionsResource(MethodView):
+class EditVersionsResource(MethodView, ArgsMixin):
     """
     Retrieve data versions of given edit.
     """
@@ -208,4 +221,5 @@ class EditVersionsResource(MethodView):
         edit = edits_service.get_edit(edit_id)
         permissions_service.check_project_access(edit["project_id"])
         permissions_service.check_entity_access(edit["id"])
-        return edits_service.get_edit_versions(edit_id)
+        page, limit = self.get_pagination()
+        return edits_service.get_edit_versions(edit_id, page=page, limit=limit)

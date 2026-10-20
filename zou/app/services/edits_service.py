@@ -91,9 +91,10 @@ def get_full_edit(edit_id):
     return edits[0]
 
 
-def get_edits(criterions=None):
+def get_edits(criterions=None, page=None, limit=None):
     """
-    Get all edits for given criterions.
+    Get all edits for given criterions, or the requested page of them when
+    a page is given.
     """
     if criterions is None:
         criterions = {}
@@ -108,11 +109,18 @@ def get_edits(criterions=None):
     query = query.join(Project).add_columns(Project.name).order_by(Entity.name)
 
     if is_only_assignation:
-        query = query.outerjoin(Task, Task.entity_id == Entity.id)
-        query = query.filter(persons_service.build_assignee_filter())
+        if page is None:
+            query = query.outerjoin(Task, Task.entity_id == Entity.id)
+            query = query.filter(persons_service.build_assignee_filter())
+        else:
+            query = query.filter(entities_service.build_assigned_task_filter())
 
     try:
-        data = query.all()
+        if page is None:
+            data = query.all()
+        else:
+            total = query.count()
+            data = query_utils.paginate_query(query, page, limit).all()
     except StatementError:  # Occurs when an id is not properly formatted
         raise WrongIdFormatException
 
@@ -122,17 +130,25 @@ def get_edits(criterions=None):
         edit["project_name"] = project_name
         edits.append(edit)
 
-    return metadata_descriptors_service.remove_not_allowed_metadata_for_vendor(
-        "Edit", criterions.get("vendor_departments"), edits
+    edits = (
+        metadata_descriptors_service.remove_not_allowed_metadata_for_vendor(
+            "Edit", criterions.get("vendor_departments"), edits
+        )
+    )
+    if page is None:
+        return edits
+    return query_utils.build_page(
+        edits, total, page, query_utils.get_page_limit(limit)
     )
 
 
-def get_edits_and_tasks(criterions=None):
+def get_edits_and_tasks(criterions=None, page=None, limit=None):
     """
     Get all edits for given criterions with related tasks for each edit,
     as a list of dicts. Flat narrow queries through
     entities_service.fetch_entity_task_map instead of a row-multiplying
-    join; response shape unchanged.
+    join; response shape unchanged. With a page, only the requested page
+    is fetched, with its tasks, and returned as an envelope.
     """
     if criterions is None:
         criterions = {}
@@ -168,13 +184,12 @@ def get_edits_and_tasks(criterions=None):
             query = query.filter(has_assigned_task)
         return query
 
-    edit_rows = (
+    edit_rows, total, apply_filters = entities_service.fetch_entity_rows(
         apply_filters(
             Entity.query.join(
                 Project, Entity.project_id == Project.id
             ).outerjoin(Episode, Episode.id == Entity.parent_id)
-        )
-        .with_entities(
+        ).with_entities(
             cast(Entity.id, Text).label("id"),
             Entity.name,
             Entity.description,
@@ -189,8 +204,10 @@ def get_edits_and_tasks(criterions=None):
             cast(Episode.id, Text).label("episode_id"),
             Episode.name.label("episode_name"),
             Project.name.label("project_name"),
-        )
-        .all()
+        ),
+        apply_filters,
+        page,
+        limit,
     )
 
     tasks_by_entity, build_task = entities_service.fetch_entity_task_map(
@@ -238,32 +255,42 @@ def get_edits_and_tasks(criterions=None):
                 "type": "Edit",
             }
         )
+    if page is not None:
+        return entities_service.build_entities_page(edits, total, page, limit)
     return edits
 
 
-def get_edits_for_project(project_id, only_assigned=False):
+def get_edits_for_project(
+    project_id, only_assigned=False, page=None, limit=None
+):
     """
-    Retrieve all edits related to given project.
+    Retrieve all edits related to given project, or the requested page of
+    them when a page is given.
     """
     return entities_service.get_entities_for_project(
         project_id,
         entity_types_service.get_edit_type()["id"],
         "Edit",
         only_assigned=only_assigned,
+        page=page,
+        limit=limit,
     )
 
 
-def get_edits_for_episode(episode_id, relations=False):
+def get_edits_for_episode(episode_id, relations=False, page=None, limit=None):
     """
-    Get all edits for given episode.
+    Get all edits for given episode, or the requested page of them when a
+    page is given.
     """
     edit_type_id = entity_types_service.get_edit_type()["id"]
-    result = (
-        Entity.query.filter(Entity.entity_type_id == edit_type_id).filter(
-            Entity.parent_id == episode_id
+    query = Entity.query.filter(Entity.entity_type_id == edit_type_id).filter(
+        Entity.parent_id == episode_id
+    )
+    if page is not None:
+        return base_service.get_paginated_typed_results(
+            query, page, limit, obj_type="Edit", relations=relations
         )
-    ).all()
-    return Entity.serialize_list(result, "Edit", relations=relations)
+    return Entity.serialize_list(query.all(), "Edit", relations=relations)
 
 
 def create_edit(
@@ -326,14 +353,16 @@ def update_edit(edit_id, data_dict):
     return edit.serialize()
 
 
-def get_edit_versions(edit_id):
+def get_edit_versions(edit_id, page=None, limit=None):
     """
     Edit metadata changes are versioned. This function returns all versions
-    of a given edit.
+    of a given edit, or the requested page of them when a page is given.
     """
-    versions = (
-        EntityVersion.query.filter_by(entity_id=edit_id)
-        .order_by(EntityVersion.created_at.desc())
-        .all()
+    query = EntityVersion.query.filter_by(entity_id=edit_id).order_by(
+        EntityVersion.created_at.desc()
     )
-    return EntityVersion.serialize_list(versions, obj_type="EditVersion")
+    if page is not None:
+        return base_service.get_paginated_typed_results(
+            query, page, limit, obj_type="EditVersion"
+        )
+    return EntityVersion.serialize_list(query.all(), obj_type="EditVersion")

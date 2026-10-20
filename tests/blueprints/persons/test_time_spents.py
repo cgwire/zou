@@ -118,3 +118,13 @@ class PersonTimeSpentsTestCase(ApiDBTestCase):
         self._log_time_on_another_project()
         self.log_in(self.person.email)
         self.assertEqual(len(self._get_range()), 4)
+
+    def test_range_paginates(self):
+        path = (
+            f"/data/persons/{self.person_id}/time-spents"
+            "?start_date=2018-06-01&end_date=2018-06-30"
+        )
+        self.assert_opt_in_pagination(path)
+        full = self.assert_pages_match_full_list(path, ordered=False)
+        self.assertEqual(len(full), 3)
+        self.assertTrue(all("task_type_id" in entry for entry in full))

@@ -710,12 +710,15 @@ def playlist_previews(shots, only_movies=False):
     return result
 
 
-def get_playlists_for_project(project_id, page=0):
+def get_playlists_for_project(project_id, page=None, limit=None):
     """
-    Return all playlists for given project.
+    Return all playlists for given project, or the requested page of them
+    when a page is given.
     """
     query = Playlist.query.filter(Playlist.project_id == project_id)
-    return query_utils.get_paginated_results(query, page, relations=True)
+    return query_utils.get_paginated_results(
+        query, page or -1, limit, relations=True
+    )
 
 
 def generate_temp_playlist(task_ids, sort=True):

@@ -56,6 +56,16 @@ from zou.app.utils import (
 )
 
 
+def build_empty_list(page, limit):
+    """
+    Answer of a listing the caller gets nothing of: the bare empty list, or
+    an empty page when a page is requested.
+    """
+    if page is None:
+        return []
+    return query.build_page([], 0, page, limit)
+
+
 class AddPreviewResource(MethodView, ArgsMixin):
 
     @jwt_required()
@@ -124,7 +134,7 @@ class AddExtraPreviewResource(MethodView, ArgsMixin):
         return "", 204
 
 
-class TaskPreviewsResource(MethodView):
+class TaskPreviewsResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @swag_from("openapi/TaskPreviewsResource_get.yml")
@@ -133,6 +143,16 @@ class TaskPreviewsResource(MethodView):
         Get task previews
         """
         permissions_service.check_task_access(task_id)
+        page, limit = self.get_pagination()
+        if page is not None:
+            # The rejected previews a client may not see are filtered in
+            # the query, so that they never count in the total.
+            return files_service.get_preview_files_for_task(
+                task_id,
+                page=page,
+                limit=limit,
+                exclude_rejected=permissions.has_client_permissions(),
+            )
         previews = files_service.get_preview_files_for_task(task_id)
         if permissions.has_client_permissions():
             previews = [
@@ -141,7 +161,7 @@ class TaskPreviewsResource(MethodView):
         return previews
 
 
-class TaskCommentsResource(MethodView):
+class TaskCommentsResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @swag_from("openapi/TaskCommentsResource_get.yml")
@@ -153,8 +173,13 @@ class TaskCommentsResource(MethodView):
         is_client = permissions.has_client_permissions()
         is_manager = permissions.has_manager_permissions()
         is_supervisor = permissions.has_supervisor_permissions()
+        page, limit = self.get_pagination()
         return comments_service.get_comments(
-            task_id, is_client, is_manager or is_supervisor
+            task_id,
+            is_client,
+            is_manager or is_supervisor,
+            page=page,
+            limit=limit,
         )
 
 
@@ -216,7 +241,7 @@ class TaskCommentResource(MethodView):
         return "", 204
 
 
-class PersonTasksResource(MethodView):
+class PersonTasksResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @swag_from("openapi/PersonTasksResource_get.yml")
@@ -235,16 +260,19 @@ class PersonTasksResource(MethodView):
             projects = user_service.related_projects()
         else:
             projects = projects_service.open_projects()
+        page, limit = self.get_pagination()
         if permissions.has_vendor_permissions():
             person = persons_service.get_person(person_id)
             if person["role"] == "vendor":
-                return []
+                return build_empty_list(page, limit)
         elif permissions.has_client_permissions():
-            return []
-        return todos_service.get_person_tasks(person_id, projects)
+            return build_empty_list(page, limit)
+        return todos_service.get_person_tasks(
+            person_id, projects, page=page, limit=limit
+        )
 
 
-class PersonRelatedTasksResource(MethodView):
+class PersonRelatedTasksResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @swag_from("openapi/PersonRelatedTasksResource_get.yml")
@@ -259,10 +287,22 @@ class PersonRelatedTasksResource(MethodView):
             and permissions.has_vendor_permissions()
         ):
             raise permissions.PermissionDenied
-        return todos_service.get_person_related_tasks(person_id, task_type_id)
+        if not permissions.has_admin_permissions():
+            projects = user_service.related_projects()
+        else:
+            projects = projects_service.open_projects()
+        page, limit = self.get_pagination()
+        return todos_service.get_person_related_tasks(
+            person_id,
+            task_type_id,
+            projects,
+            only_assigned=permissions.has_vendor_permissions(),
+            page=page,
+            limit=limit,
+        )
 
 
-class PersonDoneTasksResource(MethodView):
+class PersonDoneTasksResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @swag_from("openapi/PersonDoneTasksResource_get.yml")
@@ -281,13 +321,16 @@ class PersonDoneTasksResource(MethodView):
             projects = user_service.related_projects()
         else:
             projects = projects_service.open_projects()
+        page, limit = self.get_pagination()
         if permissions.has_vendor_permissions():
             person = persons_service.get_person(person_id)
             if person["role"] == "vendor":
-                return []
+                return build_empty_list(page, limit)
         elif permissions.has_client_permissions():
-            return []
-        return todos_service.get_person_done_tasks(person_id, projects)
+            return build_empty_list(page, limit)
+        return todos_service.get_person_done_tasks(
+            person_id, projects, page=page, limit=limit
+        )
 
 
 class CreateShotTasksResource(MethodView):
@@ -583,7 +626,7 @@ class TaskFullResource(MethodView):
         return task
 
 
-class TaskForEntityResource(MethodView):
+class TaskForEntityResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @swag_from("openapi/TaskForEntityResource_get.yml")
@@ -593,8 +636,9 @@ class TaskForEntityResource(MethodView):
         """
         entity = entities_service.get_entity(entity_id)
         permissions_service.check_project_access(entity["project_id"])
+        page, limit = self.get_pagination()
         return tasks_service.get_tasks_for_entity_and_task_type(
-            entity_id, task_type_id
+            entity_id, task_type_id, page=page, limit=limit
         )
 
 
@@ -732,7 +776,7 @@ class DeleteTasksResource(MethodView):
         return task_ids, 200
 
 
-class ProjectSubscriptionsResource(MethodView):
+class ProjectSubscriptionsResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_admin
@@ -742,7 +786,10 @@ class ProjectSubscriptionsResource(MethodView):
         Get project subscriptions
         """
         projects_service.get_project(project_id)
-        return subscriptions_service.get_subscriptions_for_project(project_id)
+        page, limit = self.get_pagination()
+        return subscriptions_service.get_subscriptions_for_project(
+            project_id, page=page, limit=limit
+        )
 
 
 class ProjectNotificationsResource(MethodView, ArgsMixin):
@@ -755,9 +802,9 @@ class ProjectNotificationsResource(MethodView, ArgsMixin):
         Get project notifications
         """
         projects_service.get_project(project_id)
-        page = self.get_page()
+        page, limit = self.get_pagination()
         return notifications_service.get_notifications_for_project(
-            project_id, page
+            project_id, page=page, limit=limit
         )
 
 
@@ -775,23 +822,30 @@ class ProjectTasksResource(MethodView, ArgsMixin):
         # tasks freshness signal, plus the caller and its effective role
         # so a role change or an account switch on the same browser
         # never validates a payload shaped for someone else.
+        # A page is a different payload: its bounds join the hash, while
+        # the full listing keeps the validator it always had.
         current_user = persons_service.get_current_user()
-        etag = http_cache.build_etag(
+        page, limit = self.get_pagination()
+        etag_parts = [
             tasks_service.get_project_tasks_fingerprint(project_id),
             current_user["id"],
             permissions.get_effective_role(),
-        )
+        ]
+        if page is not None:
+            etag_parts += [page, limit]
+        etag = http_cache.build_etag(*etag_parts)
         if http_cache.is_fresh(etag):
             return http_cache.not_modified(etag)
-        page = self.get_page()
         task_type_id = self.get_task_type_id()
         episode_id = self.get_episode_id()
         return http_cache.json_response(
             todos_service.get_tasks_for_project(
                 project_id,
-                page,
+                page=page,
+                limit=limit,
                 task_type_id=task_type_id,
                 episode_id=episode_id,
+                only_assigned=permissions.has_vendor_permissions(),
             ),
             etag,
         )
@@ -812,10 +866,9 @@ class ProjectCommentsResource(MethodView, ArgsMixin):
             or permissions.has_client_permissions()
         ):
             raise permissions.PermissionDenied
-        page = self.get_page()
-        limit = self.get_limit()
+        page, limit = self.get_pagination()
         return comments_service.get_comments_for_project(
-            project_id, page, limit
+            project_id, page=page, limit=limit
         )
 
 
@@ -829,8 +882,10 @@ class ProjectPreviewFilesResource(MethodView, ArgsMixin):
         Get project preview files
         """
         projects_service.get_project(project_id)
-        page = self.get_page()
-        return files_service.get_preview_files_for_project(project_id, page)
+        page, limit = self.get_pagination()
+        return files_service.get_preview_files_for_project(
+            project_id, page=page, limit=limit
+        )
 
 
 class SetTaskMainPreviewResource(MethodView):

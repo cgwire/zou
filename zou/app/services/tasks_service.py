@@ -69,6 +69,7 @@ from zou.app.utils import (
     date_helpers,
     events,
     fields,
+    query as query_utils,
 )
 
 
@@ -121,86 +122,118 @@ def get_task_by_shotgun_id(shotgun_id):
     return task.serialize()
 
 
-def get_tasks_for_shot(shot_id, relations=False):
+def get_tasks_for_shot(shot_id, relations=False, page=None, limit=None):
     """
-    Get all tasks for given shot.
+    Get all tasks for given shot, or the requested page of them when a
+    page is given.
     """
     shot = shots_service.get_shot(shot_id)
-    return get_task_dicts_for_entity(shot["id"], relations=relations)
+    return get_task_dicts_for_entity(
+        shot["id"], relations=relations, page=page, limit=limit
+    )
 
 
-def get_tasks_for_scene(scene_id, relations=False):
+def get_tasks_for_scene(scene_id, relations=False, page=None, limit=None):
     """
-    Get all tasks for given scene.
+    Get all tasks for given scene, or the requested page of them when a
+    page is given.
     """
     scene = shots_service.get_scene(scene_id)
-    return get_task_dicts_for_entity(scene["id"], relations=relations)
+    return get_task_dicts_for_entity(
+        scene["id"], relations=relations, page=page, limit=limit
+    )
 
 
-def get_tasks_for_sequence(sequence_id, relations=False):
+def get_tasks_for_sequence(
+    sequence_id, relations=False, page=None, limit=None
+):
     """
-    Get all tasks for given sequence.
+    Get all tasks for given sequence, or the requested page of them when a
+    page is given.
     """
     sequence = shots_service.get_sequence(sequence_id)
-    return get_task_dicts_for_entity(sequence["id"], relations=relations)
+    return get_task_dicts_for_entity(
+        sequence["id"], relations=relations, page=page, limit=limit
+    )
 
 
-def get_tasks_for_asset(asset_id, relations=False):
+def get_tasks_for_asset(asset_id, relations=False, page=None, limit=None):
     """
-    Get all tasks for given asset.
+    Get all tasks for given asset, or the requested page of them when a
+    page is given.
     """
     asset = assets_service.get_asset_raw(asset_id)
-    return get_task_dicts_for_entity(asset.id, relations=relations)
+    return get_task_dicts_for_entity(
+        asset.id, relations=relations, page=page, limit=limit
+    )
 
 
-def get_tasks_for_episode(episode_id, relations=False):
+def get_tasks_for_episode(episode_id, relations=False, page=None, limit=None):
     """
-    Get all tasks for given episode.
+    Get all tasks for given episode, or the requested page of them when a
+    page is given.
     """
     episode = shots_service.get_episode_raw(episode_id)
-    return get_task_dicts_for_entity(episode.id, relations=relations)
+    return get_task_dicts_for_entity(
+        episode.id, relations=relations, page=page, limit=limit
+    )
 
 
-def get_tasks_for_edit(edit_id, relations=False):
+def get_tasks_for_edit(edit_id, relations=False, page=None, limit=None):
     """
-    Get all tasks for given edit.
+    Get all tasks for given edit, or the requested page of them when a
+    page is given.
     """
     edit = edits_service.get_edit(edit_id)
-    return get_task_dicts_for_entity(edit["id"], relations=relations)
+    return get_task_dicts_for_entity(
+        edit["id"], relations=relations, page=page, limit=limit
+    )
 
 
-def get_tasks_for_concept(concept_id, relations=False):
+def get_tasks_for_concept(concept_id, relations=False, page=None, limit=None):
     """
-    Get all tasks for given concept.
+    Get all tasks for given concept, or the requested page of them when a
+    page is given.
     """
     concept = concepts_service.get_concept(concept_id)
-    return get_task_dicts_for_entity(concept["id"], relations=relations)
+    return get_task_dicts_for_entity(
+        concept["id"], relations=relations, page=page, limit=limit
+    )
 
 
-def get_shot_tasks_for_sequence(sequence_id, relations=False):
+def get_shot_tasks_for_sequence(
+    sequence_id, relations=False, page=None, limit=None
+):
     """
-    Get all shot tasks for given sequence.
+    Get all shot tasks for given sequence, or the requested page of
+    them when a page is given.
     """
     query = _get_entity_task_query(relations=relations)
     query = query.filter(Entity.parent_id == sequence_id)
-    return _convert_rows_to_detailed_tasks(query.all(), relations)
+    return _get_detailed_tasks(query, relations, page, limit)
 
 
-def get_shot_tasks_for_episode(episode_id, relations=False):
+def get_shot_tasks_for_episode(
+    episode_id, relations=False, page=None, limit=None
+):
     """
-    Get all shots tasks for given episode.
+    Get all shots tasks for given episode, or the requested page of
+    them when a page is given.
     """
     query = _get_entity_task_query(relations=relations)
     Sequence = aliased(Entity, name="sequence")
     query = query.join(Sequence, Entity.parent_id == Sequence.id).filter(
         Sequence.parent_id == episode_id
     )
-    return _convert_rows_to_detailed_tasks(query.all(), relations)
+    return _get_detailed_tasks(query, relations, page, limit)
 
 
-def get_edit_tasks_for_episode(episode_id, relations=False):
+def get_edit_tasks_for_episode(
+    episode_id, relations=False, page=None, limit=None
+):
     """
-    Get all edit tasks for given episode.
+    Get all edit tasks for given episode, or the requested page of
+    them when a page is given.
     """
     query = (
         _get_entity_task_query(relations=relations)
@@ -210,29 +243,35 @@ def get_edit_tasks_for_episode(episode_id, relations=False):
             Entity.entity_type_id == entity_types_service.get_edit_type()["id"]
         ).filter(Entity.parent_id == episode_id)
     )
-    return _convert_rows_to_detailed_tasks(query.all(), relations)
+    return _get_detailed_tasks(query, relations, page, limit)
 
 
-def get_asset_tasks_for_episode(episode_id, relations=False):
+def get_asset_tasks_for_episode(
+    episode_id, relations=False, page=None, limit=None
+):
     """
-    Get all assets tasks for given episode.
+    Get all assets tasks for given episode, or the requested page of
+    them when a page is given.
     """
     query = (
         _get_entity_task_query(relations=relations)
         .filter(entity_types_service.build_asset_type_filter())
         .filter(Entity.source_id == episode_id)
     )
-    return _convert_rows_to_detailed_tasks(query.all(), relations)
+    return _get_detailed_tasks(query, relations, page, limit)
 
 
-def get_task_dicts_for_entity(entity_id, relations=True):
+def get_task_dicts_for_entity(
+    entity_id, relations=True, page=None, limit=None
+):
     """
-    Return all tasks related to given entity. Add extra information like
-    project name, task type name, etc.
+    Return all tasks related to given entity, or the requested page of them
+    when a page is given. Add extra information like project name, task
+    type name, etc.
     """
     query = _get_entity_task_query(relations=relations)
     query = query.filter(Task.entity_id == entity_id)
-    return _convert_rows_to_detailed_tasks(query.all(), relations)
+    return _get_detailed_tasks(query, relations, page, limit)
 
 
 def _get_entity_task_query(relations=False):
@@ -241,7 +280,8 @@ def _get_entity_task_query(relations=False):
     project, task type, task status, entity and assignees. No SQL
     ordering: sorting thousands of wide task rows (JSONB data included)
     made PostgreSQL materialize the whole join, the caller sorts the
-    serialized dicts instead.
+    serialized dicts instead. A requested page is ordered by task id
+    alone, which the primary key index serves.
     """
     return (
         Task.query.join(Project, Task.project_id == Project.id)
@@ -257,10 +297,32 @@ def _get_entity_task_query(relations=False):
     )
 
 
-def _convert_rows_to_detailed_tasks(rows, relations=False):
+def _get_detailed_tasks(query, relations=False, page=None, limit=None):
+    """
+    Run a query built on _get_entity_task_query and return its detailed
+    task dicts. Without a page, all of them, sorted by name the way they
+    always were. With a page, the envelope of that page: the query is
+    paged in SQL ordered by task id, and only the rows of the page are
+    converted, keeping that order.
+    """
+    if page is None:
+        return _convert_rows_to_detailed_tasks(query.all(), relations)
+    limit = query_utils.get_page_limit(limit)
+    total = query.count()
+    rows = query_utils.paginate_query(query, page, limit).all()
+    return query_utils.build_page(
+        _convert_rows_to_detailed_tasks(rows, relations, sort=False),
+        total,
+        page,
+        limit,
+    )
+
+
+def _convert_rows_to_detailed_tasks(rows, relations=False, sort=True):
     """
     Turn the rows of _get_entity_task_query into the task dicts the API
-    returns, assignee ids included.
+    returns, assignee ids included. Unless told otherwise, the dicts are
+    sorted by name.
     """
     task_dicts = [
         {
@@ -273,15 +335,16 @@ def _convert_rows_to_detailed_tasks(rows, relations=False):
         }
         for task_object, project_name, task_type_name, task_status_name, entity_type_name, entity_name in rows
     ]
-    task_dicts.sort(
-        key=lambda task: (
-            task["name"].casefold(),
-            task["project_name"].casefold(),
-            task["task_type_name"].casefold(),
-            task["entity_type_name"].casefold(),
-            task["entity_name"].casefold(),
+    if sort:
+        task_dicts.sort(
+            key=lambda task: (
+                task["name"].casefold(),
+                task["project_name"].casefold(),
+                task["task_type_name"].casefold(),
+                task["entity_type_name"].casefold(),
+                task["entity_name"].casefold(),
+            )
         )
-    )
     if relations and task_dicts:
         attach_assignee_ids(task_dicts)
     return entities_service.blank_tasks_for_current_user(task_dicts)
@@ -535,18 +598,25 @@ def get_comment_by_preview_file_id(preview_file_id):
         return None
 
 
-def get_tasks_for_entity_and_task_type(entity_id, task_type_id):
+def get_tasks_for_entity_and_task_type(
+    entity_id, task_type_id, page=None, limit=None
+):
     """
-    For a task type, returns all tasks related to given entity.
+    For a task type, returns all tasks related to given entity, or the
+    requested page of them when a page is given.
     """
-    tasks = (
-        Task.query.filter_by(entity_id=entity_id, task_type_id=task_type_id)
-        .order_by(Task.name)
-        .all()
+    query = Task.query.filter_by(
+        entity_id=entity_id, task_type_id=task_type_id
+    ).order_by(Task.name)
+    if page is None:
+        return entities_service.blank_tasks_for_current_user(
+            Task.serialize_list(query.all())
+        )
+    result = query_utils.get_paginated_results(query, page, limit)
+    result["data"] = entities_service.blank_tasks_for_current_user(
+        result["data"]
     )
-    return entities_service.blank_tasks_for_current_user(
-        Task.serialize_list(tasks)
-    )
+    return result
 
 
 def get_tasks_for_project_and_task_type(project_id, task_type_id):

@@ -388,7 +388,7 @@ class DeleteReplyCommentResource(MethodView):
         return comments_service.delete_reply(comment_id, reply_id)
 
 
-class ProjectAttachmentFiles(MethodView):
+class ProjectAttachmentFiles(MethodView, ArgsMixin):
 
     @jwt_required()
     @swag_from("openapi/ProjectAttachmentFiles_get.yml")
@@ -397,12 +397,13 @@ class ProjectAttachmentFiles(MethodView):
         Get project attachment files
         """
         permissions.check_admin_permissions()
+        page, limit = self.get_pagination()
         return attachment_files_service.get_all_attachment_files_for_project(
-            project_id
+            project_id, page=page, limit=limit
         )
 
 
-class TaskAttachmentFiles(MethodView):
+class TaskAttachmentFiles(MethodView, ArgsMixin):
 
     @jwt_required()
     @swag_from("openapi/TaskAttachmentFiles_get.yml")
@@ -411,8 +412,9 @@ class TaskAttachmentFiles(MethodView):
         Get task attachment files
         """
         permissions.check_admin_permissions()
+        page, limit = self.get_pagination()
         return attachment_files_service.get_all_attachment_files_for_task(
-            task_id
+            task_id, page=page, limit=limit
         )
 
 

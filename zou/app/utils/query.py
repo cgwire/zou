@@ -106,44 +106,75 @@ def apply_criterions_to_db_query(model, db_query, criterions):
     return db_query
 
 
+def get_page_limit(limit=None):
+    """
+    Page size to apply: the requested one, the default when none is given,
+    never more than MAX_RECORDS_PER_PAGE.
+    """
+    limit = limit or config.NB_RECORDS_PER_PAGE
+    return min(limit, config.MAX_RECORDS_PER_PAGE)
+
+
+def build_page(data, total, page, limit):
+    """
+    Envelope shared by every paginated route.
+    """
+    return {
+        "data": data,
+        "total": total,
+        "nb_pages": int(math.ceil(total / float(limit))),
+        "limit": limit,
+        "offset": (page - 1) * limit,
+        "page": page,
+    }
+
+
+def paginate_query(query, page, limit=None):
+    """
+    Restrict the query to the requested page. The rows are ordered by id
+    last, so that rows sharing every other sort key keep the same page
+    from one request to the next.
+    """
+    limit = get_page_limit(limit)
+    model = query.column_descriptions[0]["entity"]
+    if model is not None and hasattr(model, "id"):
+        query = query.order_by(model.id)
+    return query.limit(limit).offset((page - 1) * limit)
+
+
 def get_paginated_results(query, page, limit=None, relations=False):
     """
-    Apply pagination to the query object.
+    Apply pagination to the query object. A page below 1 means no
+    pagination: the whole list is returned.
     """
     if page < 1:
         entries = query.all()
         return fields.serialize_models(entries, relations=relations)
     else:
-        limit = limit or config.NB_RECORDS_PER_PAGE
+        limit = get_page_limit(limit)
         total = query.count()
         offset = (page - 1) * limit
-
-        nb_pages = int(math.ceil(total / float(limit)))
-        query = query.limit(limit)
-        query = query.offset(offset)
-
         if total < offset:
             # Past the last page: the envelope still describes the whole
             # collection, so total stays the real count like nb_pages does.
-            result = {
-                "data": [],
-                "total": total,
-                "nb_pages": nb_pages,
-                "limit": limit,
-                "offset": offset,
-                "page": page,
-            }
+            models = []
         else:
-            models = fields.serialize_models(query.all(), relations=relations)
-            result = {
-                "data": models,
-                "total": total,
-                "nb_pages": nb_pages,
-                "limit": limit,
-                "offset": offset,
-                "page": page,
-            }
-        return result
+            models = fields.serialize_models(
+                paginate_query(query, page, limit).all(), relations=relations
+            )
+        return build_page(models, total, page, limit)
+
+
+def paginate_list(entries, page, limit=None):
+    """
+    Paginate a list already built in memory, for routes whose rows cannot
+    be paged in the query. It bounds the response, not the work.
+    """
+    limit = get_page_limit(limit)
+    offset = (page - 1) * limit
+    return build_page(
+        entries[offset : offset + limit], len(entries), page, limit
+    )
 
 
 def get_cursor_results(

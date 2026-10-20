@@ -143,3 +143,11 @@ class ProjectScheduleRouteTestCase(ApiDBTestCase):
         items = self.get(f"{base_path}?episode_id={episode_2_id}")
         object_ids = {item["object_id"] for item in items}
         self.assertEqual(object_ids, {asset_type_character_id})
+
+    def test_get_project_schedule_items_paginates(self):
+        for object_id in [self.sequence.id, self.episode.id, self.shot.id]:
+            self.generate_fixture_schedule_item(object_id=object_id)
+        path = f"/data/projects/{self.project_id}/schedule-items"
+        self.assert_opt_in_pagination(path)
+        full = self.assert_pages_match_full_list(path, ordered=False)
+        self.assertEqual(len(full), 3)

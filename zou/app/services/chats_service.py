@@ -17,7 +17,7 @@ from zou.app.services import (
     persons_service,
 )
 from zou.app.stores import file_store
-from zou.app.utils import cache, events, fs, thumbnail
+from zou.app.utils import cache, events, fs, query as query_utils, thumbnail
 
 
 def clear_chat_message_cache(chat_message_id):
@@ -118,24 +118,33 @@ def leave_chat(entity_id, person_id):
     return chat.serialize()
 
 
-def get_chat_messages(chat_id):
+def get_chat_messages(chat_id, page=None, limit=None):
     """
-    Return chat messages for given chat ID.
+    Return chat messages for given chat ID, or the requested page of them
+    when a page is given.
     """
-    messages = (
-        ChatMessage.query.filter(ChatMessage.chat_id == chat_id)
-        .order_by(ChatMessage.created_at)
-        .all()
+    query = ChatMessage.query.filter(ChatMessage.chat_id == chat_id).order_by(
+        ChatMessage.created_at
     )
-    return [_serialize_message(message) for message in messages]
+    if page is None:
+        return [_serialize_message(message) for message in query.all()]
+    limit = query_utils.get_page_limit(limit)
+    messages = query_utils.paginate_query(query, page, limit).all()
+    return query_utils.build_page(
+        [_serialize_message(message) for message in messages],
+        query.count(),
+        page,
+        limit,
+    )
 
 
-def get_chat_messages_for_entity(entity_id):
+def get_chat_messages_for_entity(entity_id, page=None, limit=None):
     """
-    Return chat messages for given entity ID.
+    Return chat messages for given entity ID, or the requested page of them
+    when a page is given.
     """
     chat = get_chat_raw(entity_id)
-    return get_chat_messages(chat.id)
+    return get_chat_messages(chat.id, page=page, limit=limit)
 
 
 def create_chat_message(chat_id, person_id, message, files=None):
@@ -196,19 +205,25 @@ def build_participant_filter(person_id):
     return Chat.participants.contains(person)
 
 
-def get_chats_for_person(person_id):
+def get_chats_for_person(person_id, page=None, limit=None):
     """
-    Return chats for current user.
+    Return chats for current user, or the requested page of them when a page
+    is given.
     """
-    chats = (
+    query = (
         Chat.query.join(Entity, Chat.object_id == Entity.id)
         .join(Project, Entity.project_id == Project.id)
         .join(ProjectStatus, ProjectStatus.id == Project.project_status_id)
         .add_columns(Entity.project_id, Entity.preview_file_id)
         .filter(build_participant_filter(person_id))
         .filter(ProjectStatus.name == "Open")
-        .all()
     )
+    if page is None:
+        chats = query.all()
+    else:
+        limit = query_utils.get_page_limit(limit)
+        total = query.count()
+        chats = query_utils.paginate_query(query, page, limit).all()
 
     result = []
     for chat_model, project_id, preview_file_id in chats:
@@ -219,7 +234,9 @@ def get_chats_for_person(person_id):
         chat["project_id"] = project_id
         chat["preview_file_id"] = preview_file_id
         result.append(chat)
-    return result
+    if page is None:
+        return result
+    return query_utils.build_page(result, total, page, limit)
 
 
 def _add_attachments_to_message(message, files):

@@ -337,16 +337,32 @@ def get_for_entity_from_task(task):
     return "Asset"
 
 
+def build_assigned_task_filter(entity_id_column=Entity.id):
+    """
+    Filter keeping the entities holding a task assigned to the current
+    user. Being an EXISTS clause, it never repeats an entity the way a join
+    on its tasks does, so the query can be counted and paged.
+    """
+    return (
+        db.session.query(Task.id)
+        .filter(Task.entity_id == entity_id_column)
+        .filter(persons_service.build_assignee_filter())
+        .exists()
+    )
+
+
 def get_entities_for_project(
     project_id,
     entity_type_id,
     obj_type="Entity",
     episode_id=None,
     only_assigned=False,
+    page=None,
+    limit=None,
 ):
     """
     Retrieve all entities related to given project of which entity is entity
-    type.
+    type, or the requested page of them when a page is given.
     """
     query = (
         Entity.query.filter(Entity.entity_type_id == entity_type_id)
@@ -356,6 +372,13 @@ def get_entities_for_project(
 
     if episode_id is not None:
         query = query.filter(Entity.parent_id == episode_id)
+
+    if page is not None:
+        if only_assigned:
+            query = query.filter(build_assigned_task_filter())
+        return base_service.get_paginated_typed_results(
+            query, page, limit, obj_type=obj_type
+        )
 
     if only_assigned:
         query = query.outerjoin(Task).filter(
@@ -557,6 +580,38 @@ def fetch_entity_task_map(
     return tasks_by_entity, build_task
 
 
+def fetch_entity_rows(rows_query, apply_filters, page=None, limit=None):
+    """
+    Run the entity query of a with-tasks view. Without a page, return its
+    rows, None and apply_filters as they are. With a page, return the rows
+    of that page only (entity id as the last sort key), the count of the
+    whole query and apply_filters narrowed to the ids of the page, so that
+    the side queries (tasks, assignees, links) fetch nothing the page does
+    not show.
+    """
+    if page is None:
+        return rows_query.all(), None, apply_filters
+    total = rows_query.count()
+    rows = query_utils.paginate_query(
+        rows_query.order_by(Entity.id), page, limit
+    ).all()
+    page_ids = [row.id for row in rows]
+
+    def apply_page_filters(query):
+        return apply_filters(query).filter(Entity.id.in_(page_ids))
+
+    return rows, total, apply_page_filters
+
+
+def build_entities_page(entities, total, page, limit=None):
+    """
+    Envelope of a with-tasks page built by fetch_entity_rows.
+    """
+    return query_utils.build_page(
+        list(entities), total, page, query_utils.get_page_limit(limit)
+    )
+
+
 def get_project_board_fingerprint(project_id, user_id):
     """
     Cheap change signal for the with-tasks boards of given project. It
@@ -596,30 +651,36 @@ def get_project_board_fingerprint(project_id, user_id):
     return "|".join(parts)
 
 
-def get_project_board_etag(criterions):
+def get_project_board_etag(criterions, page=None, limit=None):
     """
     Build the conditional GET validator for a with-tasks board, or None
     when the request is not scoped to one project. Hashes the board
     fingerprint with the caller, its effective role and the resolved
-    criterions (vendor scoping included). Call it after the permission
-    checks: the effective role needs the project resolved.
+    criterions (vendor scoping included). A page is a different payload:
+    its bounds join the hash, while the full board keeps the validator it
+    always had. Call it after the permission checks: the effective role
+    needs the project resolved.
     """
     project_id = criterions.get("project_id")
     if project_id is None:
         return None
     user_id = persons_service.get_current_user()["id"]
-    return http_cache.build_etag(
+    parts = [
         get_project_board_fingerprint(project_id, user_id),
         user_id,
         permissions.get_effective_role(),
         str(sorted(criterions.items())),
-    )
+    ]
+    if page is not None:
+        parts += [page, limit]
+    return http_cache.build_etag(*parts)
 
 
-def get_entities_and_tasks(criterions=None):
+def get_entities_and_tasks(criterions=None, page=None, limit=None):
     """
     Get all entities for given criterions with related tasks for each
-    entity, as a list of dicts.
+    entity, as a list of dicts, or the requested page of them when a page
+    is given.
     """
     if criterions is None:
         criterions = {}
@@ -644,9 +705,8 @@ def get_entities_and_tasks(criterions=None):
             query = query.filter(Entity.id.in_(criterions["entity_ids"]))
         return query
 
-    entity_rows = (
-        apply_filters(Entity.query)
-        .with_entities(
+    entity_rows, total, apply_filters = fetch_entity_rows(
+        apply_filters(Entity.query).with_entities(
             cast(Entity.id, Text).label("id"),
             Entity.name,
             Entity.status,
@@ -655,8 +715,10 @@ def get_entities_and_tasks(criterions=None):
             Entity.data,
             cast(Entity.preview_file_id, Text).label("preview_file_id"),
             Entity.canceled,
-        )
-        .all()
+        ),
+        apply_filters,
+        page,
+        limit,
     )
 
     tasks_by_entity, build_task = fetch_entity_task_map(
@@ -694,6 +756,8 @@ def get_entities_and_tasks(criterions=None):
                 "tasks": tasks,
             }
         )
+    if page is not None:
+        return build_entities_page(entities, total, page, limit)
     return entities
 
 
@@ -708,15 +772,37 @@ def get_entity_link(link_id):
     return link.serialize()
 
 
-def get_linked_entities_with_tasks(entity_id):
+def get_linked_entities_with_tasks(
+    entity_id, assigned_to=False, page=None, limit=None
+):
     """
-    Return all entities and their tasks linked to given entity.
+    Return all entities and their tasks linked to given entity, or the
+    requested page of them when a page is given. With assigned_to, only
+    the entities holding a task assigned to the current user are listed,
+    with those tasks only.
     """
     entities_in = (
         db.session.query(EntityConceptLink.entity_in_id)
         .filter(EntityConceptLink.entity_out_id == entity_id)
         .distinct()
     )
+    if assigned_to:
+        entities_in = entities_in.filter(
+            build_assigned_task_filter(EntityConceptLink.entity_in_id)
+        )
+    if page is not None:
+        # Page the linked entities, then fetch the tasks of the page only:
+        # the join below repeats an entity once per task and assignee.
+        linked_query = Entity.query.filter(
+            Entity.id.in_(entities_in)
+        ).with_entities(Entity.id)
+        total = linked_query.count()
+        entities_in = [
+            row.id
+            for row in query_utils.paginate_query(
+                linked_query.order_by(Entity.id), page, limit
+            ).all()
+        ]
 
     entity_map = {}
     task_map = {}
@@ -748,6 +834,8 @@ def get_linked_entities_with_tasks(entity_id):
         )
         .filter(Entity.id.in_(entities_in))
     )
+    if assigned_to:
+        query = query.filter(persons_service.build_assignee_filter())
     query_result = query.all()
 
     for (
@@ -838,4 +926,15 @@ def get_linked_entities_with_tasks(entity_id):
             if person_id:
                 task_map[task_id]["assignees"].append(str(person_id))
 
+    if page is not None:
+        return build_entities_page(
+            [
+                entity_map[str(linked_id)]
+                for linked_id in entities_in
+                if str(linked_id) in entity_map
+            ],
+            total,
+            page,
+            limit,
+        )
     return list(entity_map.values())

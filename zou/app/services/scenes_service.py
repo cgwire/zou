@@ -29,8 +29,11 @@ def remove_shot_from_scene(scene, shot):
     return shot
 
 
-def get_shots_by_scene(scene_id):
+def get_shots_by_scene(scene_id, page=None, limit=None):
     """
-    Get shots linked to a scene (of which the source is the given scene).
+    Get shots linked to a scene (of which the source is the given scene),
+    or the requested page of them when a page is given.
     """
-    return shots_service.get_shots({"source_id": scene_id})
+    return shots_service.get_shots(
+        {"source_id": scene_id}, page=page, limit=limit
+    )

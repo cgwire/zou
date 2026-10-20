@@ -455,6 +455,67 @@ class ApiDBTestCase(
 
     # Helpers
 
+    def assert_opt_in_pagination(self, path):
+        """
+        Without page nor limit the route answers the plain list. With them
+        it answers the envelope, a limit alone meaning page 1, and walking
+        the pages yields every row once.
+        """
+        full = self.get(path)
+        self.assertIsInstance(full, list)
+        total = len(full)
+        self.assertGreaterEqual(total, 1)
+        separator = "&" if "?" in path else "?"
+        first_page = self.get(f"{path}{separator}page=1&limit=1")
+        self.assertEqual(first_page["total"], total)
+        self.assertEqual(first_page["nb_pages"], total)
+        self.assertEqual(first_page["page"], 1)
+        self.assertEqual(first_page["limit"], 1)
+        self.assertEqual(len(first_page["data"]), min(1, total))
+        self.assertEqual(self.get(f"{path}{separator}limit=1"), first_page)
+        ids = []
+        for page in range(1, total + 1):
+            result = self.get(f"{path}{separator}page={page}&limit=1")
+            ids += [row["id"] for row in result["data"]]
+        self.assertEqual(len(set(ids)), total)
+        self.assertCountEqual(ids, [row["id"] for row in full])
+        past_the_end = self.get(f"{path}{separator}page={total + 1}&limit=1")
+        self.assertEqual(past_the_end["data"], [])
+        self.assertEqual(past_the_end["total"], total)
+
+    def assert_pages_match_full_list(self, path, limit=1, ordered=True):
+        """
+        Walking the pages of given route yields exactly the rows of its full
+        list, nested data included. Routes whose full list has no defined
+        order are compared once both sides are sorted by id. The assignees
+        of a task come in no defined order either: they are compared
+        sorted.
+        """
+
+        def sort_assignees(rows):
+            for row in rows:
+                for task in row.get("tasks", []):
+                    if isinstance(task, dict) and "assignees" in task:
+                        task["assignees"] = sorted(task["assignees"])
+            return rows
+
+        full = self.get(path)
+        separator = "&" if "?" in path else "?"
+        rows = []
+        page = 1
+        while True:
+            result = self.get(f"{path}{separator}page={page}&limit={limit}")
+            self.assertEqual(result["total"], len(full))
+            if not result["data"]:
+                break
+            rows += result["data"]
+            page += 1
+        if not ordered:
+            rows = sorted(rows, key=lambda row: row["id"])
+            full = sorted(full, key=lambda row: row["id"])
+        self.assertEqual(sort_assignees(rows), sort_assignees(full))
+        return full
+
     def assign_task(self, task_id, user_id):
         return tasks_service.assign_task(task_id, user_id)
 

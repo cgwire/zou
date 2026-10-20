@@ -855,7 +855,7 @@ class AllProjectsMetadataDescriptorsReorderResource(MethodView):
         )
 
 
-class ProductionTimeSpentsResource(MethodView):
+class ProductionTimeSpentsResource(MethodView, ArgsMixin):
     """
     Resource to retrieve time spents for given production.
     """
@@ -868,7 +868,10 @@ class ProductionTimeSpentsResource(MethodView):
         """
         permissions_service.check_project_access(project_id)
         permissions_service.block_access_to_client()
-        return time_spents_service.get_time_spents_for_project(project_id)
+        page, limit = self.get_pagination()
+        return time_spents_service.get_time_spents_for_project(
+            project_id, page=page, limit=limit
+        )
 
 
 class ProductionMilestonesResource(MethodView):
@@ -887,7 +890,7 @@ class ProductionMilestonesResource(MethodView):
         return schedule_service.get_milestones_for_project(project_id)
 
 
-class ProductionScheduleItemsResource(MethodView):
+class ProductionScheduleItemsResource(MethodView, ArgsMixin):
     """
     Resource to retrieve schedule items for given production.
     """
@@ -901,7 +904,10 @@ class ProductionScheduleItemsResource(MethodView):
         permissions_service.check_project_access(project_id)
         permissions_service.block_access_to_client()
         permissions_service.block_access_to_vendor()
-        return schedule_service.get_schedule_items(project_id)
+        page, limit = self.get_pagination()
+        return schedule_service.get_schedule_items(
+            project_id, page=page, limit=limit
+        )
 
 
 class ProductionTaskTypeScheduleItemsResource(MethodView):
@@ -1200,11 +1206,14 @@ class ProductionScheduleVersionTaskLinksResource(MethodView, ArgsMixin):
         )
 
         relations = self.get_relations()
+        page, limit = self.get_pagination()
 
         return schedule_service.get_production_schedule_version_task_links(
             production_schedule_version_id,
             task_type_id=args["task_type_id"],
             relations=relations,
+            page=page,
+            limit=limit,
         )
 
 

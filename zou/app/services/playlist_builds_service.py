@@ -28,7 +28,14 @@ from zou.app.services import (
     templates_service,
 )
 from zou.app.stores import config_store, file_store
-from zou.app.utils import emails, events, fields, fs, remote_job
+from zou.app.utils import (
+    emails,
+    events,
+    fields,
+    fs,
+    query as query_utils,
+    remote_job,
+)
 from zou.utils import movie
 
 logger = logging.getLogger(__name__)
@@ -514,11 +521,14 @@ def remove_build_job(playlist, build_job_id):
     return remove_build_job_impl(playlist, job.serialize())
 
 
-def get_build_jobs_for_project(project_id):
+def get_build_jobs_for_project(project_id, page=None, limit=None):
     """
-    Return all build_jobs for given project.
+    Return all build_jobs for given project, or the requested page of them
+    when a page is given.
     """
     build_jobs = BuildJob.query.join(Playlist).filter(
         Playlist.project_id == project_id
     )
-    return fields.serialize_list(build_jobs)
+    if page is None:
+        return fields.serialize_list(build_jobs)
+    return query_utils.get_paginated_results(build_jobs, page, limit)

@@ -31,6 +31,20 @@ parameters:
       format: date
     description: End date for date range filter
     example: "2022-07-31"
+  - in: query
+    name: page
+    required: false
+    type: integer
+    example: 1
+    description: Page number. Without page nor limit, the whole list is
+      returned; with either, a paginated envelope is returned.
+  - in: query
+    name: limit
+    required: false
+    type: integer
+    example: 100
+    description: Number of entries per page (default 100, max 5000). A
+      limit alone returns the first page.
 responses:
   200:
     description: All time spents for the given person

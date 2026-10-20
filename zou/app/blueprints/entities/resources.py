@@ -20,7 +20,7 @@ from zou.app.services import (
 from zou.app.utils import permissions, validation
 
 
-class EntityNewsResource(MethodView):
+class EntityNewsResource(MethodView, ArgsMixin):
     @jwt_required()
     @swag_from("openapi/EntityNewsResource_get.yml")
     def get(self, entity_id):
@@ -30,10 +30,13 @@ class EntityNewsResource(MethodView):
         entity = entities_service.get_entity(entity_id)
         permissions_service.check_project_access(entity["project_id"])
         permissions_service.check_entity_access(entity_id)
-        return news_service.get_news_for_entity(entity_id)
+        page, limit = self.get_pagination()
+        return news_service.get_news_for_entity(
+            entity_id, page=page, limit=limit
+        )
 
 
-class EntityPreviewFilesResource(MethodView):
+class EntityPreviewFilesResource(MethodView, ArgsMixin):
     @jwt_required()
     @swag_from("openapi/EntityPreviewFilesResource_get.yml")
     def get(self, entity_id):
@@ -43,10 +46,13 @@ class EntityPreviewFilesResource(MethodView):
         entity = entities_service.get_entity(entity_id)
         permissions_service.check_project_access(entity["project_id"])
         permissions_service.check_entity_access(entity_id)
-        return preview_files_service.get_preview_files_for_entity(entity_id)
+        page, limit = self.get_pagination()
+        return preview_files_service.get_preview_files_for_entity(
+            entity_id, page=page, limit=limit
+        )
 
 
-class EntityTimeSpentsResource(MethodView):
+class EntityTimeSpentsResource(MethodView, ArgsMixin):
     @jwt_required()
     @swag_from("openapi/EntityTimeSpentsResource_get.yml")
     def get(self, entity_id):
@@ -56,10 +62,13 @@ class EntityTimeSpentsResource(MethodView):
         entity = entities_service.get_entity(entity_id)
         permissions_service.check_project_access(entity["project_id"])
         permissions_service.check_entity_access(entity_id)
-        return time_spents_service.get_time_spents_for_entity(entity_id)
+        page, limit = self.get_pagination()
+        return time_spents_service.get_time_spents_for_entity(
+            entity_id, page=page, limit=limit
+        )
 
 
-class EntitiesLinkedWithTasksResource(MethodView):
+class EntitiesLinkedWithTasksResource(MethodView, ArgsMixin):
     @jwt_required()
     @swag_from("openapi/EntitiesLinkedWithTasksResource_get.yml")
     def get(self, entity_id):
@@ -69,7 +78,19 @@ class EntitiesLinkedWithTasksResource(MethodView):
         entity = entities_service.get_entity(entity_id)
         permissions_service.check_project_access(entity["project_id"])
         permissions_service.check_entity_access(entity_id)
-        return entities_service.get_linked_entities_with_tasks(entity_id)
+        page, limit = self.get_pagination()
+        result = entities_service.get_linked_entities_with_tasks(
+            entity_id,
+            assigned_to=permissions.has_vendor_permissions(),
+            page=page,
+            limit=limit,
+        )
+        entities = result["data"] if page is not None else result
+        for entity in entities:
+            entity["tasks"] = entities_service.blank_tasks_for_current_user(
+                entity["tasks"]
+            )
+        return result
 
 
 class EntityTaskCreationResource(MethodView):

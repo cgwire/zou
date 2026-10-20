@@ -2,9 +2,9 @@ Get tasks requiring feedback
 ---
 description: Retrieve tasks requiring feedback for departments where the
   current user is a supervisor. Returns empty list if user is not a
-  supervisor. When a page parameter is given, the response is a
-  pagination envelope ({data, stats, page, limit, is_more}) instead of
-  a bare array.
+  supervisor. When a page or a limit parameter is given, the response
+  is a pagination envelope ({data, stats, page, limit, is_more})
+  instead of a bare array.
 tags:
 - User
 parameters:
@@ -81,7 +81,8 @@ parameters:
       type: integer
       default: 100
     example: 100
-    description: Number of tasks per page
+    description: Number of tasks per page. A limit alone returns the
+      first page.
 responses:
     200:
       description: Tasks requiring feedback in current user

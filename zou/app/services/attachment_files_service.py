@@ -10,7 +10,7 @@ from zou.app.models.comment import Comment
 from zou.app.models.task import Task
 from zou.app.services import base_service, files_service
 from zou.app.stores import file_store
-from zou.app.utils import cache, fields, fs
+from zou.app.utils import cache, fields, fs, query as query_utils
 
 
 def get_attachment_file_raw(attachment_file_id):
@@ -118,23 +118,29 @@ def _attachment_files_query():
     )
 
 
-def get_all_attachment_files_for_project(project_id):
+def get_all_attachment_files_for_project(project_id, page=None, limit=None):
     """
-    Return all attachment files listed into given project. It is mainly needed
-    for synchronisation purposes.
+    Return all attachment files listed into given project, or the requested
+    page of them when a page is given. It is mainly needed for
+    synchronisation purposes.
     """
     attachment_files = _attachment_files_query().filter(
         Task.project_id == project_id
     )
-    return fields.serialize_models(attachment_files)
+    if page is None:
+        return fields.serialize_models(attachment_files)
+    return query_utils.get_paginated_results(attachment_files, page, limit)
 
 
-def get_all_attachment_files_for_task(task_id):
+def get_all_attachment_files_for_task(task_id, page=None, limit=None):
     """
-    Return all attachment files listed into given task.
+    Return all attachment files listed into given task, or the requested
+    page of them when a page is given.
     """
     attachment_files = _attachment_files_query().filter(Task.id == task_id)
-    return fields.serialize_models(attachment_files)
+    if page is None:
+        return fields.serialize_models(attachment_files)
+    return query_utils.get_paginated_results(attachment_files, page, limit)
 
 
 def build_attachment_map_for_comments(comment_ids):

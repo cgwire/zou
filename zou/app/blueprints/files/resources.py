@@ -338,7 +338,7 @@ class LastWorkingFilesResource(MethodView):
         return result
 
 
-class TaskWorkingFilesResource(MethodView):
+class TaskWorkingFilesResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @swag_from("openapi/TaskWorkingFilesResource_get.yml")
@@ -346,11 +346,11 @@ class TaskWorkingFilesResource(MethodView):
         """
         Get task working files
         """
-        result = {}
         permissions_service.check_task_access(task_id)
-        result = files_service.get_working_files_for_task(task_id)
-
-        return result
+        page, limit = self.get_pagination()
+        return files_service.get_working_files_for_task(
+            task_id, page=page, limit=limit
+        )
 
 
 class NewWorkingFileResource(MethodView, ArgsMixin):
@@ -788,6 +788,7 @@ class LastEntityOutputFilesResource(MethodView, ArgsMixin):
 
         entity = entities_service.get_entity(entity_id)
         permissions_service.check_project_access(entity["project_id"])
+        page, limit = self.get_pagination()
 
         return files_service.get_last_output_files_for_entity(
             entity["id"],
@@ -796,6 +797,8 @@ class LastEntityOutputFilesResource(MethodView, ArgsMixin):
             representation=args["representation"],
             file_status_id=args["file_status_id"],
             name=args["name"],
+            page=page,
+            limit=limit,
         )
 
 
@@ -822,6 +825,7 @@ class LastInstanceOutputFilesResource(MethodView, ArgsMixin):
         )
         entity = entities_service.get_entity(asset_instance["asset_id"])
         permissions_service.check_project_access(entity["project_id"])
+        page, limit = self.get_pagination()
 
         return files_service.get_last_output_files_for_instance(
             asset_instance["id"],
@@ -831,6 +835,8 @@ class LastInstanceOutputFilesResource(MethodView, ArgsMixin):
             representation=args["representation"],
             file_status_id=args["file_status_id"],
             name=args["name"],
+            page=page,
+            limit=limit,
         )
 
 
@@ -878,13 +884,14 @@ class EntityOutputTypeOutputFilesResource(MethodView, ArgsMixin):
         entity = entities_service.get_entity(entity_id)
         files_service.get_output_type(output_type_id)
         permissions_service.check_project_access(entity["project_id"])
-        output_files = (
-            files_service.get_output_files_for_output_type_and_entity(
-                entity_id, output_type_id, representation=representation
-            )
+        page, limit = self.get_pagination()
+        return files_service.get_output_files_for_output_type_and_entity(
+            entity_id,
+            output_type_id,
+            representation=representation,
+            page=page,
+            limit=limit,
         )
-
-        return output_files
 
 
 class InstanceOutputTypeOutputFilesResource(MethodView, ArgsMixin):
@@ -904,12 +911,15 @@ class InstanceOutputTypeOutputFilesResource(MethodView, ArgsMixin):
         permissions_service.check_project_access(asset["project_id"])
 
         files_service.get_output_type(output_type_id)
+        page, limit = self.get_pagination()
         return (
             files_service.get_output_files_for_output_type_and_asset_instance(
                 asset_instance_id,
                 temporal_entity_id,
                 output_type_id,
                 representation=representation,
+                page=page,
+                limit=limit,
             )
         )
 
@@ -932,6 +942,7 @@ class ProjectOutputFilesResource(MethodView, ArgsMixin):
             ],
         )
         permissions_service.check_manager_project_access(project_id)
+        page, limit = self.get_pagination()
 
         return files_service.get_output_files_for_project(
             project_id,
@@ -940,6 +951,8 @@ class ProjectOutputFilesResource(MethodView, ArgsMixin):
             name=args["name"],
             representation=args["representation"],
             file_status_id=args["file_status_id"],
+            page=page,
+            limit=limit,
         )
 
 
@@ -963,6 +976,7 @@ class EntityOutputFilesResource(MethodView, ArgsMixin):
 
         entity = entities_service.get_entity(entity_id)
         permissions_service.check_project_access(entity["project_id"])
+        page, limit = self.get_pagination()
 
         return files_service.get_output_files_for_entity(
             entity["id"],
@@ -971,6 +985,8 @@ class EntityOutputFilesResource(MethodView, ArgsMixin):
             name=args["name"],
             representation=args["representation"],
             file_status_id=args["file_status_id"],
+            page=page,
+            limit=limit,
         )
 
 
@@ -998,6 +1014,7 @@ class InstanceOutputFilesResource(MethodView, ArgsMixin):
         )
         asset = assets_service.get_asset(asset_instance["asset_id"])
         permissions_service.check_project_access(asset["project_id"])
+        page, limit = self.get_pagination()
 
         return files_service.get_output_files_for_instance(
             asset_instance["id"],
@@ -1007,6 +1024,8 @@ class InstanceOutputFilesResource(MethodView, ArgsMixin):
             name=args["name"],
             representation=args["representation"],
             file_status_id=args["file_status_id"],
+            page=page,
+            limit=limit,
         )
 
 
@@ -1050,12 +1069,15 @@ class EntityWorkingFilesResource(MethodView, ArgsMixin):
 
         entity = entities_service.get_entity(entity_id)
         permissions_service.check_project_access(entity["project_id"])
+        page, limit = self.get_pagination()
 
         return files_service.get_working_files_for_entity(
             entity_id,
             task_id=args["task_id"],
             name=args["name"],
             relations=relations,
+            page=page,
+            limit=limit,
         )
 
 

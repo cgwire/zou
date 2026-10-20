@@ -378,7 +378,7 @@ class BuildJobResource(MethodView):
         return "", 204
 
 
-class ProjectBuildJobsResource(MethodView):
+class ProjectBuildJobsResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @swag_from("openapi/ProjectBuildJobsResource_get.yml")
@@ -388,7 +388,10 @@ class ProjectBuildJobsResource(MethodView):
         """
         permissions.check_admin_permissions()
         projects_service.get_project(project_id)
-        return playlist_builds_service.get_build_jobs_for_project(project_id)
+        page, limit = self.get_pagination()
+        return playlist_builds_service.get_build_jobs_for_project(
+            project_id, page=page, limit=limit
+        )
 
 
 class ProjectAllPlaylistsResource(MethodView, ArgsMixin):
@@ -401,8 +404,10 @@ class ProjectAllPlaylistsResource(MethodView, ArgsMixin):
         """
         permissions.check_admin_permissions()
         projects_service.get_project(project_id)
-        page = self.get_page()
-        return playlists_service.get_playlists_for_project(project_id, page)
+        page, limit = self.get_pagination()
+        return playlists_service.get_playlists_for_project(
+            project_id, page=page, limit=limit
+        )
 
 
 class TempPlaylistResource(MethodView, ArgsMixin):

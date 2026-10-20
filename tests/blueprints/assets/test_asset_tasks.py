@@ -34,6 +34,20 @@ class AssetTasksTestCase(ApiDBTestCase):
         self.assertEqual(len(tasks), 1)
         self.assertEqual(tasks[0]["id"], str(self.task.id))
 
+    def test_get_tasks_for_asset_paginated(self):
+        for name in ["Secondary", "Tertiary"]:
+            self.generate_fixture_task(name=name)
+        for path in [
+            f"data/assets/{self.asset.id}/tasks",
+            f"data/assets/{self.asset.id}/tasks?relations=true",
+        ]:
+            with self.subTest(path=path):
+                self.assert_opt_in_pagination(path)
+                full = self.assert_pages_match_full_list(
+                    path, limit=2, ordered=False
+                )
+                self.assertEqual(len(full), 3)
+
     def test_get_assets_and_tasks(self):
         self.generate_fixture_task(name="Secondary")
         assets = self.get("data/assets/with-tasks")
@@ -207,3 +221,71 @@ class AssetTasksTestCase(ApiDBTestCase):
 
     def test_get_task_types_for_asset_not_found(self):
         self.get("data/assets/no-asset/task-types", 404)
+
+    def _add_paginated_board_fixtures(self):
+        """
+        Four assets over two asset types, each with tasks, one of them cast
+        in an episode; the vendor works on two of them.
+        """
+        self.generate_fixture_asset_types()
+        assets = [self.asset]
+        for name, asset_type_id in [
+            ("Apple", self.asset_type.id),
+            ("Bush", self.asset_type.id),
+            ("Hero", self.asset_type_character.id),
+        ]:
+            asset = self.generate_fixture_asset(
+                name=name, asset_type_id=asset_type_id
+            )
+            self.generate_fixture_task(name="Main", entity_id=asset.id)
+            assets.append(asset)
+        self.generate_fixture_task(name="Secondary", entity_id=assets[1].id)
+        self.generate_fixture_episode("E01")
+        EntityLink.create(
+            entity_in_id=self.episode.id, entity_out_id=assets[2].id
+        )
+        self.generate_fixture_user_vendor()
+        vendor_id = self.user_vendor["id"]
+        projects_service.add_team_member(str(self.project.id), vendor_id)
+        projects_service.clear_project_cache(str(self.project.id))
+        for asset in [assets[1], assets[3]]:
+            task_id = self.get(f"data/assets/{asset.id}/tasks")[0]["id"]
+            tasks_service.assign_task(task_id, vendor_id)
+        return f"data/assets/with-tasks?project_id={self.project.id}"
+
+    def test_get_assets_and_tasks_paginated(self):
+        path = self._add_paginated_board_fixtures()
+        self.assert_opt_in_pagination(path)
+        full = self.assert_pages_match_full_list(path)
+        self.assertEqual(
+            [asset["name"] for asset in full],
+            ["Hero", "Apple", "Bush", "Tree"],
+        )
+        self.assertEqual(
+            [asset["casting_episode_ids"] for asset in full],
+            [[], [], [str(self.episode.id)], []],
+        )
+        self.assert_pages_match_full_list(path, limit=3)
+        self.assert_pages_match_full_list("data/assets/with-tasks", limit=2)
+
+        page = self.get(f"{path}&page=2&limit=2")
+        self.assertEqual(page["data"], full[2:4])
+        self.assertEqual(self.get(f"{path}&page=2&limit=2&stream=true"), page)
+        compact = self.get(f"{path}&page=2&limit=2&compact=true")
+        self.assertEqual(
+            compact["asset_fields"],
+            assets_service.ASSETS_AND_TASKS_ASSET_FIELDS,
+        )
+        self.assertEqual(compact["total"], 4)
+        rebuilt = rebuild_from_compact(
+            compact["asset_fields"], compact["task_fields"], compact["data"]
+        )
+        self.assertEqual(rebuilt, page["data"])
+
+    def test_get_assets_and_tasks_paginated_for_a_vendor(self):
+        path = self._add_paginated_board_fixtures()
+        self.log_in_vendor()
+        self.assert_opt_in_pagination(path)
+        full = self.assert_pages_match_full_list(path)
+        self.assertEqual([asset["name"] for asset in full], ["Hero", "Apple"])
+        self.assertEqual([len(asset["tasks"]) for asset in full], [1, 1])

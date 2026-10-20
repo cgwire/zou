@@ -357,8 +357,13 @@ def get_news(project_id, news_id):
     )
 
 
-def get_news_for_entity(entity_id):
+def get_news_for_entity(entity_id, page=None, limit=None):
     """
-    Get all news related to a given entity.
+    Get the news related to a given entity: a single page of the last 2000
+    of them, or the requested page when a page is given.
     """
-    return get_last_news_for_project(entity_id=entity_id, limit=2000)
+    if page is None:
+        return get_last_news_for_project(entity_id=entity_id, limit=2000)
+    return get_last_news_for_project(
+        entity_id=entity_id, page=page, limit=limit
+    )

@@ -36,7 +36,13 @@ from zou.app.services import (
     subscriptions_service,
     task_types_service,
 )
-from zou.app.utils import cache, events, fields, permissions
+from zou.app.utils import (
+    cache,
+    events,
+    fields,
+    permissions,
+    query as query_utils,
+)
 
 
 def clear_open_projects_cache():
@@ -120,9 +126,10 @@ def related_projects_raw():
     return projects
 
 
-def get_tasks_for_entity(entity_id):
+def get_tasks_for_entity(entity_id, page=None, limit=None):
     """
-    Get all tasks assigned to current user and related to given entity.
+    Get all tasks assigned to current user and related to given entity, or
+    the requested page of them when a page is given.
     """
     query = (
         Task.query.join(Project)
@@ -132,6 +139,8 @@ def get_tasks_for_entity(entity_id):
         .filter(projects_service.build_open_project_filter())
     )
 
+    if page is not None:
+        return query_utils.get_paginated_results(query, page, limit)
     return fields.serialize_value(query.all())
 
 

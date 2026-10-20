@@ -42,6 +42,7 @@ from zou.app.utils import (
     events,
     fields,
     fs,
+    query as query_utils,
     remote_job,
     thumbnail as thumbnail_utils,
 )
@@ -1087,9 +1088,10 @@ def get_running_preview_files(cursor_preview_file_id=None, limit=None):
     return results
 
 
-def get_preview_files_for_entity(entity_id):
+def get_preview_files_for_entity(entity_id, page=None, limit=None):
     """
-    Return all preview files related to given entity.
+    Return all preview files related to given entity, or the requested page
+    of them when a page is given.
     """
     query = (
         PreviewFile.query.join(Task)
@@ -1099,7 +1101,16 @@ def get_preview_files_for_entity(entity_id):
             TaskType.name, PreviewFile.revision.desc(), PreviewFile.position
         )
     )
-    return [preview_file.present() for preview_file in query.all()]
+    if page is None:
+        return [preview_file.present() for preview_file in query.all()]
+    limit = query_utils.get_page_limit(limit)
+    preview_files = query_utils.paginate_query(query, page, limit).all()
+    return query_utils.build_page(
+        [preview_file.present() for preview_file in preview_files],
+        query.count(),
+        page,
+        limit,
+    )
 
 
 def unpin_foreign_preview_files(shots):
