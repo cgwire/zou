@@ -4,6 +4,7 @@ from flask_jwt_extended import jwt_required
 from sqlalchemy.exc import IntegrityError, StatementError
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
+from zou.app.exceptions import WrongParameterException
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
@@ -16,7 +17,7 @@ from zou.app.services import (
     tasks_service,
     user_service,
 )
-from zou.app.utils import permissions
+from zou.app.utils import fields, permissions
 
 
 class PreviewFilesResource(BaseModelsResource):
@@ -38,6 +39,24 @@ class PreviewFilesResource(BaseModelsResource):
         Create preview file
         """
         return super().post()
+
+    def apply_filters(self, query, options):
+        # A preview file has no project_id column, so the generic filters
+        # drop the parameter and answer for every production: scope the
+        # rows to that project through their task. A subquery rather than
+        # a join, the permission filter already joins the task table.
+        query = super().apply_filters(query, options)
+        if "project_id" in options:
+            if not fields.is_valid_id(options["project_id"]):
+                raise WrongParameterException("Invalid project_id.")
+            query = query.filter(
+                PreviewFile.task_id.in_(
+                    Task.query.with_entities(Task.id).filter(
+                        Task.project_id == options["project_id"]
+                    )
+                )
+            )
+        return query
 
     def add_project_permission_filter(self, query):
         if not permissions.has_admin_permissions():
