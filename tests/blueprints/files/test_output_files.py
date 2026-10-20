@@ -682,3 +682,56 @@ class OutputFileListingTestCase(OutputFileTestCase):
         self.generate_fixture_user_cg_artist()
         self.log_in_cg_artist()
         self.get(path, 403)
+
+    def test_entity_output_file_listings_paginate(self):
+        """
+        The entity listings of output files answer the plain list without
+        page nor limit, and the paginated envelope with them.
+        """
+        self.generate_output_files()
+        base = f"data/entities/{self.asset_id}"
+        self.assert_opt_in_pagination(f"{base}/output-files")
+        self.assert_pages_match_full_list(
+            f"{base}/output-files", limit=2, ordered=False
+        )
+        self.assert_pages_match_full_list(
+            f"{base}/output-files?output_type_id={self.geometry_id}", limit=2
+        )
+        cache_files = f"{base}/output-types/{self.cache_type_id}/output-files"
+        self.assert_opt_in_pagination(cache_files)
+        self.assert_pages_match_full_list(cache_files, limit=2)
+        last_revisions = f"{base}/output-files/last-revisions"
+        self.assert_opt_in_pagination(last_revisions)
+        full = self.assert_pages_match_full_list(
+            last_revisions, limit=2, ordered=False
+        )
+        self.assertEqual(len(full), 5)
+
+    def test_instance_output_file_listings_paginate(self):
+        """
+        Same contract for the asset instance listings of output files.
+        """
+        self.generate_fixture_scene()
+        self.generate_fixture_scene_asset_instance()
+        self.generate_fixture_output_type()
+        for representation in ["obj", "max"]:
+            for revision in [1, 2]:
+                self.generate_fixture_output_file(
+                    self.output_type,
+                    revision,
+                    representation=representation,
+                    asset_instance=self.asset_instance,
+                )
+        base = f"data/asset-instances/{self.asset_instance.id}"
+        scene_base = f"{base}/entities/{self.scene.id}"
+        paths = [
+            f"{base}/output-files",
+            f"{base}/output-files?temporal_entity_id={self.scene.id}",
+            f"{scene_base}/output-types/{self.output_type.id}/output-files",
+            f"{scene_base}/output-files/last-revisions",
+        ]
+        for path in paths:
+            with self.subTest(path=path):
+                self.assert_opt_in_pagination(path)
+                self.assert_pages_match_full_list(path, ordered=False)
+        self.assertEqual(len(self.get(paths[-1])), 2)

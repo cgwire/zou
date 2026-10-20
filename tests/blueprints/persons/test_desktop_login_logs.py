@@ -40,3 +40,11 @@ class DesktopLoginLogsTestCase(ApiDBTestCase):
             "",
         ]
         self.assertListEqual(expected_csv, csv.split("\r\n"))
+
+    def test_logs_paginate(self):
+        for day in [1, 2, 3]:
+            date = datetime.datetime(2018, 4, day, 0, 0, 0).isoformat()
+            self.post(self.path, {"date": date})
+        self.assert_opt_in_pagination(self.path)
+        full = self.assert_pages_match_full_list(self.path, limit=2)
+        self.assertEqual(len(full), 3)

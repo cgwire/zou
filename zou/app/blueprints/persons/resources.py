@@ -113,7 +113,10 @@ class DesktopLoginsResource(MethodView, ArgsMixin):
             raise permissions.PermissionDenied
 
         persons_service.get_person(person_id)
-        return persons_service.get_desktop_login_logs(person_id)
+        page, limit = self.get_pagination()
+        return persons_service.get_desktop_login_logs(
+            person_id, page=page, limit=limit
+        )
 
     @jwt_required()
     @swag_from("openapi/DesktopLoginsResource_post.yml")
@@ -175,11 +178,14 @@ class TimeSpentsResource(MethodView, ArgsMixin):
         )
         arguments = self.get_args(["start_date", "end_date"])
         start_date, end_date = arguments["start_date"], arguments["end_date"]
+        page, limit = self.get_pagination()
         if not start_date and not end_date:
             return time_spents_service.get_time_spents(
                 person_id,
                 project_ids=project_ids,
                 department_ids=department_ids,
+                page=page,
+                limit=limit,
             )
 
         if None in [start_date, end_date]:
@@ -195,6 +201,8 @@ class TimeSpentsResource(MethodView, ArgsMixin):
                 end_date,
                 project_ids=project_ids,
                 department_ids=department_ids,
+                page=page,
+                limit=limit,
             )
         except WrongDateFormatException:
             raise WrongParameterException(
@@ -700,10 +708,14 @@ class PersonDayOffResource(MethodView, ArgsMixin):
         Get person day offs
         """
         with_description = _check_day_off_read_access(person_id)
-        return _shape_day_offs(
-            time_spents_service.get_day_offs_between(person_id=person_id),
-            with_description,
+        page, limit = self.get_pagination()
+        day_offs = time_spents_service.get_day_offs_between(
+            person_id=person_id, page=page, limit=limit
         )
+        if page is None:
+            return _shape_day_offs(day_offs, with_description)
+        day_offs["data"] = _shape_day_offs(day_offs["data"], with_description)
+        return day_offs
 
 
 class AddToDepartmentResource(MethodView, ArgsMixin):

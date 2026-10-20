@@ -1,3 +1,5 @@
+import datetime
+
 import orjson as json
 
 from tests.base import ApiDBTestCase
@@ -410,6 +412,47 @@ class UserWorkloadTestCase(UserContextTestCase):
         self.assertEqual(result["stats"]["total"], 1)
         self.assertEqual(result["data"][0]["id"], str(self.task_id))
 
+    def test_get_tasks_to_check_limit_alone_is_page_one(self):
+        self.feedback_task_ids()
+        result = self.get("data/user/tasks-to-check?limit=1")
+        self.assertEqual(
+            result, self.get("data/user/tasks-to-check?page=1&limit=1")
+        )
+        self.assertEqual(result["page"], 1)
+        self.assertEqual(len(result["data"]), 1)
+        self.assertTrue(result["is_more"])
+        self.assertIsInstance(self.get("data/user/tasks-to-check"), list)
+
+    def test_user_task_lists_paginate_on_demand(self):
+        # The task fixture resets task_id: keep the first one aside.
+        first_task_id = self.task_id
+        second_task = self.generate_fixture_task(name="Second")
+        for task_id in [first_task_id, second_task.id, self.shot_task.id]:
+            self.assign_user(task_id)
+        paths = [
+            "data/user/tasks",
+            f"data/user/assets/{self.asset.id}/tasks",
+            f"data/user/shots/{self.shot.id}/tasks",
+        ]
+        for path in paths:
+            with self.subTest(path=path):
+                self.assert_opt_in_pagination(path)
+                self.assert_pages_match_full_list(path, ordered=False)
+        self.assertEqual(len(self.get(paths[0])), 3)
+        self.assertEqual(len(self.get(paths[1])), 2)
+
+        done_status = task_types_service.get_or_create_task_status(
+            "Done", "done", "#22d160", is_done=True
+        )
+        for task_id in [first_task_id, second_task.id]:
+            tasks_service.update_task(
+                task_id, {"task_status_id": done_status["id"]}
+            )
+        path = "data/user/done-tasks"
+        self.assert_opt_in_pagination(path)
+        full = self.assert_pages_match_full_list(path, ordered=False)
+        self.assertEqual(len(full), 2)
+
     def feedback_task_ids(self, *task_ids):
         """
         Switch given tasks (all of them when none is given) to a feedback
@@ -641,6 +684,18 @@ class UserWorkloadTestCase(UserContextTestCase):
         # Both bounds are required, one alone is a 400.
         self.get("data/user/time-spents?start_date=2026-08-01", 400)
 
+    def test_get_time_spents_range_paginates(self):
+        for day in ["2026-08-05", "2026-08-06", "2026-08-07"]:
+            time_spents_service.create_or_update_time_spent(
+                self.task_id, self.user_id, day, 3600
+            )
+        path = (
+            "data/user/time-spents?start_date=2026-08-01&end_date=2026-08-31"
+        )
+        self.assert_opt_in_pagination(path)
+        full = self.assert_pages_match_full_list(path, ordered=False)
+        self.assertEqual(len(full), 3)
+
 
 class UserNotificationTestCase(UserContextTestCase):
     """
@@ -664,6 +719,15 @@ class UserNotificationTestCase(UserContextTestCase):
         self.assertEqual(len(logs), 2)
         self.assertEqual(logs[0]["person_id"], str(self.user_id))
         self.assertEqual(logs[0]["date"], date_2)
+
+    def test_desktop_login_logs_paginate(self):
+        path = "/data/user/desktop-login-logs"
+        for day in [1, 2, 3]:
+            date = datetime.datetime(2018, 4, day, 0, 0, 0).isoformat()
+            self.post(path, {"date": date})
+        self.assert_opt_in_pagination(path)
+        full = self.assert_pages_match_full_list(path, limit=2)
+        self.assertEqual(len(full), 3)
 
     def test_get_notifications(self):
         person_id = str(self.person.id)

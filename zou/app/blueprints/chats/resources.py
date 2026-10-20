@@ -5,12 +5,12 @@ from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.chats.schemas import ChatMessageSchema
 from zou.app.exceptions import WrongParameterException
+from zou.app.mixin import ArgsMixin
 from zou.app.services import (
     chats_service,
     entities_service,
     permissions_service,
     persons_service,
-    user_service,
 )
 from zou.app.utils import permissions, validation
 
@@ -31,7 +31,7 @@ class ChatResource(MethodView):
         return chat
 
 
-class ChatMessagesResource(MethodView):
+class ChatMessagesResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @swag_from("openapi/ChatMessagesResource_get.yml")
@@ -42,7 +42,10 @@ class ChatMessagesResource(MethodView):
         entity = entities_service.get_entity(entity_id)
         permissions_service.check_project_access(entity["project_id"])
         permissions_service.check_entity_access(entity["id"])
-        return chats_service.get_chat_messages_for_entity(entity_id)
+        page, limit = self.get_pagination()
+        return chats_service.get_chat_messages_for_entity(
+            entity_id, page=page, limit=limit
+        )
 
     @jwt_required()
     @swag_from("openapi/ChatMessagesResource_post.yml")

@@ -49,6 +49,26 @@ class EventsRoutesTestCase(ApiDBTestCase):
         messages = self.get(f"/data/entities/{self.asset.id}/chat/messages")
         self.assertEqual(len(messages), 1)
 
+    def test_chat_listings_paginate(self):
+        self.generate_fixture_chat_message()
+        chat = chats_service.get_chat_raw(self.asset.id)
+        for text in ["Second", "Third"]:
+            chats_service.create_chat_message(chat.id, self.user["id"], text)
+        path = f"/data/entities/{self.asset.id}/chat/messages"
+        self.assert_opt_in_pagination(path)
+        full = self.assert_pages_match_full_list(path, limit=2)
+        self.assertEqual(len(full), 3)
+
+        self.post(f"/actions/user/chats/{self.asset.id}/join", {}, 200)
+        self.generate_fixture_asset("Other asset")
+        self.post(f"/actions/user/chats/{self.asset.id}/join", {}, 200)
+        self.assert_opt_in_pagination("/data/user/chats")
+        full = self.assert_pages_match_full_list(
+            "/data/user/chats", ordered=False
+        )
+        self.assertEqual(len(full), 2)
+        self.assertTrue(all("entity_name" in chat for chat in full))
+
     def test_post_chat_message(self):
         self.post(f"/actions/user/chats/{self.asset.id}/join", {}, 200)
         data = {"message": "Hello, World!"}
