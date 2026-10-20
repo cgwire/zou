@@ -384,6 +384,29 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         self.assertEqual(replier["id"], str(self.user["id"]))
         self.assertEqual(replier["full_name"], "John Did")
 
+    def test_task_comments_paginate_on_demand(self):
+        """
+        A page holds the comments the caller may read: the internal ones
+        a client is not shown never count in its total.
+        """
+        self.put_the_client_in_the_team()
+        self.comment_for_client("First for client")
+        self.comment_for_client("Internal", for_client=False)
+        self.comment_for_client("Second for client")
+        path = f"data/tasks/{self.task.id}/comments"
+        self.assert_opt_in_pagination(path)
+        full = self.assert_pages_match_full_list(path)
+        self.assertEqual(len(full), 4)
+        self.assert_pages_match_full_list(path, limit=3)
+
+        self.log_in_client()
+        self.assert_opt_in_pagination(path)
+        full = self.assert_pages_match_full_list(path)
+        self.assertEqual(
+            [comment["text"] for comment in full],
+            ["Second for client", "First for client"],
+        )
+
     def test_comment_author_shown_to_client_in_list(self):
         """
         The comment list embeds a studio author for a client too.

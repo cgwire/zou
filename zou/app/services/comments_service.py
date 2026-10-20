@@ -843,12 +843,26 @@ def clear_comment_cache(comment_id):
     cache.cache.delete_memoized(get_comment, comment_id, True)
 
 
-def get_comments(task_id, is_client=False, is_manager=False):
+def get_comments(
+    task_id, is_client=False, is_manager=False, page=None, limit=None
+):
     """
-    Return all comments related to given task.
+    Return all comments related to given task, or the requested page of
+    them when a page is given (newest first, comment id as tiebreak).
+    The comments a non manager may not read are filtered in the query, so
+    the page is cut in SQL and the side maps only cover its comments. The
+    client rules are applied in Python: for a client, the whole filtered
+    list is built, then paged.
     """
     comments = []
     query = prepare_query(task_id, is_client, is_manager)
+    if page is not None:
+        limit = query_utils.get_page_limit(limit)
+        if is_client:
+            query = query.order_by(Comment.id)
+        else:
+            total = query.count()
+            query = query_utils.paginate_query(query, page, limit)
     comments, comment_ids = run_task_comments_query(query)
     if len(comments) > 0:
         ack_map = _build_ack_map_for_comments(comment_ids)
@@ -909,7 +923,11 @@ def get_comments(task_id, is_client=False, is_manager=False):
             elif is_allowed:
                 tmp_comments.append(comment)
         comments = tmp_comments
-    return comments
+    if page is None:
+        return comments
+    if is_client:
+        return query_utils.paginate_list(comments, page, limit)
+    return query_utils.build_page(comments, total, page, limit)
 
 
 def prepare_query(task_id, is_client, is_manager):
@@ -1151,16 +1169,17 @@ def get_comment_preview_file(task_id, comment_id, preview_file_id):
     return preview_file.serialize()
 
 
-def get_comments_for_project(project_id, page=0, limit=None):
+def get_comments_for_project(project_id, page=None, limit=None):
     """
-    Return all comments for given project.
+    Return all comments for given project, or the requested page of them
+    when a page is given.
     """
     query = (
         Comment.query.join(Task, Task.id == Comment.object_id)
         .filter(Task.project_id == project_id)
         .order_by(Comment.updated_at.desc())
     )
-    result = query_utils.get_paginated_results(query, page, limit)
+    result = query_utils.get_paginated_results(query, page or -1, limit)
     comments = result["data"] if isinstance(result, dict) else result
     _add_relation_ids_to_comments(comments)
     return result

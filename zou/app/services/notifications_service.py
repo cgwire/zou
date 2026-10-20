@@ -257,16 +257,17 @@ def get_recent_notifications(notification_type=None):
     return fields.serialize_value(query.limit(100).all())
 
 
-def get_notifications_for_project(project_id, page=0):
+def get_notifications_for_project(project_id, page=None, limit=None):
     """
-    Return all notifications for given project.
+    Return all notifications for given project, or the requested page of
+    them when a page is given.
     """
     query = (
         Notification.query.join(Task)
         .filter(Task.project_id == project_id)
         .order_by(Notification.updated_at.desc())
     )
-    return query_utils.get_paginated_results(query, page)
+    return query_utils.get_paginated_results(query, page or -1, limit)
 
 
 def notify_clients_playlist_ready(

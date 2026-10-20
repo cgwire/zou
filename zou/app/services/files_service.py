@@ -409,26 +409,29 @@ def create_new_output_revision(
     return output_file.serialize()
 
 
-def get_working_files_for_task(task_id):
+def get_working_files_for_task(task_id, page=None, limit=None):
     """
     Retrieve all working files for a given task ordered by revision from
-    biggest to smallest revision.
+    biggest to smallest revision, or the requested page of them when a page
+    is given.
     """
-    working_files = (
+    query = (
         WorkingFile.query.filter_by(task_id=task_id)
         .filter(WorkingFile.revision >= 0)
         .order_by(desc(WorkingFile.revision))
-        .all()
     )
-    return fields.serialize_models(working_files)
+    if page is None:
+        return fields.serialize_models(query.all())
+    return query_utils.get_paginated_results(query, page, limit)
 
 
 def get_working_files_for_entity(
-    entity_id, task_id=None, name=None, relations=False
+    entity_id, task_id=None, name=None, relations=False, page=None, limit=None
 ):
     """
     Retrieve all working files for a given entity and specified parameters
-    ordered by revision from biggest to smallest revision.
+    ordered by revision from biggest to smallest revision, or the requested
+    page of them when a page is given.
     """
     query = WorkingFile.query.filter_by(entity_id=entity_id)
 
@@ -441,8 +444,11 @@ def get_working_files_for_entity(
         desc(WorkingFile.revision)
     )
 
-    working_files = query.all()
-    return fields.serialize_models(working_files, relations=relations)
+    if page is None:
+        return fields.serialize_models(query.all(), relations=relations)
+    return query_utils.get_paginated_results(
+        query, page, limit, relations=relations
+    )
 
 
 def get_next_working_file_revision(task_id, name):
@@ -531,9 +537,12 @@ def get_output_files_for_project(
     name=None,
     representation=None,
     file_status_id=None,
+    page=None,
+    limit=None,
 ):
     """
-    Return output files for given project ordered by creation date.
+    Return output files for given project ordered by creation date, or the
+    requested page of them when a page is given.
     """
     query = OutputFile.query
 
@@ -546,16 +555,17 @@ def get_output_files_for_project(
         file_status_id=file_status_id,
     )
 
-    output_files = (
+    query = (
         query.filter(OutputFile.asset_instance_id == None)
         .filter(OutputFile.temporal_entity_id == None)
         .filter(OutputFile.revision >= 0)
         .filter(Entity.project_id == project_id)
         .join(Entity, OutputFile.entity_id == Entity.id)
         .order_by(desc(OutputFile.created_at))
-        .all()
     )
-    return fields.serialize_models(output_files)
+    if page is None:
+        return fields.serialize_models(query.all())
+    return query_utils.get_paginated_results(query, page, limit)
 
 
 def get_output_files_for_entity(
@@ -565,9 +575,12 @@ def get_output_files_for_entity(
     name=None,
     representation=None,
     file_status_id=None,
+    page=None,
+    limit=None,
 ):
     """
-    Return output files for given entity ordered by revision.
+    Return output files for given entity ordered by revision, or the
+    requested page of them when a page is given.
     """
     query = OutputFile.query.filter_by(entity_id=entity_id)
 
@@ -584,12 +597,12 @@ def get_output_files_for_entity(
         OutputFile.temporal_entity_id == None
     )
 
-    output_files = (
-        query.filter(OutputFile.revision >= 0)
-        .order_by(desc(OutputFile.revision))
-        .all()
+    query = query.filter(OutputFile.revision >= 0).order_by(
+        desc(OutputFile.revision)
     )
-    return fields.serialize_models(output_files)
+    if page is None:
+        return fields.serialize_models(query.all())
+    return query_utils.get_paginated_results(query, page, limit)
 
 
 def get_output_files_for_instance(
@@ -600,9 +613,12 @@ def get_output_files_for_instance(
     name=None,
     representation=None,
     file_status_id=None,
+    page=None,
+    limit=None,
 ):
     """
-    Return output files for given instance ordered by revision.
+    Return output files for given instance ordered by revision, or the
+    requested page of them when a page is given.
     """
     query = OutputFile.query.filter_by(asset_instance_id=asset_instance_id)
 
@@ -619,12 +635,12 @@ def get_output_files_for_instance(
         file_status_id=file_status_id,
     )
 
-    output_files = (
-        query.filter(OutputFile.revision >= 0)
-        .order_by(desc(OutputFile.revision))
-        .all()
+    query = query.filter(OutputFile.revision >= 0).order_by(
+        desc(OutputFile.revision)
     )
-    return fields.serialize_models(output_files)
+    if page is None:
+        return fields.serialize_models(query.all())
+    return query_utils.get_paginated_results(query, page, limit)
 
 
 def get_last_output_files_for_entity(
@@ -634,9 +650,12 @@ def get_last_output_files_for_entity(
     name=None,
     representation=None,
     file_status_id=None,
+    page=None,
+    limit=None,
 ):
     """
-    Get last output files for given parameters.
+    Get last output files for given parameters, or the requested page of
+    them when a page is given.
 
     We use a subquery to get maximum revision and then filter with given
     params.
@@ -703,9 +722,9 @@ def get_last_output_files_for_entity(
         ),
     )
 
-    # query
-    output_files = query.all()
-    return fields.serialize_models(output_files)
+    if page is None:
+        return fields.serialize_models(query.all())
+    return query_utils.get_paginated_results(query, page, limit)
 
 
 def get_last_output_files_for_instance(
@@ -716,9 +735,12 @@ def get_last_output_files_for_instance(
     name=None,
     representation=None,
     file_status_id=None,
+    page=None,
+    limit=None,
 ):
     """
-    Get last output files for given entity grouped by output type and name.
+    Get last output files for given entity grouped by output type and name,
+    or the requested page of them when a page is given.
     """
     # Query maximum revision for each possible arguments
     # Only group and filter by file status if specified. Otherwise this could
@@ -787,8 +809,9 @@ def get_last_output_files_for_instance(
         ),
     )
 
-    output_files = query.all()
-    return fields.serialize_models(output_files)
+    if page is None:
+        return fields.serialize_models(query.all())
+    return query_utils.get_paginated_results(query, page, limit)
 
 
 def get_preview_file_raw(preview_file_id):
@@ -978,13 +1001,20 @@ def record_movie_prefixes(preview_file_id, prefixes):
     clear_preview_file_cache(preview_file_id)
 
 
-def get_preview_files_for_task(task_id):
+def get_preview_files_for_task(
+    task_id, page=None, limit=None, exclude_rejected=False
+):
     """
-    Get all preview files for given task.
+    Get all preview files for given task, or the requested page of them
+    when a page is given. Rejected previews are left out on demand.
     """
     previews = PreviewFile.query.filter_by(task_id=task_id).order_by(
         PreviewFile.revision.desc()
     )
+    if exclude_rejected:
+        previews = previews.filter(PreviewFile.validation_status != "rejected")
+    if page is not None:
+        return query_utils.get_paginated_results(previews, page, limit)
     return fields.serialize_models(previews)
 
 
@@ -1080,10 +1110,11 @@ def get_output_types_for_instance(asset_instance_id, temporal_entity_id=None):
 
 
 def get_output_files_for_output_type_and_entity(
-    entity_id, output_type_id, representation=None
+    entity_id, output_type_id, representation=None, page=None, limit=None
 ):
     """
-    Get output files created for given entity and output type.
+    Get output files created for given entity and output type, or the
+    requested page of them when a page is given.
     """
     query = (
         OutputFile.query.filter(OutputFile.entity_id == entity_id)
@@ -1095,15 +1126,22 @@ def get_output_files_for_output_type_and_entity(
     if representation is not None:
         query = query.filter(OutputFile.representation == representation)
 
-    output_files = query.all()
-    return OutputFile.serialize_list(output_files)
+    if page is None:
+        return OutputFile.serialize_list(query.all())
+    return query_utils.get_paginated_results(query, page, limit)
 
 
 def get_output_files_for_output_type_and_asset_instance(
-    asset_instance_id, temporal_entity_id, output_type_id, representation=None
+    asset_instance_id,
+    temporal_entity_id,
+    output_type_id,
+    representation=None,
+    page=None,
+    limit=None,
 ):
     """
-    Get output files created for given asset instance and output type.
+    Get output files created for given asset instance and output type, or
+    the requested page of them when a page is given.
     """
     query = OutputFile.query.filter(
         OutputFile.asset_instance_id == asset_instance_id,
@@ -1114,20 +1152,22 @@ def get_output_files_for_output_type_and_asset_instance(
     if representation is not None:
         query = query.filter(OutputFile.representation == representation)
 
-    output_files = query.all()
-    return OutputFile.serialize_list(output_files)
+    if page is None:
+        return OutputFile.serialize_list(query.all())
+    return query_utils.get_paginated_results(query, page, limit)
 
 
-def get_preview_files_for_project(project_id, page=-1):
+def get_preview_files_for_project(project_id, page=None, limit=None):
     """
-    Return all preview files for given project.
+    Return all preview files for given project, or the requested page of
+    them when a page is given.
     """
     query = (
         PreviewFile.query.join(Task)
         .filter(Task.project_id == project_id)
         .order_by(desc(PreviewFile.updated_at))
     )
-    return query_utils.get_paginated_results(query, page)
+    return query_utils.get_paginated_results(query, page or -1, limit)
 
 
 def get_preview_background_file_raw(preview_background_file_id):
