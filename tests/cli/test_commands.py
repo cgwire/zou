@@ -402,7 +402,7 @@ class CreateAdminCommandTestCase(ApiDBTestCase):
             ["create-admin", "admin@example.com", "--password", "mysecretpwd"],
         )
         self.assertEqual(result.exit_code, 0, result.output)
-        self.assertIn("Admin successfully created", result.output)
+        self.assertIn("Admin admin@example.com created", result.output)
 
         person = Person.get_by(email="admin@example.com")
         self.assertEqual(person.role.code, "admin")
@@ -421,7 +421,9 @@ class CreateAdminCommandTestCase(ApiDBTestCase):
             cli, ["create-admin", self.person.email, "--password", "unused"]
         )
         self.assertEqual(result.exit_code, 0, result.output)
-        self.assertIn("upgraded to 'admin'", result.output)
+        self.assertIn(
+            f"User {self.person.email} upgraded to admin", result.output
+        )
         self.assertEqual(Person.get(self.person.id).role.code, "admin")
 
     def test_create_admin_refuses_a_short_password(self):
