@@ -136,16 +136,15 @@ class SharedPlaylistCommentsResource(MethodView):
         except Exception:
             return {"error": "Guest not part of this shared playlist"}, 403
 
-        if not _is_task_in_shared_playlist(token, task_id):
+        playlist = playlist_sharing_service.get_shared_playlist(token)
+        if not _is_task_in_playlist(playlist, task_id):
             return {"error": "Task not part of this shared playlist"}, 403
 
         try:
             task_status = task_types_service.get_task_status(task_status_id)
         except Exception:
             return {"error": "Task status not found"}, 400
-        project_id = playlists_service.get_playlist(share_link["playlist_id"])[
-            "project_id"
-        ]
+        project_id = playlist["project_id"]
         if not projects_service.is_task_status_client_allowed(
             project_id, task_status
         ):
@@ -337,13 +336,12 @@ class SharedPlaylistAnnotationsResource(MethodView):
         )
 
 
-def _is_task_in_shared_playlist(token, task_id):
+def _is_task_in_playlist(playlist, task_id):
     """
     Ensure the given task id is the preview task of one of the playlist's
     shots. Used to scope guest mutations (comments, status changes) to the
     playlist exposed by the share token.
     """
-    playlist = playlist_sharing_service.get_shared_playlist(token)
     tid = str(task_id)
     for shot in playlist.get("shots", []) or []:
         if str(shot.get("preview_file_task_id") or "") == tid:

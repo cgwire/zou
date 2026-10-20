@@ -657,23 +657,35 @@ def update_project_settings(
 
     wanted_task_types = {}
     for entry in task_types or []:
-        wanted_task_types[str(entry["task_type_id"])] = entry.get("priority")
+        wanted_task_types[str(entry["task_type_id"])] = entry
 
     existing_links = {
         str(link.task_type_id): link
         for link in ProjectTaskTypeLink.query.filter_by(project_id=project_id)
     }
-    for task_type_id, priority in wanted_task_types.items():
+    for task_type_id, entry in wanted_task_types.items():
         link = existing_links.get(task_type_id)
+        priority = entry.get("priority")
+        # Omitted visibility leaves an existing link unchanged.
+        visibility = (
+            {}
+            if entry.get("is_client_visible") is None
+            else {"is_client_visible": entry["is_client_visible"]}
+        )
         if link is None:
             if TaskType.get(task_type_id) is not None:
                 ProjectTaskTypeLink.create(
                     task_type_id=task_type_id,
                     project_id=project_id,
                     priority=priority,
+                    **visibility,
                 )
-        elif priority is not None and link.priority != priority:
-            link.update({"priority": priority})
+        else:
+            changes = dict(visibility)
+            if priority is not None and link.priority != priority:
+                changes["priority"] = priority
+            if changes:
+                link.update(changes)
     if replace_task_types:
         for task_type_id, link in existing_links.items():
             if task_type_id not in wanted_task_types:
@@ -903,6 +915,8 @@ def set_task_status_client_allowed(project_id, task_status_id, value):
     status. None reverts to the studio value. The status has to be linked
     to the project.
     """
+    if not task_status_id or not fields.is_valid_id(str(task_status_id)):
+        raise TaskStatusNotFoundException()
     link = ProjectTaskStatusLink.get_by(
         project_id=project_id, task_status_id=task_status_id
     )
@@ -930,9 +944,12 @@ def is_task_status_client_allowed(project_id, task_status):
     Return whether clients of given project may set given task status: the
     project override when there is one, the studio value otherwise.
     """
-    return get_client_allowed_overrides(project_id).get(
-        str(task_status["id"]), bool(task_status.get("is_client_allowed"))
+    link = ProjectTaskStatusLink.get_by(
+        project_id=project_id, task_status_id=task_status["id"]
     )
+    if link is None or link.is_client_allowed is None:
+        return bool(task_status.get("is_client_allowed"))
+    return link.is_client_allowed
 
 
 def set_project_task_type_link_priorities(project_id, task_type_ids):

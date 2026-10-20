@@ -310,6 +310,45 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
         )
         self.assertEqual(link.priority, 1)
 
+    def test_project_settings_batch_applies_client_visibility(self):
+        path = f"/data/projects/{self.project_id}/settings/batch"
+        type_id = str(self.task_type.id)
+
+        def visible():
+            return ProjectTaskTypeLink.get_by(
+                project_id=self.project_id, task_type_id=type_id
+            ).is_client_visible
+
+        self.post(
+            path,
+            {
+                "task_types": [
+                    {"task_type_id": type_id, "is_client_visible": False}
+                ]
+            },
+            200,
+        )
+        self.assertFalse(visible())
+        self.post(path, {"task_types": [{"task_type_id": type_id}]}, 200)
+        self.assertFalse(visible())
+        self.post(
+            path,
+            {
+                "task_types": [
+                    {"task_type_id": type_id, "is_client_visible": True}
+                ]
+            },
+            200,
+        )
+        self.assertTrue(visible())
+
+    def test_set_client_allowed_with_malformed_status_id(self):
+        self.put(
+            f"/data/projects/{self.project_id}/settings/task-status/nope",
+            {"is_client_allowed": False},
+            404,
+        )
+
     def test_project_settings_batch_is_idempotent(self):
         data = {
             "task_types": [{"task_type_id": str(self.task_type.id)}],

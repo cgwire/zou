@@ -640,11 +640,13 @@ class TaskAccessTestCase(PermissionsTestCase):
         with self.as_role("client"):
             self.assertTrue(
                 permissions_service.check_task_status_access(
-                    str(self.task_status.id)
+                    str(self.task_status.id), self.project_id
                 )
             )
             with self.denied():
-                permissions_service.check_task_status_access(closed)
+                permissions_service.check_task_status_access(
+                    closed, self.project_id
+                )
 
     def test_an_artist_may_not_use_a_status_closed_to_artists(self):
         """
@@ -658,16 +660,20 @@ class TaskAccessTestCase(PermissionsTestCase):
         with self.as_role("artist"):
             # Nothing resolved yet: the artist branch does not apply.
             self.assertTrue(
-                permissions_service.check_task_status_access(closed)
+                permissions_service.check_task_status_access(
+                    closed, self.project_id
+                )
             )
 
             permissions_service.check_project_access(self.project_id)
 
             with self.denied():
-                permissions_service.check_task_status_access(closed)
+                permissions_service.check_task_status_access(
+                    closed, self.project_id
+                )
             self.assertTrue(
                 permissions_service.check_task_status_access(
-                    str(self.task_status.id)
+                    str(self.task_status.id), self.project_id
                 )
             )
 
@@ -679,7 +685,9 @@ class TaskAccessTestCase(PermissionsTestCase):
 
         with self.as_role("manager"):
             self.assertTrue(
-                permissions_service.check_task_status_access(str(closed.id))
+                permissions_service.check_task_status_access(
+                    str(closed.id), self.project_id
+                )
             )
 
     def test_check_time_spent_access(self):
