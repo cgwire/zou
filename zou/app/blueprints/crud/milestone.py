@@ -1,10 +1,49 @@
+import re
+
 from flask_jwt_extended import jwt_required
 
-from zou.app.models.milestone import Milestone
+from zou.app.models.milestone import (
+    Milestone,
+    MILESTONE_STATUSES,
+    MILESTONE_TYPES,
+)
 from zou.app.services import permissions_service
 from zou.app.services import user_service
+from zou.app.services.exception import WrongParameterException
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
+
+HEX_COLOR_RE = re.compile(r"#[0-9a-fA-F]{6}")
+MILESTONE_TYPE_CODES = [code for code, _ in MILESTONE_TYPES]
+MILESTONE_STATUS_CODES = [code for code, _ in MILESTONE_STATUSES]
+
+
+def check_milestone_fields(data):
+    """
+    Reject a color that is not #RRGGBB and a type or status outside the
+    allowed choices. ChoiceType would store an unknown code and fail only
+    when the row is read back.
+    """
+    color = data.get("color")
+    if color is not None and (
+        not isinstance(color, str) or not HEX_COLOR_RE.fullmatch(color)
+    ):
+        raise WrongParameterException(
+            "Color must be a hex string formatted as #RRGGBB."
+        )
+    if "milestone_type" in data and (
+        data["milestone_type"] not in MILESTONE_TYPE_CODES
+    ):
+        raise WrongParameterException(
+            "Milestone type must be one of: "
+            f"{', '.join(MILESTONE_TYPE_CODES)}."
+        )
+    if "status" in data and data["status"] not in MILESTONE_STATUS_CODES:
+        raise WrongParameterException(
+            "Milestone status must be one of: "
+            f"{', '.join(MILESTONE_STATUS_CODES)}."
+        )
+    return data
 
 
 class MilestonesResource(BaseModelsResource):
@@ -15,6 +54,9 @@ class MilestonesResource(BaseModelsResource):
         permissions_service.check_manager_project_access(
             milestone["project_id"]
         )
+
+    def check_creation_integrity(self, data):
+        return check_milestone_fields(data)
 
     @jwt_required()
     def get(self):
@@ -117,6 +159,18 @@ class MilestonesResource(BaseModelsResource):
                     type: string
                     format: date
                     example: "2024-03-31"
+                  color:
+                    type: string
+                    pattern: "^#[0-9a-fA-F]{6}$"
+                    example: "#ff0000"
+                  milestone_type:
+                    type: string
+                    enum: [kickoff, review, approval, delivery, other]
+                    default: other
+                  status:
+                    type: string
+                    enum: [todo, wfa, done]
+                    default: todo
         responses:
             201:
               description: Milestone created successfully
@@ -256,6 +310,17 @@ class MilestoneResource(BaseModelResource):
                     type: string
                     format: date
                     example: "2024-04-30"
+                  color:
+                    type: string
+                    nullable: true
+                    pattern: "^#[0-9a-fA-F]{6}$"
+                    example: "#00aa11"
+                  milestone_type:
+                    type: string
+                    enum: [kickoff, review, approval, delivery, other]
+                  status:
+                    type: string
+                    enum: [todo, wfa, done]
         responses:
             200:
               description: Milestone updated successfully
@@ -316,6 +381,10 @@ class MilestoneResource(BaseModelResource):
               description: Integrity error or cannot delete
         """
         return super().delete(instance_id)
+
+    def update_data(self, data, instance_id):
+        data = super().update_data(data, instance_id)
+        return check_milestone_fields(data)
 
     def check_update_permissions(self, milestone, data):
         return permissions_service.check_manager_project_access(
