@@ -157,10 +157,7 @@ def load_plugin(app, plugin_path, init_plugin=True):
     manifest = PluginManifest.from_plugin_path(plugin_path)
     plugin_module = importlib.import_module(manifest["id"])
 
-    if not hasattr(plugin_module, "routes"):
-        raise Exception(f"Plugin {manifest['id']} has no routes.")
-
-    routes = plugin_module.routes
+    routes = list(getattr(plugin_module, "routes", []))
     add_static_routes(manifest, routes)
     blueprint = Blueprint(manifest["id"], manifest["id"])
     configure_api_from_blueprint(blueprint, routes)
