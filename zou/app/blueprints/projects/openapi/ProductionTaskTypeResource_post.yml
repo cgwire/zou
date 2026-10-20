@@ -40,6 +40,11 @@ requestBody:
             description: Low definition movie bitrate in Mbit/s
               for this task type, null inherits the project's
             example: 4
+          is_client_visible:
+            type: boolean
+            description: Whether clients see this task type, left
+              untouched when omitted
+            example: true
 responses:
   201:
     description: Task type added to production

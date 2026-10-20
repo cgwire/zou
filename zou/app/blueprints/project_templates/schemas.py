@@ -19,6 +19,7 @@ class AddTaskTypeSchema(BaseSchema):
     priority: Optional[int] = None
     hd_bitrate_compression: Optional[int] = Field(None, ge=1)
     ld_bitrate_compression: Optional[int] = Field(None, ge=1)
+    is_client_visible: Optional[bool] = None
 
     def bitrates(self):
         """
@@ -41,6 +42,7 @@ class AddTaskStatusSchema(BaseSchema):
     )
     priority: Optional[int] = None
     roles_for_board: List[str] = Field(default_factory=list)
+    is_client_allowed: Optional[bool] = None
 
 
 class AddAssetTypeSchema(BaseSchema):

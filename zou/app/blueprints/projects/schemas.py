@@ -55,6 +55,7 @@ class ProjectTaskTypeSchema(BaseSchema):
     priority: Optional[int] = None
     hd_bitrate_compression: Optional[int] = Field(None, ge=1)
     ld_bitrate_compression: Optional[int] = Field(None, ge=1)
+    is_client_visible: Optional[bool] = None
 
     def bitrates(self):
         """
@@ -73,6 +74,15 @@ class ProjectTaskStatusSchema(BaseSchema):
     """
 
     task_status_id: str = Field(..., min_length=1)
+
+
+class ProjectTaskStatusClientAllowedSchema(BaseSchema):
+    """
+    Body for overriding whether the clients of a project may set a task
+    status. The field is required, a null reverts to the studio value.
+    """
+
+    is_client_allowed: Optional[bool] = Field(...)
 
 
 class ProjectSettingsBatchSchema(BaseSchema):

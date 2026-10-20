@@ -11,6 +11,7 @@ from zou.app.models.person import Person
 from zou.app.models.playlist import Playlist, Playlist as PlaylistModel
 from zou.app.models.playlist_share_link import PlaylistShareLink
 from zou.app.models.preview_file import PreviewFile
+from zou.app.models.project import ProjectTaskStatusLink
 from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
 from zou.app.services import (
@@ -831,6 +832,40 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
             text="should be rejected",
             task_status=manager_status,
         )
+
+    def test_guest_comment_follows_the_production_override(self):
+        """
+        The production decides over the studio which statuses its guests
+        may set, and the context sends them the decision.
+        """
+        studio_forbidden = TaskStatus.create(
+            name="Retake",
+            short_name="rtk",
+            color="#000000",
+            is_client_allowed=False,
+        )
+        ProjectTaskStatusLink.create(
+            project_id=self.project.id,
+            task_status_id=studio_forbidden.id,
+            is_client_allowed=True,
+        )
+        ProjectTaskStatusLink.create(
+            project_id=self.project.id,
+            task_status_id=self.task_status.id,
+            is_client_allowed=False,
+        )
+        link, guest = self.guest_on_a_share_link()
+        context = self.get(self.shared_path(link["token"], "/context"))
+        allowed = {
+            status["id"]: status["is_client_allowed"]
+            for status in context["task_statuses"]
+        }
+        self.assertIs(allowed[str(studio_forbidden.id)], True)
+        self.assertIs(allowed[str(self.task_status.id)], False)
+        self.post_guest_comment(
+            link, guest, code=400, task_status=self.task_status
+        )
+        self.post_guest_comment(link, guest, task_status=studio_forbidden)
 
     def test_guest_comment_disabled(self):
         link, guest = self.guest_on_a_share_link(can_comment=False)

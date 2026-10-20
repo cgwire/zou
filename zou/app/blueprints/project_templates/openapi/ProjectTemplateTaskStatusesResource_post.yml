@@ -2,3 +2,18 @@ Attach a task status to a project template.
 ---
 tags:
   - Project Templates
+parameters:
+  - in: body
+    name: body
+    required: true
+    schema:
+      type: object
+      required: [task_status_id]
+      properties:
+        task_status_id: {type: string, format: uuid}
+        priority: {type: integer}
+        roles_for_board: {type: array, items: {type: string}}
+        is_client_allowed:
+          type: boolean
+          nullable: true
+          description: Whether clients can use this status. null resets to the studio value, omitted keeps the current value of an existing link.

@@ -26,6 +26,7 @@ class ProjectTemplateTaskTypeLink(db.Model, BaseMixin, SerializerMixin):
     # Movie encoding bitrates in Mbit/s, copied to the project links.
     hd_bitrate_compression = db.Column(db.Integer, nullable=True)
     ld_bitrate_compression = db.Column(db.Integer, nullable=True)
+    is_client_visible = db.Column(db.Boolean(), default=True)
 
     __table_args__ = (
         db.UniqueConstraint(
@@ -55,6 +56,8 @@ class ProjectTemplateTaskStatusLink(db.Model, BaseMixin, SerializerMixin):
         db.ARRAY(ChoiceType(ROLE_TYPES)),
         default=["user", "admin", "supervisor", "manager", "vendor"],
     )
+    # Null inherits the studio value, TaskStatus.is_client_allowed.
+    is_client_allowed = db.Column(db.Boolean(), nullable=True, default=None)
 
     __table_args__ = (
         db.UniqueConstraint(
@@ -134,6 +137,9 @@ class ProjectTemplate(db.Model, BaseMixin, SerializerMixin):
     )
     max_retakes = db.Column(db.Integer, default=0)
     is_clients_isolated = db.Column(db.Boolean(), default=False)
+    is_client_stats_visible = db.Column(db.Boolean(), default=True)
+    is_client_task_list_visible = db.Column(db.Boolean(), default=True)
+    is_client_task_panel_visible = db.Column(db.Boolean(), default=True)
     is_preview_download_allowed = db.Column(db.Boolean(), default=False)
     is_set_preview_automated = db.Column(db.Boolean(), default=False)
     is_publish_default_for_artists = db.Column(db.Boolean(), default=False)

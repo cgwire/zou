@@ -76,6 +76,7 @@ class ProjectTestCase(ApiDBTestCase):
                 str(self.task_status.id): {
                     "priority": 2,
                     "roles_for_board": ["supervisor"],
+                    "is_client_allowed": None,
                 }
             },
         )
@@ -152,6 +153,26 @@ class ProjectTestCase(ApiDBTestCase):
         project_again = self.get(f"data/projects/{project['id']}")
         self.assertEqual(data["name"], project_again["name"])
         self.put_404(f"data/projects/{fields.gen_uuid()}", data)
+
+    def test_client_access_settings_default_and_update(self):
+        project = self.post("data/projects", {"name": "Client Access"})
+        flags = [
+            "is_client_stats_visible",
+            "is_client_task_list_visible",
+            "is_client_task_panel_visible",
+        ]
+        for flag in flags:
+            self.assertTrue(project[flag])
+        self.generate_fixture_user_manager()
+        projects_service.add_team_member(
+            project["id"], self.user_manager["id"]
+        )
+        self.log_in_manager()
+        path = f"data/projects/{project['id']}"
+        self.put(path, {"is_client_stats_visible": False})
+        project_again = self.get(path)
+        self.assertFalse(project_again["is_client_stats_visible"])
+        self.assertTrue(project_again["is_client_task_list_visible"])
 
     def test_update_project_bitrates(self):
         project = self.get_first("data/projects")

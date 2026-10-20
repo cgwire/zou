@@ -267,14 +267,15 @@ def keep_entities_a_vendor_reaches(entities):
     return [entity for entity in entities if entity["id"] in assigned]
 
 
-def check_task_status_access(task_status_id):
+def check_task_status_access(task_status_id, project_id):
     """
     Return true if current user can use this task status.
 
     is_artist_allowed and is_client_allowed are read off the role the caller
     holds on the production, so the caller resolves it first. Without a
     resolved role the restriction does not apply at all: it lets everything
-    through rather than raise.
+    through rather than raise. The project's override of
+    is_client_allowed wins over the studio value.
     """
     is_artist = permissions.has_artist_permissions()
     is_client = permissions.has_client_permissions()
@@ -282,8 +283,11 @@ def check_task_status_access(task_status_id):
         task_status = task_types_service.get_task_status(task_status_id)
         if is_artist and not task_status["is_artist_allowed"]:
             raise permissions.PermissionDenied
-        if is_client and not task_status["is_client_allowed"]:
-            raise permissions.PermissionDenied
+        if is_client:
+            if not projects_service.is_task_status_client_allowed(
+                project_id, task_status
+            ):
+                raise permissions.PermissionDenied
     return True
 
 

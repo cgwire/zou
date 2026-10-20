@@ -47,3 +47,47 @@ class ClientStudioRoutesTestCase(ApiDBTestCase):
         self.get(f"data/projects/{self.project_id}/episodes/stats", 200)
         self.get(f"data/projects/{self.project_id}/playlists", 200)
         self.get(f"data/shots/with-tasks?project_id={self.project_id}", 200)
+
+
+class ClientHiddenStatsTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project_status()
+        self.generate_fixture_project()
+        self.generate_fixture_user_client()
+        self.generate_fixture_user_cg_artist()
+        self.generate_fixture_user_manager()
+        self.project_id = str(self.project.id)
+        self.path = f"data/projects/{self.project_id}/episodes/stats"
+        projects_service.add_team_member(
+            self.project_id, self.user_client["id"]
+        )
+
+    def hide_stats(self):
+        self.project.update({"is_client_stats_visible": False})
+        projects_service.clear_project_cache(self.project_id)
+
+    def test_client_episode_stats_hidden(self):
+        self.hide_stats()
+        self.log_in_client()
+        self.get(self.path, 403)
+
+    def test_project_client_role_episode_stats_hidden(self):
+        self.hide_stats()
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"], role="client"
+        )
+        self.log_in_cg_artist()
+        self.get(self.path, 403)
+
+    def test_client_episode_stats_visible(self):
+        self.log_in_client()
+        self.get(self.path, 200)
+
+    def test_manager_sees_hidden_episode_stats(self):
+        self.hide_stats()
+        projects_service.add_team_member(
+            self.project_id, self.user_manager["id"]
+        )
+        self.log_in_manager()
+        self.get(self.path, 200)

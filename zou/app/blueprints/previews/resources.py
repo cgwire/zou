@@ -898,13 +898,12 @@ class BaseBatchComment(BaseNewPreviewFilePicture, ArgsMixin):
                     comment["task_id"]
                 )
 
-            permissions_service.resolve_project_role(
-                tasks_service.get_task(task_id or comment["task_id"])[
-                    "project_id"
-                ]
-            )
+            project_id = tasks_service.get_task(task_id or comment["task_id"])[
+                "project_id"
+            ]
+            permissions_service.resolve_project_role(project_id)
             permissions_service.check_task_status_access(
-                comment["task_status_id"]
+                comment["task_status_id"], project_id
             )
 
             if not permissions.has_manager_permissions():

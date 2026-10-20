@@ -324,7 +324,12 @@ def update_guest_comment(comment_id, guest_id, data, token):
             new_status = task_types_service.get_task_status(new_status_id)
         except Exception:
             raise GuestCommentForbidden
-        if not new_status.get("is_client_allowed", False):
+        project_id = tasks_service.get_task(instance["object_id"])[
+            "project_id"
+        ]
+        if not projects_service.is_task_status_client_allowed(
+            project_id, new_status
+        ):
             raise GuestCommentForbidden
     previous_status_id = instance.get("task_status_id")
 
@@ -907,6 +912,9 @@ def get_shared_playlist_context(token):
 
     task_types = projects_service.get_project_task_types(project_id)
     task_statuses = projects_service.get_project_task_statuses(project_id)
+    client_allowed_overrides = projects_service.get_client_allowed_overrides(
+        project_id
+    )
 
     return {
         "project": {
@@ -936,7 +944,9 @@ def get_shared_playlist_context(token):
                 "name": ts["name"],
                 "short_name": ts["short_name"],
                 "color": ts["color"],
-                "is_client_allowed": ts.get("is_client_allowed", False),
+                "is_client_allowed": client_allowed_overrides.get(
+                    ts["id"], ts.get("is_client_allowed", False)
+                ),
                 "is_default": ts.get("is_default", False),
                 "for_concept": ts.get("for_concept", False),
             }

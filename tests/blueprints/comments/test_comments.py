@@ -5,8 +5,9 @@ from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.comment import Comment
 from zou.app.models.notification import Notification
 from zou.app.models.person import Person
-from zou.app.models.project import Project
+from zou.app.models.project import Project, ProjectTaskStatusLink
 from zou.app.models.task import Task
+from zou.app.models.task_status import TaskStatus
 from zou.app.services import (
     comments_service,
     projects_service,
@@ -304,6 +305,55 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         self.project.team = [client_person, self.person]
         self.project.save()
         return client_person
+
+    def a_status_overridden_for_the_production(self, studio, production):
+        """
+        A status the studio sets to given client permission, overridden by
+        the production link.
+        """
+        task_status = TaskStatus.create(
+            name=f"Status {studio} {production}",
+            short_name=f"s{studio:d}{production}",
+            color="#000000",
+            is_client_allowed=studio,
+        )
+        ProjectTaskStatusLink.create(
+            project_id=self.project.id,
+            task_status_id=task_status.id,
+            is_client_allowed=production,
+        )
+        return str(task_status.id)
+
+    def client_comments_with(self, task_status_id, code=201):
+        return self.post(
+            f"/actions/tasks/{self.task.id}/comment",
+            {"task_status_id": task_status_id, "comment": "Client note"},
+            code,
+        )
+
+    def test_production_forbids_a_status_the_studio_allows(self):
+        self.put_the_client_in_the_team()
+        task_status_id = self.a_status_overridden_for_the_production(
+            True, False
+        )
+        self.log_in_client()
+        self.client_comments_with(task_status_id, 403)
+
+    def test_production_allows_a_status_the_studio_forbids(self):
+        self.put_the_client_in_the_team()
+        task_status_id = self.a_status_overridden_for_the_production(
+            False, True
+        )
+        self.log_in_client()
+        self.client_comments_with(task_status_id)
+
+    def test_no_override_falls_back_to_the_studio_value(self):
+        self.put_the_client_in_the_team()
+        forbidden = self.a_status_overridden_for_the_production(False, None)
+        allowed = self.a_status_overridden_for_the_production(True, None)
+        self.log_in_client()
+        self.client_comments_with(forbidden, 403)
+        self.client_comments_with(allowed)
 
     def comment_for_client(self, text="Visible to client", for_client=True):
         return self.post(
