@@ -6,10 +6,18 @@ from sqlalchemy.exc import StatementError
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.exceptions import WrongParameterException
 from zou.app.models.entity import Entity
+from zou.app.models.preview_file import VALIDATION_STATUSES
 from zou.app.models.project import Project
 from zou.app.models.working_file import WorkingFile
 from zou.app.services import files_service, permissions_service, user_service
 from zou.app.utils import permissions
+
+
+def check_validation_status(data):
+    if "validation_status" in data and data["validation_status"] not in [
+        status for status, _ in VALIDATION_STATUSES
+    ]:
+        raise WrongParameterException("Invalid validation_status")
 
 
 class WorkingFilesResource(BaseModelsResource):
@@ -42,6 +50,11 @@ class WorkingFilesResource(BaseModelsResource):
         Create working file
         """
         return super().post()
+
+    def update_data(self, data):
+        data = super().update_data(data)
+        check_validation_status(data)
+        return data
 
     def add_project_permission_filter(self, query):
         """
@@ -106,6 +119,11 @@ class WorkingFileResource(BaseModelResource):
 
         except ValueError:
             raise WrongParameterException("Invalid value.")
+
+    def update_data(self, data, instance_id):
+        data = super().update_data(data, instance_id)
+        check_validation_status(data)
+        return data
 
     def post_update(self, instance_dict, data):
         files_service.clear_working_file_cache(instance_dict["id"])

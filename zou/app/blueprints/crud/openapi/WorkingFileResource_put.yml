@@ -26,6 +26,10 @@ requestBody:
           revision:
             type: integer
             example: 2
+          validation_status:
+            type: string
+            enum: [neutral, validated, rejected]
+            example: validated
 responses:
     200:
       description: Working file updated successfully

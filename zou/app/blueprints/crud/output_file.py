@@ -6,7 +6,7 @@ from sqlalchemy.exc import StatementError
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.exceptions import WrongParameterException
 from zou.app.models.entity import Entity
-from zou.app.models.output_file import OutputFile
+from zou.app.models.output_file import QUALITIES, OutputFile
 from zou.app.models.project import Project
 from zou.app.services import (
     entities_service,
@@ -17,6 +17,13 @@ from zou.app.services import (
 from zou.app.utils import events, permissions
 
 
+def check_quality(data):
+    if data.get("quality") is not None and data["quality"] not in [
+        quality for quality, _ in QUALITIES
+    ]:
+        raise WrongParameterException("Invalid quality")
+
+
 class OutputFilesResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, OutputFile)
@@ -24,6 +31,11 @@ class OutputFilesResource(BaseModelsResource):
     def check_read_permissions(self, options=None):
         permissions_service.block_access_to_vendor()
         return True
+
+    def update_data(self, data):
+        data = super().update_data(data)
+        check_quality(data)
+        return data
 
     def add_project_permission_filter(self, query):
         if permissions.has_admin_permissions():
@@ -83,6 +95,11 @@ class OutputFileResource(BaseModelResource):
 
         except ValueError:
             raise WrongParameterException("Invalid value.")
+
+    def update_data(self, data, instance_id):
+        data = super().update_data(data, instance_id)
+        check_quality(data)
+        return data
 
     def post_update(self, instance_dict, data):
         files_service.clear_output_file_cache(instance_dict["id"])
