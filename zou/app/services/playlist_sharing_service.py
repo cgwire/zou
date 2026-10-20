@@ -690,6 +690,37 @@ def _parent_name_for_shot_entry(entity, entity_type_name, parent_map):
     return entity_type_name
 
 
+def _is_for_all_episodes(playlist_dict):
+    """
+    Read the flag the way the playlist listings do: a playlist attached to
+    an episode belongs to that episode, whatever its is_for_all says.
+    """
+    if playlist_dict.get("episode_id"):
+        return False
+    return bool(playlist_dict.get("is_for_all"))
+
+
+def _prefix_parents_with_their_episode(parents, parent_map):
+    """
+    Sequence names repeat across episodes: in a playlist for all episodes,
+    name each parent after its own parent too, which for a sequence is its
+    episode ("E01 / S01"). Return the parent map with these names.
+    """
+    episode_ids = {str(p.parent_id) for p in parents if p.parent_id}
+    if not episode_ids:
+        return parent_map
+    episode_names = {
+        str(episode.id): episode.name
+        for episode in Entity.query.filter(Entity.id.in_(episode_ids)).all()
+    }
+    prefixed_map = dict(parent_map)
+    for parent in parents:
+        episode_name = episode_names.get(str(parent.parent_id))
+        if episode_name:
+            prefixed_map[str(parent.id)] = f"{episode_name} / {parent.name}"
+    return prefixed_map
+
+
 def _apply_task_styling_to_shot(
     shot, task_id, task_type_by_task_id, task_status_color_by_task_id
 ):
@@ -736,7 +767,8 @@ def enrich_shots_with_entity_info(playlist_dict):
     (sequence/episode/asset_type name). The stored `playlist.shots` only
     keeps preview/entity references — in the shared context, consumers
     have no auth'd access to entity/asset/shot stores, so names must be
-    inlined here.
+    inlined here. In a playlist for all episodes, the sequence of a shot
+    comes with its episode.
     """
     _enrich_shared_playlist_project_line(playlist_dict)
 
@@ -751,10 +783,12 @@ def enrich_shots_with_entity_info(playlist_dict):
     parent_ids = {str(e.parent_id) for e in entities if e.parent_id}
     parent_map = {}
     if parent_ids:
-        parent_map = {
-            str(p.id): p.name
-            for p in Entity.query.filter(Entity.id.in_(parent_ids)).all()
-        }
+        parents = Entity.query.filter(Entity.id.in_(parent_ids)).all()
+        parent_map = {str(p.id): p.name for p in parents}
+        if _is_for_all_episodes(playlist_dict):
+            parent_map = _prefix_parents_with_their_episode(
+                parents, parent_map
+            )
 
     type_ids = {str(e.entity_type_id) for e in entities if e.entity_type_id}
     type_map = {}
