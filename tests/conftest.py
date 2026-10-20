@@ -13,13 +13,24 @@ os.environ.setdefault("CACHE_TYPE", "simple")
 os.environ.setdefault("BCRYPT_LOG_ROUNDS", "4")
 os.environ.setdefault("DB_POOL_PRE_PING", "false")
 
+# The session drops the whole schema of its database. Without DB_DATABASE
+# it used zou's default, zoudb, which is the development database of most
+# setups: default to a test database and refuse any other name.
+os.environ.setdefault("DB_DATABASE", "zoudb-test")
+if "test" not in os.environ["DB_DATABASE"]:
+    raise pytest.UsageError(
+        f"DB_DATABASE={os.environ['DB_DATABASE']} does not look like a test "
+        "database: the test session drops its schema. Use a name "
+        "containing 'test', e.g. DB_DATABASE=zoudb-test."
+    )
+
 # Under pytest-xdist each worker (gw0, gw1, ...) is a process of its own
 # building its own app: give it its own database, so the rows one worker
 # writes and the truncations it runs between classes stay invisible to
 # the others. A serial run keeps the plain name.
 _XDIST_WORKER = os.environ.get("PYTEST_XDIST_WORKER")
 if _XDIST_WORKER:
-    _database = os.environ.get("DB_DATABASE", "zoudb")
+    _database = os.environ["DB_DATABASE"]
     os.environ["DB_DATABASE"] = f"{_database}_{_XDIST_WORKER}"
 
 # Force isolated preview and temp stores before any zou module reads the
