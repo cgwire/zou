@@ -215,6 +215,9 @@ def get_template_task_types(template_id):
     return result
 
 
+UNSET = object()
+
+
 def add_task_type_to_template(
     template_id,
     task_type_id,
@@ -293,17 +296,24 @@ def get_template_task_statuses(template_id):
                 role.code if hasattr(role, "code") else str(role)
                 for role in (link.roles_for_board or [])
             ]
+            data["link_is_client_allowed"] = link.is_client_allowed
         result.append(data)
     result.sort(key=lambda s: (s.get("priority") or 0, s.get("name", "")))
     return result
 
 
 def add_task_status_to_template(
-    template_id, task_status_id, priority=None, roles_for_board=None
+    template_id,
+    task_status_id,
+    priority=None,
+    roles_for_board=None,
+    is_client_allowed=UNSET,
 ):
     """
     Link a task status to given template, or update the fields provided
     when the link already exists. Fields left to None are untouched.
+    is_client_allowed is untouched when left to UNSET, and None resets it
+    to the studio value.
     """
     _check_required_id(
         TaskStatus, task_status_id, "task_status_id", "Task status"
@@ -320,6 +330,9 @@ def add_task_status_to_template(
             task_status_id=task_status_id,
             priority=priority,
             roles_for_board=roles_for_board,
+            is_client_allowed=(
+                None if is_client_allowed is UNSET else is_client_allowed
+            ),
         )
     else:
         update_data = {}
@@ -327,6 +340,8 @@ def add_task_status_to_template(
             update_data["priority"] = priority
         if roles_for_board is not None:
             update_data["roles_for_board"] = roles_for_board
+        if is_client_allowed is not UNSET:
+            update_data["is_client_allowed"] = is_client_allowed
         if update_data:
             link.update(update_data)
     _notify_template_change(template_id)

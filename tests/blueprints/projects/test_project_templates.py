@@ -209,6 +209,51 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
             expected={"priority": 1},
         )
 
+    def test_task_type_link_is_client_visible(self):
+        template = self._create_template()
+        url = f"/data/project-templates/{template['id']}/task-types"
+        task_type_id = str(self.task_type.id)
+        link = self.post(
+            url, {"task_type_id": task_type_id, "is_client_visible": True}
+        )
+        self.assertTrue(link["is_client_visible"])
+        link = self.post(url, {"task_type_id": task_type_id, "priority": 2})
+        self.assertTrue(link["is_client_visible"])
+        link = self.post(
+            url, {"task_type_id": task_type_id, "is_client_visible": False}
+        )
+        self.assertFalse(link["is_client_visible"])
+
+    def test_task_status_link_is_client_allowed(self):
+        template = self._create_template()
+        url = f"/data/project-templates/{template['id']}/task-statuses"
+        status_id = str(self.task_status.id)
+
+        def link_value():
+            statuses = self.get(url)
+            return {s["id"]: s for s in statuses}[status_id][
+                "link_is_client_allowed"
+            ]
+
+        self.post(url, {"task_status_id": status_id})
+        self.assertIsNone(link_value())
+        self.post(
+            url, {"task_status_id": status_id, "is_client_allowed": True}
+        )
+        self.assertIs(link_value(), True)
+        self.post(url, {"task_status_id": status_id, "priority": 3})
+        self.assertIs(link_value(), True)
+        self.post(
+            url, {"task_status_id": status_id, "is_client_allowed": False}
+        )
+        self.assertIs(link_value(), False)
+        self.post(
+            url, {"task_status_id": status_id, "is_client_allowed": None}
+        )
+        self.assertIsNone(link_value())
+        studio = {s["id"]: s for s in self.get(url)}[status_id]
+        self.assertIn("is_client_allowed", studio)
+
     def test_asset_type_link_routes(self):
         self.assert_a_link_can_be_added_and_removed(
             "asset-types",

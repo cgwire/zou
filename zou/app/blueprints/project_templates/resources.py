@@ -57,6 +57,7 @@ class ProjectTemplateTaskTypesResource(MethodView):
                 data.task_type_id,
                 data.priority,
                 bitrates=data.bitrates(),
+                is_client_visible=data.is_client_visible,
             )
         except ProjectTemplateNotFoundException:
             return {"message": "Project template not found"}, 404
@@ -111,6 +112,11 @@ class ProjectTemplateTaskStatusesResource(MethodView):
                 data.task_status_id,
                 data.priority,
                 data.roles_for_board or None,
+                is_client_allowed=(
+                    data.is_client_allowed
+                    if "is_client_allowed" in data.model_fields_set
+                    else project_templates_service.UNSET
+                ),
             )
         except ProjectTemplateNotFoundException:
             return {"message": "Project template not found"}, 404

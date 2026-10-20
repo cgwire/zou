@@ -2,3 +2,18 @@ Attach a task type to a project template.
 ---
 tags:
   - Project Templates
+parameters:
+  - in: body
+    name: body
+    required: true
+    schema:
+      type: object
+      required: [task_type_id]
+      properties:
+        task_type_id: {type: string, format: uuid}
+        priority: {type: integer}
+        hd_bitrate_compression: {type: integer, minimum: 1}
+        ld_bitrate_compression: {type: integer, minimum: 1}
+        is_client_visible:
+          type: boolean
+          description: Whether clients see this task type. Omitted keeps the current value of an existing link.
