@@ -40,7 +40,13 @@ from zou.app.exceptions import (
     WrongParameterException,
 )
 from zou.app.mixin import ArgsMixin
-from zou.app.utils import events, fields, permissions, query
+from zou.app.utils import (
+    events,
+    fields,
+    permissions,
+    query,
+    query as query_utils,
+)
 
 
 def build_db_error_message(exception):
@@ -93,9 +99,9 @@ class BaseModelsResource(MethodView, ArgsMixin):
 
     def paginated_entries(self, query, page, limit=None, relations=False):
         total = query.count()
-        limit = limit or current_app.config["NB_RECORDS_PER_PAGE"]
-        if limit < 1:
+        if limit is not None and limit < 0:
             raise WrongParameterException("limit must be a positive integer.")
+        limit = query_utils.get_page_limit(limit)
         offset = (page - 1) * limit
 
         nb_pages = int(math.ceil(total / float(limit)))
@@ -266,6 +272,9 @@ class BaseModelsResource(MethodView, ArgsMixin):
                     field_names = [
                         name.strip() for name in field_names.split(",")
                     ]
+                # A limit alone asks for the first page.
+                if page == -1 and limit > 0:
+                    page = 1
                 is_paginated = page > -1
 
                 if is_paginated:

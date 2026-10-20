@@ -1,7 +1,7 @@
 from flask import request
 
 from zou.app.exceptions import WrongParameterException
-from zou.app.utils import date_helpers, fields
+from zou.app.utils import date_helpers, fields, query
 
 
 class ArgsMixin(object):
@@ -119,6 +119,22 @@ class ArgsMixin(object):
         Returns limit requested by the user as an integer.
         """
         return self.get_integer_parameter("limit", 0)
+
+    def get_pagination(self):
+        """
+        Returns the (page, limit) pair requested by the user, or
+        (None, None) when neither is given: the route then answers with
+        the whole list. A limit alone asks for the first page. The limit
+        defaults to NB_RECORDS_PER_PAGE and is capped at
+        MAX_RECORDS_PER_PAGE.
+        """
+        page = self.get_page()
+        limit = self.get_limit()
+        if limit < 0:
+            raise WrongParameterException("limit must be a positive integer.")
+        if page < 1 and limit == 0:
+            return None, None
+        return max(page, 1), query.get_page_limit(limit)
 
     def get_integer_parameter(self, field_name, default=0):
         """

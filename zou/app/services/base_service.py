@@ -1,6 +1,6 @@
 from sqlalchemy.exc import StatementError
 
-from zou.app.utils import events
+from zou.app.utils import events, query as query_utils
 
 
 def get_instance(model, instance_id, exception):
@@ -67,3 +67,25 @@ def get_model_map_from_array(models):
     ID.
     """
     return {model["id"]: model for model in models}
+
+
+def get_paginated_typed_results(
+    query, page, limit=None, obj_type=None, relations=False
+):
+    """
+    Return the envelope of the requested page of given query, its rows
+    serialized under given type, the way the unpaginated listings of
+    typed entities (shots, sequences, versions...) serialize them.
+    """
+    limit = query_utils.get_page_limit(limit)
+    total = query.count()
+    rows = query_utils.paginate_query(query, page, limit).all()
+    return query_utils.build_page(
+        [
+            row.serialize(obj_type=obj_type, relations=relations)
+            for row in rows
+        ],
+        total,
+        page,
+        limit,
+    )
