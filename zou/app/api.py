@@ -37,7 +37,7 @@ BLUEPRINT_MODULES = [
 ]
 
 
-def configure(app):
+def configure(app, with_plugins=True):
     """
     Turn Flask app into a REST API. It configures routes, auth and events
     system.
@@ -45,7 +45,8 @@ def configure(app):
     app.url_map.strict_slashes = False
     configure_api_routes(app)
     register_event_handlers(app)
-    load_plugins(app)
+    if with_plugins:
+        load_plugins(app)
     return app
 
 
