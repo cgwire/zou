@@ -7,7 +7,7 @@ from zou.app.services import (
     entity_types_service,
     persons_service,
 )
-from zou.app.utils import cache, fields
+from zou.app.utils import cache, fields, query as query_utils
 
 
 def _get_subscription_raw(**criterions):
@@ -150,14 +150,17 @@ def unsubscribe_from_sequence(person_id, sequence_id, task_type_id):
     return subscription.serialize()
 
 
-def get_subscriptions_for_project(project_id):
+def get_subscriptions_for_project(project_id, page=None, limit=None):
     """
-    Return all subscriptions for given project.
+    Return all subscriptions for given project, or the requested page of
+    them when a page is given.
     """
     subscriptions = Subscription.query.join(Task).filter(
         Task.project_id == project_id
     )
-    return fields.serialize_list(subscriptions)
+    if page is None:
+        return fields.serialize_list(subscriptions)
+    return query_utils.get_paginated_results(subscriptions, page, limit)
 
 
 def get_subscriptions_for_user(project_id, entity_type_id=None):

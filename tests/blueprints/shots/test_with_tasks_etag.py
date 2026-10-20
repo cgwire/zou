@@ -97,3 +97,27 @@ class WithTasksConditionalGetTestCase(ApiDBTestCase):
         self.asset.update({"name": "Zebra"})
         third = self.get_response(path, headers={"If-None-Match": etag})
         self.assertEqual(third.status_code, 200)
+
+    def test_the_validator_is_bound_to_the_page(self):
+        for board in ["shots", "assets"]:
+            with self.subTest(board=board):
+                path = f"data/{board}/with-tasks?project_id={self.project_id}"
+                etag = self.get_etag(path)
+                page_path = f"{path}&page=1&limit=1"
+                second = self.get_response(
+                    page_path, headers={"If-None-Match": etag}
+                )
+                self.assertEqual(second.status_code, 200)
+                self.assertEqual(second.get_json()["total"], 1)
+                page_etag = second.headers.get("ETag")
+                self.assertNotEqual(page_etag, etag)
+                third = self.get_response(
+                    page_path, headers={"If-None-Match": page_etag}
+                )
+                self.assertEqual(third.status_code, 304)
+                other_page = self.get_response(
+                    f"{path}&page=2&limit=1",
+                    headers={"If-None-Match": page_etag},
+                )
+                self.assertEqual(other_page.status_code, 200)
+                self.assertEqual(self.get_etag(path), etag)

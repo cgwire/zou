@@ -11,6 +11,20 @@ parameters:
     type: string
     format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
+  - in: query
+    name: page
+    required: false
+    type: integer
+    example: 1
+    description: Page number. Without page nor limit, the whole list is
+      returned; with either, a paginated envelope is returned.
+  - in: query
+    name: limit
+    required: false
+    type: integer
+    example: 100
+    description: Number of entries per page (default 100, max 5000). A
+      limit alone returns the first page.
 responses:
     200:
         description: All assets tasks related to given episode

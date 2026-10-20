@@ -84,7 +84,7 @@ class AssetResource(MethodView, ArgsMixin):
         return "", 204
 
 
-class AllAssetsResource(MethodView):
+class AllAssetsResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @swag_from("openapi/AllAssetsResource_get.yml")
@@ -95,9 +95,12 @@ class AllAssetsResource(MethodView):
         criterions = query.get_query_criterions_from_request(request)
         check_criterion_access(criterions)
         permissions_service.scope_criterions_to_vendor(criterions)
+        page, limit = self.get_pagination()
         return assets_service.get_assets(
             criterions,
             only_user_projects=not permissions.has_admin_permissions(),
+            page=page,
+            limit=limit,
         )
 
 
@@ -117,40 +120,56 @@ class AssetsAndTasksResource(MethodView, ArgsMixin):
         # criterions reach the service.
         stream = criterions.pop("stream", "false") == "true"
         compact = criterions.pop("compact", "false") == "true"
+        # The limit is a response option too. A page is answered as one
+        # JSON envelope, stream or not: it is bounded, and the envelope
+        # carries the counts the client pages with. Compact still applies
+        # to the rows of its data.
+        criterions.pop("limit", None)
+        page, limit = self.get_pagination()
         query.check_criterion_id_format(criterions)
         check_criterion_access(criterions)
         permissions_service.scope_criterions_to_vendor(criterions)
         only_user_projects = not permissions.has_admin_permissions()
-        etag = entities_service.get_project_board_etag(criterions)
+        etag = entities_service.get_project_board_etag(criterions, page, limit)
         if etag is not None and http_cache.is_fresh(etag):
             return http_cache.not_modified(etag)
-        if not stream and not compact:
-            body = assets_service.get_assets_and_tasks(
-                criterions, only_user_projects=only_user_projects
-            )
-            if etag is None:
-                return body
-            return http_cache.json_response(body, etag)
-
-        rows = assets_service.prepare_assets_and_tasks(
-            criterions,
-            compact=compact,
-            only_user_projects=only_user_projects,
-        )
         header = {"compact": compact}
         if compact:
             header["asset_fields"] = (
                 assets_service.ASSETS_AND_TASKS_ASSET_FIELDS
             )
             header["task_fields"] = assets_service.ASSETS_AND_TASKS_TASK_FIELDS
-        response = flask_utils.rows_response(header, rows, stream)
-        if etag is not None:
-            # rows_response returns a plain dict when not streaming.
-            if stream:
-                http_cache.mark(response, etag)
-            else:
-                response = http_cache.json_response(response, etag)
-        return response
+        if page is not None:
+            body = assets_service.get_assets_and_tasks_page(
+                criterions,
+                page,
+                limit,
+                compact=compact,
+                only_user_projects=only_user_projects,
+            )
+            if compact:
+                body = {**header, **body}
+        elif not stream and not compact:
+            body = assets_service.get_assets_and_tasks(
+                criterions, only_user_projects=only_user_projects
+            )
+        else:
+            rows = assets_service.prepare_assets_and_tasks(
+                criterions,
+                compact=compact,
+                only_user_projects=only_user_projects,
+            )
+            response = flask_utils.rows_response(header, rows, stream)
+            if etag is not None:
+                # rows_response returns a plain dict when not streaming.
+                if stream:
+                    http_cache.mark(response, etag)
+                else:
+                    response = http_cache.json_response(response, etag)
+            return response
+        if etag is None:
+            return body
+        return http_cache.json_response(body, etag)
 
 
 class AssetTypeResource(MethodView):
@@ -201,7 +220,7 @@ class ShotAssetTypesResource(MethodView):
         return assets_service.get_asset_types_for_shot(shot_id)
 
 
-class ProjectAssetsResource(MethodView):
+class ProjectAssetsResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @swag_from("openapi/ProjectAssetsResource_get.yml")
@@ -213,10 +232,11 @@ class ProjectAssetsResource(MethodView):
         criterions = query.get_query_criterions_from_request(request)
         criterions["project_id"] = project_id
         permissions_service.scope_criterions_to_vendor(criterions)
-        return assets_service.get_assets(criterions)
+        page, limit = self.get_pagination()
+        return assets_service.get_assets(criterions, page=page, limit=limit)
 
 
-class ProjectAssetTypeAssetsResource(MethodView):
+class ProjectAssetTypeAssetsResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @swag_from("openapi/ProjectAssetTypeAssetsResource_get.yml")
@@ -229,7 +249,8 @@ class ProjectAssetTypeAssetsResource(MethodView):
         criterions["project_id"] = project_id
         criterions["entity_type_id"] = asset_type_id
         permissions_service.scope_criterions_to_vendor(criterions)
-        return assets_service.get_assets(criterions)
+        page, limit = self.get_pagination()
+        return assets_service.get_assets(criterions, page=page, limit=limit)
 
 
 class AssetAssetsResource(MethodView):
@@ -257,8 +278,9 @@ class AssetTasksResource(MethodView, ArgsMixin):
         asset = assets_service.get_asset(asset_id)
         permissions_service.check_project_access(asset["project_id"])
         permissions_service.check_entity_access(asset["id"])
+        page, limit = self.get_pagination()
         return tasks_service.get_tasks_for_asset(
-            asset_id, relations=self.get_relations()
+            asset_id, relations=self.get_relations(), page=page, limit=limit
         )
 
 
@@ -453,7 +475,7 @@ class SetSharedAssetsResource(BaseSetSharedAssetsResource):
         return super().post(asset_ids=asset_ids)
 
 
-class ProjectAssetsSharedUsedResource(MethodView):
+class ProjectAssetsSharedUsedResource(MethodView, ArgsMixin):
     @jwt_required()
     @swag_from("openapi/ProjectAssetsSharedUsedResource_get.yml")
     def get(self, project_id):
@@ -461,10 +483,13 @@ class ProjectAssetsSharedUsedResource(MethodView):
         Get shared assets used in project
         """
         permissions_service.check_project_access(project_id)
-        return assets_service.get_shared_assets_used_in_project(project_id)
+        page, limit = self.get_pagination()
+        return assets_service.get_shared_assets_used_in_project(
+            project_id, page=page, limit=limit
+        )
 
 
-class ProjectEpisodeAssetsSharedUsedResource(MethodView):
+class ProjectEpisodeAssetsSharedUsedResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @swag_from("openapi/ProjectEpisodeAssetsSharedUsedResource_get.yml")
@@ -473,6 +498,7 @@ class ProjectEpisodeAssetsSharedUsedResource(MethodView):
         Get shared assets used in episode
         """
         permissions_service.check_project_access(project_id)
+        page, limit = self.get_pagination()
         return assets_service.get_shared_assets_used_in_project(
-            project_id, episode_id
+            project_id, episode_id, page=page, limit=limit
         )

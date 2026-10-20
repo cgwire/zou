@@ -1,8 +1,13 @@
 import datetime
 
 from tests.base import ApiDBTestCase
+from zou.app.models.entity import Entity, EntityVersion
 from zou.app.models.studio import Studio
-from zou.app.services import tasks_service
+from zou.app.services import (
+    metadata_descriptors_service,
+    projects_service,
+    tasks_service,
+)
 from zou.app.utils import fields
 
 
@@ -207,3 +212,106 @@ class ShotRoutesTestCase(ApiDBTestCase):
         )
         shot = self.get(f"/data/shots/{self.shot.id}")
         self.assertEqual(shot["nb_frames"], 100)
+
+    def generate_second_row_of_each_kind(self):
+        """
+        Give the production two episodes, sequences, scenes and shots, all
+        the shots in the first sequence of the first episode and in the
+        first scene, and two versions to the first shot.
+        """
+        episode = self.episode
+        sequence = self.sequence
+        shot = self.shot
+        scene = self.generate_fixture_scene()
+        self.generate_fixture_scene("SC02")
+        second_shot = self.generate_fixture_shot(
+            "P02", sequence_id=sequence.id
+        )
+        self.generate_fixture_sequence("S02", episode_id=episode.id)
+        self.generate_fixture_episode("E02")
+        for entity in [shot, second_shot]:
+            entity.update({"source_id": scene.id})
+        for index in range(2):
+            EntityVersion.create(
+                name=shot.name, entity_id=shot.id, data={"index": index}
+            )
+        return episode, sequence, scene, shot
+
+    def test_entity_listings_paginate_on_demand(self):
+        episode, sequence, scene, shot = (
+            self.generate_second_row_of_each_kind()
+        )
+        project_path = f"/data/projects/{self.project.id}"
+        for path in [
+            f"{project_path}/shots",
+            f"{project_path}/sequences",
+            f"{project_path}/scenes",
+            f"{project_path}/episodes",
+            f"/data/episodes/{episode.id}/shots",
+            f"/data/episodes/{episode.id}/sequences",
+            f"/data/sequences/{sequence.id}/shots",
+            f"/data/sequences/{sequence.id}/scenes",
+            f"/data/scenes/{scene.id}/shots",
+            "/data/shots",
+            f"/data/shots/all?project_id={self.project.id}",
+            "/data/scenes/all",
+            "/data/episodes",
+            "/data/sequences",
+            f"/data/shots/{shot.id}/versions",
+        ]:
+            with self.subTest(path=path):
+                self.assert_opt_in_pagination(path)
+
+    def test_a_vendor_page_is_scoped_and_masked(self):
+        """
+        A page served to a vendor holds only what they are assigned to, and
+        the metadata of departments they do not belong to stays hidden.
+        """
+        self.generate_second_row_of_each_kind()
+        self.generate_fixture_department()
+        project_id = str(self.project.id)
+        vendor_id = self.generate_fixture_user_vendor()["id"]
+        projects_service.add_team_member(project_id, vendor_id)
+        # Two tasks on the same shot: the shot still counts once.
+        first_task = self.shot_task
+        second_task = self.generate_fixture_shot_task(
+            name="Secondary", shot_id=first_task.entity_id
+        )
+        for task in [first_task, second_task]:
+            tasks_service.assign_task(task.id, vendor_id)
+        shot = Entity.get(first_task.entity_id)
+        # The shot is linked to a scene through its source: the vendor
+        # episode lookup used to list that scene as an episode.
+        self.assertIsNotNone(shot.source_id)
+        sequence = Entity.get(shot.parent_id)
+        for entity, entity_type in [(shot, "Shot"), (sequence, "Sequence")]:
+            descriptor = metadata_descriptors_service.add_metadata_descriptor(
+                project_id,
+                entity_type,
+                "Rig",
+                "string",
+                [],
+                False,
+                [str(self.department_animation.id)],
+            )
+            entity.update({"data": {descriptor["field_name"]: "secret"}})
+        self.log_in_vendor()
+        for path, expected_id in [
+            (f"/data/projects/{project_id}/shots", shot.id),
+            (f"/data/projects/{project_id}/sequences", sequence.id),
+            (f"/data/shots?project_id={project_id}", shot.id),
+            (f"/data/sequences/{sequence.id}/shots", shot.id),
+            (f"/data/projects/{project_id}/episodes", sequence.parent_id),
+            (f"/data/episodes/{sequence.parent_id}/sequences", sequence.id),
+        ]:
+            with self.subTest(path=path):
+                separator = "&" if "?" in path else "?"
+                result = self.get(f"{path}{separator}page=1&limit=10")
+                self.assertEqual(result["total"], 1)
+                self.assertEqual(
+                    [row["id"] for row in result["data"]], [str(expected_id)]
+                )
+                self.assertNotIn(
+                    descriptor["field_name"], result["data"][0]["data"] or {}
+                )
+                self.assert_opt_in_pagination(path)

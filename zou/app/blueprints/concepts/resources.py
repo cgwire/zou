@@ -54,7 +54,7 @@ class ConceptResource(MethodView, ArgsMixin):
         return "", 204
 
 
-class AllConceptsResource(MethodView):
+class AllConceptsResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @swag_from("openapi/AllConceptsResource_get.yml")
@@ -71,7 +71,10 @@ class AllConceptsResource(MethodView):
             or permissions.has_client_permissions()
         ):
             raise permissions.PermissionDenied
-        return concepts_service.get_concepts(criterions)
+        page, limit = self.get_pagination()
+        return concepts_service.get_concepts(
+            criterions, page=page, limit=limit
+        )
 
 
 class ConceptTaskTypesResource(MethodView):
@@ -104,8 +107,9 @@ class ConceptTasksResource(MethodView, ArgsMixin):
         if permissions.has_client_permissions():
             raise permissions.PermissionDenied
         relations = self.get_relations()
+        page, limit = self.get_pagination()
         return tasks_service.get_tasks_for_concept(
-            concept_id, relations=relations
+            concept_id, relations=relations, page=page, limit=limit
         )
 
 
@@ -125,7 +129,7 @@ class ConceptPreviewsResource(MethodView):
         return playlists_service.get_entity_previews_by_task_type(concept_id)
 
 
-class ConceptsAndTasksResource(MethodView):
+class ConceptsAndTasksResource(MethodView, ArgsMixin):
     @jwt_required()
     @swag_from("openapi/ConceptsAndTasksResource_get.yml")
     def get(self):
@@ -142,7 +146,10 @@ class ConceptsAndTasksResource(MethodView):
             or permissions.has_client_permissions()
         ):
             raise permissions.PermissionDenied
-        return concepts_service.get_concepts_and_tasks(criterions)
+        page, limit = self.get_pagination()
+        return concepts_service.get_concepts_and_tasks(
+            criterions, page=page, limit=limit
+        )
 
 
 class ProjectConceptsResource(MethodView, ArgsMixin):
@@ -159,7 +166,10 @@ class ProjectConceptsResource(MethodView, ArgsMixin):
             or permissions.has_client_permissions()
         ):
             raise permissions.PermissionDenied
-        return concepts_service.get_concepts_for_project(project_id)
+        page, limit = self.get_pagination()
+        return concepts_service.get_concepts_for_project(
+            project_id, page=page, limit=limit
+        )
 
     @jwt_required()
     @swag_from("openapi/ProjectConceptsResource_post.yml")

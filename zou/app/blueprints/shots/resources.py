@@ -127,7 +127,7 @@ class SceneResource(MethodView):
         return "", 204
 
 
-class AllShotsResource(MethodView):
+class AllShotsResource(MethodView, ArgsMixin):
     @jwt_required()
     @swag_from("openapi/AllShotsResource_get.yml")
     def get(self):
@@ -144,10 +144,11 @@ class AllShotsResource(MethodView):
             criterions.get("project_id", None)
         )
         permissions_service.scope_criterions_to_vendor(criterions)
-        return shots_service.get_shots(criterions)
+        page, limit = self.get_pagination()
+        return shots_service.get_shots(criterions, page=page, limit=limit)
 
 
-class ScenesResource(MethodView):
+class ScenesResource(MethodView, ArgsMixin):
     @jwt_required()
     @swag_from("openapi/ScenesResource_get.yml")
     def get(self):
@@ -160,7 +161,8 @@ class ScenesResource(MethodView):
         )
         if permissions.has_vendor_permissions():
             raise permissions.PermissionDenied
-        return shots_service.get_scenes(criterions)
+        page, limit = self.get_pagination()
+        return shots_service.get_scenes(criterions, page=page, limit=limit)
 
 
 class ShotAssetsResource(MethodView):
@@ -200,7 +202,10 @@ class ShotTasksResource(MethodView, ArgsMixin):
         permissions_service.check_project_access(shot["project_id"])
         permissions_service.check_entity_access(shot["id"])
         relations = self.get_relations()
-        return tasks_service.get_tasks_for_shot(shot_id, relations=relations)
+        page, limit = self.get_pagination()
+        return tasks_service.get_tasks_for_shot(
+            shot_id, relations=relations, page=page, limit=limit
+        )
 
 
 class SequenceShotTasksResource(MethodView, ArgsMixin):
@@ -216,8 +221,9 @@ class SequenceShotTasksResource(MethodView, ArgsMixin):
         if permissions.has_vendor_permissions():
             raise permissions.PermissionDenied
         relations = self.get_relations()
+        page, limit = self.get_pagination()
         return tasks_service.get_shot_tasks_for_sequence(
-            sequence_id, relations=relations
+            sequence_id, relations=relations, page=page, limit=limit
         )
 
 
@@ -234,8 +240,9 @@ class EpisodeShotTasksResource(MethodView, ArgsMixin):
         if permissions.has_vendor_permissions():
             raise permissions.PermissionDenied
         relations = self.get_relations()
+        page, limit = self.get_pagination()
         return tasks_service.get_shot_tasks_for_episode(
-            episode_id, relations=relations
+            episode_id, relations=relations, page=page, limit=limit
         )
 
 
@@ -252,8 +259,9 @@ class EpisodeAssetTasksResource(MethodView, ArgsMixin):
         if permissions.has_vendor_permissions():
             raise permissions.PermissionDenied
         relations = self.get_relations()
+        page, limit = self.get_pagination()
         return tasks_service.get_asset_tasks_for_episode(
-            episode_id, relations=relations
+            episode_id, relations=relations, page=page, limit=limit
         )
 
 
@@ -268,10 +276,11 @@ class EpisodeShotsResource(MethodView, ArgsMixin):
         permissions_service.check_project_access(episode["project_id"])
         permissions_service.check_entity_access(episode["id"])
         relations = self.get_relations()
+        page, limit = self.get_pagination()
         return permissions_service.mask_metadata_for_vendor(
             "Shot",
             shots_service.get_shots_for_episode(
-                episode_id, relations=relations
+                episode_id, relations=relations, page=page, limit=limit
             ),
         )
 
@@ -300,10 +309,13 @@ class SequenceTasksResource(MethodView, ArgsMixin):
         permissions_service.check_project_access(sequence["project_id"])
         permissions_service.check_entity_access(sequence["id"])
         relations = self.get_relations()
+        page, limit = self.get_pagination()
         if permissions.has_vendor_permissions():
-            return user_service.get_tasks_for_entity(sequence["id"])
+            return user_service.get_tasks_for_entity(
+                sequence["id"], page=page, limit=limit
+            )
         return tasks_service.get_tasks_for_sequence(
-            sequence_id, relations=relations
+            sequence_id, relations=relations, page=page, limit=limit
         )
 
 
@@ -320,7 +332,7 @@ class SequenceTaskTypesResource(MethodView):
         return tasks_service.get_task_types_for_sequence(sequence_id)
 
 
-class ShotsAndTasksResource(MethodView):
+class ShotsAndTasksResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @swag_from("openapi/ShotsAndTasksResource_get.yml")
@@ -336,38 +348,50 @@ class ShotsAndTasksResource(MethodView):
         # criterions reach the service.
         stream = criterions.pop("stream", "false") == "true"
         compact = criterions.pop("compact", "false") == "true"
+        # The limit is a response option too. A page is answered as one
+        # JSON envelope, stream or not: it is bounded, and the envelope
+        # carries the counts the client pages with. Compact still applies
+        # to the rows of its data.
+        criterions.pop("limit", None)
+        page, limit = self.get_pagination()
         query.check_criterion_id_format(criterions)
         permissions_service.check_project_access(
             criterions.get("project_id", None)
         )
         permissions_service.scope_criterions_to_vendor(criterions)
-        etag = entities_service.get_project_board_etag(criterions)
+        etag = entities_service.get_project_board_etag(criterions, page, limit)
         if etag is not None and http_cache.is_fresh(etag):
             return http_cache.not_modified(etag)
-        if not stream and not compact:
-            body = shots_service.get_shots_and_tasks(criterions)
-            if etag is None:
-                return body
-            return http_cache.json_response(body, etag)
-
-        rows = shots_service.prepare_shots_and_tasks(
-            criterions, compact=compact
-        )
         header = {"compact": compact}
         if compact:
             header["shot_fields"] = shots_service.SHOTS_AND_TASKS_SHOT_FIELDS
             header["task_fields"] = shots_service.SHOTS_AND_TASKS_TASK_FIELDS
-        response = flask_utils.rows_response(header, rows, stream)
-        if etag is not None:
-            # rows_response returns a plain dict when not streaming.
-            if stream:
-                http_cache.mark(response, etag)
-            else:
-                response = http_cache.json_response(response, etag)
-        return response
+        if page is not None:
+            body = shots_service.get_shots_and_tasks_page(
+                criterions, page, limit, compact=compact
+            )
+            if compact:
+                body = {**header, **body}
+        elif not stream and not compact:
+            body = shots_service.get_shots_and_tasks(criterions)
+        else:
+            rows = shots_service.prepare_shots_and_tasks(
+                criterions, compact=compact
+            )
+            response = flask_utils.rows_response(header, rows, stream)
+            if etag is not None:
+                # rows_response returns a plain dict when not streaming.
+                if stream:
+                    http_cache.mark(response, etag)
+                else:
+                    response = http_cache.json_response(response, etag)
+            return response
+        if etag is None:
+            return body
+        return http_cache.json_response(body, etag)
 
 
-class SceneAndTasksResource(MethodView):
+class SceneAndTasksResource(MethodView, ArgsMixin):
     @jwt_required()
     @swag_from("openapi/SceneAndTasksResource_get.yml")
     def get(self):
@@ -386,10 +410,13 @@ class SceneAndTasksResource(MethodView):
         criterions["entity_type_id"] = entity_types_service.get_scene_type()[
             "id"
         ]
-        return entities_service.get_entities_and_tasks(criterions)
+        page, limit = self.get_pagination()
+        return entities_service.get_entities_and_tasks(
+            criterions, page=page, limit=limit
+        )
 
 
-class SequenceAndTasksResource(MethodView):
+class SequenceAndTasksResource(MethodView, ArgsMixin):
     @jwt_required()
     @swag_from("openapi/SequenceAndTasksResource_get.yml")
     def get(self):
@@ -423,14 +450,17 @@ class SequenceAndTasksResource(MethodView):
             criterions["assigned_to"] = persons_service.get_current_user()[
                 "id"
             ]
+        page, limit = self.get_pagination()
         return permissions_service.mask_metadata_for_vendor(
             "Sequence",
-            entities_service.get_entities_and_tasks(criterions),
+            entities_service.get_entities_and_tasks(
+                criterions, page=page, limit=limit
+            ),
             criterions.get("project_id"),
         )
 
 
-class EpisodeAndTasksResource(MethodView):
+class EpisodeAndTasksResource(MethodView, ArgsMixin):
     @jwt_required()
     @swag_from("openapi/EpisodeAndTasksResource_get.yml")
     def get(self):
@@ -457,9 +487,12 @@ class EpisodeAndTasksResource(MethodView):
             criterions["assigned_to"] = persons_service.get_current_user()[
                 "id"
             ]
+        page, limit = self.get_pagination()
         return permissions_service.mask_metadata_for_vendor(
             "Episode",
-            entities_service.get_entities_and_tasks(criterions),
+            entities_service.get_entities_and_tasks(
+                criterions, page=page, limit=limit
+            ),
             criterions.get("project_id"),
         )
 
@@ -473,10 +506,14 @@ class ProjectShotsResource(MethodView, ArgsMixin):
         """
         projects_service.get_project(project_id)
         permissions_service.check_project_access(project_id)
+        page, limit = self.get_pagination()
         return permissions_service.mask_metadata_for_vendor(
             "Shot",
             shots_service.get_shots_for_project(
-                project_id, only_assigned=permissions.has_vendor_permissions()
+                project_id,
+                only_assigned=permissions.has_vendor_permissions(),
+                page=page,
+                limit=limit,
             ),
             project_id,
         )
@@ -512,10 +549,14 @@ class ProjectSequencesResource(MethodView, ArgsMixin):
         """
         projects_service.get_project(project_id)
         permissions_service.check_project_access(project_id)
+        page, limit = self.get_pagination()
         return permissions_service.mask_metadata_for_vendor(
             "Sequence",
             shots_service.get_sequences_for_project(
-                project_id, only_assigned=permissions.has_vendor_permissions()
+                project_id,
+                only_assigned=permissions.has_vendor_permissions(),
+                page=page,
+                limit=limit,
             ),
             project_id,
         )
@@ -549,10 +590,14 @@ class ProjectEpisodesResource(MethodView, ArgsMixin):
         """
         projects_service.get_project(project_id)
         permissions_service.check_project_access(project_id)
+        page, limit = self.get_pagination()
         return permissions_service.mask_metadata_for_vendor(
             "Episode",
             shots_service.get_episodes_for_project(
-                project_id, only_assigned=permissions.has_vendor_permissions()
+                project_id,
+                only_assigned=permissions.has_vendor_permissions(),
+                page=page,
+                limit=limit,
             ),
             project_id,
         )
@@ -643,7 +688,7 @@ class EpisodeResource(MethodView, ArgsMixin):
         return "", 204
 
 
-class EpisodesResource(MethodView):
+class EpisodesResource(MethodView, ArgsMixin):
     @jwt_required()
     @swag_from("openapi/EpisodesResource_get.yml")
     def get(self):
@@ -654,29 +699,31 @@ class EpisodesResource(MethodView):
         permissions_service.check_project_access(
             criterions.get("project_id", None)
         )
+        page, limit = self.get_pagination()
         if permissions.has_vendor_permissions():
             project_id = criterions.get("project_id", None)
             if project_id is not None:
                 return permissions_service.mask_metadata_for_vendor(
                     "Episode",
                     shots_service.get_episodes_for_project(
-                        project_id, only_assigned=True
+                        project_id, only_assigned=True, page=page, limit=limit
                     ),
                     project_id,
                 )
-            return []
-        return shots_service.get_episodes(criterions)
+            return [] if page is None else query.build_page([], 0, page, limit)
+        return shots_service.get_episodes(criterions, page=page, limit=limit)
 
 
-class EpisodeSequencesResource(MethodView):
+class EpisodeSequencesResource(MethodView, ArgsMixin):
     @jwt_required()
     @swag_from("openapi/EpisodeSequencesResource_get.yml")
     def get(self, episode_id):
         """
         Get episode sequences
         """
+        page, limit = self.get_pagination()
         if not fields.is_valid_id(episode_id):
-            return []
+            return [] if page is None else query.build_page([], 0, page, limit)
         episode = shots_service.get_episode(episode_id)
         permissions_service.check_project_access(episode["project_id"])
         criterions = query.get_query_criterions_from_request(request)
@@ -685,11 +732,13 @@ class EpisodeSequencesResource(MethodView):
             return permissions_service.mask_metadata_for_vendor(
                 "Sequence",
                 shots_service.get_sequences_for_episode(
-                    episode_id, only_assigned=True
+                    episode_id, only_assigned=True, page=page, limit=limit
                 ),
             )
         else:
-            return shots_service.get_sequences(criterions)
+            return shots_service.get_sequences(
+                criterions, page=page, limit=limit
+            )
 
 
 class EpisodeTaskTypesResource(MethodView):
@@ -705,7 +754,7 @@ class EpisodeTaskTypesResource(MethodView):
         return tasks_service.get_task_types_for_episode(episode_id)
 
 
-class EpisodeTasksResource(MethodView):
+class EpisodeTasksResource(MethodView, ArgsMixin):
     @jwt_required()
     @swag_from("openapi/EpisodeTasksResource_get.yml")
     def get(self, episode_id):
@@ -715,9 +764,14 @@ class EpisodeTasksResource(MethodView):
         episode = shots_service.get_episode(episode_id)
         permissions_service.check_project_access(episode["project_id"])
         permissions_service.check_entity_access(episode["id"])
+        page, limit = self.get_pagination()
         if permissions.has_vendor_permissions():
-            return user_service.get_tasks_for_entity(episode["id"])
-        return tasks_service.get_tasks_for_episode(episode_id)
+            return user_service.get_tasks_for_entity(
+                episode["id"], page=page, limit=limit
+            )
+        return tasks_service.get_tasks_for_episode(
+            episode_id, page=page, limit=limit
+        )
 
 
 class SequenceResource(MethodView, ArgsMixin):
@@ -750,7 +804,7 @@ class SequenceResource(MethodView, ArgsMixin):
         return "", 204
 
 
-class SequencesResource(MethodView):
+class SequencesResource(MethodView, ArgsMixin):
     @jwt_required()
     @swag_from("openapi/SequencesResource_get.yml")
     def get(self):
@@ -766,21 +820,22 @@ class SequencesResource(MethodView):
         permissions_service.check_project_access(
             criterions.get("project_id", None)
         )
+        page, limit = self.get_pagination()
         if permissions.has_vendor_permissions():
             project_id = criterions.get("project_id", None)
             if project_id is not None:
                 return permissions_service.mask_metadata_for_vendor(
                     "Sequence",
                     shots_service.get_sequences_for_project(
-                        project_id, only_assigned=True
+                        project_id, only_assigned=True, page=page, limit=limit
                     ),
                     project_id,
                 )
-            return []
-        return shots_service.get_sequences(criterions)
+            return [] if page is None else query.build_page([], 0, page, limit)
+        return shots_service.get_sequences(criterions, page=page, limit=limit)
 
 
-class SequenceShotsResource(MethodView):
+class SequenceShotsResource(MethodView, ArgsMixin):
     @jwt_required()
     @swag_from("openapi/SequenceShotsResource_get.yml")
     def get(self, sequence_id):
@@ -792,7 +847,8 @@ class SequenceShotsResource(MethodView):
         criterions = query.get_query_criterions_from_request(request)
         criterions["parent_id"] = sequence_id
         permissions_service.scope_criterions_to_vendor(criterions)
-        return shots_service.get_shots(criterions)
+        page, limit = self.get_pagination()
+        return shots_service.get_shots(criterions, page=page, limit=limit)
 
 
 class ProjectScenesResource(MethodView, ArgsMixin):
@@ -805,10 +861,11 @@ class ProjectScenesResource(MethodView, ArgsMixin):
         projects_service.get_project(project_id)
         permissions_service.check_project_access(project_id)
         only_assigned = permissions.has_vendor_permissions()
+        page, limit = self.get_pagination()
         return permissions_service.mask_metadata_for_vendor(
             "Scene",
             shots_service.get_scenes_for_project(
-                project_id, only_assigned=only_assigned
+                project_id, only_assigned=only_assigned, page=page, limit=limit
             ),
             project_id,
         )
@@ -831,7 +888,7 @@ class ProjectScenesResource(MethodView, ArgsMixin):
         return scene, 201
 
 
-class SequenceScenesResource(MethodView):
+class SequenceScenesResource(MethodView, ArgsMixin):
     @jwt_required()
     @swag_from("openapi/SequenceScenesResource_get.yml")
     def get(self, sequence_id):
@@ -841,8 +898,12 @@ class SequenceScenesResource(MethodView):
         sequence = shots_service.get_sequence(sequence_id)
         permissions_service.check_project_access(sequence["project_id"])
         permissions_service.check_entity_access(sequence_id)
+        page, limit = self.get_pagination()
         return permissions_service.mask_metadata_for_vendor(
-            "Scene", shots_service.get_scenes_for_sequence(sequence_id)
+            "Scene",
+            shots_service.get_scenes_for_sequence(
+                sequence_id, page=page, limit=limit
+            ),
         )
 
 
@@ -859,7 +920,7 @@ class SceneTaskTypesResource(MethodView):
         return tasks_service.get_task_types_for_scene(scene_id)
 
 
-class SceneTasksResource(MethodView):
+class SceneTasksResource(MethodView, ArgsMixin):
     @jwt_required()
     @swag_from("openapi/SceneTasksResource_get.yml")
     def get(self, scene_id):
@@ -869,7 +930,10 @@ class SceneTasksResource(MethodView):
         scene = shots_service.get_scene(scene_id)
         permissions_service.check_project_access(scene["project_id"])
         permissions_service.check_entity_access(scene["id"])
-        return tasks_service.get_tasks_for_scene(scene_id)
+        page, limit = self.get_pagination()
+        return tasks_service.get_tasks_for_scene(
+            scene_id, page=page, limit=limit
+        )
 
 
 class SceneShotsResource(MethodView, ArgsMixin):
@@ -882,7 +946,10 @@ class SceneShotsResource(MethodView, ArgsMixin):
         scene = shots_service.get_scene(scene_id)
         permissions_service.check_project_access(scene["project_id"])
         permissions_service.check_entity_access(scene["id"])
-        return scenes_service.get_shots_by_scene(scene_id)
+        page, limit = self.get_pagination()
+        return scenes_service.get_shots_by_scene(
+            scene_id, page=page, limit=limit
+        )
 
     @jwt_required()
     @swag_from("openapi/SceneShotsResource_post.yml")
@@ -912,7 +979,7 @@ class RemoveShotFromSceneResource(MethodView):
         return "", 204
 
 
-class ShotVersionsResource(MethodView):
+class ShotVersionsResource(MethodView, ArgsMixin):
     """
     Get shot versions
     """
@@ -926,7 +993,8 @@ class ShotVersionsResource(MethodView):
         shot = shots_service.get_shot(shot_id)
         permissions_service.check_project_access(shot["project_id"])
         permissions_service.check_entity_access(shot["id"])
-        return shots_service.get_shot_versions(shot_id)
+        page, limit = self.get_pagination()
+        return shots_service.get_shot_versions(shot_id, page=page, limit=limit)
 
 
 class ProjectQuotasResource(MethodView, ArgsMixin):

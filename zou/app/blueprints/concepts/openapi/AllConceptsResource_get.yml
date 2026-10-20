@@ -20,6 +20,20 @@ parameters:
     format: uuid
     example: b35b7fb5-df86-5776-b181-68564193d360
     description: Filter concepts by parent concept
+  - in: query
+    name: page
+    required: false
+    type: integer
+    example: 1
+    description: Page number. Without page nor limit, the whole list is
+      returned; with either, a paginated envelope is returned.
+  - in: query
+    name: limit
+    required: false
+    type: integer
+    example: 100
+    description: Number of entries per page (default 100, max 5000). A
+      limit alone returns the first page.
 responses:
   200:
     description: List of concepts successfully retrieved
