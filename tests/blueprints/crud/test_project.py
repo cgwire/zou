@@ -76,6 +76,7 @@ class ProjectTestCase(ApiDBTestCase):
                 str(self.task_status.id): {
                     "priority": 2,
                     "roles_for_board": ["supervisor"],
+                    "is_client_allowed": None,
                 }
             },
         )
