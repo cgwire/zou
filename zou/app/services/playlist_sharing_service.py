@@ -704,19 +704,21 @@ def _prefix_parents_with_their_episode(parents, parent_map):
     """
     Sequence names repeat across episodes: in a playlist for all episodes,
     name each parent after its own parent too, which for a sequence is its
-    episode ("E01 / S01").
+    episode ("E01 / S01"). Return the parent map with these names.
     """
     episode_ids = {str(p.parent_id) for p in parents if p.parent_id}
     if not episode_ids:
-        return
+        return parent_map
     episode_names = {
         str(episode.id): episode.name
         for episode in Entity.query.filter(Entity.id.in_(episode_ids)).all()
     }
+    prefixed_map = dict(parent_map)
     for parent in parents:
         episode_name = episode_names.get(str(parent.parent_id))
         if episode_name:
-            parent_map[str(parent.id)] = f"{episode_name} / {parent.name}"
+            prefixed_map[str(parent.id)] = f"{episode_name} / {parent.name}"
+    return prefixed_map
 
 
 def _apply_task_styling_to_shot(
@@ -784,7 +786,9 @@ def enrich_shots_with_entity_info(playlist_dict):
         parents = Entity.query.filter(Entity.id.in_(parent_ids)).all()
         parent_map = {str(p.id): p.name for p in parents}
         if _is_for_all_episodes(playlist_dict):
-            _prefix_parents_with_their_episode(parents, parent_map)
+            parent_map = _prefix_parents_with_their_episode(
+                parents, parent_map
+            )
 
     type_ids = {str(e.entity_type_id) for e in entities if e.entity_type_id}
     type_map = {}
