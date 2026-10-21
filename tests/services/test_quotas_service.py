@@ -1,7 +1,11 @@
 import datetime
 
 from tests.services.cases import ShotsTestCase
-from zou.app.services import quotas_service, time_spents_service
+from zou.app.services import (
+    quotas_service,
+    tasks_service,
+    time_spents_service,
+)
 from zou.app.utils import fields
 
 
@@ -392,6 +396,29 @@ class QuotaTestCase(ShotsTestCase):
                 quotas[entry]["day"]["frames"], {"2024-06-03": 100}
             )
             self.assertEqual(quotas[entry]["day"]["count"], {"2024-06-03": 1})
+
+    def test_a_person_quota_counts_a_shared_task_once(self):
+        """
+        A task without time spent shared with another assignee is one shot
+        on the page of a person, not one per assignee.
+        """
+        task = self.generate_shot_task()
+        self.shot.update({"nb_frames": 100})
+        tasks_service.assign_task(str(task.id), self.user["id"])
+        task.update(
+            {
+                "real_start_date": datetime.datetime(2024, 6, 3, 10, 0),
+                "end_date": datetime.datetime(2024, 6, 7, 10, 0),
+            }
+        )
+
+        quotas = quotas_service.get_weighted_quotas(
+            str(self.project.id), person_id=str(self.person.id)
+        )
+
+        entry = quotas[str(self.task_type_animation.id)]
+        self.assertEqual(entry["year"]["frames"], {"2024": 100})
+        self.assertEqual(entry["year"]["count"], {"2024": 1})
 
     def test_the_quota_shots_of_every_task_type_without_a_filter(self):
         """

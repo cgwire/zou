@@ -115,7 +115,9 @@ def get_weighted_quotas(
 
     if person_id is not None:
         person = persons_service.get_person_raw(person_id)
-        query = query.filter(Task.assignees.contains(person))
+        # On the assignee the query joins: contains() joins the assignees
+        # again and keeps a row for each of them.
+        query = query.filter(Person.id == person.id)
 
     if feedback:
         query = query.filter(Task.end_date != None)
