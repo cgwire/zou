@@ -152,9 +152,9 @@ def get_weighted_quotas(
         # from the wip date to the end date.
         days = _get_working_days(task.real_start_date, end_date, timezone)
         frames = _spread(nb_frames or 0, len(days))
-        nb_drawings = task.nb_drawings or 0
+        drawings = _spread(task.nb_drawings or 0, len(days))
 
-        for day, nb_day_frames in zip(days, frames):
+        for day, nb_day_frames, nb_day_drawings in zip(days, frames, drawings):
             entry_id = str(task_person_id)
             # We get quotas for a specific person split by task types
             if person_id is not None:
@@ -167,7 +167,7 @@ def get_weighted_quotas(
                     day,
                     timezone,
                     nb_day_frames,
-                    nb_drawings,
+                    nb_day_drawings,
                     fps,
                     count=1 / len(days),
                 )
