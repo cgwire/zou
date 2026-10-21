@@ -474,6 +474,33 @@ class QuotaTestCase(ShotsTestCase):
         self.assertEqual(entry["week"]["count"], {"2024-23": 1})
         self.assertEqual(entry["month"]["count"], {"2024-06": 1})
 
+    def test_each_person_keeps_their_share_of_a_shared_shot(self):
+        """
+        28 frames over an 8 hour task, logged on alternate days by two
+        people, 4 hours each: shared out in date order, the running sum
+        gave one of them 16 frames and the other 12.
+        """
+        task = self.generate_shot_task()
+        self.shot.update({"nb_frames": 28})
+        task.update({"end_date": datetime.datetime(2024, 6, 7, 10, 0)})
+        for person_id, day, duration in [
+            (str(self.person.id), "2024-06-03", 60),
+            (self.user["id"], "2024-06-04", 120),
+            (str(self.person.id), "2024-06-05", 120),
+            (self.user["id"], "2024-06-06", 120),
+            (str(self.person.id), "2024-06-07", 60),
+        ]:
+            time_spents_service.create_or_update_time_spent(
+                str(task.id), person_id, day, duration
+            )
+
+        quotas = quotas_service.get_weighted_quotas(
+            str(self.project.id), str(self.task_type_animation.id)
+        )
+
+        for person_id in [str(self.person.id), self.user["id"]]:
+            self.assertEqual(quotas[person_id]["year"]["frames"], {"2024": 14})
+
     def test_a_shot_without_time_spent_is_split_over_its_working_days(self):
         """
         Without time spent, the shot is spread over the business days from

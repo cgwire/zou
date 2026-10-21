@@ -215,6 +215,46 @@ class ShotRoutesTestCase(ApiDBTestCase):
         # One shot, however many days were logged on it.
         self.assertEqual(result["total"]["year"]["count"], {"2024": 1})
 
+    def test_weighted_quotas_share_a_shot_between_the_people_on_it(self):
+        """
+        Two people logged half of a 7-frame shot each. Shared out person by
+        person, each share was rounded on its own, 4 + 4 = 8. Shared out
+        together they add up to the shot, and a person reads the same share
+        on their own page as on the task type one.
+        """
+        self.shot.update({"nb_frames": 7})
+        self.shot_task.update(
+            {"end_date": datetime.datetime(2024, 6, 5, 10, 0)}
+        )
+        time_spents_service.create_or_update_time_spent(
+            str(self.shot_task.id), str(self.person.id), "2024-06-03", 300
+        )
+        time_spents_service.create_or_update_time_spent(
+            str(self.shot_task.id), self.user["id"], "2024-06-04", 300
+        )
+        # The days of each person are shared out in the order of their ids:
+        # the second person gets 3 frames, where their half read alone on
+        # their own page rounded up to 4.
+        second_id = max(str(self.person.id), self.user["id"])
+
+        result = self.get(
+            f"/data/projects/{self.project.id}"
+            f"/quotas/{self.task_type_animation.id}?count_mode=weighted"
+        )
+        person_result = self.get(
+            f"/data/projects/{self.project.id}"
+            f"/quotas/persons/{second_id}?count_mode=weighted"
+        )
+
+        frames = result["total"]["day"]["frames"]
+        self.assertEqual(sorted(frames.values()), [3, 4])
+        self.assertEqual(result["total"]["year"]["count"], {"2024": 1})
+        self.assertEqual(result[second_id]["year"]["frames"], {"2024": 3})
+        task_type_id = str(self.task_type_animation.id)
+        self.assertEqual(
+            person_result[task_type_id]["year"]["frames"], {"2024": 3}
+        )
+
     def test_weighted_quotas_count_a_task_that_never_went_wip(self):
         """
         A task sent to feedback without ever being WIP has no start date to

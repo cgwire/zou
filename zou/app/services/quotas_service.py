@@ -2,7 +2,8 @@ from datetime import datetime, timedelta
 from itertools import accumulate
 from operator import itemgetter
 
-from sqlalchemy import func
+from sqlalchemy import func, select
+from sqlalchemy.orm import aliased
 
 from zou.app.models.entity import Entity
 from zou.app.models.person import Person
@@ -61,8 +62,19 @@ def get_weighted_quotas(
     if task_type_id is not None:
         query = query.filter(Task.task_type_id == task_type_id)
 
+    person = None
     if person_id is not None:
-        query = query.filter(TimeSpent.person_id == person_id)
+        person = persons_service.get_person_raw(person_id)
+        # Every time spent of the tasks the person logged time on: the
+        # shares of a task are taken together, as on the task type route.
+        own_time_spent = aliased(TimeSpent)
+        query = query.filter(
+            Task.id.in_(
+                select(own_time_spent.task_id).where(
+                    own_time_spent.person_id == person.id
+                )
+            )
+        )
 
     if feedback:
         query = query.filter(Task.end_date != None)
@@ -76,40 +88,41 @@ def get_weighted_quotas(
         query = query.filter(Task.assignees.any(Person.studio_id == studio_id))
     result = query.all()
 
-    # The time spents of a person on a task share its frames out together.
+    # The time spents of a task share its frames out together, whoever
+    # logged them, so that the shares add up to the shot.
     time_spents = {}
     for task, nb_frames, date, duration, task_person_id in result:
-        key = (task.id, str(task_person_id))
-        if key not in time_spents:
-            time_spents[key] = (task, nb_frames or 0, [])
-        time_spents[key][2].append((date, duration))
+        if task.id not in time_spents:
+            time_spents[task.id] = (task, nb_frames or 0, [])
+        time_spents[task.id][2].append((date, str(task_person_id), duration))
 
-    for (_, task_person_id), (task, nb_frames, days) in time_spents.items():
+    for task, nb_frames, days in time_spents.values():
         if task.duration > 0:
-            days.sort(key=itemgetter(0))
-            durations = [duration for _, duration in days]
+            # One block per person: interleaved with the days of another
+            # person, the running sum moved frames from one to the other.
+            days.sort(key=itemgetter(1, 0))
+            durations = [duration for _, _, duration in days]
             frames = _share_out(nb_frames, durations, task.duration)
             drawings = _share_out(
                 task.nb_drawings or 0, durations, task.duration
             )
-            entry_id = task_person_id
-            # We get quotas for a specific person split by task types
-            if person_id is not None:
-                entry_id = str(task.task_type_id)
-            for (date, duration), nb_day_frames, nb_day_drawings in zip(
-                days, frames, drawings
-            ):
-                for entry in [entry_id, "total"]:
-                    _add_quota_entry(
-                        quotas,
-                        entry,
-                        date,
-                        timezone,
-                        nb_day_frames,
-                        nb_day_drawings,
-                        fps,
-                        count=duration / task.duration,
-                    )
+            for index, (date, day_person_id, duration) in enumerate(days):
+                if person is None or day_person_id == str(person.id):
+                    entry_id = day_person_id
+                    # We get quotas for a specific person split by task types
+                    if person_id is not None:
+                        entry_id = str(task.task_type_id)
+                    for entry in [entry_id, "total"]:
+                        _add_quota_entry(
+                            quotas,
+                            entry,
+                            date,
+                            timezone,
+                            frames[index],
+                            drawings[index],
+                            fps,
+                            count=duration / task.duration,
+                        )
 
     query = (
         Task.query.filter(Task.project_id == project_id)
@@ -125,8 +138,7 @@ def get_weighted_quotas(
     if task_type_id is not None:
         query = query.filter(Task.task_type_id == task_type_id)
 
-    if person_id is not None:
-        person = persons_service.get_person_raw(person_id)
+    if person is not None:
         # On the assignee the query joins: contains() joins the assignees
         # again and keeps a row for each of them.
         query = query.filter(Person.id == person.id)
