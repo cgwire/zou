@@ -3,6 +3,8 @@ import datetime
 from freezegun import freeze_time
 
 from tests.services.cases import ShotsTestCase
+from zou.app.models.person import Person
+from zou.app.models.task import Task
 from zou.app.services import (
     quotas_service,
     tasks_service,
@@ -517,6 +519,82 @@ class QuotaTestCase(ShotsTestCase):
         )
         self.assertEqual(entry["week"]["count"], {"2024-23": 1})
         self.assertEqual(entry["month"]["count"], {"2024-06": 1})
+
+    def test_each_person_keeps_their_share_of_a_shared_shot(self):
+        """
+        28 frames over an 8 hour task, logged on alternate days by two
+        people, 4 hours each: 14 frames each. Rounded one by one, the time
+        spents gave one of them 15. Shared out in date order, the running
+        sum would give them 15 and 13.
+        """
+        task = self.generate_shot_task()
+        self.shot.update({"nb_frames": 28})
+        task.update({"end_date": datetime.datetime(2024, 6, 7, 10, 0)})
+        for person_id, day, duration in [
+            (str(self.person.id), "2024-06-03", 60),
+            (self.user["id"], "2024-06-04", 60),
+            (str(self.person.id), "2024-06-05", 60),
+            (self.user["id"], "2024-06-06", 180),
+            (str(self.person.id), "2024-06-07", 120),
+        ]:
+            time_spents_service.create_or_update_time_spent(
+                str(task.id), person_id, day, duration
+            )
+
+        quotas = quotas_service.get_weighted_quotas(
+            str(self.project.id), str(self.task_type_animation.id)
+        )
+
+        for person_id in [str(self.person.id), self.user["id"]]:
+            self.assertEqual(quotas[person_id]["year"]["frames"], {"2024": 14})
+
+    def test_a_tie_does_not_always_favor_the_same_person(self):
+        """
+        Two people logging half of each of two 7-frame shots: in the order
+        of their ids, the first of them would take the frame left over by
+        each tie, 8 frames against 6. The order is drawn for each task, and
+        on these two tasks each of them takes one frame: 7 frames each.
+        """
+        self.generate_shot_task()
+        people = [
+            Person.create(
+                id="0a1b2c3d-0000-4000-8000-000000000001",
+                first_name="Ann",
+                last_name="First",
+            ),
+            Person.create(
+                id="f0e1d2c3-0000-4000-8000-000000000002",
+                first_name="Bob",
+                last_name="Second",
+            ),
+        ]
+        for name, task_id in [
+            ("P02", "00000000-0000-4000-8000-000000000001"),
+            ("P03", "00000000-0000-4000-8000-000000000002"),
+        ]:
+            shot = self.generate_fixture_shot(name, nb_frames=7)
+            Task.create(
+                id=task_id,
+                name="Master",
+                project_id=self.project.id,
+                task_type_id=self.task_type_animation.id,
+                task_status_id=self.task_status.id,
+                entity_id=shot.id,
+                end_date=datetime.datetime(2024, 6, 7, 10, 0),
+            )
+            for person, day in zip(people, ["2024-06-03", "2024-06-04"]):
+                time_spents_service.create_or_update_time_spent(
+                    task_id, str(person.id), day, 300
+                )
+
+        quotas = quotas_service.get_weighted_quotas(
+            str(self.project.id), str(self.task_type_animation.id)
+        )
+
+        for person in people:
+            self.assertEqual(
+                quotas[str(person.id)]["year"]["frames"], {"2024": 7}
+            )
 
     def test_a_shot_without_time_spent_is_split_over_its_working_days(self):
         """
