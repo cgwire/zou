@@ -32,7 +32,8 @@ def get_weighted_quotas(
 
     If time spent is  filled for it, it weights the result with the frame
     number with the time spents. If there is no time spent, it considers that
-    the work was done from the wip date to the feedback date (or approval date).
+    the work was done from the wip date to the feedback date (or approval
+    date), or on that end date for a task that never went WIP.
     It computes the shot count and the number of seconds too.
 
     If the `feedback` flag is set to True, it uses the feedback date
@@ -113,7 +114,6 @@ def get_weighted_quotas(
     query = (
         Task.query.filter(Task.project_id == project_id)
         .filter(Entity.entity_type_id == shot_type["id"])
-        .filter(Task.real_start_date != None)
         .filter(TimeSpent.id == None)
         .join(Entity, Entity.id == Task.entity_id)
         .join(Project, Project.id == Task.project_id)
@@ -288,11 +288,14 @@ def _get_working_days(start_date, end_date, timezone):
     """
     The business days a task without time spent is spread over, from its
     WIP day to its end day, taken as calendar days of the user: east of
-    UTC, a Monday morning is still Sunday in UTC. A task without any, run
-    over a weekend only or WIP after its end, lands on its end day.
+    UTC, a Monday morning is still Sunday in UTC. A task that never went
+    WIP, or one without any working day, run over a weekend only or WIP
+    after its end, lands on its end day.
     """
-    start_day = _get_local_day(start_date, timezone)
     end_day = _get_local_day(end_date, timezone)
+    if start_date is None:
+        return [end_day]
+    start_day = _get_local_day(start_date, timezone)
     days = (
         start_day + timedelta(days=offset)
         for offset in range((end_day - start_day).days + 1)
@@ -624,7 +627,6 @@ def get_weighted_quota_shots_between(
 
     query = (
         Entity.query.filter(Entity.entity_type_id == shot_type["id"])
-        .filter(Task.real_start_date != None)
         .filter(Task.assignees.contains(person))
         .filter(TimeSpent.id == None)
         .join(Task, Entity.id == Task.entity_id)
@@ -634,8 +636,8 @@ def get_weighted_quota_shots_between(
 
     query = _filter_on_scope(query, project_id, task_type_id)
 
-    # A task that went WIP after its end date is worked on its end date
-    # only.
+    # A task that never went WIP, or went WIP after its end date, is worked
+    # on its end date only. LEAST ignores a NULL start date.
     if feedback:
         query = (
             query.filter(Task.end_date != None)

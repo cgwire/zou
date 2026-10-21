@@ -215,6 +215,26 @@ class ShotRoutesTestCase(ApiDBTestCase):
         # One shot, however many days were logged on it.
         self.assertEqual(result["total"]["year"]["count"], {"2024": 1})
 
+    def test_weighted_quotas_count_a_task_that_never_went_wip(self):
+        """
+        A task sent to feedback without ever being WIP has no start date to
+        spread it from: it lands on its end day, as in the raw modes. The
+        weighted modes used to leave it out.
+        """
+        self.shot.update({"nb_frames": 10})
+        tasks_service.assign_task(str(self.shot_task.id), str(self.person.id))
+        self.shot_task.update(
+            {"end_date": datetime.datetime(2024, 6, 5, 10, 0)}
+        )
+
+        result = self.get(
+            f"/data/projects/{self.project.id}"
+            f"/quotas/{self.task_type_animation.id}?count_mode=weighted"
+        )
+
+        self.assertEqual(result["total"]["day"]["frames"], {"2024-06-05": 10})
+        self.assertEqual(result["total"]["day"]["count"], {"2024-06-05": 1})
+
     def test_weighted_quotas_leave_out_a_weekend_start(self):
         """
         A task started on a Saturday shares its frames between the working
