@@ -574,12 +574,14 @@ def get_weighted_quota_shots_between(
         if shot["id"] not in already_listed:
             full_name, _, _ = entities_service.get_full_entity_name(shot["id"])
             shot["full_name"] = full_name
-            shot["weight"] = round(duration / task_duration, 2) or 0
+            shot["weight"] = 0
             shots.append(shot)
             already_listed[shot["id"]] = shot
-        else:
-            shot = already_listed[shot["id"]]
-            shot["weight"] += round(duration / task_duration, 2)
+        already_listed[shot["id"]]["weight"] += duration / task_duration
+    # Rounded once: rounded per time spent, a shot logged whole in the
+    # period weighed 0.99.
+    for shot in shots:
+        shot["weight"] = round(shot["weight"], 2)
 
     query = (
         Entity.query.filter(Entity.entity_type_id == shot_type["id"])

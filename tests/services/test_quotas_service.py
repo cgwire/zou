@@ -207,6 +207,31 @@ class QuotaTestCase(ShotsTestCase):
             [("A01", 0.4), ("P01", 0.25)],
         )
 
+    def test_a_shot_logged_whole_in_the_window_weighs_one(self):
+        """
+        Three days of the same length make the whole task: rounded one by
+        one, their shares added up to 0.99.
+        """
+        task = self.generate_shot_task()
+        task.update({"end_date": fields.get_date_object("2018-06-10")})
+        for day in ["2018-06-04", "2018-06-05", "2018-06-06"]:
+            time_spents_service.create_or_update_time_spent(
+                str(task.id), str(self.person.id), day, 480
+            )
+
+        quota_shots = quotas_service.get_weighted_quota_shots_between(
+            str(self.person.id),
+            "2018-06-01T00:00:00",
+            "2018-06-30T00:00:00",
+            project_id=str(self.project.id),
+            task_type_id=str(self.task_type_animation.id),
+        )
+
+        self.assertEqual(
+            [(shot["name"], shot["weight"]) for shot in quota_shots],
+            [("P01", 1.0)],
+        )
+
     def test_a_shot_outside_the_window_is_not_counted(self):
         self.generate_shot_task()
         task = self.generate_fixture_shot_task(
