@@ -265,18 +265,42 @@ def get_edits_schedule_items(project_id, task_type_id, episode_id=None):
     )
 
 
+def _is_untouched(schedule_item):
+    """
+    Whether nobody moved the schedule item since its creation. The two
+    timestamps are set by separate clock reads on creation, a second apart
+    at most.
+    """
+    return (
+        schedule_item.updated_at is None
+        or schedule_item.updated_at - schedule_item.created_at
+        < timedelta(seconds=1)
+    )
+
+
 def get_entity_schedule_items(
     project_id, task_type_id, to_create, to_create_map, existing_schedule_items
 ):
     """
     Complete the existing schedule items with one item per entity that has
     none yet, drop the ones whose entity is gone, and return the whole set
-    sorted by entity name.
+    sorted by entity name. An item nobody moved yet, new or old, shows at
+    the bar of its task type, so the schedule draws it where the task type
+    is planned; without that bar a new item takes a day from today.
     """
     schedule_item_map = {
         str(schedule_item.object_id): schedule_item
         for schedule_item in existing_schedule_items
     }
+    task_type_schedule_item = ScheduleItem.get_by(
+        project_id=project_id, task_type_id=task_type_id, object_id=None
+    )
+    if task_type_schedule_item is not None:
+        start_date = task_type_schedule_item.start_date
+        end_date = task_type_schedule_item.end_date
+    else:
+        start_date = date.today()
+        end_date = date.today() + timedelta(days=1)
 
     new_schedule_items = set()
     left_out_schedule_items = {
@@ -290,8 +314,8 @@ def get_entity_schedule_items(
         if entity["id"] not in schedule_item_map:
             new_schedule_item = ScheduleItem.create(
                 project_id=project_id,
-                start_date=date.today(),
-                end_date=date.today() + timedelta(days=1),
+                start_date=start_date,
+                end_date=end_date,
                 object_id=entity["id"],
                 task_type_id=task_type_id,
             )
@@ -311,6 +335,11 @@ def get_entity_schedule_items(
     for schedule_item in schedule_items:
         result = schedule_item.present()
         result["name"] = to_create_map[result["object_id"]]["name"]
+        if task_type_schedule_item is not None and _is_untouched(
+            schedule_item
+        ):
+            result["start_date"] = start_date.isoformat()
+            result["end_date"] = end_date.isoformat()
         results.append(result)
 
     return sorted(results, key=lambda x: x["name"])
