@@ -170,6 +170,25 @@ class ShotRoutesTestCase(ApiDBTestCase):
         )
         self.assertEqual(result[task_type_id]["year"]["count"], {"2024": 1})
 
+    def test_get_project_person_quotas_count_a_shared_task_once(self):
+        """
+        A task shared with another assignee is one shot on the page of a
+        person, not one per assignee.
+        """
+        self.a_shot_closed_on("2024-06-12")
+        tasks_service.assign_task(str(self.shot_task.id), self.user["id"])
+
+        result = self.get(
+            f"/data/projects/{self.project.id}"
+            f"/quotas/persons/{self.person.id}?count_mode=feedback"
+        )
+
+        task_type_id = str(self.task_type_animation.id)
+        self.assertEqual(
+            result[task_type_id]["day"]["frames"], {"2024-06-12": 100}
+        )
+        self.assertEqual(result[task_type_id]["year"]["count"], {"2024": 1})
+
     def test_set_shot_nb_frames(self):
         """
         Backfill the frame count of each shot from the duration of its last
