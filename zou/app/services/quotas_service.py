@@ -136,20 +136,17 @@ def get_weighted_quotas(
         if feedback:
             end_date = task.end_date
 
-        business_days = (
-            date_helpers.get_business_days(task.real_start_date, end_date) + 1
-        )
+        # Spread the work over the days the task was actually in progress,
+        # from the wip date to the end date.
+        days = _get_working_days(task.real_start_date, end_date, timezone)
         if nb_frames is not None:
-            nb_frames = round(nb_frames / business_days) or 0
+            nb_frames = round(nb_frames / len(days)) or 0
         else:
             nb_frames = 0
 
         nb_drawings = task.nb_drawings or 0
 
-        # Spread the work over the days the task was actually in progress,
-        # from the wip date to the end date. The cursor used to start at
-        # the end date, which pushed every frame past the period.
-        for day in _get_working_dates(task.real_start_date, end_date):
+        for day in days:
             entry_id = str(task_person_id)
             # We get quotas for a specific person split by task types
             if person_id is not None:
@@ -164,7 +161,7 @@ def get_weighted_quotas(
                     nb_frames,
                     nb_drawings,
                     fps,
-                    count=1 / business_days,
+                    count=1 / len(days),
                 )
     return _round_counts(quotas)
 
@@ -253,16 +250,20 @@ def get_raw_quotas(
     return quotas
 
 
-def _get_working_dates(start_date, end_date):
+def _get_working_days(start_date, end_date, timezone):
     """
-    The dates a task without time spent is spread over: one a day from its
-    WIP date to its end date, weekends left out.
+    The business days a task without time spent is spread over, from its
+    WIP day to its end day, taken as calendar days of the user: east of
+    UTC, a Monday morning is still Sunday in UTC. A task without any, run
+    over a weekend only or WIP after its end, lands on its end day.
     """
-    dates = (
-        start_date + timedelta(days=offset)
-        for offset in range((end_date - start_date).days + 1)
+    start_day = _get_local_day(start_date, timezone)
+    end_day = _get_local_day(end_date, timezone)
+    days = (
+        start_day + timedelta(days=offset)
+        for offset in range((end_day - start_day).days + 1)
     )
-    return [date for date in dates if date.weekday() < 5]
+    return [day for day in days if day.weekday() < 5] or [end_day]
 
 
 def _get_local_day(date_obj, timezone):
@@ -599,11 +600,13 @@ def get_weighted_quota_shots_between(
 
     query = _filter_on_scope(query, project_id, task_type_id)
 
+    # A task that went WIP after its end date is worked on its end date
+    # only.
     if feedback:
         query = (
             query.filter(Task.end_date != None)
             .filter(
-                (Task.real_start_date <= utc_end)
+                (func.least(Task.real_start_date, Task.end_date) <= utc_end)
                 & (Task.end_date >= utc_start)
             )
             .add_columns(Task.real_start_date, Task.end_date)
@@ -612,7 +615,7 @@ def get_weighted_quota_shots_between(
         query = (
             query.filter(Task.done_date != None)
             .filter(
-                (Task.real_start_date <= utc_end)
+                (func.least(Task.real_start_date, Task.done_date) <= utc_end)
                 & (Task.done_date >= utc_start)
             )
             .add_columns(Task.real_start_date, Task.done_date)
@@ -620,7 +623,7 @@ def get_weighted_quota_shots_between(
 
     query_shots = query.all()
 
-    # The share of the dates the quotas spread a task over that falls in
+    # The share of the days the quotas spread a task over that falls in
     # the period, compared as days of the user: a week is bounded by
     # dates, not datetimes. The period ends before its end bound.
     first_day = _get_day(start)
@@ -628,22 +631,14 @@ def get_weighted_quota_shots_between(
     for entity, task_start, task_end in query_shots:
         shot = entity.serialize()
         if shot["id"] not in already_listed:
-            business_days = (
-                date_helpers.get_business_days(task_start, task_end) + 1
-            )
-            nb_days = len(
-                [
-                    date
-                    for date in _get_working_dates(task_start, task_end)
-                    if first_day <= _get_local_day(date, timezone) < last_day
-                ]
-            )
+            days = _get_working_days(task_start, task_end, timezone)
+            nb_days = len([day for day in days if first_day <= day < last_day])
             if nb_days > 0:
                 full_name, _, _ = entities_service.get_full_entity_name(
                     shot["id"]
                 )
                 shot["full_name"] = full_name
-                shot["weight"] = round(nb_days / business_days, 2)
+                shot["weight"] = round(nb_days / len(days), 2)
                 already_listed[shot["id"]] = True
                 shots.append(shot)
 

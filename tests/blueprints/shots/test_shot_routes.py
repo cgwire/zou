@@ -132,6 +132,60 @@ class ShotRoutesTestCase(ApiDBTestCase):
             },
         )
 
+    def test_weighted_quotas_leave_out_a_weekend_start(self):
+        """
+        A task started on a Saturday shares its frames between the working
+        days that follow. The Saturday used to take a share of its own that
+        no day was credited with.
+        """
+        self.shot.update({"nb_frames": 30})
+        tasks_service.assign_task(str(self.shot_task.id), str(self.person.id))
+        self.shot_task.update(
+            {
+                "real_start_date": datetime.datetime(2024, 6, 1, 10, 0),
+                "end_date": datetime.datetime(2024, 6, 5, 10, 0),
+            }
+        )
+
+        result = self.get(
+            f"/data/projects/{self.project.id}"
+            f"/quotas/{self.task_type_animation.id}?count_mode=weighted"
+        )
+
+        self.assertEqual(
+            result["total"]["day"]["frames"],
+            {"2024-06-03": 10, "2024-06-04": 10, "2024-06-05": 10},
+        )
+
+    def test_weighted_quotas_spread_the_shot_over_the_local_days(self):
+        """
+        Sent to feedback on Wednesday 22:30 UTC, Thursday 00:30 in Paris,
+        the timezone of the user: the shot is spread from Monday to
+        Thursday, not over the three days of UTC.
+        """
+        self.shot.update({"nb_frames": 12})
+        self.shot_task.update(
+            {
+                "real_start_date": datetime.datetime(2024, 6, 3, 10, 0),
+                "end_date": datetime.datetime(2024, 6, 5, 22, 30),
+            }
+        )
+
+        result = self.get(
+            f"/data/projects/{self.project.id}"
+            f"/quotas/{self.task_type_animation.id}?count_mode=weighted"
+        )
+
+        self.assertEqual(
+            result["total"]["day"]["frames"],
+            {
+                "2024-06-03": 3,
+                "2024-06-04": 3,
+                "2024-06-05": 3,
+                "2024-06-06": 3,
+            },
+        )
+
     def test_get_project_quotas_of_a_studio(self):
         """
         The studio filter used to expand into one EXISTS per member of the

@@ -151,16 +151,6 @@ def get_utc_from_local_datetime(date_obj, timezone):
     return localized.astimezone(pytz.utc).replace(tzinfo=None)
 
 
-def get_business_days(start, end):
-    """
-    Returns the number of business days between two dates.
-    """
-    daygenerator = (
-        start + datetime.timedelta(x + 1) for x in range((end - start).days)
-    )
-    return sum(1 for day in daygenerator if day.weekday() < 5)
-
-
 def add_business_days_to_date(date, nb_days):
     """
     Add a number of business days to a date. Business days are Monday to Friday.

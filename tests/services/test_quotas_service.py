@@ -319,6 +319,82 @@ class QuotaTestCase(ShotsTestCase):
             [("P01", 0.33)],
         )
 
+    def test_the_working_days_are_calendar_days_of_the_user(self):
+        """
+        A task set to WIP on Tuesday 09:30 in Sydney, Monday 23:30 in UTC,
+        and ended on Wednesday 08:00, Tuesday 22:00 in UTC: its working
+        days are the Tuesday and the Wednesday of Sydney.
+        """
+        days = quotas_service._get_working_days(
+            datetime.datetime(2026, 9, 14, 23, 30),
+            datetime.datetime(2026, 9, 15, 22, 0),
+            "Australia/Sydney",
+        )
+        self.assertEqual(
+            days, [datetime.date(2026, 9, 15), datetime.date(2026, 9, 16)]
+        )
+
+    def test_a_task_run_over_a_weekend_lands_on_its_end_day(self):
+        days = quotas_service._get_working_days(
+            datetime.datetime(2026, 9, 12, 10, 0),
+            datetime.datetime(2026, 9, 13, 10, 0),
+            "Europe/Paris",
+        )
+        self.assertEqual(days, [datetime.date(2026, 9, 13)])
+
+    def test_the_day_list_spreads_a_shot_over_the_days_of_the_user(self):
+        """
+        The quota-shots routes pass no timezone, so the one of the user
+        finds the working days too. Worked from Monday to Thursday 00:30
+        in Paris, a shot weighs a quarter on the Thursday.
+        """
+        self.a_shot_without_time_spent(
+            datetime.datetime(2024, 6, 3, 10, 0),
+            datetime.datetime(2024, 6, 5, 22, 30),
+        )
+
+        quota_shots = quotas_service.get_day_quota_shots(
+            str(self.person.id),
+            2024,
+            6,
+            6,
+            project_id=str(self.project.id),
+            task_type_id=str(self.task_type_animation.id),
+        )
+
+        self.assertEqual(
+            [(shot["name"], shot["weight"]) for shot in quota_shots],
+            [("P01", 0.25)],
+        )
+
+    def test_a_task_that_went_wip_after_its_end_weighs_whole_on_it(self):
+        """
+        A task sent to feedback, or approved, before it went WIP is listed
+        whole on its end day, the day the quotas count it on.
+        """
+        task = self.a_shot_without_time_spent(
+            datetime.datetime(2024, 6, 12, 10, 0),
+            datetime.datetime(2024, 6, 5, 10, 0),
+        )
+        task.update({"done_date": datetime.datetime(2024, 6, 5, 10, 0)})
+
+        for feedback in [True, False]:
+            with self.subTest(feedback=feedback):
+                quota_shots = quotas_service.get_day_quota_shots(
+                    str(self.person.id),
+                    2024,
+                    6,
+                    5,
+                    project_id=str(self.project.id),
+                    task_type_id=str(self.task_type_animation.id),
+                    feedback=feedback,
+                    timezone="Europe/Paris",
+                )
+                self.assertEqual(
+                    [(shot["name"], shot["weight"]) for shot in quota_shots],
+                    [("P01", 1.0)],
+                )
+
     def test_a_weighted_shot_counts_as_the_share_logged_each_day(self):
         """
         In weighted mode a shot is split over the days time was logged on
