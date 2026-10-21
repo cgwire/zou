@@ -1,5 +1,7 @@
 import datetime
 
+from freezegun import freeze_time
+
 from tests.services.cases import ShotsTestCase
 from zou.app.services import (
     quotas_service,
@@ -422,6 +424,70 @@ class QuotaTestCase(ShotsTestCase):
                     [(shot["name"], shot["weight"]) for shot in quota_shots],
                     [("P01", 1.0)],
                 )
+
+    def test_a_task_that_never_went_wip_weighs_whole_on_its_end_day(self):
+        self.a_shot_without_time_spent(
+            None, datetime.datetime(2024, 6, 5, 10, 0)
+        )
+
+        quota_shots = quotas_service.get_day_quota_shots(
+            str(self.person.id),
+            2024,
+            6,
+            5,
+            project_id=str(self.project.id),
+            task_type_id=str(self.task_type_animation.id),
+            timezone="Europe/Paris",
+        )
+
+        self.assertEqual(
+            [(shot["name"], shot["weight"]) for shot in quota_shots],
+            [("P01", 1.0)],
+        )
+
+    def test_the_working_days_of_a_task_that_never_went_wip(self):
+        """
+        Without a start date, the task lands on its end day: an absent date
+        must not be read as now, so the clock is set before the end day.
+        """
+        with freeze_time("2026-09-01T12:00:00"):
+            days = quotas_service._get_working_days(
+                None, datetime.datetime(2026, 9, 9, 10, 0), "Europe/Paris"
+            )
+        self.assertEqual(days, [datetime.date(2026, 9, 9)])
+
+    def test_a_task_approved_from_todo_weighs_whole_on_its_approval_day(self):
+        """
+        In the done modes, the end day of a task is its approval day.
+        Approved straight from todo, a task never went WIP and has no
+        feedback date: it is listed and counted whole on that day.
+        """
+        task = self.generate_shot_task()
+        self.shot.update({"nb_frames": 10})
+        task.update({"done_date": datetime.datetime(2024, 6, 12, 10, 0)})
+
+        quota_shots = quotas_service.get_day_quota_shots(
+            str(self.person.id),
+            2024,
+            6,
+            12,
+            project_id=str(self.project.id),
+            task_type_id=str(self.task_type_animation.id),
+            feedback=False,
+            timezone="Europe/Paris",
+        )
+        quotas = quotas_service.get_weighted_quotas(
+            str(self.project.id),
+            str(self.task_type_animation.id),
+            feedback=False,
+        )
+
+        self.assertEqual(
+            [(shot["name"], shot["weight"]) for shot in quota_shots],
+            [("P01", 1.0)],
+        )
+        self.assertEqual(quotas["total"]["day"]["frames"], {"2024-06-12": 10})
+        self.assertEqual(quotas["total"]["day"]["count"], {"2024-06-12": 1})
 
     def test_a_weighted_shot_counts_as_the_share_logged_each_day(self):
         """
