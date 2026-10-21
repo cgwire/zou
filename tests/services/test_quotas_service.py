@@ -319,6 +319,34 @@ class QuotaTestCase(ShotsTestCase):
             [("P01", 0.33)],
         )
 
+    def test_a_spread_keeps_the_whole_amount(self):
+        self.assertEqual(quotas_service._spread(10, 3), [3, 3, 4])
+        self.assertEqual(quotas_service._spread(100, 5), [20] * 5)
+        self.assertEqual(
+            quotas_service._spread(5, 11), [0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1]
+        )
+
+    def test_time_spent_shares_keep_the_whole_amount(self):
+        self.assertEqual(
+            quotas_service._share_out(10, [120, 120, 120], 360), [3, 4, 3]
+        )
+        self.assertEqual(
+            quotas_service._share_out(10, [80, 80, 340], 500), [2, 1, 7]
+        )
+        # The two middle time spents make half of the task, 5 frames:
+        # rounded half to even, the running sum would give them 6.
+        self.assertEqual(
+            quotas_service._share_out(10, [480] * 4, 1920), [3, 2, 3, 2]
+        )
+        # 30 minutes out of 148.8 make 12.5 of the 62 frames, computed a
+        # hair below: the first time spent still gets 13, the second 16.
+        self.assertEqual(
+            quotas_service._share_out(62, [30, 38.4, 80.4], 148.8),
+            [13, 16, 33],
+        )
+        # Two time spents of half the task add up to the 7 frames.
+        self.assertEqual(quotas_service._share_out(7, [300, 300], 600), [4, 3])
+
     def test_the_working_days_are_calendar_days_of_the_user(self):
         """
         A task set to WIP on Tuesday 09:30 in Sydney, Monday 23:30 in UTC,

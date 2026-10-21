@@ -1,4 +1,6 @@
 from datetime import datetime, timedelta
+from itertools import accumulate
+from math import floor
 from operator import itemgetter
 
 from sqlalchemy import func
@@ -74,29 +76,40 @@ def get_weighted_quotas(
         query = query.filter(Task.assignees.any(Person.studio_id == studio_id))
     result = query.all()
 
+    # The time spents of a person on a task share its frames out together.
+    time_spents = {}
     for task, nb_frames, date, duration, task_person_id in result:
-        task_person_id = str(task_person_id)
-        nb_drawings = task.nb_drawings or 0
-        nb_frames = nb_frames or 0
+        key = (task.id, str(task_person_id))
+        if key not in time_spents:
+            time_spents[key] = (task, nb_frames or 0, [])
+        time_spents[key][2].append((date, duration))
+
+    for (_, task_person_id), (task, nb_frames, days) in time_spents.items():
         if task.duration > 0:
-            share = duration / task.duration
-            nb_frames = round(nb_frames * share)
-            nb_drawings = round(nb_drawings * share)
-            entry_id = str(task_person_id)
+            days.sort(key=itemgetter(0))
+            durations = [duration for _, duration in days]
+            frames = _share_out(nb_frames, durations, task.duration)
+            drawings = _share_out(
+                task.nb_drawings or 0, durations, task.duration
+            )
+            entry_id = task_person_id
             # We get quotas for a specific person split by task types
             if person_id is not None:
                 entry_id = str(task.task_type_id)
-            for entry in [entry_id, "total"]:
-                _add_quota_entry(
-                    quotas,
-                    entry,
-                    date,
-                    timezone,
-                    nb_frames,
-                    nb_drawings,
-                    fps,
-                    count=share,
-                )
+            for (date, duration), nb_day_frames, nb_day_drawings in zip(
+                days, frames, drawings
+            ):
+                for entry in [entry_id, "total"]:
+                    _add_quota_entry(
+                        quotas,
+                        entry,
+                        date,
+                        timezone,
+                        nb_day_frames,
+                        nb_day_drawings,
+                        fps,
+                        count=duration / task.duration,
+                    )
 
     query = (
         Task.query.filter(Task.project_id == project_id)
@@ -139,14 +152,10 @@ def get_weighted_quotas(
         # Spread the work over the days the task was actually in progress,
         # from the wip date to the end date.
         days = _get_working_days(task.real_start_date, end_date, timezone)
-        if nb_frames is not None:
-            nb_frames = round(nb_frames / len(days)) or 0
-        else:
-            nb_frames = 0
-
+        frames = _spread(nb_frames or 0, len(days))
         nb_drawings = task.nb_drawings or 0
 
-        for day in days:
+        for day, nb_day_frames in zip(days, frames):
             entry_id = str(task_person_id)
             # We get quotas for a specific person split by task types
             if person_id is not None:
@@ -158,7 +167,7 @@ def get_weighted_quotas(
                     entry,
                     day,
                     timezone,
-                    nb_frames,
+                    nb_day_frames,
                     nb_drawings,
                     fps,
                     count=1 / len(days),
@@ -248,6 +257,35 @@ def get_raw_quotas(
                 quotas, entry, date, timezone, nb_frames, nb_drawings, fps
             )
     return quotas
+
+
+def _spread(amount, nb_days):
+    """
+    Split a whole amount into whole daily shares that add up to it, the
+    remainder spread evenly. Rounding each day's share on its own lost or
+    added frames: 5 frames over 11 days counted none.
+    """
+    return [
+        amount * (day + 1) // nb_days - amount * day // nb_days
+        for day in range(nb_days)
+    ]
+
+
+def _share_out(amount, durations, task_duration):
+    """
+    Split a whole amount between time spents by the share of the task
+    duration they took. Each share comes from the running sum, so the
+    shares add up: rounded one by one, three equal time spents on 10
+    frames counted 9. The sum is rounded half up, so that consecutive
+    time spents worth a whole number of frames get exactly that number,
+    and to 9 decimals first, so that a tie stays one with minutes that
+    are not whole (439.8 for a day of 7.33 hours).
+    """
+    totals = [
+        floor(round(amount * spent / task_duration, 9) + 0.5)
+        for spent in accumulate(durations)
+    ]
+    return [total - previous for previous, total in zip([0] + totals, totals)]
 
 
 def _get_working_days(start_date, end_date, timezone):
