@@ -228,6 +228,68 @@ class QuotaTestCase(ShotsTestCase):
             [],
         )
 
+    def a_shot_without_time_spent(self, start_date, end_date):
+        """
+        The shot task of the person, worked from start_date to end_date
+        with no time spent logged on it.
+        """
+        task = self.generate_shot_task()
+        task.update({"real_start_date": start_date, "end_date": end_date})
+        return task
+
+    def test_a_shot_weighs_its_working_days_in_the_week(self):
+        """
+        Worked from Monday 3 to Friday 14 June 2024, ten working days, a
+        shot weighs half in the week of the 3rd, sent to feedback or
+        approved. The bounds of a week are dates, not datetimes: comparing
+        them with the task dates raised.
+        """
+        task = self.a_shot_without_time_spent(
+            datetime.datetime(2024, 6, 3, 10, 0),
+            datetime.datetime(2024, 6, 14, 10, 0),
+        )
+        task.update({"done_date": datetime.datetime(2024, 6, 14, 10, 0)})
+
+        for feedback in [True, False]:
+            with self.subTest(feedback=feedback):
+                quota_shots = quotas_service.get_week_quota_shots(
+                    str(self.person.id),
+                    2024,
+                    23,
+                    project_id=str(self.project.id),
+                    task_type_id=str(self.task_type_animation.id),
+                    feedback=feedback,
+                    timezone="Europe/Paris",
+                )
+                self.assertEqual(
+                    [(shot["name"], shot["weight"]) for shot in quota_shots],
+                    [("P01", 0.5)],
+                )
+
+    def test_a_task_longer_than_the_period_weighs_its_days_in_it(self):
+        """
+        Worked from 6 May to 26 July 2024, sixty working days of which June
+        holds twenty: a third of the shot. It weighed one day out of sixty.
+        """
+        self.a_shot_without_time_spent(
+            datetime.datetime(2024, 5, 6, 10, 0),
+            datetime.datetime(2024, 7, 26, 10, 0),
+        )
+
+        quota_shots = quotas_service.get_month_quota_shots(
+            str(self.person.id),
+            2024,
+            6,
+            project_id=str(self.project.id),
+            task_type_id=str(self.task_type_animation.id),
+            timezone="Europe/Paris",
+        )
+
+        self.assertEqual(
+            [(shot["name"], shot["weight"]) for shot in quota_shots],
+            [("P01", 0.33)],
+        )
+
     def test_a_weighted_shot_counts_as_the_share_logged_each_day(self):
         """
         In weighted mode a shot is split over the days time was logged on
