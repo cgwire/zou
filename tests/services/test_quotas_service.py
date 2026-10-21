@@ -319,6 +319,23 @@ class QuotaTestCase(ShotsTestCase):
             [("P01", 0.33)],
         )
 
+    def test_a_spread_keeps_the_whole_amount(self):
+        self.assertEqual(quotas_service._spread(10, 3), [3, 3, 4])
+        self.assertEqual(quotas_service._spread(100, 5), [20] * 5)
+        self.assertEqual(
+            quotas_service._spread(5, 11), [0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1]
+        )
+
+    def test_time_spent_shares_keep_the_whole_amount(self):
+        self.assertEqual(
+            quotas_service._share_out(10, [120, 120, 120], 360), [3, 4, 3]
+        )
+        self.assertEqual(
+            quotas_service._share_out(10, [80, 80, 340], 500), [2, 1, 7]
+        )
+        # Two time spents of half the task add up to the 7 frames.
+        self.assertEqual(quotas_service._share_out(7, [300, 300], 600), [4, 3])
+
     def test_the_working_days_are_calendar_days_of_the_user(self):
         """
         A task set to WIP on Tuesday 09:30 in Sydney, Monday 23:30 in UTC,

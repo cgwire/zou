@@ -2,7 +2,7 @@ import datetime
 
 from tests.base import ApiDBTestCase
 from zou.app.models.studio import Studio
-from zou.app.services import tasks_service
+from zou.app.services import tasks_service, time_spents_service
 from zou.app.utils import fields
 
 
@@ -131,6 +131,64 @@ class ShotRoutesTestCase(ApiDBTestCase):
                 "2024-06-07": 20,
             },
         )
+
+    def test_weighted_quotas_keep_every_frame_of_the_shot(self):
+        """
+        10 frames over three working days: rounding the share of each day
+        on its own counted 3 a day, 9 in all.
+        """
+        self.shot.update({"nb_frames": 10})
+        tasks_service.assign_task(str(self.shot_task.id), str(self.person.id))
+        self.shot_task.update(
+            {
+                "real_start_date": datetime.datetime(2024, 6, 3, 10, 0),
+                "end_date": datetime.datetime(2024, 6, 5, 10, 0),
+            }
+        )
+
+        result = self.get(
+            f"/data/projects/{self.project.id}"
+            f"/quotas/{self.task_type_animation.id}?count_mode=weighted"
+        )
+
+        self.assertEqual(
+            result["total"]["day"]["frames"],
+            {"2024-06-03": 3, "2024-06-04": 3, "2024-06-05": 4},
+        )
+
+    def test_weighted_quotas_keep_every_frame_of_the_time_spents(self):
+        """
+        Three equal time spents on a 10-frame shot: rounded one by one,
+        each counted 3 frames, 9 in all. Its 10 drawings are shared out the
+        same way.
+        """
+        self.shot.update({"nb_frames": 10})
+        self.shot_task.update(
+            {
+                "nb_drawings": 10,
+                "end_date": datetime.datetime(2024, 6, 5, 10, 0),
+            }
+        )
+        for day in ["2024-06-03", "2024-06-04", "2024-06-05"]:
+            time_spents_service.create_or_update_time_spent(
+                str(self.shot_task.id), str(self.person.id), day, 120
+            )
+
+        result = self.get(
+            f"/data/projects/{self.project.id}"
+            f"/quotas/{self.task_type_animation.id}?count_mode=weighted"
+        )
+
+        self.assertEqual(
+            result["total"]["day"]["drawings"],
+            {"2024-06-03": 3, "2024-06-04": 4, "2024-06-05": 3},
+        )
+        self.assertEqual(
+            result["total"]["day"]["frames"],
+            {"2024-06-03": 3, "2024-06-04": 4, "2024-06-05": 3},
+        )
+        # One shot, however many days were logged on it.
+        self.assertEqual(result["total"]["year"]["count"], {"2024": 1})
 
     def test_weighted_quotas_leave_out_a_weekend_start(self):
         """
