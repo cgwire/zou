@@ -156,6 +156,32 @@ class ShotRoutesTestCase(ApiDBTestCase):
             {"2024-06-03": 3, "2024-06-04": 3, "2024-06-05": 4},
         )
 
+    def test_weighted_quotas_spread_the_drawings_of_the_shot(self):
+        """
+        The drawings of a task without time spent are spread over its
+        working days like its frames, every drawing kept: they used to be
+        counted in full on each day, 30 for a 10-drawing task worked three
+        days.
+        """
+        tasks_service.assign_task(str(self.shot_task.id), str(self.person.id))
+        self.shot_task.update(
+            {
+                "nb_drawings": 10,
+                "real_start_date": datetime.datetime(2024, 6, 3, 10, 0),
+                "end_date": datetime.datetime(2024, 6, 5, 10, 0),
+            }
+        )
+
+        result = self.get(
+            f"/data/projects/{self.project.id}"
+            f"/quotas/{self.task_type_animation.id}?count_mode=weighted"
+        )
+
+        self.assertEqual(
+            result["total"]["day"]["drawings"],
+            {"2024-06-03": 3, "2024-06-04": 3, "2024-06-05": 4},
+        )
+
     def test_weighted_quotas_keep_every_frame_of_the_time_spents(self):
         """
         Three equal time spents on a 10-frame shot: rounded one by one,
