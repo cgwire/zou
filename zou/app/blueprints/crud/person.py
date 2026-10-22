@@ -36,6 +36,7 @@ MINIMAL_PERSON_FILTER_FIELDS = [
     "desktop_login",
     "email",
     "is_bot",
+    "updated_at",
     "is_guest",
 ]
 from zou.app import config
