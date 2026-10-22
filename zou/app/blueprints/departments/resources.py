@@ -10,6 +10,7 @@ from zou.app.exceptions import SoftwareNotFoundException
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
     departments_service,
+    permissions_service,
 )
 from zou.app.utils import permissions, validation
 
@@ -150,6 +151,9 @@ class DepartmentPersonsResource(MethodView, ArgsMixin):
         Get department members
         """
         self.check_id_parameter(department_id)
+        # Who belongs to which department is how the studio is organized,
+        # which present_client keeps from clients.
+        permissions_service.block_access_to_client()
         persons = departments_service.get_persons_for_department(
             department_id, minimal=not permissions.has_admin_permissions()
         )

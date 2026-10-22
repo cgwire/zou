@@ -39,6 +39,21 @@ MINIMAL_PERSON_FILTER_FIELDS = [
     "updated_at",
     "is_guest",
 ]
+# Columns behind Person.present_client, plus is_guest, which Kitsu sends
+# for every role. The filters run before the list is narrowed to the team,
+# so any other column answered which department or studio each member of
+# that team belongs to.
+CLIENT_PERSON_FILTER_FIELDS = [
+    "id",
+    "first_name",
+    "last_name",
+    "full_name",
+    "has_avatar",
+    "active",
+    "role",
+    "is_bot",
+    "is_guest",
+]
 from zou.app import config
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.exceptions import (
@@ -186,6 +201,8 @@ class PersonsResource(BaseModelsResource):
                 for name in inspect(self.model).all_orm_descriptors.keys()
                 if name not in SENSITIVE_FIELDS
             ]
+        if permissions.has_client_permissions():
+            return CLIENT_PERSON_FILTER_FIELDS
         return MINIMAL_PERSON_FILTER_FIELDS
 
     def check_read_permissions(self, options=None):

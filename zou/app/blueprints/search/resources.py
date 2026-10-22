@@ -55,12 +55,17 @@ class SearchResource(MethodView, ArgsMixin):
                 project_ids = []
 
         if "persons" in index_names:
-            results["persons"] = index_service.search_persons(
-                query,
-                limit=limit,
-                offset=offset,
-                minimal=not permissions.has_admin_permissions(),
-            )
+            if permissions.has_client_permissions():
+                # The index cannot be narrowed to the teams a client meets,
+                # and their context already holds those people.
+                results["persons"] = []
+            else:
+                results["persons"] = index_service.search_persons(
+                    query,
+                    limit=limit,
+                    offset=offset,
+                    minimal=not permissions.has_admin_permissions(),
+                )
         if "assets" in index_names:
             if (
                 len(project_ids) == 0
