@@ -599,6 +599,49 @@ class QuotaTestCase(ShotsTestCase):
         )
         self.assertEqual(quotas["total"]["day"]["count"]["2024-06-05"], 2)
 
+    def test_the_raw_list_counts_every_task_of_a_shot(self):
+        """
+        The raw list selected the shots alone, and the legacy Query.all()
+        returns each of them once: without a task type, a shot with a
+        layout and an animation task done in June weighed 1, where the raw
+        quotas count 2. Another assignee on one of the tasks changes nothing
+        for the person.
+        """
+        task = self.generate_shot_task()
+        tasks_service.assign_task(str(task.id), self.user["id"])
+        layout_task = self.generate_fixture_shot_task(
+            name="layout",
+            shot_id=self.shot.id,
+            task_type_id=self.task_type_layout.id,
+        )
+        for each, day in [(task, 5), (layout_task, 6)]:
+            date = datetime.datetime(2024, 6, day, 10, 0)
+            each.update({"end_date": date, "done_date": date})
+
+        for feedback in [True, False]:
+            with self.subTest(feedback=feedback):
+                quota_shots = quotas_service.get_month_quota_shots(
+                    str(self.person.id),
+                    2024,
+                    6,
+                    project_id=str(self.project.id),
+                    weighted=False,
+                    feedback=feedback,
+                    timezone="Europe/Paris",
+                )
+                quotas = quotas_service.get_raw_quotas(
+                    str(self.project.id),
+                    person_id=str(self.person.id),
+                    feedback=feedback,
+                )
+                self.assertEqual(
+                    [(shot["name"], shot["weight"]) for shot in quota_shots],
+                    [("P01", 2)],
+                )
+                self.assertEqual(
+                    quotas["total"]["month"]["count"], {"2024-06": 2}
+                )
+
     def test_the_working_days_of_a_task_that_never_went_wip(self):
         """
         Without a start date, the task lands on its end day: an absent date

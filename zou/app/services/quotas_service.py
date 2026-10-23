@@ -754,7 +754,7 @@ def get_raw_quota_shots_between(
     """
     shot_type = entity_types_service.get_shot_type()
     person = persons_service.get_person_raw(person_id)
-    shots = []
+    shots = {}
     if type(start) is str:
         start = date_helpers.get_datetime_from_string(start)
     if type(end) is str:
@@ -785,16 +785,16 @@ def get_raw_quota_shots_between(
             )
         )
 
-    query_shots = query.all()
+    # Task.id keeps a row for each task of a shot: on the shots alone, the
+    # legacy Query.all() returns each of them once.
+    query_shots = query.add_columns(Task.id).all()
 
-    for entity in query_shots:
-        shot = entity.serialize()
-        full_name, _, _ = entities_service.get_full_entity_name(shot["id"])
-        shot["full_name"] = full_name
-        shot["weight"] = 1
-        shots.append(shot)
+    # As in the quotas, every task of a shot counts.
+    for entity, _ in query_shots:
+        shot = _get_listed_shot(shots, entity)
+        shot["weight"] += 1
 
-    return sorted(shots, key=itemgetter("full_name"))
+    return sorted(shots.values(), key=itemgetter("full_name"))
 
 
 def _filter_on_scope(query, project_id=None, task_type_id=None):
