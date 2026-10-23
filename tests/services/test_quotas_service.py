@@ -259,6 +259,30 @@ class QuotaTestCase(ShotsTestCase):
             [],
         )
 
+    def test_a_task_without_duration_is_left_out_of_the_list(self):
+        """
+        A supervisor can set the duration of a task to 0 once time was
+        logged on it. The quotas leave such a task out, while the list
+        divided by its duration and failed.
+        """
+        task = self.generate_shot_task()
+        task.update({"end_date": datetime.datetime(2024, 6, 5, 10, 0)})
+        time_spents_service.create_or_update_time_spent(
+            str(task.id), str(self.person.id), "2024-06-04", 120
+        )
+        task.update({"duration": 0})
+
+        quota_shots = quotas_service.get_week_quota_shots(
+            str(self.person.id),
+            2024,
+            23,
+            project_id=str(self.project.id),
+            task_type_id=str(self.task_type_animation.id),
+            timezone="Europe/Paris",
+        )
+
+        self.assertEqual(quota_shots, [])
+
     def a_shot_without_time_spent(self, start_date, end_date):
         """
         The shot task of the person, worked from start_date to end_date

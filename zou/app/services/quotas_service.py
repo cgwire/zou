@@ -578,7 +578,8 @@ def get_weighted_quota_shots_between(
     Get all shots leading to a quota computation during the given period.
     Set a weight on each one:
         * If there is time spent filled, weight it by the sum of duration
-          divided py the overall task duration.
+          divided by the overall task duration. A task whose duration is 0
+          or unset is left out.
         * If there is no time spent, weight it by the share of its business
           days, from the WIP date (start) to the feedback date (end), that
           falls in the period.
@@ -606,6 +607,9 @@ def get_weighted_quota_shots_between(
         .filter(TimeSpent.person_id == person_id)
         .filter(TimeSpent.date >= func.cast(start, TimeSpent.date.type))
         .filter(TimeSpent.date < func.cast(end, TimeSpent.date.type))
+        # As in the quotas: a duration set to 0 once time was logged leaves
+        # nothing to share the shot out by.
+        .filter(Task.duration > 0)
         .join(Task, Entity.id == Task.entity_id)
         .join(Project, Project.id == Task.project_id)
         .join(TimeSpent, Task.id == TimeSpent.task_id)
