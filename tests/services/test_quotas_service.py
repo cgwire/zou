@@ -458,6 +458,85 @@ class QuotaTestCase(ShotsTestCase):
             [("P01", 1.0)],
         )
 
+    def test_the_list_adds_up_the_tasks_of_a_shot(self):
+        """
+        Without a task type, a shot holds a task of each type. The list kept
+        the first task of a shot only, where the quotas count every task,
+        and two tasks worked on the same dates came out of the query as one
+        row. Worked from Monday 3 to Friday 7 June, each task weighs a fifth
+        of the shot on the 5th.
+        """
+        self.a_shot_without_time_spent(
+            datetime.datetime(2024, 6, 3, 10, 0),
+            datetime.datetime(2024, 6, 7, 10, 0),
+        )
+        layout_task = self.generate_fixture_shot_task(
+            name="layout",
+            shot_id=self.shot.id,
+            task_type_id=self.task_type_layout.id,
+        )
+        layout_task.update(
+            {
+                "real_start_date": datetime.datetime(2024, 6, 3, 10, 0),
+                "end_date": datetime.datetime(2024, 6, 7, 10, 0),
+            }
+        )
+
+        quota_shots = quotas_service.get_day_quota_shots(
+            str(self.person.id),
+            2024,
+            6,
+            5,
+            project_id=str(self.project.id),
+            timezone="Europe/Paris",
+        )
+        quotas = quotas_service.get_weighted_quotas(
+            str(self.project.id), person_id=str(self.person.id)
+        )
+
+        self.assertEqual(
+            [(shot["name"], shot["weight"]) for shot in quota_shots],
+            [("P01", 0.4)],
+        )
+        self.assertEqual(quotas["total"]["day"]["count"]["2024-06-05"], 0.4)
+
+    def test_the_list_adds_a_task_without_time_spent_to_a_logged_one(self):
+        """
+        A shot listed for the time logged on one of its tasks left out its
+        other tasks without time spent: the layout below, sent to feedback
+        without going WIP, weighs whole on its end day next to the logged
+        animation.
+        """
+        task = self.generate_shot_task()
+        task.update({"end_date": datetime.datetime(2024, 6, 5, 10, 0)})
+        time_spents_service.create_or_update_time_spent(
+            str(task.id), str(self.person.id), "2024-06-05", 60
+        )
+        layout_task = self.generate_fixture_shot_task(
+            name="layout",
+            shot_id=self.shot.id,
+            task_type_id=self.task_type_layout.id,
+        )
+        layout_task.update({"end_date": datetime.datetime(2024, 6, 5, 10, 0)})
+
+        quota_shots = quotas_service.get_day_quota_shots(
+            str(self.person.id),
+            2024,
+            6,
+            5,
+            project_id=str(self.project.id),
+            timezone="Europe/Paris",
+        )
+        quotas = quotas_service.get_weighted_quotas(
+            str(self.project.id), person_id=str(self.person.id)
+        )
+
+        self.assertEqual(
+            [(shot["name"], shot["weight"]) for shot in quota_shots],
+            [("P01", 2.0)],
+        )
+        self.assertEqual(quotas["total"]["day"]["count"]["2024-06-05"], 2)
+
     def test_the_working_days_of_a_task_that_never_went_wip(self):
         """
         Without a start date, the task lands on its end day: an absent date
