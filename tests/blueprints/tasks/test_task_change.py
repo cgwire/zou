@@ -1,11 +1,9 @@
 import os
 
-from tests.base import ApiDBTestCase
-
-
-from zou.app.services import projects_service, tasks_service
-
 from PIL import Image
+
+from tests.base import ApiDBTestCase
+from zou.app.services import projects_service, tasks_service
 
 
 class RouteTaskChangeTestCase(ApiDBTestCase):

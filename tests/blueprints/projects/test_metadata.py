@@ -1,6 +1,9 @@
 from tests.base import ApiDBTestCase
-
-from zou.app.services import projects_service
+from zou.app.services import (
+    metadata_descriptors_service,
+    persons_service,
+    projects_service,
+)
 from zou.app.utils import fields
 
 
@@ -99,6 +102,8 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         second_project = self.generate_fixture_project(name="Second Project")
         second_project_id = str(second_project.id)
         closed_project_id = str(self.project_closed.id)
+        self.generate_fixture_department()
+        department_id = str(self.department.id)
 
         created = self.post(
             "data/metadata-descriptors/all-projects",
@@ -106,11 +111,14 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
                 "entity_type": "Project",
                 "name": "Delivery code",
                 "data_type": "string",
+                "departments": [department_id],
             },
             201,
         )
         # Both open projects, the closed one is left out.
         self.assertEqual(len(created), 2)
+        for descriptor in created:
+            self.assertEqual(descriptor["departments"], [department_id])
         for project_id in (first_project_id, second_project_id):
             descriptors = self.get(
                 f"data/projects/{project_id}/metadata-descriptors"
@@ -131,9 +139,12 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
                 "entity_type": "Project",
                 "name": "Ship code",
                 "data_type": "string",
+                "departments": [],
             },
         )
         self.assertEqual(len(updated), 2)
+        for descriptor in updated:
+            self.assertEqual(descriptor["departments"], [])
 
         self.post(
             "actions/metadata-descriptors/all-projects/reorder",
@@ -192,7 +203,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
                 "data_type": "string",
             },
         )
-        projects_service.add_metadata_descriptor(
+        metadata_descriptors_service.add_metadata_descriptor(
             str(self.project_closed.id),
             "Project",
             "Closed only",
@@ -257,6 +268,27 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
             403,
         )
 
+    def test_a_created_descriptor_lists_its_departments(self):
+        # Kitsu stores the created descriptor as returned: without its
+        # departments, the department filter of its entity lists crashed.
+        self.generate_fixture_department()
+        department_id = str(self.department.id)
+        descriptor = self.post(
+            self.descriptors_path(),
+            {
+                "entity_type": "Asset",
+                "name": "Rig",
+                "data_type": "string",
+                "departments": [department_id],
+            },
+        )
+        self.assertEqual(descriptor["departments"], [department_id])
+        descriptor = self.post(
+            self.descriptors_path(),
+            {"entity_type": "Asset", "name": "Layout", "data_type": "string"},
+        )
+        self.assertEqual(descriptor["departments"], [])
+
     def test_update_metadata_descriptor(self):
         descriptor = self.post(
             self.descriptors_path(),
@@ -278,8 +310,75 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         asset = self.get(f"data/entities/{self.asset_id}")
         self.assertEqual(asset["data"].get("team"), "contractor 1")
 
+    def test_update_metadata_descriptor_without_a_name(self):
+        # The name of the body is optional: leaving it out keeps the name
+        # of the column instead of failing with a 500.
+        descriptor = self._new_descriptor("Difficulty")
+        updated = self.put(
+            self.descriptors_path(descriptor),
+            {"data_type": "string", "for_client": True},
+        )
+        self.assertEqual(updated["name"], "Difficulty")
+        self.assertTrue(updated["for_client"])
+
+    def test_rename_onto_another_column_is_refused(self):
+        # The values moved onto the key of the other column, overwriting
+        # its values, before the unique index failed the request (500).
+        difficulty = self._new_descriptor("Difficulty")
+        self._new_descriptor("Complexity")
+        self.asset.update(
+            {"data": {"difficulty": "hard", "complexity": "low"}}
+        )
+
+        self.put(
+            self.descriptors_path(difficulty),
+            {"name": "Complexity", "data_type": "string"},
+            400,
+        )
+
+        asset = self.get(f"data/entities/{self.asset_id}")
+        self.assertEqual(
+            asset["data"], {"difficulty": "hard", "complexity": "low"}
+        )
+
+    def test_all_projects_rename_onto_a_column_of_one_project_is_refused(
+        self,
+    ):
+        # The projects reached before the one holding the new name kept the
+        # rename, and that one lost the values of its column (500).
+        first_project_id = str(self.project_id)
+        second_project_id = str(
+            self.generate_fixture_project(name="Second Project").id
+        )
+        for project_id in (first_project_id, second_project_id):
+            metadata_descriptors_service.add_metadata_descriptor(
+                project_id, "Project", "Delivery code", "string", [], False
+            )
+        metadata_descriptors_service.add_metadata_descriptor(
+            second_project_id, "Project", "Ship code", "string", [], False
+        )
+
+        self.put(
+            "data/metadata-descriptors/all-projects/delivery_code",
+            {
+                "entity_type": "Project",
+                "name": "Ship code",
+                "data_type": "string",
+                "departments": [],
+            },
+            400,
+        )
+
+        for project_id in (first_project_id, second_project_id):
+            descriptors = self.get(
+                f"data/projects/{project_id}/metadata-descriptors"
+            )
+            self.assertIn(
+                "delivery_code", [d["field_name"] for d in descriptors]
+            )
+
     def test_unallowed_update_metadata_descriptor(self):
-        descriptor = projects_service.add_metadata_descriptor(
+        descriptor = metadata_descriptors_service.add_metadata_descriptor(
             self.project_id, "Asset", "Contractor", "string", [], False
         )
         self.generate_fixture_user_manager()
@@ -290,8 +389,30 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
             403,
         )
 
+    def test_an_updated_descriptor_lists_its_new_departments(self):
+        self.generate_fixture_department()
+        descriptor = metadata_descriptors_service.add_metadata_descriptor(
+            self.project_id,
+            "Asset",
+            "Rig",
+            "string",
+            [],
+            False,
+            [str(self.department.id)],
+        )
+        department_id = str(self.department_animation.id)
+        descriptor = self.put(
+            self.descriptors_path(descriptor),
+            {
+                "name": "Rig",
+                "data_type": "string",
+                "departments": [department_id],
+            },
+        )
+        self.assertEqual(descriptor["departments"], [department_id])
+
     def test_delete_metadata_descriptor(self):
-        descriptor = projects_service.add_metadata_descriptor(
+        descriptor = metadata_descriptors_service.add_metadata_descriptor(
             self.project_id, "Asset", "Contractor", "string", [], False
         )
         self.asset.update({"data": {"contractor": "contractor 1"}})
@@ -302,7 +423,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         self.assertNotIn("contractor", asset["data"])
 
     def test_unallowed_delete_metadata_descriptor(self):
-        descriptor = projects_service.add_metadata_descriptor(
+        descriptor = metadata_descriptors_service.add_metadata_descriptor(
             self.project_id, "Asset", "Contractor", "string", [], False
         )
         self.generate_fixture_user_manager()
@@ -311,6 +432,87 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
             self.descriptors_path(descriptor),
             403,
         )
+
+    def test_a_vendor_reads_the_descriptors_of_their_departments(self):
+        # The open projects listing narrowed a vendor to the descriptors of
+        # their departments, this route served them all.
+        self.generate_fixture_department()
+        vendor_id = self.generate_fixture_user_vendor()["id"]
+        projects_service.add_team_member(self.project_id, vendor_id)
+        persons_service.add_to_department(str(self.department.id), vendor_id)
+        shared = metadata_descriptors_service.add_metadata_descriptor(
+            self.project_id, "Asset", "Contractor", "string", [], False
+        )
+        theirs = metadata_descriptors_service.add_metadata_descriptor(
+            self.project_id,
+            "Asset",
+            "Rig",
+            "string",
+            [],
+            False,
+            [str(self.department.id)],
+        )
+        metadata_descriptors_service.add_metadata_descriptor(
+            self.project_id,
+            "Asset",
+            "Layout",
+            "string",
+            [],
+            False,
+            [str(self.department_animation.id)],
+        )
+        self.log_in_vendor()
+
+        descriptors = self.get(self.descriptors_path())
+
+        self.assertEqual(
+            {descriptor["id"] for descriptor in descriptors},
+            {shared["id"], theirs["id"]},
+        )
+
+    def test_a_descriptor_of_another_project_is_not_found(self):
+        """
+        The descriptor id comes from the client next to a project it may
+        access: the rights were checked on that project, and a descriptor of
+        any other one was read, renamed or deleted through it, with the
+        values stored under it.
+        """
+        # generate_fixture_project repoints self.project_id at the project it
+        # creates, so keep this one before asking for a second production.
+        project_id = self.project_id
+        other_project = self.generate_fixture_project("Other Production")
+        foreign = metadata_descriptors_service.add_metadata_descriptor(
+            other_project.id, "Asset", "Contractor", "string", [], False
+        )
+        path = (
+            f"data/projects/{project_id}/metadata-descriptors/"
+            f"{foreign['id']}"
+        )
+
+        self.get(path, 404)
+        self.put(path, {"name": "Team", "data_type": "string"}, 404)
+        self.delete(path, 404)
+
+        self.assertEqual(
+            metadata_descriptors_service.get_metadata_descriptor(
+                foreign["id"]
+            )["name"],
+            "Contractor",
+        )
+
+    def test_a_client_reads_a_published_descriptor_only(self):
+        kept = metadata_descriptors_service.add_metadata_descriptor(
+            self.project_id, "Asset", "Contractor", "string", [], False
+        )
+        published = metadata_descriptors_service.add_metadata_descriptor(
+            self.project_id, "Asset", "Delivery", "string", [], True
+        )
+        client_id = self.generate_fixture_user_client()["id"]
+        projects_service.add_team_member(self.project_id, client_id)
+        self.log_in_client()
+
+        self.get(self.descriptors_path(published))
+        self.get(self.descriptors_path(kept), 403)
 
     def post_task_descriptor(self, task_type_id, name="Render layer"):
         return self.post(

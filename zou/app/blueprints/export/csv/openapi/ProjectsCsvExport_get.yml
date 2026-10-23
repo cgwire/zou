@@ -1,0 +1,19 @@
+        Export projects csv
+        ---
+        tags:
+          - Export
+        description: Export projects as CSV file. Includes project name
+          and status information.
+        produces:
+          - text/csv
+        responses:
+            200:
+              description: Projects exported as CSV successfully
+              content:
+                text/csv:
+                  schema:
+                    type: string
+                  example: "Name,Status
+Project A,Active
+Project B,Open"
+        

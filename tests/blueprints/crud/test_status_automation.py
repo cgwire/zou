@@ -1,6 +1,5 @@
 from tests.base import ApiDBTestCase
 from zou.app.models.status_automation import StatusAutomation
-
 from zou.app.utils import fields
 
 

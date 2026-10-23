@@ -1,0 +1,56 @@
+Update guest annotations for a preview file
+---
+description: Update preview file annotations in the context of a shared
+  playlist. Reuses the same additions/updates/deletions diff format as
+  the manager-facing /actions/preview-files/<id>/update-annotations
+  route, so concurrent edits stay safe via the Redis lock.
+tags:
+  - Playlists
+parameters:
+  - in: path
+    name: token
+    required: true
+    schema:
+      type: string
+    description: Share link token
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - guest_id
+          - preview_file_id
+        properties:
+          guest_id:
+            type: string
+            format: uuid
+          preview_file_id:
+            type: string
+            format: uuid
+          additions:
+            type: array
+            items:
+              type: object
+          updates:
+            type: array
+            items:
+              type: object
+          deletions:
+            type: array
+            items:
+              type: string
+              format: uuid
+responses:
+  200:
+    description: Updated preview file with the new annotations
+    content:
+      application/json:
+        schema:
+          type: object
+  400:
+    description: Missing required body fields
+  403:
+    description: Annotations disabled for this share link, or the
+      preview file is not part of the shared playlist

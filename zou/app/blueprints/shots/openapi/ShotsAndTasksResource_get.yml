@@ -1,0 +1,60 @@
+Get shots and tasks
+---
+tags:
+- Shots
+description: Get shots and their related tasks. Optionally filter by project.
+parameters:
+  - in: query
+    name: project_id
+    required: False
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+  - in: query
+    name: compact
+    type: boolean
+    default: false
+    description: Encode shots and tasks as positional value arrays
+      (halves the payload). Field names are given by the
+      shot_fields and task_fields entries of the response, map
+      values by name, never by hardcoded position.
+  - in: query
+    name: stream
+    type: boolean
+    default: false
+    description: Stream the response as NDJSON (one header line,
+      then one shot per line) instead of a single JSON document,
+      to keep server memory flat on large productions.
+responses:
+    200:
+        description: All shots
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c250
+                  name:
+                    type: string
+                    example: SH010
+                  project_id:
+                    type: string
+                    format: uuid
+                    example: b24a6ea4-ce75-4665-a070-57453082c250
+                  tasks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          example: c24a6ea4-ce75-4665-a070-57453082c250
+                        name:
+                          type: string
+                          example: SH010 Animation

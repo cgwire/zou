@@ -1,5 +1,4 @@
 from tests.base import ApiDBTestCase
-
 from zou.app.services import breakdown_service
 
 
@@ -31,6 +30,16 @@ class BreakdownRoutesTestCase(ApiDBTestCase):
             f"/data/projects/{self.project_id}"
             f"/entities/{self.shot_id}/casting",
             new_casting,
+        )
+
+    def test_update_asset_casting_refuses_a_malformed_body(self):
+        path = f"/data/assets/{self.asset_id}/casting"
+        self.put(path, {"asset_id": self.asset_character_id}, 400)
+        self.put(path, [{"asset_id": "not-a-uuid", "nb_occurences": 1}], 400)
+        self.put(
+            path,
+            [{"asset_id": self.asset_character_id, "nb_occurences": "x"}],
+            400,
         )
 
     def test_get_asset_type_casting(self):
@@ -167,17 +176,29 @@ class BreakdownRoutesTestCase(ApiDBTestCase):
         links = self.get(
             f"/data/projects/{self.project_id}/entity-links?limit=100"
         )
-        initial_count = len(links)
-        self.assertGreater(initial_count, 0)
-        link_id = links[0]["id"]
+        link = next(
+            link
+            for link in links
+            if link["entity_in_id"] == self.shot_id
+            and link["entity_out_id"] == self.asset_id
+        )
         self.delete(
-            f"/data/projects/{self.project_id}/entity-links/{link_id}",
+            f"/data/projects/{self.project_id}/entity-links/{link['id']}",
             200,
         )
         links_after = self.get(
             f"/data/projects/{self.project_id}/entity-links?limit=100"
         )
-        self.assertEqual(len(links_after), initial_count - 1)
+        # The asset left the only shot casting it, so the episode link
+        # mirrored from that shot goes with it.
+        self.assertNotIn(
+            self.asset_id,
+            [link["entity_out_id"] for link in links_after],
+        )
+        self.assertIn(
+            self.asset_character_id,
+            [link["entity_out_id"] for link in links_after],
+        )
 
     def test_get_scene_asset_instances(self):
         """

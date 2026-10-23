@@ -109,3 +109,30 @@ class FidoUnregisterSchema(BaseSchema):
     email_otp: Optional[str] = None
     fido_authentication_response: Optional[dict] = None
     recovery_code: Optional[str] = None
+
+
+class AppLoginCodeSchema(BaseSchema):
+    """
+    Body for minting a browser login code for a desktop app or a script.
+    """
+
+    code_challenge: str = Field(
+        ...,
+        pattern=r"^[A-Za-z0-9_-]{43}$",
+        description="Base64url SHA-256 of the PKCE code verifier",
+    )
+
+
+class AppLoginTokenSchema(BaseSchema):
+    """
+    Body for trading a browser login code for a token pair.
+    """
+
+    code: str = Field(
+        ..., min_length=1, max_length=128, description="One-time login code"
+    )
+    code_verifier: str = Field(
+        ...,
+        pattern=r"^[A-Za-z0-9._~-]{43,128}$",
+        description="PKCE code verifier",
+    )

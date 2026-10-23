@@ -1,0 +1,19 @@
+Delete schedule item
+---
+tags:
+  - Crud
+description: Delete a schedule item by its ID. Returns empty
+  response on success.
+parameters:
+  - in: path
+    name: instance_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+responses:
+    204:
+      description: Schedule item deleted successfully
+    400:
+      description: Integrity error or cannot delete

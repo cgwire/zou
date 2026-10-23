@@ -36,6 +36,10 @@ instance, so it is recommended to follow the documentation:
 Specification:
 - `https://api-docs.kitsu.cloud/ <https://api-docs.kitsu.cloud>`__
 
+Release notes: each version is published on
+`GitHub Releases <https://github.com/cgwire/zou/releases>`__; the repository
+itself keeps no changelog, the commit history is the record.
+
 Contributing
 ------------
 

@@ -1,9 +1,11 @@
-from sqlalchemy.exc import IntegrityError
-
+from flasgger import swag_from
 from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
+from sqlalchemy.exc import IntegrityError
 
+from zou.app.exceptions import WrongParameterException
+from zou.app.mixin import ArgsMixin
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.build_job import BuildJob
 from zou.app.models.comment import Comment
@@ -19,14 +21,12 @@ from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 from zou.app.models.time_spent import TimeSpent
-from zou.app.mixin import ArgsMixin
-from zou.app.utils import events, fields, permissions
-from zou.app.services.exception import WrongParameterException
 from zou.app.services import (
     entities_service,
-    shots_service,
+    entity_types_service,
     tasks_service,
 )
+from zou.app.utils import events, fields, permissions
 
 
 def _project_id_from_task(entry):
@@ -58,65 +58,10 @@ class BaseImportKitsuResource(MethodView, ArgsMixin):
         self.model = model
 
     @jwt_required()
+    @swag_from("openapi/BaseImportKitsuResource_post.yml")
     def post(self):
         """
         Import kitsu resource
-        ---
-        tags:
-          - Import
-        description: Import Kitsu resources. Send a list of Kitsu entries in
-          the JSON body. Returns created or updated resources.
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      example: a24a6ea4-ce75-4665-a070-57453082c25
-                    name:
-                      type: string
-                      example: Resource name
-                    project_id:
-                      type: string
-                      format: uuid
-                      example: b24a6ea4-ce75-4665-a070-57453082c25
-              example:
-                - id: a24a6ea4-ce75-4665-a070-57453082c25
-                  name: Example resource
-                  project_id: b24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-              description: Resources imported successfully
-              content:
-                application/json:
-                  schema:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: Imported resource
-                        created_at:
-                          type: string
-                          format: date-time
-                          example: "2024-01-15T10:30:00Z"
-                        updated_at:
-                          type: string
-                          format: date-time
-                          example: "2024-01-15T11:00:00Z"
-            400:
-              description: Invalid request body or missing required fields
         """
         kitsu_entries = request.json
         if not isinstance(kitsu_entries, list):
@@ -156,87 +101,25 @@ class ImportKitsuCommentsResource(BaseImportKitsuResource):
         BaseImportKitsuResource.__init__(self, Comment)
 
     @jwt_required()
+    @swag_from("openapi/ImportKitsuCommentsResource_post.yml")
     def post(self):
         """
         Import kitsu comments
-        ---
-        description: Import Kitsu comments. Send a list of Kitsu comment
-          entries in the JSON body. Returns created or updated comments
-          linked to tasks.
-        tags:
-          - Import
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Kitsu ID of the comment
-                      example: a24a6ea4-ce75-4665-a070-57453082c25
-                    object_id:
-                      type: string
-                      format: uuid
-                      description: Task ID the comment is linked to
-                      example: b24a6ea4-ce75-4665-a070-57453082c25
-                    text:
-                      type: string
-                      description: Comment text
-                      example: "This is a comment"
-                    person_id:
-                      type: string
-                      format: uuid
-                      description: Person who created the comment
-                      example: c24a6ea4-ce75-4665-a070-57453082c25
-              example:
-                - id: a24a6ea4-ce75-4665-a070-57453082c25
-                  object_id: b24a6ea4-ce75-4665-a070-57453082c25
-                  text: "This is a comment"
-                  person_id: c24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: Comments imported successfully
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        description: Comment unique identifier
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      text:
-                        type: string
-                        description: Comment text
-                        example: "This is a comment"
-                      created_at:
-                        type: string
-                        format: date-time
-                        description: Creation timestamp
-                        example: "2024-01-15T10:30:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        description: Update timestamp
-                        example: "2024-01-15T11:00:00Z"
-          400:
-            description: Invalid request body or missing required fields
         """
         return super().post()
 
     def emit_event(self, event_type, entry):
         task = tasks_service.get_task(str(entry["object_id"]))
+        # As stored: an imported update may leave the client flag out.
+        comment = Comment.get(entry["id"]).serialize()
         events.emit(
             f"comment:{event_type}",
-            {"comment_id": entry["id"]},
+            {
+                "comment_id": entry["id"],
+                "task_id": task["id"],
+                "person_id": comment["person_id"],
+                "for_client": comment["for_client"],
+            },
             project_id=task["project_id"],
         )
 
@@ -246,85 +129,16 @@ class ImportKitsuEntitiesResource(BaseImportKitsuResource):
         BaseImportKitsuResource.__init__(self, Entity)
 
     @jwt_required()
+    @swag_from("openapi/ImportKitsuEntitiesResource_post.yml")
     def post(self):
         """
         Import kitsu entities
-        ---
-        description: Import Kitsu entities (assets, shots, sequences, etc.).
-          Send a list of Kitsu entity entries in the JSON body. Returns
-          created or updated entities.
-        tags:
-          - Import
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Kitsu ID of the entity
-                      example: a24a6ea4-ce75-4665-a070-57453082c25
-                    name:
-                      type: string
-                      description: Entity name
-                      example: "Asset01"
-                    project_id:
-                      type: string
-                      format: uuid
-                      description: Project ID
-                      example: b24a6ea4-ce75-4665-a070-57453082c25
-                    entity_type_id:
-                      type: string
-                      format: uuid
-                      description: Entity type ID
-                      example: c24a6ea4-ce75-4665-a070-57453082c25
-              example:
-                - id: a24a6ea4-ce75-4665-a070-57453082c25
-                  name: "Asset01"
-                  project_id: b24a6ea4-ce75-4665-a070-57453082c25
-                  entity_type_id: c24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: Entities imported successfully
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        description: Entity unique identifier
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      name:
-                        type: string
-                        description: Entity name
-                        example: "Asset01"
-                      created_at:
-                        type: string
-                        format: date-time
-                        description: Creation timestamp
-                        example: "2024-01-15T10:30:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        description: Update timestamp
-                        example: "2024-01-15T11:00:00Z"
-          400:
-            description: Invalid request body or missing required fields
         """
         return super().post()
 
     def emit_event(self, event_type, entry):
         project_id = entry["project_id"]
-        name = shots_service.get_base_entity_type_name(entry)
+        name = entity_types_service.get_base_entity_type_name(entry)
         events.emit(
             f"{name.lower()}:{event_type}",
             {f"{name}_id": entry["id"]},
@@ -337,71 +151,10 @@ class ImportKitsuProjectsResource(BaseImportKitsuResource):
         BaseImportKitsuResource.__init__(self, Project)
 
     @jwt_required()
+    @swag_from("openapi/ImportKitsuProjectsResource_post.yml")
     def post(self):
         """
         Import kitsu projects
-        ---
-        description: Import Kitsu projects. Send a list of Kitsu project
-          entries in the JSON body. Returns created or updated projects.
-        tags:
-          - Import
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Kitsu ID of the project
-                      example: a24a6ea4-ce75-4665-a070-57453082c25
-                    name:
-                      type: string
-                      description: Project name
-                      example: "My Project"
-                    production_type:
-                      type: string
-                      description: Production type
-                      example: "tvshow"
-              example:
-                - id: a24a6ea4-ce75-4665-a070-57453082c25
-                  name: "My Project"
-                  production_type: "tvshow"
-        responses:
-          200:
-            description: Projects imported successfully
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        description: Project unique identifier
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      name:
-                        type: string
-                        description: Project name
-                        example: "My Project"
-                      created_at:
-                        type: string
-                        format: date-time
-                        description: Creation timestamp
-                        example: "2024-01-15T10:30:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        description: Update timestamp
-                        example: "2024-01-15T11:00:00Z"
-          400:
-            description: Invalid request body or missing required fields
         """
         return super().post()
 
@@ -414,84 +167,10 @@ class ImportKitsuTasksResource(BaseImportKitsuResource):
         BaseImportKitsuResource.__init__(self, Task)
 
     @jwt_required()
+    @swag_from("openapi/ImportKitsuTasksResource_post.yml")
     def post(self):
         """
         Import kitsu tasks
-        ---
-        description: Import Kitsu tasks. Send a list of Kitsu task entries in
-          the JSON body. Returns created or updated tasks.
-        tags:
-          - Import
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Kitsu ID of the task
-                      example: a24a6ea4-ce75-4665-a070-57453082c25
-                    name:
-                      type: string
-                      description: Task name
-                      example: "Modeling"
-                    project_id:
-                      type: string
-                      format: uuid
-                      description: Project ID
-                      example: b24a6ea4-ce75-4665-a070-57453082c25
-                    entity_id:
-                      type: string
-                      format: uuid
-                      description: Entity ID the task is linked to
-                      example: c24a6ea4-ce75-4665-a070-57453082c25
-                    task_type_id:
-                      type: string
-                      format: uuid
-                      description: Task type ID
-                      example: d24a6ea4-ce75-4665-a070-57453082c25
-              example:
-                - id: a24a6ea4-ce75-4665-a070-57453082c25
-                  name: "Modeling"
-                  project_id: b24a6ea4-ce75-4665-a070-57453082c25
-                  entity_id: c24a6ea4-ce75-4665-a070-57453082c25
-                  task_type_id: d24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: Tasks imported successfully
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        description: Task unique identifier
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      name:
-                        type: string
-                        description: Task name
-                        example: "Modeling"
-                      created_at:
-                        type: string
-                        format: date-time
-                        description: Creation timestamp
-                        example: "2024-01-15T10:30:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        description: Update timestamp
-                        example: "2024-01-15T11:00:00Z"
-          400:
-            description: Invalid request body or missing required fields
         """
         return super().post()
 
@@ -504,80 +183,10 @@ class ImportKitsuEntityLinksResource(BaseImportKitsuResource):
         BaseImportKitsuResource.__init__(self, EntityLink)
 
     @jwt_required()
+    @swag_from("openapi/ImportKitsuEntityLinksResource_post.yml")
     def post(self):
         """
         Import kitsu entity links
-        ---
-        description: Import Kitsu entity links (casting links). Send a list
-          of Kitsu entity link entries in the JSON body. Returns created or
-          updated entity links.
-        tags:
-          - Import
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Kitsu ID of the entity link
-                      example: a24a6ea4-ce75-4665-a070-57453082c25
-                    entity_in_id:
-                      type: string
-                      format: uuid
-                      description: Source entity ID
-                      example: b24a6ea4-ce75-4665-a070-57453082c25
-                    entity_out_id:
-                      type: string
-                      format: uuid
-                      description: Target entity ID
-                      example: c24a6ea4-ce75-4665-a070-57453082c25
-              example:
-                - id: a24a6ea4-ce75-4665-a070-57453082c25
-                  entity_in_id: b24a6ea4-ce75-4665-a070-57453082c25
-                  entity_out_id: c24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: Entity links imported successfully
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        description: Entity link unique identifier
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      entity_in_id:
-                        type: string
-                        format: uuid
-                        description: Source entity ID
-                        example: b24a6ea4-ce75-4665-a070-57453082c25
-                      entity_out_id:
-                        type: string
-                        format: uuid
-                        description: Target entity ID
-                        example: c24a6ea4-ce75-4665-a070-57453082c25
-                      created_at:
-                        type: string
-                        format: date-time
-                        description: Creation timestamp
-                        example: "2024-01-15T10:30:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        description: Update timestamp
-                        example: "2024-01-15T11:00:00Z"
-          400:
-            description: Invalid request body or missing required fields
         """
         return super().post()
 
@@ -599,6 +208,7 @@ class _ProjectScopedImportResource(BaseImportKitsuResource):
     id_field = ""
 
     @jwt_required()
+    @swag_from("openapi/BaseImportKitsuResource_post.yml")
     def post(self):
         return super().post()
 
@@ -622,6 +232,7 @@ class _TaskScopedImportResource(BaseImportKitsuResource):
     id_field = ""
 
     @jwt_required()
+    @swag_from("openapi/BaseImportKitsuResource_post.yml")
     def post(self):
         return super().post()
 
@@ -641,6 +252,7 @@ class ImportKitsuPreviewFilesResource(_TaskScopedImportResource):
         BaseImportKitsuResource.__init__(self, PreviewFile)
 
     @jwt_required()
+    @swag_from("openapi/BaseImportKitsuResource_post.yml")
     def post(self):
         # Flag every imported entry as binary-not-available so downstream
         # services (thumbnail regen, frame extraction) know not to touch
@@ -729,6 +341,7 @@ class ImportKitsuBuildJobsResource(BaseImportKitsuResource):
         BaseImportKitsuResource.__init__(self, BuildJob)
 
     @jwt_required()
+    @swag_from("openapi/BaseImportKitsuResource_post.yml")
     def post(self):
         return super().post()
 
@@ -749,6 +362,7 @@ class ImportKitsuAttachmentFilesResource(BaseImportKitsuResource):
         BaseImportKitsuResource.__init__(self, AttachmentFile)
 
     @jwt_required()
+    @swag_from("openapi/BaseImportKitsuResource_post.yml")
     def post(self):
         return super().post()
 

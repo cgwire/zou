@@ -1,8 +1,8 @@
 from tests.base import ApiDBTestCase
-
 from zou.app.models.output_type import OutputType
-
-from zou.app.services import files_service, tasks_service
+from zou.app.services import (
+    files_service,
+)
 
 
 class OutputFileTestCase(ApiDBTestCase):
@@ -188,6 +188,16 @@ class NewOutputFileTestCase(OutputFileTestCase):
         output_file = self.get(f"/data/output-files/{output_file_id}")
         self.assertEqual(output_file["revision"], 66)
 
+    def test_get_output_files_of_an_asset_instance(self):
+        # The resource read its filters through ArgsMixin without
+        # inheriting it: the route answered 500.
+        self.generate_fixture_scene()
+        self.generate_fixture_scene_asset_instance()
+        result = self.get(
+            f"/data/asset-instances/{self.asset_instance.id}/output-files"
+        )
+        self.assertEqual(result, [])
+
     def test_new_output_wrong_data(self):
         data = {"comment_wrong": "test file publish"}
         self.new_output(data, 400)
@@ -195,13 +205,6 @@ class NewOutputFileTestCase(OutputFileTestCase):
     def test_create_same_output_file(self):
         self.publish(revision=66)
         self.publish(revision=66, code=400)
-
-    def test_to_review(self):
-        data = {"person_id": str(self.person_id)}
-        status_id = str(tasks_service.get_to_review_status()["id"])
-        self.put(f"/actions/tasks/{self.task_id}/to-review", data)
-        task = self.get(f"data/tasks/{self.task_id}")
-        self.assertEqual(task["task_status_id"], status_id)
 
     def test_get_next_revision(self):
         self.generate_fixture_output_type()

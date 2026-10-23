@@ -1,9 +1,9 @@
-from sqlalchemy_utils import UUIDType
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy_utils import UUIDType
 
 from zou.app import db
-from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
+from zou.app.models.serializer import SerializerMixin
 
 
 class AssetInstance(db.Model, BaseMixin, SerializerMixin):
@@ -46,9 +46,11 @@ class AssetInstance(db.Model, BaseMixin, SerializerMixin):
 
     # Do not use these column. They are deprecated and will be dropped in
     # upcoming version
-    entity_id = db.Column(UUIDType(binary=False), db.ForeignKey("entity.id"))
+    entity_id = db.Column(
+        UUIDType(binary=False), db.ForeignKey("entity.id"), index=True
+    )
     entity_type_id = db.Column(
-        UUIDType(binary=False), db.ForeignKey("entity_type.id")
+        UUIDType(binary=False), db.ForeignKey("entity_type.id"), index=True
     )
 
     def __repr__(self):

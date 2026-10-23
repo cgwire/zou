@@ -1,9 +1,7 @@
 from tests.base import ApiDBTestCase
-
 from zou.app.models.working_file import WorkingFile
-
+from zou.app.services import projects_service, tasks_service
 from zou.app.utils import fields
-from zou.app.services import projects_service
 
 
 class WorkingFileTestCase(ApiDBTestCase):
@@ -73,6 +71,36 @@ class WorkingFileTestCase(ApiDBTestCase):
         )
         self.assertEqual(data["name"], working_file_again["name"])
         self.put_404(f"data/working-files/{fields.gen_uuid()}", data)
+
+    def test_update_validation_status(self):
+        working_file = self.get_first("data/working-files")
+        self.assertEqual(working_file["validation_status"], "neutral")
+        data = {"validation_status": "validated"}
+        self.put(f"data/working-files/{working_file['id']}", data)
+        working_file_again = self.get(
+            f"data/working-files/{working_file['id']}"
+        )
+        self.assertEqual(working_file_again["validation_status"], "validated")
+
+    def test_update_validation_status_wrong_value(self):
+        working_file = self.get_first("data/working-files")
+        self.put(
+            f"data/working-files/{working_file['id']}",
+            {"validation_status": "maybe"},
+            400,
+        )
+
+    def test_update_validation_status_permissions(self):
+        self.generate_fixture_user_cg_artist()
+        user_cg_artist_id = self.user_cg_artist["id"]
+        projects_service.add_team_member(self.project_id, user_cg_artist_id)
+        working_file = self.get_first("data/working-files")
+        data = {"validation_status": "rejected"}
+
+        self.log_in_cg_artist()
+        self.put(f"data/working-files/{working_file['id']}", data, 403)
+        tasks_service.assign_task(str(self.task.id), user_cg_artist_id)
+        self.put(f"data/working-files/{working_file['id']}", data)
 
     def test_delete_working_file(self):
         working_files = self.get("data/working-files")

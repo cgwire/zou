@@ -1,6 +1,9 @@
-from zou.app import config
 import asyncio
 import logging
+from urllib.parse import urlsplit
+
+from zou.app import config
+from zou.app.utils.string import mask_secret
 
 logger = logging.getLogger(__name__)
 loghandler = logging.StreamHandler()
@@ -63,10 +66,16 @@ def send_to_mattermost(webhook, userid, message):
                 }
                 response = requests.post(webhook, json=payload, timeout=30)
                 response.raise_for_status()
-            except Exception:
+            except Exception as exception:
+                # The requests errors quote the webhook URL, whose path is
+                # the secret: log a redacted message, not the traceback.
+                error = str(exception).replace(webhook, mask_secret(webhook))
+                webhook_path = urlsplit(webhook).path
+                if webhook_path.strip("/"):
+                    error = error.replace(webhook_path, "/********")
                 logger.error(
-                    "Exception when sending a Mattermost notification:",
-                    exc_info=True,
+                    "Exception when sending a Mattermost notification: "
+                    f"{type(exception).__name__}: {error}"
                 )
         else:
             logger.warning("The userid of Mattermost user is not defined.")
@@ -79,8 +88,8 @@ def send_to_mattermost(webhook, userid, message):
 def send_to_discord(token, userid, message):
     from discord import (
         Client as DiscordClient,
-        Intents as DiscordIntents,
         Embed as DiscordEmbed,
+        Intents as DiscordIntents,
     )
 
     async def send_to_discord_async(token, userid, message):

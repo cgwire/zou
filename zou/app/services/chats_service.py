@@ -4,19 +4,20 @@ import string
 from flask import current_app
 from sqlalchemy.exc import IntegrityError
 
+from zou.app.exceptions import ChatNotFoundException
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.chat import Chat
 from zou.app.models.chat_message import ChatMessage
 from zou.app.models.entity import Entity
 from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
-
-from zou.app.utils import cache, events, fs, thumbnail
-
+from zou.app.services import (
+    base_service,
+    entities_service,
+    persons_service,
+)
 from zou.app.stores import file_store
-
-from zou.app.services import base_service, names_service, persons_service
-from zou.app.services.exception import ChatNotFoundException
+from zou.app.utils import cache, events, fs, thumbnail
 
 
 def clear_chat_message_cache(chat_message_id):
@@ -169,8 +170,9 @@ def delete_chat_message(chat_message_id):
 
     for attachment in message.attachment_files:
         attachment_file_id = str(attachment.id)
-        file_store.remove_file("attachments", attachment_file_id)
-        file_store.remove_picture("thumbnails", attachment_file_id)
+        # Chat attachments are removed whatever REMOVE_FILES says.
+        file_store.remove_file("attachments", attachment_file_id, force=True)
+        file_store.remove_picture("thumbnails", attachment_file_id, force=True)
         attachment.delete()
 
     message.delete()
@@ -211,7 +213,7 @@ def get_chats_for_person(person_id):
     result = []
     for chat_model, project_id, preview_file_id in chats:
         chat = chat_model.present()
-        chat["entity_name"], _, _ = names_service.get_full_entity_name(
+        chat["entity_name"], _, _ = entities_service.get_full_entity_name(
             chat["object_id"]
         )
         chat["project_id"] = project_id

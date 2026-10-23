@@ -4,13 +4,12 @@ through the real fido2 server; only the cryptographic attestation check
 (register_complete) is mocked, since it requires a hardware authenticator.
 """
 
+from unittest import mock
+
 import orjson as json
 import pytest
 
-from unittest import mock
-
 from tests.base import ApiDBTestCase
-
 from zou.app.models.person import Person
 from zou.app.services import persons_service
 
@@ -53,7 +52,7 @@ class FidoRoutesTestCase(ApiDBTestCase):
     def test_get_challenge_unknown_user(self):
         # Answering 404 here and 400 below told a registered address from
         # an unknown one, unauthenticated, in a single request.
-        unknown = self.get("auth/fido?email=ghost@nowhere.com", 400)
+        unknown = self.get("auth/fido?email=ghost@example.com", 400)
         known = self.get(f"auth/fido?email={self.user['email']}", 400)
         self.assertEqual(unknown, known)
 
@@ -127,4 +126,18 @@ class FidoRoutesTestCase(ApiDBTestCase):
             headers=self.post_headers,
         )
         self.assertEqual(response.status_code, 400)
+        # The flag the clients read to tell a wrong code from another error,
+        # as on the TOTP and email OTP routes.
+        self.assertTrue(json.loads(response.data)["wrong_OTP"])
+        self.assertTrue(Person.get(self.user["id"]).fido_enabled)
+
+    def test_unregister_device_without_code(self):
+        self._register_device()
+        response = self.app.delete(
+            "auth/fido",
+            data=json.dumps({"device_name": "security-key"}),
+            headers=self.post_headers,
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertTrue(json.loads(response.data)["wrong_OTP"])
         self.assertTrue(Person.get(self.user["id"]).fido_enabled)

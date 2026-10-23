@@ -1,0 +1,35 @@
+Mint a browser login code
+---
+description: Create a one-time code that lets a desktop app or a script
+  running on the same machine obtain its own tokens for the current user.
+  The code is bound to the given PKCE challenge and expires after 60
+  seconds. Bots and sessions waiting for a 2FA setup cannot mint codes.
+tags:
+    - Authentication
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          code_challenge:
+            type: string
+            example: E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM
+            description: Base64url encoded SHA-256 of the PKCE code
+              verifier, without padding (43 characters)
+        required:
+          - code_challenge
+responses:
+  201:
+    description: One-time login code
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            code:
+              type: string
+              description: One-time login code
+  400:
+    description: Malformed code challenge

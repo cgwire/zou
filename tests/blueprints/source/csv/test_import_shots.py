@@ -1,14 +1,14 @@
 import os
+from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
 from zou.app import db
-
 from zou.app.models.comment import Comment
 from zou.app.models.entity_type import EntityType
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.models.task import Task
-from zou.app.services import projects_service, shots_service
+from zou.app.services import index_service, projects_service, shots_service
 
 
 class ImportCsvShotsTestCase(ApiDBTestCase):
@@ -22,6 +22,30 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
     def _tmp_csv_files(self):
         tmp_dir = self.app.application.config["TMP_DIR"]
         return {name for name in os.listdir(tmp_dir) if name.endswith(".csv")}
+
+    def _assert_contractors(self, shots):
+        """
+        Each shot of shots.csv keeps the contractor of its own row. Three
+        of them are named S01 and get_shots sorts on the name only, so
+        their order is the one the database returns, which an index can
+        change: the first listed shot is not always the first row.
+        """
+        self.assertEqual(
+            sorted(
+                (
+                    shot["sequence_name"],
+                    shot["name"],
+                    shot["data"].get("contractor"),
+                )
+                for shot in shots
+            ),
+            [
+                ("SE01", "S01", "contractor 1"),
+                ("SE01", "S01", "contractor 1"),
+                ("SE01", "S02", "contractor 2"),
+                ("SE02", "S01", "contractor 2"),
+            ],
+        )
 
     def test_import_leaves_no_file_behind(self):
         path = f"/import/csv/projects/{self.project.id}/shots"
@@ -100,8 +124,7 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
             len(shots),
         )
 
-        shot = shots[0]
-        self.assertEqual(shot["data"].get("contractor", None), "contractor 1")
+        self._assert_contractors(shots)
 
         # nb_frames is derived from the imported frame range (all fixture
         # rows cover 100-frame ranges).
@@ -124,8 +147,8 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
         entity_types = EntityType.query.all()
         self.assertEqual(len(entity_types), 4)
 
-        shot = shots[0]
-        self.assertEqual(shot["data"].get("contractor", None), "contractor 1")
+        # The second file has no contractor column: the update keeps them.
+        self._assert_contractors(shots)
 
     def test_import_shots_assignations(self):
         db.session.add(
@@ -220,3 +243,108 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
         self.assertEqual(filled["data"]["frame_out"], 1100)
         self.assertIsInstance(filled["data"]["frame_in"], int)
         self.assertIsInstance(filled["data"]["frame_out"], int)
+
+    def test_import_shots_rejects_a_line_without_name(self):
+        # A spreadsheet total row and a sequence placeholder line used to
+        # create a sequence named "" and shots without a name.
+        path = f"/import/csv/projects/{self.project.id}/shots"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "shots_missing_name.csv")
+        )
+        result = self.upload_file(path, file_path_fixture, 400)
+
+        self.assertEqual(result["line_number"], 3)
+        self.assertEqual(result["message"], "Name cannot be empty")
+        self.assertEqual(result["imported_rows"], 1)
+        self.assertEqual(
+            [shot["name"] for shot in shots_service.get_shots()], ["SH01"]
+        )
+        # The line is rejected before its sequence is created.
+        self.assertEqual(
+            [sequence["name"] for sequence in shots_service.get_sequences()],
+            ["SQ01"],
+        )
+
+    def test_import_shots_rejects_a_line_without_episode(self):
+        path = f"/import/csv/projects/{self.project.id}/shots"
+        self.project.update({"production_type": "tvshow"})
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "shots_missing_episode.csv")
+        )
+        result = self.upload_file(path, file_path_fixture, 400)
+
+        self.assertEqual(result["line_number"], 3)
+        self.assertEqual(result["message"], "Episode cannot be empty")
+        self.assertEqual(
+            [episode["name"] for episode in shots_service.get_episodes()],
+            ["E01"],
+        )
+
+    def test_import_shots_creates_the_tasks_of_rows_before_a_failure(self):
+        # The tasks were created once the whole file was imported: a
+        # rejected line left the shots imported before it without them,
+        # and a new import does not create them.
+        db.session.add(
+            ProjectTaskTypeLink(
+                project_id=self.project_id,
+                task_type_id=self.task_type_layout.id,
+            )
+        )
+        path = f"/import/csv/projects/{self.project.id}/shots"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "shots_missing_name.csv")
+        )
+        self.upload_file(path, file_path_fixture, 400)
+
+        shots = shots_service.get_shots()
+        self.assertEqual([shot["name"] for shot in shots], ["SH01"])
+        self.assertEqual(
+            [
+                (str(task.entity_id), str(task.task_type_id))
+                for task in Task.query.all()
+            ],
+            [(shots[0]["id"], str(self.task_type_layout.id))],
+        )
+
+    def test_import_shots_skips_blank_lines(self):
+        path = f"/import/csv/projects/{self.project.id}/shots"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "shots_blank_lines.csv")
+        )
+        self.upload_file(path, file_path_fixture)
+
+        shots = {shot["name"]: shot for shot in shots_service.get_shots()}
+        self.assertEqual(sorted(shots), ["SH01", "SH02"])
+        self.assertEqual(shots["SH02"]["nb_frames"], 20)
+
+    def test_import_shots_indexes_them_in_one_call(self):
+        # Waiting on the indexer for every row made a 1100-row import last
+        # longer than the 60 s Kitsu waited for its answer.
+        path = f"/import/csv/projects/{self.project.id}/shots"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "shots_blank_lines.csv")
+        )
+        with patch.object(index_service, "index_shot") as index_shot:
+            with patch.object(index_service, "index_shots") as index_shots:
+                self.upload_file(path, file_path_fixture)
+                self.upload_file(f"{path}?update=true", file_path_fixture)
+
+        index_shot.assert_not_called()
+        shot_ids = {shot["id"] for shot in shots_service.get_shots()}
+        self.assertEqual(index_shots.call_count, 2)
+        for call in index_shots.call_args_list:
+            self.assertEqual({str(id) for id in call.args[0]}, shot_ids)
+
+    def test_import_shots_indexes_the_rows_imported_before_a_failure(self):
+        path = f"/import/csv/projects/{self.project.id}/shots"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "shots_missing_name.csv")
+        )
+        with patch.object(index_service, "index_shots") as index_shots:
+            self.upload_file(path, file_path_fixture, 400)
+
+        (shot,) = shots_service.get_shots()
+        index_shots.assert_called_once()
+        self.assertEqual(
+            [str(id) for id in index_shots.call_args.args[0]], [shot["id"]]
+        )

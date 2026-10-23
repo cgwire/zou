@@ -10,6 +10,15 @@ Order matters. A role can be set per project, and ``permissions`` resolves it
 from ``flask.g``, which only ``check_belong_to_project``, ``check_project_access``
 and ``resolve_project_role`` populate. Any ``has_*``/``check_*`` role helper
 called before one of those silently reads the global role.
+
+Where a rule lives:
+
+- ``zou.app.utils.permissions``: the role of the request (admin, manager,
+  supervisor, user, client, vendor) and the ``require_*`` decorators.
+- this module: every rule that needs a row (project membership, task and
+  entity access, playlist and comment ownership, filter sharing).
+- ``user_service``: no rule of its own; it scopes listings to the projects
+  of the caller with the helpers above.
 """
 
 from flask import g
@@ -23,16 +32,16 @@ from zou.app.models.comment import (
 from zou.app.models.person import DepartmentLink
 from zou.app.models.project import Project, ProjectPersonLink
 from zou.app.models.task import Task
-
 from zou.app.services import (
-    assets_service,
-    edits_service,
+    comments_service,
     entities_service,
+    entity_types_service,
+    metadata_descriptors_service,
     persons_service,
+    playlists_service,
     projects_service,
-    shots_service,
+    task_types_service,
     tasks_service,
-    user_service,
 )
 from zou.app.utils import permissions
 
@@ -86,11 +95,9 @@ def get_project_role(person_id, project_id):
     project-specific role when one is set on the team link, the person's
     global role otherwise.
     """
-    link = ProjectPersonLink.query.filter_by(
-        project_id=str(project_id), person_id=str(person_id)
-    ).first()
-    if link is not None and link.role is not None:
-        return getattr(link.role, "code", link.role)
+    role = projects_service.get_team_roles(str(project_id)).get(str(person_id))
+    if role is not None:
+        return role
     return persons_service.get_person(person_id)["role"]
 
 
@@ -113,10 +120,13 @@ def check_belong_to_project(project_id):
         g.project_role = None
         return False
 
-    if current_user["role"] != "admin":
-        # Single slot: a request touching two projects keeps the role of the
-        # last access check performed, which always precedes the role checks
-        # it guards.
+    # Single slot: a request touching two projects keeps the role of the
+    # last access check performed, which always precedes the role checks
+    # it guards. An admin keeps the global role, so the slot is cleared
+    # rather than left to whatever was resolved before.
+    if current_user["role"] == "admin":
+        g.project_role = None
+    else:
         g.project_role = get_project_role(current_user["id"], project_id)
     return True
 
@@ -137,9 +147,12 @@ def has_project_access(project_id):
     Return true if current user is an admin or has a task assigned for this
     project.
     """
-    return permissions.has_admin_permissions() or check_belong_to_project(
-        project_id
-    )
+    if permissions.has_admin_permissions():
+        # An admin keeps the global role: clear the slot so that nothing
+        # resolved before applies.
+        g.project_role = None
+        return True
+    return check_belong_to_project(project_id)
 
 
 def check_project_access(project_id):
@@ -158,6 +171,16 @@ def block_access_to_vendor():
     Raise PermissionDenied if current user has a vendor role.
     """
     if permissions.has_vendor_permissions():
+        raise permissions.PermissionDenied
+    return True
+
+
+def block_access_to_client():
+    """
+    Raise PermissionDenied if current user has a client role. Call it after
+    the project access check, which resolves the role on the project.
+    """
+    if permissions.has_client_permissions():
         raise permissions.PermissionDenied
     return True
 
@@ -199,7 +222,7 @@ def mask_metadata_for_vendor(entity_type, entities, project_id=None):
     These take no criterions, so the scope is read here, in the layer that
     still knows who is asking.
     """
-    return entities_service.remove_not_allowed_metadata_for_vendor(
+    return metadata_descriptors_service.remove_not_allowed_metadata_for_vendor(
         entity_type, get_vendor_departments(), entities, project_id
     )
 
@@ -213,7 +236,7 @@ def check_entity_access(entity_id):
     if not is_allowed:
         nb_tasks = (
             Task.query.filter(Task.entity_id == entity_id)
-            .filter(user_service.build_assignee_filter())
+            .filter(persons_service.build_assignee_filter())
             .count()
         )
         if nb_tasks == 0:
@@ -238,29 +261,33 @@ def keep_entities_a_vendor_reaches(entities):
         str(entity_id)
         for (entity_id,) in Task.query.with_entities(Task.entity_id)
         .filter(Task.entity_id.in_([entity["id"] for entity in entities]))
-        .filter(user_service.build_assignee_filter())
+        .filter(persons_service.build_assignee_filter())
         .all()
     }
     return [entity for entity in entities if entity["id"] in assigned]
 
 
-def check_task_status_access(task_status_id):
+def check_task_status_access(task_status_id, project_id):
     """
     Return true if current user can use this task status.
 
     is_artist_allowed and is_client_allowed are read off the role the caller
     holds on the production, so the caller resolves it first. Without a
     resolved role the restriction does not apply at all: it lets everything
-    through rather than raise.
+    through rather than raise. The project's override of
+    is_client_allowed wins over the studio value.
     """
     is_artist = permissions.has_artist_permissions()
     is_client = permissions.has_client_permissions()
     if is_artist or is_client:
-        task_status = tasks_service.get_task_status(task_status_id)
+        task_status = task_types_service.get_task_status(task_status_id)
         if is_artist and not task_status["is_artist_allowed"]:
             raise permissions.PermissionDenied
-        if is_client and not task_status["is_client_allowed"]:
-            raise permissions.PermissionDenied
+        if is_client:
+            if not projects_service.is_task_status_client_allowed(
+                project_id, task_status
+            ):
+                raise permissions.PermissionDenied
     return True
 
 
@@ -294,7 +321,7 @@ def check_task_action_access(task_id):
             if not is_allowed and permissions.has_supervisor_permissions():
                 is_allowed = (
                     user["departments"] == []
-                    or tasks_service.get_task_type(task["task_type_id"])[
+                    or task_types_service.get_task_type(task["task_type_id"])[
                         "department_id"
                     ]
                     in user["departments"]
@@ -388,7 +415,7 @@ def check_supervisor_project_task_type_access(project_id, task_type_id):
         user = persons_service.get_current_user(relations=True)
         is_allowed = (
             user["departments"] == []
-            or tasks_service.get_task_type(task_type_id)["department_id"]
+            or task_types_service.get_task_type(task_type_id)["department_id"]
             in user["departments"]
         )
 
@@ -407,7 +434,7 @@ def check_comment_access(comment_id, comment=None):
         return True
     else:
         if comment is None:
-            comment = tasks_service.get_comment(comment_id)
+            comment = comments_service.get_comment(comment_id)
         person_id = comment["person_id"]
         task_id = comment["object_id"]
         task = tasks_service.get_task(task_id)
@@ -453,6 +480,15 @@ def has_manager_project_access(project_id):
     )
 
 
+def can_share_filter(project_id):
+    """
+    Return true if the current user may share a search filter or a filter
+    group on given project: sharing is a per project manager privilege, and
+    a filter without a project cannot be shared at all.
+    """
+    return project_id is not None and has_manager_project_access(project_id)
+
+
 def check_entities_belong_to_project(entity_ids, project_id):
     """
     Return given entities, or raise a PermissionDenied exception if one of
@@ -465,6 +501,26 @@ def check_entities_belong_to_project(entity_ids, project_id):
     if any(entity["project_id"] != project_id for entity in entities):
         raise permissions.PermissionDenied
     return entities
+
+
+def check_metadata_descriptor_access(descriptor):
+    """
+    Raise a PermissionDenied exception if the current user may not read
+    given metadata descriptor with the role held on its project: a client
+    only reads the ones published to clients, a vendor the ones of their
+    departments or of no department, as the descriptors of a production
+    are listed to them. The project is resolved here, before the role is
+    read.
+    """
+    check_project_access(descriptor["project_id"])
+    for_client, vendor_departments = get_descriptor_visibility(
+        permissions.get_effective_role()
+    )
+    if not metadata_descriptors_service.is_metadata_descriptor_visible(
+        descriptor["id"], for_client, vendor_departments
+    ):
+        raise permissions.PermissionDenied
+    return True
 
 
 def check_manager_project_access(project_id):
@@ -549,7 +605,7 @@ def check_supervisor_task_access(task, new_data=None):
             )["departments"]
             if (
                 user_departments == []
-                or tasks_service.get_task_type(task["task_type_id"])[
+                or task_types_service.get_task_type(task["task_type_id"])[
                     "department_id"
                 ]
                 in user_departments
@@ -591,18 +647,18 @@ def check_metadata_department_access(entity, new_data=None):
                 is_allowed = True
             else:
                 entity_type = None
-                if shots_service.is_shot(entity):
+                if entity_types_service.is_shot(entity):
                     entity_type = "Shot"
-                elif assets_service.is_asset(
+                elif entity_types_service.is_asset(
                     entities_service.get_entity_raw(entity["id"])
                 ):
                     entity_type = "Asset"
-                elif edits_service.is_edit(entity):
+                elif entity_types_service.is_edit(entity):
                     entity_type = "Edit"
                 if entity_type:
                     descriptors = [
                         descriptor
-                        for descriptor in projects_service.get_metadata_descriptors(
+                        for descriptor in metadata_descriptors_service.get_metadata_descriptors(
                             entity["project_id"]
                         )
                         if descriptor["entity_type"] == entity_type
@@ -640,7 +696,7 @@ def check_task_department_access(task_id, person_id):
     task = tasks_service.get_task(task_id)
     if not task or not user:
         raise permissions.PermissionDenied
-    task_type = tasks_service.get_task_type(task["task_type_id"])
+    task_type = task_types_service.get_task_type(task["task_type_id"])
     is_allowed = permissions.has_admin_permissions() or (
         check_belong_to_project(task["project_id"])
         and (
@@ -703,7 +759,7 @@ def check_task_department_access_for_unassign(task_id, person_id=None):
     task = tasks_service.get_task(task_id, relations=True)
     if not task or not user:
         raise permissions.PermissionDenied
-    task_type = tasks_service.get_task_type(task["task_type_id"])
+    task_type = task_types_service.get_task_type(task["task_type_id"])
     is_allowed = permissions.has_admin_permissions() or (
         check_belong_to_project(task["project_id"])
         and (
@@ -773,6 +829,37 @@ def check_playlist_access(playlist, supervisor_access=False):
     if not is_allowed:
         raise permissions.PermissionDenied
     return True
+
+
+def check_playlist_read_access(playlist):
+    """
+    Raise a PermissionDenied exception if the current user may not read
+    given playlist with the role held on its project: every member of the
+    production but its vendors watches its playlists, a client only the
+    ones shared with clients, as the playlists of a production are listed
+    to them. A playlist with no for_client flag is internal, as in that
+    listing. Broader than check_playlist_access on purpose, which keeps
+    the downloads and the build jobs from artists. The project is resolved
+    here, before the role is read.
+    """
+    check_project_access(playlist["project_id"])
+    block_access_to_vendor()
+    if permissions.has_client_permissions() and not playlist["for_client"]:
+        raise permissions.PermissionDenied
+    return True
+
+
+def check_playlist_room_access(playlist_id):
+    """
+    Raise a PermissionDenied exception if the current user may not join the
+    review room of given playlist, and a PlaylistNotFoundException if there
+    is no such playlist. The room shows the shot and the preview on screen
+    and the annotations drawn during the review, so it follows the playlist
+    routes: every member of the production joins it, a client only when
+    the playlist is shared with clients, and a vendor never.
+    """
+    playlist = playlists_service.get_playlist(playlist_id)
+    return check_playlist_read_access(playlist)
 
 
 def check_playlist_update_access(playlist):
@@ -900,3 +987,21 @@ def get_day_off_readable_person_ids():
     for person_id in _supervised_person_ids(current_user, supervised_ids):
         readable.setdefault(person_id, False)
     return readable
+
+
+def get_descriptor_visibility(role):
+    """
+    Return the (for_client, vendor_departments) pair narrowing the metadata
+    descriptors served to the current user holding given role: a client
+    only gets the ones published to clients, a vendor only the ones of their
+    departments. A role can be set per project: give the one held on the
+    project served.
+    """
+    if role == "client":
+        return True, None
+    if role == "vendor":
+        departments = persons_service.get_current_user(relations=True)[
+            "departments"
+        ]
+        return False, departments
+    return False, None

@@ -1,0 +1,34 @@
+Get status of the API services
+ ---
+ description: Get status of the database, key value store, event stream, job queue, indexer
+ tags:
+   - Index
+ responses:
+   '200':
+     description: Status of the API services
+     content:
+       application/json:
+         schema:
+           type: object
+           properties:
+             name:
+               type: string
+               example: "Zou"
+             version:
+               type: string
+               example: "0.20.0"
+             database-up:
+               type: boolean
+               example: true
+             key-value-store-up:
+               type: boolean
+               example: true
+             event-stream-up:
+               type: boolean
+               example: true
+             job-queue-up:
+               type: boolean
+               example: true
+             indexer-up:
+               type: boolean
+               example: true

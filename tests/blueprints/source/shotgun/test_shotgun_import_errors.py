@@ -58,6 +58,14 @@ class DataImportErrorTestCase(ShotgunTestCase):
         errors = self.get("/import/shotgun/errors")
         self.assertEqual(len(errors), 1)
 
+    def test_event_errors_need_an_admin(self):
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        self.get("/import/shotgun/errors", 403)
+        self.post("/import/shotgun/errors", event, 403)
+        self.delete(f"/import/shotgun/errors/{self.error_id}", 403)
+        self.assertIsNotNone(DataImportError.get(self.error_id))
+
     def test_delete_event_error_404(self):
         errors = self.delete(f"/import/shotgun/errors/{uuid.uuid4()}", 404)
         errors = self.get("/import/shotgun/errors")

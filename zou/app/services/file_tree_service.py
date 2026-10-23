@@ -1,38 +1,44 @@
 import os
 import re
-import orjson as json
-
 from collections import OrderedDict
+
+import orjson as json
 from slugify import slugify
 
+from zou.app.exceptions import (
+    EpisodeNotFoundException,
+    MalformedFileTreeException,
+    SequenceNotFoundException,
+    TaskNotFoundException,
+    WrongFileTreeFileException,
+    WrongPathFormatException,
+)
 from zou.app.models.asset_instance import AssetInstance
+from zou.app.models.department import Department
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.output_type import OutputType
-from zou.app.models.task_type import TaskType
-from zou.app.models.task import Task
-from zou.app.models.department import Department
 from zou.app.models.project import Project
-
+from zou.app.models.task import Task
+from zou.app.models.task_type import TaskType
 from zou.app.services import (
-    assets_service,
+    departments_service,
     entities_service,
+    entity_types_service,
     files_service,
-    shots_service,
     projects_service,
+    shots_service,
+    task_types_service,
     tasks_service,
-)
-from zou.app.services.exception import (
-    MalformedFileTreeException,
-    WrongFileTreeFileException,
-    WrongPathFormatException,
-    TaskNotFoundException,
 )
 
 ALLOWED_FIELDS = {"short_name", "name", "number", "id"}
 UUID_PATTERN = re.compile(
     r"[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"
 )
+
+
+_FILE_TREE_NAME_PATTERN = re.compile(r"[A-Za-z0-9_-]+")
 
 
 def get_working_file_path(
@@ -116,7 +122,7 @@ def get_working_file_name(
     working templates have no <OutputType> token to fill.
     """
     entity = entities_service.get_entity(task["entity_id"])
-    project = get_project(entity)
+    project = get_project_of_entity(entity)
     tree = get_tree_from_project(project)
 
     file_name = get_file_name_root(
@@ -147,7 +153,7 @@ def get_output_file_name(
     its project. An output covering several elements gets a _[1-N] suffix, the
     range notation the DCCs expand into one file per element.
     """
-    project = get_project(entity)
+    project = get_project_of_entity(entity)
     tree = get_tree_from_project(project)
 
     file_name = get_file_name_root(
@@ -183,7 +189,7 @@ def get_instance_file_name(
     instance sits in.
     """
     asset = entities_service.get_entity(asset_instance["asset_id"])
-    project = get_project(temporal_entity)
+    project = get_project_of_entity(temporal_entity)
     tree = get_tree_from_project(project)
 
     file_name = get_file_name_root(
@@ -219,7 +225,7 @@ def get_working_folder_path(
     separator of the target platform.
     """
     entity = entities_service.get_entity(task["entity_id"])
-    project = get_project(entity)
+    project = get_project_of_entity(entity)
     tree = get_tree_from_project(project)
     root_path = get_root_path(tree, mode, sep)
     style = tree[mode]["folder_path"].get("style", "")
@@ -254,7 +260,7 @@ def get_output_folder_path(
     Render the output folder of given entity, same way as the working one but
     with the output tokens: task type, output type and representation.
     """
-    project = get_project(entity)
+    project = get_project_of_entity(entity)
     tree = get_tree_from_project(project)
     root_path = get_root_path(tree, mode, sep)
     style = tree[mode]["folder_path"].get("style", "")
@@ -293,7 +299,7 @@ def get_instance_folder_path(
     can give instances a layout of their own.
     """
     asset = entities_service.get_entity(asset_instance["asset_id"])
-    project = get_project(temporal_entity)
+    project = get_project_of_entity(temporal_entity)
     tree = get_tree_from_project(project)
     root_path = get_root_path(tree, mode, sep)
     style = tree[mode]["folder_path"].get("style", "")
@@ -318,7 +324,7 @@ def get_instance_folder_path(
     return join_path(root_path, folder_path, "")
 
 
-def get_project(entity):
+def get_project_of_entity(entity):
     """
     Return the project given entity belongs to.
     """
@@ -334,16 +340,12 @@ def get_tree_from_project(project):
 
 _file_tree_cache = {}
 
-_FILE_TREE_NAME_PATTERN = re.compile(r"[A-Za-z0-9_-]+")
-
 
 def get_tree_from_file(tree_name):
     """
-    Read a file tree shipped in zou/app/file_trees. The name comes from the
-    client on the set-file-tree route, so it is matched against a plain
-    identifier first: os.path.join neither normalizes ".." nor keeps the
-    prefix when the second argument is absolute, and the file content ends
-    up in the response.
+    Read a file tree shipped in zou/app/file_trees. The name is matched
+    against a plain identifier first: os.path.join neither normalizes ".."
+    nor keeps the prefix when the second argument is absolute.
     """
     from zou.app import app
 
@@ -379,13 +381,13 @@ def _get_template(tree, mode, entity, section):
             if entity.get("target_asset_id", None) is not None:
                 return tree[mode][section]["instance_asset"]
             return tree[mode][section]["instance"]
-        elif shots_service.is_shot(entity):
+        elif entity_types_service.is_shot(entity):
             return tree[mode][section]["shot"]
-        elif shots_service.is_sequence(entity):
+        elif entity_types_service.is_sequence(entity):
             return tree[mode][section]["sequence"]
-        elif shots_service.is_scene(entity):
+        elif entity_types_service.is_scene(entity):
             return tree[mode][section]["scene"]
-        elif shots_service.is_episode(entity):
+        elif entity_types_service.is_episode(entity):
             return tree[mode][section]["episode"]
         else:
             return tree[mode][section]["asset"]
@@ -615,7 +617,7 @@ def get_folder_from_project(entity, field="name"):
     Value of the <Project> token: read on the project of given entity, not on
     the entity.
     """
-    project = get_project(entity)
+    project = get_project_of_entity(entity)
     return project[field]
 
 
@@ -656,7 +658,7 @@ def get_folder_from_department(task, task_type, field="name"):
         department = tasks_service.get_department_from_task(task["id"])
         folder = department[field]
     elif task_type is not None:
-        department = tasks_service.get_department_from_task_type(
+        department = departments_service.get_department_from_task_type(
             task_type["id"]
         )
         folder = department[field]
@@ -670,7 +672,7 @@ def get_folder_from_task_type(task, task_type, field="name"):
     """
     folder = ""
     if task_type is None and task is not None:
-        task_type = tasks_service.get_task_type(task["task_type_id"])
+        task_type = task_types_service.get_task_type(task["task_type_id"])
         if task_type is not None:
             folder = task_type[field]
     elif task_type is not None:
@@ -691,10 +693,12 @@ def get_folder_from_sequence(entity, field="name"):
     sequence. A name carrying "Seq" is rewritten as S plus the number padded
     to three digits, so Seq2 and Seq02 land in the same folder.
     """
-    if shots_service.is_shot(entity) or shots_service.is_scene(entity):
+    if entity_types_service.is_shot(entity) or entity_types_service.is_scene(
+        entity
+    ):
         sequence = shots_service.get_sequence_from_shot(entity)
         sequence_name = sequence[field]
-    elif shots_service.is_sequence(entity):
+    elif entity_types_service.is_sequence(entity):
         sequence_name = entity[field]
     else:
         sequence_name = ""
@@ -714,17 +718,26 @@ def get_folder_from_episode(entity, field="name"):
     episode = None
     sequence = None
 
-    if shots_service.is_episode(entity):
+    if entity_types_service.is_episode(entity):
         episode = entity
     else:
-        if shots_service.is_shot(entity) or shots_service.is_scene(entity):
-            sequence = shots_service.get_sequence_from_shot(entity)
-        elif shots_service.is_sequence(entity):
+        if entity_types_service.is_shot(
+            entity
+        ) or entity_types_service.is_scene(entity):
+            try:
+                sequence = shots_service.get_sequence_from_shot(entity)
+            except SequenceNotFoundException:
+                sequence = None
+        elif entity_types_service.is_sequence(entity):
             sequence = entity
-        # An entity that is none of those (an asset) has no sequence to
-        # walk up from, and falls back below like a missing episode does.
+        # An entity that is none of those (an asset), a shot without a
+        # sequence or a sequence without an episode (a production that is
+        # not a tv show) has nothing to walk up to, and falls back below.
         if sequence is not None:
-            episode = shots_service.get_episode_from_sequence(sequence)
+            try:
+                episode = shots_service.get_episode_from_sequence(sequence)
+            except EpisodeNotFoundException:
+                episode = None
 
     try:
         episode_name = episode[field]
@@ -749,7 +762,9 @@ def get_folder_from_temporal_entity_type(entity, field="name"):
     """
     if entity is None:
         raise MalformedFileTreeException("Given temporal entity type is null.")
-    entity_type = entities_service.get_entity_type(entity["entity_type_id"])
+    entity_type = entity_types_service.get_entity_type(
+        entity["entity_type_id"]
+    )
     return entity_type[field].lower()
 
 
@@ -759,7 +774,7 @@ def get_folder_from_asset_type(asset, field="name"):
     """
     if asset is None:
         raise MalformedFileTreeException("Given asset is null.")
-    return assets_service.get_asset_type(asset["entity_type_id"])[field]
+    return entity_types_service.get_asset_type(asset["entity_type_id"])[field]
 
 
 def get_folder_from_software(software, field="name"):
@@ -1057,7 +1072,7 @@ def get_data_from_token(type_token, value_token, constraints=None):
 
         data = Entity.get_by(
             Entity.name.ilike(value_token),
-            entity_type_id=shots_service.get_episode_type()["id"],
+            entity_type_id=entity_types_service.get_episode_type()["id"],
             project_id=constraints[PathTokens.PROJECT],
         )
 
@@ -1069,7 +1084,7 @@ def get_data_from_token(type_token, value_token, constraints=None):
         # <Episode> token in front of the sequence.
         data = _get_child_by_name(
             value_token,
-            shots_service.get_sequence_type()["id"],
+            entity_types_service.get_sequence_type()["id"],
             constraints,
             parent_token=PathTokens.EPISODE,
         )
@@ -1079,7 +1094,7 @@ def get_data_from_token(type_token, value_token, constraints=None):
         # the path carried one.
         data = _get_child_by_name(
             value_token,
-            shots_service.get_scene_type()["id"],
+            entity_types_service.get_scene_type()["id"],
             constraints,
             parent_token=PathTokens.SEQUENCE,
         )
@@ -1096,7 +1111,7 @@ def get_data_from_token(type_token, value_token, constraints=None):
 
         data = Entity.get_by(
             Entity.name.ilike(value_token),
-            entity_type_id=shots_service.get_shot_type()["id"],
+            entity_type_id=entity_types_service.get_shot_type()["id"],
             parent_id=constraints[PathTokens.SEQUENCE],
             project_id=constraints[PathTokens.PROJECT],
         )
@@ -1180,7 +1195,7 @@ def guess_shot(project, episode_name, sequence_name, shot_name):
     if len(episode_name) > 0:
         episode = Entity.get_by(
             name=episode_name,
-            entity_type_id=shots_service.get_episode_type()["id"],
+            entity_type_id=entity_types_service.get_episode_type()["id"],
             project_id=project["id"],
         )
         if episode is not None:
@@ -1190,7 +1205,7 @@ def guess_shot(project, episode_name, sequence_name, shot_name):
     if len(sequence_name) > 0:
         sequence = Entity.get_by(
             name=sequence_name,
-            entity_type_id=shots_service.get_sequence_type()["id"],
+            entity_type_id=entity_types_service.get_sequence_type()["id"],
             parent_id=episode_id,
             project_id=project["id"],
         )
@@ -1202,7 +1217,7 @@ def guess_shot(project, episode_name, sequence_name, shot_name):
     if len(shot_name) > 0:
         shot = Entity.get_by(
             name=shot_name,
-            entity_type_id=shots_service.get_shot_type()["id"],
+            entity_type_id=entity_types_service.get_shot_type()["id"],
             parent_id=sequence_id,
             project_id=project["id"],
         )

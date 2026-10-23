@@ -1,0 +1,57 @@
+Get instance output types
+---
+description: Retrieve all types of output files generated for a
+  given asset instance and temporal entity. Returns list of output
+  types available for the instance.
+tags:
+- Files
+parameters:
+  - in: path
+    name: asset_instance_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Asset instance unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+  - in: path
+    name: temporal_entity_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Temporal entity unique identifier
+    example: b35b7fb5-df86-5776-b181-68564193d360
+responses:
+  200:
+    description: All types of output files generated for the instance
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Output type unique identifier
+                example: c46c80c6-e097-6887-c292-79675204e470
+              name:
+                type: string
+                description: Output type name
+                example: "Render"
+              short_name:
+                type: string
+                description: Output type short name
+                example: "RENDER"
+              created_at:
+                type: string
+                format: date-time
+                description: Creation timestamp
+                example: "2023-01-01T12:00:00Z"
+              updated_at:
+                type: string
+                format: date-time
+                description: Last update timestamp
+                example: "2023-01-01T12:30:00Z"

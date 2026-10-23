@@ -51,13 +51,18 @@ has_client_permissions()               # True if role is client
 has_vendor_permissions()               # True if role is vendor
 ```
 
-Project/entity-level access is checked via `user_service`:
+Project/entity-level access is checked via `permissions_service`
+(`zou/app/services/permissions_service.py`), which loads the rows it needs:
 
 ```python
-user_service.check_project_access(project_id)    # user is team member
-user_service.check_entity_access(entity_id)       # user has project access
-user_service.check_manager_project_access(project_id) # user is manager of project
+permissions_service.check_project_access(project_id)         # team member
+permissions_service.check_entity_access(entity_id)           # vendor filter only
+permissions_service.check_manager_project_access(project_id) # manager of project
 ```
+
+`check_project_access` and `check_belong_to_project` also resolve the
+per-project role into `flask.g`: call them before any `has_*`/`check_*`
+role helper, which otherwise reads the global role.
 
 ## Password policy
 

@@ -1,21 +1,15 @@
-import os
 import hashlib
-
-from tests.base import ApiDBTestCase
-
-from zou.app.utils import fs, thumbnail
-from zou.app.services import assets_service, persons_service, projects_service
+import os
 
 from PIL import Image
 
-# Absolute, so that the folder created and the folder written to are the
-# same one wherever pytest is launched from and however deep this file sits.
-TEST_FOLDER = os.path.join(
-    os.path.dirname(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    ),
-    "tmp",
+from tests.base import TEST_FOLDER, ApiDBTestCase
+from zou.app.services import (
+    assets_service,
+    organisation_service,
+    projects_service,
 )
+from zou.app.utils import fs, thumbnail
 
 
 def get_file_md5hash(file_path):
@@ -213,7 +207,7 @@ class RouteThumbnailTestCase(ApiDBTestCase):
         get_organisation() and ignores the id in the url when reading, so the
         round trip only holds for the one row the instance actually has.
         """
-        organisation_id = persons_service.get_organisation()["id"]
+        organisation_id = organisation_service.get_organisation()["id"]
         path = f"/pictures/thumbnails/organisations/{organisation_id}"
         self._upload_thumbnail(path)
 

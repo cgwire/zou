@@ -1,6 +1,7 @@
-from zou.app.blueprints.export.csv.base import BaseCsvExport
+from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
+from zou.app.blueprints.export.csv.base import BaseCsvExport
 from zou.app.models.department import Department
 from zou.app.models.task_type import TaskType
 
@@ -12,24 +13,10 @@ class TaskTypesCsvExport(BaseCsvExport):
         self.name = "task_types_export"
 
     @jwt_required()
+    @swag_from("openapi/TaskTypesCsvExport_get.yml")
     def get(self):
         """
         Export task types csv
-        ---
-        tags:
-          - Export
-        description: Export task types as CSV file. Includes department
-          and task type name information.
-        produces:
-          - text/csv
-        responses:
-            200:
-              description: Task types exported as CSV successfully
-              content:
-                text/csv:
-                  schema:
-                    type: string
-                  example: "Department,Name\nAnimation,Animation\nModeling,Modeling"
         """
         return super().get()
 

@@ -1,7 +1,6 @@
 from flask_jwt_extended import verify_jwt_in_request
 
 from tests.base import ApiDBTestCase
-
 from zou.app import app
 from zou.app.models.entity import Entity
 from zou.app.models.preview_file import PreviewFile

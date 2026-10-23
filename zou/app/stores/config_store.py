@@ -13,6 +13,7 @@ DEFAULT_LOCALE_KEY = "config:default_locale"
 NOMAD_HOST_KEY = "config:nomad_host"
 NOMAD_NORMALIZE_JOB_KEY = "config:nomad_normalize_job"
 NOMAD_PLAYLIST_JOB_KEY = "config:nomad_playlist_job"
+NOMAD_TILE_JOB_KEY = "config:nomad_tile_job"
 
 # Lazily connected: the pool opens on the first command, not at import.
 config_store = redis_client.get_client(config.KV_CONFIG_DB_INDEX)
@@ -73,6 +74,10 @@ def get_nomad_playlist_job():
     return _get(NOMAD_PLAYLIST_JOB_KEY, config.JOB_QUEUE_NOMAD_PLAYLIST_JOB)
 
 
+def get_nomad_tile_job():
+    return _get(NOMAD_TILE_JOB_KEY, config.JOB_QUEUE_NOMAD_TILE_JOB)
+
+
 def get_config_comparison():
     return {
         "user_limit": {
@@ -99,6 +104,10 @@ def get_config_comparison():
             "env": config.JOB_QUEUE_NOMAD_PLAYLIST_JOB,
             "redis": _get_redis_raw(NOMAD_PLAYLIST_JOB_KEY),
         },
+        "nomad_tile_job": {
+            "env": config.JOB_QUEUE_NOMAD_TILE_JOB,
+            "redis": _get_redis_raw(NOMAD_TILE_JOB_KEY),
+        },
     }
 
 
@@ -123,5 +132,9 @@ def sync_config():
         "nomad_playlist_job": _sync(
             NOMAD_PLAYLIST_JOB_KEY,
             config.JOB_QUEUE_NOMAD_PLAYLIST_JOB,
+        ),
+        "nomad_tile_job": _sync(
+            NOMAD_TILE_JOB_KEY,
+            config.JOB_QUEUE_NOMAD_TILE_JOB,
         ),
     }

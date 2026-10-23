@@ -1,0 +1,81 @@
+Get instance output type files
+---
+description: Retrieve all output files for a given asset instance,
+  temporal entity, and output type. Optionally filter by
+  representation.
+tags:
+- Files
+parameters:
+  - in: path
+    name: asset_instance_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Asset instance unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+  - in: path
+    name: temporal_entity_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Temporal entity unique identifier
+    example: b35b7fb5-df86-5776-b181-68564193d360
+  - in: path
+    name: output_type_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Output type unique identifier
+    example: c46c80c6-e097-6887-c292-79675204e470
+  - in: query
+    name: representation
+    required: false
+    schema:
+      type: string
+    description: Filter by representation
+    example: "mp4"
+responses:
+  200:
+    description: All output files for the asset instance and output type
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Output file unique identifier
+                example: d57d91d7-f108-7998-d403-80786315f580
+              name:
+                type: string
+                description: Output file name
+                example: "main"
+              revision:
+                type: integer
+                description: Output file revision
+                example: 1
+              path:
+                type: string
+                description: Output file path
+                example: "/project/asset/instance/output/main_v001.mp4"
+              updated_at:
+                type: string
+                format: date-time
+                description: Last update timestamp
+                example: "2023-01-01T12:00:00Z"
+              asset_instance_id:
+                type: string
+                format: uuid
+                description: Asset instance identifier
+                example: e68e02e8-0219-8009-e514-918974260690
+              temporal_entity_id:
+                type: string
+                format: uuid
+                description: Temporal entity identifier
+                example: f79f13f9-1320-9010-f625-a09008537180

@@ -1,67 +1,26 @@
+from flasgger import swag_from
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 from slugify import slugify
 from sqlalchemy.orm import aliased
 
+from zou.app.mixin import ArgsMixin
 from zou.app.models.entity import Entity, EntityLink
 from zou.app.models.entity_type import EntityType
-
 from zou.app.services import (
+    entity_types_service,
     permissions_service,
     projects_service,
-    shots_service,
-    user_service,
 )
 from zou.app.utils import csv_utils
-
-from zou.app.mixin import ArgsMixin
 
 
 class CastingCsvExport(MethodView, ArgsMixin):
     @jwt_required()
+    @swag_from("openapi/CastingCsvExport_get.yml")
     def get(self, project_id):
         """
         Export casting csv
-        ---
-        tags:
-          - Export
-        description: Export project casting links as CSV file. Includes
-          links between assets and shots, sequences, or episodes with
-          occurrence counts and labels.
-        produces:
-          - text/csv
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: episode_id
-            required: false
-            schema:
-              type: string
-              format: uuid
-            example: b24a6ea4-ce75-4665-a070-57453082c25
-            description: Episode ID to filter casting links
-          - in: query
-            name: is_shot_casting
-            required: false
-            schema:
-              type: boolean
-            default: false
-            example: false
-            description: Whether to export shot casting only
-        responses:
-            200:
-              description: Casting exported as CSV successfully
-              content:
-                text/csv:
-                  schema:
-                    type: string
-                  example: "Parent,Name,Asset Type,Asset,Occurences,Label\nSequence1,SH010,Character,Asset1,1,fixed"
         """
         project = projects_service.get_project(project_id)  # Check existence
         self.check_permissions(project_id)
@@ -271,7 +230,7 @@ class CastingCsvExport(MethodView, ArgsMixin):
         Asset = aliased(Entity, name="asset")
         AssetType = aliased(EntityType, name="asset_type")
         Episode = aliased(Entity, name="episode")
-        shot_type = shots_service.get_shot_type()
+        shot_type = entity_types_service.get_shot_type()
 
         query = (
             EntityLink.query.join(
@@ -363,8 +322,8 @@ class CastingCsvExport(MethodView, ArgsMixin):
         ParentAssetType = aliased(EntityType, name="parent_asset_type")
         Asset = aliased(Entity, name="asset")
         AssetType = aliased(EntityType, name="asset_type")
-        shot_type = shots_service.get_shot_type()
-        episode_type = shots_service.get_episode_type()
+        shot_type = entity_types_service.get_shot_type()
+        episode_type = entity_types_service.get_episode_type()
 
         query = (
             EntityLink.query.join(
@@ -419,7 +378,7 @@ class CastingCsvExport(MethodView, ArgsMixin):
         ParentAssetType = aliased(EntityType, name="parent_asset_type")
         Asset = aliased(Entity, name="asset")
         AssetType = aliased(EntityType, name="asset_type")
-        episode_type = shots_service.get_episode_type()
+        episode_type = entity_types_service.get_episode_type()
 
         query = (
             EntityLink.query.join(

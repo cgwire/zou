@@ -1,17 +1,21 @@
 import datetime
-
 import re
-import sqlalchemy.orm as orm
 import uuid
-
-from babel import Locale
 from enum import Enum
 from ipaddress import IPv4Address
+
+import sqlalchemy.orm as orm
+from babel import Locale
 from pytz import tzinfo
 from sqlalchemy_utils.types.choice import Choice
 
+# Anchored at both ends: re.match only anchors the start, so an unanchored
+# pattern accepted a valid UUID followed by anything ("<uuid>\n", "<uuid>?x=1")
+# and let it reach the database, where uuid.UUID() raises a StatementError
+# (HTTP 500) instead of the 400 the guards using is_valid_id intend.
 _UUID_RE = re.compile(
-    r"[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
+    r"\A[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}"
+    r"-[a-fA-F0-9]{12}\Z"
 )
 
 
@@ -22,7 +26,9 @@ def serialize_value(value, milliseconds=False):
     """
     if isinstance(value, datetime.datetime):
         if milliseconds:
-            return value.isoformat()
+            # isoformat() drops the fraction of a round second, which the
+            # cursor listings then fail to parse back.
+            return value.isoformat(timespec="microseconds")
         else:
             return value.replace(microsecond=0).isoformat()
     if isinstance(value, datetime.date):

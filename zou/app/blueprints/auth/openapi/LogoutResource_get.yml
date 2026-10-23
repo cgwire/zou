@@ -1,0 +1,8 @@
+Logout user
+---
+description: Log user out by revoking auth tokens. Once logged out, current user cannot access the API anymore.
+tags:
+    - Authentication
+responses:
+  200:
+    description: Logout successful

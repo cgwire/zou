@@ -3,24 +3,23 @@ import os
 import sys
 import tempfile
 
+from zou.app.utils.thumbnail import (
+    generate_preview_variants,
+    turn_into_thumbnail,
+)
 from zou.remote.config_payload import (
     check_config_version,
     get_config_from_payload,
-    get_storage,
     get_file_from_storage,
-    put_file_to_storage,
+    get_storage,
     make_key,
+    put_file_to_storage,
     setup_logging,
 )
-
 from zou.utils.movie import (
-    normalize_movie,
     generate_thumbnail,
     generate_tile,
-)
-from zou.app.utils.thumbnail import (
-    turn_into_thumbnail,
-    generate_preview_variants,
+    normalize_movie,
 )
 
 logger = setup_logging()
@@ -102,12 +101,25 @@ def _fetch_movie_file(storage, outdir, preview_file_id):
 
 
 def _run_normalize_movie(config, movie_path):
+    # Encoding settings are optional in the payload: a web app that
+    # predates them gets the defaults of the encoder.
+    options = {
+        key: config[key]
+        for key in (
+            "highdef_bitrate",
+            "lowdef_bitrate",
+            "preset",
+            "vbv_bufsize_factor",
+        )
+        if key in config
+    }
     return normalize_movie(
         movie_path,
         config["fps"],
         config["width"],
         config["height"],
         skip_high_def=config.get("skip_high_def", False),
+        **options,
     )
 
 

@@ -1,0 +1,24 @@
+Reorder task types
+---
+tags:
+  - Crud
+description: Set the global priority of task types from the given
+  ordered id list in a single request, replacing one update request
+  per task type.
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - task_type_ids
+        properties:
+          task_type_ids:
+            type: array
+            items:
+              type: string
+              format: uuid
+responses:
+    200:
+      description: Updated task types

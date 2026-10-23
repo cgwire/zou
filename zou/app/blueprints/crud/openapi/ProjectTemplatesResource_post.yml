@@ -1,0 +1,33 @@
+Create project template
+---
+tags:
+  - Crud
+description: Create a new empty project template. Admin only.
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - name
+        properties:
+          name:
+            type: string
+          description:
+            type: string
+          fps:
+            type: string
+          ratio:
+            type: string
+          resolution:
+            type: string
+          production_type:
+            type: string
+          production_style:
+            type: string
+responses:
+    201:
+      description: Project template created successfully
+    400:
+      description: Invalid data or duplicate name

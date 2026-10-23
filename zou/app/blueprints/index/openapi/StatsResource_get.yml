@@ -1,0 +1,28 @@
+Get usage stats
+---
+description: Get the amount of projects, assets, shots, tasks, and persons.
+tags:
+  - Index
+responses:
+  '200':
+    description: Main stats
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            projects:
+              type: integer
+              example: 15
+            assets:
+              type: integer
+              example: 1250
+            shots:
+              type: integer
+              example: 890
+            tasks:
+              type: integer
+              example: 5670
+            persons:
+              type: integer
+              example: 45

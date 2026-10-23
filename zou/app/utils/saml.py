@@ -1,5 +1,4 @@
 import requests
-
 from saml2 import (
     BINDING_HTTP_POST,
     BINDING_HTTP_REDIRECT,
@@ -51,3 +50,17 @@ def saml_client_for(metadata_url):
     spConfig.allow_unknown_attributes = True
     saml_client = Saml2Client(config=spConfig)
     return saml_client
+
+
+def get_subject_from_ava(ava):
+    """
+    Return the provider's stable user id from the assertion attributes,
+    using the configured attribute name (``SAML_SUBJECT_ATTRIBUTE``). None
+    when it is absent or ambiguous.
+    """
+    value = ava.get(config.SAML_SUBJECT_ATTRIBUTE)
+    if isinstance(value, list) and len(value) == 1:
+        value = value[0]
+    if isinstance(value, str) and value:
+        return value
+    return None

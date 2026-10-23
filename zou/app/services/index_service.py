@@ -1,23 +1,19 @@
+import logging
+
 from flask import current_app
 
 from zou.app.indexer import indexing
-
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.person import Person
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
-
 from zou.app.services import (
-    assets_service,
-    persons_service,
+    entity_types_service,
     projects_service,
-    shots_service,
 )
-from zou.app.services.exception import (
-    EpisodeNotFoundException,
-    SequenceNotFoundException,
-)
+
+logger = logging.getLogger(__name__)
 
 
 def get_index(index_name):
@@ -66,6 +62,36 @@ def _index_entry(get_entry_index, prepare_entry, entry):
             "Indexer is not reachable, indexation failed."
         )
     return {}
+
+
+def _index_entries(get_entry_index, prepare_entry, entry_ids):
+    """
+    Build the documents of the entities matching given ids and push them
+    to their index, one call per chunk and without waiting for
+    Meilisearch: a bulk import must not wait on the indexer for every row.
+    Adding a document replaces the one with the same id, so an updated
+    entity needs no removal first. An absent or unreachable indexer is
+    swallowed, as for a single entry.
+    """
+    documents = []
+    if not entry_ids:
+        return documents
+    try:
+        index = get_entry_index()
+        for start in range(0, len(entry_ids), 3000):
+            entries = Entity.query.filter(
+                Entity.id.in_(entry_ids[start : start + 3000])
+            ).all()
+            chunk = [prepare_entry(entry) for entry in entries]
+            indexing.index_documents(index, chunk, wait=False)
+            documents += chunk
+    except indexing.IndexerNotInitializedError:
+        pass
+    except Exception:
+        current_app.logger.error(
+            "Indexer is not reachable, indexation failed.", exc_info=True
+        )
+    return documents
 
 
 def _remove_entry_index(get_entry_index, document_id):
@@ -125,7 +151,7 @@ def reset_entry_index(
     if documents:
         indexing.index_documents(index, documents)
         total += len(documents)
-    print(total, f"{index_name} indexed")
+    logger.info("%s %s indexed", total, index_name)
     return entries
 
 
@@ -135,7 +161,7 @@ def reset_asset_index():
     """
     reset_entry_index(
         "assets",
-        assets_service.get_all_raw_assets,
+        get_all_raw_assets,
         prepare_asset,
         searchable_fields=["name", "description", "metadatas"],
         filterable_fields=["project_id"],
@@ -148,7 +174,7 @@ def reset_person_index():
     """
     reset_entry_index(
         "persons",
-        persons_service.get_all_raw_active_persons,
+        get_all_raw_active_persons,
         prepare_person,
         searchable_fields=[
             "name",
@@ -162,7 +188,7 @@ def reset_shot_index():
     """
     reset_entry_index(
         "shots",
-        shots_service.get_all_raw_shots,
+        get_all_raw_shots,
         prepare_shot,
         searchable_fields=["name", "description", "metadatas"],
         filterable_fields=["project_id"],
@@ -387,8 +413,10 @@ def index_asset(asset):
 
 def index_person(person):
     """
-    Register person into the index.
+    Register person into the index. Preview accounts are never indexed.
     """
+    if person.preview_project_id is not None:
+        return None
     return _index_entry(get_person_index, prepare_person, person)
 
 
@@ -399,12 +427,26 @@ def index_shot(shot):
     return _index_entry(get_shot_index, prepare_shot, shot)
 
 
+def index_assets(asset_ids):
+    """
+    Register the assets matching given ids into the index in bulk.
+    """
+    return _index_entries(get_asset_index, prepare_asset, asset_ids)
+
+
+def index_shots(shot_ids):
+    """
+    Register the shots matching given ids into the index in bulk.
+    """
+    return _index_entries(get_shot_index, prepare_shot, shot_ids)
+
+
 def prepare_asset(asset):
     """
     Prepare a indexation document from given asset.
     """
     asset_serialized = asset.serialize()
-    asset_type = assets_service.get_asset_type(
+    asset_type = entity_types_service.get_asset_type(
         asset_serialized["entity_type_id"]
     )
     metadatas = {}
@@ -446,26 +488,26 @@ def prepare_shot(shot):
     episode_id = ""
     episode = None
     sequence = None
-    sequence_id = shot_serialized.get("parent_id", "")
+    sequence_id = shot_serialized.get("parent_id") or ""
     if sequence_id != "":
-        try:
-            sequence = shots_service.get_sequence(sequence_id)
-        except SequenceNotFoundException:
+        # Read straight from the entity table: going through shots_service
+        # would make the index depend on a service that indexes through it.
+        sequence = Entity.get(sequence_id)
+        if sequence is None:
             sequence_id = ""
         else:
-            episode_id = sequence.get("parent_id", "")
-            if episode_id not in ["", "None", None]:
-                try:
-                    episode = shots_service.get_episode(episode_id)
-                except EpisodeNotFoundException:
+            episode_id = sequence.parent_id and str(sequence.parent_id)
+            if episode_id is not None:
+                episode = Entity.get(episode_id)
+                if episode is None:
                     episode_id = ""
 
     shot_name = shot_serialized["name"]
     name = shot_name + " " + shot_name.replace("_", " ").replace("-", " ")
     if episode is not None:
-        name = f'{episode["name"]} {sequence["name"]} {name}'
+        name = f"{episode.name} {sequence.name} {name}"
     elif sequence is not None:
-        name = f'{sequence["name"]} {name}'
+        name = f"{sequence.name} {name}"
 
     metadatas = {}
     if shot_serialized["data"]:
@@ -510,3 +552,32 @@ def remove_shot_index(shot_id):
     Remove document matching given shot id from shot index.
     """
     return _remove_entry_index(get_shot_index, shot_id)
+
+
+def get_all_raw_assets():
+    """
+    Get all assets from the database.
+    """
+    query = Entity.query.filter(entity_types_service.build_asset_type_filter())
+    return query.all()
+
+
+def get_all_raw_shots():
+    """
+    Get all shots from the database.
+    """
+    query = Entity.query.filter(
+        Entity.entity_type_id == entity_types_service.get_shot_type()["id"]
+    )
+    return query.all()
+
+
+def get_all_raw_active_persons():
+    """
+    Return all active persons without serialization. Guests are excluded.
+    """
+    return Person.query.filter(
+        Person.active,
+        Person.is_guest.isnot(True),
+        Person.preview_project_id.is_(None),
+    ).all()

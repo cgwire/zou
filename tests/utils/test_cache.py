@@ -1,4 +1,5 @@
 import unittest
+import uuid
 
 from zou.app.utils import cache
 
@@ -28,3 +29,30 @@ class CacheTestCase(unittest.TestCase):
 
         self.assertEqual(result, result2)
         self.assertNotEqual(result, result3)
+
+    @cache.memoize_function(50)
+    def memoized_function3(self, entity_id):
+        # A recomputed value must differ from the cached one: count the
+        # calls, a random draw repeats one time in 49.
+        self.called += 1
+        return f"{entity_id}-{self.called}"
+
+    def test_memoize_normalizes_uuid_arguments(self):
+        entity_id = uuid.uuid4()
+        result = self.memoized_function3(entity_id)
+        result_str = self.memoized_function3(str(entity_id))
+        self.assertEqual(result, result_str)
+
+        cache.cache.delete_memoized(
+            self.memoized_function3, self, str(entity_id)
+        )
+        result_after_str_invalidation = self.memoized_function3(entity_id)
+        self.assertNotEqual(result, result_after_str_invalidation)
+
+        cache.cache.delete_memoized(self.memoized_function3, self, entity_id)
+        result_after_uuid_invalidation = self.memoized_function3(
+            str(entity_id)
+        )
+        self.assertNotEqual(
+            result_after_str_invalidation, result_after_uuid_invalidation
+        )

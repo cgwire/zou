@@ -1,17 +1,20 @@
-from zou.app import config
-from zou.app.utils import emails, chats
-from zou.app.utils.email_i18n import get_email_translation
+from babel.dates import format_datetime
 
+from zou.app import config
+from zou.app.exceptions import EpisodeNotFoundException
 from zou.app.services import (
     entities_service,
-    names_service,
+    organisation_service,
     persons_service,
     projects_service,
     shots_service,
-    tasks_service,
+    task_types_service,
     templates_service,
 )
 from zou.app.stores import queue_store
+from zou.app.utils import chats, date_helpers, emails
+from zou.app.utils.email_i18n import get_email_translation
+from zou.app.utils.string import mask_secret
 
 # Chat channels a person can be notified on: the suffix used by the person
 # columns, the message keys and the chats sender, then the organisation field
@@ -41,7 +44,7 @@ def _get_locale(person):
     """
     Return the locale the person must be written to in.
     """
-    return person.get("locale") or persons_service.get_default_locale()
+    return person.get("locale") or organisation_service.get_default_locale()
 
 
 def _build_messages(email_message, slack_message, discord_message, project):
@@ -74,7 +77,9 @@ def send_notification(
         channel: messages[f"{channel}_message"] for channel, _ in CHAT_CHANNELS
     }
     email_locale = (
-        locale or person.get("locale") or persons_service.get_default_locale()
+        locale
+        or person.get("locale")
+        or organisation_service.get_default_locale()
     )
     email_html_body = templates_service.generate_html_body(
         title, email_message, locale=email_locale
@@ -99,7 +104,7 @@ def send_notification(
     for channel, credential_field in CHAT_CHANNELS:
         if not person[f"notifications_{channel}_enabled"]:
             continue
-        organisation = persons_service.get_organisation(sensitive=True)
+        organisation = organisation_service.get_organisation(sensitive=True)
         send_to_chat = getattr(chats, f"send_to_{channel}")
         args = (
             organisation.get(credential_field, ""),
@@ -107,7 +112,15 @@ def send_notification(
             chat_messages[channel],
         )
         if config.ENABLE_JOB_QUEUE:
-            queue_store.job_queue.enqueue(send_to_chat, args=args)
+            # RQ logs and stores the job description, which defaults to
+            # the call with its arguments: keep the credential out of it.
+            description = (
+                f"{send_to_chat.__module__}.{send_to_chat.__name__}("
+                f"{mask_secret(args[0])!r}, {args[1]!r}, ...)"
+            )
+            queue_store.job_queue.enqueue(
+                send_to_chat, args=args, description=description
+            )
         else:
             send_to_chat(*args)
 
@@ -124,7 +137,9 @@ def send_comment_notification(person_id, author_id, comment, task):
     project = projects_service.get_project(task["project_id"])
     locale = _get_locale(person)
     if _is_notified(person):
-        task_status = tasks_service.get_task_status(task["task_status_id"])
+        task_status = task_types_service.get_task_status(
+            task["task_status_id"]
+        )
         task_status_name = task_status["short_name"].upper()
         author, task_name, task_url = get_task_descriptors(author_id, task)
         subject = get_email_translation(
@@ -260,9 +275,9 @@ def get_task_descriptors(person_id, task):
     """
     author = persons_service.get_person(person_id)
     project = projects_service.get_project(task["project_id"])
-    task_type = tasks_service.get_task_type(task["task_type_id"])
+    task_type = task_types_service.get_task_type(task["task_type_id"])
     entity = entities_service.get_entity(task["entity_id"])
-    entity_name, episode_id, _ = names_service.get_full_entity_name(
+    entity_name, episode_id, _ = entities_service.get_full_entity_name(
         entity["id"]
     )
 
@@ -296,7 +311,7 @@ def send_reply_notification(person_id, author_id, comment, task, reply):
     person = persons_service.get_person(person_id)
     locale = _get_locale(person)
     if _is_notified(person):
-        tasks_service.get_task_status(task["task_status_id"])
+        task_types_service.get_task_status(task["task_status_id"])
         project = projects_service.get_project(task["project_id"])
         author, task_name, task_url = get_task_descriptors(author_id, task)
         subject = get_email_translation(
@@ -345,7 +360,7 @@ def send_playlist_ready_notification(person_id, author_id, playlist):
     episode = None
     try:
         episode = shots_service.get_episode(playlist["episode_id"])
-    except Exception:
+    except EpisodeNotFoundException:
         pass
 
     if _is_notified(person):
@@ -426,7 +441,7 @@ def send_share_invitation(
     who do not have a Kitsu account can be invited too. Fire-and-forget:
     no DB record is kept, no Person is created.
     """
-    email_locale = locale or persons_service.get_default_locale()
+    email_locale = locale or organisation_service.get_default_locale()
     title = get_email_translation(email_locale, "share_invitation_title")
     subject = get_email_translation(
         email_locale,
@@ -461,3 +476,52 @@ def send_share_invitation(
         emails.send_email(
             subject, email_html_body, recipient_email, locale=email_locale
         )
+
+
+def send_password_changed_by_admin_email(person, admin_user, person_IP=None):
+    """
+    Send an email to the person notifying that an admin changed their password.
+    """
+    _send_admin_action_email(
+        person, "auth_password_changed_by_admin", person_IP=person_IP
+    )
+
+
+def send_2fa_disabled_by_admin_email(person, admin_user, person_IP=None):
+    """
+    Send an email to the person notifying that an admin disabled their 2FA.
+    """
+    _send_admin_action_email(
+        person, "auth_2fa_disabled_by_admin", person_IP=person_IP
+    )
+
+
+def _send_admin_action_email(person, translation_prefix, person_IP=None):
+    """
+    Tell a person that an admin acted on their account. The three
+    translation keys are built from the prefix (_subject, _title, _body).
+    """
+    organisation = organisation_service.get_organisation()
+    locale = persons_service.get_email_locale(person)
+    time_string = format_datetime(
+        date_helpers.get_utc_now_datetime(),
+        tzinfo=person.get("timezone"),
+        locale=person.get("locale"),
+    )
+    subject = get_email_translation(
+        locale,
+        f"{translation_prefix}_subject",
+        organisation_name=organisation["name"],
+    )
+    title = get_email_translation(locale, f"{translation_prefix}_title")
+    html = get_email_translation(
+        locale,
+        f"{translation_prefix}_body",
+        first_name=person["first_name"],
+        time_string=time_string,
+        person_IP=person_IP or "",
+    )
+    email_html_body = templates_service.generate_html_body(
+        title, html, locale=locale
+    )
+    emails.send_email(subject, email_html_body, person["email"], locale=locale)

@@ -1,23 +1,25 @@
 # -*- coding: UTF-8 -*-
 import os
-import tempfile
 import shutil
+import sys
+import tempfile
 import zipfile
-
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+from flask import Flask
 
 from tests.base import ApiDBTestCase
-
 from zou.app.utils.plugins import (
     PluginManifest,
     _build_plugin_alembic_config,
-    install_plugin_files,
-    uninstall_plugin_files,
+    add_static_routes,
     create_plugin_package,
     create_plugin_skeleton,
-    add_static_routes,
     download_zip_url,
+    install_plugin_files,
+    load_plugin,
+    uninstall_plugin_files,
 )
 
 
@@ -432,6 +434,38 @@ class PluginStaticRoutesTestCase(ApiDBTestCase):
         add_static_routes(manifest, routes)
 
         self.assertEqual(routes, [])
+
+
+class PluginLoadTestCase(ApiDBTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.temp_dir = tempfile.mkdtemp()
+        sys.path.insert(0, self.temp_dir)
+
+    def tearDown(self):
+        super().tearDown()
+        sys.path.remove(self.temp_dir)
+        sys.modules.pop("frontend_only_plugin", None)
+        shutil.rmtree(self.temp_dir)
+
+    def test_load_plugin_without_routes(self):
+        plugin_dir = Path(self.temp_dir) / "frontend_only_plugin"
+        plugin_dir.mkdir()
+        (plugin_dir / "__init__.py").write_text("")
+        (plugin_dir / "manifest.toml").write_text(
+            'id = "frontend_only_plugin"\n'
+            'name = "Frontend Only Plugin"\n'
+            'version = "0.1.0"\n'
+            'license = "MIT"\n'
+            "frontend_project_enabled = true\n"
+        )
+        app = Flask(__name__)
+
+        load_plugin(app, plugin_dir)
+
+        rules = [rule.rule for rule in app.url_map.iter_rules()]
+        self.assertIn("/plugins/frontend_only_plugin/frontend", rules)
 
 
 class PluginAlembicConfigTestCase(ApiDBTestCase):

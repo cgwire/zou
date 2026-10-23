@@ -1,36 +1,34 @@
-from sqlalchemy import cast, Text
+from sqlalchemy import Text, cast
 from sqlalchemy.exc import StatementError
 from sqlalchemy.orm import selectinload
 
+from zou.app import db
+from zou.app.exceptions import (
+    ConceptFolderNotFoundException,
+    ConceptNotFoundException,
+    EntityNotFoundException,
+    WrongIdFormatException,
+    WrongParameterException,
+)
+from zou.app.models.entity import (
+    Entity,
+    EntityConceptLink,
+)
+from zou.app.models.preview_file import PreviewFile
+from zou.app.models.project import Project
+from zou.app.models.task import Task
+from zou.app.services import (
+    base_service,
+    entities_service,
+    entity_types_service,
+    persons_service,
+    subscriptions_service,
+)
 from zou.app.utils import (
     cache,
     events,
     fields,
     query as query_utils,
-)
-
-from zou.app import db
-from zou.app.models.entity import (
-    Entity,
-    EntityLink,
-    EntityVersion,
-    EntityConceptLink,
-)
-from zou.app.models.project import Project
-from zou.app.models.subscription import Subscription
-from zou.app.models.task import Task
-
-from zou.app.services import (
-    base_service,
-    deletion_service,
-    entities_service,
-    notifications_service,
-    user_service,
-)
-from zou.app.services.exception import (
-    ConceptNotFoundException,
-    WrongIdFormatException,
-    EntityNotFoundException,
 )
 
 CONCEPTS_AND_TASKS_TASK_FIELDS = [
@@ -62,20 +60,15 @@ def clear_concept_cache(concept_id):
     entities_service.clear_entity_cache(concept_id)
 
 
-@cache.memoize_function(1200)
-def get_concept_type():
-    """
-    Return the Concept entity type.
-    """
-    return entities_service.get_temporal_entity_type_by_name("Concept")
-
-
 def get_concept_raw(concept_id):
     """
     Return given concept as an active record.
     """
     return base_service.get_typed_instance(
-        Entity, concept_id, get_concept_type()["id"], ConceptNotFoundException
+        Entity,
+        concept_id,
+        entity_types_service.get_concept_type()["id"],
+        ConceptNotFoundException,
     )
 
 
@@ -102,56 +95,13 @@ def get_full_concept(concept_id):
     return concept
 
 
-def remove_concept(concept_id, force=False):
-    """
-    Remove given concept from database. If it has tasks linked to it, it marks
-    the concept as canceled. Deletion can be forced.
-    """
-    concept = get_concept_raw(concept_id)
-    is_tasks_related = Task.query.filter_by(entity_id=concept_id).count() > 0
-
-    if is_tasks_related and not force:
-        concept.update({"canceled": True})
-        clear_concept_cache(concept_id)
-        events.emit(
-            "concept:update",
-            {"concept_id": concept_id},
-            project_id=str(concept.project_id),
-        )
-    else:
-        # Imported here because tasks_service imports this module back.
-        from zou.app.services import tasks_service
-
-        tasks = Task.query.filter_by(entity_id=concept_id).all()
-        for task in tasks:
-            deletion_service.remove_task(task.id, force=True)
-            tasks_service.clear_task_cache(str(task.id))
-
-        EntityVersion.delete_all_by(entity_id=concept_id)
-        Subscription.delete_all_by(entity_id=concept_id)
-        EntityLink.delete_all_by(entity_in_id=concept_id)
-        EntityLink.delete_all_by(entity_out_id=concept_id)
-        EntityConceptLink.delete_all_by(entity_in_id=concept_id)
-        EntityConceptLink.delete_all_by(entity_out_id=concept_id)
-
-        concept.delete()
-        events.emit(
-            "concept:delete",
-            {"concept_id": concept_id},
-            project_id=str(concept.project_id),
-        )
-        clear_concept_cache(concept_id)
-
-    return concept.serialize(obj_type="Concept")
-
-
 def get_concepts(criterions=None):
     """
     Get all concepts for given criterions.
     """
     if criterions is None:
         criterions = {}
-    concept_type = get_concept_type()
+    concept_type = entity_types_service.get_concept_type()
     criterions["entity_type_id"] = concept_type["id"]
     is_only_assignation = "assigned_to" in criterions
     if is_only_assignation:
@@ -167,7 +117,7 @@ def get_concepts(criterions=None):
 
     if is_only_assignation:
         query = query.outerjoin(Task, Task.entity_id == Entity.id)
-        query = query.filter(user_service.build_assignee_filter())
+        query = query.filter(persons_service.build_assignee_filter())
 
     try:
         data = query.all()
@@ -192,8 +142,8 @@ def get_concepts_and_tasks(criterions=None):
     """
     if criterions is None:
         criterions = {}
-    concept_type = get_concept_type()
-    subscription_map = notifications_service.get_subscriptions_for_user(
+    concept_type = entity_types_service.get_concept_type()
+    subscription_map = subscriptions_service.get_subscriptions_for_user(
         criterions.get("project_id", None), concept_type["id"]
     )
 
@@ -211,15 +161,19 @@ def get_concepts_and_tasks(criterions=None):
             has_assigned_task = (
                 db.session.query(Task.id)
                 .filter(Task.entity_id == Entity.id)
-                .filter(user_service.build_assignee_filter())
+                .filter(persons_service.build_assignee_filter())
                 .exists()
             )
             query = query.filter(has_assigned_task)
         return query
 
+    # The variants of an uploaded picture are built by a background job:
+    # the status tells a concept whose picture is not stored yet.
     concept_rows = (
         apply_filters(
-            Entity.query.join(Project, Project.id == Entity.project_id)
+            Entity.query.join(
+                Project, Project.id == Entity.project_id
+            ).outerjoin(PreviewFile, PreviewFile.id == Entity.preview_file_id)
         )
         .with_entities(
             cast(Entity.id, Text).label("id"),
@@ -230,6 +184,7 @@ def get_concepts_and_tasks(criterions=None):
             cast(Entity.entity_type_id, Text).label("entity_type_id"),
             cast(Entity.parent_id, Text).label("parent_id"),
             cast(Entity.preview_file_id, Text).label("preview_file_id"),
+            PreviewFile.status.label("preview_file_status"),
             cast(Entity.source_id, Text).label("source_id"),
             Entity.nb_frames,
             Entity.nb_entities_out,
@@ -279,6 +234,9 @@ def get_concepts_and_tasks(criterions=None):
                 "nb_frames": row.nb_frames,
                 "parent_id": row.parent_id,
                 "preview_file_id": row.preview_file_id,
+                "preview_file_status": fields.serialize_value(
+                    row.preview_file_status
+                ),
                 "project_id": row.project_id,
                 "project_name": row.project_name,
                 "source_id": row.source_id,
@@ -304,7 +262,7 @@ def get_concepts_for_project(project_id, only_assigned=False):
     """
     return entities_service.get_entities_for_project(
         project_id,
-        get_concept_type()["id"],
+        entity_types_service.get_concept_type()["id"],
         "Concept",
         only_assigned=only_assigned,
     )
@@ -317,15 +275,19 @@ def create_concept(
     description=None,
     entity_concept_links=None,
     created_by=None,
+    parent_id=None,
 ):
     """
-    Create concept for given project.
+    Create concept for given project, in given concept folder when one is
+    named.
     """
     if data is None:
         data = {}
     if entity_concept_links is None:
         entity_concept_links = []
-    concept_type = get_concept_type()
+    concept_type = entity_types_service.get_concept_type()
+    if parent_id is not None:
+        get_project_concept_folder_raw(project_id, parent_id)
 
     concept = Entity.get_by(
         entity_type_id=concept_type["id"],
@@ -351,6 +313,7 @@ def create_concept(
             description=description,
             entity_concept_links=entity_concept_links,
             created_by=created_by,
+            parent_id=parent_id,
         )
 
         events.emit(
@@ -364,9 +327,161 @@ def create_concept(
     return concept.serialize(obj_type="Concept")
 
 
-def is_concept(entity):
+def get_concept_folder_raw(concept_folder_id):
     """
-    Returns True if given entity has 'Concept' as entity type
+    Return given concept folder as an active record.
     """
-    concept_type = get_concept_type()
-    return str(entity["entity_type_id"]) == concept_type["id"]
+    return base_service.get_typed_instance(
+        Entity,
+        concept_folder_id,
+        entity_types_service.get_concept_folder_type()["id"],
+        ConceptFolderNotFoundException,
+    )
+
+
+def get_project_concept_folder_raw(project_id, concept_folder_id):
+    """
+    Return given concept folder as an active record, as long as it belongs
+    to given project.
+    """
+    concept_folder = get_concept_folder_raw(concept_folder_id)
+    if str(concept_folder.project_id) != str(project_id):
+        raise ConceptFolderNotFoundException()
+    return concept_folder
+
+
+def get_concept_folder(concept_folder_id):
+    """
+    Return given concept folder as a dictionary.
+    """
+    return get_concept_folder_raw(concept_folder_id).serialize(
+        obj_type="ConceptFolder"
+    )
+
+
+def get_concept_folders_for_project(project_id):
+    """
+    Retrieve all concept folders of given project, sorted by name.
+    """
+    return entities_service.get_entities_for_project(
+        project_id,
+        entity_types_service.get_concept_folder_type()["id"],
+        "ConceptFolder",
+    )
+
+
+def find_concept_folder_raw(project_id, name):
+    """
+    Return the concept folder of given project carrying given name as an
+    active record, or None.
+    """
+    return Entity.get_by(
+        entity_type_id=entity_types_service.get_concept_folder_type()["id"],
+        project_id=project_id,
+        name=name,
+    )
+
+
+def create_concept_folder(project_id, name, created_by=None):
+    """
+    Create a concept folder for given project. A folder already carrying
+    this name is returned as is.
+    """
+    concept_folder = find_concept_folder_raw(project_id, name)
+    if concept_folder is None:
+        concept_folder = Entity.create(
+            entity_type_id=entity_types_service.get_concept_folder_type()[
+                "id"
+            ],
+            project_id=project_id,
+            name=name,
+            created_by=created_by,
+        )
+        events.emit(
+            "concept-folder:new",
+            {"concept_folder_id": str(concept_folder.id)},
+            project_id=str(project_id),
+        )
+    return concept_folder.serialize(obj_type="ConceptFolder")
+
+
+def update_concept_folder(concept_folder_id, name):
+    """
+    Rename given concept folder. Two folders of a project cannot share a
+    name.
+    """
+    concept_folder = get_concept_folder_raw(concept_folder_id)
+    namesake = find_concept_folder_raw(concept_folder.project_id, name)
+    if namesake is not None and namesake.id != concept_folder.id:
+        raise WrongParameterException(
+            "A concept folder with this name already exists."
+        )
+    concept_folder.update({"name": name})
+    entities_service.clear_entity_cache(concept_folder_id)
+    events.emit(
+        "concept-folder:update",
+        {"concept_folder_id": str(concept_folder.id)},
+        project_id=str(concept_folder.project_id),
+    )
+    return concept_folder.serialize(obj_type="ConceptFolder")
+
+
+def remove_concept_folder(concept_folder_id):
+    """
+    Remove given concept folder from database. Its concepts are kept: they
+    go back to the root of the project.
+    """
+    concept_folder = get_concept_folder_raw(concept_folder_id)
+    project_id = str(concept_folder.project_id)
+    concept_ids = [
+        str(concept.id)
+        for concept in Entity.get_all_by(parent_id=concept_folder.id)
+    ]
+    move_concepts(project_id, concept_ids, None)
+    result = concept_folder.serialize(obj_type="ConceptFolder")
+    concept_folder.delete()
+    entities_service.clear_entity_cache(concept_folder_id)
+    events.emit(
+        "concept-folder:delete",
+        {"concept_folder_id": str(concept_folder_id)},
+        project_id=project_id,
+    )
+    return result
+
+
+def move_concepts(project_id, concept_ids, concept_folder_id=None):
+    """
+    Move given concepts to given concept folder, or back to the root of the
+    project when no folder is named. Ids that are not concepts of the
+    project are skipped. Returns the ids of the concepts that were moved.
+    """
+    if concept_folder_id is not None:
+        get_project_concept_folder_raw(project_id, concept_folder_id)
+    if len(concept_ids) == 0:
+        return []
+    try:
+        concepts = (
+            Entity.query.filter(Entity.id.in_(concept_ids))
+            .filter(Entity.project_id == project_id)
+            .filter(
+                Entity.entity_type_id
+                == entity_types_service.get_concept_type()["id"]
+            )
+            .all()
+        )
+    except StatementError:
+        raise WrongIdFormatException()
+
+    for concept in concepts:
+        concept.update_no_commit({"parent_id": concept_folder_id})
+    Entity.commit()
+
+    moved_ids = [str(concept.id) for concept in concepts]
+    for concept_id in moved_ids:
+        clear_concept_cache(concept_id)
+        events.emit(
+            "concept:update",
+            {"concept_id": concept_id},
+            project_id=str(project_id),
+        )
+    return moved_ids

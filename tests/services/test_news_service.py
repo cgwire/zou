@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 from freezegun import freeze_time
 
 from tests.base import ApiDBTestCase
-
 from zou.app.models.entity import Entity
 from zou.app.models.news import News
 from zou.app.models.project import Project
@@ -194,8 +193,14 @@ class NewsListingTestCase(ApiDBTestCase):
         return datetime.now() - timedelta(days=days)
 
     def listing(self, **kwargs):
+        listing_kwargs = {
+            key: kwargs.pop(key)
+            for key in ("news_id", "entity_id", "page", "limit")
+            if key in kwargs
+        }
         return news_service.get_last_news_for_project(
-            project_id=self.project_id, **kwargs
+            news_service.NewsFilters(project_id=self.project_id, **kwargs),
+            **listing_kwargs,
         )
 
     def ids(self, **kwargs):
@@ -411,7 +416,7 @@ class NewsStatsTestCase(ApiDBTestCase):
         self.a_news(self.task_status_wip, change=False)
 
         stats = news_service.get_news_stats_for_project(
-            project_id=self.project_id
+            news_service.NewsFilters(project_id=self.project_id)
         )
 
         self.assertEqual(
@@ -427,13 +432,17 @@ class NewsStatsTestCase(ApiDBTestCase):
 
         self.assertEqual(
             news_service.get_news_stats_for_project(
-                project_id=self.project_id, project_ids=[UNKNOWN]
+                news_service.NewsFilters(
+                    project_id=self.project_id, project_ids=[UNKNOWN]
+                )
             ),
             {},
         )
         self.assertEqual(
             news_service.get_news_stats_for_project(
-                project_id=self.project_id, current_user=self.person
+                news_service.NewsFilters(
+                    project_id=self.project_id, current_user=self.person
+                )
             ),
             {},
         )

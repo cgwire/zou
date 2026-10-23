@@ -1,0 +1,46 @@
+Get task comments
+---
+tags:
+- Tasks
+description: Return comments linked to a task.
+parameters:
+  - in: path
+    name: task_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+responses:
+    200:
+      description: Comments linked to task
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                object_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c250
+                person_id:
+                  type: string
+                  format: uuid
+                  example: c24a6ea4-ce75-4665-a070-57453082c250
+                text:
+                  type: string
+                  example: This task is progressing well
+                created_at:
+                  type: string
+                  format: date-time
+                  example: "2024-01-15T10:30:00Z"
+                updated_at:
+                  type: string
+                  format: date-time
+                  example: "2024-01-15T11:00:00Z"

@@ -1,5 +1,4 @@
 import os
-
 from unittest.mock import MagicMock, patch
 
 from tests.base import ApiDBTestCase
@@ -23,7 +22,7 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
         self.task_id = str(self.task.id)
         self.wip_status_id = str(self.task_status_wip.id)
         self.movie_path = self.get_fixture_file_path(
-            os.path.join("videos", "test_preview_tiles.mp4")
+            os.path.join("videos", "test_preview_small.mp4")
         )
 
     def upload_movie_preview(self, save_source_file=False):
@@ -66,6 +65,27 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data, movie_content)
+
+    def test_a_lagging_recorded_size_does_not_hide_a_local_movie(self):
+        # The local store has no cache copy to go stale, and the recorded
+        # size lags behind the file while a movie is renormalized: the
+        # mismatch used to flag the high def version as missing.
+        preview_file_id = self.upload_movie_preview()
+        for prefix in files_service.MOVIE_PREFIXES:
+            if file_store.exists_movie(prefix, preview_file_id):
+                file_store.remove_movie(prefix, preview_file_id, force=True)
+        file_store.add_movie("previews", preview_file_id, self.movie_path)
+        preview_files_service.update_preview_file(
+            preview_file_id, {"file_size": 1}, silent=True
+        )
+        files_service.clear_preview_file_cache(preview_file_id)
+
+        response = self.app.get(
+            f"/movies/originals/preview-files/{preview_file_id}.mp4",
+            headers=self.base_headers,
+        )
+        self.assertEqual(response.status_code, 200)
+        file_store.remove_movie("previews", preview_file_id, force=True)
 
     def test_download_original_movie(self):
         preview_file_id = self.upload_movie_preview()
@@ -180,6 +200,24 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
             headers=self.base_headers,
         )
 
+    def test_cache_entry_without_status_is_served(self):
+        # A deploy adding "status" to get_preview_file_for_access leaves the
+        # entries memoized by the previous version in Redis for their TTL.
+        preview_file_id = self.upload_movie_preview(save_source_file=True)
+        access = files_service.get_preview_file_for_access
+
+        def previous_version_entry(preview_file_id):
+            entry = dict(access(preview_file_id))
+            del entry["status"]
+            return entry
+
+        with patch.object(
+            files_service,
+            "get_preview_file_for_access",
+            side_effect=previous_version_entry,
+        ):
+            self.assertEqual(self.get_movie(preview_file_id).status_code, 200)
+
     def test_recorded_prefixes_spare_the_storage_probe(self):
         preview_file_id = self.upload_movie_preview(save_source_file=True)
         with patch.object(file_store, "exists_movie") as exists_movie:
@@ -273,7 +311,7 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
         preview_file_id = self.upload_movie_preview()
         url = f"/movies/originals/preview-files/{preview_file_id}/download"
         with patch.object(
-            preview_resources.names_service,
+            preview_resources.preview_files_service,
             "get_preview_file_name",
             return_value="カット 01.mp4",
         ):
@@ -464,7 +502,7 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
 
         # A movie stored before tiles existed, or whose tile failed. The
         # web process runs no ffmpeg of its own: without a queue, 404.
-        file_store.remove_picture("tiles", preview_file_id)
+        file_store.remove_picture("tiles", preview_file_id, force=True)
         self.assertEqual(self.get_tile(preview_file_id).status_code, 404)
         self.assertEqual(self.get_tile(preview_file_id).status_code, 404)
 
@@ -481,7 +519,7 @@ class MovieStreamingRoutesTestCase(ApiDBTestCase):
 
             # The attempt is remembered: a tile ffmpeg cannot build is not
             # queued again on every request.
-            file_store.remove_picture("tiles", preview_file_id)
+            file_store.remove_picture("tiles", preview_file_id, force=True)
             self.assertEqual(self.get_tile(preview_file_id).status_code, 404)
             self.assertEqual(job_queue.enqueue.call_count, 1)
 

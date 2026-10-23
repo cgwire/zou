@@ -1,43 +1,17 @@
-from tests.base import ApiDBTestCase
-
+from tests.services.cases import AuthTestCase, PersonsTestCase
 from zou.app import config
-from zou.app.models.person import Person
-from zou.app.services import persons_service, tasks_service
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     PersonInProtectedAccounts,
     PersonNotFoundException,
     WrongParameterException,
 )
+from zou.app.models.person import Person
+from zou.app.services import (
+    index_service,
+    persons_service,
+    time_spents_service,
+)
 from zou.app.utils import auth, fields
-
-
-class PersonsTestCase(ApiDBTestCase):
-    """
-    The admin the base class logs in as, plus one studio member.
-    Holds no test of its own.
-    """
-
-    def setUp(self):
-        super().setUp()
-
-        self.generate_fixture_person()
-        self.generate_fixture_department()
-        self.person_id = str(self.person.id)
-        self.person_email = self.person.email
-        self.person_desktop_login = self.person.desktop_login
-
-    def a_guest(self):
-        """
-        A person created by the shared playlist flow: not part of the
-        studio, and left out of every team listing.
-        """
-        return Person.create(
-            first_name="Guest",
-            last_name="Reviewer",
-            email="guest-reviewer@guest.kitsu",
-            role="client",
-            is_guest=True,
-        )
 
 
 class PersonReadTestCase(PersonsTestCase):
@@ -60,13 +34,6 @@ class PersonReadTestCase(PersonsTestCase):
         )
         self.assertRaises(
             PersonNotFoundException, persons_service.get_person_raw, None
-        )
-
-    def test_get_person_of_a_deleted_person(self):
-        persons_service.get_person(self.person_id)
-        persons_service.delete_person(self.person_id)
-        self.assertRaises(
-            PersonNotFoundException, persons_service.get_person, self.person_id
         )
 
     def test_get_person_hides_the_credentials(self):
@@ -279,14 +246,14 @@ class PersonListTestCase(PersonsTestCase):
             first_name="Alice",
             last_name="Zulu",
             desktop_login="alice.zulu",
-            email="alice.zulu@gmail.com",
+            email="alice.zulu@example.com",
         )
         # A third John, so the last name is what breaks the tie.
         self.generate_fixture_person(
             first_name="John",
             last_name="Aaa",
             desktop_login="john.aaa",
-            email="john.aaa@gmail.com",
+            email="john.aaa@example.com",
         )
         self.assertEqual(
             [
@@ -313,7 +280,7 @@ class PersonListTestCase(PersonsTestCase):
             guest_id,
             [
                 str(person.id)
-                for person in persons_service.get_all_raw_active_persons()
+                for person in index_service.get_all_raw_active_persons()
             ],
         )
         self.assertNotIn(
@@ -321,14 +288,48 @@ class PersonListTestCase(PersonsTestCase):
             [person["id"] for person in persons_service.get_active_persons()],
         )
 
-    def test_get_all_raw_active_persons(self):
-        persons_service.update_person(self.person_id, {"active": False})
-        self.assertNotIn(
-            self.person_id,
-            [
-                str(person.id)
-                for person in persons_service.get_all_raw_active_persons()
+    def test_count_active_users_leaves_out_bots_and_guests(self):
+        before = persons_service.count_active_users()
+        persons_service.create_person(
+            "bot@example.com", None, "Bot", "Account", is_bot=True
+        )
+        self.a_guest()
+        self.assertEqual(persons_service.count_active_users(), before)
+        persons_service.create_person(
+            "human@example.com", None, "Human", "Account"
+        )
+        self.assertEqual(persons_service.count_active_users(), before + 1)
+
+    def test_import_person_creates_then_updates_on_demand(self):
+        self.generate_fixture_department()
+        department_id = str(self.department.id)
+        data = {"first_name": "Ada", "last_name": "Lovelace"}
+
+        person = persons_service.import_person(
+            "ada@example.com", data, [department_id]
+        )
+        self.assertEqual(person["first_name"], "Ada")
+        self.assertEqual(
+            persons_service.get_person(person["id"], relations=True)[
+                "departments"
             ],
+            [department_id],
+        )
+
+        # Without update, an existing account is left alone.
+        person = persons_service.import_person(
+            "ada@example.com", {"first_name": "Augusta"}, None
+        )
+        self.assertEqual(person["first_name"], "Ada")
+        person = persons_service.import_person(
+            "ada@example.com", {"first_name": "Augusta"}, [], update=True
+        )
+        self.assertEqual(person["first_name"], "Augusta")
+        self.assertEqual(
+            persons_service.get_person(person["id"], relations=True)[
+                "departments"
+            ],
+            [],
         )
 
     def test_is_user_limit_reached(self):
@@ -378,7 +379,7 @@ class PersonWriteTestCase(PersonsTestCase):
         # unique, so an empty lookup used to return the first account
         # without a desktop login.
         persons_service.create_person(
-            "no.login@gmail.com",
+            "no.login@example.com",
             auth.encrypt_password("passwordhash"),
             "No",
             "Login",
@@ -408,7 +409,7 @@ class PersonWriteTestCase(PersonsTestCase):
 
     def test_create_person(self):
         person = persons_service.create_person(
-            "john.doe2@gmail.com",
+            "john.doe2@example.com",
             auth.encrypt_password("passwordhash"),
             "John",
             "Doe",
@@ -424,17 +425,17 @@ class PersonWriteTestCase(PersonsTestCase):
         it, and the email is the login.
         """
         persons_service.create_person(
-            " john.doe3@gmail.com \n",
+            " john.doe3@example.com \n",
             auth.encrypt_password("passwordhash"),
             "John",
             "Doe",
         )
-        person = persons_service.get_person_by_email("john.doe3@gmail.com")
+        person = persons_service.get_person_by_email("john.doe3@example.com")
         self.assertEqual(person["first_name"], "John")
 
     def test_create_person_with_an_empty_department(self):
         person = persons_service.create_person(
-            "john.doe4@gmail.com",
+            "john.doe4@example.com",
             auth.encrypt_password("passwordhash"),
             "John",
             "Doe",
@@ -591,21 +592,6 @@ class PersonWriteTestCase(PersonsTestCase):
         persons_service.update_password(self.person_email, new_password)
         self.assertEqual(Person.get(self.person_id).password, new_password)
 
-    def test_delete_person(self):
-        person = persons_service.create_person(
-            "todelete@test.com",
-            auth.encrypt_password("pass"),
-            "Delete",
-            "Me",
-        )
-        result = persons_service.delete_person(person["id"])
-        self.assertEqual(result["id"], person["id"])
-        self.assertRaises(
-            PersonNotFoundException,
-            persons_service.get_person,
-            person["id"],
-        )
-
     def test_add_to_department(self):
         department_id = str(self.department.id)
         persons_service.get_person(self.person_id)
@@ -696,7 +682,7 @@ class PresenceTestCase(PersonsTestCase):
             persons_service.create_desktop_login_logs(self.person_id, date)
 
         def work(date):
-            tasks_service.create_or_update_time_spent(
+            time_spents_service.create_or_update_time_spent(
                 task_id, self.person_id, date, 600
             )
 
@@ -772,30 +758,8 @@ class PresenceTestCase(PersonsTestCase):
         self.assertEqual(by_name["John Doe"].count("X"), 1)
 
 
-class OrganisationTestCase(PersonsTestCase):
-    """
-    The single organisation row of the instance.
-    """
-
-    def test_get_organisation(self):
-        organisation = persons_service.get_organisation()
-        self.assertIn("id", organisation)
-
-    def test_get_organisation_creates_it_once(self):
-        """
-        A fresh instance has no organisation row: the first reading makes
-        it, and every later one finds it.
-        """
-        self.assertEqual(
-            persons_service.get_organisation()["id"],
-            persons_service.get_organisation()["id"],
-        )
-
-    def test_update_organisation(self):
-        organisation = persons_service.get_organisation()
-        result = persons_service.update_organisation(
-            organisation["id"], {"name": "NewOrg"}
-        )
-        self.assertEqual(result["name"], "NewOrg")
-        # Read back through the memoized path, which the update has to drop.
-        self.assertEqual(persons_service.get_organisation()["name"], "NewOrg")
+class TokenTestCase(AuthTestCase):
+    def test_generate_reset_token(self):
+        token = persons_service.generate_reset_token()
+        self.assertEqual(len(token), 64)
+        self.assertNotEqual(token, persons_service.generate_reset_token())

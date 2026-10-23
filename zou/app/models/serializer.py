@@ -1,5 +1,6 @@
 import sqlalchemy.orm as orm
 from sqlalchemy.inspection import inspect
+
 from zou.app.utils.fields import serialize_value
 
 

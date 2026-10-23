@@ -1,7 +1,5 @@
 from tests.base import ApiDBTestCase
-
 from zou.app.models.software import Software
-
 from zou.app.utils import fields
 
 

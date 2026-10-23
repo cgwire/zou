@@ -29,6 +29,16 @@ DEFAULT_FONT_PATHS = [
 SUPERSAMPLE = 2
 
 
+# CSS rgba() with alpha as float 0..1, which PIL.ImageColor.getrgb refuses.
+_CSS_RGBA_RE = re.compile(
+    r"^\s*rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*"
+    r"(?:,\s*(\d*\.?\d+)\s*)?\)\s*$",
+    re.IGNORECASE,
+)
+
+_ELLIPSE_SAMPLES = 64
+
+
 def render_annotation_on_image(image_path, annotation):
     """
     Open `image_path`, draw the Fabric.js objects from
@@ -199,14 +209,6 @@ def _stroke_width(obj, scale):
     if raw is None:
         raw = 1
     return max(1, int(round(raw * scale)))
-
-
-# CSS rgba() with alpha as float 0..1, which PIL.ImageColor.getrgb refuses.
-_CSS_RGBA_RE = re.compile(
-    r"^\s*rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*"
-    r"(?:,\s*(\d*\.?\d+)\s*)?\)\s*$",
-    re.IGNORECASE,
-)
 
 
 def _parse_color(value, default=None):
@@ -447,9 +449,6 @@ def _draw_rect(draw, obj, scale_x, scale_y):
         _stroke_color(obj),
         _stroke_outline_width(obj, scale_x),
     )
-
-
-_ELLIPSE_SAMPLES = 64
 
 
 def _draw_ellipse(draw, obj, scale_x, scale_y):

@@ -1,5 +1,8 @@
-from tests.base import ApiDBTestCase
+from unittest.mock import patch
 
+from tests.base import ApiDBTestCase
+from zou.app.models.entity import EntityConceptLink
+from zou.app.services import concepts_service, subscriptions_service
 from zou.app.utils import fields
 
 
@@ -53,6 +56,48 @@ class EntityTestCase(ApiDBTestCase):
 
         self.put_404(f"data/entities/{fields.gen_uuid()}", data)
 
+    def test_update_entity_refreshes_casting_stats_on_ready_for_only(self):
+        """
+        The casting stats of every shot an asset is cast in were recomputed
+        on each asset update, because a payload without ready_for compared
+        as a change of it.
+        """
+        self.generate_fixture_department()
+        self.generate_fixture_task_type()
+        target = (
+            "zou.app.blueprints.crud.entity.breakdown_service"
+            ".refresh_casting_stats"
+        )
+        with patch(target) as refresh_casting_stats:
+            self.put(f"data/entities/{self.asset_1_id}", {"name": "Renamed"})
+            refresh_casting_stats.assert_not_called()
+
+            self.put(
+                f"data/entities/{self.asset_1_id}",
+                {"ready_for": str(self.task_type.id)},
+            )
+            refresh_casting_stats.assert_called_once()
+
+            refresh_casting_stats.reset_mock()
+            self.put(
+                f"data/entities/{self.asset_1_id}",
+                {"ready_for": str(self.task_type.id)},
+            )
+            refresh_casting_stats.assert_not_called()
+
+            self.put(f"data/entities/{self.asset_1_id}", {"ready_for": None})
+            refresh_casting_stats.assert_called_once()
+
+    def test_update_entity_refusal_is_a_403(self):
+        """
+        A refusal used to fall into a catch-all and come back as a 400
+        carrying the exception text, which hid it from clients and tests
+        filtering on the status.
+        """
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        self.put(f"data/entities/{self.asset_1_id}", {"name": "Nope"}, 403)
+
     def test_delete_entity(self):
         entities = self.get("data/entities")
         self.assertEqual(len(entities), 3)
@@ -61,6 +106,91 @@ class EntityTestCase(ApiDBTestCase):
         entities = self.get("data/entities")
         self.assertEqual(len(entities), 2)
         self.delete_404(f"data/entities/{fields.gen_uuid()}")
+
+    def test_delete_entity_removes_its_links(self):
+        """
+        A deletion removes the links of the entity along with it: its
+        casting in a shot and the concept tagging it.
+        """
+        self.generate_fixture_shot()
+        shot_id = str(self.shot.id)
+        self.post(
+            "data/entity-links",
+            {"entity_in_id": shot_id, "entity_out_id": self.asset_1_id},
+        )
+        concept = concepts_service.create_concept(
+            self.project_id, "Concept", entity_concept_links=[self.asset_1_id]
+        )
+        self.delete(f"data/entities/{self.asset_1_id}")
+        self.get_404(f"data/entities/{self.asset_1_id}")
+        self.assertEqual(self.get("data/entity-links"), [])
+        self.assertEqual(
+            EntityConceptLink.get_all_by(entity_out_id=self.asset_1_id), []
+        )
+        self.get(f"data/entities/{shot_id}")
+        self.get(f"data/entities/{concept['id']}")
+
+    def test_delete_sequence_removes_its_subscriptions(self):
+        """
+        A deletion removes the subscriptions of a sequence along with it.
+        """
+        self.generate_fixture_sequence()
+        self.generate_fixture_task_type()
+        sequence_id = str(self.sequence.id)
+        task_type_id = str(self.task_type_animation.id)
+        subscriptions_service.subscribe_to_sequence(
+            self.user["id"], sequence_id, task_type_id
+        )
+        self.delete(f"data/entities/{sequence_id}")
+        self.get_404(f"data/entities/{sequence_id}")
+        self.assertFalse(
+            subscriptions_service.has_sequence_subscription(
+                self.user["id"], sequence_id, task_type_id
+            )
+        )
+
+    def test_refused_entity_deletion_keeps_its_links(self):
+        """
+        The links of an entity were removed and committed before the
+        database refused to delete the entity itself: a shot with a task
+        stayed, without its casting and its concept links.
+        """
+        self.generate_fixture_shot_task()
+        shot_id = str(self.shot.id)
+        self.post(
+            "data/entity-links",
+            {"entity_in_id": shot_id, "entity_out_id": self.asset_1_id},
+        )
+        concepts_service.create_concept(
+            self.project_id, "Concept", entity_concept_links=[shot_id]
+        )
+        self.spare_fixtures_from_rollbacks()
+        self.delete(f"data/entities/{shot_id}", 400)
+        self.get(f"data/entities/{shot_id}")
+        self.assertEqual(len(self.get("data/entity-links")), 1)
+        self.assertEqual(
+            len(EntityConceptLink.get_all_by(entity_out_id=shot_id)), 1
+        )
+
+    def test_refused_sequence_deletion_keeps_its_subscriptions(self):
+        """
+        The subscriptions of a sequence were removed and committed before
+        the database refused to delete the sequence, here for its shots.
+        """
+        self.generate_fixture_shot()
+        self.generate_fixture_task_type()
+        sequence_id = str(self.sequence.id)
+        task_type_id = str(self.task_type_animation.id)
+        subscriptions_service.subscribe_to_sequence(
+            self.user["id"], sequence_id, task_type_id
+        )
+        self.spare_fixtures_from_rollbacks()
+        self.delete(f"data/entities/{sequence_id}", 400)
+        self.assertTrue(
+            subscriptions_service.has_sequence_subscription(
+                self.user["id"], sequence_id, task_type_id
+            )
+        )
 
     def test_delete_entity_link(self):
         entity_link = {

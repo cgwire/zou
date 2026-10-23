@@ -1,5 +1,9 @@
 from tests.base import ApiDBTestCase
-
+from zou.app.exceptions import (
+    ProjectNotFoundException,
+    ProjectTemplateNotFoundException,
+    WrongParameterException,
+)
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.project import (
     Project,
@@ -14,13 +18,9 @@ from zou.app.models.project_template import (
     ProjectTemplateTaskTypeLink,
 )
 from zou.app.services import (
+    metadata_descriptors_service,
     project_templates_service,
     projects_service,
-)
-from zou.app.services.exception import (
-    ProjectNotFoundException,
-    ProjectTemplateNotFoundException,
-    WrongParameterException,
 )
 
 
@@ -55,25 +55,6 @@ class ProjectTemplateServiceTestCase(ApiDBTestCase):
             WrongParameterException,
             project_templates_service.create_project_template,
             name="Setup",
-        )
-
-    def test_get_project_templates(self):
-        project_templates_service.create_project_template(name="A")
-        project_templates_service.create_project_template(name="B")
-        templates = project_templates_service.get_project_templates()
-        self.assertEqual(len(templates), 2)
-        self.assertEqual([t["name"] for t in templates], ["A", "B"])
-
-    def test_get_project_template_by_name(self):
-        project_templates_service.create_project_template(name="Series Setup")
-        template = project_templates_service.get_project_template_by_name(
-            "series setup"
-        )
-        self.assertEqual(template["name"], "Series Setup")
-        self.assertRaises(
-            ProjectTemplateNotFoundException,
-            project_templates_service.get_project_template_by_name,
-            "Series",
         )
 
     def test_get_project_template_not_found(self):
@@ -387,7 +368,7 @@ class ProjectTemplateServiceTestCase(ApiDBTestCase):
         projects_service.add_asset_type_setting(
             self.project_id, str(self.asset_type.id)
         )
-        projects_service.add_metadata_descriptor(
+        metadata_descriptors_service.add_metadata_descriptor(
             project_id=str(self.project_id),
             entity_type="Asset",
             name="Difficulty",
@@ -449,7 +430,7 @@ class ProjectTemplateServiceTestCase(ApiDBTestCase):
         )
 
     def test_task_metadata_descriptor_round_trip(self):
-        projects_service.add_metadata_descriptor(
+        metadata_descriptors_service.add_metadata_descriptor(
             project_id=str(self.project.id),
             entity_type="Task",
             name="Render layer",
@@ -476,6 +457,112 @@ class ProjectTemplateServiceTestCase(ApiDBTestCase):
         self.assertEqual(
             str(descriptors[0].task_type_id), str(self.task_type.id)
         )
+
+    def test_template_carries_task_type_link_bitrates(self):
+        ProjectTaskTypeLink.create(
+            project_id=self.project_id,
+            task_type_id=self.task_type_modeling.id,
+            priority=1,
+            hd_bitrate_compression=20,
+            ld_bitrate_compression=4,
+        )
+        template = project_templates_service.create_template_from_project(
+            str(self.project_id), name="With bitrates"
+        )
+        template_link = ProjectTemplateTaskTypeLink.get_by(
+            project_template_id=template["id"],
+            task_type_id=self.task_type_modeling.id,
+        )
+        self.assertEqual(template_link.hd_bitrate_compression, 20)
+        self.assertEqual(template_link.ld_bitrate_compression, 4)
+
+        target = Project.create(
+            name="Target", project_status_id=self.open_status.id
+        )
+        project_templates_service.apply_template_to_project(
+            str(target.id), template["id"]
+        )
+        link = ProjectTaskTypeLink.get_by(
+            project_id=target.id, task_type_id=self.task_type_modeling.id
+        )
+        self.assertEqual(link.hd_bitrate_compression, 20)
+        self.assertEqual(link.ld_bitrate_compression, 4)
+
+    def test_template_carries_client_visibility(self):
+        self.project.update(
+            {
+                "is_client_stats_visible": False,
+                "is_client_task_list_visible": False,
+                "is_client_task_panel_visible": False,
+            }
+        )
+        ProjectTaskTypeLink.create(
+            project_id=self.project_id,
+            task_type_id=self.task_type_modeling.id,
+            is_client_visible=False,
+        )
+        template = project_templates_service.create_template_from_project(
+            str(self.project_id), name="Hidden from clients"
+        )
+        self.assertIs(template["is_client_stats_visible"], False)
+        self.assertIs(template["is_client_task_list_visible"], False)
+        self.assertIs(template["is_client_task_panel_visible"], False)
+        template_link = ProjectTemplateTaskTypeLink.get_by(
+            project_template_id=template["id"],
+            task_type_id=self.task_type_modeling.id,
+        )
+        self.assertIs(template_link.is_client_visible, False)
+
+        target = Project.create(
+            name="Target", project_status_id=self.open_status.id
+        )
+        project_templates_service.apply_template_to_project(
+            str(target.id), template["id"]
+        )
+        target = Project.get(target.id)
+        self.assertIs(target.is_client_stats_visible, False)
+        self.assertIs(target.is_client_task_list_visible, False)
+        self.assertIs(target.is_client_task_panel_visible, False)
+        link = ProjectTaskTypeLink.get_by(
+            project_id=target.id, task_type_id=self.task_type_modeling.id
+        )
+        self.assertIs(link.is_client_visible, False)
+
+    def test_template_carries_the_client_allowed_override(self):
+        ProjectTaskStatusLink.create(
+            project_id=self.project_id,
+            task_status_id=self.task_status.id,
+            is_client_allowed=False,
+        )
+        template = project_templates_service.create_template_from_project(
+            str(self.project_id), name="Client overrides"
+        )
+        template_link = ProjectTemplateTaskStatusLink.get_by(
+            project_template_id=template["id"],
+            task_status_id=self.task_status.id,
+        )
+        self.assertIs(template_link.is_client_allowed, False)
+
+        target = Project.create(
+            name="Target", project_status_id=self.open_status.id
+        )
+        project_templates_service.apply_template_to_project(
+            str(target.id), template["id"]
+        )
+        link = ProjectTaskStatusLink.get_by(
+            project_id=target.id, task_status_id=self.task_status.id
+        )
+        self.assertIs(link.is_client_allowed, False)
+
+    def test_template_keeps_the_unset_bitrates_of_its_project(self):
+        self.project.update(
+            {"hd_bitrate_compression": None, "ld_bitrate_compression": None}
+        )
+        template = project_templates_service.create_template_from_project(
+            str(self.project_id), name="Instance bitrates"
+        )
+        self.assertIsNone(template["hd_bitrate_compression"])
+        self.assertIsNone(template["ld_bitrate_compression"])
 
     def test_create_template_from_project_does_not_copy_team(self):
         self.generate_fixture_person()

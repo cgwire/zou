@@ -1,13 +1,14 @@
+import math
 import os
 import shutil
 import tempfile
 import unittest
-from PIL import Image
-import math
-
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 import ffmpeg
+from PIL import Image
 
 from zou.utils import movie
 
@@ -78,6 +79,83 @@ class MovieTestCase(unittest.TestCase):
 
         """
 
+    def test_generate_tile_when_the_duration_is_underestimated(self):
+        # A short reported duration makes the tile filter emit a second
+        # sheet: the image2 muxer refuses to write it to a single file.
+        with patch.object(movie, "get_movie_duration", return_value=1.0):
+            tile_path = movie.generate_tile(self.video_only_path)
+        try:
+            self.assertEqual(Image.open(tile_path).size[1], 400)
+        finally:
+            os.remove(tile_path)
+
+    def test_generate_tile_keeps_every_frame_of_a_short_duration(self):
+        # cgwire/zou#1248: a probed duration a hair under the frame count
+        # must not drop the last frame. 41 frames need 6 rows of 8.
+        clip_path = str(Path(self.tmpdir) / "41_frames.m4v")
+        ffmpeg.input(
+            "testsrc=size=320x240:rate=25", f="lavfi", t=41 / 25
+        ).output(
+            clip_path, vcodec="mpeg4", pix_fmt="yuv420p", an=None
+        ).overwrite_output().run(
+            quiet=True
+        )
+        with patch.object(
+            movie, "get_movie_duration", return_value=41 / 25 - 1e-9
+        ):
+            tile_path = movie.generate_tile(clip_path)
+        try:
+            self.assertEqual(Image.open(tile_path).size[1], 600)
+        finally:
+            os.remove(tile_path)
+
+    def test_save_file_keeps_the_dotted_extension(self):
+        from werkzeug.datastructures import FileStorage
+
+        with open(self.video_only_path, "rb") as source:
+            uploaded = FileStorage(source, filename="clip.webm")
+            saved_path = movie.save_file(self.tmpdir, "abc", uploaded)
+        self.assertEqual(os.path.basename(saved_path), "abc.webm.tmp")
+        self.assertTrue(os.path.exists(saved_path))
+
+    def test_empty_soundtrack_path_keeps_the_container(self):
+        # A four letter extension used to be read as "tmp" then as the
+        # whole path prefix, which sent ffmpeg to a folder that does not
+        # exist.
+        self.assertEqual(
+            movie.get_empty_soundtrack_path("/tmp/zou/abc.mov.tmp"),
+            "/tmp/zou/abc.mov.tmp_empty_audio.mov",
+        )
+        self.assertEqual(
+            movie.get_empty_soundtrack_path("/tmp/zou/abc.mp4"),
+            "/tmp/zou/abc.mp4_empty_audio.mp4",
+        )
+        # WebM refuses the aac track: the output goes to an mp4 container.
+        self.assertEqual(
+            movie.get_empty_soundtrack_path("/tmp/zou/abc.webm.tmp"),
+            "/tmp/zou/abc.webm.tmp_empty_audio.mp4",
+        )
+        self.assertEqual(
+            movie.get_empty_soundtrack_path("/tmp/zou/abc"),
+            "/tmp/zou/abc_empty_audio.mp4",
+        )
+
+    def test_soundtrack_of_a_webm_upload(self):
+        webm_path = str(Path(self.tmpdir) / "clip.webm.tmp")
+        ffmpeg.input(
+            "testsrc=size=320x240:rate=25:duration=1", f="lavfi"
+        ).output(
+            webm_path, vcodec="libvpx", pix_fmt="yuv420p", an=None, f="webm"
+        ).overwrite_output().run(
+            quiet=True
+        )
+        self.assertFalse(movie.has_soundtrack(webm_path))
+
+        ret, _, _ = movie.add_empty_soundtrack(webm_path)
+
+        self.assertEqual(ret, 0)
+        self.assertTrue(movie.has_soundtrack(webm_path))
+
     def test_get_movie_size(self):
         width, height = movie.get_movie_size(self.video_only_path)
         self.assertEqual(width, 320)
@@ -100,6 +178,79 @@ class MovieTestCase(unittest.TestCase):
         self.assertEqual(width, width_norm)
         self.assertEqual(height, height_norm)
 
+    def test_normalize_encoding_rate_control(self):
+        """
+        The bitrate is the VBV cap with a buffer of the given factor; a
+        zero factor keeps a plain average bitrate target.
+        """
+        calls = []
+
+        def fake_output(*args, **kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(
+                get_args=lambda: [], run=lambda **kwargs: None
+            )
+
+        with patch.object(movie.ffmpeg, "output", fake_output):
+            movie.normalize_encoding(
+                self.video_only_path, "t", "/tmp/out.mp4", 25, 20, 320, 240
+            )
+            movie.normalize_encoding(
+                self.video_only_path,
+                "t",
+                "/tmp/out.mp4",
+                25,
+                20,
+                320,
+                240,
+                preset="slow",
+                vbv_bufsize_factor=0,
+            )
+        self.assertEqual(calls[0]["b"], "20M")
+        self.assertEqual(calls[0]["maxrate"], "20M")
+        self.assertEqual(calls[0]["bufsize"], "40M")
+        self.assertEqual(calls[0]["preset"], "medium")
+        self.assertEqual(calls[1]["preset"], "slow")
+        self.assertNotIn("maxrate", calls[1])
+        self.assertNotIn("bufsize", calls[1])
+
+    def get_stream_durations(self, path):
+        streams = ffmpeg.probe(path)["streams"]
+        return {
+            stream["codec_type"]: float(stream["duration"])
+            for stream in streams
+        }
+
+    def assert_audio_covers_video(self, path):
+        # Firefox stalls on the last frames when the audio ends before the
+        # video: the normalized audio must run to the end of the video.
+        durations = self.get_stream_durations(path)
+        self.assertGreaterEqual(durations["audio"], durations["video"] - 0.001)
+
+    def test_normalize_pads_short_audio(self):
+        video = str(Path(self.tmpdir) / "short_audio.mp4")
+        ffmpeg.output(
+            ffmpeg.input("testsrc=size=320x240:rate=25:duration=2", f="lavfi"),
+            ffmpeg.input("sine=duration=1.8", f="lavfi"),
+            video,
+            vcodec="libx264",
+            acodec="aac",
+            pix_fmt="yuv420p",
+        ).overwrite_output().run(quiet=True)
+
+        high, low, _ = movie.normalize_movie(video, 25, 320, 240)
+        self.assert_audio_covers_video(high)
+        self.assert_audio_covers_video(low)
+
+    def test_normalize_pads_added_soundtrack(self):
+        # The silent track added to movies without sound ends a packet short.
+        video = str(Path(self.tmpdir) / "no_audio.m4v")
+        shutil.copyfile(self.video_only_path, video)
+
+        high, low, _ = movie.normalize_movie(video, 25, 320, 240)
+        self.assert_audio_covers_video(high)
+        self.assert_audio_covers_video(low)
+
     def test_normalize_width_unspecified(self):
         filename = "test_normalize_no_width.m4v"
         video = str(Path(self.tmpdir) / filename)
@@ -112,6 +263,25 @@ class MovieTestCase(unittest.TestCase):
         width_norm, height_norm = movie.get_movie_size(normalized)
         self.assertEqual(width / 2, width_norm)
         self.assertEqual(height / 2, height_norm)
+
+    def test_normalize_skip_high_def(self):
+        # SKIP_NORMALIZATION_HIGHDEF and the remote normalization ask for
+        # the low def version alone: no high def path, a single encoding.
+        video = str(Path(self.tmpdir) / "test_normalize_skip_high_def.m4v")
+        shutil.copyfile(self.video_only_path, video)
+
+        with patch.object(
+            movie, "normalize_encoding", wraps=movie.normalize_encoding
+        ) as normalize_encoding:
+            high_def, low_def, err = movie.normalize_movie(
+                video, 5, 320, 240, skip_high_def=True
+            )
+
+        self.assertIsNone(high_def)
+        self.assertIsNone(err)
+        normalize_encoding.assert_called_once()
+        self.assertEqual(normalize_encoding.call_args.args[2], low_def)
+        self.assertEqual(movie.get_movie_size(low_def), (1280, 960))
 
     def test_normalize_letterbox(self):
         # A 4:3 source normalized into a 16:9 canvas must be letterboxed
@@ -147,7 +317,7 @@ class MovieTestCase(unittest.TestCase):
         # 16:9 raster) must be de-anamorphed and letterboxed into the 16:9
         # project canvas, not squished to fill it. The tile-size route test
         # cannot catch this distortion, so assert on the pixels here.
-        source = "./tests/fixtures/videos/test_preview_tiles.mp4"
+        source = "./tests/fixtures/videos/test_preview_small.mp4"
         video = str(Path(self.tmpdir) / "test_anamorphic.mp4")
         shutil.copyfile(source, video)
 
@@ -291,6 +461,49 @@ class MovieTestCase(unittest.TestCase):
         self.assertFalse(result.get("success"))
         self.assertIn("layout", result.get("message"))
 
+    def test_concat_demuxer_keeps_frame_count(self):
+        # AAC audio never ends exactly on a video frame boundary. The
+        # playlist movie must still hold the exact sum of the shot frames.
+        # The shots are encoded like the low def version normalize_movie
+        # builds, at their own size instead of 1280 wide: the frame count
+        # does not depend on it, the encoding time does.
+        lengths = [37, 50, 61, 48, 73, 29]
+        videos = []
+        for i, length in enumerate(lengths):
+            source = str(Path(self.tmpdir) / f"{i}-frame_count.mov")
+            ffmpeg.output(
+                ffmpeg.input("testsrc=size=320x240:rate=24", f="lavfi"),
+                ffmpeg.input(
+                    "sine=frequency=440:sample_rate=48000", f="lavfi"
+                ),
+                source,
+                vframes=length,
+                t=length / 24,
+                pix_fmt="yuv420p",
+            ).overwrite_output().run(quiet=True)
+            normalized = str(Path(self.tmpdir) / f"{i}-frame_count.mp4")
+            movie.normalize_encoding(
+                source,
+                "Compute low def version",
+                normalized,
+                24,
+                6,
+                320,
+                240,
+                keyframes=2,
+            )
+            videos.append((normalized, None))
+
+        out = str(Path(self.tmpdir) / "out-frame_count.mp4")
+        result = movie.build_playlist_movie(
+            movie.concat_demuxer, videos, out, 320, 240, fps=24
+        )
+        self.assertTrue(result.get("success"))
+        probe = ffmpeg.probe(out, select_streams="v", count_frames=None)
+        self.assertEqual(
+            int(probe["streams"][0]["nb_read_frames"]), sum(lengths)
+        )
+
     def test_concat_filter_testing(self):
         test_name = "test_concate_filter"
         self.concat_testing(movie.concat_filter, test_name)
@@ -302,7 +515,20 @@ class MovieTestCase(unittest.TestCase):
             filename = f"{i}-{test_name}.m4v"
             video = str(Path(self.tmpdir) / filename)
             shutil.copyfile(self.video_only_path, video)
-            normalized, _, _ = movie.normalize_movie(video, 5, width, height)
+            # Encoded like the high def version of normalize_movie, which
+            # would also encode a 1280 wide low def one nothing here reads.
+            movie.add_empty_soundtrack(video)
+            normalized = str(Path(self.tmpdir) / f"{i}-{test_name}.mp4")
+            movie.normalize_encoding(
+                video,
+                "Compute high def version",
+                normalized,
+                5,
+                28,
+                width,
+                height,
+                keyframes=2,
+            )
             # 2nd item isn't used by build_playlist_movie
             videos.append((normalized, None))
 
@@ -338,6 +564,19 @@ class MovieTestCase(unittest.TestCase):
 
         self.assertEqual(img_width, target_width * 8)
         self.assertEqual(img_height, 100 * rows)
+
+    def test_create_tile_decodes_on_one_thread(self):
+        """
+        A tile build runs next to the API on the web host: ffmpeg must not
+        take every core to decode the movie.
+        """
+        video_path = "./tests/fixtures/videos/test_preview_small.mp4"
+        with patch.object(
+            movie.ffmpeg, "input", wraps=ffmpeg.input
+        ) as ffmpeg_input:
+            tile_path = movie.generate_tile(video_path)
+        os.remove(tile_path)
+        self.assertEqual(ffmpeg_input.call_args.kwargs.get("threads"), 1)
 
     def test_get_movie_fps(self):
         for r_frame_rate, expected in [

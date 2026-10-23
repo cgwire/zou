@@ -1,19 +1,29 @@
+from flasgger import swag_from
 from slugify import slugify
+
 from zou.app.blueprints.source.csv.base import (
     BaseCsvProjectImportResource,
     RowException,
 )
-
 from zou.app.services import (
     assets_service,
-    shots_service,
-    tasks_service,
-    persons_service,
+    organisation_service,
     permissions_service,
-    user_service,
+    shots_service,
+    task_types_service,
+    tasks_service,
 )
-
 from zou.app.utils import date_helpers
+
+
+def snap_to_whole(value):
+    """
+    Return the whole number a float result lands a hair off, the value
+    otherwise: 2.05 hours make 122.99999999999999 minutes, and 22.8 hours
+    at 7.6 hours a day make 3.0000000000000004 days.
+    """
+    whole = round(value)
+    return whole if abs(value - whole) < 1e-6 else value
 
 
 class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
@@ -23,73 +33,16 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
             project_id, task_type["id"]
         )
 
+    @swag_from("openapi/TaskTypeEstimationsCsvImportResource_post.yml")
     def post(self, project_id, task_type_id, episode_id=None):
         """
         Import task type estimations csv
-        ---
-        tags:
-          - Import
-        description: Import task type estimations from a CSV file. Updates
-          estimations, dates, and other task properties for assets or shots
-          based on CSV rows.
-        consumes:
-          - multipart/form-data
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: task_type_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: b24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: file
-            type: file
-            required: true
-            description: CSV file with task estimation data
-        responses:
-            201:
-              description: Task estimations imported successfully
-              content:
-                application/json:
-                  schema:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: Asset Modeling
-                        estimation:
-                          type: integer
-                          example: 480
-                        start_date:
-                          type: string
-                          format: date
-                          example: "2024-01-15"
-                        due_date:
-                          type: string
-                          format: date
-                          example: "2024-01-25"
-            400:
-              description: Invalid CSV format or entity not found
         """
-        task_type = tasks_service.get_task_type(task_type_id)
+        task_type = task_types_service.get_task_type(task_type_id)
         return super().post(project_id, task_type, episode_id)
 
     def prepare_import(self, project_id, task_type, episode_id=None):
-        self.organisation = persons_service.get_organisation()
+        self.organisation = organisation_service.get_organisation()
         self.assets_map = {}
         self.shots_map = {}
         self.tasks_map = {}
@@ -153,13 +106,11 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
             )
 
         new_data = {}
+        estimation = None
 
         if row.get("Estimation") not in [None, ""]:
-            new_data["estimation"] = round(
-                float(row["Estimation"])
-                * self.organisation["hours_by_day"]
-                * 60
-            )
+            estimation = float(row["Estimation"])
+            new_data["estimation"] = self.get_estimation_minutes(estimation)
 
         if row.get("Drawings") not in [None, ""]:
             new_data["nb_drawings"] = int(row["Drawings"])
@@ -175,7 +126,8 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
             )
         elif new_data.get("start_date") and new_data.get("estimation"):
             new_data["due_date"] = date_helpers.add_business_days_to_date(
-                new_data["start_date"], float(row["Estimation"]) - 1
+                new_data["start_date"],
+                self.get_estimation_days(estimation) - 1,
             )
 
         if row.get("Difficulty") not in [None, ""]:
@@ -190,77 +142,36 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
 
         tasks_service.update_task(task["id"], new_data)
 
+    def get_estimation_minutes(self, estimation):
+        """
+        Return in minutes an estimation given in the unit Kitsu shows and
+        exports estimations in: hours when the organisation displays
+        durations in hours, days otherwise.
+        """
+        if self.organisation["format_duration_in_hours"]:
+            # Unrounded, as Kitsu stores the hours typed in its lists:
+            # whole minutes would bring 0.66 hours back as 0.67.
+            return snap_to_whole(estimation * 60)
+        return round(estimation * self.organisation["hours_by_day"] * 60)
+
+    def get_estimation_days(self, estimation):
+        """
+        Return in days an estimation given in the unit Kitsu shows and
+        exports estimations in.
+        """
+        if self.organisation["format_duration_in_hours"]:
+            return snap_to_whole(
+                estimation / self.organisation["hours_by_day"]
+            )
+        return estimation
+
 
 class TaskTypeEstimationsEpisodeCsvImportResource(
     TaskTypeEstimationsCsvImportResource
 ):
+    @swag_from("openapi/TaskTypeEstimationsEpisodeCsvImportResource_post.yml")
     def post(self, project_id, task_type_id, episode_id):
         """
         Import episode task type estimations csv
-        ---
-        tags:
-          - Import
-        description: Import task type estimations from a CSV file for a
-          specific episode. Updates estimations, dates, and other task
-          properties for assets or shots based on CSV rows.
-        consumes:
-          - multipart/form-data
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: task_type_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: b24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: episode_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: c24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: file
-            type: file
-            required: true
-            description: CSV file with task estimation data
-        responses:
-            201:
-              description: Task estimations imported successfully
-              content:
-                application/json:
-                  schema:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: Asset Modeling
-                        estimation:
-                          type: integer
-                          example: 480
-                        start_date:
-                          type: string
-                          format: date
-                          example: "2024-01-15"
-                        due_date:
-                          type: string
-                          format: date
-                          example: "2024-01-25"
-            400:
-              description: Invalid CSV format or entity not found
         """
         return super().post(project_id, task_type_id, episode_id)

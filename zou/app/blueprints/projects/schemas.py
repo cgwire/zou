@@ -38,6 +38,14 @@ class ProjectAssetTypeSchema(BaseSchema):
     asset_type_id: str = Field(..., min_length=1)
 
 
+class ProjectTaskTypeSoftwareSchema(BaseSchema):
+    """
+    Body for linking a software to a task type of a project.
+    """
+
+    software_id: str = Field(..., min_length=1)
+
+
 class ProjectTaskTypeSchema(BaseSchema):
     """
     Body for adding a task type to a project.
@@ -45,6 +53,19 @@ class ProjectTaskTypeSchema(BaseSchema):
 
     task_type_id: str = Field(..., min_length=1)
     priority: Optional[int] = None
+    hd_bitrate_compression: Optional[int] = Field(None, ge=1)
+    ld_bitrate_compression: Optional[int] = Field(None, ge=1)
+    is_client_visible: Optional[bool] = None
+
+    def bitrates(self):
+        """
+        The bitrates to write on the link, or None when the body did not
+        mention them: a priority-only call leaves them as they are.
+        """
+        keys = ("hd_bitrate_compression", "ld_bitrate_compression")
+        if not self.model_fields_set.intersection(keys):
+            return None
+        return {key: getattr(self, key) for key in keys}
 
 
 class ProjectTaskStatusSchema(BaseSchema):
@@ -53,6 +74,15 @@ class ProjectTaskStatusSchema(BaseSchema):
     """
 
     task_status_id: str = Field(..., min_length=1)
+
+
+class ProjectTaskStatusClientAllowedSchema(BaseSchema):
+    """
+    Body for overriding whether the clients of a project may set a task
+    status. The field is required, a null reverts to the studio value.
+    """
+
+    is_client_allowed: Optional[bool] = Field(...)
 
 
 class ProjectSettingsBatchSchema(BaseSchema):
@@ -196,3 +226,11 @@ class ScheduleVersionCopySchema(BaseSchema):
     """
 
     production_schedule_version_id: str = Field(..., min_length=1)
+
+
+class PreviewAccountOpenSchema(BaseSchema):
+    """
+    Body for opening or closing the access window of a preview account.
+    """
+
+    is_open: bool

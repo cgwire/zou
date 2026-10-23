@@ -30,10 +30,12 @@ class ImportShotgunProjectConnectionsTestCase(ShotgunTestCase):
         self.load_fixture("projectconnections")
         self.load_fixture("projectconnections")
         projects = self.get("data/projects")
+        projects = sorted(projects, key=lambda x: x["name"])
         project = projects_service.get_project(
             projects[0]["id"],
             relations=True,
         )
+        self.assertEqual(project["name"], "Agent327")
         self.assertEqual(len(project["team"]), 2)
 
     def test_import_project_connection(self):
@@ -51,8 +53,62 @@ class ImportShotgunProjectConnectionsTestCase(ShotgunTestCase):
         self.assertEqual(len(self.projects), 1)
 
         projects = self.get("data/projects")
+        projects = sorted(projects, key=lambda x: x["name"])
         project = projects_service.get_project(
-            projects[1]["id"],
+            projects[0]["id"],
             relations=True,
         )
+        self.assertEqual(project["name"], "Agent327")
         self.assertEqual(len(project["team"]), 1)
+
+    def test_import_project_connection_refreshes_the_team(self):
+        self.load_fixture("persons")
+        self.load_fixture("projects")
+        projects = sorted(self.get("data/projects"), key=lambda x: x["name"])
+        project_id = projects[0]["id"]
+        # Cache the team before the import adds a member to it.
+        project = projects_service.get_project(project_id, relations=True)
+        self.assertEqual(len(project["team"]), 0)
+
+        sg_project_persons = {
+            "id": 1,
+            "project": {"type": "Project", "id": 1, "name": "Agent327"},
+            "user": {"type": "HumanUser", "id": 1, "name": "Jhon Doe"},
+            "type": "ProjectUserConnection",
+        }
+        self.post(
+            "/import/shotgun/project-connections", [sg_project_persons], 200
+        )
+        project = projects_service.get_project(project_id, relations=True)
+        self.assertEqual(len(project["team"]), 1)
+
+    def test_remove_project_connection(self):
+        """
+        The removal route looked the link up through BaseMixin.get_by,
+        which the bare link table does not have: it answered 500 whatever
+        the body.
+        """
+        self.load_fixture("persons")
+        self.load_fixture("projects")
+        self.load_fixture("projectconnections")
+        projects = sorted(self.get("data/projects"), key=lambda x: x["name"])
+        agent = projects_service.get_project(projects[0]["id"], relations=True)
+        self.assertEqual(len(agent["team"]), 2)
+
+        result = self.post(
+            "/import/shotgun/remove/project-connection", {"id": 3}, 200
+        )
+        self.assertTrue(result["success"])
+        agent = projects_service.get_project(agent["id"], relations=True)
+        self.assertEqual(len(agent["team"]), 1)
+
+        # An unknown connection is not an error.
+        result = self.post(
+            "/import/shotgun/remove/project-connection", {"id": 999}, 200
+        )
+        self.assertTrue(result["success"])
+
+    def test_remove_project_connection_needs_an_admin(self):
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        self.post("/import/shotgun/remove/project-connection", {"id": 3}, 403)

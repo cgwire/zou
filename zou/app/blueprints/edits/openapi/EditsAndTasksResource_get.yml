@@ -1,0 +1,92 @@
+Get edits and tasks
+---
+description: Retrieve all edits with project name and all related tasks.
+tags:
+  - Edits
+parameters:
+  - in: query
+    name: project_id
+    required: false
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Filter edits by specific project
+  - in: query
+    name: name
+    required: false
+    type: string
+    example: "Opening Sequence"
+    description: Filter edits by name
+  - in: query
+    name: force
+    required: false
+    type: boolean
+    default: false
+    description: Force parameter for additional filtering
+    example: false
+responses:
+  200:
+    description: Edits with tasks successfully retrieved
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Edit unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                description: Edit name
+                example: "Opening Sequence"
+              description:
+                type: string
+                description: Edit description
+                example: "Main opening sequence edit"
+              project_id:
+                type: string
+                format: uuid
+                description: Project identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              project_name:
+                type: string
+                description: Project name
+                example: "My Animation Project"
+              episode_id:
+                type: string
+                format: uuid
+                description: Episode identifier
+                example: c46c80c6-e097-6887-c292-79675204e470
+              tasks:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                      description: Task unique identifier
+                      example: d57d91d7-f108-7998-d403-80786315f580
+                    name:
+                      type: string
+                      description: Task name
+                      example: "Edit Task"
+                    task_type_id:
+                      type: string
+                      format: uuid
+                      description: Task type identifier
+                      example: e68e02e8-0219-8009-e514-918974260690
+              created_at:
+                type: string
+                format: date-time
+                description: Creation timestamp
+                example: "2023-01-01T12:00:00Z"
+              updated_at:
+                type: string
+                format: date-time
+                description: Last update timestamp
+                example: "2023-01-01T12:30:00Z"

@@ -1,84 +1,103 @@
 from flask import Blueprint
 
-from zou.app.utils.api import configure_api_from_blueprint
-
 from zou.app.blueprints.crud.asset_instance import (
     AssetInstanceResource,
     AssetInstancesResource,
 )
 from zou.app.blueprints.crud.attachment_file import (
-    AttachmentFilesResource,
     AttachmentFileResource,
+    AttachmentFilesResource,
 )
-from zou.app.blueprints.crud.comments import CommentsResource, CommentResource
+from zou.app.blueprints.crud.budget import BudgetResource, BudgetsResource
+from zou.app.blueprints.crud.budget_entry import (
+    BudgetEntriesResource,
+    BudgetEntryResource,
+)
+from zou.app.blueprints.crud.chat import ChatResource, ChatsResource
+from zou.app.blueprints.crud.chat_message import (
+    ChatMessageResource,
+    ChatMessagesResource,
+)
+from zou.app.blueprints.crud.comments import CommentResource, CommentsResource
 from zou.app.blueprints.crud.custom_action import (
-    CustomActionsResource,
     CustomActionResource,
+    CustomActionsResource,
 )
-from zou.app.blueprints.crud.status_automation import (
-    StatusAutomationsResource,
-    StatusAutomationResource,
-)
-from zou.app.blueprints.crud.day_off import DayOffsResource, DayOffResource
+from zou.app.blueprints.crud.day_off import DayOffResource, DayOffsResource
 from zou.app.blueprints.crud.department import (
-    DepartmentsResource,
     DepartmentResource,
+    DepartmentsResource,
 )
-from zou.app.blueprints.crud.entity import EntityResource, EntitiesResource
-from zou.app.blueprints.crud.entity_type import (
-    EntityTypesResource,
-    EntityTypeResource,
-)
+from zou.app.blueprints.crud.entity import EntitiesResource, EntityResource
 from zou.app.blueprints.crud.entity_link import (
-    EntityLinksResource,
     EntityLinkResource,
+    EntityLinksResource,
 )
-from zou.app.blueprints.crud.event import EventsResource, EventResource
+from zou.app.blueprints.crud.entity_type import (
+    EntityTypeResource,
+    EntityTypesResource,
+)
+from zou.app.blueprints.crud.event import EventResource, EventsResource
 from zou.app.blueprints.crud.file_status import (
     FileStatusesResource,
     FileStatusResource,
 )
+from zou.app.blueprints.crud.hardware_item import (
+    HardwareItemResource,
+    HardwareItemsResource,
+)
 from zou.app.blueprints.crud.metadata_descriptor import (
-    MetadataDescriptorsResource,
     MetadataDescriptorResource,
+    MetadataDescriptorsResource,
 )
 from zou.app.blueprints.crud.milestone import (
-    MilestonesResource,
     MilestoneResource,
+    MilestonesResource,
 )
+from zou.app.blueprints.crud.news import NewsResource, NewssResource
 from zou.app.blueprints.crud.notification import (
-    NotificationsResource,
     NotificationResource,
+    NotificationsResource,
 )
 from zou.app.blueprints.crud.organisation import (
-    OrganisationsResource,
     OrganisationResource,
+    OrganisationsResource,
 )
 from zou.app.blueprints.crud.output_file import (
-    OutputFilesResource,
     OutputFileResource,
+    OutputFilesResource,
 )
 from zou.app.blueprints.crud.output_type import (
     OutputTypeResource,
     OutputTypesResource,
 )
-from zou.app.blueprints.crud.news import NewssResource, NewsResource
 from zou.app.blueprints.crud.person import PersonResource, PersonsResource
-from zou.app.blueprints.crud.preview_file import (
-    PreviewFilesResource,
-    PreviewFileResource,
-)
 from zou.app.blueprints.crud.playlist import (
-    PlaylistsResource,
     PlaylistResource,
+    PlaylistsResource,
+)
+from zou.app.blueprints.crud.plugin import PluginResource, PluginsResource
+from zou.app.blueprints.crud.preview_background_file import (
+    PreviewBackgroundFileResource,
+    PreviewBackgroundFilesResource,
+)
+from zou.app.blueprints.crud.preview_file import (
+    PreviewFileResource,
+    PreviewFilesResource,
+)
+from zou.app.blueprints.crud.production_schedule_version import (
+    ProductionScheduleVersionResource,
+    ProductionScheduleVersionsResource,
+    ProductionScheduleVersionTaskLinkResource,
+    ProductionScheduleVersionTaskLinksResource,
 )
 from zou.app.blueprints.crud.project import (
     ProjectResource,
     ProjectsResource,
-    ProjectTaskTypeLinksResource,
+    ProjectTaskStatusLinksReorderResource,
     ProjectTaskStatusLinksResource,
     ProjectTaskTypeLinksReorderResource,
-    ProjectTaskStatusLinksReorderResource,
+    ProjectTaskTypeLinksResource,
 )
 from zou.app.blueprints.crud.project_status import (
     ProjectStatusResource,
@@ -88,74 +107,54 @@ from zou.app.blueprints.crud.project_template import (
     ProjectTemplateResource,
     ProjectTemplatesResource,
 )
-from zou.app.blueprints.crud.schedule_item import (
-    ScheduleItemsResource,
-    ScheduleItemResource,
+from zou.app.blueprints.crud.salary_scale import (
+    SalaryScaleResource,
+    SalaryScalesResource,
 )
-from zou.app.blueprints.crud.subscription import (
-    SubscriptionsResource,
-    SubscriptionResource,
+from zou.app.blueprints.crud.schedule_item import (
+    ScheduleItemResource,
+    ScheduleItemsResource,
 )
 from zou.app.blueprints.crud.search_filter import (
-    SearchFiltersResource,
     SearchFilterResource,
+    SearchFiltersResource,
 )
 from zou.app.blueprints.crud.search_filter_group import (
-    SearchFilterGroupsResource,
     SearchFilterGroupResource,
-)
-from zou.app.blueprints.crud.hardware_item import (
-    HardwareItemsResource,
-    HardwareItemResource,
+    SearchFilterGroupsResource,
 )
 from zou.app.blueprints.crud.software import (
-    SoftwaresResource,
     SoftwareResource,
+    SoftwaresResource,
 )
-from zou.app.blueprints.crud.task_type import (
-    TaskTypesResource,
-    TaskTypeResource,
-    TaskTypesReorderResource,
+from zou.app.blueprints.crud.status_automation import (
+    StatusAutomationResource,
+    StatusAutomationsResource,
 )
+from zou.app.blueprints.crud.studio import StudioResource, StudiosResource
+from zou.app.blueprints.crud.subscription import (
+    SubscriptionResource,
+    SubscriptionsResource,
+)
+from zou.app.blueprints.crud.task import TaskResource, TasksResource
 from zou.app.blueprints.crud.task_status import (
     TaskStatusesResource,
     TaskStatusResource,
 )
-from zou.app.blueprints.crud.task import TasksResource, TaskResource
+from zou.app.blueprints.crud.task_type import (
+    TaskTypeResource,
+    TaskTypesReorderResource,
+    TaskTypesResource,
+)
 from zou.app.blueprints.crud.time_spent import (
-    TimeSpentsResource,
     TimeSpentResource,
+    TimeSpentsResource,
 )
 from zou.app.blueprints.crud.working_file import (
-    WorkingFilesResource,
     WorkingFileResource,
+    WorkingFilesResource,
 )
-from zou.app.blueprints.crud.preview_background_file import (
-    PreviewBackgroundFileResource,
-    PreviewBackgroundFilesResource,
-)
-from zou.app.blueprints.crud.chat import ChatResource, ChatsResource
-from zou.app.blueprints.crud.chat_message import (
-    ChatMessageResource,
-    ChatMessagesResource,
-)
-from zou.app.blueprints.crud.studio import StudioResource, StudiosResource
-from zou.app.blueprints.crud.salary_scale import (
-    SalaryScalesResource,
-    SalaryScaleResource,
-)
-from zou.app.blueprints.crud.budget import BudgetsResource, BudgetResource
-from zou.app.blueprints.crud.budget_entry import (
-    BudgetEntriesResource,
-    BudgetEntryResource,
-)
-from zou.app.blueprints.crud.plugin import PluginResource, PluginsResource
-from zou.app.blueprints.crud.production_schedule_version import (
-    ProductionScheduleVersionResource,
-    ProductionScheduleVersionsResource,
-    ProductionScheduleVersionTaskLinkResource,
-    ProductionScheduleVersionTaskLinksResource,
-)
+from zou.app.utils.api import configure_api_from_blueprint
 
 routes = [
     ("/data/persons", PersonsResource),

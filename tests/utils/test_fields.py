@@ -5,12 +5,19 @@ import uuid
 from babel import Locale
 from pytz import timezone
 
-from zou.app.utils import fields
 from zou.app.models.person import Person
 from zou.app.models.task import Task
+from zou.app.utils import fields
 
 
 class FieldsTestCase(unittest.TestCase):
+    def test_serialize_value_keeps_the_fraction_of_a_round_second(self):
+        round_second = datetime.datetime(2026, 10, 5, 17, 0, 9)
+        self.assertEqual(
+            fields.serialize_value(round_second, milliseconds=True),
+            "2026-10-05T17:00:09.000000",
+        )
+
     def test_serialize_value(self):
         now = datetime.datetime.now()
         self.assertEqual(
@@ -50,6 +57,10 @@ class FieldsTestCase(unittest.TestCase):
         self.assertTrue(fields.is_valid_id(unique_id))
         self.assertFalse(fields.is_valid_id("undefined"))
         self.assertFalse(fields.is_valid_id(None))
+        # A UUID followed by anything is not one: uuid.UUID() rejects it, so
+        # letting it through turns a 400 into a database error.
+        for suffix in ("\n", " ", "zz", "?x=1", "/download"):
+            self.assertFalse(fields.is_valid_id(f"{unique_id}{suffix}"))
 
     def test_serialize_orm_array(self):
         person = Person(id=uuid.uuid4(), first_name="Jhon", last_name="Doe")

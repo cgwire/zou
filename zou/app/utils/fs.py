@@ -6,12 +6,29 @@ import shutil
 import threading
 import time
 import uuid
+
 from flask_fs.errors import FileNotFound
 
 logger = logging.getLogger(__name__)
 
 MAX_CONCURRENT_CACHE_FILLS = 4
 _cache_fill_slots = threading.BoundedSemaphore(MAX_CONCURRENT_CACHE_FILLS)
+
+
+MISSING_OBJECT_ERROR_CODES = {
+    "404",
+    "NoSuchKey",
+    "NoSuchBucket",
+    "NotFound",
+}
+
+# Pause before the single retry of a transient storage failure. The
+# storage clients already retry on their own (FS_SWIFT_RETRIES, botocore's
+# retry mode), so this second chance only has to outlast a hiccup: a long
+# pause here holds a request worker for nothing.
+TRANSIENT_RETRY_DELAY = 0.5
+
+STALE_PART_AGE = 3600
 
 
 def mkdir_p(path):
@@ -30,14 +47,6 @@ def rm_file(path):
 
 def copyfile(src, dest):
     shutil.copyfile(src, dest)
-
-
-MISSING_OBJECT_ERROR_CODES = {
-    "404",
-    "NoSuchKey",
-    "NoSuchBucket",
-    "NotFound",
-}
 
 
 def is_missing_file_error(exception):
@@ -86,6 +95,59 @@ def is_range_error(exception):
     return False
 
 
+def is_auth_failure(exception):
+    """
+    Tell whether a Swift operation failed because Keystone could not
+    hand out a token (a 503 on the identity service, for instance).
+    swiftclient raises it with no HTTP status and, unlike a 5xx from
+    Swift itself, never retries it.
+    """
+    return getattr(exception, "http_status", "") is None and str(
+        exception
+    ).startswith("Authorization Failure")
+
+
+class ConfirmedFileNotFound(FileNotFound):
+    """
+    The storage answered that the file does not exist: a 404, or a local
+    file absent, empty or of the wrong size. A plain FileNotFound may also
+    stand for a transient failure the retry did not get past.
+    """
+
+
+def is_confirmed_missing_error(exception):
+    """
+    Tell an absence the storage itself confirmed (a 404, or an object
+    store's own missing-object code) apart from every other failure.
+
+    Unlike is_missing_file_error, a bare FileNotFoundError or FileNotFound
+    is NOT confirmed here: download_to_file raises those for its own local
+    temp file too (TMP_DIR missing, or the .part removed from under it by
+    a concurrent _remove_stale_parts), which says nothing about whether
+    the remote object exists. Only an exception the storage backend itself
+    raised for a missing object - already a ConfirmedFileNotFound, or
+    carrying a 404 / a known missing-object code - confirms the absence.
+    """
+    if exception is None:
+        return False
+    if isinstance(exception, ConfirmedFileNotFound):
+        return True
+    if isinstance(exception, (FileNotFound, FileNotFoundError)):
+        return False
+    for attribute in ("http_status", "status", "status_code"):
+        if getattr(exception, attribute, None) == 404:
+            return True
+    response = getattr(exception, "response", None)
+    if isinstance(response, dict):
+        metadata = response.get("ResponseMetadata") or {}
+        if metadata.get("HTTPStatusCode") == 404:
+            return True
+        error = response.get("Error") or {}
+        if error.get("Code") in MISSING_OBJECT_ERROR_CODES:
+            return True
+    return False
+
+
 def get_cache_file_path(config, prefix, instance_id, extension):
     """
     Path of the local copy kept for a file stored on a remote backend.
@@ -94,9 +156,6 @@ def get_cache_file_path(config, prefix, instance_id, extension):
         config.TMP_DIR,
         f"cache-{prefix}-{instance_id}.{extension}",
     )
-
-
-STALE_PART_AGE = 3600
 
 
 def _remove_stale_parts(file_path):
@@ -176,7 +235,16 @@ def fill_cache_in_background(file_path, open_file, prefix, instance_id):
             exception = download_to_file(
                 file_path, open_file, prefix, instance_id
             )
-            if exception is not None and not is_missing_file_error(exception):
+            # Keystone down is transient and the request did not depend
+            # on the fill: the next request fills the cache.
+            if is_auth_failure(exception):
+                logger.warning(
+                    f"Cache fill failed for {prefix}-{instance_id}: "
+                    f"{exception!r}"
+                )
+            elif exception is not None and not is_missing_file_error(
+                exception
+            ):
                 logger.error(
                     f"Cache fill failed for {prefix}-{instance_id}: "
                     f"{exception!r}"
@@ -201,7 +269,7 @@ def get_file_path_and_file(
     if config.FS_BACKEND == "local":
         file_path = get_local_path(prefix, instance_id)
         if is_invalid_file(file_path, file_size):
-            raise FileNotFound
+            raise ConfirmedFileNotFound(f"{prefix}-{instance_id}")
     else:
         file_path = get_cache_file_path(config, prefix, instance_id, extension)
 
@@ -212,14 +280,14 @@ def get_file_path_and_file(
             # The cache entry is only ever replaced as a whole, so a
             # concurrent request may well have completed it while this
             # one was failing: the disk is checked before paying for a
-            # retry. An object that is not there will not be there three
-            # seconds later either, only a transient failure deserves the
+            # retry. An object that is not there will not be there a
+            # moment later either, only a transient failure deserves the
             # retry: the movie routes probe up to three prefixes and
             # would otherwise sleep on each missing one.
             if is_invalid_file(
                 file_path, file_size
             ) and not is_missing_file_error(exception):
-                time.sleep(3)
+                time.sleep(TRANSIENT_RETRY_DELAY)
                 exception = download_to_file(
                     file_path, open_file, prefix, instance_id
                 )
@@ -227,15 +295,20 @@ def get_file_path_and_file(
             if is_invalid_file(file_path, file_size):
                 rm_file(file_path)
                 if exception is not None:
-                    if isinstance(exception, FileNotFound):
+                    if isinstance(exception, ConfirmedFileNotFound):
                         raise exception
+                    if is_confirmed_missing_error(exception):
+                        raise ConfirmedFileNotFound(
+                            f"{prefix}-{instance_id}"
+                        ) from exception
                     raise FileNotFound(
                         f"{prefix}-{instance_id}"
                     ) from exception
                 else:
                     # The download reported success but the file is still
                     # missing or empty: treat it as absent (404) like the
-                    # local backend does, not an unhandled 500.
+                    # local backend does, not an unhandled 500. Not a
+                    # confirmed absence: the storage never said so.
                     raise FileNotFound(f"{prefix}-{instance_id}")
 
     return file_path

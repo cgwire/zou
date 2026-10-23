@@ -1,8 +1,8 @@
 from sqlalchemy_utils import UUIDType, ChoiceType
 
 from zou.app import db
-from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
+from zou.app.models.serializer import SerializerMixin
 from zou.app.utils import fields
 
 MILESTONE_TYPES = [

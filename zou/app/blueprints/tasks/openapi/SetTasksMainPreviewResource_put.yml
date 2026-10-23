@@ -1,0 +1,31 @@
+Set main preview from several tasks
+---
+tags:
+  - Tasks
+description: For each task in the id list, set its last preview as
+  the main preview of the related entity. Useful to set thumbnails
+  for a selection in one request. Tasks without a preview are
+  skipped. Returns the updated entities.
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - task_ids
+        properties:
+          task_ids:
+            type: array
+            items:
+              type: string
+              format: uuid
+responses:
+    200:
+        description: Entities whose main preview was updated
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object

@@ -6,8 +6,8 @@ from flask import jsonify
 
 from zou import __version__
 from zou.app.openapi_schemas import (
-    AssetSchema,
     AssetInstanceSchema,
+    AssetSchema,
     AssetTypeSchema,
     AttachmentFileSchema,
     BuildJobSchema,
@@ -39,8 +39,8 @@ from zou.app.openapi_schemas import (
     ShotSchema,
     SoftwareSchema,
     StatusAutomationSchema,
-    SubscriptionToNotificationsSchema,
     StudioSchema,
+    SubscriptionToNotificationsSchema,
     TaskSchema,
     TaskStatusSchema,
     TaskTypeSchema,
@@ -264,7 +264,7 @@ swagger_template = {
                     "type": "string",
                     "format": "UUID",
                     "description": "A unique ID made of letters, hyphens and numbers",
-                    "example": "a24a6ea4-ce75-4665-a070-57453082c25",
+                    "example": "a24a6ea4-ce75-4665-a070-57453082c250",
                 },
                 "created_at": {
                     "type": "string",
@@ -327,7 +327,9 @@ def configure_openapi_route(app, swagger_instance):
     def openapi_spec():
         api_spec = swagger_instance.get_apispecs("openapi")
 
-        json_path = os.path.join(app.root_path, "openapi-code-samples.json")
+        json_path = os.path.join(
+            app.root_path, "data", "openapi-code-samples.json"
+        )
         with open(json_path, "r") as f:
             code_samples_spec = json.load(f)
 

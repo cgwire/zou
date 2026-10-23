@@ -1,12 +1,11 @@
 from tests.base import ApiDBTestCase
-
-from zou.app.utils import fields
 from zou.app.models.task import Task
 from zou.app.services import (
-    tasks_service,
     persons_service,
     projects_service,
+    tasks_service,
 )
+from zou.app.utils import fields
 
 
 class PreviewFileTestCase(ApiDBTestCase):
@@ -68,6 +67,31 @@ class PreviewFileTestCase(ApiDBTestCase):
     def test_get_preview_files(self):
         preview_files = self.get("data/preview-files")
         self.assertEqual(len(preview_files), 6)
+
+    def test_get_preview_files_by_project(self):
+        preview_files = self.get(
+            f"data/preview-files?project_id={self.project1.id}"
+        )
+        self.assertEqual(
+            sorted(preview_file["name"] for preview_file in preview_files),
+            ["PROJ1_TASK1_PF1", "PROJ1_TASK2_PF1"],
+        )
+        preview_files = self.get(
+            f"data/preview-files?project_id={self.project2.id}&page=1"
+        )
+        self.assertEqual(preview_files["total"], 4)
+        self.get("data/preview-files?project_id=not-an-id", 400)
+
+    def test_get_preview_files_by_project_for_artist(self):
+        self.log_in_cg_artist()
+        preview_files = self.get(
+            f"data/preview-files?project_id={self.project1.id}"
+        )
+        self.assertEqual(len(preview_files), 2)
+        preview_files = self.get(
+            f"data/preview-files?project_id={self.project2.id}"
+        )
+        self.assertEqual(preview_files, [])
 
     def test_get_preview_files_for_artist(self):
         """

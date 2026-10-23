@@ -1,0 +1,22 @@
+Extract tile from preview
+---
+description: Extract a tile from a preview file movie.
+tags:
+  - Previews
+parameters:
+  - in: path
+    name: preview_file_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Preview file unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+responses:
+  200:
+    description: Extracted tile as PNG image
+    content:
+      image/png:
+        schema:
+          type: string
+          format: binary

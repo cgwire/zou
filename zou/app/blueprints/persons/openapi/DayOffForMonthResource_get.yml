@@ -1,0 +1,34 @@
+Get day offs for month
+---
+description: Return all day off recorded for given month, for
+  everybody the caller may read. Admins get them all, managers and
+  supervisors get the ones of the team of their productions, the
+  latter without description, everybody else gets their own only.
+tags:
+  - Persons
+parameters:
+  - in: path
+    name: year
+    required: true
+    schema:
+      type: integer
+    description: Year to get day offs for
+    example: 2022
+  - in: path
+    name: month
+    required: true
+    schema:
+      type: integer
+    description: Month to get day offs for
+    example: 7
+    minimum: 1
+    maximum: 12
+responses:
+  200:
+    description: All day off recorded for given month
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object

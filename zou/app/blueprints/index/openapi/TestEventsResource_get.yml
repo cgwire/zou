@@ -1,0 +1,16 @@
+Generate a test event
+---
+description: Generate a `main:test` event to test the event stream with the Python client or similar.
+tags:
+  - Index
+responses:
+  '200':
+    description: Success flag
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+              example: true

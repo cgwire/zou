@@ -1,53 +1,28 @@
+from flasgger import swag_from
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 from slugify import slugify
 
-from zou.app.utils import date_helpers
-
 from zou.app.services import (
     entities_service,
     files_service,
-    names_service,
-    playlists_service,
+    permissions_service,
     persons_service,
+    playlists_service,
     projects_service,
     shots_service,
-    permissions_service,
-    user_service,
+    task_types_service,
     tasks_service,
 )
-from zou.app.utils import csv_utils
+from zou.app.utils import csv_utils, date_helpers
 
 
 class PlaylistCsvExport(MethodView):
     @jwt_required()
+    @swag_from("openapi/PlaylistCsvExport_get.yml")
     def get(self, playlist_id):
         """
         Export playlist csv
-        ---
-        tags:
-          - Export
-        description: Export playlist as CSV file. Includes playlist shots
-          with preview information, task statuses, comments, and revision
-          details.
-        produces:
-          - text/csv
-        parameters:
-          - in: path
-            name: playlist_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-              description: Playlist exported as CSV successfully
-              content:
-                text/csv:
-                  schema:
-                    type: string
-                  example: "Entity name,Nb Frames,Task Type,Retake count,Revision,Task Status,Last comment author,Last comment date,Last comment\nSH010,120,Animation,2,10,WIP,John Doe,2024-01-15,Good work"
         """
         permissions_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
@@ -55,8 +30,8 @@ class PlaylistCsvExport(MethodView):
             playlist, supervisor_access=True
         )
         project = projects_service.get_project(playlist["project_id"])
-        self.task_type_map = tasks_service.get_task_type_map()
-        self.task_status_map = tasks_service.get_task_status_map()
+        self.task_type_map = task_types_service.get_task_type_map()
+        self.task_status_map = task_types_service.get_task_status_map()
         task_ids = []
         for shot in playlist["shots"]:
             preview_file = files_service.get_preview_file(
@@ -114,7 +89,7 @@ class PlaylistCsvExport(MethodView):
 
     def build_row(self, shot):
         entity = entities_service.get_entity(shot["entity_id"])
-        name, _, _ = names_service.get_full_entity_name(shot["entity_id"])
+        name, _, _ = entities_service.get_full_entity_name(shot["entity_id"])
         preview_file = files_service.get_preview_file(shot["preview_file_id"])
         task = tasks_service.get_task(preview_file["task_id"])
         task_type = self.task_type_map[task["task_type_id"]]

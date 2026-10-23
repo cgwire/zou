@@ -1,0 +1,48 @@
+Add person to department
+---
+description: Add a user to given department.
+tags:
+  - Persons
+parameters:
+  - in: path
+    name: person_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Person unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - department_id
+        properties:
+          department_id:
+            type: string
+            format: uuid
+            description: Department unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d360
+responses:
+  201:
+    description: User added to given department
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Person unique identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            department_id:
+              type: string
+              format: uuid
+              description: Department unique identifier
+              example: b35b7fb5-df86-5776-b181-68564193d360
+  400:
+    description: Invalid department ID

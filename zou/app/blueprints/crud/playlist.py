@@ -1,18 +1,18 @@
+from flasgger import swag_from
 from flask_jwt_extended import jwt_required
+from sqlalchemy import or_
 
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
+from zou.app.exceptions import WrongParameterException
 from zou.app.models.playlist import Playlist
-from zou.app.models.build_job import BuildJob
-from zou.app.models.notification import Notification
-from zou.app.models.playlist_share_link import PlaylistShareLink
 from zou.app.services import (
+    cascade_deletion_service,
     permissions_service,
     persons_service,
     playlists_service,
+    preview_files_service,
     user_service,
 )
-from zou.app.services.exception import WrongParameterException
-
-from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.utils import fields, permissions
 
 
@@ -41,153 +41,50 @@ class PlaylistsResource(BaseModelsResource):
     def add_project_permission_filter(self, query):
         if permissions.has_admin_permissions():
             return query
-        if permissions.has_client_permissions():
-            query = query.filter(Playlist.for_client)
+        # Each playlist follows the role held on its own project: on the
+        # ones where the user is a client, only the playlists shared with
+        # clients are listed, as the playlists route of a production does,
+        # and on the ones where they are a vendor, none, as a playlist read
+        # refuses them there.
+        project_roles = user_service.get_team_project_roles()
+        client_project_ids = [
+            project_id
+            for project_id, role in project_roles.items()
+            if role == "client"
+        ]
+        vendor_project_ids = [
+            project_id
+            for project_id, role in project_roles.items()
+            if role == "vendor"
+        ]
+        if vendor_project_ids:
+            query = query.filter(
+                Playlist.project_id.not_in(vendor_project_ids)
+            )
+        if client_project_ids:
+            query = query.filter(
+                or_(
+                    Playlist.for_client,
+                    Playlist.project_id.not_in(client_project_ids),
+                )
+            )
         return query.filter(
-            user_service.build_team_exists_filter(Playlist.project_id)
+            persons_service.build_team_exists_filter(Playlist.project_id)
         )
 
     @jwt_required()
+    @swag_from("openapi/PlaylistsResource_get.yml")
     def get(self):
         """
         Get playlists
-        ---
-        tags:
-          - Crud
-        description: Retrieve all playlists. Supports filtering via query
-          parameters and pagination.
-        parameters:
-          - in: query
-            name: page
-            required: false
-            schema:
-              type: integer
-            example: 1
-            description: Page number for pagination
-          - in: query
-            name: limit
-            required: false
-            schema:
-              type: integer
-            example: 50
-            description: Number of results per page
-          - in: query
-            name: relations
-            required: false
-            schema:
-              type: boolean
-            default: false
-            example: false
-            description: Whether to include relations
-        responses:
-            200:
-              description: Playlists retrieved successfully
-              content:
-                application/json:
-                  schema:
-                    oneOf:
-                      - type: array
-                        items:
-                          type: object
-                      - type: object
-                        properties:
-                          data:
-                            type: array
-                            items:
-                              type: object
-                            example: []
-                          total:
-                            type: integer
-                            example: 100
-                          nb_pages:
-                            type: integer
-                            example: 2
-                          limit:
-                            type: integer
-                            example: 50
-                          offset:
-                            type: integer
-                            example: 0
-                          page:
-                            type: integer
-                            example: 1
-            400:
-              description: Invalid filter format or query error
         """
         return super().get()
 
     @jwt_required()
+    @swag_from("openapi/PlaylistsResource_post.yml")
     def post(self):
         """
         Create playlist
-        ---
-        tags:
-          - Crud
-        description: Create a new playlist with data provided in the
-          request body. JSON format is expected. Requires supervisor
-          access to the project.
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - name
-                  - project_id
-                properties:
-                  name:
-                    type: string
-                    example: Playlist Name
-                  project_id:
-                    type: string
-                    format: uuid
-                    example: a24a6ea4-ce75-4665-a070-57453082c25
-                  episode_id:
-                    type: string
-                    format: uuid
-                    example: b24a6ea4-ce75-4665-a070-57453082c25
-                  task_type_id:
-                    type: string
-                    format: uuid
-                    example: c24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            201:
-              description: Playlist created successfully
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      name:
-                        type: string
-                        example: Playlist Name
-                      project_id:
-                        type: string
-                        format: uuid
-                        example: b24a6ea4-ce75-4665-a070-57453082c25
-                      episode_id:
-                        type: string
-                        format: uuid
-                        example: c24a6ea4-ce75-4665-a070-57453082c25
-                      task_type_id:
-                        type: string
-                        format: uuid
-                        example: d24a6ea4-ce75-4665-a070-57453082c25
-                      created_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-            400:
-              description: Invalid data format or validation error
         """
         return super().post()
 
@@ -205,6 +102,8 @@ class PlaylistsResource(BaseModelsResource):
             data["task_type_id"]
         ):
             data["task_type_id"] = None
+        if isinstance(data.get("shots"), list):
+            preview_files_service.unpin_foreign_preview_files(data["shots"])
         data["created_by"] = persons_service.get_current_user()["id"]
         return data
 
@@ -214,198 +113,34 @@ class PlaylistResource(BaseModelResource):
         BaseModelResource.__init__(self, Playlist)
 
     def check_read_permissions(self, playlist):
-        permissions_service.check_project_access(playlist["project_id"])
-        permissions_service.block_access_to_vendor()
+        permissions_service.check_playlist_read_access(playlist)
 
     @jwt_required()
+    @swag_from("openapi/PlaylistResource_get.yml")
     def get(self, instance_id):
         """
         Get playlist
-        ---
-        tags:
-          - Crud
-        description: Retrieve a playlist by its ID and return it as a JSON
-          object. Supports including relations. Requires project access.
-          Vendor access is blocked.
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: relations
-            required: false
-            schema:
-              type: boolean
-            default: true
-            example: true
-            description: Whether to include relations
-        responses:
-            200:
-              description: Playlist retrieved successfully
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      name:
-                        type: string
-                        example: Playlist Name
-                      project_id:
-                        type: string
-                        format: uuid
-                        example: b24a6ea4-ce75-4665-a070-57453082c25
-                      episode_id:
-                        type: string
-                        format: uuid
-                        example: c24a6ea4-ce75-4665-a070-57453082c25
-                      task_type_id:
-                        type: string
-                        format: uuid
-                        example: d24a6ea4-ce75-4665-a070-57453082c25
-                      shots:
-                        type: array
-                        items:
-                          type: object
-                        example: []
-                      created_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-            400:
-              description: Invalid ID format or query error
         """
         return super().get(instance_id)
 
     @jwt_required()
+    @swag_from("openapi/PlaylistResource_put.yml")
     def put(self, instance_id):
         """
         Update playlist
-        ---
-        tags:
-          - Crud
-        description: Update a playlist with data provided in the request
-          body. JSON format is expected. Requires project access. Vendor
-          access is blocked.
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  name:
-                    type: string
-                    example: Updated Playlist Name
-                  shots:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        entity_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        preview_file_id:
-                          type: string
-                          format: uuid
-                          example: c24a6ea4-ce75-4665-a070-57453082c25
-                    example: []
-        responses:
-            200:
-              description: Playlist updated successfully
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      name:
-                        type: string
-                        example: Updated Playlist Name
-                      project_id:
-                        type: string
-                        format: uuid
-                        example: b24a6ea4-ce75-4665-a070-57453082c25
-                      shots:
-                        type: array
-                        items:
-                          type: object
-                        example: []
-                      created_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T11:00:00Z"
-            400:
-              description: Invalid data format or validation error
         """
         return super().put(instance_id)
 
     @jwt_required()
+    @swag_from("openapi/PlaylistResource_delete.yml")
     def delete(self, instance_id):
         """
         Delete playlist
-        ---
-        tags:
-          - Crud
-        description: Delete a playlist by its ID. Returns empty response
-          on success.
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            204:
-              description: Playlist deleted successfully
-            400:
-              description: Integrity error or cannot delete
         """
         return super().delete(instance_id)
 
     def pre_delete(self, playlist):
-        notifications = Notification.query.filter_by(
-            playlist_id=playlist["id"]
-        ).all()
-        for notification in notifications:
-            notification.delete()
-        query = BuildJob.query.filter_by(playlist_id=playlist["id"])
-        for job in query.all():
-            playlists_service.remove_build_job(playlist, job.id)
-        share_links = PlaylistShareLink.query.filter_by(
-            playlist_id=playlist["id"]
-        ).all()
-        for share_link in share_links:
-            share_link.delete()
+        cascade_deletion_service.remove_playlist_dependents(playlist)
 
     def check_update_permissions(self, playlist, data):
         return permissions_service.check_playlist_update_access(playlist)
@@ -413,15 +148,20 @@ class PlaylistResource(BaseModelResource):
     def pre_update(self, instance_dict, data):
         _check_for_entity(data)
         if "shots" in data:
+            # An entry without preview is served without the key, and the
+            # client saves it back that way: keep it, with no preview.
             shots = [
                 {
-                    "entity_id": shot.get("entity_id", shot.get("id", "")),
-                    "preview_file_id": shot["preview_file_id"],
+                    "entity_id": shot.get("entity_id") or shot.get("id"),
+                    "preview_file_id": shot.get("preview_file_id"),
                 }
                 for shot in data["shots"]
-                if "preview_file_id" in shot
+                if isinstance(shot, dict)
+                and (shot.get("entity_id") or shot.get("id"))
             ]
-            data["shots"] = shots
+            data["shots"] = preview_files_service.unpin_foreign_preview_files(
+                shots
+            )
         return data
 
     def check_delete_permissions(self, playlist):

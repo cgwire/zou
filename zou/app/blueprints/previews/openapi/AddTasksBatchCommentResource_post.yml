@@ -1,0 +1,29 @@
+Add tasks batch comments
+---
+description: Creates new comments for given tasks. Each comment requires
+  a task_id, text, a task_status and a person as arguments. Can include
+  preview files and attachments.
+tags:
+  - Comments
+requestBody:
+  required: true
+  content:
+    multipart/form-data:
+      schema:
+        type: object
+        required:
+          - comments
+        properties:
+          comments:
+            type: string
+            description: JSON string containing array of comments
+            example: '[{"task_id": "uuid", "text": "Good work", "task_status_id": "uuid"}]'
+responses:
+  201:
+    description: New comments created
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object

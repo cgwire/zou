@@ -1,23 +1,22 @@
-from datetime import datetime
+from datetime import date, datetime, timedelta
 
 from tests.base import ApiDBTestCase
-
 from zou.app import db
+from zou.app.exceptions import (
+    ProductionScheduleVersionNotFoundException,
+    WrongParameterException,
+)
 from zou.app.models.entity import Entity
 from zou.app.models.milestone import Milestone
-from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.production_schedule_version import (
     ProductionScheduleVersion,
     ProductionScheduleVersionTaskLink,
     ProductionScheduleVersionTaskLinkPersonLink,
 )
+from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 from zou.app.services import projects_service, schedule_service, tasks_service
-from zou.app.services.exception import (
-    ProductionScheduleVersionNotFoundException,
-    WrongParameterException,
-)
 
 
 class ScheduleTestCase(ApiDBTestCase):
@@ -119,6 +118,81 @@ class ScheduleItemTestCase(ScheduleTestCase):
         self.assertEqual(items[0]["object_id"], self.episode_id)
         self.assertEqual(items[0]["task_type_id"], self.task_type_id)
         self.assertEqual(items[0]["project_id"], self.project_id)
+
+    def test_new_entity_items_span_the_task_type_bar(self):
+        """
+        A row created on demand spans the bar of its task type, not the day
+        it is first listed: the schedule shows it where the task type is
+        planned. Without a task type bar, it takes a day from today.
+        """
+        ScheduleItem.create(
+            project_id=self.project.id,
+            task_type_id=self.task_type.id,
+            start_date=date(2026, 3, 2),
+            end_date=date(2026, 4, 10),
+        )
+
+        items = schedule_service.get_episodes_schedule_items(
+            self.project.id, self.task_type_id
+        )
+
+        self.assertEqual(items[0]["start_date"], "2026-03-02")
+        self.assertEqual(items[0]["end_date"], "2026-04-10")
+
+    def test_untouched_entity_items_follow_the_task_type_bar(self):
+        """
+        A row nobody moved yet shows at the bar of its task type, whatever
+        the dates it was created with: the rows listed before the task type
+        was planned land on its bar too. A moved row keeps its own dates.
+        """
+        ScheduleItem.create(
+            project_id=self.project.id,
+            task_type_id=self.task_type.id,
+            start_date=date(2026, 3, 2),
+            end_date=date(2026, 4, 10),
+        )
+        episode_2 = self.generate_fixture_episode(name="E02")
+        ScheduleItem.create(
+            project_id=self.project.id,
+            task_type_id=self.task_type.id,
+            object_id=self.episode_id,
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 1, 2),
+        )
+        moved = ScheduleItem.create(
+            project_id=self.project.id,
+            task_type_id=self.task_type.id,
+            object_id=episode_2.id,
+            start_date=date(2026, 5, 4),
+            end_date=date(2026, 5, 8),
+        )
+        moved.updated_at = moved.created_at + timedelta(hours=1)
+        db.session.commit()
+
+        items = {
+            item["object_id"]: item
+            for item in schedule_service.get_episodes_schedule_items(
+                self.project.id, self.task_type_id
+            )
+        }
+
+        untouched = items[self.episode_id]
+        self.assertEqual(
+            (untouched["start_date"], untouched["end_date"]),
+            ("2026-03-02", "2026-04-10"),
+        )
+        moved = items[str(episode_2.id)]
+        self.assertEqual(
+            (moved["start_date"], moved["end_date"]),
+            ("2026-05-04", "2026-05-08"),
+        )
+
+    def test_new_entity_items_without_a_task_type_bar(self):
+        items = schedule_service.get_sequences_schedule_items(
+            self.project.id, self.task_type_id
+        )
+
+        self.assertEqual(items[0]["start_date"], date.today().isoformat())
 
     def test_get_schedule_episode_items_for_episode(self):
         episode_1_id = self.episode_id
@@ -323,6 +397,39 @@ class ScheduleItemTestCase(ScheduleTestCase):
         self.assertEqual(
             [item["task_type_id"] for item in items], [self.task_type_id]
         )
+
+    def test_get_task_types_schedule_items_ignores_removed_task_types(self):
+        """
+        A task type removed from the production settings keeps its tasks,
+        yet leaves the schedule. Its row stays stored: added back, the task
+        type finds it again. A production with no task type settings keeps
+        every task type with tasks (test_get_schedule_items).
+        """
+        self.generate_fixture_shot_task()
+        animation_id = str(self.task_type_animation.id)
+        projects_service.add_task_type_setting(
+            self.project_id, self.task_type_id
+        )
+        projects_service.add_task_type_setting(self.project_id, animation_id)
+        items = schedule_service.get_task_types_schedule_items(self.project_id)
+        animation_item_id = next(
+            item["id"]
+            for item in items
+            if item["task_type_id"] == animation_id
+        )
+
+        projects_service.remove_task_type_setting(
+            self.project_id, animation_id
+        )
+        items = schedule_service.get_task_types_schedule_items(self.project_id)
+        self.assertEqual(
+            [item["task_type_id"] for item in items], [self.task_type_id]
+        )
+
+        projects_service.add_task_type_setting(self.project_id, animation_id)
+        items = schedule_service.get_task_types_schedule_items(self.project_id)
+        self.assertIn(animation_item_id, [item["id"] for item in items])
+        self.assertEqual(len(items), 2)
 
     def test_get_task_types_schedule_items_ignores_concepts(self):
         """

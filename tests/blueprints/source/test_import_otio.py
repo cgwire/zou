@@ -1,11 +1,11 @@
 import os
 import tempfile
-
 from io import BytesIO
+from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
-
-from zou.app.services import shots_service
+from zou.app.models.task import Task
+from zou.app.services import index_service, projects_service, shots_service
 
 # (name, nb_frames, frame_in, frame_out) of the first two cuts both edl
 # fixtures describe.
@@ -85,6 +85,45 @@ class ImportOTIOEdlTestCase(ApiDBTestCase):
         self.assertIn("Unsupported file type '.csv'", result["message"])
         self.assertIn("edl", result["message"])
 
+    def test_a_nameless_clip_is_named_after_its_media_reference(self):
+        """
+        EDL and XML exports often leave the clip name empty and only fill
+        the media reference. Deriving the name from it used to unpack a
+        string into two variables and fail the whole import. The media
+        follows the default naming convention, as every clip must.
+        """
+        import opentimelineio as otio
+
+        clip = otio.schema.Clip(
+            name="",
+            media_reference=otio.schema.ExternalReference(
+                target_url="/renders/TestProject_SQ010-sc010.mov"
+            ),
+            source_range=otio.opentime.TimeRange(
+                otio.opentime.RationalTime(0, 25),
+                otio.opentime.RationalTime(10, 25),
+            ),
+        )
+        clip.media_reference.name = "TestProject_SQ010-sc010.mov"
+        track = otio.schema.Track(kind=otio.schema.TrackKind.Video)
+        track.append(clip)
+        timeline = otio.schema.Timeline(name="cut")
+        timeline.tracks.append(track)
+
+        path = f"/import/otio/projects/{self.project.id}"
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".otio", delete=False
+        ) as otio_file:
+            otio_file.write(otio.adapters.write_to_string(timeline))
+        try:
+            self.upload_file(path, otio_file.name)
+        finally:
+            os.remove(otio_file.name)
+
+        self.assertEqual(
+            [shot["name"] for shot in shots_service.get_shots()], ["sc010"]
+        )
+
     def test_import_unparseable_file(self):
         result = self._upload_bad_file(".edl", "this is not an edl\n")
         self.assertIn("Failed to parse OTIO file", result["message"])
@@ -150,4 +189,63 @@ class ImportOTIOEdlTestCase(ApiDBTestCase):
         self.assertEqual(
             {sequence["parent_id"] for sequence in sequences},
             {str(episode.id)},
+        )
+
+    def test_import_edl_indexes_the_shots_in_one_call(self):
+        # Waiting on the indexer for every clip made a long timeline last
+        # longer than Kitsu waited for its answer.
+        with patch.object(index_service, "index_shot") as index_shot:
+            with patch.object(
+                index_service, "remove_shot_index"
+            ) as remove_shot_index:
+                with patch.object(index_service, "index_shots") as index_shots:
+                    self.import_edl("no_offset.edl")
+                    self.import_edl("no_offset.edl")
+
+        index_shot.assert_not_called()
+        remove_shot_index.assert_not_called()
+        shot_ids = {shot["id"] for shot in shots_service.get_shots()}
+        self.assertEqual(len(shot_ids), 3)
+        self.assertEqual(index_shots.call_count, 2)
+        for call in index_shots.call_args_list:
+            self.assertEqual({str(id) for id in call.args[0]}, shot_ids)
+
+    def test_import_edl_indexes_the_shots_saved_before_a_failure(self):
+        # The third clip does not follow the naming convention.
+        path = f"/import/otio/projects/{self.project.id}"
+        file_path = self.get_fixture_file_path(
+            os.path.join("edl", "unmatched_clip.edl")
+        )
+        with patch.object(index_service, "index_shots") as index_shots:
+            self.upload_file(path, file_path, 400)
+
+        shot_ids = {shot["id"] for shot in shots_service.get_shots()}
+        self.assertEqual(len(shot_ids), 2)
+        index_shots.assert_called_once()
+        self.assertEqual(
+            {str(id) for id in index_shots.call_args.args[0]}, shot_ids
+        )
+
+    def test_import_edl_creates_the_tasks_of_clips_before_a_failure(self):
+        # The tasks were created once the whole timeline was imported: a
+        # failing clip left the shots saved before it without them, and a
+        # new import does not create them.
+        self.generate_fixture_task_type()
+        projects_service.add_task_type_setting(
+            self.project.id, self.task_type_layout.id
+        )
+        path = f"/import/otio/projects/{self.project.id}"
+        file_path = self.get_fixture_file_path(
+            os.path.join("edl", "unmatched_clip.edl")
+        )
+        self.upload_file(path, file_path, 400)
+
+        shot_ids = {shot["id"] for shot in shots_service.get_shots()}
+        self.assertEqual(len(shot_ids), 2)
+        self.assertEqual(
+            {
+                (str(task.entity_id), str(task.task_type_id))
+                for task in Task.query.all()
+            },
+            {(shot_id, str(self.task_type_layout.id)) for shot_id in shot_ids},
         )

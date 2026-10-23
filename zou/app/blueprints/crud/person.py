@@ -1,16 +1,18 @@
 import datetime
 
 import sqlalchemy.orm as orm
+from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 from sqlalchemy.inspection import inspect
 
 from zou.app.models.person import (
-    Person,
-    ROLE_TYPES,
     CONTRACT_TYPES,
     DISPLAY_DATE_FORMATS,
+    ROLE_TYPES,
     SENSITIVE_FIELDS,
     TWO_FACTOR_AUTHENTICATION_TYPES,
+    TWO_FACTOR_FIELDS,
+    Person,
     normalize_country,
     normalize_locale,
 )
@@ -36,24 +38,30 @@ MINIMAL_PERSON_FILTER_FIELDS = [
     "is_bot",
     "is_guest",
 ]
-from zou.app.services import (
-    deletion_service,
-    index_service,
-    persons_service,
+from zou.app import config
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
+from zou.app.exceptions import (
+    PersonInProtectedAccounts,
+    WrongParameterException,
 )
-from zou.app.utils import permissions, auth, date_helpers
+from zou.app.mixin import ArgsMixin
+from zou.app.services import (
+    cascade_deletion_service,
+    index_service,
+    organisation_service,
+    persons_service,
+    user_service,
+)
+from zou.app.utils import auth, date_helpers, permissions
 from zou.app.utils.fields import serialize_value
 
-from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
-
-from zou.app.mixin import ArgsMixin
-
-from zou.app.services.exception import (
-    WrongParameterException,
-    PersonInProtectedAccounts,
-)
-
-from zou.app import config
+# Set only by preview_accounts_service: through CRUD they would turn a
+# regular account into a seat-free one admins can no longer edit.
+PREVIEW_FIELDS = [
+    "preview_project_id",
+    "preview_opened_at",
+    "preview_open_until",
+]
 
 
 def check_country(data):
@@ -101,199 +109,29 @@ def check_display_date_format(data):
 class PersonsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, Person)
+        self.protected_fields += PREVIEW_FIELDS
 
     def get_relations_eager_load(self):
         return [Person.departments]
 
+    def add_project_permission_filter(self, query):
+        # Applied before pagination: all_entries gets an already limited
+        # query on paginated calls.
+        return query.filter(Person.preview_project_id.is_(None))
+
     @jwt_required()
+    @swag_from("openapi/PersonsResource_get.yml")
     def get(self):
         """
         Get persons
-        ---
-        tags:
-          - Crud
-        description: Retrieve all persons. Supports filtering via query
-          parameters and pagination. Admin users can include password
-          hashes. Non-admin users only see minimal information.
-        parameters:
-          - in: query
-            name: page
-            required: false
-            schema:
-              type: integer
-            example: 1
-            description: Page number for pagination
-          - in: query
-            name: limit
-            required: false
-            schema:
-              type: integer
-            example: 50
-            description: Number of results per page
-          - in: query
-            name: relations
-            required: false
-            schema:
-              type: boolean
-            default: false
-            example: false
-            description: Whether to include relations
-          - in: query
-            name: with_pass_hash
-            required: false
-            schema:
-              type: boolean
-            default: false
-            example: false
-            description: Include password hash (admin only)
-        responses:
-            200:
-              description: Persons retrieved successfully
-              content:
-                application/json:
-                  schema:
-                    oneOf:
-                      - type: array
-                        items:
-                          type: object
-                      - type: object
-                        properties:
-                          data:
-                            type: array
-                            items:
-                              type: object
-                            example: []
-                          total:
-                            type: integer
-                            example: 100
-                          nb_pages:
-                            type: integer
-                            example: 2
-                          limit:
-                            type: integer
-                            example: 50
-                          offset:
-                            type: integer
-                            example: 0
-                          page:
-                            type: integer
-                            example: 1
-            400:
-              description: Invalid filter format or query error
         """
         return super().get()
 
     @jwt_required()
+    @swag_from("openapi/PersonsResource_post.yml")
     def post(self):
         """
         Create person
-        ---
-        tags:
-          - Crud
-        description: Create a new person with data provided in the
-          request body. JSON format is expected. Requires admin
-          permissions. Validates role, contract_type, two_factor_authentication,
-          email, and expiration_date. Checks user limit for active non-bot users.
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - first_name
-                  - last_name
-                  - email
-                properties:
-                  first_name:
-                    type: string
-                    example: John
-                  last_name:
-                    type: string
-                    example: Doe
-                  email:
-                    type: string
-                    format: email
-                    example: john.doe@example.com
-                  password:
-                    type: string
-                    example: securepassword123
-                  role:
-                    type: string
-                    example: user
-                  active:
-                    type: boolean
-                    default: true
-                    example: true
-                  contract_type:
-                    type: string
-                    example: permanent
-                  two_factor_authentication:
-                    type: string
-                    example: none
-                  expiration_date:
-                    type: string
-                    format: date
-                    example: "2025-12-31"
-                  is_bot:
-                    type: boolean
-                    default: false
-                    example: false
-                  country:
-                    type: string
-                    description: ISO 3166-1 alpha-2 country code (nullable)
-                    example: FR
-        responses:
-            201:
-              description: Person created successfully
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      first_name:
-                        type: string
-                        example: John
-                      last_name:
-                        type: string
-                        example: Doe
-                      email:
-                        type: string
-                        format: email
-                        example: john.doe@example.com
-                      role:
-                        type: string
-                        example: user
-                      active:
-                        type: boolean
-                        example: true
-                      contract_type:
-                        type: string
-                        example: permanent
-                      two_factor_authentication:
-                        type: string
-                        example: none
-                      country:
-                        type: string
-                        description: ISO 3166-1 alpha-2 country code (nullable)
-                        example: FR
-                      access_token:
-                        type: string
-                        example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9
-                      created_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-            400:
-              description: Invalid data format or validation error or user limit reached
         """
         return super().post()
 
@@ -322,6 +160,12 @@ class PersonsResource(BaseModelsResource):
                     person.serialize_safe(relations=relations)
                     for person in query.all()
                 ]
+        elif permissions.has_client_permissions():
+            team_ids = user_service.get_client_team_person_ids()
+            return [
+                person.present_client()
+                for person in query.filter(Person.id.in_(team_ids)).all()
+            ]
         else:
             return [
                 person.present_minimal(relations=relations)
@@ -355,7 +199,7 @@ class PersonsResource(BaseModelsResource):
             raise WrongParameterException(
                 "User limit reached.",
                 {
-                    "limit": persons_service.get_user_limit(),
+                    "limit": organisation_service.get_user_limit(),
                 },
             )
         return permissions.check_admin_permissions()
@@ -435,216 +279,34 @@ class PersonsResource(BaseModelsResource):
 class PersonResource(BaseModelResource, ArgsMixin):
     def __init__(self):
         BaseModelResource.__init__(self, Person)
-        self.protected_fields += ["password", "jti"]
+        self.protected_fields += [
+            "password",
+            "jti",
+            *TWO_FACTOR_FIELDS,
+            *PREVIEW_FIELDS,
+        ]
 
     def check_read_permissions(self, instance):
+        if (
+            permissions.has_client_permissions()
+            and instance["id"] not in user_service.get_client_team_person_ids()
+        ):
+            raise permissions.PermissionDenied
         return True
 
     @jwt_required()
+    @swag_from("openapi/PersonResource_get.yml")
     def get(self, instance_id):
         """
         Get person
-        ---
-        tags:
-          - Crud
-        description: Retrieve a person by their ID and return it as a
-          JSON object. Supports including relations. Managers see safe
-          serialization, others see minimal information.
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: relations
-            required: false
-            schema:
-              type: boolean
-            default: true
-            example: true
-            description: Whether to include relations
-        responses:
-            200:
-              description: Person retrieved successfully
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      first_name:
-                        type: string
-                        example: John
-                      last_name:
-                        type: string
-                        example: Doe
-                      email:
-                        type: string
-                        format: email
-                        example: john.doe@example.com
-                      role:
-                        type: string
-                        example: user
-                      active:
-                        type: boolean
-                        example: true
-                      contract_type:
-                        type: string
-                        example: permanent
-                      two_factor_authentication:
-                        type: string
-                        example: none
-                      departments:
-                        type: array
-                        items:
-                          type: string
-                          format: uuid
-                        example: []
-                      country:
-                        type: string
-                        description: ISO 3166-1 alpha-2 country code (nullable)
-                        example: FR
-                      created_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-            400:
-              description: Invalid ID format or query error
         """
         return super().get(instance_id)
 
     @jwt_required()
+    @swag_from("openapi/PersonResource_put.yml")
     def put(self, instance_id):
         """
         Update person
-        ---
-        tags:
-          - Crud
-        description: Update a person with data provided in the request
-          body. JSON format is expected. Users can only update themselves
-          unless they have admin permissions. Non-admins cannot change
-          certain protected fields. Validates role, contract_type,
-          two_factor_authentication, email, and expiration_date. Checks
-          user limit when activating non-bot users. Protected accounts
-          have restrictions.
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  first_name:
-                    type: string
-                    example: Jane
-                  last_name:
-                    type: string
-                    example: Smith
-                  email:
-                    type: string
-                    format: email
-                    example: jane.smith@example.com
-                  password:
-                    type: string
-                    example: newsecurepassword123
-                  role:
-                    type: string
-                    example: manager
-                    description: Admin only
-                  active:
-                    type: boolean
-                    example: true
-                    description: Admin only
-                  contract_type:
-                    type: string
-                    example: freelance
-                  two_factor_authentication:
-                    type: string
-                    example: totp
-                  expiration_date:
-                    type: string
-                    format: date
-                    example: "2025-12-31"
-                    description: Person or admin only
-                  country:
-                    type: string
-                    description: ISO 3166-1 alpha-2 country code (nullable)
-                    example: FR
-        responses:
-            200:
-              description: Person updated successfully
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      first_name:
-                        type: string
-                        example: Jane
-                      last_name:
-                        type: string
-                        example: Smith
-                      email:
-                        type: string
-                        format: email
-                        example: jane.smith@example.com
-                      role:
-                        type: string
-                        example: manager
-                      active:
-                        type: boolean
-                        example: true
-                      contract_type:
-                        type: string
-                        example: freelance
-                      two_factor_authentication:
-                        type: string
-                        example: totp
-                      departments:
-                        type: array
-                        items:
-                          type: string
-                          format: uuid
-                        example: []
-                      country:
-                        type: string
-                        description: ISO 3166-1 alpha-2 country code (nullable)
-                        example: FR
-                      access_token:
-                        type: string
-                        example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9
-                      created_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T11:00:00Z"
-            400:
-              description: Invalid data format or validation error or user limit reached or protected account restriction
         """
         return super().put(instance_id)
 
@@ -670,6 +332,10 @@ class PersonResource(BaseModelResource, ArgsMixin):
             data.pop("last_login_failed", None)
             data.pop("is_generated_from_ldap", None)
             data.pop("ldap_uid", None)
+            data.pop("oidc_issuer", None)
+            data.pop("oidc_subject", None)
+            data.pop("saml_issuer", None)
+            data.pop("saml_subject", None)
             data.pop("last_presence", None)
             data.pop("studio_id", None)
 
@@ -740,10 +406,16 @@ class PersonResource(BaseModelResource, ArgsMixin):
     def serialize_instance(self, instance, relations=True):
         if permissions.has_manager_permissions():
             return instance.serialize_safe(relations=relations)
+        elif permissions.has_client_permissions():
+            return instance.present_client()
         else:
             return instance.present_minimal(relations=relations)
 
     def pre_update(self, instance_dict, data):
+        # Preview accounts are managed by their own routes only, a role or
+        # email change would turn one into a regular account.
+        if instance_dict.get("preview_project_id") is not None:
+            raise permissions.PermissionDenied
         if (
             not instance_dict.get("active", False)
             and data.get("active", False)
@@ -800,42 +472,17 @@ class PersonResource(BaseModelResource, ArgsMixin):
         return instance_dict
 
     @jwt_required()
+    @swag_from("openapi/PersonResource_delete.yml")
     def delete(self, instance_id):
         """
         Delete person
-        ---
-        tags:
-          - Crud
-        description: Delete a person by their ID. Returns empty response
-          on success. Cannot delete yourself.
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: force
-            required: false
-            schema:
-              type: boolean
-            default: false
-            example: false
-            description: Force deletion even if person has associated data
-        responses:
-            204:
-              description: Person deleted successfully
-            400:
-              description: Cannot delete person or integrity error
         """
         force = self.get_force()
         person = self.get_model_or_404(instance_id)
         person_dict = person.serialize()
         self.check_delete_permissions(person_dict)
         self.pre_delete(person_dict)
-        deletion_service.remove_person(instance_id, force=force)
+        cascade_deletion_service.remove_person(instance_id, force=force)
         index_service.remove_person_index(instance_id)
         self.emit_delete_event(person_dict)
         self.post_delete(person_dict)

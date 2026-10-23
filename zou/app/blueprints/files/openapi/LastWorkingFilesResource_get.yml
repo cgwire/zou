@@ -1,0 +1,44 @@
+Get last working files
+---
+description: Retrieve the last working file revisions for each file
+  name for a given task. Returns the most recent version of each
+  working file.
+tags:
+- Files
+parameters:
+  - in: path
+    name: task_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Task unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+responses:
+  200:
+    description: Last working file revisions for each file name
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Working file unique identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              name:
+                type: string
+                description: Working file name
+                example: "main"
+              revision:
+                type: integer
+                description: Working file revision
+                example: 3
+              updated_at:
+                type: string
+                format: date-time
+                description: Last update timestamp
+                example: "2023-01-01T12:00:00Z"

@@ -1,0 +1,29 @@
+Get scene task types
+---
+tags:
+- Shots
+description: Get task types for a scene.
+parameters:
+  - in: path
+    name: scene_id
+    required: True
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+responses:
+    200:
+        description: All task types related to given scene
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c250
+                  name:
+                    type: string
+                    example: Animation

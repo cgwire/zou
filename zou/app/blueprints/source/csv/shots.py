@@ -1,96 +1,36 @@
+from flasgger import swag_from
+
 from zou.app.blueprints.source.csv.base import (
     BaseCsvProjectImportResource,
     RowException,
 )
-
-from zou.app.models.entity import Entity
-from zou.app.models.project import ProjectTaskTypeLink
-from zou.app.models.task_type import TaskType
+from zou.app.exceptions import WrongParameterException
 from zou.app.services import (
-    shots_service,
-    projects_service,
+    entities_service,
+    entity_types_service,
     index_service,
     persons_service,
+    projects_service,
+    shots_service,
+)
+from zou.app.services.comments_service import create_comment
+from zou.app.services.task_types_service import (
+    get_task_statuses,
+    get_task_type,
 )
 from zou.app.services.tasks_service import (
     assign_task,
     create_task,
     create_tasks,
     get_tasks_for_shot,
-    get_task_statuses,
-    get_task_type,
 )
-from zou.app.services.comments_service import create_comment
-from zou.app.services.exception import WrongParameterException
-from zou.app.utils import events
 
 
 class ShotsCsvImportResource(BaseCsvProjectImportResource):
+    @swag_from("openapi/ShotsCsvImportResource_post.yml")
     def post(self, project_id):
         """
         Import shots csv
-        ---
-        tags:
-          - Import
-        description: Import project shots from a CSV file. Creates or updates
-          shots based on CSV rows. Supports sequences, episodes, and task
-          status updates.
-        consumes:
-          - multipart/form-data
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: update
-            required: false
-            schema:
-              type: boolean
-            default: false
-            example: false
-            description: Whether to update existing shots
-          - in: formData
-            name: file
-            type: file
-            required: true
-            description: CSV file with shot data
-        responses:
-            201:
-              description: Shots imported successfully
-              content:
-                application/json:
-                  schema:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: SH010
-                        project_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        parent_id:
-                          type: string
-                          format: uuid
-                          example: c24a6ea4-ce75-4665-a070-57453082c25
-                        nb_frames:
-                          type: integer
-                          example: 120
-                        description:
-                          type: string
-                          example: Shot description
-            400:
-              description: Invalid CSV format or missing required columns
         """
         return super().post(project_id)
 
@@ -102,12 +42,14 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         )
         project = projects_service.get_project(project_id)
         self.is_tv_show = projects_service.is_tv_show(project)
-        self.created_shots = []
-        self.task_types_in_project_for_shots = (
-            TaskType.query.join(ProjectTaskTypeLink)
-            .filter(ProjectTaskTypeLink.project_id == project_id)
-            .filter(TaskType.for_entity == "Shot")
-        )
+        # Serialized once: a query would run again on every row, and model
+        # instances would be expired by every row commit.
+        self.task_types_in_project_for_shots = [
+            task_type.serialize()
+            for task_type in projects_service.get_project_task_types_raw(
+                project_id, "Shot"
+            )
+        ]
         self.task_statuses = {
             status["id"]: [status[n].lower() for n in ("name", "short_name")]
             for status in get_task_statuses()
@@ -117,7 +59,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
     def get_tasks_update(self, row):
         tasks_update = []
         for task_type in self.task_types_in_project_for_shots:
-            task_status_name = row.get(task_type.name, None)
+            task_status_name = row.get(task_type["name"], None)
             task_status_id = None
             if task_status_name not in [None, ""]:
                 for status_id, status_names in self.task_statuses.items():
@@ -129,8 +71,8 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                         f"Task status not found for {task_status_name}"
                     )
 
-            task_comment_text = row.get(f"{task_type.name} comment", None)
-            task_assignees = self.get_assignation_ids(row, task_type.name)
+            task_comment_text = row.get(f"{task_type['name']} comment", None)
+            task_assignees = self.get_assignation_ids(row, task_type["name"])
 
             if (
                 task_status_id is not None
@@ -139,7 +81,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
             ):
                 tasks_update.append(
                     {
-                        "task_type_id": str(task_type.id),
+                        "task_type_id": task_type["id"],
                         "task_status_id": task_status_id,
                         "comment": task_comment_text,
                         "assignees": task_assignees,
@@ -154,9 +96,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         if tasks_update:
             if shot_creation:
                 tasks_map = {
-                    str(task_type.id): create_task(
-                        task_type.serialize(), entity.serialize()
-                    )
+                    task_type["id"]: create_task(task_type, entity.serialize())
                     for task_type in self.task_types_in_project_for_shots
                 }
             else:
@@ -202,6 +142,15 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
             self.created_shots.append(entity.serialize())
 
     def import_row(self, row, project_id):
+        # An empty cell used to create a sequence or a shot named "", from a
+        # spreadsheet total row for instance.
+        required_columns = ["Sequence", "Name"]
+        if self.is_tv_show:
+            required_columns.insert(0, "Episode")
+        for column in required_columns:
+            if not (row[column] or "").strip():
+                raise RowException(f"{column} cannot be empty")
+
         if self.is_tv_show:
             episode_name = row["Episode"]
         sequence_name = row["Sequence"]
@@ -239,7 +188,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                 )
         sequence_id = self.get_id_from_cache(self.sequences, sequence_key)
 
-        shot_type = shots_service.get_shot_type()
+        shot_type = entity_types_service.get_shot_type()
 
         shot_values = {
             "name": shot_name,
@@ -248,7 +197,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
             "entity_type_id": shot_type["id"],
         }
 
-        entity = Entity.get_by(**shot_values)
+        entity = entities_service.find_entity_raw(**shot_values)
 
         shot_new_values = {}
 
@@ -316,30 +265,28 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         tasks_update = self.get_tasks_update(row)
 
         if entity is None:
-            entity = Entity.create(
-                **{**shot_values, **shot_new_values},
+            shot = shots_service.create_shot(
+                project_id,
+                sequence_id,
+                shot_name,
+                data=shot_new_values.get("data"),
+                nb_frames=shot_new_values.get("nb_frames", 0),
+                description=shot_new_values.get("description"),
                 created_by=self.current_user_id,
+                index=False,
             )
-
-            index_service.index_shot(entity)
-            events.emit(
-                "shot:new", {"shot_id": str(entity.id)}, project_id=project_id
-            )
+            entity = entities_service.get_entity_raw(shot["id"])
+            self.shot_ids_to_index.append(entity.id)
 
             self.create_and_update_tasks(
                 tasks_update, entity, shot_creation=True
             )
 
         elif self.is_update:
-            entity.update(shot_new_values)
-
-            index_service.remove_shot_index(entity.id)
-            index_service.index_shot(entity)
-            events.emit(
-                "shot:update",
-                {"shot_id": str(entity.id)},
-                project_id=project_id,
+            shots_service.update_shot(
+                str(entity.id), shot_new_values, index=False
             )
+            self.shot_ids_to_index.append(entity.id)
 
             self.create_and_update_tasks(
                 tasks_update, entity, shot_creation=False
@@ -348,7 +295,17 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         return entity.serialize()
 
     def run_import(self, file_path, project_id):
-        entities = super().run_import(file_path, project_id)
-        for task_type in self.task_types_in_project_for_shots:
-            create_tasks(task_type.serialize(), self.created_shots)
-        return entities
+        # Set before the import: prepare_import can fail before it does.
+        self.created_shots = []
+        self.task_types_in_project_for_shots = []
+        self.shot_ids_to_index = []
+        try:
+            return super().run_import(file_path, project_id)
+        finally:
+            # Indexed at the end, without waiting for the indexer on every
+            # row, the rows committed before a failing one included.
+            index_service.index_shots(self.shot_ids_to_index)
+            # The shots created before a failing line stay imported, and a
+            # new import would not create their tasks: they get them here.
+            for task_type in self.task_types_in_project_for_shots:
+                create_tasks(task_type, self.created_shots)

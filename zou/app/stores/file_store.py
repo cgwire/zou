@@ -1,15 +1,19 @@
+import logging
 import os
 import time
-import flask_fs
 from contextlib import contextmanager
-from flask import current_app
-from werkzeug.utils import cached_property
-from zou.app import config
-from flask_fs.backends.local import LocalBackend
-from flask_fs.errors import FileNotFound
-from werkzeug.exceptions import RequestedRangeNotSatisfiable
 
+import flask_fs
+from flask import current_app, has_request_context
+from flask_fs.backends.local import LocalBackend
+from werkzeug.exceptions import RequestedRangeNotSatisfiable
+from werkzeug.utils import cached_property
+
+from zou.app import config
+from zou.app.stores import swift_auth_store
 from zou.app.utils import fs
+
+logger = logging.getLogger(__name__)
 
 # ----------------------------------------------------------------------
 # Module state
@@ -20,6 +24,10 @@ movies = None
 files = None
 
 RANGE_CHUNK_SIZE = 1024 * 1024
+
+# Seconds to wait before each new attempt of a storage operation that
+# failed because Keystone could not hand out a token.
+AUTH_RETRY_DELAYS = (1, 2, 4)
 
 
 # ----------------------------------------------------------------------
@@ -251,6 +259,61 @@ def configure_storages(app):
     files = make_storage("files")
 
     flask_fs.init_app(app, *[pictures, movies, files])
+    if config.FS_BACKEND == "swift":
+        for storage in (pictures, movies, files):
+            _setup_swift_auth(storage.backend)
+
+
+def _setup_swift_auth(backend):
+    """
+    Make the connections of a Swift backend retry a Keystone failure,
+    and reuse the token shared through Redis, sharing the one they obtain
+    when there is none or Swift refuses it (swiftclient authenticates
+    again on a 401). Every RQ job runs in a fork of its own, so the
+    connection pool of flask_fs never outlives a job: without the
+    sharing, each job asks Keystone for a new token. Every operation
+    authenticates through get_auth, reads and exists() included. Private
+    flask_fs members, flask-fs2 being pinned at 0.8.2 (see
+    _read_swift_range).
+    """
+    import swiftclient
+
+    ttl = config.FS_SWIFT_TOKEN_CACHE_TTL
+    cache_key = swift_auth_store.make_key(
+        backend._authurl, backend._user, backend._os_options
+    )
+    configured_storage_url = backend._os_options.get("object_storage_url")
+
+    class SharedTokenConnection(swiftclient.Connection):
+        def get_auth(self):
+            # preauthurl pins os_options["object_storage_url"], which
+            # swiftclient returns as is instead of the catalog one: it
+            # would be shared again, and outlive an endpoint change.
+            if configured_storage_url is None:
+                self.os_options.pop("object_storage_url", None)
+            else:
+                self.os_options["object_storage_url"] = configured_storage_url
+            url, token = _retry_on_auth_failure(super().get_auth)
+            swift_auth_store.add(cache_key, url, token, ttl)
+            return url, token
+
+    def new_connection():
+        url, token = (
+            swift_auth_store.get(cache_key) if ttl > 0 else (None, None)
+        )
+        return SharedTokenConnection(
+            user=backend._user,
+            key=backend._key,
+            authurl=backend._authurl,
+            auth_version=backend._auth_version,
+            os_options=dict(backend._os_options),
+            timeout=backend._timeout,
+            retries=backend._retries,
+            preauthurl=url,
+            preauthtoken=token,
+        )
+
+    backend._new_connection = new_connection
 
 
 def clear_bucket(bucket):
@@ -295,10 +358,44 @@ def _read(bucket, key, bucket_name):
     return data
 
 
-def _upload(bucket, key, path, bucket_name):
-    with _measure("upload", bucket_name, byte_count=_safe_size(path)):
+def _retry_on_auth_failure(operation):
+    """
+    Run an operation again, after a growing delay, as long as it fails
+    on authentication and attempts remain: a single Keystone hiccup would
+    otherwise mark the preview file being stored as broken. Not within
+    an API request, which fails fast instead of holding its worker for
+    several Keystone timeouts.
+    """
+    if has_request_context():
+        return operation()
+    for delay in AUTH_RETRY_DELAYS:
+        try:
+            return operation()
+        except Exception as exc:
+            if not fs.is_auth_failure(exc):
+                raise
+            logger.warning(
+                f"Swift authentication failed, retrying in {delay}s: {exc}"
+            )
+            time.sleep(delay)
+    return operation()
+
+
+def _registry():
+    # Imported late: the services import the file store.
+    from zou.app.services import stored_files_service
+
+    return stored_files_service
+
+
+def _upload(bucket, prefix, id, path, bucket_name):
+    size = _safe_size(path)
+    # Recorded first: a key marked deleted is revived before the new
+    # object lands, so that a purge running meanwhile cannot remove it.
+    _registry().record_write(bucket_name, prefix, id, size=size)
+    with _measure("upload", bucket_name, byte_count=size):
         with open(path, "rb") as fd:
-            return bucket.write(key, fd)
+            return bucket.write(make_key(prefix, id), fd)
 
 
 def _exists(bucket, key, bucket_name):
@@ -306,14 +403,133 @@ def _exists(bucket, key, bucket_name):
         return bucket.exists(key)
 
 
-def _delete(bucket, key, bucket_name):
-    with _measure("delete", bucket_name):
-        return bucket.delete(key)
+def _bucket_by_name(bucket_name):
+    # Read lazily: pictures/movies/files are only set once configure_storages
+    # runs, so a module-level dict built at import time would stay empty.
+    return {"movies": movies, "pictures": pictures, "files": files}[
+        bucket_name
+    ]
 
 
-def _copy(bucket, key, target, bucket_name):
+def exists_confirmed(bucket_name, prefix, id):
+    """
+    Tell whether a file is confirmed present or confirmed absent, raising
+    on anything else. The exists_* helpers below answer False to a
+    transient failure exactly like flask_fs does (the S3 backend on any
+    ClientError, the Swift backend on any ClientException that is not a
+    404): fine for a preview route falling back to another prefix, wrong
+    for a storage state probe, which must never take a 503 for a
+    confirmed absence.
+    """
+    bucket = _bucket_by_name(bucket_name)
+    key = make_key(prefix, id)
+    with _measure("exists", bucket_name):
+        if config.FS_BACKEND == "local":
+            return bucket.exists(key)
+        if config.FS_BACKEND == "s3":
+            try:
+                bucket.backend.bucket.Object(key).load()
+            except Exception as exc:
+                if fs.is_missing_file_error(exc):
+                    return False
+                raise
+            return True
+        # swift: flask-fs2 is pinned at 0.8.2, whose SwiftBackend._borrow is
+        # a private pool-borrowing context manager (see _read_swift_range
+        # above for the same private-member trade-off).
+        backend = bucket.backend
+        try:
+            with backend._borrow() as conn:
+                conn.head_object(backend.name, key)
+        except Exception as exc:
+            if fs.is_missing_file_error(exc):
+                return False
+            raise
+        return True
+
+
+def remove_files(files, force=False):
+    """
+    Mark the given (bucket name, prefix, id) objects deleted in the
+    stored file registry, and remove them right away when REMOVE_FILES
+    or force is set: two registry transactions, whatever the number of
+    objects. Without them, the objects stay in the storage until a purge
+    is allowed to remove them. If the registry cannot be reached, the
+    objects are removed without it; the first failure is raised once
+    they have all been tried.
+    """
+    marked = _registry().mark_deleted(files, force=force)
+    if not (config.REMOVE_FILES or force):
+        return
+    if marked is not None:
+        _registry().purge(files, _remove_registered_object)
+        return
+    error = None
+    for bucket_name, prefix, id in files:
+        try:
+            _remove_object(bucket_name, make_key(prefix, id))
+        except Exception as exc:
+            error = error or exc
+    if error is not None:
+        raise error
+
+
+def _delete(bucket_name, prefix, id, force=False):
+    remove_files([(bucket_name, prefix, id)], force=force)
+
+
+def _delete_exact(bucket, key):
+    """
+    Remove the object of this exact key. Storage.delete removes every
+    object whose key starts with the given one on S3 (and GridFS): fine
+    for a UUID-suffixed key, a trap for anything else.
+    """
+    backend = bucket.backend
+    if config.FS_BACKEND == "s3":
+        backend.bucket.Object(key).delete()
+    elif config.FS_BACKEND == "swift":
+        # Private pool member, see _read_swift_range.
+        with backend._borrow() as conn:
+            conn.delete_object(backend.name, key)
+    else:
+        backend.delete(key)
+
+
+def _remove_object(bucket_name, key):
+    """
+    Remove an object, a missing one counting as removed.
+    """
+    try:
+        with _measure("delete", bucket_name):
+            _delete_exact(_bucket_by_name(bucket_name), key)
+    except Exception as exc:
+        if not fs.is_missing_file_error(exc):
+            raise
+
+
+def _remove_registered_object(bucket_name, prefix, id):
+    _remove_object(bucket_name, make_key(prefix, id))
+
+
+def purge(bucket_name, prefix, id):
+    """
+    Remove an object marked deleted from the storage, and record it in
+    the registry. The registry locks the row meanwhile and leaves alone
+    an object written again since it was marked. A failure is recorded
+    for the purge job to try again, it never raises. Return whether the
+    object was removed.
+    """
+    removed = _registry().purge(
+        [(bucket_name, prefix, id)], _remove_registered_object
+    )
+    return (bucket_name, make_key(prefix, id)) in removed
+
+
+def _copy(bucket, prefix, id, new_prefix, new_id, bucket_name):
+    # Recorded first, see _upload.
+    _registry().record_write(bucket_name, new_prefix, new_id)
     with _measure("copy", bucket_name):
-        return bucket.copy(key, target)
+        return bucket.copy(make_key(prefix, id), make_key(new_prefix, new_id))
 
 
 def _read_chunks(bucket, key):
@@ -328,7 +544,7 @@ def _read_chunks(bucket, key):
         generator = backend.read_chunks(key)
     except Exception as exc:
         if fs.is_missing_file_error(exc):
-            raise FileNotFound(key) from exc
+            raise fs.ConfirmedFileNotFound(key) from exc
         raise
     if backend.encryptor is not None:
         generator = backend.encryptor.decrypt_file_from_generator(generator)
@@ -362,7 +578,7 @@ def _measured_read(read_stream, key, bucket_name=None):
                     yield chunk
         except FileNotFoundError as exc:
             # The local backend only opens the file on the first read.
-            raise FileNotFound(key) from exc
+            raise fs.ConfirmedFileNotFound(key) from exc
         finally:
             if hasattr(read_stream, "close"):
                 try:
@@ -444,7 +660,7 @@ def read_movie_range(prefix, id, range_header=None):
             content_range = resp_headers.get("content-range")
     except Exception as exc:
         if fs.is_missing_file_error(exc):
-            raise FileNotFound(key) from exc
+            raise fs.ConfirmedFileNotFound(key) from exc
         if fs.is_range_error(exc):
             raise RequestedRangeNotSatisfiable() from exc
         raise
@@ -461,7 +677,7 @@ def read_movie_range(prefix, id, range_header=None):
 
 
 def add_picture(prefix, id, path):
-    return _upload(pictures, make_key(prefix, id), path, "pictures")
+    return _upload(pictures, prefix, id, path, "pictures")
 
 
 def get_picture(prefix, id):
@@ -481,8 +697,8 @@ def exists_picture(prefix, id):
     return _exists(pictures, make_key(prefix, id), "pictures")
 
 
-def remove_picture(prefix, id):
-    return _delete(pictures, make_key(prefix, id), "pictures")
+def remove_picture(prefix, id, force=False):
+    return _delete("pictures", prefix, id, force=force)
 
 
 def get_local_picture_path(prefix, id):
@@ -490,12 +706,7 @@ def get_local_picture_path(prefix, id):
 
 
 def copy_picture(prefix, id, new_prefix, new_id):
-    return _copy(
-        pictures,
-        make_key(prefix, id),
-        make_key(new_prefix, new_id),
-        "pictures",
-    )
+    return _copy(pictures, prefix, id, new_prefix, new_id, "pictures")
 
 
 # ----------------------------------------------------------------------
@@ -504,7 +715,7 @@ def copy_picture(prefix, id, new_prefix, new_id):
 
 
 def add_movie(prefix, id, path):
-    return _upload(movies, make_key(prefix, id), path, "movies")
+    return _upload(movies, prefix, id, path, "movies")
 
 
 def get_movie(prefix, id):
@@ -524,8 +735,8 @@ def exists_movie(prefix, id):
     return _exists(movies, make_key(prefix, id), "movies")
 
 
-def remove_movie(prefix, id):
-    return _delete(movies, make_key(prefix, id), "movies")
+def remove_movie(prefix, id, force=False):
+    return _delete("movies", prefix, id, force=force)
 
 
 def get_local_movie_path(prefix, id):
@@ -533,12 +744,7 @@ def get_local_movie_path(prefix, id):
 
 
 def copy_movie(prefix, id, new_prefix, new_id):
-    return _copy(
-        movies,
-        make_key(prefix, id),
-        make_key(new_prefix, new_id),
-        "movies",
-    )
+    return _copy(movies, prefix, id, new_prefix, new_id, "movies")
 
 
 # ----------------------------------------------------------------------
@@ -547,7 +753,7 @@ def copy_movie(prefix, id, new_prefix, new_id):
 
 
 def add_file(prefix, id, path):
-    return _upload(files, make_key(prefix, id), path, "files")
+    return _upload(files, prefix, id, path, "files")
 
 
 def get_file(prefix, id):
@@ -567,8 +773,8 @@ def exists_file(prefix, id):
     return _exists(files, make_key(prefix, id), "files")
 
 
-def remove_file(prefix, id):
-    return _delete(files, make_key(prefix, id), "files")
+def remove_file(prefix, id, force=False):
+    return _delete("files", prefix, id, force=force)
 
 
 def get_local_file_path(prefix, id):
@@ -576,9 +782,4 @@ def get_local_file_path(prefix, id):
 
 
 def copy_file(prefix, id, new_prefix, new_id):
-    return _copy(
-        files,
-        make_key(prefix, id),
-        make_key(new_prefix, new_id),
-        "files",
-    )
+    return _copy(files, prefix, id, new_prefix, new_id, "files")

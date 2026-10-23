@@ -3,12 +3,12 @@ import uuid
 
 import orjson as json
 import sqlalchemy.orm as orm
-
-from zou.app import config
-from zou.app.utils import fields, string
-from zou.app.services.exception import WrongParameterException
 from sqlalchemy import func, types as sa_types
 from sqlalchemy.inspection import inspect
+
+from zou.app import config
+from zou.app.exceptions import WrongParameterException
+from zou.app.utils import fields, string
 
 # Some criterions accept sentinel values that are not UUIDs (e.g. "all" or
 # "main" for episode_id) and must therefore bypass UUID validation.
@@ -123,9 +123,11 @@ def get_paginated_results(query, page, limit=None, relations=False):
         query = query.offset(offset)
 
         if total < offset:
+            # Past the last page: the envelope still describes the whole
+            # collection, so total stays the real count like nb_pages does.
             result = {
                 "data": [],
-                "total": 0,
+                "total": total,
                 "nb_pages": nb_pages,
                 "limit": limit,
                 "offset": offset,

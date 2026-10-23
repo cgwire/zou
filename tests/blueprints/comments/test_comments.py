@@ -1,13 +1,19 @@
 import os
 
 from tests.base import ApiDBTestCase
-
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.comment import Comment
 from zou.app.models.notification import Notification
 from zou.app.models.person import Person
+from zou.app.models.project import Project, ProjectTaskStatusLink
 from zou.app.models.task import Task
-from zou.app.services import comments_service, projects_service, tasks_service
+from zou.app.models.task_status import TaskStatus
+from zou.app.services import (
+    comments_service,
+    projects_service,
+    task_types_service,
+    tasks_service,
+)
 
 
 class CommentTestCase(ApiDBTestCase):
@@ -64,7 +70,7 @@ class CommentRoutesTestCase(CommentTestCase):
         )
         self.assertEqual(result["text"], "A new comment")
         self.assertEqual(result["task_status_id"], str(self.task_status.id))
-        comments = tasks_service.get_comments(str(self.task.id))
+        comments = comments_service.get_comments(str(self.task.id))
         texts = [c["text"] for c in comments]
         self.assertIn("A new comment", texts)
 
@@ -99,7 +105,9 @@ class CommentRoutesTestCase(CommentTestCase):
             {"comments": comments},
         )
         self.assertEqual(len(result), 2)
-        texts = [c["text"] for c in tasks_service.get_comments(self.task.id)]
+        texts = [
+            c["text"] for c in comments_service.get_comments(self.task.id)
+        ]
         self.assertIn("note 1", texts)
         self.assertIn("note 2", texts)
 
@@ -124,10 +132,10 @@ class CommentRoutesTestCase(CommentTestCase):
         )
         self.assertEqual(len(result), 2)
         asset_texts = [
-            c["text"] for c in tasks_service.get_comments(self.task.id)
+            c["text"] for c in comments_service.get_comments(self.task.id)
         ]
         shot_texts = [
-            c["text"] for c in tasks_service.get_comments(self.shot_task.id)
+            c["text"] for c in comments_service.get_comments(self.shot_task.id)
         ]
         self.assertIn("asset note", asset_texts)
         self.assertIn("shot note", shot_texts)
@@ -142,8 +150,23 @@ class CommentRoutesTestCase(CommentTestCase):
     def a_status_closed_to_artists(self):
         status = self.generate_fixture_task_status_wip()
         status.update({"is_artist_allowed": False})
-        tasks_service.clear_task_status_cache(str(status.id))
+        task_types_service.clear_task_status_cache(str(status.id))
         return str(status.id)
+
+    def test_comment_many_refuses_a_malformed_body(self):
+        path = f"/actions/projects/{self.project.id}/tasks/comment-many"
+        self.post(path, {"object_id": str(self.task.id)}, 400)
+        self.post(
+            path,
+            [
+                {
+                    "object_id": "not-a-uuid",
+                    "task_status_id": str(self.task_status.id),
+                    "comment": "note",
+                }
+            ],
+            400,
+        )
 
     def test_batch_comment_tasks_refuses_a_status_closed_to_artists(self):
         """
@@ -168,7 +191,9 @@ class CommentRoutesTestCase(CommentTestCase):
             },
             403,
         )
-        texts = [c["text"] for c in tasks_service.get_comments(self.task.id)]
+        texts = [
+            c["text"] for c in comments_service.get_comments(self.task.id)
+        ]
         self.assertNotIn("refused", texts)
 
     def test_batch_comment_task_refuses_a_status_closed_to_artists(self):
@@ -185,7 +210,9 @@ class CommentRoutesTestCase(CommentTestCase):
             {"comments": [{"task_status_id": closed, "text": "refused"}]},
             403,
         )
-        texts = [c["text"] for c in tasks_service.get_comments(self.task.id)]
+        texts = [
+            c["text"] for c in comments_service.get_comments(self.task.id)
+        ]
         self.assertNotIn("refused", texts)
 
     def test_comment_many_tasks(self):
@@ -201,7 +228,7 @@ class CommentRoutesTestCase(CommentTestCase):
         )
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["text"], "Batch comment")
-        comments = tasks_service.get_comments(str(self.task.id))
+        comments = comments_service.get_comments(str(self.task.id))
         texts = [c["text"] for c in comments]
         self.assertIn("Batch comment", texts)
 
@@ -213,7 +240,7 @@ class CommentRoutesTestCase(CommentTestCase):
         self.assertIn("has_avatar", comment["person"])
 
     def test_comments_list_embeds_author_full_name(self):
-        comments = tasks_service.get_comments(str(self.task.id))
+        comments = comments_service.get_comments(str(self.task.id))
         self.assertEqual(comments[0]["person"]["full_name"], "John Did")
         self.assertEqual(comments[0]["person"]["role"], "admin")
 
@@ -244,7 +271,7 @@ class CommentRoutesTestCase(CommentTestCase):
             200,
         )
         self.assertIn("text", result)
-        comment = tasks_service.get_comment(self.comment["id"])
+        comment = comments_service.get_comment(self.comment["id"])
         replies = comment.get("replies", [])
         reply_texts = [r["text"] for r in replies]
         self.assertIn("My reply", reply_texts)
@@ -261,16 +288,16 @@ class CommentRoutesTestCase(CommentTestCase):
             f"/comments/{self.comment['id']}/reply/{reply_id}",
             200,
         )
-        comment = tasks_service.get_comment(self.comment["id"])
+        comment = comments_service.get_comment(self.comment["id"])
         reply_ids = [r["id"] for r in comment.get("replies", [])]
         self.assertNotIn(reply_id, reply_ids)
 
 
 class ClientVisibleCommentTestCase(CommentTestCase):
     """
-    What a client is shown of a comment. Studio authors and editors
-    are hidden from them, their own peers are not, and a comment
-    not flagged for_client does not reach them at all.
+    What a client is shown of a comment: its author, its editor and the
+    authors of its replies, studio members included, while a comment not
+    flagged for_client does not reach them at all.
     """
 
     def put_the_client_in_the_team(self):
@@ -278,6 +305,55 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         self.project.team = [client_person, self.person]
         self.project.save()
         return client_person
+
+    def a_status_overridden_for_the_production(self, studio, production):
+        """
+        A status the studio sets to given client permission, overridden by
+        the production link.
+        """
+        task_status = TaskStatus.create(
+            name=f"Status {studio} {production}",
+            short_name=f"s{studio:d}{production}",
+            color="#000000",
+            is_client_allowed=studio,
+        )
+        ProjectTaskStatusLink.create(
+            project_id=self.project.id,
+            task_status_id=task_status.id,
+            is_client_allowed=production,
+        )
+        return str(task_status.id)
+
+    def client_comments_with(self, task_status_id, code=201):
+        return self.post(
+            f"/actions/tasks/{self.task.id}/comment",
+            {"task_status_id": task_status_id, "comment": "Client note"},
+            code,
+        )
+
+    def test_production_forbids_a_status_the_studio_allows(self):
+        self.put_the_client_in_the_team()
+        task_status_id = self.a_status_overridden_for_the_production(
+            True, False
+        )
+        self.log_in_client()
+        self.client_comments_with(task_status_id, 403)
+
+    def test_production_allows_a_status_the_studio_forbids(self):
+        self.put_the_client_in_the_team()
+        task_status_id = self.a_status_overridden_for_the_production(
+            False, True
+        )
+        self.log_in_client()
+        self.client_comments_with(task_status_id)
+
+    def test_no_override_falls_back_to_the_studio_value(self):
+        self.put_the_client_in_the_team()
+        forbidden = self.a_status_overridden_for_the_production(False, None)
+        allowed = self.a_status_overridden_for_the_production(True, None)
+        self.log_in_client()
+        self.client_comments_with(forbidden, 403)
+        self.client_comments_with(allowed)
 
     def comment_for_client(self, text="Visible to client", for_client=True):
         return self.post(
@@ -289,10 +365,9 @@ class ClientVisibleCommentTestCase(CommentTestCase):
             },
         )
 
-    def test_reply_author_hidden_from_client(self):
+    def test_reply_author_shown_to_client(self):
         """
-        Studio members' identities must not be exposed to clients on
-        replies, matching the comment author behavior.
+        A studio replier is named to the client, like the comment author.
         """
         self.put_the_client_in_the_team()
         comment = self.comment_for_client()
@@ -301,29 +376,30 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         )
 
         self.log_in_client()
-        comments = tasks_service.get_comments(
+        comments = comments_service.get_comments(
             str(self.task.id), is_client=True
         )
         target = next(c for c in comments if c["id"] == comment["id"])
-        self.assertIsNone(target["replies"][0]["person"])
+        replier = target["replies"][0]["person"]
+        self.assertEqual(replier["id"], str(self.user["id"]))
+        self.assertEqual(replier["full_name"], "John Did")
 
-    def test_comment_author_hidden_from_client_in_list(self):
+    def test_comment_author_shown_to_client_in_list(self):
         """
-        The comment list must not embed a studio author for a client,
-        matching the single-comment and reply author behavior, while the
-        comment content stays visible.
+        The comment list embeds a studio author for a client too.
         """
         self.put_the_client_in_the_team()
         comment = self.comment_for_client()
 
         self.log_in_client()
-        comments = tasks_service.get_comments(
+        comments = comments_service.get_comments(
             str(self.task.id), is_client=True
         )
         target = next(c for c in comments if c["id"] == comment["id"])
         self.assertTrue(target["for_client"])
         self.assertEqual(target["text"], "Visible to client")
-        self.assertIsNone(target["person"])
+        self.assertEqual(target["person"]["id"], str(self.user["id"]))
+        self.assertEqual(target["person"]["full_name"], "John Did")
 
     def test_client_author_embedded_for_client_in_list(self):
         """
@@ -340,17 +416,16 @@ class ClientVisibleCommentTestCase(CommentTestCase):
                 "comment": "Client question",
             },
         )
-        comments = tasks_service.get_comments(
+        comments = comments_service.get_comments(
             str(self.task.id), is_client=True
         )
         target = next(c for c in comments if c["id"] == comment["id"])
         self.assertEqual(target["person"]["id"], client_id)
         self.assertEqual(target["person"]["role"], "client")
 
-    def test_comment_author_hidden_from_client(self):
+    def test_comment_author_shown_to_client(self):
         """
-        The single-comment endpoint must not embed a studio author for a
-        client, matching the reply author behavior.
+        The single-comment endpoint embeds a studio author for a client too.
         """
         self.put_the_client_in_the_team()
         comment = self.comment_for_client()
@@ -358,7 +433,7 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         self.log_in_client()
         result = self.get(f"/data/comments/{comment['id']}")
         self.assertEqual(result["text"], "Visible to client")
-        self.assertIsNone(result["person"])
+        self.assertEqual(result["person"]["id"], str(self.user["id"]))
 
     def test_internal_comment_forbidden_for_client(self):
         """
@@ -378,10 +453,10 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         self.log_in_client()
         self.get(f"/data/comments/{comment['id']}", 403)
 
-    def test_editor_hidden_from_client_in_list(self):
+    def test_editor_shown_to_client_in_list(self):
         """
-        A studio editor identity must not leak to clients in the comment
-        list, matching the comment author behavior.
+        A studio editor stays in the comment list of a client, like the
+        author.
         """
         self.put_the_client_in_the_team()
         comment = self.comment_for_client()
@@ -390,12 +465,12 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         comment_model.save()
 
         self.log_in_client()
-        comments = tasks_service.get_comments(
+        comments = comments_service.get_comments(
             str(self.task.id), is_client=True
         )
         target = next(c for c in comments if c["id"] == comment["id"])
-        self.assertIsNone(target["editor"])
-        self.assertIsNone(target["editor_id"])
+        self.assertEqual(target["editor"]["id"], str(self.person.id))
+        self.assertEqual(target["editor_id"], str(self.person.id))
 
     def test_client_editor_kept_in_list(self):
         """
@@ -408,17 +483,16 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         comment_model.save()
 
         self.log_in_client()
-        comments = tasks_service.get_comments(
+        comments = comments_service.get_comments(
             str(self.task.id), is_client=True
         )
         target = next(c for c in comments if c["id"] == comment["id"])
         self.assertEqual(target["editor"]["id"], client_id)
         self.assertEqual(target["editor"]["role"], "client")
 
-    def test_editor_hidden_from_client(self):
+    def test_editor_shown_to_client(self):
         """
-        The single-comment endpoint must not expose a studio editor to a
-        client, matching the comment author behavior.
+        The single-comment endpoint keeps a studio editor for a client.
         """
         self.put_the_client_in_the_team()
         comment = self.comment_for_client()
@@ -428,7 +502,7 @@ class ClientVisibleCommentTestCase(CommentTestCase):
 
         self.log_in_client()
         result = self.get(f"/data/comments/{comment['id']}")
-        self.assertIsNone(result["editor_id"])
+        self.assertEqual(result["editor_id"], str(self.person.id))
 
     def test_comment_without_for_client_hidden_from_client(self):
         """
@@ -445,7 +519,7 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         )
 
         self.log_in_client()
-        comments = tasks_service.get_comments(
+        comments = comments_service.get_comments(
             str(self.task.id), is_client=True
         )
         texts = [c["text"] for c in comments]
@@ -460,6 +534,96 @@ class ClientVisibleCommentTestCase(CommentTestCase):
             },
         )
         self.assertFalse(result["for_client"])
+
+
+class ClientThreadReplyTestCase(CommentTestCase):
+    """
+    Who answers in a thread the client sees: the client is shown the name
+    and avatar of each replier, so only the production managers answer
+    there for the studio, whoever wrote the comment. The clients keep
+    their own rules.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_user_cg_artist()
+        self.generate_fixture_user_manager()
+        self.generate_fixture_user_supervisor()
+        project_id = str(self.project.id)
+        for person in (
+            self.user_cg_artist,
+            self.user_manager,
+            self.user_supervisor,
+        ):
+            projects_service.add_team_member(project_id, person["id"])
+        projects_service.add_team_member(project_id, self.user_client["id"])
+        tasks_service.assign_task(str(self.task.id), self.user_cg_artist["id"])
+
+    def new_comment(self, person_id, for_client=False):
+        comment = comments_service.new_comment(
+            self.task.id, self.task_status.id, person_id, "A note"
+        )
+        if for_client:
+            Comment.get(comment["id"]).update({"for_client": True})
+            comments_service.clear_comment_cache(comment["id"])
+        return comment
+
+    def reply(self, comment, code):
+        return self.post(
+            f"/data/tasks/{self.task.id}/comments/{comment['id']}/reply",
+            {"text": "An answer"},
+            code,
+        )
+
+    def test_artist_cannot_reply_to_a_comment_for_the_client(self):
+        internal = self.new_comment(self.user["id"])
+        for_client = self.new_comment(self.user["id"], for_client=True)
+        self.log_in_cg_artist()
+        # The artist answers on the internal comment of the same task: the
+        # refusal comes from the client thread rule.
+        self.reply(internal, 200)
+        self.reply(for_client, 403)
+
+    def test_artist_cannot_reply_to_a_client(self):
+        comment = self.new_comment(self.user_client["id"])
+        self.log_in_cg_artist()
+        self.reply(comment, 403)
+
+    def test_manager_replies_in_a_client_thread(self):
+        self.log_in_manager()
+        self.reply(self.new_comment(self.user["id"], for_client=True), 200)
+        self.reply(self.new_comment(self.user_client["id"]), 200)
+
+    def test_artist_cannot_reply_to_their_comment_for_the_client(self):
+        internal = self.new_comment(self.user_cg_artist["id"])
+        for_client = self.new_comment(
+            self.user_cg_artist["id"], for_client=True
+        )
+        self.log_in_cg_artist()
+        self.reply(internal, 200)
+        self.reply(for_client, 403)
+
+    def test_supervisor_cannot_reply_to_a_comment_for_the_client(self):
+        internal = self.new_comment(self.user["id"])
+        for_client = self.new_comment(self.user["id"], for_client=True)
+        self.log_in_supervisor()
+        self.reply(internal, 200)
+        self.reply(for_client, 403)
+
+    def test_demoted_manager_cannot_reply_in_their_client_thread(self):
+        projects_service.update_team_member_role(
+            str(self.project.id), self.user_manager["id"], "user"
+        )
+        comment = self.new_comment(self.user_manager["id"], for_client=True)
+        self.log_in_manager()
+        # The author goes through no access check, and still answers as
+        # the role they hold on the production.
+        self.reply(comment, 403)
+
+    def test_client_replies_in_a_client_thread(self):
+        self.log_in_client()
+        self.reply(self.new_comment(self.user["id"], for_client=True), 200)
+        self.reply(self.new_comment(self.user_client["id"]), 200)
 
 
 class MoveCommentTestCase(CommentTestCase):
@@ -483,8 +647,8 @@ class MoveCommentTestCase(CommentTestCase):
         self.assertEqual(result["created_at"], original_created_at)
         self.assertEqual(result["task_status_id"], original_status_id)
 
-        source_comments = tasks_service.get_comments(str(self.task.id))
-        target_comments = tasks_service.get_comments(str(sibling.id))
+        source_comments = comments_service.get_comments(str(self.task.id))
+        target_comments = comments_service.get_comments(str(sibling.id))
         self.assertNotIn(
             self.comment["id"], [c["id"] for c in source_comments]
         )
@@ -754,3 +918,132 @@ class TaskCommentRouteTestCase(CommentTestCase):
         comment = self.get(path)
         self.assertEqual(comment["id"], self.comment["id"])
         self.assertEqual(comment["text"], "first comment")
+
+
+class CopyClientCommentsTestCase(CommentTestCase):
+    """
+    Artists do not see the client comments: a manager copies the last one
+    of each selected task into a studio comment.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_user_manager()
+        self.generate_fixture_user_supervisor()
+        project_id = str(self.project.id)
+        for person in (self.user_manager, self.user_supervisor):
+            projects_service.add_team_member(project_id, person["id"])
+        projects_service.add_team_member(project_id, self.user_client["id"])
+        self.path = (
+            f"/actions/projects/{self.project.id}/tasks/copy-client-comments"
+        )
+
+    def new_comment(self, task_id, person_id, text, created_at):
+        return comments_service.new_comment(
+            task_id,
+            self.task_status.id,
+            person_id,
+            text,
+            created_at=created_at,
+        )
+
+    def copy(self, task_ids, code=201, **data):
+        return self.post(
+            self.path, {"task_ids": [str(t) for t in task_ids], **data}, code
+        )
+
+    def test_copy_the_last_client_comment(self):
+        self.new_comment(
+            self.task.id, self.user_client["id"], "Old", "2026-01-01 10:00:00"
+        )
+        self.new_comment(
+            self.task.id, self.user_client["id"], "Last", "2026-01-02 10:00:00"
+        )
+        # a studio answer after the client keeps the client one copied
+        self.new_comment(
+            self.task.id, self.user["id"], "Studio", "2026-01-03 10:00:00"
+        )
+        self.log_in_manager()
+        result = self.copy([self.task.id])
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["text"], "Last")
+        self.assertEqual(result[0]["person_id"], self.user_manager["id"])
+        self.assertEqual(
+            result[0]["task_status_id"], str(self.task.task_status_id)
+        )
+        self.assertFalse(result[0]["for_client"])
+        # the artists now read the copy, the managers both comments
+        artist_texts = [
+            c["text"] for c in comments_service.get_comments(self.task.id)
+        ]
+        self.assertEqual(artist_texts.count("Last"), 1)
+        manager_texts = [
+            c["text"]
+            for c in comments_service.get_comments(
+                self.task.id, is_manager=True
+            )
+        ]
+        self.assertEqual(manager_texts.count("Last"), 2)
+
+    def test_copy_with_a_prefix(self):
+        self.new_comment(
+            self.task.id, self.user_client["id"], "Redo", "2026-01-01 10:00:00"
+        )
+        self.log_in_manager()
+        result = self.copy([self.task.id], prefix="Client feedback:")
+        self.assertEqual(result[0]["text"], "Client feedback:\n\nRedo")
+
+    def test_skip_a_task_without_client_comment(self):
+        sibling = self._make_sibling_task()
+        self.new_comment(
+            sibling.id, self.user_client["id"], "Redo", "2026-01-01 10:00:00"
+        )
+        self.log_in_manager()
+        result = self.copy([self.task.id, sibling.id])
+        self.assertEqual([c["object_id"] for c in result], [str(sibling.id)])
+
+    def test_project_role_makes_a_client(self):
+        projects_service.update_team_member_role(
+            str(self.project.id), self.user_supervisor["id"], "client"
+        )
+        self.new_comment(
+            self.task.id,
+            self.user_supervisor["id"],
+            "From the client",
+            "2026-01-01 10:00:00",
+        )
+        self.log_in_manager()
+        result = self.copy([self.task.id])
+        self.assertEqual(result[0]["text"], "From the client")
+
+    def test_ignore_a_task_of_another_project(self):
+        self.new_comment(
+            self.task.id, self.user_client["id"], "Redo", "2026-01-01 10:00:00"
+        )
+        other_project = Project.create(
+            name="Other project", project_status_id=self.open_status.id
+        )
+        self.log_in_manager()
+        self.post(
+            f"/actions/projects/{other_project.id}/tasks/copy-client-comments",
+            {"task_ids": [str(self.task.id)]},
+            403,
+        )
+        projects_service.add_team_member(
+            str(other_project.id), self.user_manager["id"]
+        )
+        result = self.post(
+            f"/actions/projects/{other_project.id}/tasks/copy-client-comments",
+            {"task_ids": [str(self.task.id)]},
+            201,
+        )
+        self.assertEqual(result, [])
+
+    def test_supervisor_cannot_copy(self):
+        self.log_in_supervisor()
+        self.copy([self.task.id], 403)
+
+    def test_refuse_a_malformed_body(self):
+        self.log_in_manager()
+        self.post(self.path, {"task_ids": "not a list"}, 400)
+        self.post(self.path, {"task_ids": ["not-a-uuid"]}, 400)

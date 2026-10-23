@@ -1,8 +1,8 @@
-from zou.app import db
-from zou.app.models.serializer import SerializerMixin
-from zou.app.models.base import BaseMixin
-
 from sqlalchemy_utils import UUIDType
+
+from zou.app import db
+from zou.app.models.base import BaseMixin
+from zou.app.models.serializer import SerializerMixin
 
 
 class ProductionScheduleVersion(db.Model, BaseMixin, SerializerMixin):
@@ -19,7 +19,7 @@ class ProductionScheduleVersion(db.Model, BaseMixin, SerializerMixin):
     )
     production_schedule_from = db.Column(
         UUIDType(binary=False),
-        db.ForeignKey("production_schedule_version.id"),
+        db.ForeignKey("production_schedule_version.id", ondelete="SET NULL"),
         index=True,
         nullable=True,
     )

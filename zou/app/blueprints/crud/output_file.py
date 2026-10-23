@@ -1,13 +1,12 @@
+from flasgger import swag_from
 from flask import current_app
-
+from flask_jwt_extended import jwt_required
 from sqlalchemy.exc import StatementError
 
-from zou.app.services.exception import WrongParameterException
-from flask_jwt_extended import jwt_required
-
-from zou.app.utils import events
-from zou.app.models.output_file import OutputFile
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
+from zou.app.exceptions import WrongParameterException
 from zou.app.models.entity import Entity
+from zou.app.models.output_file import QUALITIES, OutputFile
 from zou.app.models.project import Project
 from zou.app.services import (
     entities_service,
@@ -15,9 +14,14 @@ from zou.app.services import (
     permissions_service,
     user_service,
 )
-from zou.app.utils import permissions
+from zou.app.utils import events, permissions
 
-from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
+
+def check_quality(data):
+    if data.get("quality") is not None and data["quality"] not in [
+        quality for quality, _ in QUALITIES
+    ]:
+        raise WrongParameterException("Invalid quality")
 
 
 class OutputFilesResource(BaseModelsResource):
@@ -27,6 +31,11 @@ class OutputFilesResource(BaseModelsResource):
     def check_read_permissions(self, options=None):
         permissions_service.block_access_to_vendor()
         return True
+
+    def update_data(self, data):
+        data = super().update_data(data)
+        check_quality(data)
+        return data
 
     def add_project_permission_filter(self, query):
         if permissions.has_admin_permissions():
@@ -70,51 +79,10 @@ class OutputFileResource(BaseModelResource):
             )
 
     @jwt_required()
+    @swag_from("openapi/OutputFileResource_get.yml")
     def get(self, instance_id):
         """
         Get output file
-        ---
-        tags:
-          - Crud
-        description: Retrieve an output file instance by its ID and return
-          it as a JSON object.
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-              description: Output file retrieved successfully
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      name:
-                        type: string
-                        example: output_file_v001
-                      entity_id:
-                        type: string
-                        format: uuid
-                        example: b24a6ea4-ce75-4665-a070-57453082c25
-                      created_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-            400:
-              description: Invalid ID format or query error
         """
         try:
             output_file = files_service.get_output_file(instance_id)
@@ -127,6 +95,11 @@ class OutputFileResource(BaseModelResource):
 
         except ValueError:
             raise WrongParameterException("Invalid value.")
+
+    def update_data(self, data, instance_id):
+        data = super().update_data(data, instance_id)
+        check_quality(data)
+        return data
 
     def post_update(self, instance_dict, data):
         files_service.clear_output_file_cache(instance_dict["id"])

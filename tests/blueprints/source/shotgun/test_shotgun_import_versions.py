@@ -1,7 +1,6 @@
 from tests.blueprints.source.shotgun.base import ShotgunTestCase
-
-from zou.app.models.task import Task
 from zou.app.models.person import Person
+from zou.app.models.task import Task
 
 
 class ImportShotgunVersionTestCase(ShotgunTestCase):

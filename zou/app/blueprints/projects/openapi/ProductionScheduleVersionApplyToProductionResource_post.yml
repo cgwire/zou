@@ -1,0 +1,29 @@
+Apply production schedule version
+---
+description: Apply production schedule version to production.
+tags:
+  - Projects
+parameters:
+  - in: path
+    name: production_schedule_version_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Production schedule version unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+responses:
+  200:
+    description: Production schedule version applied
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            task_count:
+              type: integer
+              description: Number of tasks updated
+  400:
+    description: Wrong ID format

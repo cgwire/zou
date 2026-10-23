@@ -1,11 +1,9 @@
-from sqlalchemy_utils import UUIDType
-from sqlalchemy_utils import ChoiceType
-
-from zou.app.models.person import POSITION_TYPES, SENIORITY_TYPES
+from sqlalchemy_utils import ChoiceType, UUIDType
 
 from zou.app import db
-from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
+from zou.app.models.person import POSITION_TYPES, SENIORITY_TYPES
+from zou.app.models.serializer import SerializerMixin
 
 
 class SalaryScale(db.Model, BaseMixin, SerializerMixin):

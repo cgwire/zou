@@ -1,8 +1,8 @@
 import os
+from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
 from zou.app import db
-
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.metadata_descriptor import MetadataDescriptor
@@ -12,8 +12,14 @@ from zou.app.models.project import (
 )
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
-
-from zou.app.services import assets_service, projects_service, tasks_service
+from zou.app.services import (
+    assets_service,
+    entity_types_service,
+    index_service,
+    projects_service,
+    shots_service,
+    task_types_service,
+)
 
 
 class ImportCsvAssetsTestCase(ApiDBTestCase):
@@ -70,7 +76,7 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         entities = Entity.query.all()
         self.assertEqual(len(entities), 3)
 
-        asset_types = assets_service.get_asset_types()
+        asset_types = entity_types_service.get_asset_types()
         self.assertEqual(len(asset_types), 2)
 
         tasks = Task.query.all()
@@ -119,8 +125,10 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         task_types = self.link_asset_task_types_to_project()
         self.generate_fixture_task_status_wip()
         # The status list the importer matches columns against is memoized.
-        tasks_service.clear_task_status_cache(str(self.task_status_wip.id))
-        default_status_id = tasks_service.get_default_status()["id"]
+        task_types_service.clear_task_status_cache(
+            str(self.task_status_wip.id)
+        )
+        default_status_id = task_types_service.get_default_task_status()["id"]
 
         path = f"/import/csv/projects/{self.project.id}/assets"
         file_path_fixture = self.get_fixture_file_path(
@@ -166,7 +174,7 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
 
     def test_import_assets_creates_tasks_of_rows_before_a_failing_one(self):
         task_types = self.link_asset_task_types_to_project()
-        default_status_id = tasks_service.get_default_status()["id"]
+        default_status_id = task_types_service.get_default_task_status()["id"]
 
         path = f"/import/csv/projects/{self.project.id}/assets"
         file_path_fixture = self.get_fixture_file_path(
@@ -245,6 +253,51 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
 
         entities = Entity.query.all()
         self.assertEqual(len(entities), 3)
+
+    def test_import_assets_does_not_retype_a_sequence_of_the_same_name(self):
+        """
+        The entity table holds assets, shots, sequences and episodes. The
+        lookup used to match on name and project only, so a sequence named
+        like an incoming asset was taken for it and turned into a Prop.
+        """
+        sequence = self.generate_fixture_sequence("Cassette Player")
+        sequence_type_id = str(sequence.entity_type_id)
+        path = f"/import/csv/projects/{self.project.id}/assets?update=true"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets.csv")
+        )
+        self.upload_file(path, file_path_fixture)
+
+        sequence = Entity.get(sequence.id)
+        self.assertEqual(str(sequence.entity_type_id), sequence_type_id)
+        assets = assets_service.get_assets({"project_id": self.project.id})
+        self.assertEqual(
+            sorted(asset["name"] for asset in assets),
+            ["Cassette Player", "Victor", "Wood Stick"],
+        )
+
+    def test_import_assets_empty_episode_cell_means_no_episode(self):
+        # DictReader reads an empty cell as "", which used to create an
+        # episode named "" that every later empty row was attached to.
+        self.project.update({"production_type": "tvshow"})
+        path = f"/import/csv/projects/{self.project.id}/assets"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets_empty_episode.csv")
+        )
+        self.upload_file(path, file_path_fixture)
+
+        episodes = shots_service.get_episodes({"project_id": self.project.id})
+        self.assertEqual([episode["name"] for episode in episodes], ["E01"])
+        assets = {
+            asset["name"]: asset
+            for asset in assets_service.get_assets(
+                {"project_id": self.project.id}
+            )
+        }
+        self.assertEqual(
+            assets["Cassette Player"]["source_id"], episodes[0]["id"]
+        )
+        self.assertIsNone(assets["Wood Stick"]["source_id"])
 
     def generate_person_descriptor(self):
         self.generate_fixture_person()
@@ -400,4 +453,44 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
             ProjectAssetTypeLink.query.filter_by(
                 project_id=self.project_id, asset_type_id=asset_type.id
             ).first()
+        )
+
+    def test_import_assets_indexes_them_in_one_call(self):
+        # Waiting on the indexer for every row made a large import last
+        # longer than Kitsu waited for its answer.
+        path = f"/import/csv/projects/{self.project.id}/assets"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets.csv")
+        )
+        with patch.object(index_service, "index_asset") as index_asset:
+            with patch.object(
+                index_service, "remove_asset_index"
+            ) as remove_asset_index:
+                with patch.object(
+                    index_service, "index_assets"
+                ) as index_assets:
+                    self.upload_file(path, file_path_fixture)
+                    self.upload_file(f"{path}?update=true", file_path_fixture)
+
+        index_asset.assert_not_called()
+        remove_asset_index.assert_not_called()
+        asset_ids = {str(asset.id) for asset in Entity.query.all()}
+        self.assertEqual(index_assets.call_count, 2)
+        for call in index_assets.call_args_list:
+            self.assertEqual({str(id) for id in call.args[0]}, asset_ids)
+
+    def test_import_assets_indexes_the_rows_imported_before_a_failure(self):
+        self.link_asset_task_types_to_project()
+        path = f"/import/csv/projects/{self.project.id}/assets"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets_broken_task_status.csv")
+        )
+        with patch.object(index_service, "index_assets") as index_assets:
+            self.upload_file(path, file_path_fixture, 400)
+
+        asset_ids = {str(asset.id) for asset in Entity.query.all()}
+        self.assertEqual(len(asset_ids), 2)
+        index_assets.assert_called_once()
+        self.assertEqual(
+            {str(id) for id in index_assets.call_args.args[0]}, asset_ids
         )

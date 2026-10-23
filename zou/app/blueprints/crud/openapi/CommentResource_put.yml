@@ -1,0 +1,77 @@
+Update comment
+---
+tags:
+  - Crud
+description: Update a comment with data provided in the request
+  body. JSON format is expected. May update task status if
+  task_status_id is changed.
+parameters:
+  - in: path
+    name: instance_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          text:
+            type: string
+            example: Updated comment text
+          task_status_id:
+            type: string
+            format: uuid
+            example: b24a6ea4-ce75-4665-a070-57453082c250
+          pinned:
+            type: boolean
+            example: true
+          checklist:
+            type: array
+            items:
+              type: object
+            example: [{"text": "Item 1", "checked": false}]
+responses:
+    200:
+      description: Comment updated successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              object_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              person_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              task_status_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              text:
+                type: string
+                example: Updated comment text
+              pinned:
+                type: boolean
+                example: true
+              created_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T10:30:00Z"
+              updated_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T11:00:00Z"
+    400:
+      description: Invalid data format or validation error

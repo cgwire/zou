@@ -1,5 +1,5 @@
 from tests.base import ApiDBTestCase
-from zou.app.models.organisation import Organisation, SENSITIVE_FIELDS
+from zou.app.models.organisation import SENSITIVE_FIELDS, Organisation
 from zou.app.utils import fields
 
 
@@ -39,6 +39,14 @@ class OrganisationTestCase(ApiDBTestCase):
             data["hours_by_day"], organisation_again["hours_by_day"]
         )
         self.put_404(f"data/organisations/{fields.gen_uuid()}", data)
+
+    def test_update_organisation_refuses_a_non_numeric_hours_by_day(self):
+        organisation = self.get_first("data/organisations")
+        self.put(
+            f"data/organisations/{organisation['id']}",
+            {"hours_by_day": "abc"},
+            400,
+        )
 
     def test_chat_tokens_are_admin_only(self):
         organisation = Organisation.query.first()

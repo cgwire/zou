@@ -6,16 +6,22 @@ Create Date: 2024-03-01 00:18:48.971796
 
 """
 
-from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.orm.session import Session
-from zou.migrations.utils.base import BaseMixin
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy_utils import ChoiceType, EmailType, LocaleType, TimezoneType
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy_utils import UUIDType
+from alembic import op
 from babel import Locale
 from pytz import timezone as pytz_timezone
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm.session import Session
+from sqlalchemy_utils import (
+    ChoiceType,
+    EmailType,
+    LocaleType,
+    TimezoneType,
+    UUIDType,
+)
+
+from zou.migrations.utils.base import BaseMixin
 
 # revision identifiers, used by Alembic.
 revision = "17ef8f7be758"

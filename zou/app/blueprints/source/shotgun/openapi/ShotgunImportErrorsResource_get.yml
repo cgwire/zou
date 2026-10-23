@@ -1,0 +1,36 @@
+Get shotgun import errors
+---
+description: Get all Shotgun import errors from the database.
+  Returns a list of data import errors with source "shotgun".
+tags:
+  - Import
+responses:
+  200:
+    description: List of import errors retrieved successfully
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Import error unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              source:
+                type: string
+                description: Source of the import error
+                example: "shotgun"
+              event_data:
+                type: object
+                description: Error event data
+                example: {"error": "Import failed"}
+              created_at:
+                type: string
+                format: date-time
+                description: Creation timestamp
+                example: "2024-01-15T10:30:00Z"
+  400:
+    description: Invalid request

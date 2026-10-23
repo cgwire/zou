@@ -1,22 +1,22 @@
 from flask import Blueprint
-from zou.app.utils.api import configure_api_from_blueprint
 
 from zou.app.blueprints.breakdown.resources import (
+    AssetTypeCastingResource,
+    CastingResource,
+    EntitiesAssetCastingResource,
+    EntitiesCastingResource,
     EpisodesCastingResource,
+    EpisodeSequenceAllCastingResource,
     ProjectEntityLinkResource,
     ProjectEntityLinksResource,
-    ShotAssetInstancesResource,
     RemoveShotAssetInstanceResource,
     SceneAssetInstancesResource,
     SceneCameraInstancesResource,
-    CastingResource,
-    EntitiesCastingResource,
-    EntitiesAssetCastingResource,
-    AssetTypeCastingResource,
-    SequenceCastingResource,
-    EpisodeSequenceAllCastingResource,
     SequenceAllCastingResource,
+    SequenceCastingResource,
+    ShotAssetInstancesResource,
 )
+from zou.app.utils.api import configure_api_from_blueprint
 
 routes = [
     (

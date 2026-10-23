@@ -1,8 +1,9 @@
-from sqlalchemy_utils import UUIDType
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy_utils import UUIDType
+
 from zou.app import db
-from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
+from zou.app.models.serializer import SerializerMixin
 from zou.app.utils import fields
 
 
@@ -75,6 +76,7 @@ class Task(db.Model, BaseMixin, SerializerMixin):
         db.CheckConstraint(
             "difficulty > 0 AND difficulty < 6", name="check_difficulty"
         ),
+        db.Index("ix_task_entity_project", "entity_id", "project_id"),
     )
 
     def assignees_as_string(self):

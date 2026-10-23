@@ -1,12 +1,16 @@
+import os
+
+from flask import g
+
 from tests.base import ApiDBTestCase
 from zou.app import app
-
 from zou.app.models.notification import Notification
 from zou.app.models.person import Person
 from zou.app.models.playlist_share_link import PlaylistShareLink
 from zou.app.services import (
+    cascade_deletion_service,
+    playlist_builds_service,
     playlist_sharing_service,
-    playlists_service,
     projects_service,
 )
 
@@ -99,6 +103,145 @@ class PlaylistTestCase(ApiDBTestCase):
         self.log_in_vendor()
         self.get("data/playlists", 403)
 
+    def join_two_productions(self, user, role=None):
+        """
+        This production holds an internal playlist and one shared with
+        clients, another one an internal playlist. Given user joins both,
+        with given role on this one only, and logs in. Return the internal
+        playlist of this production.
+        """
+        internal = self.generate_fixture_playlist("Internal")
+        self.generate_fixture_playlist("For client", for_client=True)
+        other_project_id = str(self.generate_fixture_project_standard().id)
+        self.generate_fixture_playlist(
+            "Elsewhere", project_id=other_project_id
+        )
+        projects_service.add_team_member(
+            self.project_id, user["id"], role=role
+        )
+        projects_service.add_team_member(other_project_id, user["id"])
+        self.log_in(user["email"])
+        return internal
+
+    def list_playlist_names(self):
+        return {playlist["name"] for playlist in self.get("data/playlists")}
+
+    def test_crud_list_narrows_a_client_on_each_of_their_productions(self):
+        """
+        A client is narrowed on every production they belong to, through
+        the query string filters as well.
+        """
+        internal = self.join_two_productions(
+            self.generate_fixture_user_client()
+        )
+
+        self.assertEqual(self.list_playlist_names(), {"For client"})
+        self.assertEqual(self.get(f"data/playlists?id={internal['id']}"), [])
+
+    def test_crud_list_narrows_a_client_by_project_role_there_only(self):
+        """
+        A listing resolves no project, so the client rule read the global
+        role: an artist made client on a production listed its internal
+        playlists, through the query string filters as well.
+        """
+        internal = self.join_two_productions(
+            self.generate_fixture_user_cg_artist(), role="client"
+        )
+
+        self.assertEqual(
+            self.list_playlist_names(), {"For client", "Elsewhere"}
+        )
+        self.assertEqual(self.get(f"data/playlists?id={internal['id']}"), [])
+
+    def test_crud_list_lets_a_client_made_artist_see_internal_playlists(self):
+        """
+        The other way round: a client made artist on a production was
+        narrowed there as well, as on the productions where they stay a
+        client.
+        """
+        self.join_two_productions(
+            self.generate_fixture_user_client(), role="user"
+        )
+
+        self.assertEqual(
+            self.list_playlist_names(), {"Internal", "For client"}
+        )
+
+    def test_crud_list_shows_a_client_made_vendor_no_playlist_there(self):
+        """
+        A client made vendor on a production is no client there: reading
+        that role must not list its internal playlists, as the client rule
+        on the global role did not. A vendor reads no playlist of the
+        production, as a playlist read refuses them there.
+        """
+        internal = self.join_two_productions(
+            self.generate_fixture_user_client(), role="vendor"
+        )
+
+        self.assertEqual(self.list_playlist_names(), set())
+        self.assertEqual(self.get(f"data/playlists?id={internal['id']}"), [])
+
+    def test_crud_list_shows_an_artist_made_vendor_no_playlist_there(self):
+        """
+        An artist made vendor on a production listed all its playlists,
+        which a playlist read refuses them there.
+        """
+        self.join_two_productions(
+            self.generate_fixture_user_cg_artist(), role="vendor"
+        )
+
+        self.assertEqual(self.list_playlist_names(), {"Elsewhere"})
+
+    def test_crud_get_hides_internal_playlists_from_clients(self):
+        internal = self.generate_fixture_playlist("Internal")
+        for_client = self.generate_fixture_playlist(
+            "For client", for_client=True
+        )
+        client = self.generate_fixture_user_client()
+        projects_service.add_team_member(self.project_id, client["id"])
+        self.log_in_client()
+
+        self.get(f"data/playlists/{internal['id']}", 403)
+        self.assertEqual(
+            self.get(f"data/playlists/{for_client['id']}")["id"],
+            for_client["id"],
+        )
+
+    def test_crud_get_follows_the_project_role_of_a_client(self):
+        internal = self.generate_fixture_playlist("Internal")
+        for_client = self.generate_fixture_playlist(
+            "For client", for_client=True
+        )
+        artist = self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            self.project_id, artist["id"], role="client"
+        )
+        self.log_in_cg_artist()
+
+        self.get(f"data/playlists/{internal['id']}", 403)
+        self.get(f"data/playlists/{for_client['id']}")
+
+    def test_crud_get_lets_the_team_read_internal_playlists(self):
+        internal = self.generate_fixture_playlist("Internal")
+        team = {
+            "manager": self.generate_fixture_user_manager,
+            "supervisor": self.generate_fixture_user_supervisor,
+            "artist": self.generate_fixture_user_cg_artist,
+        }
+        for role, fixture in team.items():
+            with self.subTest(role=role):
+                user = fixture()
+                projects_service.add_team_member(self.project_id, user["id"])
+                self.log_in(user["email"])
+                # flask.g outlives the requests of a test: the role resolved
+                # for the previous member goes, as between real requests.
+                g.pop("project_role", None)
+
+                self.assertEqual(
+                    self.get(f"data/playlists/{internal['id']}")["id"],
+                    internal["id"],
+                )
+
     def test_get_playlists_by_task_type(self):
         self.generate_fixture_department()
         self.generate_fixture_task_type()
@@ -169,13 +312,11 @@ class PlaylistTestCase(ApiDBTestCase):
 
     def test_remove_playlist_takes_the_dependents_with_it(self):
         """
-        PlaylistResource.pre_delete and playlists_service.remove_playlist are
-        two implementations of one cascade, not one shared by both, so the
-        service needs its own case: a dependent added to one route is not
-        added to the other.
+        The service and the CRUD route share remove_playlist_dependents;
+        both are exercised so the cascade cannot drift apart again.
         """
         self.assert_dependents_go_with_the_playlist(
-            playlists_service.remove_playlist
+            cascade_deletion_service.remove_playlist
         )
 
     def test_create_playlist_for_each_entity_type(self):
@@ -235,6 +376,20 @@ class PlaylistTestCase(ApiDBTestCase):
             {"for_entity": "banana"},
             400,
         )
+
+    def test_concurrent_zip_builds_keep_their_own_file(self):
+        # Two downloads of the same playlist: the second build must not
+        # remove the archive the first one is about to send.
+        playlist = self.generate_fixture_playlist("Playlist 1")
+        first_path = playlist_builds_service.build_playlist_zip_file(playlist)
+        second_path = playlist_builds_service.build_playlist_zip_file(playlist)
+        try:
+            self.assertNotEqual(first_path, second_path)
+            self.assertTrue(os.path.exists(first_path))
+        finally:
+            for path in (first_path, second_path):
+                if os.path.exists(path):
+                    os.remove(path)
 
     def test_download_playlist(self):
         self.generate_fixture_playlist("Playlist 1", for_client=False)

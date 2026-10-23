@@ -1,11 +1,16 @@
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
-from sqlalchemy_utils import UUIDType
+from sqlalchemy_utils import ChoiceType, UUIDType
 
 from zou.app import db
-from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
+from zou.app.models.serializer import SerializerMixin
 
-from sqlalchemy.dialects.postgresql import JSONB
+QUALITIES = [
+    ("low", "Low"),
+    ("mid", "Mid"),
+    ("high", "High"),
+]
 
 
 class OutputFile(db.Model, BaseMixin, SerializerMixin):
@@ -30,6 +35,7 @@ class OutputFile(db.Model, BaseMixin, SerializerMixin):
     source = db.Column(db.String(40))
     path = db.Column(db.String(400))
     data = db.Column(JSONB)
+    quality = db.Column(ChoiceType(QUALITIES), nullable=True)
 
     file_status_id = db.Column(
         UUIDType(binary=False),

@@ -1,17 +1,12 @@
-import pytest
-
 from unittest.mock import patch
 
+import pytest
 from sqlalchemy import event
 
 from tests.base import ApiDBTestCase
-
+from tests.services.cases import FilesTestCase
 from zou.app import app, db
-from zou.app.models.file_status import FileStatus
-from zou.app.models.software import Software
-from zou.app.models.working_file import WorkingFile
-from zou.app.services import deletion_service, files_service
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     EntryAlreadyExistsException,
     OutputFileNotFoundException,
     OutputTypeNotFoundException,
@@ -20,6 +15,10 @@ from zou.app.services.exception import (
     SoftwareNotFoundException,
     WorkingFileNotFoundException,
 )
+from zou.app.models.file_status import FileStatus
+from zou.app.models.software import Software
+from zou.app.models.working_file import WorkingFile
+from zou.app.services import deletion_service, files_service
 from zou.app.stores import file_store
 from zou.app.utils import cache, fields
 
@@ -32,40 +31,18 @@ class DefaultFileStatusTestCase(ApiDBTestCase):
 
     def setUp(self):
         super().setUp()
-        cache.cache.delete_memoized(files_service.get_default_status)
+        cache.cache.delete_memoized(files_service.get_default_file_status)
 
     def test_the_default_status_is_created_on_first_read(self):
         self.assertEqual(FileStatus.query.count(), 0)
 
-        file_status = files_service.get_default_status()
+        file_status = files_service.get_default_file_status()
 
         self.assertEqual(
             file_status["name"], app.config["DEFAULT_FILE_STATUS"]
         )
         self.assertEqual(FileStatus.query.count(), 1)
-        self.assertEqual(files_service.get_default_status(), file_status)
-
-
-class FilesTestCase(ApiDBTestCase):
-    """
-    An asset and a shot, each with a task, a working file and an output
-    file: the smallest set every listing of this service reads from.
-    """
-
-    def setUp(self):
-        super().setUp()
-        self.generate_fixture_project()
-        self.generate_fixture_asset()
-        self.generate_fixture_sequence()
-        self.generate_fixture_shot()
-        self.generate_fixture_task_type()
-        self.generate_fixture_person()
-        self.generate_fixture_task()
-        self.generate_fixture_shot_task()
-        self.generate_fixture_software()
-        self.generate_fixture_working_file()
-        self.generate_fixture_output_type()
-        self.generate_fixture_output_file()
+        self.assertEqual(files_service.get_default_file_status(), file_status)
 
 
 class LookupTestCase(FilesTestCase):
@@ -201,7 +178,14 @@ class LookupTestCase(FilesTestCase):
 
         self.assertEqual(
             set(result.keys()),
-            {"id", "task_id", "updated_at", "extension", "movie_prefixes"},
+            {
+                "id",
+                "task_id",
+                "updated_at",
+                "extension",
+                "status",
+                "movie_prefixes",
+            },
         )
         self.assertEqual(result["id"], preview_file_id)
         self.assertEqual(result["task_id"], task_id)
@@ -400,7 +384,7 @@ class OutputFileTestCase(FilesTestCase):
         self.assertEqual(len(captured), 1)
 
     def test_an_entity_with_no_output_file_has_no_last_revision(self):
-        from zou.app.services.exception import NoOutputFileException
+        from zou.app.exceptions import NoOutputFileException
 
         self.assertRaises(
             NoOutputFileException,
@@ -770,7 +754,7 @@ class PreviewFileTestCase(FilesTestCase):
         files_service.get_preview_file(preview_file_id)
         files_service.get_preview_file_for_access(preview_file_id)
 
-        files_service.remove_preview_file(preview_file_id)
+        deletion_service.remove_preview_file_row(preview_file_id)
 
         for get in [
             files_service.get_preview_file,
@@ -780,12 +764,6 @@ class PreviewFileTestCase(FilesTestCase):
                 self.assertRaises(
                     PreviewFileNotFoundException, get, preview_file_id
                 )
-
-    def test_a_removed_preview_is_announced(self):
-        self.generate_fixture_preview_file()
-        captured = self.capture_events("preview-file:delete")
-        files_service.remove_preview_file(self.preview_file.id)
-        self.assertEqual(len(captured), 1)
 
     def test_a_deleted_preview_stops_being_downloadable(self):
         """

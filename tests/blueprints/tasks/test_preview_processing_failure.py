@@ -1,9 +1,7 @@
 import os
-
 from unittest import mock
 
 from tests.base import ApiDBTestCase
-
 from zou.app.services import preview_files_service
 
 
@@ -38,7 +36,7 @@ class PreviewProcessingFailureTestCase(ApiDBTestCase):
         )
         preview_file = self.post(path, {})
         movie_path = self.get_fixture_file_path(
-            os.path.join("videos", "test_preview_tiles.mp4")
+            os.path.join("videos", "test_preview_small.mp4")
         )
         return preview_file["id"], movie_path
 

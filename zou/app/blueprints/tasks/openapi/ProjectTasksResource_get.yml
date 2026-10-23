@@ -1,0 +1,81 @@
+Get project tasks
+---
+tags:
+- Tasks
+description: Retrieve tasks related to a project. Useful for sync.
+parameters:
+  - in: path
+    name: project_id
+    required: true
+    schema:
+      type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+  - in: query
+    name: page
+    required: False
+    type: integer
+    example: 1
+  - in: query
+    name: task_type_id
+    required: False
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+  - in: query
+    name: episode_id
+    required: False
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+responses:
+    200:
+        description: All tasks related to given project
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        example: a24a6ea4-ce75-4665-a070-57453082c250
+                      name:
+                        type: string
+                        example: SH010 Animation
+                      task_type_id:
+                        type: string
+                        format: uuid
+                        example: b24a6ea4-ce75-4665-a070-57453082c250
+                      task_status_id:
+                        type: string
+                        format: uuid
+                        example: c24a6ea4-ce75-4665-a070-57453082c250
+                      entity_id:
+                        type: string
+                        format: uuid
+                        example: d24a6ea4-ce75-4665-a070-57453082c250
+                      project_id:
+                        type: string
+                        format: uuid
+                        example: e24a6ea4-ce75-4665-a070-57453082c250
+                      assignees:
+                        type: array
+                        items:
+                          type: string
+                          format: uuid
+                        example: ["f24a6ea4-ce75-4665-a070-57453082c250"]
+                limit:
+                  type: integer
+                  example: 100
+                page:
+                  type: integer
+                  example: 1
+                is_more:
+                  type: boolean
+                  example: true

@@ -1,0 +1,39 @@
+Get running preview files
+---
+description: Retrieve all preview files from open productions with
+  states equal to processing or broken.
+tags:
+  - Previews
+parameters:
+  - in: query
+    name: cursor_preview_file_id
+    required: false
+    type: string
+    format: uuid
+    description: ID of the last preview file from previous page for cursor-based pagination
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+  - in: query
+    name: limit
+    required: false
+    type: integer
+    description: Maximum number of preview files to return
+    example: 100
+responses:
+  200:
+    description: All preview files from open productions with processing or broken states
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Preview file unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              status:
+                type: string
+                description: Preview file status
+                example: "processing"

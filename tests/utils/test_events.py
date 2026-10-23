@@ -1,7 +1,6 @@
-from zou.app.utils import events
-from zou.app.services import events_service
-
 from tests.base import ApiDBTestCase
+from zou.app.services import events_service
+from zou.app.utils import events
 
 
 class EventsTestCase(ApiDBTestCase):

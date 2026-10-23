@@ -1,0 +1,69 @@
+Update metadata descriptor
+---
+tags:
+  - Crud
+description: Update a metadata descriptor with data provided in the
+  request body. JSON format is expected. Validates data_type.
+parameters:
+  - in: path
+    name: instance_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            example: Updated Custom Field
+          data_type:
+            type: string
+            example: number
+responses:
+    200:
+      description: Metadata descriptor updated successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: Updated Custom Field
+              field_name:
+                type: string
+                example: custom_field
+              data_type:
+                type: string
+                example: number
+              departments:
+                type: array
+                description: Departments the descriptor is limited to
+                items:
+                  type: string
+                  format: uuid
+                example: ["a24a6ea4-ce75-4665-a070-57453082c250"]
+              project_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              created_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T10:30:00Z"
+              updated_at:
+                type: string
+                format: date-time
+                example: "2024-01-15T11:00:00Z"
+    400:
+      description: Invalid data format or invalid data_type

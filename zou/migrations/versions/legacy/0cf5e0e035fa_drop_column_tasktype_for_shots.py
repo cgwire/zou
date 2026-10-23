@@ -6,11 +6,12 @@ Create Date: 2022-06-10 13:34:48.830690
 
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy import orm
-from sqlalchemy_utils import UUIDType
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy_utils import UUIDType
+
 from zou.migrations.utils.base import BaseMixin
 
 # revision identifiers, used by Alembic.

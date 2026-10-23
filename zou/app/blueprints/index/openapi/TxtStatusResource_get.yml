@@ -1,0 +1,20 @@
+Get status of the API services as text
+---
+description: Get status of the database, key value store, event stream, job queue, the indexer as a text.
+tags:
+  - Index
+responses:
+  '200':
+    description: API name, version and status as txt
+    content:
+      text/plain:
+        schema:
+          type: string
+          example: |
+            name: Zou
+            version: 0.20.0
+            database-up: up
+            event-stream-up: up
+            key-value-store-up: up
+            job-queue-up: up
+            indexer-up: up

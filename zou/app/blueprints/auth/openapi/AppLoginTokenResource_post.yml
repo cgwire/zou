@@ -1,0 +1,31 @@
+Trade a browser login code for tokens
+---
+description: Exchange a one-time code minted through the browser for a new
+  access and refresh token pair. The code can be used once, and only with
+  the PKCE code verifier matching its challenge. The response has the same
+  shape as a successful login and never sets cookies.
+tags:
+    - Authentication
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          code:
+            type: string
+            description: One-time login code
+          code_verifier:
+            type: string
+            example: dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk
+            description: PKCE code verifier (43 to 128 characters)
+        required:
+          - code
+          - code_verifier
+responses:
+  200:
+    description: Login successful
+  400:
+    description: Unknown, expired or already used code, wrong verifier
+      or inactive user

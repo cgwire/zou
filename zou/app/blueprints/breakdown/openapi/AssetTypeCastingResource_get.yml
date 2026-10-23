@@ -1,0 +1,62 @@
+Get asset type casting
+---
+description: Retrieve the casting information for all assets of a specific asset type in a project.
+tags:
+  - Breakdown
+parameters:
+  - in: path
+    name: project_id
+    required: true
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the project
+  - in: path
+    name: asset_type_id
+    required: true
+    type: string
+    format: uuid
+    example: 08002400-2431-0221-0736-130196482810
+    description: Unique identifier of the asset type
+responses:
+  200:
+    description: Asset type casting information successfully retrieved
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              asset_id:
+                type: string
+                format: uuid
+                description: Asset unique identifier
+                example: c46c80c6-e097-6887-c292-79675204e470
+              asset_name:
+                type: string
+                description: Asset name
+                example: "Main Character"
+              asset_type_id:
+                type: string
+                format: uuid
+                description: Asset type identifier
+                example: 08002400-2431-0221-0736-130196482810
+              casting:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    entity_id:
+                      type: string
+                      format: uuid
+                      description: Entity identifier
+                      example: e68e02e8-0219-8009-e514-918974260690
+                    entity_name:
+                      type: string
+                      description: Entity name
+                      example: "SH001"
+                    entity_type:
+                      type: string
+                      description: Entity type (shot/sequence)
+                      example: "shot"

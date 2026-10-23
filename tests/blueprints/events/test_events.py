@@ -8,9 +8,8 @@ from zou.app.models.event import ApiEvent
 from zou.app.models.login_log import LoginLog
 from zou.app.models.person import Person
 from zou.app.models.project import Project, ProjectPersonLink
-from zou.app.utils import fields
-
 from zou.app.services import assets_service
+from zou.app.utils import fields
 
 
 # Frozen mid-day time: these tests build date-boundary filters (before/
@@ -42,6 +41,36 @@ class EventsRoutesTestCase(ApiDBTestCase):
         self.log_in_manager()
         self.get("/data/events", 403)
         self.get(f"/data/events/{event_id}", 403)
+
+    def test_a_stored_event_names_the_caller(self):
+        # The author is read off the JWT identity of the request, no
+        # longer through the persons service.
+        path = (
+            f"data/projects/{self.project.id}"
+            f"/asset-types/{self.asset_type.id}/assets/new"
+        )
+        self.post(path, {"name": "Tree", "description": ""})
+        event = (
+            ApiEvent.query.filter_by(name="asset:new")
+            .order_by(ApiEvent.created_at.desc())
+            .first()
+        )
+        self.assertEqual(str(event.user_id), self.user["id"])
+
+    def test_generic_event_route_pagination_keeps_the_page_size(self):
+        """
+        The unpaginated listing is capped at 1000 rows. That cap used to be
+        applied after the page limit and replaced it, so a page of two rows
+        came back with everything.
+        """
+        for name in ["Tree", "Rock", "Bush"]:
+            assets_service.create_asset(
+                self.project.id, self.asset_type.id, name, "", {}
+            )
+        page = self.get("/data/events?page=1&limit=2")
+        self.assertEqual(len(page["data"]), 2)
+        self.assertEqual(page["limit"], 2)
+        self.assertGreaterEqual(page["total"], 3)
 
     def test_get_last_events(self):
         now = datetime.now().replace(microsecond=0)

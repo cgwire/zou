@@ -1,8 +1,8 @@
 from sqlalchemy.dialects.postgresql import JSONB
 
 from zou.app import db
-from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
+from zou.app.models.serializer import SerializerMixin
 
 
 class DataImportError(db.Model, BaseMixin, SerializerMixin):

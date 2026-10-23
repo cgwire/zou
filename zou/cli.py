@@ -3,15 +3,24 @@
 import warnings
 
 warnings.filterwarnings("ignore")
+import logging
 import os
 import sys
+
 import click
+
+from zou.app.services import (
+    organisation_service,
+)
 
 
 def _get_app():
-    from zou.app import app
+    import zou.app
 
-    return app
+    # Plugins only add HTTP routes, which no CLI command serves.
+    return zou.app.__dict__.get("app") or zou.app.create_app(
+        with_plugins=False
+    )
 
 
 def _get_db_uri():
@@ -75,7 +84,9 @@ def _get_migrations_path():
 
 @click.group()
 def cli():
-    pass
+    # The services report their progress through logging; without a
+    # handler nothing below WARNING would reach the terminal.
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
 
 
 @cli.command()
@@ -207,7 +218,7 @@ def upgrade_db(no_telemetry=False):
 
     from alembic import command
     from alembic.script import ScriptDirectory
-    from sqlalchemy import create_engine, text, pool
+    from sqlalchemy import create_engine, pool, text
 
     cfg = _get_alembic_config()
 
@@ -253,7 +264,7 @@ def upgrade_db(no_telemetry=False):
     # install or a version upgrade worth counting.
     if not no_telemetry and is_self_hosted and current_rev != head_rev:
         with _get_app().app_context():
-            from zou.app.services import telemetry_service
+            from zou.app.commands import telemetry_service
 
             try:
                 telemetry_service.send_main_infos()
@@ -297,23 +308,33 @@ def create_admin(email, password):
     """
     from sqlalchemy.exc import IntegrityError
 
-    from zou.app.utils import auth
-    from zou.app.services import persons_service
-    from zou.app.services.exception import (
+    from zou.app.exceptions import (
         IsUserLimitReachedException,
         PersonNotFoundException,
     )
+    from zou.app.services import persons_service
+    from zou.app.utils import auth
+
+    # The service logs are structured for production, the messages below
+    # say the same thing in a readable way.
+    logging.getLogger(persons_service.__name__).setLevel(logging.WARNING)
+
+    def fail(message):
+        click.echo(f"❌ {message}", err=True)
+        sys.exit(1)
 
     with _get_app().app_context():
         try:
             person = persons_service.get_person_by_email(email)
-            if person["role"] != "admin":
+            if person["role"] == "admin":
+                print(f"Admin {email} already exists.")
+            else:
                 persons_service.update_person(
                     person["id"],
                     {"role": "admin"},
                     bypass_protected_accounts=True,
                 )
-                print("Existing user's role has been upgraded to 'admin'.")
+                print(f"✅ User {email} upgraded to admin.")
         except PersonNotFoundException:
             try:
                 if password is None:
@@ -330,27 +351,22 @@ def create_admin(email, password):
                 persons_service.create_person(
                     email, password, "Super", "Admin", role="admin"
                 )
-                print("Admin successfully created.")
+                print(f"✅ Admin {email} created.")
             except IntegrityError:
-                print("User already exists for this email.")
-                sys.exit(1)
+                fail(f"A user already exists for {email}.")
             except auth.PasswordTooShortException:
-                print("Password is too short.")
-                sys.exit(1)
+                fail("Password is too short.")
             except auth.EmailNotValidException as e:
-                print(f"Email is not valid: {e}")
-                sys.exit(1)
+                fail(f"Email is not valid: {e}")
             except IsUserLimitReachedException:
-                print(
-                    f"User limit reached (limit {persons_service.get_user_limit()})."
-                )
-                sys.exit(1)
+                limit = organisation_service.get_user_limit()
+                fail(f"User limit reached ({limit}).")
 
 
 @cli.command()
 def clean_auth_tokens():
     "Remove revoked and expired tokens."
-    from zou.app.utils import commands
+    from zou.app.commands import commands_service as commands
 
     commands.clean_auth_tokens()
 
@@ -358,7 +374,7 @@ def clean_auth_tokens():
 @cli.command()
 def clear_all_auth_tokens():
     "Remove all authentication tokens."
-    from zou.app.utils import commands
+    from zou.app.commands import commands_service as commands
 
     commands.clear_all_auth_tokens()
 
@@ -373,7 +389,7 @@ def clear_all_auth_tokens():
 )
 def init_data(domain):
     "Generate minimal data set required to run Kitsu."
-    from zou.app.utils import commands
+    from zou.app.commands import commands_service as commands
 
     commands.init_data(domain=domain.lower())
 
@@ -384,11 +400,11 @@ def disable_two_factor_authentication(email_or_desktop_login):
     """
     Disable two factor authentication for given user.
     """
-    from zou.app.services import persons_service, auth_service
-    from zou.app.services.exception import (
+    from zou.app.exceptions import (
         PersonNotFoundException,
         TwoFactorAuthenticationNotEnabledException,
     )
+    from zou.app.services import auth_service, persons_service
 
     with _get_app().app_context():
         try:
@@ -418,8 +434,8 @@ def change_password(email, password):
     """
     Change the password of given user.
     """
-    from zou.app.utils import auth
     from zou.app.services import persons_service
+    from zou.app.utils import auth
 
     with _get_app().app_context():
         try:
@@ -439,11 +455,11 @@ def set_person_as_active(email, unactive):
     """
     Set a person as active.
     """
-    from zou.app.services import persons_service
-    from zou.app.services.exception import (
+    from zou.app.exceptions import (
         IsUserLimitReachedException,
         PersonNotFoundException,
     )
+    from zou.app.services import persons_service
 
     with _get_app().app_context():
         try:
@@ -460,7 +476,7 @@ def set_person_as_active(email, unactive):
             )
         except IsUserLimitReachedException:
             print(
-                f"User limit reached (limit {persons_service.get_user_limit()})."
+                f"User limit reached (limit {organisation_service.get_user_limit()})."
             )
             sys.exit(1)
         except PersonNotFoundException:
@@ -473,13 +489,13 @@ def sync_with_ldap_server():
     """
     For each user account in your LDAP server, it creates a new user.
     """
-    from zou.app.utils import commands
+    from zou.app.commands import commands_service as commands
     from zou.app.services import persons_service
 
     with _get_app().app_context():
         if persons_service.is_user_limit_reached():
             print(
-                f"User limit reached (limit {persons_service.get_user_limit()}). New users will not be added."
+                f"User limit reached (limit {organisation_service.get_user_limit()}). New users will not be added."
             )
             sys.exit(1)
         commands.sync_with_ldap_server()
@@ -528,6 +544,7 @@ if os.getenv("ADMIN_TOKEN"):
             "nomad_host": "JOB_QUEUE_NOMAD_HOST",
             "nomad_normalize_job": "JOB_QUEUE_NOMAD_NORMALIZE_JOB",
             "nomad_playlist_job": "JOB_QUEUE_NOMAD_PLAYLIST_JOB",
+            "nomad_tile_job": "JOB_QUEUE_NOMAD_TILE_JOB",
         }
 
         token = os.getenv("ADMIN_TOKEN")
@@ -618,7 +635,7 @@ def sync_full(
     connect to source instance are given through SYNC_LOGIN and SYNC_PASSWORD
     environment variables.
     """
-    from zou.app.utils import commands
+    from zou.app.commands import commands_service as commands
 
     print("Start syncing.")
     login = os.getenv("SYNC_LOGIN")
@@ -645,7 +662,7 @@ def sync_verify(source, project):
     dropped batches and tables missing from the sync. Reads SYNC_LOGIN and
     SYNC_PASSWORD from the environment.
     """
-    from zou.app.utils import commands
+    from zou.app.commands import commands_service as commands
 
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
@@ -681,7 +698,7 @@ def sync_push(target, project, batch_size, throttle, broadcast):
     with matching UUIDs. Reads SYNC_LOGIN and SYNC_PASSWORD from the
     environment.
     """
-    from zou.app.utils import commands
+    from zou.app.commands import commands_service as commands
 
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
@@ -706,7 +723,7 @@ def sync_push_verify(target, project):
     spot rows that did not reach the target. Reads SYNC_LOGIN and
     SYNC_PASSWORD from the environment.
     """
-    from zou.app.utils import commands
+    from zou.app.commands import commands_service as commands
 
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
@@ -751,7 +768,7 @@ def sync_full_files(
     connect to source instance are given through SYNC_LOGIN and SYNC_PASSWORD
     environment variables.
     """
-    from zou.app.utils import commands
+    from zou.app.commands import commands_service as commands
 
     print("Start syncing.")
     login = os.getenv("SYNC_LOGIN")
@@ -789,7 +806,7 @@ def sync_changes(event_source, source, logs_directory):
     instance. It expects that credentials to connect to source instance are
     given through SYNC_LOGIN and SYNC_PASSWORD environment variables.
     """
-    from zou.app.utils import commands
+    from zou.app.commands import commands_service as commands
 
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
@@ -808,7 +825,7 @@ def sync_file_changes(event_source, source, logs_directory):
     instance. It expects that credentials to connect to source instance are
     given through SYNC_LOGIN and SYNC_PASSWORD environment variables.
     """
-    from zou.app.utils import commands
+    from zou.app.commands import commands_service as commands
 
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
@@ -827,7 +844,7 @@ def sync_last_events(source, minutes, page_size):
     to them. It expects that credentials to connect to source instance are
     given through SYNC_LOGIN and SYNC_PASSWORD environment variables.
     """
-    from zou.app.utils import commands
+    from zou.app.commands import commands_service as commands
 
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
@@ -846,7 +863,7 @@ def sync_last_files(source, minutes, page_size):
     It expects that credentials to connect to source instance are
     given through SYNC_LOGIN and SYNC_PASSWORD environment variables.
     """
-    from zou.app.utils import commands
+    from zou.app.commands import commands_service as commands
 
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
@@ -861,7 +878,7 @@ def download_storage_files():
     Download all files from a Swift object storage and store them in a local
     storage.
     """
-    from zou.app.utils import commands
+    from zou.app.commands import commands_service as commands
 
     commands.download_file_from_storage()
 
@@ -873,7 +890,7 @@ def dump_database(store=False):
     Dump database described in Zou environment variables and save it to
     configured object storage.
     """
-    from zou.app.utils import commands
+    from zou.app.commands import commands_service as commands
 
     commands.dump_database(store)
 
@@ -884,7 +901,7 @@ def upload_files_to_cloud_storage(days):
     """
     Upload all files related to previews to configured object storage.
     """
-    from zou.app.utils import commands
+    from zou.app.commands import commands_service as commands
 
     commands.upload_files_to_cloud_storage(days)
 
@@ -895,10 +912,11 @@ def clean_tasks_data(project_id):
     """
     Reset task models data (retake count, wip start date and end date)
     """
-    if project_id is not None:
-        from zou.app.utils import commands
+    if project_id is None:
+        raise click.UsageError("--project-id is required.")
+    from zou.app.commands import commands_service as commands
 
-        commands.reset_tasks_data(project_id)
+    commands.reset_tasks_data(project_id)
 
 
 @cli.command()
@@ -908,7 +926,7 @@ def remove_old_data(days):
     Remove old events, notifications and login logs older than 90 days
     (by default).
     """
-    from zou.app.utils import commands
+    from zou.app.commands import commands_service as commands
 
     commands.remove_old_data(days)
 
@@ -918,7 +936,7 @@ def reset_search_index():
     """
     Reset search index.
     """
-    from zou.app.utils import commands
+    from zou.app.commands import commands_service as commands
 
     commands.reset_search_index()
 
@@ -927,7 +945,7 @@ def reset_search_index():
 @click.option("--query", default="")
 def search_asset(query):
     """ """
-    from zou.app.utils import commands
+    from zou.app.commands import commands_service as commands
 
     commands.search_asset(query)
 
@@ -948,6 +966,12 @@ def search_asset(query):
 @click.option(
     "--force-regenerate-tiles", is_flag=True, default=False, show_default=True
 )
+@click.option(
+    "--only-missing-tiles", is_flag=True, default=False, show_default=True
+)
+@click.option("--force", is_flag=True, default=False, show_default=True)
+@click.option("--limit", type=int, default=None, show_default=True)
+@click.option("--progress", is_flag=True, default=False, show_default=True)
 def generate_preview_extra(
     project,
     entity_id,
@@ -958,11 +982,47 @@ def generate_preview_extra(
     with_metadata,
     with_thumbnails,
     force_regenerate_tiles,
+    only_missing_tiles,
+    force,
+    limit,
+    progress,
 ):
     """
     Generate tiles, thumbnails and metadata for all previews.
+
+    --only-missing-tiles queues one background job per movie that has no
+    tile, on Nomad when a tile job is configured, and decodes nothing
+    here. --limit caps the jobs queued, newest movies first. --force
+    queues a movie attempted within the last hour too.
     """
-    from zou.app.utils import commands
+    from zou.app.commands import commands_service as commands
+    from zou.app.exceptions import JobQueueDisabledException
+
+    if only_missing_tiles:
+        if with_tiles or with_metadata or with_thumbnails:
+            raise click.UsageError(
+                "--only-missing-tiles builds nothing else: drop "
+                "--with-tiles, --with-metadata and --with-thumbnails."
+            )
+        if force_regenerate_tiles:
+            raise click.UsageError(
+                "--only-missing-tiles skips the movies that have a tile: "
+                "--force-regenerate-tiles belongs to --with-tiles."
+            )
+        try:
+            commands.queue_missing_tiles(
+                project=project,
+                entity_id=entity_id,
+                episodes=episode,
+                only_shots=only_shots,
+                only_assets=only_assets,
+                limit=limit,
+                force=force,
+                progress=progress,
+            )
+        except JobQueueDisabledException as exception:
+            raise click.ClickException(str(exception))
+        return
 
     commands.generate_preview_extra(
         project=project,
@@ -974,6 +1034,7 @@ def generate_preview_extra(
         with_tiles=with_tiles,
         with_metadata=with_metadata,
         with_thumbnails=with_thumbnails,
+        progress=progress,
     )
 
 
@@ -982,7 +1043,7 @@ def reset_movie_files_metadata():
     """
     Store height and width metadata for all movie previews in the database.
     """
-    from zou.app.utils import commands
+    from zou.app.commands import commands_service as commands
 
     commands.reset_movie_files_metadata()
 
@@ -992,9 +1053,33 @@ def reset_picture_files_metadata():
     """
     Store height and width metadata for all picture previews in the database.
     """
-    from zou.app.utils import commands
+    from zou.app.commands import commands_service as commands
 
     commands.reset_picture_files_metadata()
+
+
+@cli.command()
+@click.option("--project-id", default=None, show_default=True)
+@click.option("--only-unknown", is_flag=True, default=False, show_default=True)
+@click.option("--limit", type=int, default=None, show_default=True)
+@click.option("--dry-run", is_flag=True, default=False, show_default=True)
+@click.option("--progress", is_flag=True, default=False, show_default=True)
+def probe_preview_files(project_id, only_unknown, limit, dry_run, progress):
+    """
+    Ask the storage which files of the ready previews exist, record their
+    states and print the missing ones per kind. --only-unknown skips
+    every preview that already has at least one recorded state; run a
+    full probe once after deploying.
+    """
+    from zou.app.commands import commands_service as commands
+
+    commands.probe_preview_files(
+        project_id=project_id,
+        only_unknown=only_unknown,
+        limit=limit,
+        dry_run=dry_run,
+        progress=progress,
+    )
 
 
 @cli.command()
@@ -1002,7 +1087,7 @@ def reset_breakdown_data():
     """
     Reset breakdown statistics for all open projects.
     """
-    from zou.app.utils import commands
+    from zou.app.commands import commands_service as commands
 
     commands.reset_breakdown_data()
 
@@ -1027,7 +1112,7 @@ def create_bot(
     """
     Create a bot.
     """
-    from zou.app.utils import commands
+    from zou.app.commands import commands_service as commands
 
     commands.create_bot(
         email,
@@ -1072,7 +1157,7 @@ def renormalize_movie_preview_files(
     """
     Renormalize all preview files.
     """
-    from zou.app.utils import commands
+    from zou.app.commands import commands_service as commands
 
     commands.renormalize_movie_preview_files(
         preview_file_id,
@@ -1101,7 +1186,7 @@ def normalize_annotation_times(project_id, dry_run):
     stored unrounded annotation times, leaving entries the player cannot
     display.
     """
-    from zou.app.utils import commands
+    from zou.app.commands import commands_service as commands
 
     commands.normalize_annotation_times(project_id=project_id, dry_run=dry_run)
 
@@ -1293,7 +1378,7 @@ def list_plugins(output_format, verbose, filter_field, filter_value):
     """
     List installed plugins.
     """
-    from zou.app.utils import commands
+    from zou.app.commands import commands_service as commands
 
     commands.list_plugins(output_format, verbose, filter_field, filter_value)
 

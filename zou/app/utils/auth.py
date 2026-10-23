@@ -1,5 +1,5 @@
-import flask_bcrypt
 import email_validator
+import flask_bcrypt
 
 from zou.app import config
 
@@ -39,12 +39,18 @@ def check_password(password_hash, password):
     return flask_bcrypt.check_password_hash(password_hash, password[:72])
 
 
-def validate_email(
-    email, check_deliverability=config.MAIL_CHECK_DELIVERABILITY
-):
+def validate_email(email, check_deliverability=None):
+    """
+    Return the normalized email. An instance that does not check
+    deliverability also accepts a dotless domain, like "jdoe@studio".
+    """
+    if check_deliverability is None:
+        check_deliverability = config.MAIL_CHECK_DELIVERABILITY
     try:
         return email_validator.validate_email(
-            email, check_deliverability=check_deliverability
+            email,
+            check_deliverability=check_deliverability,
+            globally_deliverable=config.MAIL_CHECK_DELIVERABILITY,
         ).normalized
     except email_validator.EmailNotValidError as e:
         raise EmailNotValidException(str(e))

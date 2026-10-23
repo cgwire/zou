@@ -1,21 +1,19 @@
+from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
-
-from zou.app.models.comment import Comment
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.models.attachment_file import AttachmentFile
-
+from zou.app.models.comment import Comment
 from zou.app.services import (
     comments_service,
     deletion_service,
     notifications_service,
-    persons_service,
-    tasks_service,
     permissions_service,
-    user_service,
+    persons_service,
+    task_types_service,
+    tasks_service,
 )
 from zou.app.utils import events, permissions
-
-from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 
 class CommentsResource(BaseModelsResource):
@@ -32,148 +30,34 @@ class CommentsResource(BaseModelsResource):
         ]
 
     @jwt_required()
+    @swag_from("openapi/CommentsResource_get.yml")
     def get(self):
         """
         Get comments
-        ---
-        tags:
-          - Crud
-        description: Retrieve all comments. Supports filtering via query
-          parameters and pagination.
-        parameters:
-          - in: query
-            name: page
-            required: false
-            schema:
-              type: integer
-            example: 1
-            description: Page number for pagination
-          - in: query
-            name: limit
-            required: false
-            schema:
-              type: integer
-            example: 50
-            description: Number of results per page
-          - in: query
-            name: relations
-            required: false
-            schema:
-              type: boolean
-            default: false
-            example: false
-            description: Whether to include relations
-        responses:
-            200:
-              description: Comments retrieved successfully
-              content:
-                application/json:
-                  schema:
-                    oneOf:
-                      - type: array
-                        items:
-                          type: object
-                      - type: object
-                        properties:
-                          data:
-                            type: array
-                            items:
-                              type: object
-                            example: []
-                          total:
-                            type: integer
-                            example: 100
-                          nb_pages:
-                            type: integer
-                            example: 2
-                          limit:
-                            type: integer
-                            example: 50
-                          offset:
-                            type: integer
-                            example: 0
-                          page:
-                            type: integer
-                            example: 1
-            400:
-              description: Invalid filter format or query error
         """
         return super().get()
 
     @jwt_required()
+    @swag_from("openapi/CommentsResource_post.yml")
     def post(self):
         """
         Create comment
-        ---
-        tags:
-          - Crud
-        description: Create a new comment with data provided in the request
-          body. JSON format is expected.
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - object_id
-                  - person_id
-                  - task_status_id
-                properties:
-                  object_id:
-                    type: string
-                    format: uuid
-                    example: a24a6ea4-ce75-4665-a070-57453082c25
-                  person_id:
-                    type: string
-                    format: uuid
-                    example: b24a6ea4-ce75-4665-a070-57453082c25
-                  task_status_id:
-                    type: string
-                    format: uuid
-                    example: c24a6ea4-ce75-4665-a070-57453082c25
-                  text:
-                    type: string
-                    example: Comment text
-        responses:
-            201:
-              description: Comment created successfully
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      object_id:
-                        type: string
-                        format: uuid
-                        example: b24a6ea4-ce75-4665-a070-57453082c25
-                      person_id:
-                        type: string
-                        format: uuid
-                        example: c24a6ea4-ce75-4665-a070-57453082c25
-                      task_status_id:
-                        type: string
-                        format: uuid
-                        example: d24a6ea4-ce75-4665-a070-57453082c25
-                      text:
-                        type: string
-                        example: Comment text
-                      created_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-            400:
-              description: Invalid data format or validation error
         """
         return super().post()
+
+    def emit_create_event(self, instance_dict):
+        # The generic event names the comment only: the task panels of Kitsu
+        # reload it from its task, and a client skips what it cannot read.
+        return events.emit(
+            "comment:new",
+            {
+                "comment_id": instance_dict["id"],
+                "task_id": instance_dict["object_id"],
+                "person_id": instance_dict["person_id"],
+                "for_client": instance_dict["for_client"],
+            },
+            project_id=instance_dict.get("project_id", None),
+        )
 
 
 class CommentResource(BaseModelResource):
@@ -182,183 +66,32 @@ class CommentResource(BaseModelResource):
         self.protected_fields += ["mentions", "department_mentions"]
 
     @jwt_required()
+    @swag_from("openapi/CommentResource_get.yml")
     def get(self, instance_id):
         """
         Get comment
-        ---
-        tags:
-          - Crud
-        description: Retrieve a comment by its ID and return it as a JSON
-          object. Supports including relations. Client users can only see
-          their own comments or comments from other clients.
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: relations
-            required: false
-            schema:
-              type: boolean
-            default: true
-            example: true
-            description: Whether to include relations
-          - in: query
-            name: with_previews
-            required: false
-            schema:
-              type: boolean
-            default: false
-            example: true
-            description: Whether to expand preview IDs to full preview objects
-        responses:
-            200:
-              description: Comment retrieved successfully
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      object_id:
-                        type: string
-                        format: uuid
-                        example: b24a6ea4-ce75-4665-a070-57453082c25
-                      person_id:
-                        type: string
-                        format: uuid
-                        example: c24a6ea4-ce75-4665-a070-57453082c25
-                      task_status_id:
-                        type: string
-                        format: uuid
-                        example: d24a6ea4-ce75-4665-a070-57453082c25
-                      text:
-                        type: string
-                        example: Comment text
-                      created_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-            400:
-              description: Invalid ID format or query error
         """
         return super().get(instance_id)
 
     @jwt_required()
+    @swag_from("openapi/CommentResource_put.yml")
     def put(self, instance_id):
         """
         Update comment
-        ---
-        tags:
-          - Crud
-        description: Update a comment with data provided in the request
-          body. JSON format is expected. May update task status if
-          task_status_id is changed.
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  text:
-                    type: string
-                    example: Updated comment text
-                  task_status_id:
-                    type: string
-                    format: uuid
-                    example: b24a6ea4-ce75-4665-a070-57453082c25
-                  pinned:
-                    type: boolean
-                    example: true
-                  checklist:
-                    type: array
-                    items:
-                      type: object
-                    example: [{"text": "Item 1", "checked": false}]
-        responses:
-            200:
-              description: Comment updated successfully
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      object_id:
-                        type: string
-                        format: uuid
-                        example: b24a6ea4-ce75-4665-a070-57453082c25
-                      person_id:
-                        type: string
-                        format: uuid
-                        example: c24a6ea4-ce75-4665-a070-57453082c25
-                      task_status_id:
-                        type: string
-                        format: uuid
-                        example: d24a6ea4-ce75-4665-a070-57453082c25
-                      text:
-                        type: string
-                        example: Updated comment text
-                      pinned:
-                        type: boolean
-                        example: true
-                      created_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T11:00:00Z"
-            400:
-              description: Invalid data format or validation error
         """
         return super().put(instance_id)
 
     def get_serialized_instance(self, instance_id, relations=True):
-        return tasks_service.get_comment(instance_id, relations=relations)
+        return comments_service.get_comment(instance_id, relations=relations)
 
     def clean_get_result(self, result):
         is_client = permissions.has_client_permissions()
         # Embed the author so guest commenters render with a name and avatar.
-        # Keep studio members' identities hidden from clients, matching the
-        # reply author behavior.
         if result.get("person_id"):
-            author = persons_service.get_short_person(result["person_id"])
-            if is_client and author.get("role") != "client":
-                author = None
-            result["person"] = author
-        # Hide the editor identity from clients when a studio member edited
-        # the comment, matching the author behavior.
-        editor_id = result.get("editor_id")
-        if is_client and editor_id and editor_id != result.get("person_id"):
-            editor = persons_service.get_short_person(editor_id)
-            if editor.get("role") != "client":
-                result["editor_id"] = None
-        tasks_service.embed_reply_authors([result], is_client=is_client)
+            result["person"] = persons_service.get_short_person(
+                result["person_id"]
+            )
+        comments_service.embed_reply_authors([result])
         if (
             "attachment_files" in result
             and len(result["attachment_files"]) > 0
@@ -378,7 +111,7 @@ class CommentResource(BaseModelResource):
         ):
             previews = result["previews"]
             if len(previews) > 0 and isinstance(previews[0], str):
-                preview_map = tasks_service._build_preview_map_for_comments(
+                preview_map = comments_service.build_preview_map_for_comments(
                     [result["id"]], is_client
                 )
                 result["previews"] = preview_map.get(result["id"], [])
@@ -398,7 +131,6 @@ class CommentResource(BaseModelResource):
     def post_update(self, instance_dict, data):
         comment = comments_service.reset_mentions(instance_dict)
         task_id = comment["object_id"]
-        task = tasks_service.get_task(task_id)
         if self.task_status_change:
             task = tasks_service.reset_task_data(task_id)
             events.emit(
@@ -412,14 +144,25 @@ class CommentResource(BaseModelResource):
                 project_id=task["project_id"],
             )
 
-        tasks_service.clear_comment_cache(comment["id"])
+        comments_service.clear_comment_cache(comment["id"])
         notifications_service.reset_notifications_for_mentions(comment)
-        events.emit(
+        return comment
+
+    def emit_update_event(self, instance_dict):
+        # The generic event names the comment only, with no production:
+        # Kitsu finds the comment through its task, and a client skips what
+        # it cannot read.
+        task = tasks_service.get_task(instance_dict["object_id"])
+        return events.emit(
             "comment:update",
-            {"comment_id": comment["id"], "task_id": task_id},
+            {
+                "comment_id": instance_dict["id"],
+                "task_id": instance_dict["object_id"],
+                "person_id": instance_dict["person_id"],
+                "for_client": instance_dict["for_client"],
+            },
             project_id=task["project_id"],
         )
-        return comment
 
     def check_read_permissions(self, instance):
         return permissions_service.check_comment_access(
@@ -433,7 +176,7 @@ class CommentResource(BaseModelResource):
             task = tasks_service.get_task(
                 instance["object_id"], relations=True
             )
-            task_type = tasks_service.get_task_type(task["task_type_id"])
+            task_type = task_types_service.get_task_type(task["task_type_id"])
             current_user = persons_service.get_current_user(relations=True)
             if not permissions_service.check_belong_to_project(
                 task["project_id"]
@@ -442,6 +185,12 @@ class CommentResource(BaseModelResource):
 
             if permissions.has_manager_permissions():
                 return True
+
+            # The update answers with the whole comment and records its
+            # editor, so a comment out of reading reach stays out of reach.
+            permissions_service.check_comment_access(
+                instance["id"], comment=instance
+            )
 
             change_pinned = (
                 "pinned" in data.keys()
@@ -481,19 +230,6 @@ class CommentResource(BaseModelResource):
                     )
                     or (not is_supervisor and not is_assigned)
                 )
-                and (
-                    len(data["checklist"]) == len(instance["checklist"])
-                    and all(
-                        all(
-                            (
-                                k == "checked"
-                                or data["checklist"][i].get(k) == c[k]
-                            )
-                            for k in c.keys()
-                        )
-                        for i, c in enumerate(instance["checklist"])
-                    )
-                )
             ):
                 raise permissions.PermissionDenied
 
@@ -527,11 +263,12 @@ class CommentResource(BaseModelResource):
                     permissions_service.check_task_action_access(
                         instance["object_id"]
                     )
-                permissions_service.resolve_project_role(
-                    tasks_service.get_task(instance["object_id"])["project_id"]
-                )
+                project_id = tasks_service.get_task(instance["object_id"])[
+                    "project_id"
+                ]
+                permissions_service.resolve_project_role(project_id)
                 permissions_service.check_task_status_access(
-                    data["task_status_id"]
+                    data["task_status_id"], project_id
                 )
 
             return True
@@ -563,29 +300,12 @@ class CommentResource(BaseModelResource):
         return data
 
     @jwt_required()
+    @swag_from("openapi/CommentResource_delete.yml")
     def delete(self, instance_id):
         """
         Delete comment
-        ---
-        tags:
-          - Crud
-        description: Delete a comment by its ID. Returns empty response
-          on success. Updates task status if comment had status change.
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            204:
-              description: Comment deleted successfully
-            400:
-              description: Cannot delete comment or integrity error
         """
-        comment = tasks_service.get_comment(instance_id)
+        comment = comments_service.get_comment(instance_id)
         task = tasks_service.get_task(comment["object_id"])
         permissions_service.resolve_project_role(task["project_id"])
         if permissions.has_manager_permissions():
@@ -595,6 +315,6 @@ class CommentResource(BaseModelResource):
         self.pre_delete(comment)
         deletion_service.remove_comment(comment["id"])
         tasks_service.reset_task_data(comment["object_id"])
-        tasks_service.clear_comment_cache(comment["id"])
+        comments_service.clear_comment_cache(comment["id"])
         self.post_delete(comment)
         return "", 204

@@ -1,0 +1,42 @@
+Set shots frames
+---
+tags:
+- Shots
+description: Set number of frames on shots based on latest preview
+  files for a task type. Optionally scope by episode via query
+  param.
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - shots
+        properties:
+          shots:
+            type: array
+            required: true
+            items:
+              type: object
+              properties:
+                shot_id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                nb_frames:
+                  type: integer
+                  example: 24
+responses:
+    200:
+        description: Frames set for given shots
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                updated:
+                  type: integer
+                  example: 12
+    400:
+        description: Invalid ids or parameters

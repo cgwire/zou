@@ -1,0 +1,53 @@
+Get episode stats
+---
+tags:
+- Shots
+description: Return number of tasks by status, task type and episode
+  for the project.
+parameters:
+  - in: path
+    name: project_id
+    required: True
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+responses:
+    200:
+        description: Number of tasks by status, task types and episodes for given project
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                type: object
+                additionalProperties:
+                  type: object
+                  additionalProperties:
+                    type: object
+                    properties:
+                      count:
+                        type: integer
+                        example: 120
+                      frames:
+                        type: integer
+                        example: 1440
+                      drawings:
+                        type: integer
+                        example: 360
+              example:
+                episodeId1:
+                  taskTypeId1:
+                    taskStatusId1:
+                      count: 50
+                      frames: 600
+                      drawings: 150
+                    taskStatusId2:
+                      count: 70
+                      frames: 840
+                      drawings: 210
+                all:
+                  all:
+                    taskStatusId1:
+                      count: 200
+                      frames: 2400
+                      drawings: 600

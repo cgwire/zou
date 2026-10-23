@@ -1,135 +1,75 @@
 import datetime
 
-
+from flasgger import swag_from
 from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
-from zou.app.services.exception import (
-    CommentNotFoundException,
-    TaskNotFoundException,
-    PersonNotFoundException,
-    MalformedFileTreeException,
-    WrongDateFormatException,
-    WrongParameterException,
-)
-from zou.app.services import (
-    assets_service,
-    deletion_service,
-    edits_service,
-    entities_service,
-    files_service,
-    file_tree_service,
-    notifications_service,
-    persons_service,
-    preview_files_service,
-    projects_service,
-    shots_service,
-    tasks_service,
-    permissions_service,
-    user_service,
-    concepts_service,
-)
-from zou.app.utils import (
-    events,
-    http_cache,
-    query,
-    permissions,
-    date_helpers,
-    validation,
-    fields,
-)
-from zou.app.mixin import ArgsMixin
 from zou.app.blueprints.tasks.schemas import (
+    AssignPersonSchema,
+    AssignTasksSchema,
     CommentPreviewSchema,
     SetTasksMainPreviewSchema,
     SetTasksPrioritySchema,
-    ToReviewSchema,
-    UnassignTasksSchema,
-    AssignTasksSchema,
-    AssignPersonSchema,
     TimeSpentSchema,
+    UnassignTasksSchema,
+)
+from zou.app.exceptions import (
+    CommentNotFoundException,
+    PersonNotFoundException,
+    TaskNotFoundException,
+    WrongDateFormatException,
+    WrongParameterException,
+)
+from zou.app.mixin import ArgsMixin
+from zou.app.services import (
+    assets_service,
+    comments_service,
+    concepts_service,
+    deletion_service,
+    edits_service,
+    entities_service,
+    entity_types_service,
+    files_service,
+    notifications_service,
+    permissions_service,
+    persons_service,
+    preview_files_service,
+    projects_service,
+    schedule_service,
+    shots_service,
+    subscriptions_service,
+    task_types_service,
+    tasks_service,
+    time_spents_service,
+    todos_service,
+    user_service,
+)
+from zou.app.utils import (
+    date_helpers,
+    events,
+    fields,
+    http_cache,
+    permissions,
+    query,
+    validation,
 )
 
 
 class AddPreviewResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/AddPreviewResource_post.yml")
     def post(self, task_id, comment_id):
         """
         Add task preview
-        ---
-        tags:
-        - Tasks
-        description: Add preview metadata to a task. The preview file is
-          uploaded after. Revision is auto set to last + 1. It can also be set
-          manually.
-        parameters:
-          - in: path
-            name: task_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: comment_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  revision:
-                    type: integer
-                    description: Revision number for the preview
-                    example: 1
-        responses:
-            201:
-              description: Preview metadata added to task
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: b24a6ea4-ce75-4665-a070-57453082c25
-                      comment_id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      task_id:
-                        type: string
-                        format: uuid
-                        example: c24a6ea4-ce75-4665-a070-57453082c25
-                      revision:
-                        type: integer
-                        example: 3
-                      person_id:
-                        type: string
-                        format: uuid
-                        example: d24a6ea4-ce75-4665-a070-57453082c25
-                      created_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-            400:
-              description: Bad request
         """
         body = validation.validate_request_body(CommentPreviewSchema)
 
         permissions_service.check_task_action_access(task_id)
 
         person = persons_service.get_current_user()
-        preview_file = tasks_service.add_preview_file_to_comment(
+        preview_file = comments_service.add_preview_file_to_comment(
             comment_id, person["id"], task_id, body.revision
         )
         return preview_file, 201
@@ -138,137 +78,48 @@ class AddPreviewResource(MethodView, ArgsMixin):
 class AddExtraPreviewResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/AddExtraPreviewResource_post.yml")
     def post(self, task_id, comment_id, preview_file_id):
         """
         Add preview to comment
-        ---
-        tags:
-        - Tasks
-        description: Add a preview to a comment by uploading a file in multipart
-          form data.
-        parameters:
-          - in: path
-            name: task_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: comment_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: preview_file_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            multipart/form-data:
-              schema:
-                type: object
-                properties:
-                  file:
-                    type: string
-                    format: binary
-                    description: Preview file to upload
-        responses:
-            201:
-              description: Preview added to comment
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: b24a6ea4-ce75-4665-a070-57453082c25
-                      comment_id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      task_id:
-                        type: string
-                        format: uuid
-                        example: c24a6ea4-ce75-4665-a070-57453082c25
-                      revision:
-                        type: integer
-                        example: 2
-                      person_id:
-                        type: string
-                        format: uuid
-                        example: d24a6ea4-ce75-4665-a070-57453082c25
-            400:
-              description: Bad request
         """
         permissions_service.check_task_action_access(task_id)
-        tasks_service.get_comment(comment_id)
+        comments_service.get_comment(comment_id)
 
         person = persons_service.get_current_user()
         related_preview_file = files_service.get_preview_file(preview_file_id)
 
-        preview_file = tasks_service.add_preview_file_to_comment(
+        preview_file = comments_service.add_preview_file_to_comment(
             comment_id, person["id"], task_id, related_preview_file["revision"]
         )
         return preview_file, 201
 
     @jwt_required()
+    @swag_from("openapi/AddExtraPreviewResource_delete.yml")
     def delete(self, task_id, comment_id, preview_file_id):
         """
         Delete preview from comment
-        ---
-        tags:
-        - Tasks
-        description: Delete a preview from a comment. Use force query to delete
-          even if there are dependencies.
-        parameters:
-          - in: path
-            name: task_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: comment_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: preview_file_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: force
-            required: false
-            schema:
-              type: boolean
-              default: false
-            description: Force deletion even if preview has dependencies
-        responses:
-            204:
-              description: Preview deleted from comment
         """
         self.check_id_parameter(task_id)
         self.check_id_parameter(comment_id)
         self.check_id_parameter(preview_file_id)
         task = tasks_service.get_task(task_id)
-        permissions_service.check_project_access(task["project_id"])
+        permissions_service.check_task_action_access(task_id)
+        comments_service.get_comment_preview_file(
+            task_id, comment_id, preview_file_id
+        )
+        # A client keeps out of the comments hidden from it, as an internal
+        # revision.
+        permissions_service.check_comment_access(comment_id)
+        force = self.get_force()
+        if force:
+            # Force purges the stored files at once, a right the preview file
+            # route keeps to the managers.
+            permissions_service.check_manager_project_access(
+                task["project_id"]
+            )
         deletion_service.remove_preview_file_by_id(
-            preview_file_id, force=self.get_force()
+            preview_file_id, force=force
         )
         return "", 204
 
@@ -276,116 +127,33 @@ class AddExtraPreviewResource(MethodView, ArgsMixin):
 class TaskPreviewsResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/TaskPreviewsResource_get.yml")
     def get(self, task_id):
         """
         Get task previews
-        ---
-        tags:
-        - Tasks
-        description: Return previews linked to a task.
-        parameters:
-          - in: path
-            name: task_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-              description: Previews linked to task
-              content:
-                application/json:
-                  schema:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        task_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        revision:
-                          type: integer
-                          example: 1
-                        comment_id:
-                          type: string
-                          format: uuid
-                          example: d24a6ea4-ce75-4665-a070-57453082c25
-                        person_id:
-                          type: string
-                          format: uuid
-                          example: e24a6ea4-ce75-4665-a070-57453082c25
-                        created_at:
-                          type: string
-                          format: date-time
-                          example: "2024-01-15T10:30:00Z"
         """
         permissions_service.check_task_access(task_id)
-        return files_service.get_preview_files_for_task(task_id)
+        previews = files_service.get_preview_files_for_task(task_id)
+        if permissions.has_client_permissions():
+            previews = [
+                p for p in previews if p["validation_status"] != "rejected"
+            ]
+        return previews
 
 
 class TaskCommentsResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/TaskCommentsResource_get.yml")
     def get(self, task_id):
         """
         Get task comments
-        ---
-        tags:
-        - Tasks
-        description: Return comments linked to a task.
-        parameters:
-          - in: path
-            name: task_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-              description: Comments linked to task
-              content:
-                application/json:
-                  schema:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        object_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        person_id:
-                          type: string
-                          format: uuid
-                          example: c24a6ea4-ce75-4665-a070-57453082c25
-                        text:
-                          type: string
-                          example: This task is progressing well
-                        created_at:
-                          type: string
-                          format: date-time
-                          example: "2024-01-15T10:30:00Z"
-                        updated_at:
-                          type: string
-                          format: date-time
-                          example: "2024-01-15T11:00:00Z"
         """
         permissions_service.check_task_access(task_id)
         is_client = permissions.has_client_permissions()
         is_manager = permissions.has_manager_permissions()
         is_supervisor = permissions.has_supervisor_permissions()
-        return tasks_service.get_comments(
+        return comments_service.get_comments(
             task_id, is_client, is_manager or is_supervisor
         )
 
@@ -393,61 +161,12 @@ class TaskCommentsResource(MethodView):
 class TaskCommentResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/TaskCommentResource_get.yml")
     def get(self, task_id, comment_id):
         """
         Get comment
-        ---
-        tags:
-        - Tasks
-        description: Get a comment by id for a task.
-        parameters:
-          - in: path
-            name: task_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: comment_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-              description: Comment found and returned
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      object_id:
-                        type: string
-                        format: uuid
-                        example: b24a6ea4-ce75-4665-a070-57453082c25
-                      person_id:
-                        type: string
-                        format: uuid
-                        example: c24a6ea4-ce75-4665-a070-57453082c25
-                      text:
-                        type: string
-                        example: Review completed successfully
-                      created_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T11:00:00Z"
         """
-        comment = tasks_service.get_comment(comment_id)
+        comment = comments_service.get_comment(comment_id)
         if comment["object_id"] != task_id:
             raise CommentNotFoundException
         permissions_service.check_comment_access(
@@ -477,33 +196,12 @@ class TaskCommentResource(MethodView):
         return comment
 
     @jwt_required()
+    @swag_from("openapi/TaskCommentResource_delete.yml")
     def delete(self, task_id, comment_id):
         """
         Delete comment
-        ---
-        tags:
-        - Tasks
-        description: Delete a comment by id for a task.
-        parameters:
-          - in: path
-            name: task_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: comment_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            204:
-              description: Comment deleted
         """
-        comment = tasks_service.get_comment(comment_id)
+        comment = comments_service.get_comment(comment_id)
         task = tasks_service.get_task(comment["object_id"])
         permissions_service.resolve_project_role(task["project_id"])
         if permissions.has_manager_permissions():
@@ -513,7 +211,7 @@ class TaskCommentResource(MethodView):
         self.pre_delete(comment)
         deletion_service.remove_comment(comment_id)
         tasks_service.reset_task_data(comment["object_id"])
-        tasks_service.clear_comment_cache(comment_id)
+        comments_service.clear_comment_cache(comment_id)
         self.post_delete(comment)
         return "", 204
 
@@ -521,61 +219,10 @@ class TaskCommentResource(MethodView):
 class PersonTasksResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/PersonTasksResource_get.yml")
     def get(self, person_id):
         """
         Get person open tasks
-        ---
-        tags:
-        - Tasks
-        description: List tasks assigned to a person where the status is not
-          done.
-        parameters:
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-              description: Tasks assigned to user that are not done
-              content:
-                application/json:
-                  schema:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: SH010 Animation
-                        task_type_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        task_status_id:
-                          type: string
-                          format: uuid
-                          example: c24a6ea4-ce75-4665-a070-57453082c25
-                        entity_id:
-                          type: string
-                          format: uuid
-                          example: d24a6ea4-ce75-4665-a070-57453082c25
-                        project_id:
-                          type: string
-                          format: uuid
-                          example: e24a6ea4-ce75-4665-a070-57453082c25
-                        assignees:
-                          type: array
-                          items:
-                            type: string
-                            format: uuid
-                          example: ["f24a6ea4-ce75-4665-a070-57453082c25"]
         """
         permissions_service.check_person_is_not_bot(person_id)
         current_user = persons_service.get_current_user()
@@ -589,79 +236,21 @@ class PersonTasksResource(MethodView):
         else:
             projects = projects_service.open_projects()
         if permissions.has_vendor_permissions():
-            person = persons_service.get(person_id)
+            person = persons_service.get_person(person_id)
             if person["role"] == "vendor":
                 return []
         elif permissions.has_client_permissions():
             return []
-        return tasks_service.get_person_tasks(person_id, projects)
+        return todos_service.get_person_tasks(person_id, projects)
 
 
 class PersonRelatedTasksResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/PersonRelatedTasksResource_get.yml")
     def get(self, person_id, task_type_id):
         """
         Get person tasks for type
-        ---
-        tags:
-        - Tasks
-        description: For all entities assigned to the person, return tasks for
-          the given task type.
-        parameters:
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: task_type_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-              description: All tasks for the given task type
-              content:
-                application/json:
-                  schema:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: Asset Modeling
-                        task_type_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        task_status_id:
-                          type: string
-                          format: uuid
-                          example: c24a6ea4-ce75-4665-a070-57453082c25
-                        entity_id:
-                          type: string
-                          format: uuid
-                          example: d24a6ea4-ce75-4665-a070-57453082c25
-                        project_id:
-                          type: string
-                          format: uuid
-                          example: e24a6ea4-ce75-4665-a070-57453082c25
-                        assignees:
-                          type: array
-                          items:
-                            type: string
-                            format: uuid
-                          example: ["f24a6ea4-ce75-4665-a070-57453082c25"]
         """
         permissions_service.check_person_is_not_bot(person_id)
         current_user = persons_service.get_current_user()
@@ -670,67 +259,16 @@ class PersonRelatedTasksResource(MethodView):
             and permissions.has_vendor_permissions()
         ):
             raise permissions.PermissionDenied
-        return tasks_service.get_person_related_tasks(person_id, task_type_id)
+        return todos_service.get_person_related_tasks(person_id, task_type_id)
 
 
 class PersonDoneTasksResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/PersonDoneTasksResource_get.yml")
     def get(self, person_id):
         """
         Get person done tasks
-        ---
-        tags:
-        - Tasks
-        description: Return tasks assigned to the person that are done. Only
-          tasks in open projects are returned.
-        parameters:
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-              description: Tasks assigned to user that are done
-              content:
-                application/json:
-                  schema:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: EP01 Layout
-                        task_type_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        task_status_id:
-                          type: string
-                          format: uuid
-                          example: c24a6ea4-ce75-4665-a070-57453082c25
-                        entity_id:
-                          type: string
-                          format: uuid
-                          example: d24a6ea4-ce75-4665-a070-57453082c25
-                        project_id:
-                          type: string
-                          format: uuid
-                          example: e24a6ea4-ce75-4665-a070-57453082c25
-                        assignees:
-                          type: array
-                          items:
-                            type: string
-                            format: uuid
-                          example: ["f24a6ea4-ce75-4665-a070-57453082c25"]
         """
         permissions_service.check_person_is_not_bot(person_id)
         current_user = persons_service.get_current_user()
@@ -744,89 +282,24 @@ class PersonDoneTasksResource(MethodView):
         else:
             projects = projects_service.open_projects()
         if permissions.has_vendor_permissions():
-            person = persons_service.get(person_id)
+            person = persons_service.get_person(person_id)
             if person["role"] == "vendor":
                 return []
         elif permissions.has_client_permissions():
             return []
-        return tasks_service.get_person_done_tasks(person_id, projects)
+        return todos_service.get_person_done_tasks(person_id, projects)
 
 
 class CreateShotTasksResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/CreateShotTasksResource_post.yml")
     def post(self, project_id, task_type_id):
         """
         Create shot tasks
-        ---
-        tags:
-        - Tasks
-        description: Create tasks for shots. Provide a list of shot IDs in the
-          JSON body, or omit for all shots in the project.
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: task_type_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: string
-                  format: uuid
-                description: List of shot IDs to create tasks for
-              example: ["b24a6ea4-ce75-4665-a070-57453082c25"]
-        responses:
-            201:
-              description: Tasks created for shots
-              content:
-                application/json:
-                  schema:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: SH010 Animation
-                        task_type_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        task_status_id:
-                          type: string
-                          format: uuid
-                          example: c24a6ea4-ce75-4665-a070-57453082c25
-                        entity_id:
-                          type: string
-                          format: uuid
-                          example: d24a6ea4-ce75-4665-a070-57453082c25
-                        project_id:
-                          type: string
-                          format: uuid
-                          example: e24a6ea4-ce75-4665-a070-57453082c25
-            400:
-              description: Bad request
         """
         permissions_service.check_manager_project_access(project_id)
-        task_type = tasks_service.get_task_type(task_type_id)
+        task_type = task_types_service.get_task_type(task_type_id)
 
         shot_ids = validation.validate_id_list(required=False)
         shots = []
@@ -847,75 +320,10 @@ class CreateShotTasksResource(MethodView):
 class CreateConceptTasksResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/CreateConceptTasksResource_post.yml")
     def post(self, project_id, task_type_id):
         """
         Create concept tasks
-        ---
-        tags:
-        - Tasks
-        description: Create tasks for concepts. Provide a list of concept IDs in
-          the JSON body, or omit for all concepts in the project.
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: task_type_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: string
-                  format: uuid
-                description: List of concept IDs to create tasks for
-              example: ["b24a6ea4-ce75-4665-a070-57453082c25"]
-        responses:
-            201:
-              description: Tasks created for concepts
-              content:
-                application/json:
-                  schema:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: Concept Modeling
-                        task_type_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        task_status_id:
-                          type: string
-                          format: uuid
-                          example: c24a6ea4-ce75-4665-a070-57453082c25
-                        entity_id:
-                          type: string
-                          format: uuid
-                          example: d24a6ea4-ce75-4665-a070-57453082c25
-                        project_id:
-                          type: string
-                          format: uuid
-                          example: e24a6ea4-ce75-4665-a070-57453082c25
-            400:
-              description: Bad request
         """
         permissions_service.check_project_access(project_id)
         if (
@@ -923,7 +331,7 @@ class CreateConceptTasksResource(MethodView):
             or permissions.has_client_permissions()
         ):
             raise permissions.PermissionDenied
-        task_type = tasks_service.get_task_type(task_type_id)
+        task_type = task_types_service.get_task_type(task_type_id)
 
         concept_ids = validation.validate_id_list(required=False)
         concepts = []
@@ -947,87 +355,15 @@ class CreateConceptTasksResource(MethodView):
 class CreateEntityTasksResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/CreateEntityTasksResource_post.yml")
     def post(self, project_id, entity_type, task_type_id):
         """
         Create entity tasks
-        ---
-        tags:
-        - Tasks
-        description: Create tasks for entities of a given type. Provide entity
-          IDs in the JSON body, or omit for all entities in the project.
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: entity_type
-            required: true
-            schema:
-              type: string
-            example: Asset
-            description: Entity type name (Asset, Sequence, etc.)
-          - in: path
-            name: task_type_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: string
-                  format: uuid
-                description: List of entity IDs to create tasks for
-              example: ["b24a6ea4-ce75-4665-a070-57453082c25"]
-        responses:
-            201:
-              description: Tasks created for entities
-              content:
-                application/json:
-                  schema:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: Entity Task Name
-                        task_type_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        task_status_id:
-                          type: string
-                          format: uuid
-                          example: c24a6ea4-ce75-4665-a070-57453082c25
-                        entity_id:
-                          type: string
-                          format: uuid
-                          example: d24a6ea4-ce75-4665-a070-57453082c25
-                        project_id:
-                          type: string
-                          format: uuid
-                          example: e24a6ea4-ce75-4665-a070-57453082c25
-            400:
-              description: Bad request
         """
         permissions_service.check_manager_project_access(project_id)
-        task_type = tasks_service.get_task_type(task_type_id)
+        task_type = task_types_service.get_task_type(task_type_id)
         entity_type_dict = (
-            entities_service.get_entity_type_by_name_or_not_found(
+            entity_types_service.get_entity_type_by_name_or_not_found(
                 entity_type.capitalize()
             )
         )
@@ -1053,78 +389,13 @@ class CreateEntityTasksResource(MethodView):
 class CreateAssetTasksResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/CreateAssetTasksResource_post.yml")
     def post(self, project_id, task_type_id):
         """
         Create asset tasks
-        ---
-        tags:
-        - Tasks
-        description: Create tasks for assets. Provide a list of asset IDs in
-          the JSON body, or omit for all assets in the project.
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: task_type_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: string
-                  format: uuid
-                description: List of asset IDs to create tasks for
-              example: ["b24a6ea4-ce75-4665-a070-57453082c25"]
-        responses:
-            201:
-              description: Tasks created for assets
-              content:
-                application/json:
-                  schema:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: Asset Modeling
-                        task_type_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        task_status_id:
-                          type: string
-                          format: uuid
-                          example: c24a6ea4-ce75-4665-a070-57453082c25
-                        entity_id:
-                          type: string
-                          format: uuid
-                          example: d24a6ea4-ce75-4665-a070-57453082c25
-                        project_id:
-                          type: string
-                          format: uuid
-                          example: e24a6ea4-ce75-4665-a070-57453082c25
-            400:
-              description: Bad request
         """
         permissions_service.check_manager_project_access(project_id)
-        task_type = tasks_service.get_task_type(task_type_id)
+        task_type = task_types_service.get_task_type(task_type_id)
 
         asset_ids = validation.validate_id_list(required=False)
         assets = []
@@ -1145,78 +416,13 @@ class CreateAssetTasksResource(MethodView):
 class CreateEditTasksResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/CreateEditTasksResource_post.yml")
     def post(self, project_id, task_type_id):
         """
         Create edit tasks
-        ---
-        tags:
-        - Tasks
-        description: Create tasks for edits. Provide a list of edit IDs in
-          the JSON body, or omit for all edits in the project.
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: task_type_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: string
-                  format: uuid
-                description: List of edit IDs to create tasks for
-              example: ["b24a6ea4-ce75-4665-a070-57453082c25"]
-        responses:
-            201:
-              description: Tasks created for edits
-              content:
-                application/json:
-                  schema:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: Edit Compositing
-                        task_type_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        task_status_id:
-                          type: string
-                          format: uuid
-                          example: c24a6ea4-ce75-4665-a070-57453082c25
-                        entity_id:
-                          type: string
-                          format: uuid
-                          example: d24a6ea4-ce75-4665-a070-57453082c25
-                        project_id:
-                          type: string
-                          format: uuid
-                          example: e24a6ea4-ce75-4665-a070-57453082c25
-            400:
-              description: Wrong criterions format
         """
         permissions_service.check_manager_project_access(project_id)
-        task_type = tasks_service.get_task_type(task_type_id)
+        task_type = task_types_service.get_task_type(task_type_id)
 
         edit_ids = validation.validate_id_list(required=False)
         edits = []
@@ -1234,171 +440,13 @@ class CreateEditTasksResource(MethodView):
         return tasks, 201
 
 
-class ToReviewResource(MethodView, ArgsMixin):
-
-    @jwt_required()
-    def put(self, task_id):
-        """
-        Set task to review
-        ---
-        tags:
-        - Tasks
-        description: Create a new preview file entry and set the path from the
-          disk. Optionally change the task status.
-        parameters:
-          - in: path
-            name: task_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  person_id:
-                    type: string
-                    format: uuid
-                    example: a24a6ea4-ce75-4665-a070-57453082c25
-                  comment:
-                    type: string
-                    example: Please check this version
-                  name:
-                    type: string
-                    example: main
-                  revision:
-                    type: integer
-                    example: 1
-                  change_status:
-                    type: boolean
-                    example: true
-        responses:
-            200:
-                description: Task set to review and preview created
-                content:
-                  application/json:
-                    schema:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: SH010 Animation
-                        task_type_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        task_status_id:
-                          type: string
-                          format: uuid
-                          example: c24a6ea4-ce75-4665-a070-57453082c25
-                        entity_id:
-                          type: string
-                          format: uuid
-                          example: d24a6ea4-ce75-4665-a070-57453082c25
-                        project_id:
-                          type: string
-                          format: uuid
-                          example: e24a6ea4-ce75-4665-a070-57453082c25
-                        assignees:
-                          type: array
-                          items:
-                            type: string
-                            format: uuid
-                          example: ["f24a6ea4-ce75-4665-a070-57453082c25"]
-            400:
-                description: Invalid person or parameters
-        """
-        body = validation.validate_request_body(ToReviewSchema)
-        person_id = body.person_id
-        comment = body.comment
-        name = body.name
-        revision = body.revision
-        change_status = body.change_status
-
-        try:
-            task = tasks_service.get_task(task_id)
-            permissions_service.check_project_access(task["project_id"])
-            permissions_service.check_entity_access(task["entity_id"])
-
-            if person_id is not None:
-                person = persons_service.get_person(person_id)
-            else:
-                person = persons_service.get_current_user()
-
-            preview_path = self.get_preview_path(task, name, revision)
-
-            task = tasks_service.task_to_review(
-                task_id, person, comment, preview_path, change_status
-            )
-        except PersonNotFoundException:
-            return {"error": True, "message": "Cannot find given person."}, 400
-
-        return task
-
-    def get_preview_path(self, task, name, revision):
-        try:
-            folder_path = file_tree_service.get_working_folder_path(
-                task, name=name, mode="preview", revision=revision
-            )
-            file_name = file_tree_service.get_working_file_name(
-                task, name=name, mode="preview", revision=revision
-            )
-        except MalformedFileTreeException:  # No template for preview files.
-            return {"folder_path": "", "file_name": ""}
-
-        return {"folder_path": folder_path, "file_name": file_name}
-
-
 class ClearAssignationResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/ClearAssignationResource_put.yml")
     def put(self):
         """
         Clear task assignations
-        ---
-        tags:
-        - Tasks
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - task_ids
-                properties:
-                  task_ids:
-                    type: array
-                    items:
-                      type: string
-                      format: uuid
-                    example: [
-                      "a24a6ea4-ce75-4665-a070-57453082c25",
-                      "b24a6ea4-ce75-4665-a070-57453082c25"
-                    ]
-                  person_id:
-                    type: string
-                    format: uuid
-                    example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: Assignations removed
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: string
-                        format: uuid
-                      example: ["a24a6ea4-ce75-4665-a070-57453082c25"]
         """
         body = validation.validate_request_body(UnassignTasksSchema)
 
@@ -1423,45 +471,10 @@ class ClearAssignationResource(MethodView, ArgsMixin):
 class SetTasksPriorityResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/SetTasksPriorityResource_put.yml")
     def put(self):
         """
         Set tasks priority
-        ---
-        tags:
-        - Tasks
-        description: Set the priority of every task given in the id list.
-          Tasks the current user is not allowed to update are skipped.
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - task_ids
-                  - priority
-                properties:
-                  task_ids:
-                    type: array
-                    items:
-                      type: string
-                      format: uuid
-                    example: [
-                      "a24a6ea4-ce75-4665-a070-57453082c25",
-                      "b24a6ea4-ce75-4665-a070-57453082c25"
-                    ]
-                  priority:
-                    type: integer
-                    example: 2
-        responses:
-            200:
-                description: Updated tasks
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
         """
         body = validation.validate_request_body(SetTasksPrioritySchema)
 
@@ -1483,81 +496,10 @@ class SetTasksPriorityResource(MethodView, ArgsMixin):
 class TasksAssignResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/TasksAssignResource_put.yml")
     def put(self, person_id):
         """
         Assign tasks to person
-        ---
-        tags:
-        - Tasks
-        description: Assign a list of tasks to a person. Unknown task ids are
-          ignored.
-        parameters:
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - task_ids
-                properties:
-                  task_ids:
-                    type: array
-                    items:
-                      type: string
-                      format: uuid
-                    example: [
-                      "a24a6ea4-ce75-4665-a070-57453082c25",
-                      "b24a6ea4-ce75-4665-a070-57453082c25"
-                    ]
-        responses:
-            200:
-                description: Tasks assigned to person
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: SH010 Animation
-                          task_type_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
-                          task_status_id:
-                            type: string
-                            format: uuid
-                            example: c24a6ea4-ce75-4665-a070-57453082c25
-                          entity_id:
-                            type: string
-                            format: uuid
-                            example: d24a6ea4-ce75-4665-a070-57453082c25
-                          project_id:
-                            type: string
-                            format: uuid
-                            example: e24a6ea4-ce75-4665-a070-57453082c25
-                          assignees:
-                            type: array
-                            items:
-                              type: string
-                              format: uuid
-                            example: ["f24a6ea4-ce75-4665-a070-57453082c25"]
-            400:
-                description: Assignee does not exist
         """
         body = validation.validate_request_body(AssignTasksSchema)
 
@@ -1594,72 +536,10 @@ class TasksAssignResource(MethodView, ArgsMixin):
 class TaskAssignResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/TaskAssignResource_put.yml")
     def put(self, task_id):
         """
         Assign task to person
-        ---
-        tags:
-        - Tasks
-        parameters:
-          - in: path
-            name: task_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - person_id
-                properties:
-                  person_id:
-                    type: string
-                    format: uuid
-                    example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: Task assigned to person
-                content:
-                  application/json:
-                    schema:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: SH010 Animation
-                        task_type_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        task_status_id:
-                          type: string
-                          format: uuid
-                          example: c24a6ea4-ce75-4665-a070-57453082c25
-                        entity_id:
-                          type: string
-                          format: uuid
-                          example: d24a6ea4-ce75-4665-a070-57453082c25
-                        project_id:
-                          type: string
-                          format: uuid
-                          example: e24a6ea4-ce75-4665-a070-57453082c25
-                        assignees:
-                          type: array
-                          items:
-                            type: string
-                            format: uuid
-                          example: ["f24a6ea4-ce75-4665-a070-57453082c25"]
-            400:
-                description: Assignee does not exist
         """
         body = validation.validate_request_body(AssignPersonSchema)
         person_id = body.person_id
@@ -1686,162 +566,30 @@ class TaskAssignResource(MethodView, ArgsMixin):
 class TaskFullResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/TaskFullResource_get.yml")
     def get(self, task_id):
         """
         Get task full
-        ---
-        description: Return a task with many information. Includes full details
-          for assignees, task type, and task status.
-        tags:
-        - Tasks
-        parameters:
-          - in: path
-            name: task_id
-            required: true
-            schema:
-              type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: Task with full information
-                content:
-                  application/json:
-                    schema:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: SH010 Animation
-                        task_type_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        task_status_id:
-                          type: string
-                          format: uuid
-                          example: c24a6ea4-ce75-4665-a070-57453082c25
-                        entity_id:
-                          type: string
-                          format: uuid
-                          example: d24a6ea4-ce75-4665-a070-57453082c25
-                        project_id:
-                          type: string
-                          format: uuid
-                          example: e24a6ea4-ce75-4665-a070-57453082c25
-                        assignees:
-                          type: array
-                          items:
-                            type: object
-                            properties:
-                              id:
-                                type: string
-                                format: uuid
-                                example: f24a6ea4-ce75-4665-a070-57453082c25
-                              first_name:
-                                type: string
-                                example: John
-                              last_name:
-                                type: string
-                                example: Doe
-                        task_type:
-                          type: object
-                          properties:
-                            id:
-                              type: string
-                              format: uuid
-                              example: b24a6ea4-ce75-4665-a070-57453082c25
-                            name:
-                              type: string
-                              example: Animation
-                        task_status:
-                          type: object
-                          properties:
-                            id:
-                              type: string
-                              format: uuid
-                              example: c24a6ea4-ce75-4665-a070-57453082c25
-                            name:
-                              type: string
-                              example: In Progress
         """
         task = tasks_service.get_full_task(
             task_id, persons_service.get_current_user()["id"]
         )
         permissions_service.check_project_access(task["project_id"])
         permissions_service.check_entity_access(task["entity_id"])
+        if permissions.has_client_permissions():
+            task = entities_service.blank_task_for_client(task)
+            task["persons"] = []
+            task.pop("assigner", None)
         return task
 
 
 class TaskForEntityResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/TaskForEntityResource_get.yml")
     def get(self, entity_id, task_type_id):
         """
         Get tasks for entity and type
-        ---
-        tags:
-        - Tasks
-        description: Return tasks related to the entity (asset, episode,
-          sequence, shot, or scene) for a task type.
-        parameters:
-          - in: path
-            name: entity_id
-            required: true
-            schema:
-              type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: task_type_id
-            required: true
-            schema:
-              type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: Tasks related to the entity and task type
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          name:
-                            type: string
-                            example: SH010 Animation
-                          task_type_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
-                          task_status_id:
-                            type: string
-                            format: uuid
-                            example: c24a6ea4-ce75-4665-a070-57453082c25
-                          entity_id:
-                            type: string
-                            format: uuid
-                            example: d24a6ea4-ce75-4665-a070-57453082c25
-                          project_id:
-                            type: string
-                            format: uuid
-                            example: e24a6ea4-ce75-4665-a070-57453082c25
-                          assignees:
-                            type: array
-                            items:
-                              type: string
-                              format: uuid
-                            example: ["f24a6ea4-ce75-4665-a070-57453082c25"]
         """
         entity = entities_service.get_entity(entity_id)
         permissions_service.check_project_access(entity["project_id"])
@@ -1853,84 +601,17 @@ class TaskForEntityResource(MethodView):
 class SetTimeSpentResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/SetTimeSpentResource_post.yml")
     def post(self, task_id, date, person_id):
         """
         Set time spent
-        ---
-        tags:
-        - Tasks
-        parameters:
-          - in: path
-            name: task_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: date
-            required: true
-            schema:
-              type: string
-              format: date
-            example: "2022-07-12"
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  duration:
-                    type: number
-                    example: 120
-        responses:
-            201:
-                description: Time spent set for the person on the task and day
-                content:
-                  application/json:
-                    schema:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        task_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        person_id:
-                          type: string
-                          format: uuid
-                          example: c24a6ea4-ce75-4665-a070-57453082c25
-                        date:
-                          type: string
-                          format: date
-                          example: "2022-07-12"
-                        duration:
-                          type: number
-                          example: 120
-                        created_at:
-                          type: string
-                          format: date-time
-                          example: "2024-01-15T10:30:00Z"
-            400:
-                description: Invalid parameters
         """
         project_id = tasks_service.get_task(task_id)["project_id"]
         permissions_service.check_person_is_not_bot(person_id, project_id)
         body = validation.validate_request_body(TimeSpentSchema)
         try:
             permissions_service.check_time_spent_access(task_id, person_id)
-            time_spent = tasks_service.create_or_update_time_spent(
+            time_spent = time_spents_service.create_or_update_time_spent(
                 task_id,
                 person_id,
                 date_helpers.get_date_from_string(date),
@@ -1943,72 +624,15 @@ class SetTimeSpentResource(MethodView, ArgsMixin):
             raise WrongParameterException("Wrong date format.")
 
     @jwt_required()
+    @swag_from("openapi/SetTimeSpentResource_delete.yml")
     def delete(self, task_id, date, person_id):
         """
         Delete time spent
-        ---
-        tags:
-        - Tasks
-        parameters:
-          - in: path
-            name: task_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: date
-            required: true
-            schema:
-              type: string
-              format: date
-            example: "2022-07-12"
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            201:
-                description: Time spent removed for the person on the task
-                content:
-                  application/json:
-                    schema:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        task_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        person_id:
-                          type: string
-                          format: uuid
-                          example: c24a6ea4-ce75-4665-a070-57453082c25
-                        date:
-                          type: string
-                          format: date
-                          example: "2022-07-12"
-                        duration:
-                          type: number
-                          example: 0
-                        created_at:
-                          type: string
-                          format: date-time
-                          example: "2024-01-15T10:30:00Z"
-            400:
-                description: Invalid parameters
         """
         permissions_service.check_person_is_not_bot(person_id)
         try:
             permissions_service.check_time_spent_access(task_id, person_id)
-            time_spent = tasks_service.delete_time_spent(
+            time_spent = time_spents_service.delete_time_spent(
                 task_id,
                 person_id,
                 datetime.datetime.strptime(date, "%Y-%m-%d"),
@@ -2023,84 +647,17 @@ class SetTimeSpentResource(MethodView, ArgsMixin):
 class AddTimeSpentResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/AddTimeSpentResource_post.yml")
     def post(self, task_id, date, person_id):
         """
         Add time spent
-        ---
-        tags:
-        - Tasks
-        parameters:
-          - in: path
-            name: task_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: date
-            required: true
-            schema:
-              type: string
-              format: date
-            example: "2022-07-12"
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  duration:
-                    type: number
-                    example: 30
-        responses:
-            201:
-                description: Timeframe added to time spent
-                content:
-                  application/json:
-                    schema:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        task_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        person_id:
-                          type: string
-                          format: uuid
-                          example: c24a6ea4-ce75-4665-a070-57453082c25
-                        date:
-                          type: string
-                          format: date
-                          example: "2022-07-12"
-                        duration:
-                          type: number
-                          example: 150
-                        created_at:
-                          type: string
-                          format: date-time
-                          example: "2024-01-15T10:30:00Z"
-            400:
-                description: Invalid parameters
         """
         project_id = tasks_service.get_task(task_id)["project_id"]
         permissions_service.check_person_is_not_bot(person_id, project_id)
         body = validation.validate_request_body(TimeSpentSchema)
         try:
             permissions_service.check_time_spent_access(task_id, person_id)
-            time_spent = tasks_service.create_or_update_time_spent(
+            time_spent = time_spents_service.create_or_update_time_spent(
                 task_id,
                 person_id,
                 date_helpers.get_date_from_string(date),
@@ -2117,119 +674,26 @@ class AddTimeSpentResource(MethodView, ArgsMixin):
 class GetTimeSpentResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/GetTimeSpentResource_get.yml")
     def get(self, task_id):
         """
         Get task time spent
-        ---
-        tags:
-        - Tasks
-        parameters:
-          - in: path
-            name: task_id
-            required: true
-            schema:
-              type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: Time spent on the task
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          task_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
-                          person_id:
-                            type: string
-                            format: uuid
-                            example: c24a6ea4-ce75-4665-a070-57453082c25
-                          date:
-                            type: string
-                            format: date
-                            example: "2022-07-12"
-                          duration:
-                            type: number
-                            example: 120
-                          created_at:
-                            type: string
-                            format: date-time
-                            example: "2024-01-15T10:30:00Z"
         """
         permissions_service.check_task_access(task_id)
-        return tasks_service.get_time_spents(task_id)
+        return time_spents_service.get_time_spents_for_task(task_id)
 
 
 class GetTimeSpentDateResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/GetTimeSpentDateResource_get.yml")
     def get(self, task_id, date):
         """
         Get task time spent for date
-        ---
-        tags:
-        - Tasks
-        parameters:
-          - in: path
-            name: task_id
-            required: true
-            schema:
-              type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: date
-            required: true
-            schema:
-              type: string
-            format: date
-            example: "2022-07-12"
-        responses:
-            200:
-                description: Time spent on the task for the date
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          task_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
-                          person_id:
-                            type: string
-                            format: uuid
-                            example: c24a6ea4-ce75-4665-a070-57453082c25
-                          date:
-                            type: string
-                            format: date
-                            example: "2022-07-12"
-                          duration:
-                            type: number
-                            example: 120
-                          created_at:
-                            type: string
-                            format: date-time
-                            example: "2024-01-15T10:30:00Z"
         """
         try:
             permissions_service.check_task_access(task_id)
-            return tasks_service.get_time_spents(task_id, date)
+            return time_spents_service.get_time_spents_for_task(task_id, date)
         except WrongDateFormatException:
             raise WrongParameterException("Wrong date format.")
 
@@ -2237,32 +701,10 @@ class GetTimeSpentDateResource(MethodView):
 class DeleteAllTasksForTaskTypeResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/DeleteAllTasksForTaskTypeResource_delete.yml")
     def delete(self, project_id, task_type_id):
         """
         Delete tasks for type
-        ---
-        tags:
-        - Tasks
-        description: Delete all tasks for a task type in a project. Useful when
-          tasks were created by mistake at project start.
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: task_type_id
-            required: true
-            schema:
-              type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            204:
-                description: All tasks for given task type and project deleted
         """
         permissions.check_admin_permissions()
         projects_service.get_project(project_id)
@@ -2277,32 +719,10 @@ class DeleteAllTasksForTaskTypeResource(MethodView):
 class DeleteTasksResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/DeleteTasksResource_post.yml")
     def post(self, project_id):
         """
         Delete tasks batch
-        ---
-        tags:
-        - Tasks
-        description: Delete tasks given by id list. Useful for batch deletions.
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: Tasks matching id list given in parameter deleted
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: string
-                        format: uuid
-                      example: ["a24a6ea4-ce75-4665-a070-57453082c25"]
         """
         permissions_service.check_manager_project_access(project_id)
         task_ids = validation.validate_id_list()
@@ -2316,122 +736,23 @@ class ProjectSubscriptionsResource(MethodView):
 
     @jwt_required()
     @permissions.require_admin
+    @swag_from("openapi/ProjectSubscriptionsResource_get.yml")
     def get(self, project_id):
         """
         Get project subscriptions
-        ---
-        tags:
-        - Tasks
-        description: Retrieve all subscriptions to tasks related to a project.
-          Useful for sync.
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All subcriptions to tasks related to given project
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          person_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
-                          task_id:
-                            type: string
-                            format: uuid
-                            example: c24a6ea4-ce75-4665-a070-57453082c25
-                          created_at:
-                            type: string
-                            format: date-time
-                            example: "2024-01-15T10:30:00Z"
         """
         projects_service.get_project(project_id)
-        return notifications_service.get_subscriptions_for_project(project_id)
+        return subscriptions_service.get_subscriptions_for_project(project_id)
 
 
 class ProjectNotificationsResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_admin
+    @swag_from("openapi/ProjectNotificationsResource_get.yml")
     def get(self, project_id):
         """
         Get project notifications
-        ---
-        tags:
-        - Tasks
-        description: Retrieve notifications for tasks related to a project.
-          Useful for sync.
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All notifications to tasks related to given project
-                content:
-                  application/json:
-                    schema:
-                      type: object
-                      properties:
-                        data:
-                          type: array
-                          items:
-                            type: object
-                            properties:
-                              id:
-                                type: string
-                                format: uuid
-                                example: a24a6ea4-ce75-4665-a070-57453082c25
-                              person_id:
-                                type: string
-                                format: uuid
-                                example: b24a6ea4-ce75-4665-a070-57453082c25
-                              task_id:
-                                type: string
-                                format: uuid
-                                example: c24a6ea4-ce75-4665-a070-57453082c25
-                              comment_id:
-                                type: string
-                                format: uuid
-                                example: d24a6ea4-ce75-4665-a070-57453082c25
-                              notification_type:
-                                type: string
-                                example: assignment
-                              created_at:
-                                type: string
-                                format: date-time
-                                example: "2024-01-15T10:30:00Z"
-                              updated_at:
-                                type: string
-                                format: date-time
-                                example: "2024-01-15T11:00:00Z"
-                        limit:
-                          type: integer
-                          example: 100
-                        page:
-                          type: integer
-                          example: 1
-                        is_more:
-                          type: boolean
-                          example: true
         """
         projects_service.get_project(project_id)
         page = self.get_page()
@@ -2443,89 +764,10 @@ class ProjectNotificationsResource(MethodView, ArgsMixin):
 class ProjectTasksResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/ProjectTasksResource_get.yml")
     def get(self, project_id):
         """
         Get project tasks
-        ---
-        tags:
-        - Tasks
-        description: Retrieve tasks related to a project. Useful for sync.
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: page
-            required: False
-            type: integer
-            example: 1
-          - in: query
-            name: task_type_id
-            required: False
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: episode_id
-            required: False
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: All tasks related to given project
-                content:
-                  application/json:
-                    schema:
-                      type: object
-                      properties:
-                        data:
-                          type: array
-                          items:
-                            type: object
-                            properties:
-                              id:
-                                type: string
-                                format: uuid
-                                example: a24a6ea4-ce75-4665-a070-57453082c25
-                              name:
-                                type: string
-                                example: SH010 Animation
-                              task_type_id:
-                                type: string
-                                format: uuid
-                                example: b24a6ea4-ce75-4665-a070-57453082c25
-                              task_status_id:
-                                type: string
-                                format: uuid
-                                example: c24a6ea4-ce75-4665-a070-57453082c25
-                              entity_id:
-                                type: string
-                                format: uuid
-                                example: d24a6ea4-ce75-4665-a070-57453082c25
-                              project_id:
-                                type: string
-                                format: uuid
-                                example: e24a6ea4-ce75-4665-a070-57453082c25
-                              assignees:
-                                type: array
-                                items:
-                                  type: string
-                                  format: uuid
-                                example: ["f24a6ea4-ce75-4665-a070-57453082c25"]
-                        limit:
-                          type: integer
-                          example: 100
-                        page:
-                          type: integer
-                          example: 1
-                        is_more:
-                          type: boolean
-                          example: true
         """
         projects_service.get_project(project_id)
         permissions_service.check_project_access(project_id)
@@ -2545,7 +787,7 @@ class ProjectTasksResource(MethodView, ArgsMixin):
         task_type_id = self.get_task_type_id()
         episode_id = self.get_episode_id()
         return http_cache.json_response(
-            tasks_service.get_tasks_for_project(
+            todos_service.get_tasks_for_project(
                 project_id,
                 page,
                 task_type_id=task_type_id,
@@ -2558,60 +800,10 @@ class ProjectTasksResource(MethodView, ArgsMixin):
 class ProjectCommentsResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/ProjectCommentsResource_get.yml")
     def get(self, project_id):
         """
         Get project comments
-        ---
-        tags:
-        - Tasks
-        description: Retrieve comments for tasks related to a project. Useful
-          for sync.
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: limit
-            type: integer
-            default: 100
-            example: 100
-        responses:
-            200:
-                description: All comments to tasks related to given project
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                            format: uuid
-                            example: a24a6ea4-ce75-4665-a070-57453082c25
-                          object_id:
-                            type: string
-                            format: uuid
-                            example: b24a6ea4-ce75-4665-a070-57453082c25
-                          person_id:
-                            type: string
-                            format: uuid
-                            example: c24a6ea4-ce75-4665-a070-57453082c25
-                          text:
-                            type: string
-                            example: This task looks good
-                          created_at:
-                            type: string
-                            format: date-time
-                            example: "2024-01-15T10:30:00Z"
-                          updated_at:
-                            type: string
-                            format: date-time
-                            example: "2024-01-15T11:00:00Z"
         """
         projects_service.get_project(project_id)
         permissions_service.check_project_access(project_id)
@@ -2622,75 +814,19 @@ class ProjectCommentsResource(MethodView, ArgsMixin):
             raise permissions.PermissionDenied
         page = self.get_page()
         limit = self.get_limit()
-        return tasks_service.get_comments_for_project(project_id, page, limit)
+        return comments_service.get_comments_for_project(
+            project_id, page, limit
+        )
 
 
 class ProjectPreviewFilesResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_admin
+    @swag_from("openapi/ProjectPreviewFilesResource_get.yml")
     def get(self, project_id):
         """
         Get project preview files
-        ---
-        tags:
-        - Tasks
-        description: Retrieve all preview files that are linked to a specific
-          project. This includes images, videos, and other preview media
-          associated with the project.
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: Preview files related to given project
-                content:
-                  application/json:
-                    schema:
-                      type: object
-                      properties:
-                        data:
-                          type: array
-                          items:
-                            type: object
-                            properties:
-                              id:
-                                type: string
-                                format: uuid
-                                example: a24a6ea4-ce75-4665-a070-57453082c25
-                              task_id:
-                                type: string
-                                format: uuid
-                                example: b24a6ea4-ce75-4665-a070-57453082c25
-                              comment_id:
-                                type: string
-                                format: uuid
-                                example: c24a6ea4-ce75-4665-a070-57453082c25
-                              revision:
-                                type: integer
-                                example: 1
-                              person_id:
-                                type: string
-                                format: uuid
-                                example: e24a6ea4-ce75-4665-a070-57453082c25
-                              created_at:
-                                type: string
-                                format: date-time
-                                example: "2024-01-15T10:30:00Z"
-                        limit:
-                          type: integer
-                          example: 100
-                        page:
-                          type: integer
-                          example: 1
-                        is_more:
-                          type: boolean
-                          example: true
         """
         projects_service.get_project(project_id)
         page = self.get_page()
@@ -2699,59 +835,10 @@ class ProjectPreviewFilesResource(MethodView, ArgsMixin):
 
 class SetTaskMainPreviewResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/SetTaskMainPreviewResource_put.yml")
     def put(self, task_id):
         """
         Set main preview from task
-        ---
-        tags:
-          - Tasks
-        description: Set the last preview of a task as the main preview of the
-          related entity.
-        parameters:
-          - in: path
-            name: task_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: Preview set as main preview
-            400:
-                description: The task has no preview file
-                content:
-                  application/json:
-                    schema:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: SH010
-                        project_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        preview_file_id:
-                          type: string
-                          format: uuid
-                          example: c24a6ea4-ce75-4665-a070-57453082c25
-                        entity_type_id:
-                          type: string
-                          format: uuid
-                          example: d24a6ea4-ce75-4665-a070-57453082c25
-                        created_at:
-                          type: string
-                          format: date-time
-                          example: "2024-01-15T10:30:00Z"
-                        updated_at:
-                          type: string
-                          format: date-time
-                          example: "2024-01-15T11:00:00Z"
         """
         task = tasks_service.get_task(task_id)
         permissions_service.check_project_access(task["project_id"])
@@ -2767,46 +854,17 @@ class SetTaskMainPreviewResource(MethodView):
             raise WrongParameterException(
                 "This task has no preview file to set as the main preview."
             )
-        return entities_service.update_entity_preview(
+        return tasks_service.update_entity_preview(
             task["entity_id"], preview_file["id"]
         )
 
 
 class SetTasksMainPreviewResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/SetTasksMainPreviewResource_put.yml")
     def put(self):
         """
         Set main preview from several tasks
-        ---
-        tags:
-          - Tasks
-        description: For each task in the id list, set its last preview as
-          the main preview of the related entity. Useful to set thumbnails
-          for a selection in one request. Tasks without a preview are
-          skipped. Returns the updated entities.
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - task_ids
-                properties:
-                  task_ids:
-                    type: array
-                    items:
-                      type: string
-                      format: uuid
-        responses:
-            200:
-                description: Entities whose main preview was updated
-                content:
-                  application/json:
-                    schema:
-                      type: array
-                      items:
-                        type: object
         """
         body = validation.validate_request_body(SetTasksMainPreviewSchema)
         entities = []
@@ -2826,7 +884,7 @@ class SetTasksMainPreviewResource(MethodView):
             )
             if preview_file is not None:
                 entities.append(
-                    entities_service.update_entity_preview(
+                    tasks_service.update_entity_preview(
                         task["entity_id"], preview_file["id"]
                     )
                 )
@@ -2836,65 +894,10 @@ class SetTasksMainPreviewResource(MethodView):
 class PersonsTasksDatesResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/PersonsTasksDatesResource_get.yml")
     def get(self):
         """
         Get persons tasks dates
-        ---
-        tags:
-        - Tasks
-        description: For each active person, return the first start date of all
-          tasks assigned to them and the last end date. Useful for schedule
-          planning. Admins get the studio-wide view; managers and supervisors
-          are restricted to the projects of their own teams.
-        parameters:
-          - in: query
-            name: project_id
-            required: false
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-            description: Filter by project ID
-        responses:
-            200:
-              description: First start date and last end date for tasks per
-                person
-              content:
-                application/json:
-                  schema:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        person_id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        min_date:
-                          type: string
-                          description: First task start date for this person
-                            within the requested scope
-                          example: "2024-01-15 00:00:00"
-                        max_date:
-                          type: string
-                          description: Last task due date for this person
-                            within the requested scope
-                          example: "2024-03-21 00:00:00"
-                        busy_periods:
-                          type: array
-                          description: Anonymous, merged date intervals
-                            covering the person's tasks in open productions
-                            outside the caller's scope. No production or
-                            task detail is exposed.
-                          items:
-                            type: object
-                            properties:
-                              start_date:
-                                type: string
-                                example: "2024-01-15 00:00:00"
-                              end_date:
-                                type: string
-                                example: "2024-03-21 00:00:00"
         """
         # Normalise the `project_id` filter once, before branching on the
         # caller's role. An empty or whitespace-only `?project_id=` is treated
@@ -2925,7 +928,7 @@ class PersonsTasksDatesResource(MethodView, ArgsMixin):
                     for open_project_id in projects_service.open_project_ids()
                     if open_project_id not in own_project_ids
                 ]
-        return tasks_service.get_persons_tasks_dates(
+        return schedule_service.get_persons_tasks_dates(
             project_id=project_id,
             project_ids=project_ids,
             busy_project_ids=busy_project_ids,
@@ -2956,126 +959,10 @@ def check_open_tasks_filter_args(resource, args):
 class OpenTasksResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/OpenTasksResource_get.yml")
     def get(self):
         """
         Get open tasks
-        ---
-        tags:
-        - Tasks
-        description: Return tasks for open projects with optional filters and
-          pagination. Includes statistics.
-        parameters:
-          - in: query
-            name: project_id
-            required: false
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-            description: Filter tasks on given project ID
-          - in: query
-            name: task_status_id
-            required: false
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-            description: Filter tasks on given task status ID
-          - in: query
-            name: task_type_id
-            required: false
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-            description: Filter tasks on given task type ID
-          - in: query
-            name: person_id
-            required: false
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-            description: Filter tasks on given person ID
-          - in: query
-            name: start_date
-            required: false
-            schema:
-              type: string
-              format: date
-            example: "2022-07-12"
-            description: Filter tasks posterior to given start date
-          - in: query
-            name: due_date
-            required: false
-            schema:
-              type: string
-              format: date
-            example: "2022-07-12"
-            description: Filter tasks anterior to given due date
-          - in: query
-            name: priority
-            required: false
-            schema:
-              type: integer
-            example: 3
-            description: Filter tasks on given priority
-          - in: query
-            name: page
-            required: false
-            schema:
-              type: integer
-              default: 1
-            example: 1
-            description: Page number
-          - in: query
-            name: limit
-            required: false
-            schema:
-              type: integer
-              default: 100
-            example: 100
-            description: Number of tasks per page
-
-        responses:
-            200:
-              description: List of tasks with pagination and statistics
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          type: object
-                        description: List of tasks
-                      stats:
-                        type: object
-                        properties:
-                          total:
-                            type: integer
-                            description: Total number of tasks
-                          total_duration:
-                            type: integer
-                            description: Total duration of tasks in minutes
-                          total_estimation:
-                            type: integer
-                            description: Total estimation of tasks in minutes
-                          status:
-                            type: object
-                            description: Number of tasks per status
-                      limit:
-                        type: integer
-                        description: Number of tasks per page
-                      page:
-                        type: integer
-                        description: Page number
-                      is_more:
-                        type: boolean
-                        description: True if there are more tasks to retrieve
-            400:
-              description: Bad request
         """
         args = self.get_args(
             [
@@ -3094,16 +981,8 @@ class OpenTasksResource(MethodView, ArgsMixin):
             ]
         )
         check_open_tasks_filter_args(self, args)
-        return tasks_service.get_open_tasks(
-            task_type_id=args["task_type_id"],
-            project_id=args["project_id"],
-            person_id=args["person_id"],
-            task_status_id=args["task_status_id"],
-            studio_id=args["studio_id"],
-            department_id=args["department_id"],
-            start_date=args["start_date"],
-            due_date=args["due_date"],
-            priority=args["priority"],
+        return todos_service.get_open_tasks(
+            tasks_service.OpenTasksFilters.from_args(args),
             page=args["page"],
             limit=args["limit"],
         )
@@ -3112,152 +991,21 @@ class OpenTasksResource(MethodView, ArgsMixin):
 class OpenTasksStatsResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/OpenTasksStatsResource_get.yml")
     def get(self):
         """
         Get open tasks stats
-        ---
-        tags:
-        - Tasks
-        description: Return totals and aggregates by status and task type per
-          project for open projects.
-        responses:
-            200:
-              description: A dict by project with results for each task type and
-                status pair
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    additionalProperties:
-                      type: object
-                      properties:
-                        total:
-                          type: integer
-                        done:
-                          type: integer
-                        estimation:
-                          type: integer
-                        duration:
-                          type: integer
-            400:
-              description: Bad request
         """
-        return tasks_service.get_open_tasks_stats()
+        return todos_service.get_open_tasks_stats()
 
 
 class OpenTasksBurndownResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/OpenTasksBurndownResource_get.yml")
     def get(self):
         """
         Get open tasks burndown
-        ---
-        tags:
-        - Tasks
-        description: Return burndown aggregates for tasks from open projects
-          matching the same filters as the open tasks route. It includes the
-          total amount and estimation, the schedule bounds (task start and
-          due dates, project dates as fallback) and the amount of tasks
-          done per day.
-        parameters:
-          - in: query
-            name: project_id
-            required: false
-            schema:
-              type: string
-              format: uuid
-            description: Filter tasks on given project ID
-          - in: query
-            name: task_status_id
-            required: false
-            schema:
-              type: string
-              format: uuid
-            description: Filter tasks on given task status ID
-          - in: query
-            name: task_type_id
-            required: false
-            schema:
-              type: string
-              format: uuid
-            description: Filter tasks on given task type ID
-          - in: query
-            name: person_id
-            required: false
-            schema:
-              type: string
-              format: uuid
-            description: Filter tasks on given person ID
-          - in: query
-            name: studio_id
-            required: false
-            schema:
-              type: string
-              format: uuid
-            description: Filter tasks on given studio ID
-          - in: query
-            name: department_id
-            required: false
-            schema:
-              type: string
-              format: uuid
-            description: Filter tasks on given department ID
-          - in: query
-            name: start_date
-            required: false
-            schema:
-              type: string
-              format: date
-            description: Filter tasks posterior to given start date
-          - in: query
-            name: due_date
-            required: false
-            schema:
-              type: string
-              format: date
-            description: Filter tasks anterior to given due date
-          - in: query
-            name: priority
-            required: false
-            schema:
-              type: integer
-            description: Filter tasks on given priority
-        responses:
-            200:
-              description: Burndown aggregates for the filtered tasks
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      total:
-                        type: integer
-                        description: Total number of tasks
-                      total_estimation:
-                        type: number
-                        description: Total estimation of tasks in minutes
-                      start_date:
-                        type: string
-                        format: date
-                        description: First task start date
-                      end_date:
-                        type: string
-                        format: date
-                        description: Last task due date
-                      done_by_day:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            date:
-                              type: string
-                              format: date
-                            done:
-                              type: integer
-                            done_estimation:
-                              type: number
-            400:
-              description: Bad request
         """
         args = self.get_args(
             [
@@ -3273,4 +1021,6 @@ class OpenTasksBurndownResource(MethodView, ArgsMixin):
             ]
         )
         check_open_tasks_filter_args(self, args)
-        return tasks_service.get_open_tasks_burndown(**args)
+        return todos_service.get_open_tasks_burndown(
+            tasks_service.OpenTasksFilters.from_args(args)
+        )

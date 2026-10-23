@@ -1,12 +1,10 @@
 from tests.base import ApiDBTestCase
-
 from zou.app.models.day_off import DayOff
 from zou.app.models.milestone import Milestone
 from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.services import (
-    budget_service,
     projects_service,
-    tasks_service,
+    time_spents_service,
 )
 from zou.app.utils import events, fields
 
@@ -57,6 +55,128 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
         project = self.get(f"/data/projects/{self.project_id}")
         self.assertIn(str(self.task_type.id), project.get("task_types", []))
 
+    def test_task_type_link_bitrates(self):
+        path = f"/data/projects/{self.project_id}/settings/task-types"
+        task_type_id = str(self.task_type.id)
+        self.post(path, {"task_type_id": task_type_id, "priority": 3})
+        # A second call keeps the priority and sets the bitrates.
+        self.post(
+            path,
+            {
+                "task_type_id": task_type_id,
+                "hd_bitrate_compression": 20,
+                "ld_bitrate_compression": 4,
+            },
+        )
+        # The link maps ride along the project lists, not the single GET.
+        project = next(
+            project
+            for project in self.get("/data/projects/open")
+            if project["id"] == self.project_id
+        )
+        self.assertEqual(
+            project["task_type_links"][task_type_id],
+            {
+                "priority": 3,
+                "hd_bitrate_compression": 20,
+                "ld_bitrate_compression": 4,
+                "is_client_visible": True,
+            },
+        )
+        self.assertEqual(project["task_types_priority"][task_type_id], 3)
+        # A call without bitrates leaves them alone.
+        self.post(path, {"task_type_id": task_type_id, "priority": 4})
+        link = ProjectTaskTypeLink.get_by(
+            project_id=self.project_id, task_type_id=task_type_id
+        )
+        self.assertEqual(link.hd_bitrate_compression, 20)
+        self.post(
+            path,
+            {"task_type_id": task_type_id, "ld_bitrate_compression": 0},
+            400,
+        )
+        # A link low def above the project high def is refused.
+        self.put(
+            f"/data/projects/{self.project_id}", {"hd_bitrate_compression": 10}
+        )
+        self.post(
+            path,
+            {"task_type_id": task_type_id, "ld_bitrate_compression": 12},
+            400,
+        )
+        self.post(
+            path,
+            {
+                "task_type_id": task_type_id,
+                "hd_bitrate_compression": 14,
+                "ld_bitrate_compression": 12,
+            },
+        )
+        # A link high def below the low def it inherits is fine: the
+        # encoder caps that low def.
+        self.put(
+            f"/data/projects/{self.project_id}", {"ld_bitrate_compression": 6}
+        )
+        self.post(
+            path,
+            {
+                "task_type_id": task_type_id,
+                "hd_bitrate_compression": 4,
+                "ld_bitrate_compression": None,
+            },
+        )
+        link = ProjectTaskTypeLink.get_by(
+            project_id=self.project_id, task_type_id=task_type_id
+        )
+        self.assertEqual(
+            (link.hd_bitrate_compression, link.ld_bitrate_compression),
+            (4, None),
+        )
+
+    def _open_project_link(self, task_type_id):
+        project = next(
+            project
+            for project in self.get("/data/projects/open")
+            if project["id"] == self.project_id
+        )
+        return project["task_type_links"][task_type_id]
+
+    def test_set_task_type_client_visibility(self):
+        path = f"/data/projects/{self.project_id}/settings/task-types"
+        task_type_id = str(self.task_type.id)
+        self.post(
+            path,
+            {
+                "task_type_id": task_type_id,
+                "priority": 3,
+                "hd_bitrate_compression": 20,
+            },
+        )
+        self.post(
+            path, {"task_type_id": task_type_id, "is_client_visible": False}
+        )
+        link = self._open_project_link(task_type_id)
+        self.assertIs(link["is_client_visible"], False)
+        self.assertEqual(link["priority"], 3)
+        self.assertEqual(link["hd_bitrate_compression"], 20)
+
+    def test_task_type_setting_without_visibility_keeps_it(self):
+        path = f"/data/projects/{self.project_id}/settings/task-types"
+        task_type_id = str(self.task_type.id)
+        self.post(path, {"task_type_id": task_type_id, "priority": 3})
+        self.assertIs(
+            self._open_project_link(task_type_id)["is_client_visible"], True
+        )
+        self.post(
+            path, {"task_type_id": task_type_id, "is_client_visible": False}
+        )
+        self.post(
+            path, {"task_type_id": task_type_id, "hd_bitrate_compression": 20}
+        )
+        self.assertIs(
+            self._open_project_link(task_type_id)["is_client_visible"], False
+        )
+
     def test_delete_project_task_type(self):
         self.post(
             f"/data/projects/{self.project_id}/settings/task-types",
@@ -105,6 +225,59 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
         status_ids = [s["id"] for s in statuses]
         self.assertNotIn(str(self.task_status.id), status_ids)
 
+    def _task_status_path(self):
+        return (
+            f"/data/projects/{self.project_id}"
+            f"/settings/task-status/{self.task_status.id}"
+        )
+
+    def _open_project_status_link(self):
+        project = next(
+            project
+            for project in self.get("/data/projects/open")
+            if project["id"] == self.project_id
+        )
+        return project["task_statuses_link"][str(self.task_status.id)]
+
+    def test_set_task_status_client_allowed(self):
+        self.post(
+            f"/data/projects/{self.project_id}/settings/task-status",
+            {"task_status_id": str(self.task_status.id)},
+        )
+        self.assertIsNone(
+            self._open_project_status_link()["is_client_allowed"]
+        )
+        for value in (False, True, None):
+            link = self.put(
+                self._task_status_path(), {"is_client_allowed": value}
+            )
+            self.assertIs(link["is_client_allowed"], value)
+            self.assertIs(
+                self._open_project_status_link()["is_client_allowed"], value
+            )
+
+    def test_set_task_status_client_allowed_requires_the_field(self):
+        self.post(
+            f"/data/projects/{self.project_id}/settings/task-status",
+            {"task_status_id": str(self.task_status.id)},
+        )
+        self.put(self._task_status_path(), {}, 400)
+
+    def test_set_client_allowed_of_an_unlinked_task_status(self):
+        self.put(self._task_status_path(), {"is_client_allowed": False}, 404)
+
+    def test_set_task_status_client_allowed_as_artist_is_forbidden(self):
+        self.post(
+            f"/data/projects/{self.project_id}/settings/task-status",
+            {"task_status_id": str(self.task_status.id)},
+        )
+        self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"]
+        )
+        self.log_in_cg_artist()
+        self.put(self._task_status_path(), {"is_client_allowed": False}, 403)
+
     # --- Batch settings ---
 
     def test_add_project_settings_batch(self):
@@ -136,6 +309,45 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
             project_id=self.project_id, task_type_id=str(self.task_type.id)
         )
         self.assertEqual(link.priority, 1)
+
+    def test_project_settings_batch_applies_client_visibility(self):
+        path = f"/data/projects/{self.project_id}/settings/batch"
+        type_id = str(self.task_type.id)
+
+        def visible():
+            return ProjectTaskTypeLink.get_by(
+                project_id=self.project_id, task_type_id=type_id
+            ).is_client_visible
+
+        self.post(
+            path,
+            {
+                "task_types": [
+                    {"task_type_id": type_id, "is_client_visible": False}
+                ]
+            },
+            200,
+        )
+        self.assertFalse(visible())
+        self.post(path, {"task_types": [{"task_type_id": type_id}]}, 200)
+        self.assertFalse(visible())
+        self.post(
+            path,
+            {
+                "task_types": [
+                    {"task_type_id": type_id, "is_client_visible": True}
+                ]
+            },
+            200,
+        )
+        self.assertTrue(visible())
+
+    def test_set_client_allowed_with_malformed_status_id(self):
+        self.put(
+            f"/data/projects/{self.project_id}/settings/task-status/nope",
+            {"is_client_allowed": False},
+            404,
+        )
 
     def test_project_settings_batch_is_idempotent(self):
         data = {
@@ -345,7 +557,7 @@ class ProjectDataRoutesTestCase(ApiDBTestCase):
         self.assertEqual(
             self.get(f"/data/projects/{self.project_id}/time-spents"), []
         )
-        tasks_service.create_or_update_time_spent(
+        time_spents_service.create_or_update_time_spent(
             str(self.task.id), str(self.person.id), "2024-06-12", 120
         )
 
@@ -403,7 +615,7 @@ class ProjectDataRoutesTestCase(ApiDBTestCase):
         """
         here = self.task
         for date, duration in [("2024-06-12", 120), ("2024-06-13", 300)]:
-            tasks_service.create_or_update_time_spent(
+            time_spents_service.create_or_update_time_spent(
                 str(here.id), str(self.person.id), date, duration
             )
 
@@ -412,7 +624,7 @@ class ProjectDataRoutesTestCase(ApiDBTestCase):
         elsewhere = self.generate_fixture_task(
             name="Animation", task_type_id=self.task_type_animation.id
         )
-        tasks_service.create_or_update_time_spent(
+        time_spents_service.create_or_update_time_spent(
             str(elsewhere.id), str(self.person.id), "2024-06-12", 999
         )
         self.task = here

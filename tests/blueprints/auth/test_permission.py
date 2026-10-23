@@ -4,7 +4,6 @@ from unittest import TestCase, mock
 from flask import g
 
 from tests.base import ApiDBTestCase
-
 from zou.app import app
 from zou.app.services import projects_service
 from zou.app.utils import permissions
@@ -80,7 +79,7 @@ class PermissionTestCase(ApiDBTestCase):
         data = {
             "first_name": "John",
             "last_name": "Doe",
-            "email": "john.doe@gmail.com",
+            "email": "john.doe@example.com",
         }
         self.post("data/persons", data, 403)
 
@@ -89,13 +88,13 @@ class PermissionTestCase(ApiDBTestCase):
         data = {
             "first_name": "John",
             "last_name": "Doe",
-            "email": "john.doe1@gmail.com",
+            "email": "john.doe1@example.com",
         }
         self.post("data/persons", data, 201)
 
     def test_manager_cannot_update_admin(self):
         self.log_in_manager()
-        data = {"email": "john.doe2@gmail.com"}
+        data = {"email": "john.doe2@example.com"}
         self.put(f"data/persons/{self.user['id']}", data, 403)
 
     def test_manager_cannot_update_person(self):

@@ -1,0 +1,23 @@
+Remove shot asset instance
+---
+description: Remove an asset instance from a specific shot.
+tags:
+  - Breakdown
+parameters:
+  - in: path
+    name: shot_id
+    required: true
+    type: string
+    format: uuid
+    example: e68e02e8-0219-8009-e514-918974260690
+    description: Unique identifier of the shot
+  - in: path
+    name: asset_instance_id
+    required: true
+    type: string
+    format: uuid
+    example: 19113511-3542-1332-1847-241207593920
+    description: Unique identifier of the asset instance
+responses:
+  204:
+    description: Asset instance successfully removed from shot

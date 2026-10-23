@@ -1,0 +1,65 @@
+Create project task status link
+---
+tags:
+  - Crud
+description: Create a link between a project and a task status.
+  Sets the priority and roles that can view it on the board.
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - project_id
+          - task_status_id
+        properties:
+          project_id:
+            type: string
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c250
+          task_status_id:
+            type: string
+            format: uuid
+            example: b24a6ea4-ce75-4665-a070-57453082c250
+          priority:
+            type: integer
+            default: 1
+            example: 1
+            description: Priority of the task status in the project
+          roles_for_board:
+            type: array
+            items:
+              type: string
+            example: ["admin", "manager"]
+            description: Roles allowed to see this status on the board
+responses:
+    201:
+      description: Project task status link created successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              project_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              task_status_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              priority:
+                type: integer
+                example: 1
+              roles_for_board:
+                type: array
+                items:
+                  type: string
+                example: ["admin", "manager"]
+    400:
+      description: Invalid project or task status

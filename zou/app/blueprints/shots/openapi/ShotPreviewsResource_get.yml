@@ -1,0 +1,44 @@
+Get shot previews
+---
+tags:
+- Shots
+description: Return previews for a shot as a dict keyed by task type id.
+  Each value is an array of previews for that task type.
+parameters:
+  - in: path
+    name: shot_id
+    required: True
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+responses:
+    200:
+        description: All previews related to given shot
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                      example: b24a6ea4-ce75-4665-a070-57453082c250
+                    revision:
+                      type: integer
+                      example: 3
+                    file_id:
+                      type: string
+                      format: uuid
+                      example: c24a6ea4-ce75-4665-a070-57453082c250
+            example:
+              "a24a6ea4-ce75-4665-a070-57453082c250": [
+                {
+                  "id": "b24a6ea4-ce75-4665-a070-57453082c250",
+                  "revision": 3,
+                  "file_id": "c24a6ea4-ce75-4665-a070-57453082c250"
+                }
+              ]

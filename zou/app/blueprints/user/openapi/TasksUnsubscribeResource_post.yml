@@ -1,0 +1,24 @@
+Unsubscribe from several tasks
+---
+description: Remove the subscription entries for the current user and
+  every task in the id list. Useful to unsubscribe from a selection
+  in one request. Returns the given task id list.
+tags:
+- User
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - task_ids
+        properties:
+          task_ids:
+            type: array
+            items:
+              type: string
+              format: uuid
+responses:
+    200:
+      description: Subscriptions removed successfully

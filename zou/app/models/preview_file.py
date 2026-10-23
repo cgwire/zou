@@ -1,12 +1,10 @@
-from sqlalchemy_utils import UUIDType, ChoiceType
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy_utils import ChoiceType, UUIDType
 
 from zou.app import db
-from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
+from zou.app.models.serializer import SerializerMixin
 from zou.app.utils import fields
-
-from sqlalchemy.dialects.postgresql import JSONB
 
 STATUSES = [
     ("processing", "Processing"),
@@ -57,7 +55,9 @@ class PreviewFile(db.Model, BaseMixin, SerializerMixin):
     task_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("task.id"), index=True
     )
-    person_id = db.Column(UUIDType(binary=False), db.ForeignKey("person.id"))
+    person_id = db.Column(
+        UUIDType(binary=False), db.ForeignKey("person.id"), index=True
+    )
     source_file_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("output_file.id"), index=True
     )

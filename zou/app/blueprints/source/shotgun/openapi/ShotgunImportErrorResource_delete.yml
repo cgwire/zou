@@ -1,0 +1,29 @@
+Delete shotgun import error
+---
+description: Delete a Shotgun import error by its unique identifier.
+  Returns success confirmation when the error is deleted.
+tags:
+  - Import
+parameters:
+  - in: path
+    name: error_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Import error unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+responses:
+  204:
+    description: Import error deleted successfully
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            deletion_success:
+              type: boolean
+              description: Whether deletion was successful
+              example: true
+  400:
+    description: Invalid error ID format

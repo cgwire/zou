@@ -1,47 +1,26 @@
-from flask.views import MethodView
+from flasgger import swag_from
 from flask import request
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 from slugify import slugify
 
 from zou.app.services import (
     assets_service,
-    projects_service,
+    metadata_descriptors_service,
     permissions_service,
-    user_service,
-    tasks_service,
     persons_service,
+    projects_service,
+    task_types_service,
 )
 from zou.app.utils import csv_utils, query
 
 
 class AssetsCsvExport(MethodView):
     @jwt_required()
+    @swag_from("openapi/AssetsCsvExport_get.yml")
     def get(self, project_id):
         """
         Export assets csv
-        ---
-        tags:
-          - Export
-        description: Export project assets as CSV file. Includes asset
-          information, task statuses, assignments, and metadata.
-        produces:
-          - text/csv
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-              description: Assets exported as CSV successfully
-              content:
-                text/csv:
-                  schema:
-                    type: string
-                  example: "Project,Type,Name,Description,Time Spent\nProject A,Character,Asset1,Description,10.50"
         """
         project = projects_service.get_project(project_id)
         self.check_permissions(project["id"])
@@ -50,8 +29,8 @@ class AssetsCsvExport(MethodView):
         query.check_criterion_id_format(criterions, ["id", "episode_id"])
         criterions["project_id"] = project["id"]
 
-        self.task_type_map = tasks_service.get_task_type_map()
-        self.task_status_map = tasks_service.get_task_status_map()
+        self.task_type_map = task_types_service.get_task_type_map()
+        self.task_status_map = task_types_service.get_task_status_map()
         self.persons_map = persons_service.get_persons_map()
 
         csv_content = []
@@ -163,7 +142,7 @@ class AssetsCsvExport(MethodView):
     def get_metadata_infos(self, project_id):
         descriptors = [
             descriptor
-            for descriptor in projects_service.get_metadata_descriptors(
+            for descriptor in metadata_descriptors_service.get_metadata_descriptors(
                 project_id
             )
             if descriptor["entity_type"] == "Asset"

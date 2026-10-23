@@ -1,7 +1,10 @@
 import slugify
-
 from sqlalchemy.exc import IntegrityError, StatementError
 
+from zou.app.exceptions import (
+    ProjectTemplateNotFoundException,
+    WrongParameterException,
+)
 from zou.app.models.entity_type import EntityType
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.preview_background_file import PreviewBackgroundFile
@@ -16,13 +19,10 @@ from zou.app.models.project_template import (
 from zou.app.models.status_automation import StatusAutomation
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
-
-from zou.app.services import projects_service
-from zou.app.services.exception import (
-    ProjectTemplateNotFoundException,
-    WrongParameterException,
+from zou.app.services import (
+    metadata_descriptors_service,
+    projects_service,
 )
-
 from zou.app.utils import events, fields
 
 # Production-setting fields that are copied between Project and
@@ -43,6 +43,9 @@ PRODUCTION_SETTING_FIELDS = [
     "homepage",
     "hd_bitrate_compression",
     "ld_bitrate_compression",
+    "is_client_stats_visible",
+    "is_client_task_list_visible",
+    "is_client_task_panel_visible",
 ]
 
 
@@ -90,26 +93,6 @@ def get_project_template(template_id):
     return get_project_template_raw(template_id).serialize()
 
 
-def get_project_templates():
-    """
-    Return all templates as a list of dicts.
-    """
-    templates = ProjectTemplate.query.order_by(ProjectTemplate.name).all()
-    return fields.serialize_models(templates)
-
-
-def get_project_template_by_name(name):
-    """
-    Return the template matching given name, case insensitively, or raise.
-    """
-    template = ProjectTemplate.query.filter(
-        ProjectTemplate.name.ilike(name)
-    ).first()
-    if template is None:
-        raise ProjectTemplateNotFoundException()
-    return template.serialize()
-
-
 def create_project_template(name, description=None, **settings):
     """
     Create a new empty template. Extra keyword arguments are forwarded as
@@ -117,6 +100,7 @@ def create_project_template(name, description=None, **settings):
     """
     if not name:
         raise WrongParameterException("name is required")
+    projects_service.validate_movie_bitrates(settings)
     data = {"name": name, "description": description}
     for key, value in settings.items():
         if key in PRODUCTION_SETTING_FIELDS or key in (
@@ -140,6 +124,9 @@ def update_project_template(template_id, changes):
     Update template fields.
     """
     template = get_project_template_raw(template_id)
+    projects_service.validate_movie_bitrates(
+        changes or {}, current=template.serialize()
+    )
     # Filter out fields the caller can't change directly.
     safe_changes = {
         key: value
@@ -220,20 +207,42 @@ def get_template_task_types(template_id):
         link = link_map.get(str(task_type.id))
         if link:
             data["priority"] = link.priority
+            data["hd_bitrate_compression"] = link.hd_bitrate_compression
+            data["ld_bitrate_compression"] = link.ld_bitrate_compression
+            data["is_client_visible"] = link.is_client_visible
         result.append(data)
     result.sort(key=lambda t: (t.get("priority") or 0, t.get("name", "")))
     return result
 
 
-def add_task_type_to_template(template_id, task_type_id, priority=None):
+UNSET = object()
+
+
+def add_task_type_to_template(
+    template_id,
+    task_type_id,
+    priority=None,
+    bitrates=None,
+    is_client_visible=None,
+):
     """
-    Link a task type to given template, or update its priority when the
-    link already exists.
+    Link a task type to given template, or update its priority and its
+    movie bitrates when the link already exists. Bitrates left to None are
+    not touched, so a reorder keeps them.
     """
     _check_required_id(TaskType, task_type_id, "task_type_id", "Task type")
-    _ensure_template_exists(template_id)
+    template = _ensure_template_exists(template_id)
+    if bitrates is not None:
+        projects_service.validate_movie_bitrates(
+            bitrates, inherited=template.serialize()
+        )
     if priority is not None:
         priority = int(priority)
+    visibility = (
+        {}
+        if is_client_visible is None
+        else {"is_client_visible": is_client_visible}
+    )
     link = ProjectTemplateTaskTypeLink.get_by(
         project_template_id=template_id, task_type_id=task_type_id
     )
@@ -242,9 +251,15 @@ def add_task_type_to_template(template_id, task_type_id, priority=None):
             project_template_id=template_id,
             task_type_id=task_type_id,
             priority=priority,
+            **(bitrates or {}),
+            **visibility,
         )
-    elif priority is not None:
-        link.update({"priority": priority})
+    else:
+        update_data = {**(bitrates or {}), **visibility}
+        if priority is not None:
+            update_data["priority"] = priority
+        if update_data:
+            link.update(update_data)
     _notify_template_change(template_id)
     return link.serialize()
 
@@ -281,17 +296,24 @@ def get_template_task_statuses(template_id):
                 role.code if hasattr(role, "code") else str(role)
                 for role in (link.roles_for_board or [])
             ]
+            data["link_is_client_allowed"] = link.is_client_allowed
         result.append(data)
     result.sort(key=lambda s: (s.get("priority") or 0, s.get("name", "")))
     return result
 
 
 def add_task_status_to_template(
-    template_id, task_status_id, priority=None, roles_for_board=None
+    template_id,
+    task_status_id,
+    priority=None,
+    roles_for_board=None,
+    is_client_allowed=UNSET,
 ):
     """
     Link a task status to given template, or update the fields provided
     when the link already exists. Fields left to None are untouched.
+    is_client_allowed is untouched when left to UNSET, and None resets it
+    to the studio value.
     """
     _check_required_id(
         TaskStatus, task_status_id, "task_status_id", "Task status"
@@ -308,6 +330,9 @@ def add_task_status_to_template(
             task_status_id=task_status_id,
             priority=priority,
             roles_for_board=roles_for_board,
+            is_client_allowed=(
+                None if is_client_allowed is UNSET else is_client_allowed
+            ),
         )
     else:
         update_data = {}
@@ -315,6 +340,8 @@ def add_task_status_to_template(
             update_data["priority"] = priority
         if roles_for_board is not None:
             update_data["roles_for_board"] = roles_for_board
+        if is_client_allowed is not UNSET:
+            update_data["is_client_allowed"] = is_client_allowed
         if update_data:
             link.update(update_data)
     _notify_template_change(template_id)
@@ -622,6 +649,9 @@ def create_template_from_project(project_id, name, description=None):
             project_template_id=template.id,
             task_type_id=link.task_type_id,
             priority=link.priority,
+            hd_bitrate_compression=link.hd_bitrate_compression,
+            ld_bitrate_compression=link.ld_bitrate_compression,
+            is_client_visible=link.is_client_visible,
         )
 
     task_status_links = ProjectTaskStatusLink.get_all_by(project_id=project_id)
@@ -631,6 +661,7 @@ def create_template_from_project(project_id, name, description=None):
             task_status_id=link.task_status_id,
             priority=link.priority,
             roles_for_board=link.roles_for_board,
+            is_client_allowed=link.is_client_allowed,
         )
 
     from zou.app import db
@@ -759,6 +790,9 @@ def apply_template_to_project(project_id, template_id, override_settings=None):
                 project_id=project.id,
                 task_type_id=link.task_type_id,
                 priority=link.priority,
+                hd_bitrate_compression=link.hd_bitrate_compression,
+                ld_bitrate_compression=link.ld_bitrate_compression,
+                is_client_visible=link.is_client_visible,
             )
 
     for link in ProjectTemplateTaskStatusLink.get_all_by(
@@ -773,6 +807,7 @@ def apply_template_to_project(project_id, template_id, override_settings=None):
                 task_status_id=link.task_status_id,
                 priority=link.priority,
                 roles_for_board=link.roles_for_board,
+                is_client_allowed=link.is_client_allowed,
             )
 
     for link in ProjectTemplateAssetTypeLink.query.filter_by(
@@ -875,7 +910,7 @@ def _create_descriptor_from_snapshot(project_id, descriptor):
         return existing
 
     try:
-        return projects_service.add_metadata_descriptor(
+        return metadata_descriptors_service.add_metadata_descriptor(
             project_id=project_id,
             entity_type=entity_type,
             name=name,

@@ -4,18 +4,18 @@ keyword.
 """
 
 from flask import Blueprint
-from zou.app.utils.api import configure_api_from_blueprint
 
 from zou.app.blueprints.index.resources import (
     ConfigResource,
     IndexResource,
     InfluxStatusResource,
+    StatsResource,
     StatusResource,
     StatusResourcesResource,
-    StatsResource,
     TestEventsResource,
     TxtStatusResource,
 )
+from zou.app.utils.api import configure_api_from_blueprint
 
 routes = [
     ("/", IndexResource),

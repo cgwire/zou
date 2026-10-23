@@ -1,12 +1,12 @@
 from tests.base import ApiDBTestCase, rebuild_from_compact
-
 from zou.app.models.entity import EntityLink
 from zou.app.models.person import Person
 from zou.app.services import (
+    assets_service,
+    metadata_descriptors_service,
+    persons_service,
     projects_service,
     tasks_service,
-    assets_service,
-    persons_service,
 )
 
 
@@ -180,7 +180,7 @@ class AssetTasksTestCase(ApiDBTestCase):
         assets = self.get(f"data/assets/with-tasks?project_id={project_id}")
         self.assertEqual(assets[0]["data"]["contractor"], "test")
 
-        projects_service.update_metadata_descriptor(
+        metadata_descriptors_service.update_metadata_descriptor(
             self.meta_descriptor_id, {"departments": [self.department_id]}
         )
         persons_service.add_to_department(str(self.department_id), person_id)

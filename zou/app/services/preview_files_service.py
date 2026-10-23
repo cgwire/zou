@@ -1,59 +1,63 @@
-import copy
-import math
+import logging
 import os
-import re
 import shutil
-import tempfile
 import time
-import zipfile
 
 import ffmpeg
+import redis
+import slugify
+from rq import Queue, Retry, get_current_job
 from rq.timeouts import BaseTimeoutException
-from PIL import Image
-
-from sqlalchemy.orm import aliased
-from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm.exc import StaleDataError
 
 from zou.app import config
-from zou.app.stores import config_store, file_store, queue_store
-from zou.app.stores.redis_lock import with_preview_file_lock
-
+from zou.app.exceptions import (
+    PreviewFileNotFoundException,
+    PreviewProcessingFailedException,
+    WrongParameterException,
+)
 from zou.app.models.entity import Entity
 from zou.app.models.preview_file import PreviewFile
-from zou.app.models.project import Project
+from zou.app.models.project import Project, ProjectTaskTypeLink
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 from zou.app.services import (
-    names_service,
+    entities_service,
     files_service,
-    assets_service,
-    shots_service,
+    organisation_service,
+    preview_file_states_service,
     projects_service,
+    stored_files_service,
+    task_types_service,
     tasks_service,
 )
-from zou.utils import movie
+from zou.app.stores import (
+    config_store,
+    file_store,
+    queue_store,
+)
 from zou.app.utils import (
-    annotations as annotations_renderer,
     events,
     fields,
+    fs,
     remote_job,
     thumbnail as thumbnail_utils,
 )
-from zou.app.services.exception import (
-    AnnotationLockTimeoutException,
-    AnnotationNotFoundException,
-    WrongParameterException,
-    PreviewFileNotFoundException,
-    PreviewProcessingFailedException,
-    ProjectNotFoundException,
-    EpisodeNotFoundException,
-)
-from zou.app.utils import fs
+from zou.utils import movie
+
+logger = logging.getLogger(__name__)
+
 
 REMOTE_NORMALIZE_VERSION = 2
-# Seconds before a missing tile sheet is built again for the same movie.
-TILE_RETRY_DELAY = 3600
+# Seconds before each new attempt of a preview processing job whose
+# upload to the object storage failed on authentication (Keystone down).
+# Meanwhile the uploaded file waits in PENDING_UPLOADS_FOLDER, which the
+# TMP_DIR cleaning skips, and the preview file stays "processing".
+STORAGE_RETRY_INTERVALS = (60, 300, 900, 3600)
+STORAGE_RETRIES_META_KEY = "storage_retries"
+PENDING_UPLOADS_FOLDER = "pending-uploads"
 
 
 def get_preview_file_dimensions(project, entity=None):
@@ -71,15 +75,15 @@ def get_preview_file_dimensions(project, entity=None):
     width = None
     height = 1080
 
-    if _is_valid_resolution(entity_resolution):
+    if projects_service.is_valid_resolution(entity_resolution):
         resolution = entity_resolution
 
     try:
-        if _is_valid_resolution(resolution):
+        if projects_service.is_valid_resolution(resolution):
             [width, height] = resolution.split("x")
             width = int(width)
             height = int(height)
-        elif _is_valid_partial_resolution(resolution):
+        elif projects_service.is_valid_partial_resolution(resolution):
             [_, height] = resolution.split("x")
             width = None
             height = int(height)
@@ -95,42 +99,6 @@ def get_preview_file_dimensions(project, entity=None):
         height = 1080
 
     return (width, height)
-
-
-def _is_valid_resolution(resolution):
-    """
-    Return true if the dimension follows the 1920x1080 pattern.
-    """
-    return resolution is not None and bool(
-        re.match(r"^\d{3,4}x\d{3,4}$", resolution)
-    )
-
-
-def _is_valid_partial_resolution(resolution):
-    """
-    Return true if the dimension follows the x1080 pattern.
-    """
-    return resolution is not None and bool(re.match(r"^x\d{3,4}$", resolution))
-
-
-def validate_resolution(resolution):
-    """
-    Raise WrongParameterException if the resolution is set but doesn't
-    match the canonical "WIDTHxHEIGHT" or "xHEIGHT" format. Empty values
-    (None or "") are accepted: the runtime falls back to 1080p.
-
-    Used at the CRUD boundary so users get an immediate 400 instead of
-    a silent fallback at normalization time.
-    """
-    if resolution in (None, ""):
-        return
-    if not (
-        _is_valid_resolution(resolution)
-        or _is_valid_partial_resolution(resolution)
-    ):
-        raise WrongParameterException(
-            f"Invalid resolution {resolution}. Expected format: '1920x1080' or 'x1080'."
-        )
 
 
 def get_preview_file_fps(project, entity=None):
@@ -161,6 +129,19 @@ def get_project_from_preview_file(preview_file_id):
     return project.serialize()
 
 
+def get_task_type_link_from_preview_file(preview_file_id):
+    """
+    Get the project task type link dict of related preview file, or None
+    when the task type is not linked to the project.
+    """
+    preview_file = files_service.get_preview_file_raw(preview_file_id)
+    task = Task.get(preview_file.task_id)
+    link = ProjectTaskTypeLink.get_by(
+        project_id=task.project_id, task_type_id=task.task_type_id
+    )
+    return link.serialize() if link is not None else None
+
+
 def get_entity_from_preview_file(preview_file_id):
     """
     Get entity dict of related preview file.
@@ -175,13 +156,16 @@ def update_preview_file(preview_file_id, data, silent=False):
     """
     Update given preview file and notify the clients, unless silent.
     """
+    # Job workers may hit a transient database error right after the
+    # request that created the row committed; that is what the retries
+    # are for. A row that is not there will not appear in six seconds.
     try:
         preview_file = files_service.get_preview_file_raw(preview_file_id)
-    except Exception:
+    except OperationalError:
         try:
             time.sleep(1)
             preview_file = files_service.get_preview_file_raw(preview_file_id)
-        except Exception:
+        except OperationalError:
             time.sleep(5)
             preview_file = files_service.get_preview_file_raw(preview_file_id)
     return update_preview_file_raw(preview_file, data, silent=silent)
@@ -211,9 +195,16 @@ def update_preview_file_raw(preview_file, data, silent=False):
     files_service.clear_preview_file_cache(preview_file_id)
     if not silent:
         task = Task.get(preview_file.task_id)
+        event_data = {"preview_file_id": preview_file_id}
+        # The clients wait for the status to ask again for the pictures a
+        # job builds in the background. A metadata refresh of a ready
+        # preview leaves it out: the maintenance commands refresh them all,
+        # and every client would fetch every picture again.
+        if "status" in data or preview_file.status == "processing":
+            event_data["status"] = preview_file.status
         events.emit(
             "preview-file:update",
-            {"preview_file_id": preview_file_id},
+            event_data,
             project_id=str(task.project_id),
         )
     return preview_file.serialize()
@@ -234,7 +225,7 @@ def set_preview_file_as_missing(preview_file_id):
     return update_preview_file(preview_file_id, {"status": "missing"})
 
 
-def _remove_temp_files(*paths):
+def remove_temp_files(*paths):
     """
     Remove movie processing temp files, ignoring the ones already gone.
     """
@@ -246,14 +237,89 @@ def _remove_temp_files(*paths):
                 pass
 
 
+def get_pending_upload_path(upload_path):
+    """
+    Where an upload waits for the object storage to come back, under
+    TMP_DIR so that moving it there is a rename.
+    """
+    return os.path.join(
+        config.TMP_DIR, PENDING_UPLOADS_FOLDER, os.path.basename(upload_path)
+    )
+
+
+def _resolve_upload_path(upload_path):
+    """
+    A job queued again after a storage failure keeps its arguments: find
+    the upload in the pending folder when it was moved there.
+    """
+    if upload_path is None or os.path.exists(upload_path):
+        return upload_path
+    pending_path = get_pending_upload_path(upload_path)
+    if os.path.exists(pending_path):
+        return pending_path
+    return upload_path
+
+
+def is_scheduler_running(job):
+    """
+    Tell whether a worker started with --with-scheduler serves the queue
+    of the job: a job queued again with a delay lands in the scheduled
+    registry, which only the scheduler moves back to the queue. It holds
+    a lock in Redis while running, which expires shortly after it stops.
+    """
+    try:
+        queue = Queue(job.origin, connection=job.connection)
+        return queue.scheduler_pid is not None
+    except redis.RedisError:
+        return False
+
+
+def _requeue_on_storage_failure(exc, upload_path):
+    """
+    Keep the upload aside and return the Retry that queues the running
+    job again, when it failed on the object storage authentication and
+    attempts remain. Return None otherwise: no job (inline processing),
+    another error, attempts exhausted or no scheduler to queue the job
+    again after the delay, the caller fails as usual.
+    """
+    job = get_current_job()
+    if job is None or not fs.is_auth_failure(exc):
+        return None
+    attempt = job.meta.get(STORAGE_RETRIES_META_KEY, 0)
+    if attempt >= len(STORAGE_RETRY_INTERVALS):
+        return None
+    if not is_scheduler_running(job):
+        from zou.app import app as current_app
+
+        current_app.logger.warning(
+            "No RQ scheduler running (rq worker --with-scheduler): the "
+            "job is not queued again after the object storage failure"
+        )
+        return None
+    pending_path = get_pending_upload_path(upload_path)
+    if upload_path != pending_path:
+        os.makedirs(os.path.dirname(pending_path), exist_ok=True)
+        os.replace(upload_path, pending_path)
+    job.meta[STORAGE_RETRIES_META_KEY] = attempt + 1
+    # The next attempt starts over: a Nomad job dispatched by this one
+    # must not be resumed as if the source were stored.
+    job.meta.pop(remote_job.NOMAD_JOB_ID_META_KEY, None)
+    job.save_meta()
+    # Retry.max counts every retry of the job, handovers included.
+    return Retry(
+        max=(job.number_of_retries or 0) + 1,
+        interval=STORAGE_RETRY_INTERVALS[attempt],
+    )
+
+
 def mark_broken_on_job_failure(
     job, connection, exc_type, exc_value, traceback
 ):
     """
-    RQ failure callback for the movie normalization job: mark the preview
-    file as broken and drop its temporary file. Without it, a job killed by
-    timeout or a dead worker leaves the preview file stuck on "processing"
-    forever.
+    RQ failure callback for the movie normalization and picture variant
+    jobs: mark the preview file as broken and drop its temporary file.
+    Without it, a job killed by timeout or a dead worker leaves the
+    preview file stuck on "processing" forever.
     """
     from zou.app import app as current_app
 
@@ -261,11 +327,14 @@ def mark_broken_on_job_failure(
     uploaded_movie_path = job.args[1] if len(job.args) > 1 else None
     with current_app.app_context():
         current_app.logger.error(
-            f"Normalization job failed for preview file {preview_file_id}: "
-            f"{exc_value}"
+            f"Preview processing job failed for preview file "
+            f"{preview_file_id}: {exc_value}"
         )
         if uploaded_movie_path is not None:
-            _remove_temp_files(uploaded_movie_path)
+            remove_temp_files(
+                uploaded_movie_path,
+                get_pending_upload_path(uploaded_movie_path),
+            )
         try:
             set_preview_file_as_broken(preview_file_id)
         except PreviewFileNotFoundException:
@@ -327,6 +396,7 @@ def prepare_and_store_movie(
     """
     from zou.app import app as current_app
 
+    uploaded_movie_path = _resolve_upload_path(uploaded_movie_path)
     temp_files = [uploaded_movie_path]
     with current_app.app_context():
         try:
@@ -342,12 +412,25 @@ def prepare_and_store_movie(
                 f"Preview file {preview_file_id} was deleted during processing"
             )
             return {"id": preview_file_id, "status": "broken"}
+        except remote_job.NomadJobHandedOver:
+            # The worker stops: the next one resumes the job and reads the
+            # upload again.
+            temp_files.remove(uploaded_movie_path)
+            raise
         except BaseTimeoutException:
             # rq raises its timeout inside the job: swallowed, the job
             # would count as successful and mark_broken_on_job_failure
             # would never run.
             raise
         except Exception as exc:
+            retry = _requeue_on_storage_failure(exc, uploaded_movie_path)
+            if retry is not None:
+                current_app.logger.warning(
+                    f"Object storage unavailable, movie processing of "
+                    f"preview file {preview_file_id} queued again: {exc}"
+                )
+                temp_files.remove(uploaded_movie_path)
+                return retry
             if isinstance(exc, ffmpeg.Error):
                 current_app.logger.error(exc.stderr)
             current_app.logger.error(
@@ -359,7 +442,98 @@ def prepare_and_store_movie(
             except PreviewFileNotFoundException:
                 return {"id": preview_file_id, "status": "broken"}
         finally:
-            _remove_temp_files(*temp_files)
+            remove_temp_files(*temp_files)
+
+
+def dispatch_picture_processing(
+    preview_file_id, original_picture_path, no_job=False
+):
+    """
+    Build the picture variants on the job queue when one is enabled, in
+    the calling thread otherwise. Return whether the work was queued, so
+    the caller knows whether the preview file is still processing.
+
+    Like the movie pipeline, the job receives a local path: the workers
+    run on the API host, or share TMP_DIR with it.
+    """
+    if config.ENABLE_JOB_QUEUE and not no_job:
+        queue_store.job_queue.enqueue(
+            prepare_and_store_picture,
+            args=(preview_file_id, original_picture_path),
+            job_timeout=int(config.JOB_QUEUE_TIMEOUT),
+            on_failure=mark_broken_on_job_failure,
+        )
+        return True
+    prepare_and_store_picture(preview_file_id, original_picture_path)
+    return False
+
+
+def prepare_and_store_picture(preview_file_id, original_picture_path):
+    """
+    Build the variants of an uploaded picture, store them and mark the
+    preview file ready. Runs from a job as well as from a request: it
+    brings its own app context when there is none.
+    """
+    from flask import has_app_context
+
+    from zou.app import app
+
+    original_picture_path = _resolve_upload_path(original_picture_path)
+
+    def run():
+        keep_original = False
+        try:
+            # Kept on failure: a job queued again uploads it once more.
+            save_variants(
+                preview_file_id, original_picture_path, remove_original=False
+            )
+            preview_file = update_preview_file(
+                preview_file_id, {"status": "ready"}
+            )
+            tasks_service.update_preview_file_info(preview_file)
+        except PreviewFileNotFoundException:
+            # Deleted while the job waited in the queue: nothing to build.
+            app.logger.warning(
+                f"Preview file {preview_file_id} was deleted before its "
+                f"variants could be built"
+            )
+        except BaseTimeoutException:
+            # rq raises its timeout inside the job: swallowed, the job
+            # would count as successful and mark_broken_on_job_failure
+            # would never run.
+            raise
+        except Exception as exc:
+            retry = _requeue_on_storage_failure(exc, original_picture_path)
+            if retry is not None:
+                app.logger.warning(
+                    f"Object storage unavailable, picture processing of "
+                    f"preview file {preview_file_id} queued again: {exc}"
+                )
+                keep_original = True
+                return retry
+            # Covers the inline path (no job queue, or ?no_job=true): the
+            # queued path relies on on_failure=mark_broken_on_job_failure,
+            # but that callback never runs for a call made directly from
+            # the request thread. Marking broken here first, then
+            # re-raising, keeps both paths consistent and leaves rq's
+            # failure handling (which is idempotent) intact.
+            app.logger.error(
+                f"Picture processing failed for preview file {preview_file_id}",
+                exc_info=1,
+            )
+            try:
+                set_preview_file_as_broken(preview_file_id)
+            except PreviewFileNotFoundException:
+                pass
+            raise
+        finally:
+            if not keep_original:
+                remove_temp_files(original_picture_path)
+
+    if has_app_context():
+        return run()
+    with app.app_context():
+        return run()
 
 
 def _process_movie(
@@ -373,10 +547,11 @@ def _process_movie(
     The movie pipeline itself, one step after the other. Every temporary
     file it produces goes into temp_files, removed by the caller.
     """
-    if add_source_to_file_store:
+    # A job resumed after a handover stored the source already.
+    if add_source_to_file_store and not remote_job.is_resumed():
         file_store.add_movie("source", preview_file_id, uploaded_movie_path)
     _record_original_metadata(preview_file_id, uploaded_movie_path)
-    fps, width, height = _get_encoding_parameters(preview_file_id)
+    fps, width, height, bitrates = _get_encoding_parameters(preview_file_id)
 
     # SKIP_NORMALIZATION_FULL turns every upload into a raw store, as if
     # the client had asked for normalize=false. SKIP_NORMALIZATION_HIGHDEF
@@ -393,6 +568,7 @@ def _process_movie(
             fps,
             width,
             height,
+            bitrates,
             encode,
             skip_high_def,
             temp_files,
@@ -404,6 +580,7 @@ def _process_movie(
             fps,
             width,
             height,
+            bitrates,
             skip_high_def,
             temp_files,
         )
@@ -433,6 +610,9 @@ def _process_movie(
         encode,
         skip_high_def,
         add_source_to_file_store,
+    )
+    _record_movie_states(
+        preview_file_id, stored_movie_prefixes, remote_handles_thumbnails
     )
     preview_file_raw = files_service.get_preview_file_raw(preview_file_id)
     preview_file = update_preview_file_raw(
@@ -493,24 +673,28 @@ def _record_original_metadata(preview_file_id, uploaded_movie_path):
 
 def _get_encoding_parameters(preview_file_id):
     """
-    The fps and the resolution the previews are encoded at, from the
-    project or the entity overriding them. The job can start before the
-    upload's transaction is visible to it: one retry covers that.
+    The fps, the resolution and the (highdef, lowdef) bitrates the previews
+    are encoded at, from the project, the entity or the task type link
+    overriding them. The job can start before the upload's transaction is
+    visible to it: one retry covers that. Still missing after it, the preview
+    file was deleted while the job waited.
     """
     for attempt in range(2):
         try:
             project = get_project_from_preview_file(preview_file_id)
             entity = get_entity_from_preview_file(preview_file_id)
+            task_type_link = get_task_type_link_from_preview_file(
+                preview_file_id
+            )
             break
         except PreviewFileNotFoundException:
             if attempt == 1:
-                raise PreviewProcessingFailedException(
-                    "Data is missing from database"
-                )
+                raise
             time.sleep(2)
     fps = get_preview_file_fps(project, entity)
     width, height = get_preview_file_dimensions(project, entity)
-    return fps, width, height
+    bitrates = projects_service.get_movie_bitrates(project, task_type_link)
+    return fps, width, height, bitrates
 
 
 def _encode_locally(
@@ -519,6 +703,7 @@ def _encode_locally(
     fps,
     width,
     height,
+    bitrates,
     skip_high_def,
     temp_files,
 ):
@@ -527,12 +712,17 @@ def _encode_locally(
     movie the metadata and the thumbnails are read from: the high def
     one, or the low def one when the high def is skipped.
     """
+    highdef_bitrate, lowdef_bitrate = bitrates
     high_def_path, low_def_path, err = movie.normalize_movie(
         uploaded_movie_path,
         fps=fps,
         width=width,
         height=height,
         skip_high_def=skip_high_def,
+        highdef_bitrate=highdef_bitrate,
+        lowdef_bitrate=lowdef_bitrate,
+        preset=config.MOVIE_ENCODING_PRESET,
+        vbv_bufsize_factor=config.MOVIE_VBV_BUFSIZE_FACTOR,
     )
     temp_files.extend(path for path in (high_def_path, low_def_path) if path)
     if err:
@@ -549,6 +739,7 @@ def _encode_on_remote_worker(
     fps,
     width,
     height,
+    bitrates,
     encode,
     skip_high_def,
     temp_files,
@@ -562,12 +753,14 @@ def _encode_on_remote_worker(
     """
     from zou.app import app as current_app
 
+    _record_remote_normalize_writes(preview_file_id, encode, skip_high_def)
     result = _run_remote_normalize_movie(
         current_app,
         preview_file_id,
         fps,
         width,
         height,
+        bitrates=bitrates,
         skip_high_def=skip_high_def,
         skip_normalization=not encode,
     )
@@ -593,6 +786,24 @@ def _encode_on_remote_worker(
     if config.FS_BACKEND != "local":
         temp_files.append(movie_path)
     return movie_path
+
+
+def _record_remote_normalize_writes(preview_file_id, encode, skip_high_def):
+    """
+    Register the files the remote worker may store, before it runs: the
+    objects a failed job leaves behind are known too. The tile is in:
+    its build may fail without failing the job, a row without its object
+    is harmless.
+    """
+    written = [
+        ("pictures", prefix, preview_file_id)
+        for prefix in ["thumbnails", "thumbnails-square", "previews", "tiles"]
+    ]
+    if encode:
+        written.append(("movies", "lowdef", preview_file_id))
+        if not skip_high_def:
+            written.append(("movies", "previews", preview_file_id))
+    stored_files_service.record_remote_writes(written)
 
 
 def _read_movie_metadata(movie_path):
@@ -624,9 +835,27 @@ def _build_thumbnails_and_tile(preview_file_id, movie_path, size, temp_files):
     try:
         tile_path = movie.generate_tile(movie_path)
         file_store.add_picture("tiles", preview_file_id, tile_path)
-        os.remove(tile_path)
+        preview_file_states_service.record_file_state(
+            preview_file_id,
+            "pictures",
+            "tiles",
+            preview_file_states_service.OK,
+        )
+        # The tile is stored: a failure removing the local temp copy is
+        # not a generation failure and must not undo the "ok" just
+        # recorded above.
+        try:
+            os.remove(tile_path)
+        except OSError:
+            pass
         current_app.logger.info(f"tile created {tile_path}")
     except Exception:
+        preview_file_states_service.record_file_state(
+            preview_file_id,
+            "pictures",
+            "tiles",
+            preview_file_states_service.FAILED,
+        )
         current_app.logger.error("Failed to create tile", exc_info=1)
 
 
@@ -655,6 +884,35 @@ def _get_stored_movie_prefixes(
     return prefixes
 
 
+def _record_movie_states(
+    preview_file_id, stored_movie_prefixes, remote_handles_thumbnails
+):
+    """
+    Record the movie versions stored and, when a remote job built them,
+    which pictures it actually wrote: a picture it should have written
+    and did not is failed. A local build records its pictures as it
+    stores them. A version not produced is not recorded missing: another
+    writer may still bring it, only a read confirms an absence.
+    """
+    states = {
+        ("movies", prefix): preview_file_states_service.OK
+        for prefix in stored_movie_prefixes
+    }
+    if remote_handles_thumbnails:
+        pictures = [
+            key
+            for key in preview_file_states_service.MOVIE_FILES
+            if key[0] == "pictures"
+        ]
+        probed = preview_file_states_service.probe_file_states(
+            preview_file_id, "mp4", files=pictures
+        )
+        states.update(
+            preview_file_states_service.fail_missing(probed, pictures)
+        )
+    preview_file_states_service.record_file_states(preview_file_id, states)
+
+
 def is_remote_normalization_enabled():
     """
     Movie processing runs on a remote worker when the job queue is set to
@@ -672,6 +930,7 @@ def _run_remote_normalize_movie(
     fps,
     width,
     height,
+    bitrates=None,
     skip_high_def=False,
     skip_normalization=False,
 ):
@@ -687,18 +946,29 @@ def _run_remote_normalize_movie(
         "height": height,
         "fps": fps,
         # Optional fields: a runner that predates them keeps building both
-        # encoded versions as before.
+        # encoded versions as before, at its own default bitrates.
         "skip_high_def": skip_high_def,
         "skip_normalization": skip_normalization,
+        "preset": config.MOVIE_ENCODING_PRESET,
+        "vbv_bufsize_factor": config.MOVIE_VBV_BUFSIZE_FACTOR,
     }
+    if bitrates is not None:
+        params["highdef_bitrate"], params["lowdef_bitrate"] = bitrates
     nomad_job = config_store.get_nomad_normalize_job()
     result = remote_job.run_job(app, config, nomad_job, params)
     return result
 
 
-def save_variants(preview_file_id, original_picture_path, with_original=True):
+def save_variants(
+    preview_file_id,
+    original_picture_path,
+    with_original=True,
+    remove_original=True,
+):
     """
     Build variants of a picture file and save them in the main storage.
+    The generated variants are removed afterwards, the original too
+    unless remove_original is False: the caller then owns it.
     """
     variants = thumbnail_utils.generate_preview_variants(
         original_picture_path, preview_file_id
@@ -709,9 +979,22 @@ def save_variants(preview_file_id, original_picture_path, with_original=True):
         for prefix, path in variants:
             file_store.add_picture(prefix, preview_file_id, path)
             clear_variant_from_cache(preview_file_id, prefix)
+        preview_file_states_service.record_file_states(
+            preview_file_id,
+            {
+                ("pictures", prefix): preview_file_states_service.OK
+                for prefix, _ in variants
+            },
+        )
     finally:
         # A failed upload must not leak the remaining variant files.
-        _remove_temp_files(*[path for _, path in variants])
+        remove_temp_files(
+            *[
+                path
+                for prefix, path in variants
+                if remove_original or prefix != "original"
+            ]
+        )
 
     return variants
 
@@ -762,304 +1045,6 @@ def get_preview_files_for_revision(task_id, revision):
     return fields.serialize_models(preview_files)
 
 
-def update_preview_file_annotations(
-    person_id,
-    project_id,
-    preview_file_id,
-    additions=None,
-    updates=None,
-    deletions=None,
-):
-    """
-    Update annotations for given preview file.
-    Uses a Redis lock to prevent race conditions when multiple processes update
-    annotations on the same preview file concurrently.
-    """
-    if additions is None:
-        additions = []
-    if updates is None:
-        updates = []
-    if deletions is None:
-        deletions = []
-    with with_preview_file_lock(
-        preview_file_id, timeout=30, wait_timeout=35
-    ) as acquired:
-        if not acquired:
-            raise AnnotationLockTimeoutException(
-                "Could not acquire annotation lock for preview file"
-            )
-        preview_file = files_service.get_preview_file_raw(preview_file_id)
-        previous_annotations = copy.deepcopy(preview_file.annotations or [])
-        annotations = _clean_annotations(previous_annotations)
-        annotations = _apply_annotation_additions(
-            previous_annotations, additions
-        )
-        annotations = _apply_annotation_updates(annotations, updates)
-        annotations = _apply_annotation_deletions(annotations, deletions)
-        preview_file.update({"annotations": annotations})
-        files_service.clear_preview_file_cache(preview_file_id)
-        preview_file = files_service.get_preview_file(preview_file_id)
-        events.emit(
-            "preview-file:annotation-update",
-            {
-                "preview_file_id": preview_file_id,
-                "person_id": person_id,
-                "updated_at": preview_file["updated_at"],
-            },
-            project_id=project_id,
-        )
-        return preview_file
-
-
-def _ensure_object_id(drawing_object):
-    """
-    Give a drawing object an id when it carries none, so later updates and
-    deletions can address it. A missing key, an empty string and an
-    explicit null all count as none.
-    """
-    if not drawing_object.get("id"):
-        drawing_object["id"] = str(fields.gen_uuid())
-
-
-def _clean_annotations(annotations):
-    """
-    Give every drawing object an id, so later updates and deletions can
-    address it.
-    """
-    for annotation in annotations:
-        objects = annotation.get("drawing", {}).get("objects", [])
-        for current_object in objects:
-            _ensure_object_id(current_object)
-    return annotations
-
-
-def _apply_annotation_additions(previous_annotations, new_annotations):
-    """
-    Add the annotations of times not annotated yet, and merge the new
-    drawing objects into the times already annotated.
-    """
-    annotations = list(previous_annotations)
-    annotation_map = _get_annotation_time_map(annotations)
-
-    for new_annotation in new_annotations:
-        previous_annotation = annotation_map.get(new_annotation["time"], None)
-        if previous_annotation is None:
-            new_objects = new_annotation.get("drawing", {}).get("objects", [])
-            for new_object in new_objects:
-                _ensure_object_id(new_object)
-            annotations.append(new_annotation)
-        else:
-            previous_objects = previous_annotation.get("drawing", {}).get(
-                "objects", []
-            )
-            new_objects = new_annotation.get("drawing", {}).get("objects", [])
-            for new_object in new_objects:
-                _ensure_object_id(new_object)
-            previous_annotation["drawing"]["objects"] = _get_new_annotations(
-                previous_objects, new_objects
-            )
-    return annotations
-
-
-def _get_new_annotations(previous_objects, new_objects):
-    """
-    Return the previous drawing objects plus the ones whose id is not
-    among them: an addition never overwrites an existing object.
-    """
-    result = list(previous_objects)
-    previous_map = {}
-    for previous_object in result:
-        _ensure_object_id(previous_object)
-        previous_map[previous_object["id"]] = True
-
-    for new_object in new_objects:
-        object_id = new_object.get("id", "")
-        if object_id not in previous_map:
-            result.append(new_object)
-    return result
-
-
-def _apply_annotation_updates(annotations, updates):
-    """
-    Replace the drawing objects an update carries, matched by id, at the
-    times the update names.
-    """
-    annotation_map = _get_annotation_time_map(annotations)
-    for update in updates:
-        time = update["time"]
-        if time in annotation_map:
-            result = []
-            previous_object_map = {}
-            update_map = {}
-            annotation = annotation_map[time]
-
-            previous_objects = annotation.get("drawing", {}).get("objects", [])
-            for previous_object in previous_objects:
-                if "id" in previous_object:
-                    previous_object_map[previous_object["id"]] = (
-                        previous_object
-                    )
-
-            updated_objects = update.get("drawing", {}).get("objects", [])
-            for updated_object in updated_objects:
-                if "id" in updated_object:
-                    update_map[updated_object["id"]] = update
-
-            result = [
-                previous_object
-                for previous_object in previous_objects
-                if previous_object.get("id", None) not in update_map
-            ]
-            for updated_object in updated_objects:
-                if (
-                    "id" in updated_object
-                    and updated_object["id"] in previous_object_map
-                ):
-                    result.append(updated_object)
-            annotation["drawing"]["objects"] = result
-    return annotations
-
-
-def _apply_annotation_deletions(annotations, deletions):
-    """
-    Drop the drawing objects a deletion names, matched by id.
-    """
-    annotation_map = _get_annotation_time_map(annotations)
-
-    for deletion in deletions:
-        if deletion["time"] in annotation_map:
-            annotation = annotation_map[deletion["time"]]
-            deleted_object_ids = deletion.get("objects", [])
-            if "drawing" not in annotation or not isinstance(
-                annotation["drawing"], dict
-            ):
-                annotation["drawing"] = {}
-            previous_objects = annotation["drawing"].get("objects", [])
-            annotation["drawing"]["objects"] = [
-                previous_object
-                for previous_object in previous_objects
-                if previous_object.get("id", "") not in deleted_object_ids
-            ]
-
-    return _clear_empty_annotations(annotations)
-
-
-def _get_annotation_time_map(annotations):
-    """
-    Index annotations by their time, the key a revision is annotated on.
-    """
-    annotation_map = {}
-    for annotation in annotations:
-        annotation_map[annotation["time"]] = annotation
-    return annotation_map
-
-
-def _clear_empty_annotations(annotations):
-    """
-    Drop the times left without a single drawing object.
-    """
-    return [
-        annotation
-        for annotation in annotations
-        if len(annotation.get("drawing", {}).get("objects", [])) > 0
-    ]
-
-
-def _round_time_to_frame(time_value, fps):
-    """
-    Snap a playback time onto the frame grid the Kitsu player uses:
-    the frame duration is 1 / fps rounded to 4 decimals, and rounding is
-    half-up to mirror the JavaScript Math.round used client-side.
-    """
-    precision_factor = 10000
-    frame_duration = (
-        math.floor(1 / fps * precision_factor + 0.5) / precision_factor
-    )
-    frame_number = math.floor(time_value / frame_duration + 0.5)
-    return (
-        math.floor(frame_number * frame_duration * precision_factor + 0.5)
-        / precision_factor
-    )
-
-
-def normalize_annotation_times(annotations, fps):
-    """
-    Collapse annotation entries that land on the same frame into one and
-    snap every entry time onto the frame grid.
-
-    Older Kitsu versions stored unrounded times (sometimes as strings)
-    while current ones snap them to the frame grid, so the same logical
-    frame can exist several times in a preview file's annotation list.
-    The player only displays the first entry matching a frame, which makes
-    the other entries' drawings invisible, and grid-timed deletions or
-    updates never match the legacy entries.
-
-    Objects are deduplicated by id and the input list is not mutated.
-    Returns a (annotations, changed) tuple; entries with unparseable times
-    are kept untouched.
-    """
-    result = []
-    by_frame_time = {}
-    changed = False
-    for annotation in annotations or []:
-        try:
-            time_value = max(float(annotation.get("time") or 0), 0.0)
-        except (TypeError, ValueError):
-            result.append(copy.deepcopy(annotation))
-            continue
-        frame_time = _round_time_to_frame(time_value, fps)
-        existing = by_frame_time.get(frame_time)
-        objects = (annotation.get("drawing") or {}).get("objects", [])
-        if existing is None:
-            entry = copy.deepcopy(annotation)
-            if entry.get("time") != frame_time:
-                changed = True
-            entry["time"] = frame_time
-            entry["drawing"] = {
-                **(entry.get("drawing") or {}),
-                "objects": (entry.get("drawing") or {}).get("objects", []),
-            }
-            by_frame_time[frame_time] = entry
-            result.append(entry)
-        else:
-            changed = True
-            seen_ids = {
-                existing_object.get("id")
-                for existing_object in existing["drawing"]["objects"]
-            }
-            existing["drawing"]["objects"].extend(
-                copy.deepcopy(new_object)
-                for new_object in objects
-                if new_object.get("id") not in seen_ids
-            )
-    return result, changed
-
-
-def normalize_preview_file_annotation_times(preview_file):
-    """
-    Normalize a preview file's annotation times in place (see
-    normalize_annotation_times). Returns True when the stored annotations
-    were modified.
-    """
-    if not preview_file.annotations:
-        return False
-    task = Task.get(preview_file.task_id)
-    project = Project.get(task.project_id).serialize()
-    entity = Entity.get(task.entity_id)
-    fps = float(
-        get_preview_file_fps(
-            project, entity.serialize() if entity is not None else None
-        )
-    )
-    annotations, changed = normalize_annotation_times(
-        preview_file.annotations, fps
-    )
-    if changed:
-        preview_file.update({"annotations": annotations})
-        files_service.clear_preview_file_cache(str(preview_file.id))
-    return changed
-
-
 def get_running_preview_files(cursor_preview_file_id=None, limit=None):
     """
     Return preview files for all productions with status equals to broken,
@@ -1095,8 +1080,8 @@ def get_running_preview_files(cursor_preview_file_id=None, limit=None):
         result = preview_file.serialize()
         result["project_id"] = fields.serialize_value(project_id)
         result["task_type_id"] = fields.serialize_value(task_type_id)
-        result["full_entity_name"], _, _ = names_service.get_full_entity_name(
-            entity_id
+        result["full_entity_name"], _, _ = (
+            entities_service.get_full_entity_name(entity_id)
         )
         results.append(result)
     return results
@@ -1115,6 +1100,42 @@ def get_preview_files_for_entity(entity_id):
         )
     )
     return [preview_file.present() for preview_file in query.all()]
+
+
+def unpin_foreign_preview_files(shots):
+    """
+    Unset the preview file of the playlist entries it does not belong to,
+    unknown ones included: the entry would play another entity's preview.
+    Entries are dicts holding an entity_id (or id) and a preview_file_id,
+    other values are left as they are. A kept preview id is written in
+    lowercase, the form the playlist reads match.
+    """
+    entries = [shot for shot in shots if isinstance(shot, dict)]
+    preview_file_ids = {
+        str(shot["preview_file_id"]).lower()
+        for shot in entries
+        if shot.get("preview_file_id")
+        and fields.is_valid_id(shot["preview_file_id"])
+    }
+    entity_ids = {}
+    if preview_file_ids:
+        rows = (
+            PreviewFile.query.join(Task, Task.id == PreviewFile.task_id)
+            .filter(PreviewFile.id.in_(preview_file_ids))
+            .with_entities(PreviewFile.id, Task.entity_id)
+            .all()
+        )
+        entity_ids = {
+            str(preview_file_id): str(entity_id)
+            for preview_file_id, entity_id in rows
+        }
+    for shot in entries:
+        if shot.get("preview_file_id"):
+            preview_file_id = str(shot["preview_file_id"]).lower()
+            entity_id = str(shot.get("entity_id") or shot.get("id")).lower()
+            is_own = entity_ids.get(preview_file_id) == entity_id
+            shot["preview_file_id"] = preview_file_id if is_own else None
+    return shots
 
 
 def get_last_preview_file_for_task(task_id):
@@ -1149,14 +1170,7 @@ def extract_frame_from_preview_file(preview_file, frame_number):
         raise PreviewFileNotFoundException
 
     if preview_file["extension"] == "mp4":
-        preview_file_path = fs.get_file_path_and_file(
-            config,
-            file_store.get_local_movie_path,
-            file_store.open_movie,
-            "previews",
-            preview_file["id"],
-            "mp4",
-        )
+        preview_file_path = locate_stored_movie(preview_file)
     else:
         raise PreviewFileNotFoundException
 
@@ -1170,347 +1184,55 @@ def extract_frame_from_preview_file(preview_file, frame_number):
     return extracted_frame_path
 
 
+def dispatch_frame_extraction(preview_file, frame_number, no_job=False):
+    """
+    Rebuild the variants of a movie preview from one of its frames, on
+    the job queue when one is enabled. Return whether it was queued.
+    """
+    if config.ENABLE_JOB_QUEUE and not no_job:
+        queue_store.job_queue.enqueue(
+            replace_extracted_frame_for_preview_file,
+            args=(preview_file, frame_number),
+            job_timeout=int(config.JOB_QUEUE_TIMEOUT),
+        )
+        return True
+    replace_extracted_frame_for_preview_file(preview_file, frame_number)
+    return False
+
+
 def replace_extracted_frame_for_preview_file(preview_file, frame_number):
     """
     Replace the preview thumbnail with given frame, so a movie can show
-    the frame the reviewer picked.
+    the frame the reviewer picked. A failure leaves the previous
+    thumbnail in place: nothing is broken, only unchanged.
     """
-    extracted_frame_path = extract_frame_from_preview_file(
-        preview_file, frame_number
-    )
-    if extracted_frame_path is None:
-        return
-    extracted_frame_path = thumbnail_utils.turn_into_thumbnail(
-        extracted_frame_path
-    )
-    save_variants(preview_file["id"], extracted_frame_path)
+    from flask import has_app_context
 
+    from zou.app import app
 
-ANNOTATED_PICTURE_EXTENSIONS = ("jpg", "jpeg", "jpe", "png")
-
-
-def extract_annotation_frame_from_preview_file(
-    preview_file, frame_number=None
-):
-    """
-    Extract the requested frame of a movie preview, or the picture itself
-    for a picture preview, and overlay the matching annotation on it.
-
-    For movies, `frame_number` is required and identifies the frame. For
-    pictures, `frame_number` is ignored and the first annotation entry is
-    used.
-
-    Raises AnnotationNotFoundException when no annotation matches. Returns
-    the path to the composited PNG (caller must delete it), or None when
-    the preview binary is not available.
-    """
-    extension = (preview_file.get("extension") or "").lower()
-    annotations = preview_file.get("annotations") or []
-    if extension == "mp4":
-        if frame_number is None:
-            raise WrongParameterException(
-                "frame_number is required for movie previews"
-            )
-        return _extract_movie_annotation_frame(
-            preview_file, frame_number, annotations
-        )
-    if extension in ANNOTATED_PICTURE_EXTENSIONS:
-        return _extract_picture_annotation_frame(preview_file, annotations)
-    raise WrongParameterException(
-        f"Cannot extract annotated frame from preview with extension "
-        f"{extension!r}"
-    )
-
-
-def _extract_movie_annotation_frame(preview_file, frame_number, annotations):
-    """
-    Extract the frame of a movie at given number with its annotations
-    burnt in.
-    """
-    project = get_project_from_preview_file(preview_file["id"])
-    entity = get_entity_from_preview_file(preview_file["id"])
-    fps = float(get_preview_file_fps(project, entity))
-    target_time = (frame_number - 1) / fps
-    tolerance = 1 / (2 * fps)
-    annotation = _find_annotation_at_time(annotations, target_time, tolerance)
-    if annotation is None:
-        raise AnnotationNotFoundException(
-            f"No annotation found for frame {frame_number}"
-        )
-    frame_path = extract_frame_from_preview_file(preview_file, frame_number)
-    if frame_path is None:
-        return None
-    return annotations_renderer.render_annotation_on_image(
-        frame_path, annotation
-    )
-
-
-def _extract_picture_annotation_frame(preview_file, annotations):
-    """
-    Render a picture preview with its annotations burnt in.
-    """
-    if not annotations:
-        raise AnnotationNotFoundException(
-            "No annotation found on picture preview"
-        )
-    picture_copy = _copy_picture_preview_to_temp_png(preview_file)
-    if picture_copy is None:
-        return None
-    return annotations_renderer.render_annotation_on_image(
-        picture_copy, annotations[0]
-    )
-
-
-def _copy_picture_preview_to_temp_png(preview_file):
-    """
-    Copy a picture preview to a temporary png, the format the annotation
-    burner works on.
-    """
-    if (preview_file.get("data") or {}).get("imported_only"):
-        return None
-    try:
-        picture_path = fs.get_file_path_and_file(
-            config,
-            file_store.get_local_picture_path,
-            file_store.open_picture,
-            "previews",
-            preview_file["id"],
-            preview_file["extension"],
-        )
-    except Exception:
-        return None
-    fd, temp_path = tempfile.mkstemp(suffix=".png")
-    os.close(fd)
-    with Image.open(picture_path) as img:
-        img.convert("RGBA").save(temp_path, "PNG")
-    return temp_path
-
-
-def _find_annotation_at_time(annotations, target_time, tolerance):
-    """
-    Return the annotation closest to given time within tolerance, None
-    when the frame carries none.
-    """
-    for annotation in annotations:
-        raw_time = annotation.get("time")
-        if raw_time is None:
-            continue
+    def run():
         try:
-            annotation_time = float(raw_time)
-        except (TypeError, ValueError):
-            continue
-        if abs(annotation_time - target_time) <= tolerance:
-            return annotation
-    return None
-
-
-def extract_all_annotation_frames_from_preview_file(preview_file):
-    """
-    Build a zip archive containing every annotated frame of a movie
-    preview, or every annotated copy of a picture preview.
-
-    Raises AnnotationNotFoundException when the preview has no
-    annotations. Returns the path to a temp zip file (caller must delete
-    it), or None when the preview binary is not available.
-    """
-    entries = _build_annotated_frame_entries(preview_file)
-    if entries is None:
-        return None
-    return _bundle_annotated_frames_into_zip(entries)
-
-
-def extract_all_annotation_frames_pdf_from_preview_file(preview_file):
-    """
-    Build a multi-page PDF with one page per annotated frame (movie) or
-    per annotated copy of the picture (picture preview).
-
-    Raises AnnotationNotFoundException when the preview has no
-    annotations. Returns the path to a temp pdf file (caller must delete
-    it), or None when the preview binary is not available.
-    """
-    entries = _build_annotated_frame_entries(preview_file)
-    if entries is None:
-        return None
-    return _bundle_annotated_frames_into_pdf(entries)
-
-
-def _build_annotated_frame_entries(preview_file):
-    """
-    Common entry-point for the zip and pdf bundlers: render every
-    annotated frame of the preview to a temp PNG and return the list of
-    (arcname, path) tuples. Returns None when the binary is unavailable;
-    raises AnnotationNotFoundException when there is nothing to render
-    and WrongParameterException for unsupported extensions.
-    """
-    annotations = preview_file.get("annotations") or []
-    if not annotations:
-        raise AnnotationNotFoundException("Preview file has no annotations")
-    extension = (preview_file.get("extension") or "").lower()
-    base_name = _annotated_frame_base_name(preview_file)
-    if extension == "mp4":
-        return _build_movie_annotation_entries(
-            preview_file, annotations, base_name
-        )
-    if extension in ANNOTATED_PICTURE_EXTENSIONS:
-        return _build_picture_annotation_entries(
-            preview_file, annotations, base_name
-        )
-    raise WrongParameterException(
-        f"Cannot extract annotated frames from preview with extension "
-        f"{extension!r}"
-    )
-
-
-def _annotated_frame_base_name(preview_file):
-    """
-    Build the file name stem the extracted annotated frames are named on.
-    """
-    full_name = names_service.get_preview_file_name(preview_file["id"])
-    return os.path.splitext(full_name)[0]
-
-
-_NO_FRAME_EXTRACTED_MSG = (
-    "No annotated frame could be extracted from this preview"
-)
-
-
-def _build_movie_annotation_entries(preview_file, annotations, base_name):
-    """
-    Returns a list of (arcname, temp_png_path) tuples ready to be zipped,
-    or None if the movie binary is unavailable. Cleans up partial work on
-    failure.
-
-    Individual annotations whose frame ffmpeg fails to extract (returns
-    a path to a non-existent file, e.g. when the annotation's time falls
-    past the movie's EOF) are skipped rather than aborting the whole
-    bundle.
-    """
-    project = get_project_from_preview_file(preview_file["id"])
-    entity = get_entity_from_preview_file(preview_file["id"])
-    fps = float(get_preview_file_fps(project, entity))
-    entries = []
-    try:
-        for annotation in annotations:
-            raw_time = annotation.get("time")
-            try:
-                annotation_time = float(raw_time)
-            except (TypeError, ValueError):
-                continue
-            frame_number = max(1, round(annotation_time * fps) + 1)
-            frame_path = extract_frame_from_preview_file(
+            extracted_frame_path = extract_frame_from_preview_file(
                 preview_file, frame_number
             )
-            if frame_path is None:
-                _cleanup_entries(entries)
-                return None
-            if not os.path.exists(frame_path):
-                continue
-            owned_path = _claim_extracted_frame(frame_path)
-            rendered = annotations_renderer.render_annotation_on_image(
-                owned_path, annotation
+            if extracted_frame_path is None:
+                return
+            extracted_frame_path = thumbnail_utils.turn_into_thumbnail(
+                extracted_frame_path
             )
-            entries.append((f"{base_name}_frame_{frame_number}.png", rendered))
-    except Exception:
-        _cleanup_entries(entries)
-        raise
-    return entries
-
-
-def _build_picture_annotation_entries(preview_file, annotations, base_name):
-    """
-    Build the annotated frame entries of a picture preview: at most one,
-    since a picture carries a single annotation time.
-    """
-    entries = []
-    try:
-        for index, annotation in enumerate(annotations, start=1):
-            picture_copy = _copy_picture_preview_to_temp_png(preview_file)
-            if picture_copy is None:
-                _cleanup_entries(entries)
-                return None
-            rendered = annotations_renderer.render_annotation_on_image(
-                picture_copy, annotation
+            save_variants(preview_file["id"], extracted_frame_path)
+        except Exception:
+            app.logger.error(
+                f"Could not extract frame {frame_number} of preview file "
+                f"{preview_file['id']}",
+                exc_info=True,
             )
-            entries.append((f"{base_name}_frame_{index}.png", rendered))
-    except Exception:
-        _cleanup_entries(entries)
-        raise
-    return entries
 
-
-def _claim_extracted_frame(extracted_path):
-    """
-    Move the frame ffmpeg wrote at a deterministic
-    `tmp/<movie>_<frame>.png` slot to a fresh mkstemp path. Required
-    because that deterministic slot is shared with other callers (e.g.
-    the single-frame extract route which `os.remove`s it in a finally),
-    and concurrent calls could yank the file from under the bundler.
-    """
-    fd, owned_path = tempfile.mkstemp(suffix=".png")
-    os.close(fd)
-    shutil.move(extracted_path, owned_path)
-    return owned_path
-
-
-def _cleanup_entries(entries):
-    """
-    Remove the temporary files of the extracted frames.
-    """
-    for _, path in entries:
-        if path and os.path.exists(path):
-            os.remove(path)
-
-
-def _bundle_annotated_frames_into_zip(entries):
-    """
-    Pack the extracted annotated frames into a zip and return its path.
-    """
-    if not entries:
-        raise AnnotationNotFoundException(_NO_FRAME_EXTRACTED_MSG)
-    fd, zip_path = tempfile.mkstemp(suffix=".zip")
-    os.close(fd)
-    try:
-        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-            for arcname, src_path in entries:
-                zf.write(src_path, arcname=arcname)
-    except Exception:
-        _remove_temp_files(zip_path)
-        raise
-    finally:
-        _cleanup_entries(entries)
-    return zip_path
-
-
-def _bundle_annotated_frames_into_pdf(entries):
-    """
-    Stitch every PNG into a multi-page PDF via Pillow. PDF doesn't
-    support alpha, so each frame is flattened to RGB. 150 DPI keeps page
-    sizes reasonable for HD frames without blowing up the file.
-    """
-    if not entries:
-        raise AnnotationNotFoundException(_NO_FRAME_EXTRACTED_MSG)
-    fd, pdf_path = tempfile.mkstemp(suffix=".pdf")
-    os.close(fd)
-    images = []
-    try:
-        for _, src_path in entries:
-            images.append(Image.open(src_path).convert("RGB"))
-        head, tail = images[0], images[1:]
-        head.save(
-            pdf_path,
-            "PDF",
-            save_all=True,
-            append_images=tail,
-            resolution=150.0,
-        )
-    except Exception:
-        _remove_temp_files(pdf_path)
-        raise
-    finally:
-        for img in images:
-            img.close()
-        _cleanup_entries(entries)
-    return pdf_path
+    if has_app_context():
+        run()
+    else:
+        with app.app_context():
+            run()
 
 
 def extract_tile_from_preview_file(preview_file):
@@ -1522,285 +1244,27 @@ def extract_tile_from_preview_file(preview_file):
         # Imported via sync-push: metadata only. Skip silently.
         return None
     if preview_file["extension"] == "mp4":
-        preview_file_path = fs.get_file_path_and_file(
-            config,
-            file_store.get_local_movie_path,
-            file_store.open_movie,
-            "previews",
-            preview_file["id"],
-            "mp4",
-        )
+        # A tile is 100 pixels high: the low def movie is enough.
+        preview_file_path = locate_stored_movie(preview_file, lowdef=True)
         extracted_tile_path = movie.generate_tile(preview_file_path)
         return extracted_tile_path
     else:
         raise WrongParameterException("Preview file is not a movie")
 
 
-def _get_preview_files_to_reset(extension):
+def retrieve_stored_movie(preview_file):
     """
-    Return the usable preview files of open projects with given extension:
-    the ones whose metadata can be read back from storage.
-    """
-    return (
-        PreviewFile.query.join(Task)
-        .join(Project)
-        .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
-        .filter(ProjectStatus.name.in_(("Active", "open", "Open")))
-        .filter(PreviewFile.status.not_in(("broken", "missing", "processing")))
-        .filter(PreviewFile.extension == extension)
-    )
-
-
-def reset_movie_files_metadata():
-    """
-    Reset preview files size informations of open projects.
-    """
-    for preview_file in _get_preview_files_to_reset("mp4"):
-        try:
-            preview_file_path = fs.get_file_path_and_file(
-                config,
-                file_store.get_local_movie_path,
-                file_store.open_movie,
-                "previews",
-                str(preview_file.id),
-                "mp4",
-            )
-            file_size = os.path.getsize(preview_file_path)
-            width, height = movie.get_movie_size(preview_file_path)
-            duration = float(movie.get_movie_duration(preview_file_path))
-            update_preview_file_raw(
-                preview_file,
-                {
-                    "width": width,
-                    "height": height,
-                    "file_size": file_size,
-                    "duration": duration,
-                },
-            )
-            print(
-                f"Size information stored for preview file {preview_file.id}",
-            )
-        except Exception as e:
-            print(
-                f"Failed to store information for preview file {preview_file.id}: {e}"
-            )
-
-
-def reset_picture_files_metadata():
-    """
-    Reset preview files size informations of open projects.
-    """
-    for preview_file in _get_preview_files_to_reset("png"):
-        try:
-            preview_file_path = fs.get_file_path_and_file(
-                config,
-                file_store.get_local_picture_path,
-                file_store.open_picture,
-                "original",
-                str(preview_file.id),
-                "png",
-            )
-            width, height = thumbnail_utils.get_dimensions(preview_file_path)
-            file_size = os.path.getsize(preview_file_path)
-            update_preview_file_raw(
-                preview_file,
-                {
-                    "width": width,
-                    "height": height,
-                    "file_size": file_size,
-                },
-            )
-            print(
-                f"Size information stored for preview file {preview_file.id}",
-            )
-        except Exception as e:
-            print(
-                f"Failed to store information for preview file {preview_file.id}: {e}"
-            )
-
-
-def generate_preview_extra(
-    project=None,
-    entity_id=None,
-    episodes=None,
-    only_shots=False,
-    only_assets=False,
-    force_regenerate_tiles=False,
-    with_tiles=False,
-    with_metadata=False,
-    with_thumbnails=False,
-):
-    """
-    Generate tiles for all movie previews and reset previews file size
-    informations of open projects.
-    """
-    if episodes is None:
-        episodes = []
-    print("Generating preview extras...")
-    query = (
-        PreviewFile.query.join(Task)
-        .join(Entity)
-        .join(Project)
-        .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
-        .filter(ProjectStatus.name.in_(("Active", "open", "Open")))
-        .filter(PreviewFile.status.not_in(("broken", "missing", "processing")))
-        .filter(PreviewFile.extension.in_(("mp4", "png")))
-    )
-    if project is not None:
-        try:
-            project_id = projects_service.get_project_by_name(project)["id"]
-        except ProjectNotFoundException:
-            project_id = projects_service.get_project(project)["id"]
-        query = query.filter(Project.id == project_id)
-
-    if entity_id is not None:
-        query = query.filter(Task.entity_id == entity_id)
-
-    if episodes:
-        get_episode_by_name = False
-        if project is not None:
-            get_episode_by_name = True
-        episode_ids = []
-        for episode in episodes:
-            episode_id = None
-            try:
-                episode_id = shots_service.get_episode(episode)["id"]
-            except EpisodeNotFoundException as e:
-                if get_episode_by_name:
-                    episode_id = shots_service.get_episode_by_name(
-                        project_id, episode
-                    )["id"]
-                else:
-                    raise e
-            episode_ids.append(episode_id)
-        Sequence = aliased(Entity)
-        query = query.join(Sequence, Sequence.id == Entity.parent_id).filter(
-            Sequence.parent_id.in_(episode_ids)
-        )
-    if only_shots:
-        query = query.filter(
-            Entity.entity_type_id == shots_service.get_shot_type()["id"]
-        )
-    elif only_assets:
-        query = query.filter(
-            Entity.entity_type_id.not_in(
-                assets_service.get_temporal_type_ids()
-            )
-        )
-
-    total = query.count()
-    print(f"{total} previews found.")
-    for index, preview_file in enumerate(query.all()):
-        try:
-            preview_file_id = str(preview_file.id)
-        except ObjectDeletedError:
-            continue
-        prefix = "previews" if preview_file.extension == "mp4" else "original"
-        if config.FS_BACKEND != "local":
-            preview_file_already_in_cache = os.path.isfile(
-                os.path.join(
-                    config.TMP_DIR,
-                    f"cache-{prefix}-{preview_file_id}.{preview_file.extension}",
-                )
-            )
-        try:
-            preview_file_path = _retrieve_preview_file(
-                config, file_store, prefix, preview_file
-            )
-            if with_tiles:
-                _generate_tiles(
-                    file_store,
-                    preview_file,
-                    preview_file_path,
-                    total,
-                    index + 1,
-                    force=force_regenerate_tiles,
-                )
-            if with_metadata:
-                _reset_preview_file_metadata(
-                    preview_file, preview_file_path, total, index + 1
-                )
-            if with_thumbnails:
-                _generate_thumbnails(
-                    preview_file, preview_file_path, total, index + 1
-                )
-        finally:
-            if (
-                config.FS_BACKEND != "local"
-                and not preview_file_already_in_cache
-            ):
-                try:
-                    os.remove(preview_file_path)
-                except OSError:
-                    pass
-
-    print("Extra information generated.")
-    return total
-
-
-def generate_tile_later(preview_file_id):
-    """
-    Build the missing tile sheet of a movie on the job queue. Without a
-    queue nothing happens: the web process runs no ffmpeg of its own. An
-    attempt younger than an hour, running or failed, is not repeated: a
-    sidecar file in TMP_DIR remembers it, so a movie ffmpeg cannot tile
-    does not cost a job per hover on the progress bar.
-    """
-    if not config.ENABLE_JOB_QUEUE:
-        return False
-    mark_path = os.path.join(config.TMP_DIR, f"tile-{preview_file_id}.mark")
-    try:
-        if time.time() - os.path.getmtime(mark_path) < TILE_RETRY_DELAY:
-            return False
-    except OSError:
-        pass
-    fs.mkdir_p(config.TMP_DIR)
-    with open(mark_path, "a"):
-        pass
-    os.utime(mark_path, None)
-    queue_store.job_queue.enqueue(
-        generate_missing_tile,
-        args=(preview_file_id,),
-        job_timeout=int(config.JOB_QUEUE_TIMEOUT),
-    )
-    return True
-
-
-def generate_missing_tile(preview_file_id):
-    """
-    Build and store the tile sheet of a ready movie that has none, from
-    the first stored version of the movie. Runs under its own app
-    context: it is a job.
-    """
-    from zou.app import app
-
-    with app.app_context():
-        preview_file = files_service.get_preview_file(preview_file_id)
-        if (
-            preview_file["extension"] != "mp4"
-            or preview_file["status"] != "ready"
-        ):
-            return False
-        preview_file_raw = files_service.get_preview_file_raw(preview_file_id)
-        movie_path = _retrieve_stored_movie(preview_file_raw)
-        if movie_path is None:
-            return False
-        _generate_tiles(file_store, preview_file_raw, movie_path, 1, 1)
-        return True
-
-
-def _retrieve_stored_movie(preview_file):
-    """
-    Local path of the best stored version of a movie, HD first, or None
-    when the storage holds none of them.
+    Local path of the smallest stored version of a movie, low def first,
+    or None when the storage holds none of them. A tile is 100 pixels
+    high: the high def movie only costs a longer decode.
     """
     recorded_prefixes = files_service.get_preview_file_data(preview_file).get(
         files_service.MOVIE_PREFIXES_KEY
     )
     for prefix in files_service.get_movie_prefixes(
-        recorded_prefixes or [], False
+        recorded_prefixes or [], True
     ):
-        movie_path = _retrieve_preview_file(
+        movie_path = retrieve_preview_file(
             config, file_store, prefix, preview_file
         )
         if movie_path is not None:
@@ -1808,7 +1272,47 @@ def _retrieve_stored_movie(preview_file):
     return None
 
 
-def _retrieve_preview_file(config, file_store, prefix, preview_file):
+def get_stored_movie_prefixes(preview_file, lowdef=False):
+    """
+    Storage prefixes to try for the movie of given preview file dict, best
+    first. The normalization settings decide which versions exist
+    (SKIP_NORMALIZATION_HIGHDEF keeps lowdef only, SKIP_NORMALIZATION_FULL
+    with PREVIEW_SAVE_SOURCE_FILE keeps the source only), so no reader may
+    assume the "previews" one.
+    """
+    data = preview_file.get("data") or {}
+    recorded = data.get(files_service.MOVIE_PREFIXES_KEY) or []
+    return files_service.get_movie_prefixes(recorded, lowdef)
+
+
+def locate_stored_movie(preview_file, lowdef=False):
+    """
+    Local path of a stored version of the movie of given preview file dict,
+    fetched from the store when needed. Raises PreviewFileNotFoundException
+    when the store holds none of the versions. Only an absence the store
+    confirmed moves on to the next version: a transient failure is raised
+    as is, a caller recording the size of the movie would otherwise store
+    the one of the low def version.
+    """
+    preview_file_id = str(preview_file["id"])
+    for prefix in get_stored_movie_prefixes(preview_file, lowdef):
+        try:
+            return fs.get_file_path_and_file(
+                config,
+                file_store.get_local_movie_path,
+                file_store.open_movie,
+                prefix,
+                preview_file_id,
+                "mp4",
+            )
+        except fs.ConfirmedFileNotFound:
+            continue
+    raise PreviewFileNotFoundException(
+        f"No stored movie for preview file {preview_file_id}."
+    )
+
+
+def retrieve_preview_file(config, file_store, prefix, preview_file):
     """
     Fetch a preview binary from the store to a local path, whichever
     backend holds it.
@@ -1831,12 +1335,12 @@ def _retrieve_preview_file(config, file_store, prefix, preview_file):
             preview_file.extension,
         )
     except Exception as e:
-        print(f"Failed to get preview file {preview_file.id}: {e}.")
+        logger.warning(f"Failed to get preview file {preview_file.id}: {e}.")
         return None
     return preview_file_path
 
 
-def _generate_thumbnails(preview_file, preview_file_path, total, index):
+def generate_thumbnails(preview_file, preview_file_path, total, index):
     """
     Regenerate the thumbnail variants of one preview and store them.
     """
@@ -1847,14 +1351,16 @@ def _generate_thumbnails(preview_file, preview_file_path, total, index):
         save_variants(
             preview_file.id, original_picture_path, with_original=False
         )
-        print(
+        logger.info(
             f"{index:0{len(str(total))}}/{total} Thumbnails generated for {preview_file.id}.",
         )
     except Exception as e:
-        print(f"Failed to generate thumbnails for {preview_file.id}: {e}.")
+        logger.warning(
+            f"Failed to generate thumbnails for {preview_file.id}: {e}."
+        )
 
 
-def _generate_tiles(
+def generate_tiles(
     file_store, preview_file, preview_file_path, total, index, force=False
 ):
     """
@@ -1867,54 +1373,38 @@ def _generate_tiles(
         ):
             tile_path = movie.generate_tile(preview_file_path)
             file_store.add_picture("tiles", preview_file.id, tile_path)
-            os.remove(tile_path)
-            print(
+            preview_file_states_service.record_file_state(
+                preview_file.id,
+                "pictures",
+                "tiles",
+                preview_file_states_service.OK,
+            )
+            # The tile is stored: a failure removing the local temp copy
+            # is not a generation failure and must not undo the "ok"
+            # just recorded above.
+            try:
+                os.remove(tile_path)
+            except OSError:
+                pass
+            logger.info(
                 f"{index:0{len(str(total))}}/{total} Tile "
                 + f"generated for {preview_file.id}.",
             )
     except Exception as e:
-        print(
+        if preview_file.extension == "mp4":
+            preview_file_states_service.record_file_state(
+                preview_file.id,
+                "pictures",
+                "tiles",
+                preview_file_states_service.FAILED,
+            )
+        logger.warning(
             f"Failed to generate tile for preview file {preview_file.id}: {e}."
         )
 
 
-def _reset_preview_file_metadata(
-    preview_file, preview_file_path, total, index
-):
-    """
-    Recompute the width, height, duration and file size of one preview
-    from the file on disk.
-    """
-    try:
-        if preview_file.extension == "mp4":
-            width, height = movie.get_movie_size(preview_file_path)
-        else:
-            width, height = thumbnail_utils.get_dimensions(preview_file_path)
-        file_size = os.path.getsize(preview_file_path)
-        duration = (
-            float(movie.get_movie_duration(preview_file_path))
-            if preview_file.extension == "mp4"
-            else None
-        )
-        update_preview_file_raw(
-            preview_file,
-            {
-                "width": width,
-                "height": height,
-                "file_size": file_size,
-                "duration": duration,
-            },
-        )
-        print(
-            f"{index:0{len(str(total))}}/{total} Size information stored for {preview_file.id}.",
-        )
-    except Exception as e:
-        print(
-            f"Failed to store information for preview file {preview_file.id}: {e}.",
-        )
-
-
 def copy_preview_file_on_storage(
+    bucket_name,
     get_path_func,
     exists_func,
     copy_func,
@@ -1930,6 +1420,11 @@ def copy_preview_file_on_storage(
         file_path = get_path_func(prefix, original_preview_file_id)
         other_file_path = get_path_func(prefix, preview_file_to_update_id)
         if os.path.exists(file_path):
+            # Recorded before the copy, as file_store._copy does: a target
+            # key marked deleted must be revived before it is written.
+            stored_files_service.record_write(
+                bucket_name, prefix, preview_file_to_update_id
+            )
             os.makedirs(os.path.dirname(other_file_path), exist_ok=True)
             shutil.copyfile(file_path, other_file_path)
             return True
@@ -1941,109 +1436,32 @@ def copy_preview_file_on_storage(
     return False
 
 
-def copy_preview_file_in_another_one(
-    original_preview_file_id, preview_file_to_update_id
-):
+def get_preview_file_name(preview_file_id):
     """
-    Copy preview file data/files from one preview file to another one.
+    Build unique and human readable file name for preview downloads. The
+    convention followed is:
+    [project_name]_[entity_name]_[task_type_name]_v[revivision].[extension].
     """
-    original_preview_file = files_service.get_preview_file(
-        original_preview_file_id
+    organisation = organisation_service.get_organisation()
+    preview_file = files_service.get_preview_file(preview_file_id)
+    task = tasks_service.get_task(preview_file["task_id"])
+    task_type = task_types_service.get_task_type(task["task_type_id"])
+    project = projects_service.get_project(task["project_id"])
+    entity_name, _, _ = entities_service.get_full_entity_name(
+        task["entity_id"]
     )
-    is_movie = original_preview_file["extension"] == "mp4"
-    is_picture = original_preview_file["extension"] == "png"
 
-    stored_movie_prefixes = []
-    if is_movie:
-        # The source is copied too: when the normalization is skipped it is
-        # the only stored movie, and the preview routes serve it.
-        for prefix in files_service.MOVIE_PREFIXES:
-            copied = copy_preview_file_on_storage(
-                file_store.get_local_movie_path,
-                file_store.exists_movie,
-                file_store.copy_movie,
-                prefix,
-                original_preview_file_id,
-                preview_file_to_update_id,
-            )
-            if copied:
-                stored_movie_prefixes.append(prefix)
-
-    if is_movie or is_picture:
-        prefixes = [
-            "previews",
-            "original",
-            "thumbnails",
-            "thumbnails-square",
-        ]
-        if is_movie:
-            prefixes.append("tiles")
-
-        for prefix in prefixes:
-            copy_preview_file_on_storage(
-                file_store.get_local_picture_path,
-                file_store.exists_picture,
-                file_store.copy_picture,
-                prefix,
-                original_preview_file_id,
-                preview_file_to_update_id,
-            )
+    if (
+        organisation["use_original_file_name"]
+        and preview_file.get("original_name", None) is not None
+    ):
+        name = preview_file["original_name"]
     else:
-        copy_preview_file_on_storage(
-            file_store.get_local_file_path,
-            file_store.exists_file,
-            file_store.copy_file,
-            "previews",
-            original_preview_file_id,
-            preview_file_to_update_id,
+        name = (
+            f"{project['name']}_{entity_name}_{task_type['name']}_v"
+            f"{preview_file['revision']}"
         )
-
-    data = {
-        "extension": original_preview_file["extension"],
-        "original_name": original_preview_file["original_name"],
-        "status": original_preview_file["status"],
-        "file_size": original_preview_file["file_size"],
-        "width": original_preview_file["width"],
-        "height": original_preview_file["height"],
-        "duration": original_preview_file["duration"],
-    }
-    if is_movie:
-        # The copy knows which movie versions it found: record them so
-        # that the movie routes do not probe the storage again.
-        target_preview_file = files_service.get_preview_file_raw(
-            preview_file_to_update_id
-        )
-        data["data"] = {
-            **files_service.get_preview_file_data(target_preview_file),
-            files_service.MOVIE_PREFIXES_KEY: stored_movie_prefixes,
-        }
-    preview_file_to_update = update_preview_file(
-        preview_file_to_update_id, data
-    )
-    tasks_service.update_preview_file_info(preview_file_to_update)
-    comment = tasks_service.get_comment_by_preview_file_id(
-        preview_file_to_update_id
-    )
-    task = tasks_service.get_task(preview_file_to_update["task_id"])
-    comment_id = None
-    if comment is not None:
-        comment_id = comment["id"]
-        events.emit(
-            "comment:update",
-            {"comment_id": comment_id},
-            project_id=task["project_id"],
-        )
-        events.emit(
-            "preview-file:add-file",
-            {
-                "comment_id": comment_id,
-                "task_id": preview_file_to_update["task_id"],
-                "preview_file_id": preview_file_to_update["id"],
-                "revision": preview_file_to_update["revision"],
-                "extension": preview_file_to_update["extension"],
-                "status": preview_file_to_update["status"],
-            },
-            project_id=task["project_id"],
-        )
-
-    return preview_file_to_update
+        name = slugify.slugify(name, separator="_")
+    if (preview_file.get("position", 0) or 0) > 1:
+        name = f"{name}-{preview_file['position']}"
+    return f"{name}.{preview_file['extension']}"

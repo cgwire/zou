@@ -1,0 +1,28 @@
+Reorder metadata descriptors on all accessible projects
+---
+description: Apply the same column order, given as a list of field
+  names, on every open project the user can access. Replaces one
+  reorder request per project.
+tags:
+  - Projects
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - entity_type
+          - field_order
+        properties:
+          entity_type:
+            type: string
+          field_order:
+            type: array
+            items:
+              type: string
+responses:
+  200:
+    description: Updated descriptors
+  400:
+    description: Invalid parameters

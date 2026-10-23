@@ -1,0 +1,91 @@
+Create task comment
+---
+description: Create a new comment for a specific task. It requires a
+  text, a task_status and a person as arguments. This way, comments
+  keep history of status changes. When the comment is created, it
+  updates the task status with the given task status.
+tags:
+  - Comments
+parameters:
+  - in: path
+    name: task_id
+    required: true
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the task
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - task_status_id
+        properties:
+          task_status_id:
+            type: string
+            format: uuid
+            description: Task status identifier
+            example: c46c80c6-e097-6887-c292-79675204e470
+          comment:
+            type: string
+            description: Comment text content
+            example: "This looks great! Ready for review."
+          person_id:
+            type: string
+            format: uuid
+            description: Person identifier (optional, defaults to current user)
+            example: d57d91d7-f108-7998-d403-80786315f580
+          created_at:
+            type: string
+            format: date-time
+            description: Creation timestamp (optional, defaults to current time)
+            example: "2023-01-01T12:00:00Z"
+          checklist:
+            type: object
+            description: Checklist items for the comment
+            example: {"item1": "Check lighting", "item2": "Verify textures"}
+          links:
+            type: array
+            items:
+              type: string
+            description: List of related links
+            example: ["https://example.com/reference1", "https://example.com/reference2"]
+responses:
+  201:
+    description: Comment successfully created
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Comment unique identifier
+              example: b35b7fb5-df86-5776-b181-68564193d360
+            task_id:
+              type: string
+              format: uuid
+              description: Task identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            person_id:
+              type: string
+              format: uuid
+              description: Person identifier
+              example: d57d91d7-f108-7998-d403-80786315f580
+            comment:
+              type: string
+              description: Comment text content
+              example: "This looks great! Ready for review."
+            task_status_id:
+              type: string
+              format: uuid
+              description: Task status identifier
+              example: c46c80c6-e097-6887-c292-79675204e470
+            created_at:
+              type: string
+              format: date-time
+              description: Creation timestamp
+              example: "2023-01-01T12:00:00Z"

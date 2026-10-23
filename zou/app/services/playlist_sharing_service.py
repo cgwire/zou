@@ -1,27 +1,44 @@
 import datetime
 import uuid
 
-from zou.app.utils import auth, events
+from sqlalchemy import or_
 
+from zou.app.exceptions import (
+    PersonNotFoundException,
+    PlaylistShareLinkNotFoundException,
+    PreviewFileNotFoundException,
+    WrongParameterException,
+)
+from zou.app.models.comment import Comment
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.person import Person
 from zou.app.models.playlist import Playlist
 from zou.app.models.playlist_share_link import PlaylistShareLink
+from zou.app.models.preview_file import PreviewFile
 from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
 from zou.app.services import (
+    attachment_files_service,
+    comments_service,
+    deletion_service,
+    emails_service,
     files_service,
+    notifications_service,
     persons_service,
     playlists_service,
-    tasks_service,
     projects_service,
+    task_types_service,
+    tasks_service,
 )
-from zou.app.services.exception import (
-    PlaylistShareLinkNotFoundException,
-    PreviewFileNotFoundException,
-    WrongParameterException,
+from zou.app.utils import auth, events, fields
+
+# Entity types for which "parent" is a parent record (shot/seq/episode/…).
+# For other types, we show the entity type name as the logical parent
+# (e.g. assets).
+_SHOT_LIKE_ENTITY_TYPE_NAMES = frozenset(
+    ("Shot", "Sequence", "Episode", "Edit", "Concept")
 )
 
 
@@ -157,9 +174,19 @@ def get_shared_playlist(token):
     always fail for those playlists.
     """
     share_link = validate_share_token(token)
-    return playlists_service.get_playlist_with_preview_file_revisions(
+    return get_share_link_playlist(share_link)
+
+
+def get_share_link_playlist(share_link):
+    """
+    Return the playlist of a validated share link as the link shares it:
+    with the preview-file enrichment, and on each shot the revision the
+    playlist positions and no other (see hide_other_revisions).
+    """
+    playlist = playlists_service.get_playlist_with_preview_file_revisions(
         share_link["playlist_id"]
     )
+    return hide_other_revisions(playlist)
 
 
 def is_preview_file_in_shared_playlist(token, preview_file_id):
@@ -249,7 +276,7 @@ def _load_guest_comment(comment_id, guest_id, token):
     except Exception:
         raise GuestCommentForbidden
     try:
-        comment = tasks_service.get_comment(comment_id)
+        comment = comments_service.get_comment(comment_id)
     except Exception:
         raise GuestCommentNotFound
     if str(comment.get("person_id")) != str(guest_id):
@@ -285,7 +312,6 @@ def update_guest_comment(comment_id, guest_id, data, token):
     client-allowed (a guest must not be able to set a manager-only status).
     """
     from zou.app.models.comment import Comment
-    from zou.app.services import comments_service, notifications_service
 
     instance = _load_guest_comment(comment_id, guest_id, token)
 
@@ -295,10 +321,15 @@ def update_guest_comment(comment_id, guest_id, data, token):
     )
     if status_changed:
         try:
-            new_status = tasks_service.get_task_status(new_status_id)
+            new_status = task_types_service.get_task_status(new_status_id)
         except Exception:
             raise GuestCommentForbidden
-        if not new_status.get("is_client_allowed", False):
+        project_id = tasks_service.get_task(instance["object_id"])[
+            "project_id"
+        ]
+        if not projects_service.is_task_status_client_allowed(
+            project_id, new_status
+        ):
             raise GuestCommentForbidden
     previous_status_id = instance.get("task_status_id")
 
@@ -314,8 +345,8 @@ def update_guest_comment(comment_id, guest_id, data, token):
 
     # reset_mentions walks the mentions table; feed it the relations-loaded
     # dict so it has the `mentions` / `department_mentions` keys it expects.
-    tasks_service.clear_comment_cache(comment_id)
-    updated = tasks_service.get_comment(comment_id, relations=True)
+    comments_service.clear_comment_cache(comment_id)
+    updated = comments_service.get_comment(comment_id, relations=True)
     comments_service.reset_mentions(updated)
 
     task_id = updated["object_id"]
@@ -332,7 +363,7 @@ def update_guest_comment(comment_id, guest_id, data, token):
             },
             project_id=task["project_id"],
         )
-    tasks_service.clear_comment_cache(comment_id)
+    comments_service.clear_comment_cache(comment_id)
     try:
         notifications_service.reset_notifications_for_mentions(updated)
     except KeyError:
@@ -341,7 +372,12 @@ def update_guest_comment(comment_id, guest_id, data, token):
         pass
     events.emit(
         "comment:update",
-        {"comment_id": updated["id"], "task_id": task_id},
+        {
+            "comment_id": updated["id"],
+            "task_id": task_id,
+            "person_id": updated["person_id"],
+            "for_client": updated["for_client"],
+        },
         project_id=task["project_id"],
     )
     return _serialize_enriched_comment(comment_id)
@@ -356,7 +392,6 @@ def delete_guest_comment(comment_id, guest_id, token):
     Scoped to the share link via ``token`` so a guest cannot delete a
     comment they authored on a task that is not part of this playlist.
     """
-    from zou.app.services import deletion_service
 
     instance = _load_guest_comment(comment_id, guest_id, token)
 
@@ -366,7 +401,7 @@ def delete_guest_comment(comment_id, guest_id, token):
 
     deletion_service.remove_comment(comment_id)
     tasks_service.reset_task_data(task_id)
-    tasks_service.clear_comment_cache(comment_id)
+    comments_service.clear_comment_cache(comment_id)
 
     task_after = tasks_service.get_task(task_id)
     new_status_id = task_after["task_status_id"]
@@ -385,19 +420,21 @@ def delete_guest_comment(comment_id, guest_id, token):
 
 def _serialize_enriched_comment(comment_id):
     """
-    Return a comment dict with `attachment_files` expanded to full objects
-    (same shape as `_run_task_comments_query`'s output), so the shared client
-    can render filenames/sizes without extra lookups.
+    Return a comment dict with `attachment_files` expanded to objects (id,
+    name, extension and size), so the shared client can render filenames
+    and sizes without extra lookups, and with the authors of its replies,
+    as the comment list gives them.
     """
     from zou.app.models.attachment_file import AttachmentFile
 
-    comment = tasks_service.get_comment(comment_id, relations=True)
+    comment = comments_service.get_comment(comment_id, relations=True)
     ids = comment.get("attachment_files") or []
     if ids and all(isinstance(item, str) for item in ids):
         attachments = AttachmentFile.query.filter(
             AttachmentFile.id.in_(ids)
         ).all()
         comment["attachment_files"] = [af.present() for af in attachments]
+    comments_service.embed_reply_authors([comment])
     return comment
 
 
@@ -407,7 +444,6 @@ def add_guest_comment_attachments(comment_id, guest_id, files, token):
     to the share link's playlist via ``token``.
     Returns the updated comment dict (with relations).
     """
-    from zou.app.services import comments_service
 
     comment = _load_guest_comment(comment_id, guest_id, token)
     comments_service.add_attachments_to_comment(comment, files)
@@ -422,14 +458,13 @@ def download_shared_attachment(token, attachment_id, file_name):
     served by this link.
     """
     from flask import send_file as flask_send_file
-    from zou.app.services import comments_service
 
-    attachment = comments_service.get_attachment_file(attachment_id)
+    attachment = attachment_files_service.get_attachment_file(attachment_id)
     comment_id = attachment.get("comment_id")
     if not comment_id:
         raise GuestCommentNotFound
 
-    comment = tasks_service.get_comment(comment_id)
+    comment = comments_service.get_comment(comment_id)
     task_id = comment.get("object_id")
     if not task_id:
         raise GuestCommentNotFound
@@ -452,7 +487,7 @@ def download_shared_attachment(token, attachment_id, file_name):
     if not (comment.get("for_client") or author_is_guest):
         raise GuestCommentNotFound
 
-    file_path = comments_service.get_attachment_file_path(attachment)
+    file_path = attachment_files_service.get_attachment_file_path(attachment)
     return flask_send_file(
         file_path,
         conditional=True,
@@ -476,29 +511,27 @@ def remove_guest_comment_attachment(
     scoped to the share link's playlist via ``token``.
     """
     from zou.app.models.attachment_file import AttachmentFile
-    from zou.app.services import deletion_service
 
     _load_guest_comment(comment_id, guest_id, token)
     attachment = AttachmentFile.get(attachment_id)
     if attachment is None or str(attachment.comment_id) != str(comment_id):
         raise GuestCommentNotFound
-    deletion_service.remove_attachment_file(attachment)
+    attachment_files_service.remove_attachment_file(attachment)
 
 
 def get_shared_task_comments(task_id):
     """
     Return comments visible in the shared context for a task: those flagged
-    `for_client=True` plus those posted by a guest. Bypasses
-    tasks_service.get_comments which requires a JWT-authenticated current
+    `for_client=True` plus those posted by a guest, with their attachment
+    files and the authors of their replies. Bypasses
+    comments_service.get_comments which requires a JWT-authenticated current
     user.
     """
-    from zou.app.services.tasks_service import (
-        _prepare_query,
-        _run_task_comments_query,
-    )
 
-    query = _prepare_query(task_id, is_client=True, is_manager=False)
-    comments, _ = _run_task_comments_query(query)
+    query = comments_service.prepare_query(
+        task_id, is_client=True, is_manager=False
+    )
+    comments, _ = comments_service.run_task_comments_query(query)
 
     guest_ids = {
         str(person_id)
@@ -515,15 +548,83 @@ def get_shared_task_comments(task_id):
         if comment.get("person"):
             comment["person"]["is_guest"] = is_guest_author
         visible.append(comment)
+
+    if visible:
+        attachment_file_map = (
+            attachment_files_service.build_attachment_map_for_comments(
+                [comment["id"] for comment in visible]
+            )
+        )
+        for comment in visible:
+            comment["attachment_files"] = attachment_file_map.get(
+                comment["id"], []
+            )
+        comments_service.embed_reply_authors(visible)
     return visible
 
 
-# Entity types for which "parent" is a parent record (shot/seq/episode/…).
-# For other types, we show the entity type name as the logical parent
-# (e.g. assets).
-_SHOT_LIKE_ENTITY_TYPE_NAMES = frozenset(
-    ("Shot", "Sequence", "Episode", "Edit", "Concept")
-)
+def _get_shown_task_ids(share_link):
+    """
+    Return the ids of the tasks whose comments the page of a share link
+    lists, as the comment list reads them off the enriched shots: the
+    task of the positioned preview when it belongs to an entity of the
+    playlist, the task the shot names otherwise. Reads the shots alone,
+    without the preview revisions the enrichment loads.
+    """
+    playlist = Playlist.get(share_link["playlist_id"])
+    shots = (playlist.shots if playlist is not None else None) or []
+    entity_ids = [
+        shot.get("id") or shot.get("shot_id") or shot.get("entity_id")
+        for shot in shots
+    ]
+    preview_file_ids = [
+        shot["preview_file_id"]
+        for shot in shots
+        if fields.is_valid_id(shot.get("preview_file_id"))
+    ]
+    positioned = {}
+    if preview_file_ids:
+        positioned = {
+            str(preview_file_id): str(task_id)
+            for preview_file_id, task_id in PreviewFile.query.join(Task)
+            .filter(PreviewFile.id.in_(preview_file_ids))
+            .filter(Task.entity_id.in_([e for e in entity_ids if e]))
+            .with_entities(PreviewFile.id, PreviewFile.task_id)
+        }
+    task_ids = {
+        positioned.get(
+            str(shot.get("preview_file_id")), shot.get("preview_file_task_id")
+        )
+        for shot in shots
+    }
+    task_ids.discard(None)
+    return task_ids
+
+
+def is_person_shown_by_share_link(share_link, person_id):
+    """
+    Tell whether the page of a validated share link shows given person: as
+    the author of a comment it lists (flagged for the client or posted by a
+    guest), or of a reply to one. Every avatar of the page asks.
+    """
+    task_ids = _get_shown_task_ids(share_link)
+    if not task_ids:
+        return False
+    rows = (
+        Comment.query.join(Person, Comment.person_id == Person.id)
+        .filter(Comment.object_id.in_(task_ids))
+        .filter(or_(Comment.for_client.is_(True), Person.is_guest.is_(True)))
+        .with_entities(Comment.person_id, Comment.replies)
+        .all()
+    )
+    person_id = str(person_id)
+    return any(
+        str(author_id) == person_id
+        or any(
+            str(reply.get("person_id")) == person_id for reply in replies or []
+        )
+        for author_id, replies in rows
+    )
 
 
 def _enrich_shared_playlist_project_line(playlist_dict):
@@ -594,6 +695,37 @@ def _parent_name_for_shot_entry(entity, entity_type_name, parent_map):
     return entity_type_name
 
 
+def _is_for_all_episodes(playlist_dict):
+    """
+    Read the flag the way the playlist listings do: a playlist attached to
+    an episode belongs to that episode, whatever its is_for_all says.
+    """
+    if playlist_dict.get("episode_id"):
+        return False
+    return bool(playlist_dict.get("is_for_all"))
+
+
+def _prefix_parents_with_their_episode(parents, parent_map):
+    """
+    Sequence names repeat across episodes: in a playlist for all episodes,
+    name each parent after its own parent too, which for a sequence is its
+    episode ("E01 / S01"). Return the parent map with these names.
+    """
+    episode_ids = {str(p.parent_id) for p in parents if p.parent_id}
+    if not episode_ids:
+        return parent_map
+    episode_names = {
+        str(episode.id): episode.name
+        for episode in Entity.query.filter(Entity.id.in_(episode_ids)).all()
+    }
+    prefixed_map = dict(parent_map)
+    for parent in parents:
+        episode_name = episode_names.get(str(parent.parent_id))
+        if episode_name:
+            prefixed_map[str(parent.id)] = f"{episode_name} / {parent.name}"
+    return prefixed_map
+
+
 def _apply_task_styling_to_shot(
     shot, task_id, task_type_by_task_id, task_status_color_by_task_id
 ):
@@ -610,13 +742,38 @@ def _apply_task_styling_to_shot(
         shot["task_status_color"] = color
 
 
+def hide_other_revisions(playlist_dict):
+    """
+    Empty the revision list of each shot of a playlist served through a
+    share link. The link shares the revision the playlist positions, which
+    the preview_file fields carry with the other positions of that
+    revision: the revisions of every task type of the entity, annotations
+    included, are for the revision switcher of the team only. The list
+    stays an object, which the player reads on every shot, and each shot
+    gets its own. The positions of a revision are grouped per task type,
+    so they also hold the preview of the same number on another task of
+    that type, which the link does not share either.
+    """
+    for shot in playlist_dict.get("shots") or []:
+        shot["preview_files"] = {}
+        if "preview_file_previews" in shot:
+            task_id = shot.get("preview_file_task_id")
+            shot["preview_file_previews"] = [
+                preview
+                for preview in shot["preview_file_previews"]
+                if preview.get("task_id") == task_id
+            ]
+    return playlist_dict
+
+
 def enrich_shots_with_entity_info(playlist_dict):
     """
     Augment each shot entry in the playlist with `name` and `parent_name`
     (sequence/episode/asset_type name). The stored `playlist.shots` only
     keeps preview/entity references — in the shared context, consumers
     have no auth'd access to entity/asset/shot stores, so names must be
-    inlined here.
+    inlined here. In a playlist for all episodes, the sequence of a shot
+    comes with its episode.
     """
     _enrich_shared_playlist_project_line(playlist_dict)
 
@@ -631,10 +788,12 @@ def enrich_shots_with_entity_info(playlist_dict):
     parent_ids = {str(e.parent_id) for e in entities if e.parent_id}
     parent_map = {}
     if parent_ids:
-        parent_map = {
-            str(p.id): p.name
-            for p in Entity.query.filter(Entity.id.in_(parent_ids)).all()
-        }
+        parents = Entity.query.filter(Entity.id.in_(parent_ids)).all()
+        parent_map = {str(p.id): p.name for p in parents}
+        if _is_for_all_episodes(playlist_dict):
+            parent_map = _prefix_parents_with_their_episode(
+                parents, parent_map
+            )
 
     type_ids = {str(e.entity_type_id) for e in entities if e.entity_type_id}
     type_map = {}
@@ -742,8 +901,9 @@ def get_guest_for_share_link(guest_id, share_link):
 def get_shared_playlist_context(token):
     """
     Return the minimal project context needed to display a shared
-    playlist: task types, task statuses, and entity names referenced
-    by the playlist.
+    playlist: the project, its task types, and its task statuses. No
+    entity is listed: the shots of the playlist carry their names, and the
+    main preview of an entity can be a revision the link does not share.
     """
     share_link = validate_share_token(token)
     playlist = playlists_service.get_playlist(share_link["playlist_id"])
@@ -752,23 +912,9 @@ def get_shared_playlist_context(token):
 
     task_types = projects_service.get_project_task_types(project_id)
     task_statuses = projects_service.get_project_task_statuses(project_id)
-
-    # Collect entity names from playlist shots
-    entity_names = {}
-    for shot_entry in playlist.get("shots", []):
-        entity_id = shot_entry.get("entity_id")
-        if entity_id and entity_id not in entity_names:
-            try:
-                from zou.app.services import entities_service
-
-                entity = entities_service.get_entity(entity_id)
-                entity_names[entity_id] = {
-                    "id": entity_id,
-                    "name": entity.get("name", ""),
-                    "preview_file_id": entity.get("preview_file_id"),
-                }
-            except Exception:
-                pass
+    client_allowed_overrides = projects_service.get_client_allowed_overrides(
+        project_id
+    )
 
     return {
         "project": {
@@ -798,13 +944,14 @@ def get_shared_playlist_context(token):
                 "name": ts["name"],
                 "short_name": ts["short_name"],
                 "color": ts["color"],
-                "is_client_allowed": ts.get("is_client_allowed", False),
+                "is_client_allowed": client_allowed_overrides.get(
+                    ts["id"], ts.get("is_client_allowed", False)
+                ),
                 "is_default": ts.get("is_default", False),
                 "for_concept": ts.get("for_concept", False),
             }
             for ts in task_statuses
         ],
-        "entities": list(entity_names.values()),
     }
 
 
@@ -827,7 +974,6 @@ def send_share_invitations(
     to a link they don't own.
     """
     from zou.app import config
-    from zou.app.services import emails_service
 
     share_link = get_share_link_by_token_raw(token)
     if str(share_link.playlist_id) != str(playlist_id):
@@ -852,7 +998,7 @@ def send_share_invitations(
     for person_id in person_ids or []:
         try:
             person = persons_service.get_person(str(person_id))
-        except Exception:
+        except PersonNotFoundException:
             continue
         person_email = person.get("email")
         if not person_email:

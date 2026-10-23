@@ -1,34 +1,28 @@
 import os
 import pathlib
 import re
-
 from string import Template
 
-from flask import request, current_app
+from flasgger import swag_from
+from flask import current_app, request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app import config
-
+from zou.app.exceptions import WrongParameterException
 from zou.app.mixin import ArgsMixin
-from zou.app.services.exception import WrongParameterException
-from zou.app.utils import fields
 from zou.app.services import (
-    shots_service,
-    projects_service,
+    index_service,
     permissions_service,
-    user_service,
     persons_service,
+    projects_service,
+    shots_service,
+    user_service,
 )
-
-from zou.app.models.task_type import TaskType
-from zou.app.models.project import ProjectTaskTypeLink
-from zou.app.models.task_type import TaskType
-
-
 from zou.app.services.tasks_service import (
     create_tasks,
 )
+from zou.app.utils import fields
 
 mapping_substitutions_to_regex = {
     "${project_name}": r"(?P<project_name>\w*)",
@@ -45,36 +39,10 @@ mapping_substitutions_to_regex = {
 class OTIOBaseResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/OTIOBaseResource_post.yml")
     def post(self, project_id, episode_id=None):
         """
         Import otio base
-        ---
-        description: Base resource for importing OTIO files. This method is
-          overridden by subclasses. Import an OTIO file to set frame_in,
-          frame_out, and nb_frames for shots.
-        tags:
-          - Import
-        consumes:
-          - multipart/form-data
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: file
-            type: file
-            required: true
-            description: OTIO file to import (EDL, OTIO, etc.)
-        responses:
-          201:
-            description: Shots imported successfully
-          400:
-            description: Invalid file format or parsing error
         """
         args = self.post_args()
         permissions_service.check_manager_project_access(project_id)
@@ -99,7 +67,9 @@ class OTIOBaseResource(MethodView, ArgsMixin):
             # handler answers 400, no server-error log.
             raise
         except Exception as e:
-            current_app.logger.error(
+            # An unparseable timeline is client input: warn and answer 400
+            # rather than reporting it as a server error.
+            current_app.logger.warning(
                 f"Import OTIO failed: {type(e).__name__}: {str(e)}"
             )
             return {
@@ -123,9 +93,7 @@ class OTIOBaseResource(MethodView, ArgsMixin):
         self.is_tv_show = projects_service.is_tv_show(self.project)
         self.episode_id = episode_id
         self.task_types_in_project_for_shots = (
-            TaskType.query.join(ProjectTaskTypeLink)
-            .filter(ProjectTaskTypeLink.project_id == project_id)
-            .filter(TaskType.for_entity == "Shot")
+            projects_service.get_project_task_types_raw(project_id, "Shot")
         )
         self.current_user_id = persons_service.get_current_user()["id"]
 
@@ -197,6 +165,28 @@ class OTIOBaseResource(MethodView, ArgsMixin):
             naming_convention,
             match_case,
         )
+        self.shot_ids_to_index = []
+        try:
+            self.import_clips(timeline, result)
+        finally:
+            # Indexed at the end, without waiting for the indexer on every
+            # clip. The shots saved before a failing clip stay imported:
+            # they are indexed too.
+            index_service.index_shots(self.shot_ids_to_index)
+            # A new import would not create the tasks of the shots created
+            # before a failing clip: they get them here.
+            for task_type in self.task_types_in_project_for_shots:
+                create_tasks(task_type.serialize(), result["created_shots"])
+
+        return result
+
+    def import_clips(self, timeline, result):
+        """
+        Create or update the shot of every clip of the timeline, and list
+        them in result.
+        """
+        import opentimelineio as otio
+
         for video_track in timeline.video_tracks():
             for track in video_track:
                 if isinstance(track, otio.schema.Clip):
@@ -205,13 +195,13 @@ class OTIOBaseResource(MethodView, ArgsMixin):
                         if getattr(track.media_reference, "name_prefix", None):
                             name = track.media_reference.name_prefix
                         elif getattr(track.media_reference, "name", None):
-                            name, _ = os.path.splitext(
+                            name = os.path.splitext(
                                 track.media_reference.name
                             )[0]
                         elif getattr(
                             track.media_reference, "target_url", None
                         ):
-                            name, _ = os.path.splitext(
+                            name = os.path.splitext(
                                 os.path.basename(
                                     track.media_reference.target_url
                                 )
@@ -269,7 +259,7 @@ class OTIOBaseResource(MethodView, ArgsMixin):
                                 track.trimmed_range().start_time.to_frames()
                             )
                     except Exception as e:
-                        current_app.logger.error(
+                        current_app.logger.warning(
                             f"Parsing frame_in failed: {type(e).__name__}: {str(e)}"
                         )
                     try:
@@ -286,7 +276,7 @@ class OTIOBaseResource(MethodView, ArgsMixin):
                                 .to_frames()
                             )
                     except Exception as e:
-                        current_app.logger.error(
+                        current_app.logger.warning(
                             f"Parsing frame_out failed: {type(e).__name__}: {str(e)}"
                         )
 
@@ -297,7 +287,7 @@ class OTIOBaseResource(MethodView, ArgsMixin):
                             track.source_range.duration.to_frames()
                         )
                     except Exception as e:
-                        current_app.logger.error(
+                        current_app.logger.warning(
                             f"Parsing nb_frames failed: {type(e).__name__}: {str(e)}"
                         )
 
@@ -305,129 +295,24 @@ class OTIOBaseResource(MethodView, ArgsMixin):
                         shot = shots_service.create_shot(
                             **future_shot_values,
                             created_by=self.current_user_id,
+                            index=False,
                         )
                         result["created_shots"].append(shot)
                     else:
                         shot = shots_service.update_shot(
-                            shot_id, future_shot_values
+                            shot_id, future_shot_values, index=False
                         )
                         result["updated_shots"].append(shot)
-
-        for task_type in self.task_types_in_project_for_shots:
-            create_tasks(task_type.serialize(), result["created_shots"])
-
-        return result
+                    self.shot_ids_to_index.append(shot["id"])
 
 
 class OTIOImportResource(OTIOBaseResource):
 
     @jwt_required()
+    @swag_from("openapi/OTIOImportResource_post.yml")
     def post(self, **kwargs):
         """
         Import otio EDL
-        ---
-        tags:
-          - Import
-        description: Import an OTIO file to set frame_in, frame_out, and
-          nb_frames for shots. Supports any OpenTimelineIO adapter format like
-          EDL or OTIO. Uses naming convention to match shots.
-        consumes:
-          - multipart/form-data
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: naming_convention
-            required: false
-            schema:
-              type: string
-            default: "${project_name}_${sequence_name}-${shot_name}"
-            example: "${project_name}_${sequence_name}-${shot_name}"
-            description: Template for matching shot names from the file
-          - in: query
-            name: match_case
-            required: false
-            schema:
-              type: boolean
-            default: true
-            example: true
-            description: Whether to match shot names case-sensitively
-          - in: formData
-            name: file
-            type: file
-            required: true
-            description: OTIO file to import (EDL, OTIO, etc.)
-        responses:
-            201:
-              description: Shots imported successfully
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      updated_shots:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            id:
-                              type: string
-                              format: uuid
-                              example: a24a6ea4-ce75-4665-a070-57453082c25
-                            name:
-                              type: string
-                              example: SH010
-                            project_id:
-                              type: string
-                              format: uuid
-                              example: b24a6ea4-ce75-4665-a070-57453082c25
-                            nb_frames:
-                              type: integer
-                              example: 120
-                            data:
-                              type: object
-                              properties:
-                                frame_in:
-                                  type: integer
-                                  example: 1001
-                                frame_out:
-                                  type: integer
-                                  example: 1120
-                      created_shots:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            id:
-                              type: string
-                              format: uuid
-                              example: c24a6ea4-ce75-4665-a070-57453082c25
-                            name:
-                              type: string
-                              example: SH020
-                            project_id:
-                              type: string
-                              format: uuid
-                              example: b24a6ea4-ce75-4665-a070-57453082c25
-                            nb_frames:
-                              type: integer
-                              example: 96
-                            data:
-                              type: object
-                              properties:
-                                frame_in:
-                                  type: integer
-                                  example: 2001
-                                frame_out:
-                                  type: integer
-                                  example: 2096
-            400:
-              description: Invalid file format or parsing error
         """
         return super().post(**kwargs)
 
@@ -448,120 +333,10 @@ class OTIOImportResource(OTIOBaseResource):
 class OTIOImportEpisodeResource(OTIOBaseResource):
 
     @jwt_required()
+    @swag_from("openapi/OTIOImportEpisodeResource_post.yml")
     def post(self, **kwargs):
         """
         Import episode otio
-        ---
-        tags:
-          - Import
-        description: Import an OTIO file to set frame_in, frame_out, and
-          nb_frames for shots in an episode. Supports any OpenTimelineIO
-          adapter format like EDL or OTIO. Uses naming convention with episode
-          name to match shots.
-        consumes:
-          - multipart/form-data
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: episode_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: b24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: naming_convention
-            required: false
-            schema:
-              type: string
-            default: "${project_name}_${episode_name}-${sequence_name}-${shot_name}"
-            example: "${project_name}_${episode_name}-${sequence_name}-${shot_name}"
-            description: Template for matching shot names from the file
-          - in: query
-            name: match_case
-            required: false
-            schema:
-              type: boolean
-            default: true
-            example: true
-            description: Whether to match shot names case-sensitively
-          - in: formData
-            name: file
-            type: file
-            required: true
-            description: OTIO file to import (EDL, OTIO, etc.)
-        responses:
-            201:
-              description: Shots imported successfully
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      updated_shots:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            id:
-                              type: string
-                              format: uuid
-                              example: a24a6ea4-ce75-4665-a070-57453082c25
-                            name:
-                              type: string
-                              example: SH010
-                            project_id:
-                              type: string
-                              format: uuid
-                              example: c24a6ea4-ce75-4665-a070-57453082c25
-                            nb_frames:
-                              type: integer
-                              example: 120
-                            data:
-                              type: object
-                              properties:
-                                frame_in:
-                                  type: integer
-                                  example: 1001
-                                frame_out:
-                                  type: integer
-                                  example: 1120
-                      created_shots:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            id:
-                              type: string
-                              format: uuid
-                              example: d24a6ea4-ce75-4665-a070-57453082c25
-                            name:
-                              type: string
-                              example: SH020
-                            project_id:
-                              type: string
-                              format: uuid
-                              example: c24a6ea4-ce75-4665-a070-57453082c25
-                            nb_frames:
-                              type: integer
-                              example: 96
-                            data:
-                              type: object
-                              properties:
-                                frame_in:
-                                  type: integer
-                                  example: 2001
-                                frame_out:
-                                  type: integer
-                                  example: 2096
-            400:
-              description: Invalid file format or parsing error
         """
         return super().post(**kwargs)
 

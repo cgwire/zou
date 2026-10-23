@@ -1,8 +1,9 @@
 import os
 import tempfile
+from unittest import mock
 
 from tests.base import ApiDBTestCase
-
+from zou.app import config
 from zou.app.models.person import Person
 from zou.app.models.studio import Studio
 
@@ -42,7 +43,7 @@ class ImportCsvPersonsTestCase(ApiDBTestCase):
 
         # First row mixes human labels (Artist / Lead / Senior / Open-ended)
         # and a comma-separated department cell in a ";"-delimited file.
-        john = Person.get_by(email="john.doe@gmail.com")
+        john = Person.get_by(email="john.doe@example.com")
         self.assertEqual(john.role.code, "user")
         self.assertEqual(john.position.code, "lead")
         self.assertEqual(john.seniority.code, "senior")
@@ -58,7 +59,7 @@ class ImportCsvPersonsTestCase(ApiDBTestCase):
 
         # Second row uses stored codes (supervisor / artist / junior /
         # freelance) instead of labels.
-        ema = Person.get_by(email="ema.doe@gmail.com")
+        ema = Person.get_by(email="ema.doe@example.com")
         self.assertEqual(ema.role.code, "supervisor")
         self.assertEqual(ema.position.code, "artist")
         self.assertEqual(ema.seniority.code, "junior")
@@ -80,13 +81,13 @@ class ImportCsvPersonsTestCase(ApiDBTestCase):
                 **{
                     "First Name": "John",
                     "Last Name": "Doe",
-                    "Email": "john.doe@gmail.com",
+                    "Email": "john.doe@example.com",
                     "Departments": "Animation",
                 }
             ),
             update=True,
         )
-        john = Person.get_by(email="john.doe@gmail.com")
+        john = Person.get_by(email="john.doe@example.com")
         self.assertEqual(
             [department.name for department in john.departments], ["Animation"]
         )
@@ -104,7 +105,7 @@ class ImportCsvPersonsTestCase(ApiDBTestCase):
                 **{
                     "First Name": "John",
                     "Last Name": "Doe",
-                    "Email": "john.doe@gmail.com",
+                    "Email": "john.doe@example.com",
                     "Country": "us",
                     "Position": "artist",
                     "Seniority": "junior",
@@ -114,7 +115,7 @@ class ImportCsvPersonsTestCase(ApiDBTestCase):
             ),
             update=True,
         )
-        john = Person.get_by(email="john.doe@gmail.com")
+        john = Person.get_by(email="john.doe@example.com")
         self.assertEqual(john.country, "US")
         self.assertEqual(john.position.code, "artist")
         self.assertEqual(john.seniority.code, "junior")
@@ -134,14 +135,14 @@ class ImportCsvPersonsTestCase(ApiDBTestCase):
                 **{
                     "First Name": "John",
                     "Last Name": "Doe",
-                    "Email": "john.doe@gmail.com",
+                    "Email": "john.doe@example.com",
                     "Country": "us",
                     "Position": "artist",
                     "Departments": "Animation",
                 }
             )
         )
-        john = Person.get_by(email="john.doe@gmail.com")
+        john = Person.get_by(email="john.doe@example.com")
         self.assertEqual(john.country, "FR")
         self.assertEqual(john.position.code, "lead")
         self.assertEqual(
@@ -152,6 +153,28 @@ class ImportCsvPersonsTestCase(ApiDBTestCase):
     def test_import_persons_invalid_country(self):
         self._upload_csv(self._csv(Country="France"), code=400)
 
+    @mock.patch.object(config, "MAIL_CHECK_DELIVERABILITY", True)
+    def test_import_persons_invalid_email(self):
+        # Kitsu indexes the domain of every email: one without it broke the
+        # people search for every manager of the studio.
+        for email in ["jdoe", "jdoe@", "jdoe@studio", ""]:
+            error = self._upload_csv(self._csv(Email=email), code=400)
+            self.assertIn(f"Email: {email}", error["message"])
+            # The reason of the validator, even for an empty cell.
+            self.assertIn("@-sign", error["message"])
+            self.assertIsNone(Person.get_by(email=email))
+
+    def test_import_persons_dotless_email_domain(self):
+        # Refused above, a dotless domain passes on an instance that does not
+        # check deliverability, like the person routes.
+        with mock.patch.object(config, "MAIL_CHECK_DELIVERABILITY", False):
+            self._upload_csv(self._csv(Email="jdoe@studio"))
+        self.assertIsNotNone(Person.get_by(email="jdoe@studio"))
+
+    def test_import_persons_email_is_stripped(self):
+        self._upload_csv(self._csv(Email=" test.user@example.com "))
+        self.assertIsNotNone(Person.get_by(email="test.user@example.com"))
+
     def test_import_persons_invalid_position(self):
         error = self._upload_csv(self._csv(Position="Boss"), code=400)
         self.assertIn("accepted values", error["message"])
@@ -160,7 +183,7 @@ class ImportCsvPersonsTestCase(ApiDBTestCase):
         # "artist" is the lowercase label of role code "user": labels and
         # codes both resolve regardless of casing.
         self._upload_csv(self._csv(Role="artist", Seniority="SENIOR"))
-        person = Person.get_by(email="test.user@gmail.com")
+        person = Person.get_by(email="test.user@example.com")
         self.assertEqual(person.role.code, "user")
         self.assertEqual(person.seniority.code, "senior")
 
@@ -169,28 +192,28 @@ class ImportCsvPersonsTestCase(ApiDBTestCase):
 
     def test_import_persons_unknown_studio(self):
         self._upload_csv(self._csv(Studio="Ghost Studio"), code=400)
-        self.assertIsNone(Person.get_by(email="test.user@gmail.com"))
+        self.assertIsNone(Person.get_by(email="test.user@example.com"))
 
     def test_import_persons_unknown_department(self):
         # Departments are resolved before the person is written, so a bad
         # name fails the row without leaving an orphan person behind.
         self._upload_csv(self._csv(Departments="Ghost"), code=400)
-        self.assertIsNone(Person.get_by(email="test.user@gmail.com"))
+        self.assertIsNone(Person.get_by(email="test.user@example.com"))
 
     def test_import_persons_studio_and_department_are_case_sensitive(self):
         # Studio "Test Studio" and department "Animation" exist; names are
         # matched exactly, so a casing mismatch fails the row (400) without
         # leaving an orphan person behind.
         self._upload_csv(self._csv(Studio="test studio"), code=400)
-        self.assertIsNone(Person.get_by(email="test.user@gmail.com"))
+        self.assertIsNone(Person.get_by(email="test.user@example.com"))
         self._upload_csv(self._csv(Departments="animation"), code=400)
-        self.assertIsNone(Person.get_by(email="test.user@gmail.com"))
+        self.assertIsNone(Person.get_by(email="test.user@example.com"))
 
         # The exact names resolve as expected.
         self._upload_csv(
             self._csv(Studio="Test Studio", Departments="Animation")
         )
-        person = Person.get_by(email="test.user@gmail.com")
+        person = Person.get_by(email="test.user@example.com")
         self.assertEqual(Studio.get(person.studio_id).name, "Test Studio")
         self.assertEqual(
             [department.name for department in person.departments],
@@ -208,10 +231,10 @@ class ImportCsvPersonsTestCase(ApiDBTestCase):
         values = {column: "" for column in self.columns}
         values["Last Name"] = "User"
         values["First Name"] = "Valid"
-        values["Email"] = "valid.user@gmail.com"
+        values["Email"] = "valid.user@example.com"
         row_valid = ";".join(f'"{values[column]}"' for column in self.columns)
         values["First Name"] = "Broken"
-        values["Email"] = "broken.user@gmail.com"
+        values["Email"] = "broken.user@example.com"
         values["Country"] = "France"
         row_broken = ";".join(f'"{values[column]}"' for column in self.columns)
         error = self._upload_csv(
@@ -219,14 +242,14 @@ class ImportCsvPersonsTestCase(ApiDBTestCase):
         )
         self.assertEqual(error["line_number"], 3)
         self.assertEqual(error["imported_rows"], 1)
-        self.assertIsNotNone(Person.get_by(email="valid.user@gmail.com"))
-        self.assertIsNone(Person.get_by(email="broken.user@gmail.com"))
+        self.assertIsNotNone(Person.get_by(email="valid.user@example.com"))
+        self.assertIsNone(Person.get_by(email="broken.user@example.com"))
 
     def _csv(self, **overrides):
         values = {column: "" for column in self.columns}
         values["First Name"] = "Test"
         values["Last Name"] = "User"
-        values["Email"] = "test.user@gmail.com"
+        values["Email"] = "test.user@example.com"
         values.update(overrides)
         header = ";".join(f'"{column}"' for column in self.columns)
         row = ";".join(f'"{values[column]}"' for column in self.columns)

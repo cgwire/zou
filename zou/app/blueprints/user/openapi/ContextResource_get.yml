@@ -1,0 +1,101 @@
+Get context
+---
+description: Retrieve context information required to properly run a
+  full application connected to the API. Returns user, project, and
+  system configuration data.
+tags:
+- User
+responses:
+    200:
+      description: Context information for running a full app connected to the API
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              user:
+                type: object
+                description: Current user information
+                example: {"id": "uuid", "name": "John Doe"}
+              projects:
+                type: array
+                items:
+                  type: object
+                description: Available projects
+                example: [{"id": "uuid", "name": "Project 1"}]
+              departments:
+                type: array
+                items:
+                  type: object
+                description: Available departments
+                example: [{"id": "uuid", "name": "Animation"}]
+              asset_types:
+                type: array
+                items:
+                  type: object
+                description: Available asset types
+                example: [{"id": "uuid", "name": "Character"}]
+              task_types:
+                type: array
+                items:
+                  type: object
+                description: Available task types
+                example: [{"id": "uuid", "name": "Modeling"}]
+              task_status:
+                type: array
+                items:
+                  type: object
+                description: Available task statuses
+                example: [{"id": "uuid", "name": "In Progress"}]
+              custom_actions:
+                type: array
+                items:
+                  type: object
+                description: Available custom actions
+                example: [{"id": "uuid", "name": "Custom Action"}]
+              status_automations:
+                type: array
+                items:
+                  type: object
+                description: Available status automations
+                example: [{"id": "uuid", "name": "Auto Status"}]
+              studios:
+                type: array
+                items:
+                  type: object
+                description: Available studios
+                example: [{"id": "uuid", "name": "Studio Name"}]
+              notification_count:
+                type: integer
+                description: Number of unread notifications
+                example: 5
+              persons:
+                type: array
+                items:
+                  type: object
+                description: Available persons
+                example: [{"id": "uuid", "name": "John Doe"}]
+              project_status:
+                type: array
+                items:
+                  type: object
+                description: Available project statuses
+                example: [{"id": "uuid", "name": "Active"}]
+              search_filters:
+                type: array
+                items:
+                  type: object
+                description: Available search filters
+                example: [{"id": "uuid", "name": "My Filter"}]
+              search_filter_groups:
+                type: array
+                items:
+                  type: object
+                description: Available search filter groups
+                example: [{"id": "uuid", "name": "Filter Group"}]
+              preview_background_files:
+                type: array
+                items:
+                  type: object
+                description: Available preview background files
+                example: [{"id": "uuid", "name": "background.jpg"}]

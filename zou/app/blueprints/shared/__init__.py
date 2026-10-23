@@ -1,25 +1,25 @@
 from flask import Blueprint
 
-from zou.app.utils.api import configure_api_from_blueprint
-
 from zou.app.blueprints.shared.resources import (
-    SharedPlaylistResource,
-    SharedPlaylistGuestResource,
-    SharedPlaylistCommentsResource,
-    SharedPlaylistCommentResource,
-    SharedPlaylistCommentAttachmentsResource,
-    SharedPlaylistCommentAttachmentResource,
-    SharedPlaylistAttachmentFileResource,
     SharedPlaylistAnnotationsResource,
-    SharedPlaylistPreviewFileResource,
-    SharedPlaylistPreviewFileMovieResource,
-    SharedPlaylistPreviewFileThumbnailResource,
-    SharedPlaylistPreviewFileOriginalResource,
-    SharedPlaylistPreviewFileExtensionResource,
-    SharedPlaylistPreviewFileTileResource,
-    SharedPlaylistPreviewFileDownloadResource,
+    SharedPlaylistAttachmentFileResource,
+    SharedPlaylistCommentAttachmentResource,
+    SharedPlaylistCommentAttachmentsResource,
+    SharedPlaylistCommentResource,
+    SharedPlaylistCommentsResource,
     SharedPlaylistContextResource,
+    SharedPlaylistGuestResource,
+    SharedPlaylistPersonThumbnailResource,
+    SharedPlaylistPreviewFileDownloadResource,
+    SharedPlaylistPreviewFileExtensionResource,
+    SharedPlaylistPreviewFileMovieResource,
+    SharedPlaylistPreviewFileOriginalResource,
+    SharedPlaylistPreviewFileResource,
+    SharedPlaylistPreviewFileThumbnailResource,
+    SharedPlaylistPreviewFileTileResource,
+    SharedPlaylistResource,
 )
+from zou.app.utils.api import configure_api_from_blueprint
 
 routes = [
     (
@@ -69,6 +69,11 @@ routes = [
         "/shared/playlists/<token>/pictures/thumbnails/"
         "preview-files/<preview_file_id>.png",
         SharedPlaylistPreviewFileThumbnailResource,
+    ),
+    (
+        "/shared/playlists/<token>/pictures/thumbnails/"
+        "persons/<person_id>.png",
+        SharedPlaylistPersonThumbnailResource,
     ),
     (
         "/shared/playlists/<token>/pictures/originals/"

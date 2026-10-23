@@ -1,43 +1,43 @@
 import itertools
+import logging
 from operator import itemgetter
 
-from zou.app.models.file_status import FileStatus
-from zou.app import config
+from sqlalchemy import desc, func
+from sqlalchemy.exc import IntegrityError, StatementError
+from sqlalchemy.sql.expression import and_
 
+from zou.app import config
+from zou.app.exceptions import (
+    EntryAlreadyExistsException,
+    NoOutputFileException,
+    OutputFileNotFoundException,
+    OutputTypeNotFoundException,
+    PreviewBackgroundFileNotFoundException,
+    PreviewFileNotFoundException,
+    SoftwareNotFoundException,
+    WorkingFileNotFoundException,
+)
 from zou.app.models.entity import Entity
+from zou.app.models.file_status import FileStatus
 from zou.app.models.output_file import OutputFile
 from zou.app.models.output_type import OutputType
-from zou.app.models.preview_file import PreviewFile
 from zou.app.models.preview_background_file import PreviewBackgroundFile
+from zou.app.models.preview_file import PreviewFile
 from zou.app.models.software import Software
 from zou.app.models.task import Task
 from zou.app.models.working_file import WorkingFile
-
-
-from zou.app.services import entities_service
+from zou.app.services import (
+    entities_service,
+)
 from zou.app.services.base_service import (
     get_instance,
     get_or_create_instance_by_name,
 )
-
-from zou.app.services.exception import (
-    WorkingFileNotFoundException,
-    OutputFileNotFoundException,
-    OutputTypeNotFoundException,
-    PreviewFileNotFoundException,
-    SoftwareNotFoundException,
-    NoOutputFileException,
-    EntryAlreadyExistsException,
-    PreviewBackgroundFileNotFoundException,
-)
-
 from zou.app.stores import file_store, queue_store
+from zou.app.utils import cache, events, fields, fs, query as query_utils
 
-from zou.app.utils import cache, fields, fs, events, query as query_utils
+logger = logging.getLogger(__name__)
 
-from sqlalchemy import desc, func
-from sqlalchemy.exc import StatementError, IntegrityError
-from sqlalchemy.sql.expression import and_
 
 MOVIE_PREFIXES = ["previews", "lowdef", "source"]
 LOWDEF_MOVIE_PREFIXES = ["lowdef", "previews", "source"]
@@ -115,8 +115,15 @@ def _apply_output_file_filters(
     return query
 
 
+def clear_file_status_cache():
+    """
+    Drop the memoized default file status.
+    """
+    cache.cache.delete_memoized(get_default_file_status)
+
+
 @cache.memoize_function(240)
-def get_default_status():
+def get_default_file_status():
     """
     Return default file status to set on a file when it is created.
     """
@@ -356,7 +363,7 @@ def create_new_output_revision(
         except NoOutputFileException:
             revision = 1
 
-    file_status_id = file_status_id or get_default_status()["id"]
+    file_status_id = file_status_id or get_default_file_status()["id"]
 
     try:
         output_file = OutputFile.get_by(
@@ -825,6 +832,7 @@ def get_preview_file_for_access(preview_file_id):
                 PreviewFile.task_id,
                 PreviewFile.updated_at,
                 PreviewFile.extension,
+                PreviewFile.status,
                 PreviewFile.data[MOVIE_PREFIXES_KEY].label("movie_prefixes"),
             )
             .filter_by(id=preview_file_id)
@@ -839,6 +847,7 @@ def get_preview_file_for_access(preview_file_id):
         "task_id": str(row.task_id) if row.task_id else None,
         "updated_at": fields.serialize_value(row.updated_at),
         "extension": row.extension,
+        "status": getattr(row.status, "code", row.status),
         # None for a preview file that predates the record, a list of
         # prefixes otherwise.
         "movie_prefixes": (
@@ -872,6 +881,10 @@ def _is_movie_stored(prefix, preview_file_id):
     try:
         return file_store.exists_movie(prefix, preview_file_id)
     except Exception:
+        logger.warning(
+            f"Could not check the store for {prefix}-{preview_file_id}.",
+            exc_info=1,
+        )
         return False
 
 
@@ -931,6 +944,7 @@ def probe_and_record_movie_prefixes(
     own app context when there is none.
     """
     from flask import has_app_context
+
     from zou.app import app
 
     def run():
@@ -1104,23 +1118,6 @@ def get_output_files_for_output_type_and_asset_instance(
     return OutputFile.serialize_list(output_files)
 
 
-def remove_preview_file(preview_file_id):
-    """
-    Delete a preview file row and tell the clients. The stored binaries
-    are the business of deletion_service.
-    """
-    preview_file = get_preview_file_raw(preview_file_id)
-    preview_file.delete()
-    clear_preview_file_cache(str(preview_file_id))
-    task = Task.get(preview_file.task_id)
-    events.emit(
-        "preview-file:delete",
-        {"preview_file_id": preview_file_id},
-        project_id=str(task.project_id),
-    )
-    return preview_file.serialize()
-
-
 def get_preview_files_for_project(project_id, page=-1):
     """
     Return all preview files for given project.
@@ -1199,3 +1196,17 @@ def update_preview_background_file(preview_background_file_id, data):
     preview_background_file.update(data)
     clear_preview_background_file_cache(preview_background_file_id)
     return preview_background_file.serialize()
+
+
+def remove_quietly(remove_from_store, prefix, file_id, force=False):
+    """
+    Mark a stored file deleted, ignoring a failure: the database row is
+    already gone, a leftover object in the store must not fail the
+    deletion.
+    """
+    try:
+        remove_from_store(prefix, file_id, force=force)
+    except Exception:
+        logger.warning(
+            f"Stored file {prefix}-{file_id} could not be removed.", exc_info=1
+        )

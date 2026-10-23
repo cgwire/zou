@@ -1,5 +1,4 @@
 from tests.base import ApiDBTestCase
-
 from zou.app.models.person import Person
 from zou.app.models.studio import Studio
 
@@ -32,22 +31,22 @@ class PersonsCsvExportTestCase(ApiDBTestCase):
         #   byte-order sort (a-z > A-Z); interleaving it between "Aaron" and
         #   "John" proves the sort is case-insensitive.
         Person.create(
-            first_name="Aaron", last_name="Zzz", email="aaron.zzz@gmail.com"
+            first_name="Aaron", last_name="Zzz", email="aaron.zzz@example.com"
         )
         Person.create(
-            first_name="bob", last_name="Aaa", email="bob.aaa@gmail.com"
+            first_name="bob", last_name="Aaa", email="bob.aaa@example.com"
         )
         csv_persons = self.get_raw("/export/csv/persons.csv")
         expected_result = (
             "First Name;Last Name;Email;Phone;Role;Departments;Studio;"
             "Country;Contract Type;Position;Seniority;Daily Salary;Active\r\n"
-            "Aaron;Zzz;aaron.zzz@gmail.com;;user;;;;open-ended;artist;mid;0;"
+            "Aaron;Zzz;aaron.zzz@example.com;;user;;;;open-ended;artist;mid;0;"
             "yes\r\n"
-            "bob;Aaa;bob.aaa@gmail.com;;user;;;;open-ended;artist;mid;0;"
+            "bob;Aaa;bob.aaa@example.com;;user;;;;open-ended;artist;mid;0;"
             "yes\r\n"
-            "John;Did;john.did@gmail.com;;admin;;;;open-ended;artist;mid;0;"
+            "John;Did;john.did@example.com;;admin;;;;open-ended;artist;mid;0;"
             "yes\r\n"
-            "John;Doe;john.doe@gmail.com;;user;Animation,Modeling;"
+            "John;Doe;john.doe@example.com;;user;Animation,Modeling;"
             "Test Studio;FR;open-ended;lead;senior;300;yes\r\n"
         )
         self.assertEqual(csv_persons, expected_result)

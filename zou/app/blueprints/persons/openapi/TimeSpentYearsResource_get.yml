@@ -1,0 +1,13 @@
+Get time spent years table
+---
+description: Return a table giving time spent by user and by month for
+  all years.
+tags:
+  - Persons
+responses:
+  200:
+    description: Table giving time spent by user and by month for all years
+    content:
+      application/json:
+        schema:
+          type: object

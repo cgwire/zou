@@ -1,7 +1,8 @@
+from flasgger import swag_from
 from flask import abort
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
-from flask.views import MethodView
 from zou.app.utils import csv_utils, permissions
 
 
@@ -18,24 +19,10 @@ class BaseCsvExport(MethodView):
         pass
 
     @jwt_required()
+    @swag_from("openapi/BaseCsvExport_get.yml")
     def get(self):
         """
         Export csv
-        ---
-        tags:
-          - Export
-        description: Export data as CSV file. Returns a CSV file with
-          formatted data based on the resource type.
-        produces:
-          - text/csv
-        responses:
-            200:
-              description: CSV file exported successfully
-              content:
-                text/csv:
-                  schema:
-                    type: string
-                  example: "Header1,Header2\nValue1,Value2"
         """
         self.prepare_import()
         try:

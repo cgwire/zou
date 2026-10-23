@@ -1,46 +1,61 @@
+from flasgger import swag_from
+from flask import jsonify
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
-
-from zou.app.services import budget_service
-from zou.app.mixin import ArgsMixin
-from zou.app.services import (
-    persons_service,
-    projects_service,
-    schedule_service,
-    tasks_service,
-    time_spents_service,
-    permissions_service,
-    user_service,
-)
-from zou.app.utils import permissions, validation
 from zou.app.blueprints.projects.schemas import (
-    ProjectTeamSchema,
-    ProjectTeamRoleSchema,
-    ProjectAssetTypeSchema,
-    ProjectTaskTypeSchema,
-    ProjectTaskStatusSchema,
-    ProjectSettingsBatchSchema,
-    ProjectStatusAutomationSchema,
-    ProjectPreviewBackgroundSchema,
-    MetadataDescriptorSchema,
-    MetadataDescriptorUpdateSchema,
-    MetadataDescriptorOrderSchema,
-    AllProjectsMetadataDescriptorUpdateSchema,
     AllProjectsMetadataDescriptorOrderSchema,
-    BudgetSchema,
-    BudgetUpdateSchema,
+    AllProjectsMetadataDescriptorUpdateSchema,
     BudgetEntrySchema,
     BudgetEntryUpdateSchema,
+    BudgetSchema,
+    BudgetUpdateSchema,
+    MetadataDescriptorOrderSchema,
+    MetadataDescriptorSchema,
+    MetadataDescriptorUpdateSchema,
+    PreviewAccountOpenSchema,
+    ProjectAssetTypeSchema,
+    ProjectPreviewBackgroundSchema,
+    ProjectSettingsBatchSchema,
+    ProjectStatusAutomationSchema,
+    ProjectTaskStatusClientAllowedSchema,
+    ProjectTaskStatusSchema,
+    ProjectTaskTypeSchema,
+    ProjectTaskTypeSoftwareSchema,
+    ProjectTeamRoleSchema,
+    ProjectTeamSchema,
     ScheduleVersionCopySchema,
 )
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     BudgetNotFoundException,
     TaskTypeNotFoundException,
     WrongDateFormatException,
     WrongParameterException,
 )
+from zou.app.mixin import ArgsMixin
 from zou.app.models.metadata_descriptor import METADATA_DESCRIPTOR_TYPES
+from zou.app.services import (
+    budget_service,
+    metadata_descriptors_service,
+    permissions_service,
+    persons_service,
+    preview_accounts_service,
+    projects_service,
+    schedule_service,
+    task_types_service,
+    time_spents_service,
+    user_service,
+)
+from zou.app.utils import permissions, validation
+
+VALID_METADATA_ENTITY_TYPES = [
+    "Asset",
+    "Shot",
+    "Edit",
+    "Episode",
+    "Sequence",
+    "Project",
+]
 
 
 class OpenProjectsResource(MethodView, ArgsMixin):
@@ -50,46 +65,10 @@ class OpenProjectsResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
+    @swag_from("openapi/OpenProjectsResource_get.yml")
     def get(self):
         """
         Get open projects
-        ---
-        description: Return the list of projects currently running. Most of the
-          time, past projects are not needed.
-        tags:
-          - Projects
-        parameters:
-          - in: query
-            name: name
-            required: false
-            schema:
-              type: string
-            description: Filter projects by name
-            example: "My Project"
-        responses:
-          200:
-            description: All running projects
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        description: Project unique identifier
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      name:
-                        type: string
-                        description: Project name
-                        example: "My Project"
-                      project_status_id:
-                        type: string
-                        format: uuid
-                        description: Project status unique identifier
-                        example: b35b7fb5-df86-5776-b181-68564193d36
         """
         name = self.get_text_parameter("name")
         if permissions.has_admin_permissions():
@@ -105,46 +84,10 @@ class AllProjectsResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
+    @swag_from("openapi/AllProjectsResource_get.yml")
     def get(self):
         """
         Get all projects
-        ---
-        description: Return all projects listed in database. Ensure that user has
-          at least the manager level before that.
-        tags:
-          - Projects
-        parameters:
-          - in: query
-            name: name
-            required: false
-            schema:
-              type: string
-            description: Filter projects by name
-            example: "My Project"
-        responses:
-          200:
-            description: All projects listed in database
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        description: Project unique identifier
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      name:
-                        type: string
-                        description: Project name
-                        example: "My Project"
-                      project_status_id:
-                        type: string
-                        format: uuid
-                        description: Project status unique identifier
-                        example: b35b7fb5-df86-5776-b181-68564193d36
         """
         name = self.get_text_parameter("name")
         try:
@@ -167,62 +110,19 @@ class ProductionTeamResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
+    @swag_from("openapi/ProductionTeamResource_get.yml")
     def get(self, project_id):
         """
         Get production team
-        ---
-        description: Return the people listed in a production team.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: People listed in a production team
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        description: Person unique identifier
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      first_name:
-                        type: string
-                        description: Person first name
-                        example: "John"
-                      last_name:
-                        type: string
-                        description: Person last name
-                        example: "Doe"
-                      email:
-                        type: string
-                        description: Person email address
-                        example: "john.doe@example.com"
-                      project_role:
-                        type: string
-                        nullable: true
-                        description: Person role on this project only. Null
-                          means the person's global role applies.
-                        example: "supervisor"
         """
         permissions_service.check_project_access(project_id)
-        role_map = projects_service.get_team_roles(project_id)
+        role_map = projects_service.get_team_roles(str(project_id))
         persons = []
         for person in projects_service.get_team_raw(project_id):
             if permissions.has_manager_permissions():
                 data = person.serialize_safe(relations=True)
+            elif permissions.has_client_permissions():
+                data = person.present_client()
             else:
                 data = person.present_minimal()
             data["project_role"] = role_map.get(str(person.id))
@@ -230,61 +130,10 @@ class ProductionTeamResource(MethodView, ArgsMixin):
         return persons
 
     @jwt_required()
+    @swag_from("openapi/ProductionTeamResource_post.yml")
     def post(self, project_id):
         """
         Add person to production team
-        ---
-        description: Add a person to a production team.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - person_id
-                properties:
-                  person_id:
-                    type: string
-                    format: uuid
-                    description: Person unique identifier
-                    example: b35b7fb5-df86-5776-b181-68564193d36
-                  role:
-                    type: string
-                    nullable: true
-                    description: Role of the person on this project only.
-                      Null means the person's global role applies.
-                    enum: [user, supervisor, manager, client, vendor, null]
-        responses:
-          201:
-            description: Person added to the production team
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Project unique identifier
-                      example: a24a6ea4-ce75-4665-a070-57453082c25
-                    name:
-                      type: string
-                      description: Project name
-                      example: "My Project"
-          400:
-            description: Invalid parameters
         """
         body = validation.validate_request_body(ProjectTeamSchema)
 
@@ -300,76 +149,20 @@ class ProductionTeamResource(MethodView, ArgsMixin):
 class ProductionTeamMemberResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/ProductionTeamMemberResource_delete.yml")
     def delete(self, project_id, person_id):
         """
         Remove person from production team
-        ---
-        description: Remove people listed in a production team.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Person unique identifier
-            example: b35b7fb5-df86-5776-b181-68564193d36
-        responses:
-          204:
-            description: Person removed from production team
         """
         permissions_service.check_manager_project_access(project_id)
         projects_service.remove_team_member(project_id, person_id)
         return "", 204
 
     @jwt_required()
+    @swag_from("openapi/ProductionTeamMemberResource_put.yml")
     def put(self, project_id, person_id):
         """
         Set team member role
-        ---
-        description: Set the role of a person on this production only.
-                     A null role restores the person's global role.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-          - in: path
-            name: person_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  role:
-                    type: string
-                    nullable: true
-                    enum: [user, supervisor, manager, client, vendor, null]
-        responses:
-          200:
-            description: Role updated
-          400:
-            description: Person is not a member of the project team
         """
         body = validation.validate_request_body(ProjectTeamRoleSchema)
         permissions_service.check_manager_project_access(project_id)
@@ -378,61 +171,66 @@ class ProductionTeamMemberResource(MethodView):
         )
 
 
+class ProductionPreviewAccountResource(MethodView):
+
+    @jwt_required()
+    @swag_from("openapi/ProductionPreviewAccountResource_get.yml")
+    def get(self, project_id):
+        """
+        Get the preview account of a production
+        """
+        permissions_service.check_manager_project_access(project_id)
+        return jsonify(
+            preview_accounts_service.get_preview_account(project_id)
+        )
+
+    @jwt_required()
+    @swag_from("openapi/ProductionPreviewAccountResource_post.yml")
+    def post(self, project_id):
+        """
+        Create the preview account of a production or reset its password
+        """
+        permissions_service.check_manager_project_access(project_id)
+        account, password = (
+            preview_accounts_service.create_or_reset_preview_account(
+                project_id
+            )
+        )
+        return {**account, "password": password}, 201
+
+    @jwt_required()
+    @swag_from("openapi/ProductionPreviewAccountResource_put.yml")
+    def put(self, project_id):
+        """
+        Open or close the access window of the preview account
+        """
+        body = validation.validate_request_body(PreviewAccountOpenSchema)
+        permissions_service.check_manager_project_access(project_id)
+        return preview_accounts_service.set_preview_account_open(
+            project_id, body.is_open
+        )
+
+    @jwt_required()
+    @swag_from("openapi/ProductionPreviewAccountResource_delete.yml")
+    def delete(self, project_id):
+        """
+        Delete the preview account of a production
+        """
+        permissions_service.check_manager_project_access(project_id)
+        preview_accounts_service.delete_preview_account(project_id)
+        return "", 204
+
+
 class ProductionAssetTypeResource(MethodView, ArgsMixin):
     """
     Allow to add an asset type linked to a production.
     """
 
     @jwt_required()
+    @swag_from("openapi/ProductionAssetTypeResource_post.yml")
     def post(self, project_id):
         """
         Add asset type to production
-        ---
-        description: Add an asset type linked to a production.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - asset_type_id
-                properties:
-                  asset_type_id:
-                    type: string
-                    format: uuid
-                    description: Asset type unique identifier
-                    example: b35b7fb5-df86-5776-b181-68564193d36
-        responses:
-          201:
-            description: Asset type added to production
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Project unique identifier
-                      example: a24a6ea4-ce75-4665-a070-57453082c25
-                    name:
-                      type: string
-                      description: Project name
-                      example: "My Project"
-          400:
-            description: Invalid parameters
         """
         body = validation.validate_request_body(ProjectAssetTypeSchema)
 
@@ -446,33 +244,10 @@ class ProductionAssetTypeResource(MethodView, ArgsMixin):
 class ProductionAssetTypeRemoveResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/ProductionAssetTypeRemoveResource_delete.yml")
     def delete(self, project_id, asset_type_id):
         """
         Remove asset type from production
-        ---
-        description: Remove an asset type from a production.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: asset_type_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Asset type unique identifier
-            example: b35b7fb5-df86-5776-b181-68564193d36
-        responses:
-          204:
-            description: Asset type removed from production
         """
         permissions_service.check_manager_project_access(project_id)
         projects_service.remove_asset_type_setting(project_id, asset_type_id)
@@ -485,31 +260,10 @@ class ProductionTaskTypesResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
+    @swag_from("openapi/ProductionTaskTypesResource_get.yml")
     def get(self, project_id):
         """
         Get production task types
-        ---
-        description: Retrieve task types linked to the production.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: Task types linked to the production
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
         """
         permissions_service.check_project_access(project_id)
         return projects_service.get_project_task_types(project_id)
@@ -521,65 +275,20 @@ class ProductionTaskTypeResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
+    @swag_from("openapi/ProductionTaskTypeResource_post.yml")
     def post(self, project_id):
         """
         Add task type to production
-        ---
-        description: Add a task type linked to a production.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - task_type_id
-                properties:
-                  task_type_id:
-                    type: string
-                    format: uuid
-                    description: Task type unique identifier
-                    example: b35b7fb5-df86-5776-b181-68564193d36
-                  priority:
-                    type: string
-                    description: Task type priority
-                    example: "None"
-        responses:
-          201:
-            description: Task type added to production
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Project unique identifier
-                      example: a24a6ea4-ce75-4665-a070-57453082c25
-                    name:
-                      type: string
-                      description: Project name
-                      example: "My Project"
-          400:
-            description: Invalid parameters
         """
         body = validation.validate_request_body(ProjectTaskTypeSchema)
 
         permissions_service.check_manager_project_access(project_id)
         project = projects_service.add_task_type_setting(
-            project_id, body.task_type_id, body.priority
+            project_id,
+            body.task_type_id,
+            body.priority,
+            bitrates=body.bitrates(),
+            is_client_visible=body.is_client_visible,
         )
         return project, 201
 
@@ -590,36 +299,69 @@ class ProductionTaskTypeRemoveResource(MethodView):
     """
 
     @jwt_required()
+    @swag_from("openapi/ProductionTaskTypeRemoveResource_delete.yml")
     def delete(self, project_id, task_type_id):
         """
         Remove task type from production
-        ---
-        description: Remove a task type from a production.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: task_type_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Task type unique identifier
-            example: b35b7fb5-df86-5776-b181-68564193d36
-        responses:
-          204:
-            description: Task type removed from production
         """
         permissions_service.check_manager_project_access(project_id)
         projects_service.remove_task_type_setting(project_id, task_type_id)
+        return "", 204
+
+
+class ProductionTaskTypeSoftwaresResource(MethodView):
+    """
+    Allow to list the softwares set for the task types of a production.
+    """
+
+    @jwt_required()
+    @swag_from("openapi/ProductionTaskTypeSoftwaresResource_get.yml")
+    def get(self, project_id):
+        """
+        Get production task type softwares
+        """
+        permissions_service.check_project_access(project_id)
+        return projects_service.get_task_type_software_links(project_id)
+
+
+class ProductionTaskTypeSoftwareResource(MethodView):
+    """
+    Allow to link a software to a task type of a production.
+    """
+
+    @jwt_required()
+    @swag_from("openapi/ProductionTaskTypeSoftwareResource_post.yml")
+    def post(self, project_id, task_type_id):
+        """
+        Add software to production task type
+        """
+        body = validation.validate_request_body(ProjectTaskTypeSoftwareSchema)
+        permissions_service.check_supervisor_project_task_type_access(
+            project_id, task_type_id
+        )
+        link = projects_service.add_task_type_software(
+            project_id, task_type_id, body.software_id
+        )
+        return link, 201
+
+
+class ProductionTaskTypeSoftwareRemoveResource(MethodView):
+    """
+    Allow to unlink a software from a task type of a production.
+    """
+
+    @jwt_required()
+    @swag_from("openapi/ProductionTaskTypeSoftwareRemoveResource_delete.yml")
+    def delete(self, project_id, task_type_id, software_id):
+        """
+        Remove software from production task type
+        """
+        permissions_service.check_supervisor_project_task_type_access(
+            project_id, task_type_id
+        )
+        projects_service.remove_task_type_software(
+            project_id, task_type_id, software_id
+        )
         return "", 204
 
 
@@ -629,85 +371,19 @@ class ProductionTaskStatusResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
+    @swag_from("openapi/ProductionTaskStatusResource_get.yml")
     def get(self, project_id):
         """
         Get production task statuses
-        ---
-        description: Return task statuses linked to a production.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: Task statuses linked to production
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
         """
         permissions_service.check_project_access(project_id)
         return projects_service.get_project_task_statuses(project_id)
 
     @jwt_required()
+    @swag_from("openapi/ProductionTaskStatusResource_post.yml")
     def post(self, project_id):
         """
         Add task status to production
-        ---
-        description: Add a task status linked to a production.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - task_status_id
-                properties:
-                  task_status_id:
-                    type: string
-                    format: uuid
-                    description: Task status unique identifier
-                    example: b35b7fb5-df86-5776-b181-68564193d36
-        responses:
-          201:
-            description: Task status added to production
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Project unique identifier
-                      example: a24a6ea4-ce75-4665-a070-57453082c25
-                    name:
-                      type: string
-                      description: Project name
-                      example: "My Project"
-          400:
-            description: Invalid parameters
         """
         body = validation.validate_request_body(ProjectTaskStatusSchema)
 
@@ -720,37 +396,28 @@ class ProductionTaskStatusResource(MethodView, ArgsMixin):
 
 class ProductionTaskStatusRemoveResource(MethodView):
     """
-    Allow to remove a task status linked to a production.
+    Allow to update or remove a task status linked to a production.
     """
 
     @jwt_required()
+    @swag_from("openapi/ProductionTaskStatusRemoveResource_put.yml")
+    def put(self, project_id, task_status_id):
+        """
+        Set production task status client permission
+        """
+        body = validation.validate_request_body(
+            ProjectTaskStatusClientAllowedSchema
+        )
+        permissions_service.check_manager_project_access(project_id)
+        return projects_service.set_task_status_client_allowed(
+            project_id, task_status_id, body.is_client_allowed
+        )
+
+    @jwt_required()
+    @swag_from("openapi/ProductionTaskStatusRemoveResource_delete.yml")
     def delete(self, project_id, task_status_id):
         """
         Remove task status from production
-        ---
-        description: Remove a task status from a production.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: task_status_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Task status unique identifier
-            example: b35b7fb5-df86-5776-b181-68564193d36
-        responses:
-          204:
-            description: Task status removed from production
         """
         permissions_service.check_manager_project_access(project_id)
         projects_service.remove_task_status_setting(project_id, task_status_id)
@@ -764,59 +431,10 @@ class ProductionSettingsBatchResource(MethodView):
     """
 
     @jwt_required()
+    @swag_from("openapi/ProductionSettingsBatchResource_post.yml")
     def post(self, project_id):
         """
         Add settings to production batch
-        ---
-        description: Add several task types (with their priority), task
-          statuses and asset types to a production in a single request,
-          replacing one link request per item. Unknown ids are skipped.
-          When replace_task_types is set, the task type list is the full
-          wanted set and existing links absent from it are removed.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  task_types:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        task_type_id:
-                          type: string
-                          format: uuid
-                        priority:
-                          type: integer
-                  task_status_ids:
-                    type: array
-                    items:
-                      type: string
-                      format: uuid
-                  asset_type_ids:
-                    type: array
-                    items:
-                      type: string
-                      format: uuid
-                  replace_task_types:
-                    type: boolean
-                    default: false
-        responses:
-          200:
-            description: Updated project
         """
         body = validation.validate_request_body(ProjectSettingsBatchSchema)
         permissions_service.check_manager_project_access(project_id)
@@ -835,83 +453,19 @@ class ProductionStatusAutomationResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
+    @swag_from("openapi/ProductionStatusAutomationResource_get.yml")
     def get(self, project_id):
         """
         Get production status automations
-        ---
-        description: Get status automations linked to a production.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: Status automations linked to production
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
         """
         permissions_service.check_manager_project_access(project_id)
         return projects_service.get_project_status_automations(project_id)
 
     @jwt_required()
+    @swag_from("openapi/ProductionStatusAutomationResource_post.yml")
     def post(self, project_id):
         """
         Add status automation to production
-        ---
-        description: Add a status automation linked to a production.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - status_automation_id
-                properties:
-                  status_automation_id:
-                    type: string
-                    format: uuid
-                    description: Status automation unique identifier
-                    example: b35b7fb5-df86-5776-b181-68564193d36
-        responses:
-          201:
-            description: Status automation added to production
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Project unique identifier
-                      example: a24a6ea4-ce75-4665-a070-57453082c25
-                    name:
-                      type: string
-                      description: Project name
-                      example: "My Project"
         """
         body = validation.validate_request_body(ProjectStatusAutomationSchema)
 
@@ -928,33 +482,10 @@ class ProductionStatusAutomationRemoveResource(MethodView):
     """
 
     @jwt_required()
+    @swag_from("openapi/ProductionStatusAutomationRemoveResource_delete.yml")
     def delete(self, project_id, status_automation_id):
         """
         Remove status automation from production
-        ---
-        description: Remove a status automation from a production.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: status_automation_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Status automation unique identifier
-            example: b35b7fb5-df86-5776-b181-68564193d36
-        responses:
-          204:
-            description: Status automation removed from production
         """
         permissions_service.check_manager_project_access(project_id)
         projects_service.remove_status_automation_setting(
@@ -969,31 +500,10 @@ class ProductionPreviewBackgroundFileResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
+    @swag_from("openapi/ProductionPreviewBackgroundFileResource_get.yml")
     def get(self, project_id):
         """
         Get production preview background files
-        ---
-        description: Return preview background files linked to a production.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: Preview background files linked to production
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
         """
         permissions_service.check_project_access(project_id)
         return projects_service.get_project_preview_background_files(
@@ -1001,53 +511,10 @@ class ProductionPreviewBackgroundFileResource(MethodView, ArgsMixin):
         )
 
     @jwt_required()
+    @swag_from("openapi/ProductionPreviewBackgroundFileResource_post.yml")
     def post(self, project_id):
         """
         Add preview background file to production
-        ---
-        description: Add a preview background file linked to a production.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - preview_background_file_id
-                properties:
-                  preview_background_file_id:
-                    type: string
-                    format: uuid
-                    description: Preview background file unique identifier
-                    example: b35b7fb5-df86-5776-b181-68564193d36
-        responses:
-          201:
-            description: Preview background file added to production
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Project unique identifier
-                      example: a24a6ea4-ce75-4665-a070-57453082c25
-                    name:
-                      type: string
-                      description: Project name
-                      example: "My Project"
         """
         body = validation.validate_request_body(ProjectPreviewBackgroundSchema)
 
@@ -1064,33 +531,12 @@ class ProductionPreviewBackgroundFileRemoveResource(MethodView):
     """
 
     @jwt_required()
+    @swag_from(
+        "openapi/ProductionPreviewBackgroundFileRemoveResource_delete.yml"
+    )
     def delete(self, project_id, preview_background_file_id):
         """
         Remove preview background file from production
-        ---
-        description: Remove a preview background file from a production.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: preview_background_file_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Preview background file unique identifier
-            example: b35b7fb5-df86-5776-b181-68564193d36
-        responses:
-          204:
-            description: Preview background file removed from production
         """
         permissions_service.check_manager_project_access(project_id)
         projects_service.remove_preview_background_file_setting(
@@ -1106,134 +552,26 @@ class ProductionMetadataDescriptorsResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
+    @swag_from("openapi/ProductionMetadataDescriptorsResource_get.yml")
     def get(self, project_id):
         """
         Get metadata descriptors
-        ---
-        description: Get all metadata descriptors. It serves to describe extra
-          fields listed in the data attribute of entities.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: All metadata descriptors
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
         """
         permissions_service.check_project_access(project_id)
-        for_client = permissions.has_client_permissions()
-        return projects_service.get_metadata_descriptors(
-            project_id, for_client
+        for_client, vendor_departments = (
+            permissions_service.get_descriptor_visibility(
+                permissions.get_effective_role()
+            )
+        )
+        return metadata_descriptors_service.get_metadata_descriptors(
+            project_id, for_client, vendor_departments
         )
 
     @jwt_required()
+    @swag_from("openapi/ProductionMetadataDescriptorsResource_post.yml")
     def post(self, project_id):
         """
         Create metadata descriptor
-        ---
-        description: Create a new metadata descriptor. It serves to describe
-          extra fields listed in the data attribute of entities.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - name
-                  - data_type
-                properties:
-                  entity_type:
-                    type: string
-                    description: Entity type for the metadata descriptor
-                    enum:
-                      - Asset
-                      - Shot
-                      - Edit
-                      - Episode
-                      - Sequence
-                      - Project
-                      - Task
-                    default: "Asset"
-                    example: "Asset"
-                  task_type_id:
-                    type: string
-                    format: uuid
-                    description: Task type the descriptor is scoped to.
-                      Required for Task descriptors, forbidden otherwise.
-                    example: a24a6ea4-ce75-4665-a070-57453082c25
-                  name:
-                    type: string
-                    description: Name of the metadata descriptor
-                    example: "Custom Field"
-                  data_type:
-                    type: string
-                    description: Type of data (string, number, boolean, etc.)
-                    example: "string"
-                  for_client:
-                    type: string
-                    description: Whether the descriptor is for client
-                    default: "False"
-                    example: "True"
-                  choices:
-                    type: array
-                    description: List of choices for the descriptor
-                    items:
-                      type: string
-                    example: ["option1", "option2"]
-                  departments:
-                    type: array
-                    description: List of departments for the descriptor
-                    items:
-                      type: string
-                    example: ["department1", "department2"]
-        responses:
-          201:
-            description: Metadata descriptor created
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Metadata descriptor unique identifier
-                      example: a24a6ea4-ce75-4665-a070-57453082c25
-                    name:
-                      type: string
-                      description: Metadata descriptor name
-                      example: "Custom Field"
-                    data_type:
-                      type: string
-                      description: Metadata descriptor data type
-                      example: "string"
-          400:
-            description: Invalid parameters
         """
         body = validation.validate_request_body(MetadataDescriptorSchema)
 
@@ -1261,7 +599,7 @@ class ProductionMetadataDescriptorsResource(MethodView, ArgsMixin):
                     "Task metadata descriptors require a task_type_id."
                 )
             try:
-                tasks_service.get_task_type(body.task_type_id)
+                task_types_service.get_task_type(body.task_type_id)
             except TaskTypeNotFoundException:
                 raise WrongParameterException("Task type not found.")
         elif body.task_type_id is not None:
@@ -1274,7 +612,7 @@ class ProductionMetadataDescriptorsResource(MethodView, ArgsMixin):
             raise WrongParameterException("Invalid data_type")
 
         return (
-            projects_service.add_metadata_descriptor(
+            metadata_descriptors_service.add_metadata_descriptor(
                 project_id,
                 body.entity_type,
                 body.name,
@@ -1295,111 +633,36 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
+    @swag_from("openapi/ProductionMetadataDescriptorResource_get.yml")
     def get(self, project_id, metadata_descriptor_id):
         """
         Get metadata descriptor
-        ---
-        description: Get a metadata descriptor. Descriptors serve to describe
-          extra fields listed in the data attribute of entities.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: metadata_descriptor_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Metadata descriptor unique identifier
-            example: b35b7fb5-df86-5776-b181-68564193d36
-        responses:
-          200:
-            description: Metadata descriptor
-            content:
-              application/json:
-                schema:
-                  type: object
         """
         permissions_service.check_project_access(project_id)
-        return projects_service.get_metadata_descriptor(metadata_descriptor_id)
+        descriptor = (
+            metadata_descriptors_service.get_project_metadata_descriptor(
+                project_id, metadata_descriptor_id
+            )
+        )
+        permissions_service.check_metadata_descriptor_access(descriptor)
+        return descriptor
 
     @jwt_required()
+    @swag_from("openapi/ProductionMetadataDescriptorResource_put.yml")
     def put(self, project_id, metadata_descriptor_id):
         """
         Update metadata descriptor
-        ---
-        description: Update a metadata descriptor. Descriptors serve to
-          describe extra fields listed in the data attribute of entities.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: metadata_descriptor_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Metadata descriptor unique identifier
-            example: b35b7fb5-df86-5776-b181-68564193d36
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  name:
-                    type: string
-                    description: Name of the metadata descriptor
-                    example: "Custom Field"
-                  for_client:
-                    type: string
-                    description: Whether the descriptor is for client
-                    default: "False"
-                    example: "True"
-                  choices:
-                    type: array
-                    description: List of choices for the descriptor
-                    items:
-                      type: string
-                    example: ["option1", "option2"]
-                  departments:
-                    type: array
-                    description: List of departments for the descriptor
-                    items:
-                      type: string
-                    example: ["department1", "department2"]
-        responses:
-          200:
-            description: Metadata descriptor updated
-            content:
-              application/json:
-                schema:
-                  type: object
         """
         body = validation.validate_request_body(MetadataDescriptorUpdateSchema)
+        # The rights are checked on the project of the path: a descriptor of
+        # another project must not be reachable through it.
+        descriptor = (
+            metadata_descriptors_service.get_project_metadata_descriptor(
+                project_id, metadata_descriptor_id
+            )
+        )
         permissions_service.check_all_departments_access(
-            project_id,
-            projects_service.get_metadata_descriptor(metadata_descriptor_id)[
-                "departments"
-            ]
-            + body.departments,
+            project_id, descriptor["departments"] + body.departments
         )
 
         if body.name is not None and len(body.name) == 0:
@@ -1410,130 +673,39 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
             raise WrongParameterException("Invalid data_type")
 
         args = body.model_dump()
-        return projects_service.update_metadata_descriptor(
+        return metadata_descriptors_service.update_metadata_descriptor(
             metadata_descriptor_id, args
         )
 
     @jwt_required()
+    @swag_from("openapi/ProductionMetadataDescriptorResource_delete.yml")
     def delete(self, project_id, metadata_descriptor_id):
         """
         Delete metadata descriptor
-        ---
-        description: Delete a metadata descriptor. Descriptors serve to describe
-          extra fields listed in the data attribute of entities.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: metadata_descriptor_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Metadata descriptor unique identifier
-            example: b35b7fb5-df86-5776-b181-68564193d36
-        responses:
-          204:
-            description: Metadata descriptor deleted
         """
-        permissions_service.check_all_departments_access(
-            project_id,
-            projects_service.get_metadata_descriptor(metadata_descriptor_id)[
-                "departments"
-            ],
+        # The rights are checked on the project of the path: a descriptor of
+        # another project must not be reachable through it.
+        descriptor = (
+            metadata_descriptors_service.get_project_metadata_descriptor(
+                project_id, metadata_descriptor_id
+            )
         )
-        projects_service.remove_metadata_descriptor(metadata_descriptor_id)
+        permissions_service.check_all_departments_access(
+            project_id, descriptor["departments"]
+        )
+        metadata_descriptors_service.remove_metadata_descriptor(
+            metadata_descriptor_id
+        )
         return "", 204
 
 
 class ProductionMetadataDescriptorsReorderResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/ProductionMetadataDescriptorsReorderResource_post.yml")
     def post(self, project_id):
         """
         Reorder metadata descriptors
-        ---
-        description: Reorder metadata descriptors for a specific entity type
-          and project. Descriptors are reordered based on the list of
-          descriptor IDs provided in the request body. Position is set
-          according to the order in the list.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - entity_type
-                  - descriptor_ids
-                properties:
-                  entity_type:
-                    type: string
-                    description: Entity type for the metadata descriptors
-                    enum:
-                      - Asset
-                      - Shot
-                      - Edit
-                      - Episode
-                      - Sequence
-                      - Project
-                    example: "Asset"
-                  descriptor_ids:
-                    type: array
-                    description: List of metadata descriptor IDs in the
-                      desired order
-                    items:
-                      type: string
-                      format: uuid
-                    example: ["b35b7fb5-df86-5776-b181-68564193d36", "c46c8gc6-eg97-6887-c292-79675204e47"]
-        responses:
-          200:
-            description: Metadata descriptors reordered successfully
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        description: Metadata descriptor unique identifier
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      name:
-                        type: string
-                        description: Metadata descriptor name
-                        example: "Custom Field"
-                      position:
-                        type: integer
-                        description: Position of the descriptor
-                        example: 1
-                      entity_type:
-                        type: string
-                        description: Entity type
-                        example: "Asset"
-          400:
-            description: Invalid parameters or descriptor not found
         """
         body = validation.validate_request_body(MetadataDescriptorOrderSchema)
 
@@ -1553,19 +725,9 @@ class ProductionMetadataDescriptorsReorderResource(MethodView, ArgsMixin):
                 "Episode, Edit, Project, or Task."
             )
 
-        return projects_service.reorder_metadata_descriptors(
+        return metadata_descriptors_service.reorder_metadata_descriptors(
             project_id, body.entity_type, body.descriptor_ids
         )
-
-
-VALID_METADATA_ENTITY_TYPES = [
-    "Asset",
-    "Shot",
-    "Edit",
-    "Episode",
-    "Sequence",
-    "Project",
-]
 
 
 def _accessible_open_project_ids():
@@ -1600,37 +762,10 @@ def _check_metadata_entity_type(entity_type):
 class AllProjectsMetadataDescriptorsResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/AllProjectsMetadataDescriptorsResource_post.yml")
     def post(self):
         """
         Create a metadata descriptor on all accessible projects
-        ---
-        description: Create the same metadata descriptor in every open
-          project the user can access that does not already own one with the
-          same field name. Replaces one create request per project.
-        tags:
-          - Projects
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - name
-                  - data_type
-                properties:
-                  entity_type:
-                    type: string
-                    default: "Project"
-                  name:
-                    type: string
-                  data_type:
-                    type: string
-        responses:
-          201:
-            description: Created descriptors
-          400:
-            description: Invalid parameters
         """
         permissions.check_manager_permissions()
         body = validation.validate_request_body(MetadataDescriptorSchema)
@@ -1639,7 +774,7 @@ class AllProjectsMetadataDescriptorsResource(MethodView):
         if body.data_type not in types:
             raise WrongParameterException("Invalid data_type")
         return (
-            projects_service.add_metadata_descriptor_to_projects(
+            metadata_descriptors_service.add_metadata_descriptor_to_projects(
                 _accessible_open_project_ids(),
                 body.entity_type,
                 body.name,
@@ -1655,26 +790,10 @@ class AllProjectsMetadataDescriptorsResource(MethodView):
 class AllProjectsMetadataDescriptorResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/AllProjectsMetadataDescriptorResource_put.yml")
     def put(self, field_name):
         """
         Update a metadata descriptor on all accessible projects
-        ---
-        description: Update every metadata descriptor sharing the given field
-          name across the open projects the user can access. Replaces one
-          update request per project.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: field_name
-            required: true
-            schema:
-              type: string
-        responses:
-          200:
-            description: Updated descriptors
-          400:
-            description: Invalid parameters
         """
         permissions.check_manager_permissions()
         body = validation.validate_request_body(
@@ -1693,7 +812,7 @@ class AllProjectsMetadataDescriptorResource(MethodView, ArgsMixin):
         # Keep the field name untouched when the name is not being changed.
         if body.name:
             changes["name"] = body.name
-        return projects_service.update_metadata_descriptor_on_projects(
+        return metadata_descriptors_service.update_metadata_descriptor_on_projects(
             _accessible_open_project_ids(),
             body.entity_type,
             field_name,
@@ -1701,36 +820,15 @@ class AllProjectsMetadataDescriptorResource(MethodView, ArgsMixin):
         )
 
     @jwt_required()
+    @swag_from("openapi/AllProjectsMetadataDescriptorResource_delete.yml")
     def delete(self, field_name):
         """
         Delete a metadata descriptor from all accessible projects
-        ---
-        description: Remove every metadata descriptor sharing the given field
-          name across the open projects the user can access. Replaces one
-          delete request per project.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: field_name
-            required: true
-            schema:
-              type: string
-          - in: query
-            name: entity_type
-            required: true
-            schema:
-              type: string
-        responses:
-          200:
-            description: Removed descriptor ids
-          400:
-            description: Invalid parameters
         """
         permissions.check_manager_permissions()
         entity_type = self.get_text_parameter("entity_type")
         _check_metadata_entity_type(entity_type)
-        return projects_service.remove_metadata_descriptor_from_projects(
+        return metadata_descriptors_service.remove_metadata_descriptor_from_projects(
             _accessible_open_project_ids(), entity_type, field_name
         )
 
@@ -1738,43 +836,19 @@ class AllProjectsMetadataDescriptorResource(MethodView, ArgsMixin):
 class AllProjectsMetadataDescriptorsReorderResource(MethodView):
 
     @jwt_required()
+    @swag_from(
+        "openapi/AllProjectsMetadataDescriptorsReorderResource_post.yml"
+    )
     def post(self):
         """
         Reorder metadata descriptors on all accessible projects
-        ---
-        description: Apply the same column order, given as a list of field
-          names, on every open project the user can access. Replaces one
-          reorder request per project.
-        tags:
-          - Projects
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - entity_type
-                  - field_order
-                properties:
-                  entity_type:
-                    type: string
-                  field_order:
-                    type: array
-                    items:
-                      type: string
-        responses:
-          200:
-            description: Updated descriptors
-          400:
-            description: Invalid parameters
         """
         permissions.check_manager_permissions()
         body = validation.validate_request_body(
             AllProjectsMetadataDescriptorOrderSchema
         )
         _check_metadata_entity_type(body.entity_type)
-        return projects_service.reorder_metadata_descriptors_on_projects(
+        return metadata_descriptors_service.reorder_metadata_descriptors_on_projects(
             _accessible_open_project_ids(),
             body.entity_type,
             body.field_order,
@@ -1787,34 +861,14 @@ class ProductionTimeSpentsResource(MethodView):
     """
 
     @jwt_required()
+    @swag_from("openapi/ProductionTimeSpentsResource_get.yml")
     def get(self, project_id):
         """
         Get production time spents
-        ---
-        description: Retrieve time spents for given production.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: All time spents of given production
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
         """
         permissions_service.check_project_access(project_id)
-        return tasks_service.get_time_spents_for_project(project_id)
+        permissions_service.block_access_to_client()
+        return time_spents_service.get_time_spents_for_project(project_id)
 
 
 class ProductionMilestonesResource(MethodView):
@@ -1823,33 +877,13 @@ class ProductionMilestonesResource(MethodView):
     """
 
     @jwt_required()
+    @swag_from("openapi/ProductionMilestonesResource_get.yml")
     def get(self, project_id):
         """
         Get production milestones
-        ---
-        description: Retrieve milestones for given production.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: All milestones of given production
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
         """
         permissions_service.check_project_access(project_id)
+        permissions_service.block_access_to_client()
         return schedule_service.get_milestones_for_project(project_id)
 
 
@@ -1859,33 +893,13 @@ class ProductionScheduleItemsResource(MethodView):
     """
 
     @jwt_required()
+    @swag_from("openapi/ProductionScheduleItemsResource_get.yml")
     def get(self, project_id):
         """
         Get production schedule items
-        ---
-        description: Retrieve schedule items for given production.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: All schedule items of given production
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
         """
         permissions_service.check_project_access(project_id)
+        permissions_service.block_access_to_client()
         permissions_service.block_access_to_vendor()
         return schedule_service.get_schedule_items(project_id)
 
@@ -1896,31 +910,10 @@ class ProductionTaskTypeScheduleItemsResource(MethodView):
     """
 
     @jwt_required()
+    @swag_from("openapi/ProductionTaskTypeScheduleItemsResource_get.yml")
     def get(self, project_id):
         """
         Get production task type schedule items
-        ---
-        description: Retrieve task type schedule items for given production.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: All task types schedule items of given production
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
         """
         permissions_service.check_project_access(project_id)
         permissions_service.block_access_to_vendor()
@@ -1933,46 +926,10 @@ class ProductionAssetTypesScheduleItemsResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
+    @swag_from("openapi/ProductionAssetTypesScheduleItemsResource_get.yml")
     def get(self, project_id, task_type_id):
         """
         Get asset types schedule items
-        ---
-        description: Retrieve asset types schedule items for given task type.
-        tags:
-          - Projects
-        parameters:
-          - in: query
-            name: episode_id
-            required: false
-            schema:
-              type: string
-              format: uuid
-            description: Restrict results to asset types of the given episode
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: task_type_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Task type unique identifier
-            example: b35b7fb5-df86-5776-b181-68564193d36
-        responses:
-          200:
-            description: All asset types schedule items for given task type
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
         """
         permissions_service.check_project_access(project_id)
         permissions_service.block_access_to_vendor()
@@ -1990,46 +947,10 @@ class ProductionEpisodesScheduleItemsResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
+    @swag_from("openapi/ProductionEpisodesScheduleItemsResource_get.yml")
     def get(self, project_id, task_type_id):
         """
         Get episodes schedule items
-        ---
-        description: Retrieve episodes schedule items for given task type.
-        tags:
-          - Projects
-        parameters:
-          - in: query
-            name: episode_id
-            required: false
-            schema:
-              type: string
-              format: uuid
-            description: Restrict results to the given episode
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: task_type_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Task type unique identifier
-            example: b35b7fb5-df86-5776-b181-68564193d36
-        responses:
-          200:
-            description: All episodes schedule items for given task type
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
         """
         permissions_service.check_project_access(project_id)
         permissions_service.block_access_to_vendor()
@@ -2047,46 +968,10 @@ class ProductionSequencesScheduleItemsResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
+    @swag_from("openapi/ProductionSequencesScheduleItemsResource_get.yml")
     def get(self, project_id, task_type_id):
         """
         Get sequences schedule items
-        ---
-        description: Retrieve sequences schedule items for given task type.
-        tags:
-          - Projects
-        parameters:
-          - in: query
-            name: episode_id
-            required: false
-            schema:
-              type: string
-              format: uuid
-            description: Restrict results to sequences of the given episode
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: task_type_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Task type unique identifier
-            example: b35b7fb5-df86-5776-b181-68564193d36
-        responses:
-          200:
-            description: All sequences schedule items for given task type
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
         """
         permissions_service.check_project_access(project_id)
         permissions_service.block_access_to_vendor()
@@ -2104,46 +989,10 @@ class ProductionEditsScheduleItemsResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
+    @swag_from("openapi/ProductionEditsScheduleItemsResource_get.yml")
     def get(self, project_id, task_type_id):
         """
         Get edits schedule items
-        ---
-        description: Retrieve edits schedule items for given task type.
-        tags:
-          - Projects
-        parameters:
-          - in: query
-            name: episode_id
-            required: false
-            schema:
-              type: string
-              format: uuid
-            description: Restrict results to edits of the given episode
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: task_type_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Task type unique identifier
-            example: b35b7fb5-df86-5776-b181-68564193d36
-        responses:
-          200:
-            description: All edits schedule items for given task type
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
         """
         permissions_service.check_project_access(project_id)
         permissions_service.block_access_to_vendor()
@@ -2158,94 +1007,20 @@ class ProductionEditsScheduleItemsResource(MethodView, ArgsMixin):
 class ProductionBudgetsResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/ProductionBudgetsResource_get.yml")
     def get(self, project_id):
         """
         Get production budgets
-        ---
-        description: Retrieve budgets for given production.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: All budgets of given production
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
         """
         permissions_service.check_manager_project_access(project_id)
         self.check_id_parameter(project_id)
         return budget_service.get_budgets(project_id)
 
     @jwt_required()
+    @swag_from("openapi/ProductionBudgetsResource_post.yml")
     def post(self, project_id):
         """
         Create budget
-        ---
-        description: Create a budget for given production.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - name
-                properties:
-                  name:
-                    type: string
-                    description: Budget name
-                    example: "New Budget"
-                  currency:
-                    type: string
-                    description: Budget currency code
-                    default: "USD"
-                    example: "USD"
-        responses:
-          201:
-            description: Budget created
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Budget unique identifier
-                      example: a24a6ea4-ce75-4665-a070-57453082c25
-                    name:
-                      type: string
-                      description: Budget name
-                      example: "New Budget"
-                    currency:
-                      type: string
-                      description: Budget currency code
-                      example: "USD"
-          400:
-            description: Invalid parameters
         """
         self.check_id_parameter(project_id)
         permissions_service.check_manager_project_access(project_id)
@@ -2261,37 +1036,10 @@ class ProductionBudgetResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
+    @swag_from("openapi/ProductionBudgetResource_get.yml")
     def get(self, project_id, budget_id):
         """
         Get budget
-        ---
-        description: Retrieve a budget for given production.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: budget_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Budget unique identifier
-            example: b35b7fb5-df86-5776-b181-68564193d36
-        responses:
-          200:
-            description: Budget retrieved
-            content:
-              application/json:
-                schema:
-                  type: object
         """
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
@@ -2302,52 +1050,10 @@ class ProductionBudgetResource(MethodView, ArgsMixin):
         return budget
 
     @jwt_required()
+    @swag_from("openapi/ProductionBudgetResource_put.yml")
     def put(self, project_id, budget_id):
         """
         Update budget
-        ---
-        description: Update a budget for given production.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: budget_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Budget unique identifier
-            example: b35b7fb5-df86-5776-b181-68564193d36
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  name:
-                    type: string
-                    description: Budget name
-                    example: "New Budget"
-                  currency:
-                    type: string
-                    description: Budget currency code
-                    example: "USD"
-        responses:
-          200:
-            description: Budget updated
-            content:
-              application/json:
-                schema:
-                  type: object
         """
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
@@ -2358,33 +1064,10 @@ class ProductionBudgetResource(MethodView, ArgsMixin):
         )
 
     @jwt_required()
+    @swag_from("openapi/ProductionBudgetResource_delete.yml")
     def delete(self, project_id, budget_id):
         """
         Delete budget
-        ---
-        description: Delete a budget for given production.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: budget_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Budget unique identifier
-            example: b35b7fb5-df86-5776-b181-68564193d36
-        responses:
-          204:
-            description: Budget deleted
         """
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
@@ -2396,39 +1079,10 @@ class ProductionBudgetResource(MethodView, ArgsMixin):
 class ProductionBudgetEntriesResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/ProductionBudgetEntriesResource_get.yml")
     def get(self, project_id, budget_id):
         """
         Get budget entries
-        ---
-        description: Retrieve budget entries for given production.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: budget_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Budget unique identifier
-            example: b35b7fb5-df86-5776-b181-68564193d36
-        responses:
-          200:
-            description: All budget entries of given production and budget
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
         """
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
@@ -2436,91 +1090,10 @@ class ProductionBudgetEntriesResource(MethodView, ArgsMixin):
         return budget_service.get_budget_entries(budget_id)
 
     @jwt_required()
+    @swag_from("openapi/ProductionBudgetEntriesResource_post.yml")
     def post(self, project_id, budget_id):
         """
         Create budget entry
-        ---
-        description: Create a budget entry for given production and budget.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: budget_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Budget unique identifier
-            example: b35b7fb5-df86-5776-b181-68564193d36
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - department_id
-                properties:
-                  department_id:
-                    type: string
-                    format: uuid
-                    description: Department unique identifier
-                    example: c46c8gc6-eg97-6887-c292-79675204e47
-                  person_id:
-                    type: string
-                    format: uuid
-                    description: Person unique identifier
-                    example: a24a6ea4-ce75-4665-a070-57453082c25
-                  start_date:
-                    type: string
-                    format: date
-                    description: Budget entry start date
-                    example: "2025-01-01"
-                  months_duration:
-                    type: integer
-                    description: Budget entry duration in months
-                    example: 12
-                  daily_salary:
-                    type: number
-                    format: float
-                    description: Daily salary amount
-                    example: 100.00
-                  position:
-                    type: string
-                    description: Position name
-                    example: "Artist"
-                  seniority:
-                    type: string
-                    description: Seniority level
-                    example: "Mid"
-        responses:
-          201:
-            description: Budget entry created
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Budget entry unique identifier
-                      example: a24a6ea4-ce75-4665-a070-57453082c25
-                    department_id:
-                      type: string
-                      format: uuid
-                      description: Department unique identifier
-                      example: c46c8gc6-eg97-6887-c292-79675204e47
-          400:
-            description: Invalid parameters
         """
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
@@ -2541,45 +1114,10 @@ class ProductionBudgetEntriesResource(MethodView, ArgsMixin):
 class ProductionBudgetEntryResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/ProductionBudgetEntryResource_get.yml")
     def get(self, project_id, budget_id, entry_id):
         """
         Get budget entry
-        ---
-        description: Retrieve a budget entry for given production and budget.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: budget_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Budget unique identifier
-            example: b35b7fb5-df86-5776-b181-68564193d36
-          - in: path
-            name: entry_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Budget entry unique identifier
-            example: c46c8gc6-eg97-6887-c292-79675204e47
-        responses:
-          200:
-            description: Budget entry retrieved
-            content:
-              application/json:
-                schema:
-                  type: object
         """
         permissions_service.check_manager_project_access(project_id)
         self.check_id_parameter(project_id)
@@ -2591,89 +1129,10 @@ class ProductionBudgetEntryResource(MethodView, ArgsMixin):
         return budget_service.get_budget_entry(entry_id)
 
     @jwt_required()
+    @swag_from("openapi/ProductionBudgetEntryResource_put.yml")
     def put(self, project_id, budget_id, entry_id):
         """
         Update budget entry
-        ---
-        description: Update a budget entry for given production and budget.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: budget_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Budget unique identifier
-            example: b35b7fb5-df86-5776-b181-68564193d36
-          - in: path
-            name: entry_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Budget entry unique identifier
-            example: c46c8gc6-eg97-6887-c292-79675204e47
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  department_id:
-                    type: string
-                    format: uuid
-                    description: Department unique identifier
-                    example: c46c8gc6-eg97-6887-c292-79675204e47
-                  person_id:
-                    type: string
-                    format: uuid
-                    description: Person unique identifier
-                    example: a24a6ea4-ce75-4665-a070-57453082c25
-                  start_date:
-                    type: string
-                    format: date
-                    description: Budget entry start date
-                    example: "2025-01-01"
-                  months_duration:
-                    type: integer
-                    description: Budget entry duration in months
-                    example: 12
-                  daily_salary:
-                    type: number
-                    format: float
-                    description: Daily salary amount
-                    example: 100.00
-                  position:
-                    type: string
-                    description: Position name
-                    example: "Artist"
-                  seniority:
-                    type: string
-                    description: Seniority level
-                    example: "Mid"
-                  exceptions:
-                    type: object
-                    description: Map of amount exceptions. Key is the date and
-                      value is the amount
-                    example: {"2025-01-01": 1000, "2025-02-01": 2000}
-        responses:
-          200:
-            description: Budget entry updated
-            content:
-              application/json:
-                schema:
-                  type: object
         """
         permissions_service.check_manager_project_access(project_id)
         self.check_id_parameter(project_id)
@@ -2683,41 +1142,10 @@ class ProductionBudgetEntryResource(MethodView, ArgsMixin):
         return budget_service.update_budget_entry(entry_id, body.model_dump())
 
     @jwt_required()
+    @swag_from("openapi/ProductionBudgetEntryResource_delete.yml")
     def delete(self, project_id, budget_id, entry_id):
         """
         Delete budget entry
-        ---
-        description: Delete a budget entry for given production and budget.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: budget_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Budget unique identifier
-            example: b35b7fb5-df86-5776-b181-68564193d36
-          - in: path
-            name: entry_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Budget entry unique identifier
-            example: c46c8gc6-eg97-6887-c292-79675204e47
-        responses:
-          204:
-            description: Budget entry deleted
         """
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
@@ -2730,31 +1158,10 @@ class ProductionBudgetEntryResource(MethodView, ArgsMixin):
 class ProductionMonthTimeSpentsResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/ProductionMonthTimeSpentsResource_get.yml")
     def get(self, project_id):
         """
         Get production month time spents
-        ---
-        description: Get aggregated time spents by month for given project.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: Aggregated time spents for given project and month
-            content:
-              application/json:
-                schema:
-                  type: object
-          400:
-            description: Wrong ID format
         """
         permissions.check_admin_permissions()
         self.check_id_parameter(project_id)
@@ -2767,41 +1174,10 @@ class ProductionMonthTimeSpentsResource(MethodView, ArgsMixin):
 class ProductionScheduleVersionTaskLinksResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/ProductionScheduleVersionTaskLinksResource_get.yml")
     def get(self, production_schedule_version_id):
         """
         Get production schedule version task links
-        ---
-        description: Get task links for given production schedule version.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: production_schedule_version_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Production schedule version unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: task_type_id
-            required: false
-            schema:
-              type: string
-              format: uuid
-            description: Task type unique identifier for filtering
-            example: b35b7fb5-df86-5776-b181-68564193d36
-        responses:
-          200:
-            description: Task links for given production schedule version
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-          400:
-            description: Wrong ID format
         """
         production_schedule_version = (
             schedule_service.get_production_schedule_version(
@@ -2837,38 +1213,12 @@ class ProductionScheduleVersionSetTaskLinksFromTasksResource(
 ):
 
     @jwt_required()
+    @swag_from(
+        "openapi/ProductionScheduleVersionSetTaskLinksFromTasksResource_post.yml"
+    )
     def post(self, production_schedule_version_id):
         """
         Set task links from tasks
-        ---
-        description: Set task links for given production schedule version from
-          tasks.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: production_schedule_version_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Production schedule version unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: Task links created
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    success:
-                      type: boolean
-                    task_link_count:
-                      type: integer
-                      description: Number of task links copied
-          400:
-            description: Wrong ID format
         """
         production_schedule_version = (
             schedule_service.get_production_schedule_version(
@@ -2889,37 +1239,12 @@ class ProductionScheduleVersionApplyToProductionResource(
 ):
 
     @jwt_required()
+    @swag_from(
+        "openapi/ProductionScheduleVersionApplyToProductionResource_post.yml"
+    )
     def post(self, production_schedule_version_id):
         """
         Apply production schedule version
-        ---
-        description: Apply production schedule version to production.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: production_schedule_version_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Production schedule version unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-          200:
-            description: Production schedule version applied
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    success:
-                      type: boolean
-                    task_count:
-                      type: integer
-                      description: Number of tasks updated
-          400:
-            description: Wrong ID format
         """
         production_schedule_version = (
             schedule_service.get_production_schedule_version(
@@ -2942,53 +1267,12 @@ class ProductionScheduleVersionSetTaskLinksFromProductionScheduleVersionResource
 ):
 
     @jwt_required()
+    @swag_from(
+        "openapi/ProductionScheduleVersionSetTaskLinksFromProductionScheduleVersionResource_post.yml"
+    )
     def post(self, production_schedule_version_id):
         """
         Set task links from production schedule version
-        ---
-        description: Set task links for given production schedule version from
-          another production schedule version.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: production_schedule_version_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Production schedule version unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - production_schedule_version_id
-                properties:
-                  production_schedule_version_id:
-                    type: string
-                    format: uuid
-                    description: Source production schedule version unique
-                      identifier
-                    example: b35b7fb5-df86-5776-b181-68564193d36
-        responses:
-          200:
-            description: Task links created
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    success:
-                      type: boolean
-                    task_link_count:
-                      type: integer
-                      description: Number of task links copied
-          400:
-            description: Wrong ID format
         """
         production_schedule_version = (
             schedule_service.get_production_schedule_version(
@@ -3029,78 +1313,10 @@ class ProductionTaskTypesTimeSpentsResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
+    @swag_from("openapi/ProductionTaskTypesTimeSpentsResource_get.yml")
     def get(self, project_id, task_type_id):
         """
         Get production task type time spents
-        ---
-        description: Retrieve time spents for a task type in the production.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: task_type_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Task type unique identifier
-            example: b35b7fb5-df86-5776-b181-68564193d36
-          - in: query
-            name: start_date
-            required: false
-            schema:
-              type: string
-              format: date
-            description: Start date for filtering time spents
-            example: "2022-07-01"
-          - in: query
-            name: end_date
-            required: false
-            schema:
-              type: string
-              format: date
-            description: End date for filtering time spents
-            example: "2022-07-31"
-        responses:
-          200:
-            description: All time spents for given task type and project
-            content:
-              application/json:
-                schema:
-                  type: dict
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        description: Time spent unique identifier
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      person_id:
-                        type: string
-                        format: uuid
-                        description: Person unique identifier
-                        example: b35b7fb5-df86-5776-b181-68564193d36
-                      duration:
-                        type: number
-                        format: float
-                        description: Time spent duration in hours
-                        example: 8.5
-                      date:
-                        type: string
-                        format: date
-                        description: Date of time spent entry
-                        example: "2022-07-15"
-          400:
-            description: Invalid date range parameters
         """
         permissions_service.check_manager_project_access(project_id)
         self.check_id_parameter(task_type_id)
@@ -3122,74 +1338,10 @@ class ProductionDayOffsResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
+    @swag_from("openapi/ProductionDayOffsResource_get.yml")
     def get(self, project_id):
         """
         Get production day offs
-        ---
-        description: Retrieve all day offs for a production.
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Project unique identifier
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: start_date
-            required: false
-            schema:
-              type: string
-              format: date
-            description: Start date for filtering day offs
-            example: "2022-07-01"
-          - in: query
-            name: end_date
-            required: false
-            schema:
-              type: string
-              format: date
-            description: End date for filtering day offs
-            example: "2022-07-31"
-        responses:
-          200:
-            description: All day offs for given project
-            content:
-              application/json:
-                schema:
-                  type: dict
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        description: Day off unique identifier
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      person_id:
-                        type: string
-                        format: uuid
-                        description: Person unique identifier
-                        example: b35b7fb5-df86-5776-b181-68564193d36
-                      description:
-                        type: string
-                        description: Day off description
-                        example: "Vacation"
-                      date:
-                        type: string
-                        format: date
-                        description: Day off start date
-                        example: "2022-07-15"
-                      end_date:
-                        type: string
-                        format: date
-                        description: Day off end date
-                        example: "2022-07-22"
-          400:
-            description: Invalid date range parameters
         """
         permissions_service.check_project_access(project_id)
         if (

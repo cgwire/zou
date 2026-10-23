@@ -1,0 +1,74 @@
+Post comment on shared playlist
+---
+description: Add a review comment as a guest. Requires `guest_id`,
+  `task_id`, `task_status_id` and `text` when the link allows
+  commenting. Optional `password` query param if the link is
+  protected.
+tags:
+  - Playlists
+parameters:
+  - in: path
+    name: token
+    required: true
+    schema:
+      type: string
+    description: Share link token
+  - in: query
+    name: password
+    required: false
+    schema:
+      type: string
+    description: Password when the link is protected
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - guest_id
+          - task_id
+          - task_status_id
+        properties:
+          guest_id:
+            type: string
+            format: uuid
+          task_id:
+            type: string
+            format: uuid
+          task_status_id:
+            type: string
+            format: uuid
+          text:
+            type: string
+          checklist:
+            type: array
+            items:
+              type: object
+responses:
+  201:
+    description: Comment created
+    content:
+      application/json:
+        schema:
+          type: object
+  400:
+    description: Missing required body fields, unknown task status, or
+      task status not allowed for guest reviewers
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+  403:
+    description: Comments disabled for this share link, or the task
+      is not part of this shared playlist
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            error:
+              type: string

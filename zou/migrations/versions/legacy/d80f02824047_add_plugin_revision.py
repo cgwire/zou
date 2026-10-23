@@ -6,14 +6,13 @@ Create Date: 2025-05-02 16:08:57.078114
 
 """
 
-from alembic import op
 import sqlalchemy as sa
 from alembic import op
-import sqlalchemy as sa
-from zou.migrations.utils.base import BaseMixin
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm.session import Session
+
+from zou.migrations.utils.base import BaseMixin
 
 # revision identifiers, used by Alembic.
 revision = "d80f02824047"

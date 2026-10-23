@@ -1,7 +1,6 @@
 from tests.base import ApiDBTestCase
-from zou.app.models.task import Task
 from zou.app.models.person import Person
-
+from zou.app.models.task import Task
 from zou.app.utils import fields
 
 
@@ -70,6 +69,20 @@ class TaskTestCase(ApiDBTestCase):
         }
         task = self.post("data/tasks", data)
         self.assertEqual(task["name"], "main")
+
+    def test_create_task_refuses_an_incomplete_body(self):
+        data = {
+            "project_id": self.project.id,
+            "task_status_id": self.task_status.id,
+            "entity_id": self.asset.id,
+        }
+        self.post("data/tasks", data, 400)
+        data["task_type_id"] = self.task_type.id
+        del data["entity_id"]
+        self.post("data/tasks", data, 400)
+        data["entity_id"] = self.asset.id
+        data["assignees"] = str(self.person.id)
+        self.post("data/tasks", data, 400)
 
     def test_update_task(self):
         task = self.get_first("data/tasks")

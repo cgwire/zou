@@ -1,0 +1,32 @@
+Get status of the API services for InfluxDB
+---
+description: Get status of the database, key value store, event stream, job queue, indexer as a JSON object.
+tags:
+  - Index
+responses:
+  '200':
+    description: Status of database, key value, event stream, job queue and time
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            database-up:
+              type: integer
+              example: 1
+            key-value-store-up:
+              type: integer
+              example: 1
+            event-stream-up:
+              type: integer
+              example: 1
+            job-queue-up:
+              type: integer
+              example: 1
+            indexer-up:
+              type: integer
+              example: 1
+            time:
+              type: number
+              format: float
+              example: 1701948600.123

@@ -1,0 +1,29 @@
+Get shared preview file metadata
+---
+description: Return preview file record when the request includes a
+  valid share token. No JWT.
+tags:
+  - Playlists
+parameters:
+  - in: path
+    name: token
+    required: true
+    schema:
+      type: string
+    description: Share link token
+  - in: path
+    name: preview_file_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Preview file unique identifier
+responses:
+  200:
+    description: Preview file metadata
+    content:
+      application/json:
+        schema:
+          type: object
+  403:
+    description: Preview file is not part of this shared playlist

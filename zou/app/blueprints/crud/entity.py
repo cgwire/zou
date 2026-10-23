@@ -1,16 +1,23 @@
 import copy
+import re
 
+from flasgger import swag_from
 from flask import current_app
 from flask_jwt_extended import jwt_required
-
 from sqlalchemy.exc import StatementError
 
+from zou.app.blueprints.crud.base import (
+    BaseModelResource,
+    BaseModelsResource,
+    build_db_error_message,
+)
+from zou.app.exceptions import WrongParameterException
 from zou.app.models.entity import (
-    Entity,
-    EntityVersion,
-    EntityLink,
-    EntityConceptLink,
     ENTITY_STATUSES,
+    Entity,
+    EntityConceptLink,
+    EntityLink,
+    EntityVersion,
 )
 from zou.app.models.project import Project
 from zou.app.models.subscription import Subscription
@@ -18,36 +25,40 @@ from zou.app.models.task import Task
 from zou.app.services import (
     assets_service,
     breakdown_service,
-    entities_service,
+    concepts_service,
     edits_service,
+    entities_service,
+    entity_types_service,
     index_service,
+    permissions_service,
     persons_service,
     shots_service,
-    permissions_service,
     user_service,
-    concepts_service,
 )
-from zou.app.utils import date_helpers, events, permissions
+from zou.app.utils import date_helpers, events, fields, permissions
 
-from zou.app.services.exception import WrongParameterException
-
-from werkzeug.exceptions import NotFound
-
-from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
+# A shot version takes the next change of its author up to a minute after
+# its last change, and up to five minutes after its creation, when that
+# change fits it: see EntityResource.get_recent_version.
+SHOT_VERSION_FOLD_DELAY = 60
+SHOT_VERSION_FOLD_MAX_DURATION = 5 * 60
 
 
 class EntityEventMixin(object):
     def emit_event(self, event_name, entity_dict):
         instance_id = entity_dict["id"]
-        type_name = shots_service.get_base_entity_type_name(entity_dict)
+        type_name = entity_types_service.get_base_entity_type_name(entity_dict)
         if event_name in ["update", "delete"]:
             if type_name == "shot":
                 shots_service.clear_shot_cache(instance_id)
             if type_name == "asset":
                 assets_service.clear_asset_cache(instance_id)
+        # ConceptFolder gives concept-folder:update and concept_folder_id,
+        # the names the concept folder routes emit.
+        words = [word.lower() for word in re.findall("[A-Z][a-z]*", type_name)]
         events.emit(
-            f"{type_name.lower()}:{event_name}",
-            {f"{type_name.lower()}_id": instance_id},
+            f"{'-'.join(words)}:{event_name}",
+            {f"{'_'.join(words)}_id": instance_id},
             project_id=entity_dict["project_id"],
         )
 
@@ -63,152 +74,18 @@ class EntitiesResource(BaseModelsResource, EntityEventMixin):
         permissions_service.check_manager_project_access(entity["project_id"])
 
     @jwt_required()
+    @swag_from("openapi/EntitiesResource_get.yml")
     def get(self):
         """
         Get entities
-        ---
-        tags:
-          - Crud
-        description: Retrieve all entities. Supports filtering via query
-          parameters and pagination. Includes project permission filtering
-          for non-admin users.
-        parameters:
-          - in: query
-            name: page
-            required: false
-            schema:
-              type: integer
-            example: 1
-            description: Page number for pagination
-          - in: query
-            name: limit
-            required: false
-            schema:
-              type: integer
-            example: 50
-            description: Number of results per page
-          - in: query
-            name: relations
-            required: false
-            schema:
-              type: boolean
-            default: false
-            example: false
-            description: Whether to include relations
-        responses:
-            200:
-              description: Entities retrieved successfully
-              content:
-                application/json:
-                  schema:
-                    oneOf:
-                      - type: array
-                        items:
-                          type: object
-                      - type: object
-                        properties:
-                          data:
-                            type: array
-                            items:
-                              type: object
-                            example: []
-                          total:
-                            type: integer
-                            example: 100
-                          nb_pages:
-                            type: integer
-                            example: 2
-                          limit:
-                            type: integer
-                            example: 50
-                          offset:
-                            type: integer
-                            example: 0
-                          page:
-                            type: integer
-                            example: 1
-            400:
-              description: Invalid filter format or query error
         """
         return super().get()
 
     @jwt_required()
+    @swag_from("openapi/EntitiesResource_post.yml")
     def post(self):
         """
         Create entity
-        ---
-        tags:
-          - Crud
-        description: Create a new entity with data provided in the request
-          body. JSON format is expected. Requires manager access to the
-          project.
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - name
-                  - project_id
-                  - entity_type_id
-                properties:
-                  name:
-                    type: string
-                    example: SH010
-                  project_id:
-                    type: string
-                    format: uuid
-                    example: a24a6ea4-ce75-4665-a070-57453082c25
-                  entity_type_id:
-                    type: string
-                    format: uuid
-                    example: b24a6ea4-ce75-4665-a070-57453082c25
-                  status:
-                    type: string
-                    example: running
-                  data:
-                    type: object
-                    example: {"frame_in": 1001, "frame_out": 1120}
-        responses:
-            201:
-              description: Entity created successfully
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      name:
-                        type: string
-                        example: SH010
-                      project_id:
-                        type: string
-                        format: uuid
-                        example: b24a6ea4-ce75-4665-a070-57453082c25
-                      entity_type_id:
-                        type: string
-                        format: uuid
-                        example: c24a6ea4-ce75-4665-a070-57453082c25
-                      status:
-                        type: string
-                        example: running
-                      data:
-                        type: object
-                        example: {"frame_in": 1001, "frame_out": 1120}
-                      created_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-            400:
-              description: Invalid data format or validation error
         """
         return super().post()
 
@@ -225,7 +102,7 @@ class EntitiesResource(BaseModelsResource, EntityEventMixin):
             )
             if permissions.has_vendor_permissions():
                 query = query.join(Task).filter(
-                    user_service.build_assignee_filter()
+                    persons_service.build_assignee_filter()
                 )
 
         return query
@@ -250,7 +127,9 @@ class EntitiesResource(BaseModelsResource, EntityEventMixin):
             self, query=query, relations=relations
         )
         for entity in entities:
-            entity["type"] = shots_service.get_base_entity_type_name(entity)
+            entity["type"] = entity_types_service.get_base_entity_type_name(
+                entity
+            )
         return entities
 
 
@@ -269,7 +148,7 @@ class EntityResource(BaseModelResource, EntityEventMixin):
 
     def serialize_instance(self, entity, relations=True):
         entity = entity.serialize(relations=relations)
-        entity["type"] = shots_service.get_base_entity_type_name(entity)
+        entity["type"] = entity_types_service.get_base_entity_type_name(entity)
         return entity
 
     def check_read_permissions(self, entity):
@@ -333,97 +212,18 @@ class EntityResource(BaseModelResource, EntityEventMixin):
         return data
 
     @jwt_required()
+    @swag_from("openapi/EntityResource_get.yml")
     def get(self, instance_id):
         """
         Get entity
-        ---
-        tags:
-          - Crud
-        description: Retrieve an entity by its ID and return it as a JSON
-          object. Supports including relations. Requires project access.
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: relations
-            required: false
-            schema:
-              type: boolean
-            default: true
-            example: true
-            description: Whether to include relations
-        responses:
-            200:
-              description: Entity retrieved successfully
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      name:
-                        type: string
-                        example: SH010
-                      project_id:
-                        type: string
-                        format: uuid
-                        example: b24a6ea4-ce75-4665-a070-57453082c25
-                      entity_type_id:
-                        type: string
-                        format: uuid
-                        example: c24a6ea4-ce75-4665-a070-57453082c25
-                      status:
-                        type: string
-                        example: running
-                      data:
-                        type: object
-                        example: {"frame_in": 1001, "frame_out": 1120}
-                      type:
-                        type: string
-                        example: shot
-                      created_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-            400:
-              description: Invalid ID format or query error
         """
         return super().get(instance_id)
 
     @jwt_required()
+    @swag_from("openapi/EntityResource_delete.yml")
     def delete(self, instance_id):
         """
         Delete entity
-        ---
-        tags:
-          - Crud
-        description: Delete an entity by its ID. Returns empty response
-          on success. Can only be deleted by creator or project manager.
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            204:
-              description: Entity deleted successfully
-            400:
-              description: Integrity error or cannot delete
         """
         return super().delete(instance_id)
 
@@ -435,69 +235,25 @@ class EntityResource(BaseModelResource, EntityEventMixin):
         )
 
     def pre_delete(self, entity):
-        if shots_service.is_sequence(entity):
-            Subscription.delete_all_by(entity_id=entity["id"])
-        EntityLink.delete_all_by(entity_in_id=entity["id"])
-        EntityLink.delete_all_by(entity_out_id=entity["id"])
-        EntityConceptLink.delete_all_by(entity_in_id=entity["id"])
-        EntityConceptLink.delete_all_by(entity_out_id=entity["id"])
+        """
+        Delete the links of the entity, and the subscriptions of a sequence,
+        without committing: the deletion of the entity commits them along,
+        or its refusal by the database (tasks, versions, child entities)
+        rolls them back.
+        """
+        if entity_types_service.is_sequence(entity):
+            Subscription.delete_all_by_no_commit(entity_id=entity["id"])
+        EntityLink.delete_all_by_no_commit(entity_in_id=entity["id"])
+        EntityLink.delete_all_by_no_commit(entity_out_id=entity["id"])
+        EntityConceptLink.delete_all_by_no_commit(entity_in_id=entity["id"])
+        EntityConceptLink.delete_all_by_no_commit(entity_out_id=entity["id"])
         return entity
 
     @jwt_required()
+    @swag_from("openapi/EntityResource_put.yml")
     def put(self, instance_id):
         """
         Update entity
-        ---
-        tags:
-          - Crud
-        description: Update an entity with data provided in the request
-          body. JSON format is expected. Supports shot versioning when
-          frame data changes.
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  name:
-                    type: string
-                    example: SH010
-                  data:
-                    type: object
-                    example: {"frame_in": 1001, "frame_out": 1120}
-        responses:
-            200:
-              description: Entity updated successfully
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      name:
-                        type: string
-                        example: SH010
-                      project_id:
-                        type: string
-                        format: uuid
-                        example: b24a6ea4-ce75-4665-a070-57453082c25
-                      data:
-                        type: object
-                        example: {"frame_in": 1001, "frame_out": 1120}
-            400:
-              description: Invalid data format or validation error
         """
         try:
             data = self.get_arguments()
@@ -517,27 +273,32 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             if data.get("source_id", None) == "null":
                 data["source_id"] = None
 
-            is_ready_for_changed = str(entity.ready_for) != data.get(
-                "ready_for", ""
+            # Only a payload that carries ready_for can change it: without
+            # this test every asset update recomputed the casting stats of
+            # each shot the asset is cast in.
+            is_ready_for_changed = (
+                "ready_for" in data
+                and fields.serialize_value(entity.ready_for)
+                != data["ready_for"]
             )
 
             entity.update(data)
             entity_dict = self.serialize_instance(entity)
 
-            if shots_service.is_shot(entity_dict):
+            if entity_types_service.is_shot(entity_dict):
                 index_service.remove_shot_index(entity_dict["id"])
                 index_service.index_shot(entity)
                 shots_service.clear_shot_cache(entity_dict["id"])
                 self.save_version_if_needed(entity_dict, previous_version)
-            elif shots_service.is_sequence(entity_dict):
+            elif entity_types_service.is_sequence(entity_dict):
                 shots_service.clear_sequence_cache(entity_dict["id"])
-            elif shots_service.is_edit(entity_dict):
+            elif entity_types_service.is_edit(entity_dict):
                 edits_service.clear_edit_cache(entity_dict["id"])
-            elif shots_service.is_episode(entity_dict):
+            elif entity_types_service.is_episode(entity_dict):
                 shots_service.clear_episode_cache(entity_dict["id"])
-            elif concepts_service.is_concept(entity_dict):
+            elif entity_types_service.is_concept(entity_dict):
                 concepts_service.clear_concept_cache(entity_dict["id"])
-            elif assets_service.is_asset(entity):
+            elif entity_types_service.is_asset(entity):
                 index_service.remove_asset_index(entity_dict["id"])
                 index_service.index_asset(entity)
                 if is_ready_for_changed:
@@ -549,45 +310,95 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             return entity_dict, 200
 
         except StatementError as exception:
+            # Only malformed values are answered here. Anything else (a
+            # permission refusal, a service error) keeps its own status
+            # through the application handlers instead of becoming a 400.
             current_app.logger.error(str(exception), exc_info=1)
-            return {"error": True, "message": str(exception)}, 400
+            return (
+                {"error": True, "message": build_db_error_message(exception)},
+                400,
+            )
         except TypeError as exception:
-            current_app.logger.error(str(exception), exc_info=1)
-            return {"error": True, "message": str(exception)}, 400
-        except NotFound as exception:
-            return {"error": True, "message": str(exception)}, 404
-        except Exception as exception:
             current_app.logger.error(str(exception), exc_info=1)
             return {"error": True, "message": str(exception)}, 400
 
     def save_version_if_needed(self, shot, previous_shot):
-        previous_data = previous_shot.get("data", {}) or {}
-        data = shot.get("data", {})
-        frame_in = data.get("frame_in", 0)
-        pframe_in = previous_data.get("frame_in", 0)
-        frame_out = data.get("frame_in", 0)
-        pframe_out = previous_data.get("frame_in", 0)
-        name = data.get("name", "")
-        pname = previous_shot["name"]
+        """
+        Record a version of given shot when its frame range or its name
+        changed. A client may send one update per field or per keystroke
+        (frame in then frame out, a number typed slowly), so such a burst
+        by one person is folded into a single version holding the final
+        values: see get_recent_version.
+        """
+        frames = self.get_frame_range(shot.get("data"))
+        previous_frames = self.get_frame_range(previous_shot.get("data"))
         version = None
-        if frame_in != pframe_in or frame_out != pframe_out or name != pname:
-            current_user_id = persons_service.get_current_user()["id"]
-            previous_updated_at = date_helpers.get_datetime_from_string(
-                previous_shot["updated_at"]
-            )
-            updated_at = date_helpers.get_datetime_from_string(
-                shot["updated_at"]
-            )
-            if (
-                date_helpers.get_date_diff(previous_updated_at, updated_at)
-                > 60
-            ):
+        if frames != previous_frames or shot["name"] != previous_shot["name"]:
+            person_id = persons_service.get_current_user()["id"]
+            version = self.get_recent_version(shot, previous_shot, person_id)
+            if version is None:
                 version = EntityVersion.create(
                     entity_id=shot["id"],
-                    name=pname,
+                    name=previous_shot["name"],
                     data=shot["data"],
-                    person_id=current_user_id,
+                    person_id=person_id,
                 )
+            else:
+                version.update({"data": shot["data"]})
+        return version
+
+    def get_frame_range(self, data):
+        """
+        Return the frame in and frame out a shot version tracks.
+        """
+        data = data or {}
+        return data.get("frame_in", 0), data.get("frame_out", 0)
+
+    def get_recent_version(self, shot, previous_shot, person_id):
+        """
+        Return the last version of given shot when the change given person
+        just made can be folded into it, or None. That version must:
+
+        - be recorded by given person. When someone else recorded the last
+          version, an older one of given person is not folded into either:
+          the history stays in order.
+        - hold the frame values this change leaves alone as the shot had
+          them, and the name the shot had when this change sets the frame
+          range. A version recorded before a rename holds the old name:
+          folding a frame change would pair it with a range the shot never
+          had under that name. One recorded before a frame change made by a
+          route that records no version holds the old value: folding would
+          credit that change to given person. The values this change sets
+          are not compared: a second rename is folded, and so is a
+          keystroke whose request read the shot before the previous one
+          was saved.
+        - be changed at most a minute before, and created at most five
+          minutes before. Only versions count: an update that recorded
+          nothing does not extend the window.
+        """
+        version = shots_service.get_last_shot_version_raw(shot["id"])
+        if version is None or str(version.person_id) != str(person_id):
+            return None
+        frames = self.get_frame_range(shot.get("data"))
+        previous_frames = self.get_frame_range(previous_shot.get("data"))
+        version_frames = self.get_frame_range(version.data)
+        if frames != previous_frames and version.name != previous_shot["name"]:
+            return None
+        for frame, previous_frame, version_frame in zip(
+            frames, previous_frames, version_frames
+        ):
+            if frame == previous_frame and version_frame != previous_frame:
+                return None
+        updated_at = date_helpers.get_datetime_from_string(shot["updated_at"])
+        last_changed_at = version.updated_at.replace(microsecond=0)
+        created_at = version.created_at.replace(microsecond=0)
+        if (
+            date_helpers.get_date_diff(last_changed_at, updated_at)
+            > SHOT_VERSION_FOLD_DELAY
+            or date_helpers.get_date_diff(created_at, updated_at)
+            > SHOT_VERSION_FOLD_MAX_DURATION
+        ):
+            return None
         return version
 
     def emit_update_event(self, entity_dict):
@@ -597,9 +408,9 @@ class EntityResource(BaseModelResource, EntityEventMixin):
         self.emit_event("delete", entity_dict)
 
     def post_delete(self, entity_dict):
-        if assets_service.is_asset_dict(entity_dict):
+        if entity_types_service.is_asset_dict(entity_dict):
             index_service.remove_asset_index(entity_dict["id"])
-        elif shots_service.is_shot(entity_dict):
+        elif entity_types_service.is_shot(entity_dict):
             index_service.remove_shot_index(entity_dict["id"])
 
     def update_data(self, data, instance_id):

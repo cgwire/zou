@@ -1,8 +1,9 @@
-from zou.app.blueprints.export.csv.base import BaseCsvExport
+from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 from sqlalchemy import func
 from sqlalchemy.orm import selectinload
 
+from zou.app.blueprints.export.csv.base import BaseCsvExport
 from zou.app.models.person import Person
 from zou.app.models.studio import Studio
 
@@ -14,26 +15,10 @@ class PersonsCsvExport(BaseCsvExport):
         self.studio_cache = {}
 
     @jwt_required()
+    @swag_from("openapi/PersonsCsvExport_get.yml")
     def get(self):
         """
         Export persons csv
-        ---
-        tags:
-          - Export
-        description: Export persons as CSV file. Includes first name, last
-          name, email, phone, role, departments, studio, country, contract
-          type, position, seniority, daily salary and active status.
-          Excludes bot accounts.
-        produces:
-          - text/csv
-        responses:
-            200:
-              description: Persons exported as CSV successfully
-              content:
-                text/csv:
-                  schema:
-                    type: string
-                  example: "First Name;Last Name;Email;Phone;Role;Departments;Studio;Country;Contract Type;Position;Seniority;Daily Salary;Active\nJohn;Doe;john.doe@example.com;+1234567890;user;Animation;Paris;FR;freelance;artist;mid;320;yes"
         """
         return super().get()
 
@@ -57,7 +42,11 @@ class PersonsCsvExport(BaseCsvExport):
     def build_query(self):
         return (
             Person.query.options(selectinload(Person.departments))
-            .filter(Person.is_bot.isnot(True), Person.is_guest.isnot(True))
+            .filter(
+                Person.is_bot.isnot(True),
+                Person.is_guest.isnot(True),
+                Person.preview_project_id.is_(None),
+            )
             .order_by(
                 func.lower(Person.first_name),
                 func.lower(Person.last_name),

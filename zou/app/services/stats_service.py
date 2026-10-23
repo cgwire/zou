@@ -1,16 +1,17 @@
 import copy
-from sqlalchemy import func
 
+from sqlalchemy import func
 from sqlalchemy.orm import aliased
 
-from zou.app.models.entity import Entity
 from zou.app.models.comment import Comment
+from zou.app.models.entity import Entity
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
 from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
-
-from zou.app.services import user_service
+from zou.app.services import (
+    persons_service,
+)
 
 DEFAULT_RETAKE_STATS = {
     "max_retake_count": 0,
@@ -130,7 +131,7 @@ def _get_episode_counts(project_id, only_assigned=False):
     )
 
     if only_assigned:
-        query = query.filter(user_service.build_assignee_filter())
+        query = query.filter(persons_service.build_assignee_filter())
 
     return query.all()
 
@@ -337,7 +338,7 @@ def _get_retake_stats_query(project_id, only_assigned):
         .filter(Project.id == project_id)
     )
     if only_assigned:
-        query = query.filter(user_service.build_assignee_filter())
+        query = query.filter(persons_service.build_assignee_filter())
     return query
 
 

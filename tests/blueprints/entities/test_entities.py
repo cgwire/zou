@@ -1,13 +1,12 @@
 from tests.base import ApiDBTestCase
-
-from zou.app.models.time_spent import TimeSpent
-from zou.app.utils import fields
 from zou.app.models.entity import EntityConceptLink
+from zou.app.models.time_spent import TimeSpent
 from zou.app.services import (
     comments_service,
     news_service,
     tasks_service,
 )
+from zou.app.utils import fields
 
 
 class EntityRoutesTestCase(ApiDBTestCase):

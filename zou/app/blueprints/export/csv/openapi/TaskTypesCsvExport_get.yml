@@ -1,0 +1,19 @@
+        Export task types csv
+        ---
+        tags:
+          - Export
+        description: Export task types as CSV file. Includes department
+          and task type name information.
+        produces:
+          - text/csv
+        responses:
+            200:
+              description: Task types exported as CSV successfully
+              content:
+                text/csv:
+                  schema:
+                    type: string
+                  example: "Department,Name
+Animation,Animation
+Modeling,Modeling"
+        

@@ -1,0 +1,18 @@
+Get API name and version
+---
+tags:
+  - Index
+responses:
+  '200':
+    description: API name and version
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            api:
+              type: string
+              example: "Zou"
+            version:
+              type: string
+              example: "0.20.0"

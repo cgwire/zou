@@ -1,0 +1,29 @@
+List shared playlist comments
+---
+description: List comments for tasks that appear in the shared playlist
+  (aggregated from each shot's preview task). Same optional `password`
+  query param as the main shared playlist when the link is protected.
+tags:
+  - Playlists
+parameters:
+  - in: path
+    name: token
+    required: true
+    schema:
+      type: string
+    description: Share link token
+  - in: query
+    name: password
+    required: false
+    schema:
+      type: string
+    description: Password when the link is protected
+responses:
+  200:
+    description: Comment entries for the playlist
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object

@@ -139,7 +139,7 @@ class FileStoreMetricsTestCase(unittest.TestCase):
         self.assertTrue(
             file_store.exists_picture("thumbnails", self.preview_id)
         )
-        file_store.remove_picture("thumbnails", self.preview_id)
+        file_store.remove_picture("thumbnails", self.preview_id, force=True)
 
         self.assertEqual(
             self._sample(

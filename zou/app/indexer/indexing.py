@@ -1,9 +1,9 @@
 import meilisearch
+from flask import current_app
 from meilisearch.errors import MeilisearchApiError
 
 from zou.app import config
 from zou.app.utils import cache
-from flask import current_app
 
 
 def init_client():
@@ -101,14 +101,16 @@ def index_document(index, document):
     return index
 
 
-def index_documents(index, documents):
+def index_documents(index, documents, wait=True):
     """
-    Add given documents to given index.
+    Add given documents to given index. Without wait, return as soon as
+    Meilisearch has queued them.
     """
     task = index.add_documents(documents)
-    get_client().wait_for_task(
-        task.task_uid, timeout_in_ms=config.INDEXER["timeout"]
-    )
+    if wait:
+        get_client().wait_for_task(
+            task.task_uid, timeout_in_ms=config.INDEXER["timeout"]
+        )
     return documents
 
 

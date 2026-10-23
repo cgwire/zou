@@ -1,18 +1,15 @@
 import datetime
 import io
 import os
-
 from unittest.mock import patch
 
 from werkzeug.datastructures import FileStorage
 
 from tests.base import ApiDBTestCase
-
 from zou.app import config
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.chat import Chat
 from zou.app.models.chat_message import ChatMessage
-
 from zou.app.services import chats_service
 
 

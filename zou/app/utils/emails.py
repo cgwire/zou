@@ -1,11 +1,16 @@
+import logging
 import re
-import traceback
+import smtplib
 from email import charset as email_charset
-from io import StringIO
 from html.parser import HTMLParser
+from io import StringIO
+
 from flask_mail import Message
 
 from zou.app import mail
+
+logger = logging.getLogger(__name__)
+
 
 # Force quoted-printable encoding for utf-8 message bodies so that the
 # Python email module wraps lines at 76 chars. Without this, long HTML
@@ -31,7 +36,7 @@ def send_email(subject, html, recipient_email, body=None, locale=None):
     if body is None:
         body = strip_html_tags(html)
     if app.config["MAIL_DEBUG_BODY"]:
-        print(body)
+        logger.info(body)
     if app.config["MAIL_ENABLED"]:
         with app.app_context():
             try:
@@ -52,16 +57,38 @@ def send_email(subject, html, recipient_email, body=None, locale=None):
                     except Exception:
                         pass
                 mail.send(message)
-            except Exception:
-                # Log at error level so failures show up in production and
-                # RQ worker logs: the default Flask logger drops info
-                # messages, which made SMTP errors invisible while the
-                # email job was still reported as successful.
-                app.logger.error(
-                    f"Failed to send email to {recipient_email} "
-                    f"(subject: {subject}):"
-                )
-                app.logger.error(traceback.format_exc())
+            except Exception as exception:
+                if is_recipient_refusal(exception):
+                    # A dead address is a data problem, not a failure of
+                    # the application: keep it out of the error level so
+                    # that it does not page anyone.
+                    app.logger.warning(
+                        f"Email to {recipient_email} refused by the SMTP "
+                        f"server (subject: {subject}): {exception}"
+                    )
+                else:
+                    # Log at error level so failures show up in production
+                    # and RQ worker logs: the default Flask logger drops
+                    # info messages, which made SMTP errors invisible while
+                    # the email job was still reported as successful.
+                    app.logger.error(
+                        f"Failed to send email to {recipient_email} "
+                        f"(subject: {subject})",
+                        exc_info=True,
+                    )
+
+
+def is_recipient_refusal(exception):
+    """
+    Return True when the SMTP server permanently rejected the message
+    because of its recipient (unknown user, dead domain, full mailbox).
+    """
+    if isinstance(exception, smtplib.SMTPRecipientsRefused):
+        return True
+    return (
+        isinstance(exception, smtplib.SMTPResponseException)
+        and 550 <= exception.smtp_code <= 554
+    )
 
 
 class HTMLStripper(HTMLParser):

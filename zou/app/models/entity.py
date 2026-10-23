@@ -11,13 +11,12 @@ questions live in the services (shots_service, entities_service...) and
 compare entity_type_id against the cached type ids, not in this model.
 """
 
-from sqlalchemy_utils import UUIDType, ChoiceType
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy_utils import ChoiceType, UUIDType
 
 from zou.app import db
-from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
-
-from sqlalchemy.dialects.postgresql import JSONB
+from zou.app.models.serializer import SerializerMixin
 
 ENTITY_STATUSES = [
     ("standby", "Stand By"),
@@ -161,6 +160,7 @@ class Entity(db.Model, BaseMixin, SerializerMixin):
         UUIDType(binary=False),
         db.ForeignKey("person.id"),
         nullable=True,
+        index=True,
     )
 
     entities_out = db.relationship(
@@ -197,6 +197,12 @@ class Entity(db.Model, BaseMixin, SerializerMixin):
             "entity_type_id",
             "status",
         ),
+        db.Index(
+            "ix_entity_entity_type_parent", "entity_type_id", "parent_id"
+        ),
+        db.Index(
+            "ix_entity_entity_type_project", "entity_type_id", "project_id"
+        ),
     )
 
     def set_entities_out(self, entity_ids):
@@ -228,8 +234,8 @@ class Entity(db.Model, BaseMixin, SerializerMixin):
 
     @classmethod
     def sanitize_import_data(self, data):
-        from zou.app.models.preview_file import PreviewFile
         from zou.app.models.entity_type import EntityType
+        from zou.app.models.preview_file import PreviewFile
 
         entity_ids = []
         model_type = data.get("type", "Shot")

@@ -1,17 +1,15 @@
 import urllib.parse
-
 from unittest import mock
 
 from tests.base import ApiDBTestCase
-
 from zou.app.models.day_off import DayOff
 from zou.app.models.person import Person
-from zou.app.stores import auth_tokens_store
 from zou.app.services import (
     persons_service,
     projects_service,
     tasks_service,
 )
+from zou.app.stores import auth_tokens_store
 from zou.app.utils import auth, fields
 
 
@@ -181,10 +179,10 @@ class PersonRoutesTestCase(ApiDBTestCase):
 
     def test_the_studio_wide_month_lists_what_the_caller_may_read(self):
         """
-        /data/persons/day-offs/<year>/<month> holds the leave of everybody
-        for an admin, of oneself for an artist, of the team of one's
-        productions for a manager, and of the supervised part of it, dates
-        only, for a supervisor.
+        /data/persons/day-offs/<year> and its month hold the leave of
+        everybody for an admin, of oneself for an artist, of the team of
+        one's productions for a manager, and of the supervised part of it,
+        dates only, for a supervisor.
         """
         DayOff.create(
             date="2024-06-10",
@@ -199,13 +197,23 @@ class PersonRoutesTestCase(ApiDBTestCase):
             person_id=manager["id"],
             description="Moving",
         )
-        path = "/data/persons/day-offs/2024/06"
+        paths = [
+            "/data/persons/day-offs/2024",
+            "/data/persons/day-offs/2024/06",
+        ]
 
         def what_each_person_shows():
-            return {
-                day_off["person_id"]: day_off.get("description", "dates only")
-                for day_off in self.get(path)
-            }
+            shown = [
+                {
+                    day_off["person_id"]: day_off.get(
+                        "description", "dates only"
+                    )
+                    for day_off in self.get(path)
+                }
+                for path in paths
+            ]
+            self.assertEqual(shown[0], shown[1])
+            return shown[0]
 
         self.assertEqual(
             what_each_person_shows(),
@@ -250,12 +258,14 @@ class PersonRoutesTestCase(ApiDBTestCase):
             "its month": f"{base}/month/2024/06",
             "its year": f"{base}/year/2024",
             "the studio wide month": "/data/persons/day-offs/2024/06",
+            "the studio wide year": "/data/persons/day-offs/2024",
         }
         misses = {
             "the week before": f"{base}/week/2024/23",
             "the month before": f"{base}/month/2024/05",
             "the year before": f"{base}/year/2023",
             "the studio wide month before": "/data/persons/day-offs/2024/05",
+            "the studio wide year before": "/data/persons/day-offs/2023",
         }
         for period, path in holds.items():
             with self.subTest(holds=period):
@@ -280,8 +290,7 @@ class PersonRoutesTestCase(ApiDBTestCase):
             {"end_date": fields.get_date_object("2024-06-04")}
         )
 
-        # The listing is scoped to a production and a task type: without
-        # both the query filters on a null project and finds nothing.
+        # Scoped to a production and a task type, as the quota page asks.
         scope = (
             f"?project_id={self.shot_task.project_id}"
             f"&task_type_id={self.shot_task.task_type_id}"
@@ -307,6 +316,73 @@ class PersonRoutesTestCase(ApiDBTestCase):
         for period, path in misses.items():
             with self.subTest(misses=period):
                 self.assertEqual(self.get(path), [])
+
+    def a_shot_given_feedback_for(self, person):
+        tasks_service.assign_task(str(self.shot_task.id), person["id"])
+        self.shot_task.update(
+            {"end_date": fields.get_date_object("2024-06-04")}
+        )
+        return (
+            f"/data/persons/{person['id']}/quota-shots/month/2024/06"
+            "?count_mode=feedback"
+        )
+
+    def test_an_artist_lists_their_quota_shots_of_every_production(self):
+        """
+        My tasks charts a person's own quotas across productions and task
+        types: neither filter is required for their own listing.
+        """
+        artist = self.generate_fixture_user_cg_artist()
+        path = self.a_shot_given_feedback_for(artist)
+        self.log_in_cg_artist()
+
+        self.assertEqual(
+            [(shot["id"], shot["project_id"]) for shot in self.get(path)],
+            [(str(self.shot.id), str(self.project.id))],
+        )
+        self.get(
+            f"/data/persons/{self.person_id}/quota-shots/month/2024/06", 403
+        )
+
+    def test_a_manager_lists_their_own_quota_shots_without_a_production(self):
+        """
+        Without a production, a manager reads their own quota shots like
+        any artist, and nobody else's: the project check has no project to
+        clear them on.
+        """
+        manager = self.generate_fixture_user_manager()
+        path = self.a_shot_given_feedback_for(manager)
+        self.log_in_manager()
+
+        self.assertEqual(
+            [shot["id"] for shot in self.get(path)], [str(self.shot.id)]
+        )
+        self.get(
+            f"/data/persons/{self.person_id}/quota-shots/month/2024/06", 403
+        )
+
+    def test_a_supervisor_lists_quota_shots_of_their_productions(self):
+        """
+        A supervisor reads another person's quota shots in a production they
+        belong to, as the production quotas route lets them, and not in a
+        production they have no access to.
+        """
+        artist = self.generate_fixture_user_cg_artist()
+        self.a_shot_given_feedback_for(artist)
+        supervisor = self.generate_fixture_user_supervisor()
+        path = (
+            f"/data/persons/{artist['id']}/quota-shots/month/2024/06"
+            f"?count_mode=feedback&project_id={self.project.id}"
+        )
+        self.log_in_supervisor()
+        self.get(path, 403)
+
+        projects_service.add_team_member(
+            str(self.project.id), supervisor["id"]
+        )
+        self.assertEqual(
+            [shot["id"] for shot in self.get(path)], [str(self.shot.id)]
+        )
 
     # --- Actions ---
 
@@ -337,7 +413,7 @@ class PersonRoutesTestCase(ApiDBTestCase):
             first_name="Other",
             last_name="Admin",
             role="admin",
-            email="other.admin@gmail.com",
+            email="other.admin@example.com",
             **overrides,
         )
 

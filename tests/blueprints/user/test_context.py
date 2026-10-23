@@ -1,17 +1,18 @@
 import orjson as json
 
 from tests.base import ApiDBTestCase
-
+from zou.app.models.person import Person
+from zou.app.models.project import Project
+from zou.app.models.task import Task
 from zou.app.services import (
-    tasks_service,
+    metadata_descriptors_service,
     notifications_service,
     persons_service,
     projects_service,
+    task_types_service,
+    tasks_service,
+    time_spents_service,
 )
-
-from zou.app.models.project import Project
-from zou.app.models.person import Person
-from zou.app.models.task import Task
 
 
 class UserContextTestCase(ApiDBTestCase):
@@ -292,7 +293,7 @@ class UserWorkloadTestCase(UserContextTestCase):
         tasks_service.update_task(
             shot_task_id,
             {
-                "task_status_id": tasks_service.get_or_create_status(
+                "task_status_id": task_types_service.get_or_create_task_status(
                     "Done", "done", "#22d160", is_done=True
                 )["id"]
             },
@@ -330,7 +331,7 @@ class UserWorkloadTestCase(UserContextTestCase):
         tasks = self.get(path)
         self.assertEqual(tasks, [])
 
-        done_status = tasks_service.get_or_create_status(
+        done_status = task_types_service.get_or_create_task_status(
             "Done", "done", "#22d160", is_done=True
         )
         tasks_service.update_task(
@@ -345,7 +346,7 @@ class UserWorkloadTestCase(UserContextTestCase):
         tasks = self.get("data/user/tasks-to-check")
         self.assertEqual(tasks, [])
 
-        feedback_status = tasks_service.get_or_create_status(
+        feedback_status = task_types_service.get_or_create_task_status(
             "Waiting For Approval", "wfa", is_feedback_request=True
         )
         tasks_service.update_task(
@@ -357,7 +358,7 @@ class UserWorkloadTestCase(UserContextTestCase):
         self.assertEqual(tasks[0]["id"], str(self.task_id))
 
     def test_get_tasks_to_check_paginated(self):
-        feedback_status = tasks_service.get_or_create_status(
+        feedback_status = task_types_service.get_or_create_task_status(
             "Waiting For Approval", "wfa", is_feedback_request=True
         )
         for task_id in [self.task_id, self.shot_task.id]:
@@ -414,7 +415,7 @@ class UserWorkloadTestCase(UserContextTestCase):
         Switch given tasks (all of them when none is given) to a feedback
         status and return it.
         """
-        feedback_status = tasks_service.get_or_create_status(
+        feedback_status = task_types_service.get_or_create_task_status(
             "Waiting For Approval", "wfa", is_feedback_request=True
         )
         if not task_ids:
@@ -561,7 +562,7 @@ class UserWorkloadTestCase(UserContextTestCase):
         self.assertEqual(result["project_ids"], [])
         self.assertEqual(result["person_ids"], [])
 
-        feedback_status = tasks_service.get_or_create_status(
+        feedback_status = task_types_service.get_or_create_task_status(
             "Waiting For Approval", "wfa", is_feedback_request=True
         )
         for task_id in [self.task_id, self.shot_task.id]:
@@ -601,7 +602,7 @@ class UserWorkloadTestCase(UserContextTestCase):
         path = "data/user/time-spents/2026-08-05"
         self.assertEqual(self.get(path), [])
 
-        tasks_service.create_or_update_time_spent(
+        time_spents_service.create_or_update_time_spent(
             self.task_id, self.user_id, "2026-08-05", 3600
         )
 
@@ -614,7 +615,7 @@ class UserWorkloadTestCase(UserContextTestCase):
 
     def test_get_task_time_spent_for_date(self):
         path = f"data/user/tasks/{self.task_id}/time-spents/2026-08-05"
-        tasks_service.create_or_update_time_spent(
+        time_spents_service.create_or_update_time_spent(
             self.task_id, self.user_id, "2026-08-05", 3600
         )
 
@@ -624,13 +625,19 @@ class UserWorkloadTestCase(UserContextTestCase):
         self.get(f"data/user/tasks/{self.task_id}/time-spents/nope", 400)
 
     def test_get_time_spents_range(self):
-        tasks_service.create_or_update_time_spent(
+        time_spents_service.create_or_update_time_spent(
             self.task_id, self.user_id, "2026-08-05", 3600
         )
         time_spents = self.get(
             "data/user/time-spents?start_date=2026-08-01&end_date=2026-08-31"
         )
         self.assertEqual(len(time_spents), 1)
+        self.assertEqual(
+            time_spents[0]["task_type_id"], str(self.task.task_type_id)
+        )
+        self.assertEqual(
+            time_spents[0]["project_id"], str(self.task.project_id)
+        )
         # Both bounds are required, one alone is a 400.
         self.get("data/user/time-spents?start_date=2026-08-01", 400)
 
@@ -745,12 +752,6 @@ class UserNotificationTestCase(UserContextTestCase):
         )
         self.assertTrue(self.get(deprecated_path))
 
-        listing_path = (
-            f"/data/user/projects/{self.project_id}"
-            f'/task-types/{self.task_type_dict["id"]}/sequence-subscriptions'
-        )
-        self.assertEqual(self.get(listing_path), [self.sequence_dict["id"]])
-
     def test_unsubscribe_sequence(self):
         path = f'/actions/user/sequences/{self.sequence_dict["id"]}/task-types/{self.task_type_dict["id"]}/'
         self.post(path + "subscribe", {})
@@ -781,10 +782,10 @@ class UserContextRoutesTestCase(UserContextTestCase):
         self.assertEqual(context["custom_actions"], [])
 
     def test_get_metadata_columns(self):
-        projects_service.add_metadata_descriptor(
+        metadata_descriptors_service.add_metadata_descriptor(
             self.project_id, "asset", "test client", "string", [], True
         )
-        projects_service.add_metadata_descriptor(
+        metadata_descriptors_service.add_metadata_descriptor(
             self.project_id, "asset", "test", "string", [], False
         )
         self.generate_fixture_user_client()

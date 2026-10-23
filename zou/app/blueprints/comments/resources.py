@@ -1,77 +1,49 @@
-from flask import request, send_file as flask_send_file, current_app
+from flasgger import swag_from
+from flask import current_app, request, send_file as flask_send_file
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
-from zou.app.mixin import ArgsMixin
-from zou.app.services.exception import (
+from zou.app import config
+from zou.app.blueprints.comments.schemas import (
+    BatchCommentItemSchema,
+    CommentCreateSchema,
+    CommentReplySchema,
+    CopyClientCommentsSchema,
+    MoveCommentSchema,
+)
+from zou.app.exceptions import (
     AttachmentFileNotFoundException,
     WrongParameterException,
 )
-from zou.app.utils import permissions, date_helpers, validation
-from zou.app.blueprints.comments.schemas import (
-    CommentCreateSchema,
-    CommentReplySchema,
-    MoveCommentSchema,
-)
-
+from zou.app.mixin import ArgsMixin
 from zou.app.services import (
+    attachment_files_service,
     chats_service,
     comments_service,
-    deletion_service,
     entities_service,
-    persons_service,
-    tasks_service,
     permissions_service,
-    user_service,
+    persons_service,
+    task_types_service,
+    tasks_service,
 )
-from zou.app import config
+from zou.app.utils import date_helpers, permissions, validation
 
 
 class DownloadAttachmentResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/DownloadAttachmentResource_get.yml")
     def get(self, attachment_file_id, file_name):
         """
         Download attachment file
-        ---
-        description: Download a specific attachment file from a comment or chat
-          message. Supports various file types including images and documents.
-        tags:
-          - Comments
-        produces:
-          - multipart/form-data
-          - image/png
-          - image/gif
-          - image/jpeg
-        parameters:
-          - in: path
-            name: attachment_file_id
-            required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-            description: Unique identifier of the attachment file
-          - in: path
-            name: file_name
-            required: true
-            type: string
-            example: "document.pdf"
-            description: Name of the file to download
-        responses:
-          200:
-            description: Attachment file successfully downloaded
-            content:
-              application/octet-stream:
-                schema:
-                  type: string
-                  format: binary
-                  description: File content
         """
-        attachment_file = comments_service.get_attachment_file(
+        attachment_file = attachment_files_service.get_attachment_file(
             attachment_file_id
         )
         if attachment_file["comment_id"] is not None:
-            comment = tasks_service.get_comment(attachment_file["comment_id"])
+            comment = comments_service.get_comment(
+                attachment_file["comment_id"]
+            )
             permissions_service.check_task_access(comment["object_id"])
         elif attachment_file["chat_message_id"] is not None:
             message = chats_service.get_chat_message(
@@ -84,7 +56,7 @@ class DownloadAttachmentResource(MethodView):
         else:
             raise permissions.PermissionDenied()
         try:
-            file_path = comments_service.get_attachment_file_path(
+            file_path = attachment_files_service.get_attachment_file_path(
                 attachment_file
             )
             return flask_send_file(
@@ -116,46 +88,10 @@ class DownloadAttachmentResource(MethodView):
 class AckCommentResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/AckCommentResource_post.yml")
     def post(self, task_id, comment_id):
         """
         Acknowledge comment
-        ---
-        description: Acknowledge a specific comment. If it's already
-          acknowledged, remove the acknowledgement.
-        tags:
-          - Comments
-        parameters:
-          - in: path
-            name: task_id
-            required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-            description: Unique identifier of the task
-          - in: path
-            name: comment_id
-            required: true
-            type: string
-            format: uuid
-            example: b35b7fb5-df86-5776-b181-68564193d36
-            description: Unique identifier of the comment
-        responses:
-          200:
-            description: Comment acknowledgement status successfully updated
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Comment unique identifier
-                      example: b35b7fb5-df86-5776-b181-68564193d36
-                    acknowledged:
-                      type: boolean
-                      description: Whether the comment is acknowledged
-                      example: true
         """
         permissions_service.check_task_access(task_id)
         return comments_service.acknowledge_comment(comment_id)
@@ -164,99 +100,10 @@ class AckCommentResource(MethodView):
 class CommentTaskResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/CommentTaskResource_post.yml")
     def post(self, task_id):
         """
         Create task comment
-        ---
-        description: Create a new comment for a specific task. It requires a
-          text, a task_status and a person as arguments. This way, comments
-          keep history of status changes. When the comment is created, it
-          updates the task status with the given task status.
-        tags:
-          - Comments
-        parameters:
-          - in: path
-            name: task_id
-            required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-            description: Unique identifier of the task
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - task_status_id
-                properties:
-                  task_status_id:
-                    type: string
-                    format: uuid
-                    description: Task status identifier
-                    example: c46c8gc6-eg97-6887-c292-79675204e47
-                  comment:
-                    type: string
-                    description: Comment text content
-                    example: "This looks great! Ready for review."
-                  person_id:
-                    type: string
-                    format: uuid
-                    description: Person identifier (optional, defaults to current user)
-                    example: d57d9hd7-fh08-7998-d403-80786315f58
-                  created_at:
-                    type: string
-                    format: date-time
-                    description: Creation timestamp (optional, defaults to current time)
-                    example: "2023-01-01T12:00:00Z"
-                  checklist:
-                    type: object
-                    description: Checklist items for the comment
-                    example: {"item1": "Check lighting", "item2": "Verify textures"}
-                  links:
-                    type: array
-                    items:
-                      type: string
-                    description: List of related links
-                    example: ["https://example.com/reference1", "https://example.com/reference2"]
-        responses:
-          201:
-            description: Comment successfully created
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Comment unique identifier
-                      example: b35b7fb5-df86-5776-b181-68564193d36
-                    task_id:
-                      type: string
-                      format: uuid
-                      description: Task identifier
-                      example: a24a6ea4-ce75-4665-a070-57453082c25
-                    person_id:
-                      type: string
-                      format: uuid
-                      description: Person identifier
-                      example: d57d9hd7-fh08-7998-d403-80786315f58
-                    comment:
-                      type: string
-                      description: Comment text content
-                      example: "This looks great! Ready for review."
-                    task_status_id:
-                      type: string
-                      format: uuid
-                      description: Task status identifier
-                      example: c46c8gc6-eg97-6887-c292-79675204e47
-                    created_at:
-                      type: string
-                      format: date-time
-                      description: Creation timestamp
-                      example: "2023-01-01T12:00:00Z"
         """
         (
             task_status_id,
@@ -282,10 +129,11 @@ class CommentTaskResource(MethodView):
                 != str(task["task_status_id"]).lower()
             ):
                 raise
-        permissions_service.resolve_project_role(
-            tasks_service.get_task(task_id)["project_id"]
+        project_id = tasks_service.get_task(task_id)["project_id"]
+        permissions_service.resolve_project_role(project_id)
+        permissions_service.check_task_status_access(
+            task_status_id, project_id
         )
-        permissions_service.check_task_status_access(task_status_id)
         files = request.files
 
         if not permissions.has_manager_permissions():
@@ -320,48 +168,19 @@ class CommentTaskResource(MethodView):
 
 class AttachmentResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/AttachmentResource_delete.yml")
     def delete(self, task_id, comment_id, attachment_file_id):
         """
         Delete comment attachment
-        ---
-        description: Delete a specific attachment file linked to a comment. Only
-          the comment author or project managers can delete attachments.
-        tags:
-          - Comments
-        parameters:
-          - in: path
-            name: task_id
-            required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-            description: Unique identifier of the task
-          - in: path
-            name: comment_id
-            required: true
-            type: string
-            format: uuid
-            example: b35b7fb5-df86-5776-b181-68564193d36
-            description: Unique identifier of the comment
-          - in: path
-            name: attachment_file_id
-            required: true
-            type: string
-            format: uuid
-            example: c46c8gc6-eg97-6887-c292-79675204e47
-            description: Unique identifier of the attachment
-        responses:
-          204:
-            description: Attachment successfully deleted
         """
         user = persons_service.get_current_user()
-        comment = tasks_service.get_comment(comment_id)
+        comment = comments_service.get_comment(comment_id)
         if comment["object_id"] != task_id:
             raise permissions.PermissionDenied()
         # The author branch below skips the project check, so the attachment
         # must be tied to the comment too: otherwise pointing at one's own
         # comment deletes any attachment whose id the caller knows.
-        attachment_file = comments_service.get_attachment_file(
+        attachment_file = attachment_files_service.get_attachment_file(
             attachment_file_id
         )
         if str(attachment_file["comment_id"]) != str(comment_id):
@@ -372,86 +191,21 @@ class AttachmentResource(MethodView):
                 task["project_id"]
             )
 
-        deletion_service.remove_attachment_file_by_id(attachment_file_id)
+        attachment_files_service.remove_attachment_file_by_id(
+            attachment_file_id
+        )
         return "", 204
 
 
 class AddAttachmentToCommentResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/AddAttachmentToCommentResource_post.yml")
     def post(self, task_id, comment_id):
         """
         Add comment attachments
-        ---
-        description: Add one or more files as attachments to a specific comment.
-          Supports various file types including images and documents.
-        tags:
-          - Comments
-        consumes:
-          - image/png
-          - image/gif
-          - image/jpeg
-          - multipart/form-data
-        parameters:
-          - in: path
-            name: task_id
-            required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-            description: Unique identifier of the task
-          - in: path
-            name: comment_id
-            required: true
-            type: string
-            format: uuid
-            example: b35b7fb5-df86-5776-b181-68564193d36
-            description: Unique identifier of the comment
-          - in: formData
-            name: reply_id
-            type: string
-            format: uuid
-            example: c46c8gc6-eg97-6887-c292-79675204e47
-            description: Reply identifier (optional)
-          - in: formData
-            name: files
-            type: file
-            required: true
-            description: Files to attach to the comment
-        responses:
-          201:
-            description: Files successfully added as attachments
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        description: Attachment file unique identifier
-                        example: d57d9hd7-fh08-7998-d403-80786315f58
-                      name:
-                        type: string
-                        description: File name
-                        example: "document.pdf"
-                      mimetype:
-                        type: string
-                        description: File MIME type
-                        example: "application/pdf"
-                      size:
-                        type: integer
-                        description: File size in bytes
-                        example: 1024000
-                      comment_id:
-                        type: string
-                        format: uuid
-                        description: Comment identifier
-                        example: b35b7fb5-df86-5776-b181-68564193d36
         """
         user = persons_service.get_current_user()
-        comment = tasks_service.get_comment(comment_id)
+        comment = comments_service.get_comment(comment_id)
         if comment["object_id"] != task_id:
             raise permissions.PermissionDenied()
         if comment["person_id"] != user["id"]:
@@ -470,114 +224,17 @@ class AddAttachmentToCommentResource(MethodView):
 class CommentManyTasksResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/CommentManyTasksResource_post.yml")
     def post(self, project_id):
         """
         Create multiple comments
-        ---
-        description: Create several comments at once for a specific project.
-          Each comment requires a text, a task id, a task_status and a person as
-          arguments. This way, comments keep history of status changes. When
-          the comment is created, it updates the task status with the given
-          task status.
-        tags:
-          - Comments
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-            description: Unique identifier of the project
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  required:
-                    - task_status_id
-                    - object_id
-                  properties:
-                    task_status_id:
-                      type: string
-                      format: uuid
-                      description: Task status identifier
-                      example: c46c8gc6-eg97-6887-c292-79675204e47
-                    comment:
-                      type: string
-                      description: Comment text content
-                      example: "This looks great! Ready for review."
-                    person_id:
-                      type: string
-                      format: uuid
-                      description: Person identifier (optional, defaults to current user)
-                      example: d57d9hd7-fh08-7998-d403-80786315f58
-                    object_id:
-                      type: string
-                      format: uuid
-                      description: Task identifier
-                      example: e68e0ie8-gi19-8009-e514-91897426g69
-                    created_at:
-                      type: string
-                      format: date-time
-                      description: Creation timestamp (optional, defaults to current time)
-                      example: "2023-01-01T12:00:00Z"
-                    checklist:
-                      type: object
-                      description: Checklist items for the comment
-                      example: {"item1": "Check lighting", "item2": "Verify textures"}
-                    links:
-                      type: array
-                      items:
-                        type: string
-                      description: List of related links
-                      example: ["https://example.com/reference1", "https://example.com/reference2"]
-        responses:
-          201:
-            description: Comments successfully created
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        description: Comment unique identifier
-                        example: b35b7fb5-df86-5776-b181-68564193d36
-                      task_id:
-                        type: string
-                        format: uuid
-                        description: Task identifier
-                        example: e68e0ie8-gi19-8009-e514-91897426g69
-                      person_id:
-                        type: string
-                        format: uuid
-                        description: Person identifier
-                        example: d57d9hd7-fh08-7998-d403-80786315f58
-                      comment:
-                        type: string
-                        description: Comment text content
-                        example: "This looks great! Ready for review."
-                      task_status_id:
-                        type: string
-                        format: uuid
-                        description: Task status identifier
-                        example: c46c8gc6-eg97-6887-c292-79675204e47
-                      created_at:
-                        type: string
-                        format: date-time
-                        description: Creation timestamp
-                        example: "2023-01-01T12:00:00Z"
         """
-        comments = request.json
-        if not isinstance(comments, list):
-            raise WrongParameterException("Request body must be a JSON array.")
+        comments = [
+            item.model_dump(mode="json", exclude_none=True)
+            for item in validation.validate_request_list(
+                BatchCommentItemSchema
+            )
+        ]
         person = persons_service.get_current_user(relations=True)
         try:
             permissions_service.check_manager_project_access(project_id)
@@ -591,11 +248,12 @@ class CommentManyTasksResource(MethodView):
                 or "comment" not in comment
             ):
                 continue
-            permissions_service.resolve_project_role(
-                tasks_service.get_task(comment["object_id"])["project_id"]
-            )
+            task_project_id = tasks_service.get_task(comment["object_id"])[
+                "project_id"
+            ]
+            permissions_service.resolve_project_role(task_project_id)
             permissions_service.check_task_status_access(
-                comment["task_status_id"]
+                comment["task_status_id"], task_project_id
             )
             comment = comments_service.create_comment(
                 person["id"],
@@ -631,9 +289,9 @@ class CommentManyTasksResource(MethodView):
                     role_cache[project_id] == "supervisor"
                     and (
                         len(person["departments"]) == 0
-                        or tasks_service.get_task_type(task["task_type_id"])[
-                            "department_id"
-                        ]
+                        or task_types_service.get_task_type(
+                            task["task_type_id"]
+                        )["department_id"]
                         in person["departments"]
                     )
                 ) or person["id"] in task["assignees"]:
@@ -645,71 +303,33 @@ class CommentManyTasksResource(MethodView):
         return allowed_comments
 
 
+def _is_client_thread(comment, task_id):
+    """
+    Tell whether the client sees the thread of given comment: flagged for
+    them, or written by a client (the guests of a share link are clients).
+    """
+    if comment.get("for_client"):
+        return True
+    if not comment.get("person_id"):
+        return False
+    task = tasks_service.get_task(task_id)
+    return (
+        permissions_service.get_project_role(
+            comment["person_id"], task["project_id"]
+        )
+        == "client"
+    )
+
+
 class ReplyCommentResource(MethodView, ArgsMixin):
 
     @jwt_required()
+    @swag_from("openapi/ReplyCommentResource_post.yml")
     def post(self, task_id, comment_id):
         """
         Reply to comment
-        ---
-        description: Add a reply to a specific comment. The reply will be added
-          to the comment's replies list.
-        tags:
-          - Comments
-        parameters:
-          - in: path
-            name: task_id
-            required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-            description: Unique identifier of the task
-          - in: path
-            name: comment_id
-            required: true
-            type: string
-            format: uuid
-            example: b35b7fb5-df86-5776-b181-68564193d36
-            description: Unique identifier of the comment
-          - in: formData
-            name: text
-            type: string
-            example: "Thanks for the feedback!"
-            description: Reply text content
-        responses:
-          200:
-            description: Reply successfully added to comment
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Reply unique identifier
-                      example: c46c8gc6-eg97-6887-c292-79675204e47
-                    comment_id:
-                      type: string
-                      format: uuid
-                      description: Parent comment identifier
-                      example: b35b7fb5-df86-5776-b181-68564193d36
-                    text:
-                      type: string
-                      description: Reply text content
-                      example: "Thanks for the feedback!"
-                    person_id:
-                      type: string
-                      format: uuid
-                      description: Person identifier who made the reply
-                      example: d57d9hd7-fh08-7998-d403-80786315f58
-                    created_at:
-                      type: string
-                      format: date-time
-                      description: Creation timestamp
-                      example: "2023-01-01T12:00:00Z"
         """
-        comment = tasks_service.get_comment(comment_id)
+        comment = comments_service.get_comment(comment_id)
         if comment["object_id"] != task_id:
             raise permissions.PermissionDenied()
         current_user = persons_service.get_current_user()
@@ -731,6 +351,20 @@ class ReplyCommentResource(MethodView, ArgsMixin):
                     == "client"
                 ):
                     raise permissions.PermissionDenied()
+        else:
+            # The author goes through no access check: resolve their role
+            # on the production for the rule below.
+            permissions_service.resolve_project_role(
+                tasks_service.get_task(task_id)["project_id"]
+            )
+        if (
+            not permissions.has_manager_permissions()
+            and not permissions.has_client_permissions()
+            and _is_client_thread(comment, task_id)
+        ):
+            # The client sees who answers there, by name and avatar: the
+            # production managers answer for the studio.
+            raise permissions.PermissionDenied()
 
         body = validation.validate_request_body(CommentReplySchema)
         files = request.files
@@ -742,39 +376,10 @@ class ReplyCommentResource(MethodView, ArgsMixin):
 class DeleteReplyCommentResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/DeleteReplyCommentResource_delete.yml")
     def delete(self, task_id, comment_id, reply_id):
         """
         Delete comment reply
-        ---
-        description: Delete a specific reply from a comment.
-         Only the reply author or administrators can delete replies.
-        tags:
-          - Comments
-        parameters:
-          - in: path
-            name: task_id
-            required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-            description: Unique identifier of the task
-          - in: path
-            name: comment_id
-            required: true
-            type: string
-            format: uuid
-            example: b35b7fb5-df86-5776-b181-68564193d36
-            description: Unique identifier of the comment
-          - in: path
-            name: reply_id
-            required: true
-            type: string
-            format: uuid
-            example: c46c8gc6-eg97-6887-c292-79675204e47
-            description: Unique identifier of the reply
-        responses:
-          200:
-            description: Reply successfully deleted
         """
         reply = comments_service.get_reply(comment_id, reply_id)
         current_user = persons_service.get_current_user()
@@ -786,62 +391,13 @@ class DeleteReplyCommentResource(MethodView):
 class ProjectAttachmentFiles(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/ProjectAttachmentFiles_get.yml")
     def get(self, project_id):
         """
         Get project attachment files
-        ---
-        description: Retrieve all attachment files related to a specific
-          project. Requires administrator permissions.
-        tags:
-          - Comments
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-            description: Unique identifier of the project
-        responses:
-          200:
-            description: Project attachment files successfully retrieved
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        description: Attachment file unique identifier
-                        example: d57d9hd7-fh08-7998-d403-80786315f58
-                      name:
-                        type: string
-                        description: File name
-                        example: "document.pdf"
-                      mimetype:
-                        type: string
-                        description: File MIME type
-                        example: "application/pdf"
-                      size:
-                        type: integer
-                        description: File size in bytes
-                        example: 1024000
-                      comment_id:
-                        type: string
-                        format: uuid
-                        description: Comment identifier
-                        example: b35b7fb5-df86-5776-b181-68564193d36
-                      project_id:
-                        type: string
-                        format: uuid
-                        description: Project identifier
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
         """
         permissions.check_admin_permissions()
-        return comments_service.get_all_attachment_files_for_project(
+        return attachment_files_service.get_all_attachment_files_for_project(
             project_id
         )
 
@@ -849,138 +405,56 @@ class ProjectAttachmentFiles(MethodView):
 class TaskAttachmentFiles(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/TaskAttachmentFiles_get.yml")
     def get(self, task_id):
         """
         Get task attachment files
-        ---
-        description: Retrieve all attachment files related to a specific task.
-          Requires administrator permissions.
-        tags:
-          - Comments
-        parameters:
-          - in: path
-            name: task_id
-            required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-            description: Unique identifier of the task
-        responses:
-          200:
-            description: Task attachment files successfully retrieved
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        description: Attachment file unique identifier
-                        example: d57d9hd7-fh08-7998-d403-80786315f58
-                      name:
-                        type: string
-                        description: File name
-                        example: "document.pdf"
-                      mimetype:
-                        type: string
-                        description: File MIME type
-                        example: "application/pdf"
-                      size:
-                        type: integer
-                        description: File size in bytes
-                        example: 1024000
-                      comment_id:
-                        type: string
-                        format: uuid
-                        description: Comment identifier
-                        example: b35b7fb5-df86-5776-b181-68564193d36
-                      task_id:
-                        type: string
-                        format: uuid
-                        description: Task identifier
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      reply_id:
-                        type: string
-                        format: uuid
-                        description: Reply identifier if attached to a reply
-                        example: c46c8gc6-eg97-6887-c292-79675204e47
         """
         permissions.check_admin_permissions()
-        return comments_service.get_all_attachment_files_for_task(task_id)
+        return attachment_files_service.get_all_attachment_files_for_task(
+            task_id
+        )
 
 
 class MoveCommentResource(MethodView):
 
     @jwt_required()
+    @swag_from("openapi/MoveCommentResource_post.yml")
     def post(self, task_id, comment_id):
         """
         Move a comment to another task of the same entity
-        ---
-        description: Move an existing comment from its current task to
-          another task that belongs to the same entity (shot, asset,
-          sequence, episode or edit). The comment text, attachments,
-          mentions, original creation date and the task status change it
-          carries are preserved. Notifications and news linked to the
-          comment on the source task are removed and recreated against the
-          target task, so the target task's watchers get notified as if a
-          new comment was posted. Reserved to production managers and
-          studio admins. Comments tied to a preview revision cannot be
-          moved.
-        tags:
-          - Comments
-        parameters:
-          - in: path
-            name: task_id
-            required: true
-            type: string
-            format: uuid
-            description: Unique identifier of the comment's current task
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: comment_id
-            required: true
-            type: string
-            format: uuid
-            description: Unique identifier of the comment to move
-            example: b35b7fb5-df86-5776-b181-68564193d36
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - target_task_id
-                properties:
-                  target_task_id:
-                    type: string
-                    format: uuid
-                    description: Unique identifier of the task to move the
-                      comment to. Must belong to the same entity as the
-                      current task.
-                    example: c46c8gc6-eg97-6887-c292-79675204e47
-        responses:
-          200:
-            description: Comment successfully moved to the target task. The
-              returned payload is the comment with its updated object_id.
-          400:
-            description: Source and target tasks differ in entity, are the
-              same task, or the comment is tied to a preview revision.
-          403:
-            description: Caller is not a manager or admin.
         """
         permissions.check_manager_permissions()
         body = validation.validate_request_body(MoveCommentSchema)
         permissions_service.check_task_access(task_id)
         permissions_service.check_task_access(body.target_task_id)
-        comment = tasks_service.get_comment(comment_id)
+        comment = comments_service.get_comment(comment_id)
         if str(comment["object_id"]) != str(task_id):
             raise WrongParameterException(
                 "Comment does not belong to the given task."
             )
         return comments_service.move_comment_to_task(
             comment_id, body.target_task_id
+        )
+
+
+class CopyClientCommentsResource(MethodView):
+
+    @jwt_required()
+    @swag_from("openapi/CopyClientCommentsResource_post.yml")
+    def post(self, project_id):
+        """
+        Copy the last client comment of each given task
+        """
+        body = validation.validate_request_body(CopyClientCommentsSchema)
+        permissions_service.check_manager_project_access(project_id)
+        person = persons_service.get_current_user()
+        return (
+            comments_service.copy_last_client_comments(
+                project_id,
+                [str(task_id) for task_id in body.task_ids],
+                person["id"],
+                body.prefix,
+            ),
+            201,
         )

@@ -1,24 +1,27 @@
+from flasgger import swag_from
 from flask import request
-from flask_jwt_extended import jwt_required
 from flask.views import MethodView
+from flask_jwt_extended import jwt_required
 
-from zou.app.services import project_templates_service
-from zou.app.services.exception import (
-    ProjectNotFoundException,
-    ProjectTemplateNotFoundException,
-    WrongParameterException,
-)
-from zou.app.utils import permissions, validation
 from zou.app.blueprints.project_templates.schemas import (
-    SetDefaultBackgroundSchema,
     AddAssetTypeSchema,
     AddBackgroundSchema,
     AddStatusAutomationSchema,
     AddTaskStatusSchema,
     AddTaskTypeSchema,
     CreateTemplateFromProjectSchema,
+    ReorderTaskStatusesSchema,
+    ReorderTaskTypesSchema,
+    SetDefaultBackgroundSchema,
     SetMetadataDescriptorsSchema,
 )
+from zou.app.exceptions import (
+    ProjectNotFoundException,
+    ProjectTemplateNotFoundException,
+    WrongParameterException,
+)
+from zou.app.services import project_templates_service
+from zou.app.utils import permissions, validation
 
 # ---------------------------------------------------------------------------
 # Link management
@@ -27,12 +30,10 @@ from zou.app.blueprints.project_templates.schemas import (
 
 class ProjectTemplateTaskTypesResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/ProjectTemplateTaskTypesResource_get.yml")
     def get(self, project_template_id):
         """
         List task types attached to a project template.
-        ---
-        tags:
-          - Project Templates
         """
         permissions.check_manager_permissions()
         try:
@@ -43,12 +44,10 @@ class ProjectTemplateTaskTypesResource(MethodView):
             return {"message": "Project template not found"}, 404
 
     @jwt_required()
+    @swag_from("openapi/ProjectTemplateTaskTypesResource_post.yml")
     def post(self, project_template_id):
         """
         Attach a task type to a project template.
-        ---
-        tags:
-          - Project Templates
         """
         permissions.check_admin_permissions()
         data = validation.validate_request_body(AddTaskTypeSchema)
@@ -57,6 +56,8 @@ class ProjectTemplateTaskTypesResource(MethodView):
                 project_template_id,
                 data.task_type_id,
                 data.priority,
+                bitrates=data.bitrates(),
+                is_client_visible=data.is_client_visible,
             )
         except ProjectTemplateNotFoundException:
             return {"message": "Project template not found"}, 404
@@ -67,12 +68,10 @@ class ProjectTemplateTaskTypesResource(MethodView):
 
 class ProjectTemplateTaskTypeResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/ProjectTemplateTaskTypeResource_delete.yml")
     def delete(self, project_template_id, task_type_id):
         """
         Detach a task type from a project template.
-        ---
-        tags:
-          - Project Templates
         """
         permissions.check_admin_permissions()
         try:
@@ -86,12 +85,10 @@ class ProjectTemplateTaskTypeResource(MethodView):
 
 class ProjectTemplateTaskStatusesResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/ProjectTemplateTaskStatusesResource_get.yml")
     def get(self, project_template_id):
         """
         List task statuses attached to a project template.
-        ---
-        tags:
-          - Project Templates
         """
         permissions.check_manager_permissions()
         try:
@@ -102,12 +99,10 @@ class ProjectTemplateTaskStatusesResource(MethodView):
             return {"message": "Project template not found"}, 404
 
     @jwt_required()
+    @swag_from("openapi/ProjectTemplateTaskStatusesResource_post.yml")
     def post(self, project_template_id):
         """
         Attach a task status to a project template.
-        ---
-        tags:
-          - Project Templates
         """
         permissions.check_admin_permissions()
         data = validation.validate_request_body(AddTaskStatusSchema)
@@ -117,6 +112,11 @@ class ProjectTemplateTaskStatusesResource(MethodView):
                 data.task_status_id,
                 data.priority,
                 data.roles_for_board or None,
+                is_client_allowed=(
+                    data.is_client_allowed
+                    if "is_client_allowed" in data.model_fields_set
+                    else project_templates_service.UNSET
+                ),
             )
         except ProjectTemplateNotFoundException:
             return {"message": "Project template not found"}, 404
@@ -127,12 +127,10 @@ class ProjectTemplateTaskStatusesResource(MethodView):
 
 class ProjectTemplateTaskStatusResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/ProjectTemplateTaskStatusResource_delete.yml")
     def delete(self, project_template_id, task_status_id):
         """
         Detach a task status from a project template.
-        ---
-        tags:
-          - Project Templates
         """
         permissions.check_admin_permissions()
         try:
@@ -146,12 +144,10 @@ class ProjectTemplateTaskStatusResource(MethodView):
 
 class ProjectTemplateAssetTypesResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/ProjectTemplateAssetTypesResource_get.yml")
     def get(self, project_template_id):
         """
         List asset types attached to a project template.
-        ---
-        tags:
-          - Project Templates
         """
         permissions.check_manager_permissions()
         try:
@@ -162,12 +158,10 @@ class ProjectTemplateAssetTypesResource(MethodView):
             return {"message": "Project template not found"}, 404
 
     @jwt_required()
+    @swag_from("openapi/ProjectTemplateAssetTypesResource_post.yml")
     def post(self, project_template_id):
         """
         Attach an asset type to a project template.
-        ---
-        tags:
-          - Project Templates
         """
         permissions.check_admin_permissions()
         data = validation.validate_request_body(AddAssetTypeSchema)
@@ -184,12 +178,10 @@ class ProjectTemplateAssetTypesResource(MethodView):
 
 class ProjectTemplateAssetTypeResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/ProjectTemplateAssetTypeResource_delete.yml")
     def delete(self, project_template_id, asset_type_id):
         """
         Detach an asset type from a project template.
-        ---
-        tags:
-          - Project Templates
         """
         permissions.check_admin_permissions()
         try:
@@ -203,12 +195,10 @@ class ProjectTemplateAssetTypeResource(MethodView):
 
 class ProjectTemplateStatusAutomationsResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/ProjectTemplateStatusAutomationsResource_get.yml")
     def get(self, project_template_id):
         """
         List status automations attached to a project template.
-        ---
-        tags:
-          - Project Templates
         """
         permissions.check_manager_permissions()
         try:
@@ -219,12 +209,10 @@ class ProjectTemplateStatusAutomationsResource(MethodView):
             return {"message": "Project template not found"}, 404
 
     @jwt_required()
+    @swag_from("openapi/ProjectTemplateStatusAutomationsResource_post.yml")
     def post(self, project_template_id):
         """
         Attach a status automation to a project template.
-        ---
-        tags:
-          - Project Templates
         """
         permissions.check_admin_permissions()
         data = validation.validate_request_body(AddStatusAutomationSchema)
@@ -243,12 +231,10 @@ class ProjectTemplateStatusAutomationsResource(MethodView):
 
 class ProjectTemplateStatusAutomationResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/ProjectTemplateStatusAutomationResource_delete.yml")
     def delete(self, project_template_id, status_automation_id):
         """
         Detach a status automation from a project template.
-        ---
-        tags:
-          - Project Templates
         """
         permissions.check_admin_permissions()
         try:
@@ -262,12 +248,10 @@ class ProjectTemplateStatusAutomationResource(MethodView):
 
 class ProjectTemplateBackgroundsResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/ProjectTemplateBackgroundsResource_get.yml")
     def get(self, project_template_id):
         """
         List preview background files attached to a project template.
-        ---
-        tags:
-          - Project Templates
         """
         permissions.check_manager_permissions()
         try:
@@ -278,12 +262,10 @@ class ProjectTemplateBackgroundsResource(MethodView):
             return {"message": "Project template not found"}, 404
 
     @jwt_required()
+    @swag_from("openapi/ProjectTemplateBackgroundsResource_post.yml")
     def post(self, project_template_id):
         """
         Attach a preview background file to a project template.
-        ---
-        tags:
-          - Project Templates
         """
         permissions.check_admin_permissions()
         data = validation.validate_request_body(AddBackgroundSchema)
@@ -300,12 +282,10 @@ class ProjectTemplateBackgroundsResource(MethodView):
 
 class ProjectTemplateBackgroundResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/ProjectTemplateBackgroundResource_delete.yml")
     def delete(self, project_template_id, preview_background_file_id):
         """
         Detach a preview background file from a project template.
-        ---
-        tags:
-          - Project Templates
         """
         permissions.check_admin_permissions()
         try:
@@ -319,12 +299,10 @@ class ProjectTemplateBackgroundResource(MethodView):
 
 class ProjectTemplateDefaultBackgroundResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/ProjectTemplateDefaultBackgroundResource_put.yml")
     def put(self, project_template_id):
         """
         Set the default preview background file for a project template.
-        ---
-        tags:
-          - Project Templates
         """
         permissions.check_admin_permissions()
         data = validation.validate_request_body(SetDefaultBackgroundSchema)
@@ -341,13 +319,10 @@ class ProjectTemplateDefaultBackgroundResource(MethodView):
 
 class ProjectTemplateMetadataDescriptorsResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/ProjectTemplateMetadataDescriptorsResource_put.yml")
     def put(self, project_template_id):
         """
         Replace the JSONB metadata descriptors snapshot on a project
-        template. Admin only.
-        ---
-        tags:
-          - Project Templates
         """
         permissions.check_admin_permissions()
         body = request.get_json(silent=True)
@@ -378,13 +353,10 @@ class ProjectTemplateMetadataDescriptorsResource(MethodView):
 
 class ProjectTemplateFromProjectResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/ProjectTemplateFromProjectResource_post.yml")
     def post(self, project_id):
         """
         Create a new project template from an existing project's
-        configuration. Admin only.
-        ---
-        tags:
-          - Project Templates
         """
         permissions.check_admin_permissions()
         data = validation.validate_request_body(
@@ -405,12 +377,10 @@ class ProjectTemplateFromProjectResource(MethodView):
 
 class ApplyProjectTemplateResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/ApplyProjectTemplateResource_post.yml")
     def post(self, project_id, project_template_id):
         """
         Apply a project template to an existing project. Admin only.
-        ---
-        tags:
-          - Project Templates
         """
         permissions.check_admin_permissions()
         try:
@@ -428,99 +398,27 @@ class ApplyProjectTemplateResource(MethodView):
 
 class ProjectTemplateTaskTypesReorderResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/ProjectTemplateTaskTypesReorderResource_post.yml")
     def post(self, project_template_id):
         """
         Reorder template task types
-        ---
-        tags:
-          - Project templates
-        description: Set the priority of the template's task type links from
-          the given ordered id list in a single request, replacing one link
-          request per task type.
-        parameters:
-          - in: path
-            name: project_template_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - task_type_ids
-                properties:
-                  task_type_ids:
-                    type: array
-                    items:
-                      type: string
-                      format: uuid
-        responses:
-            200:
-              description: Updated task type links
         """
         permissions.check_admin_permissions()
-        body = request.json
-        if not isinstance(body, dict) or not isinstance(
-            body.get("task_type_ids"), list
-        ):
-            raise WrongParameterException(
-                "Request body must be a JSON object with a "
-                "'task_type_ids' list."
-            )
+        body = validation.validate_request_body(ReorderTaskTypesSchema)
         return project_templates_service.set_template_task_type_priorities(
-            project_template_id, body["task_type_ids"]
+            project_template_id, body.task_type_ids
         )
 
 
 class ProjectTemplateTaskStatusesReorderResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/ProjectTemplateTaskStatusesReorderResource_post.yml")
     def post(self, project_template_id):
         """
         Reorder template task statuses
-        ---
-        tags:
-          - Project templates
-        description: Set the priority of the template's task status links from
-          the given ordered id list in a single request, preserving each
-          link's board roles and replacing one link request per status.
-        parameters:
-          - in: path
-            name: project_template_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - task_status_ids
-                properties:
-                  task_status_ids:
-                    type: array
-                    items:
-                      type: string
-                      format: uuid
-        responses:
-            200:
-              description: Updated task status links
         """
         permissions.check_admin_permissions()
-        body = request.json
-        if not isinstance(body, dict) or not isinstance(
-            body.get("task_status_ids"), list
-        ):
-            raise WrongParameterException(
-                "Request body must be a JSON object with a "
-                "'task_status_ids' list."
-            )
+        body = validation.validate_request_body(ReorderTaskStatusesSchema)
         return project_templates_service.set_template_task_status_priorities(
-            project_template_id, body["task_status_ids"]
+            project_template_id, body.task_status_ids
         )

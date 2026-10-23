@@ -1,21 +1,23 @@
 import datetime
 import io
 import json as stdlib_json
+import unittest
 from contextlib import redirect_stdout
 from unittest.mock import MagicMock, patch
 
+from alembic.script import ScriptDirectory
 from click.testing import CliRunner
 
 from tests.base import ApiDBTestCase
-
-from zou.app.models.person import Person
-from zou.app.services import preview_files_service
-from zou.app.stores import auth_tokens_store, file_store
-from zou.app.utils import commands
+from zou.app.commands import commands_service as commands
 from zou.app.models.entity_type import EntityType
+from zou.app.models.person import Person
 from zou.app.models.plugin import Plugin
 from zou.app.models.task_type import TaskType
-from zou.cli import cli
+from zou.app.services import preview_files_service
+from zou.app.stores import auth_tokens_store, file_store
+from zou.app.utils import fields, progress as progress_utils
+from zou.cli import _get_alembic_config, cli
 
 
 def totimestamp(dt, epoch=datetime.datetime(1970, 1, 1)):
@@ -43,7 +45,22 @@ class CommandsTestCase(ApiDBTestCase):
         task_types = TaskType.get_all()
         entity_types = EntityType.get_all()
         self.assertEqual(len(task_types), 13)
-        self.assertEqual(len(entity_types), 8)
+        self.assertEqual(
+            sorted(entity_type.name for entity_type in entity_types),
+            [
+                "Character",
+                "Concept",
+                "ConceptFolder",
+                "Edit",
+                "Environment",
+                "Episode",
+                "FX",
+                "Prop",
+                "Scene",
+                "Sequence",
+                "Shot",
+            ],
+        )
 
     def test_init_data_creates_concept_task_type(self):
         commands.init_data()
@@ -151,11 +168,11 @@ class RenormalizeMoviePreviewFilesTestCase(ApiDBTestCase):
             "get_local_movie_path",
             return_value=missing_path,
         ), patch(
-            "zou.app.utils.commands.shutil.copyfile"
+            "zou.app.commands.commands_service.shutil.copyfile"
         ), patch(
-            "zou.app.utils.commands.config.FS_BACKEND", "local"
+            "zou.app.commands.commands_service.config.FS_BACKEND", "local"
         ), patch(
-            "zou.app.utils.commands.config.ENABLE_JOB_QUEUE", False
+            "zou.app.commands.commands_service.config.ENABLE_JOB_QUEUE", False
         ), patch.object(
             preview_files_service, "prepare_and_store_movie"
         ) as mock_prepare:
@@ -288,6 +305,33 @@ class RenormalizeMoviePreviewFilesTestCase(ApiDBTestCase):
         self.assertIn(self.preview_file_id, seen_ids)
         self.assertNotIn(non_mp4_id, seen_ids)
 
+    def test_project_id_filter_joins_the_task(self):
+        # PreviewFile has no project column: the filter used to read one
+        # and raise before any row was looked at.
+        seen_ids = []
+
+        def fake_exists(prefix, pid):
+            seen_ids.append(pid)
+            return False
+
+        buf = io.StringIO()
+        with redirect_stdout(buf), patch.object(
+            file_store, "exists_movie", side_effect=fake_exists
+        ), patch.object(preview_files_service, "prepare_and_store_movie"):
+            commands.renormalize_movie_preview_files(
+                all_broken=True, project_id=str(self.project.id)
+            )
+            # The run above marked the preview as missing. The command
+            # exits on an empty selection, and the app teardown then rolls
+            # the test transaction back: this call has to come last.
+            with self.assertRaises(SystemExit):
+                commands.renormalize_movie_preview_files(
+                    all_missing=True, project_id=fields.gen_uuid()
+                )
+
+        self.assertEqual(seen_ids, [self.preview_file_id])
+        self.assertIn("No preview files found.", buf.getvalue())
+
     def test_cli_accepts_repeated_preview_file_id_option(self):
         runner = CliRunner()
         with patch.object(
@@ -310,6 +354,35 @@ class RenormalizeMoviePreviewFilesTestCase(ApiDBTestCase):
         self.assertEqual(args[0], ("id1", "id2"))
 
 
+class SyncCommandsTestCase(ApiDBTestCase):
+    def test_page_size_reaches_the_sync_service(self):
+        from zou.app.commands import sync_files_service, sync_service
+
+        with patch.object(sync_service, "init"), patch.object(
+            sync_service, "run_last_events_sync"
+        ) as events_sync, patch.object(
+            sync_files_service, "run_last_events_files"
+        ) as files_sync, redirect_stdout(
+            io.StringIO()
+        ):
+            commands.import_last_changes_from_another_instance(
+                "http://source", "login", "password", minutes=5, limit=7
+            )
+            commands.import_last_file_changes_from_another_instance(
+                "http://source", "login", "password", minutes=5, limit=9
+            )
+        events_sync.assert_called_once_with(minutes=5, limit=7)
+        files_sync.assert_called_once_with(minutes=5, limit=9)
+
+    def test_clean_tasks_data_requires_a_project_id(self):
+        runner = CliRunner()
+        with patch.object(commands, "reset_tasks_data") as reset:
+            result = runner.invoke(cli, ["clean-tasks-data"])
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("--project-id", result.output)
+        reset.assert_not_called()
+
+
 class CreateAdminCommandTestCase(ApiDBTestCase):
     """
     The command a studio runs on an empty instance, and the one it reaches
@@ -329,7 +402,7 @@ class CreateAdminCommandTestCase(ApiDBTestCase):
             ["create-admin", "admin@example.com", "--password", "mysecretpwd"],
         )
         self.assertEqual(result.exit_code, 0, result.output)
-        self.assertIn("Admin successfully created", result.output)
+        self.assertIn("Admin admin@example.com created", result.output)
 
         person = Person.get_by(email="admin@example.com")
         self.assertEqual(person.role.code, "admin")
@@ -348,7 +421,9 @@ class CreateAdminCommandTestCase(ApiDBTestCase):
             cli, ["create-admin", self.person.email, "--password", "unused"]
         )
         self.assertEqual(result.exit_code, 0, result.output)
-        self.assertIn("upgraded to 'admin'", result.output)
+        self.assertIn(
+            f"User {self.person.email} upgraded to admin", result.output
+        )
         self.assertEqual(Person.get(self.person.id).role.code, "admin")
 
     def test_create_admin_refuses_a_short_password(self):
@@ -459,7 +534,7 @@ class UpgradeDbTelemetryTestCase(ApiDBTestCase):
         with patch("sqlalchemy.create_engine", return_value=engine), patch(
             "alembic.script.ScriptDirectory.from_config", return_value=script
         ), patch("alembic.command.upgrade"), patch(
-            "zou.app.services.telemetry_service.send_main_infos"
+            "zou.app.commands.telemetry_service.send_main_infos"
         ) as send:
             result = self.runner.invoke(cli, ["upgrade-db", *args])
 
@@ -481,3 +556,149 @@ class UpgradeDbTelemetryTestCase(ApiDBTestCase):
         self.run_upgrade_db(
             "old-rev", "head-rev", "--no-telemetry"
         ).assert_not_called()
+
+
+class ProbePreviewFilesCommandTestCase(ApiDBTestCase):
+    def test_summary_reports_missing_not_failed(self):
+        # probe_preview_files only ever yields "ok" or "missing" (see
+        # preview_file_states_service.probe_file_states): the summary it
+        # prints must say so, not "missing or failed", which the probe
+        # itself never records.
+        from collections import Counter
+
+        with patch.object(
+            commands.preview_file_states_service,
+            "probe_preview_files",
+            return_value=Counter({"pictures/tiles": 2, "movies/lowdef": 0}),
+        ):
+            output = io.StringIO()
+            with redirect_stdout(output):
+                commands.probe_preview_files()
+        printed = output.getvalue()
+        self.assertIn("pictures/tiles: 2 missing", printed)
+        self.assertNotIn("or failed", printed)
+
+
+class GeneratePreviewExtraOnlyMissingTilesTestCase(ApiDBTestCase):
+    def run_command(self, *args):
+        return CliRunner().invoke(
+            cli, ["generate-preview-extra", *args], catch_exceptions=False
+        )
+
+    def test_queued_movies_are_reported(self):
+        from collections import Counter
+
+        summary = Counter(
+            {
+                "checked": 4,
+                "queued": 2,
+                "stored": 1,
+                "recently_attempted": 1,
+                "storage_errors": 0,
+            }
+        )
+        with patch.object(
+            commands.preview_maintenance_service,
+            "queue_missing_tiles",
+            return_value=summary,
+        ) as queue_missing_tiles:
+            result = self.run_command(
+                "--only-missing-tiles", "--force", "--limit", "10"
+            )
+        self.assertEqual(result.exit_code, 0)
+        self.assertTrue(queue_missing_tiles.call_args.kwargs["force"])
+        self.assertEqual(queue_missing_tiles.call_args.kwargs["limit"], 10)
+        self.assertIn("4 movies checked", result.output)
+        self.assertIn("2 queued", result.output)
+        self.assertIn("1 already there", result.output)
+        self.assertIn("1 skipped", result.output)
+
+    def test_tile_options_are_exclusive(self):
+        with patch.object(
+            commands.preview_maintenance_service, "queue_missing_tiles"
+        ) as queue_missing_tiles:
+            result = self.run_command("--only-missing-tiles", "--with-tiles")
+        self.assertNotEqual(result.exit_code, 0)
+        queue_missing_tiles.assert_not_called()
+        self.assertIn("--only-missing-tiles", result.output)
+
+    def test_a_disabled_job_queue_is_reported(self):
+        from zou.app.exceptions import JobQueueDisabledException
+
+        with patch.object(
+            commands.preview_maintenance_service,
+            "queue_missing_tiles",
+            side_effect=JobQueueDisabledException("No job queue: ..."),
+        ):
+            result = self.run_command("--only-missing-tiles")
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("No job queue", result.output)
+
+
+class ProgressOptionTestCase(ApiDBTestCase):
+    def invoke(self, *args):
+        return CliRunner().invoke(cli, list(args), catch_exceptions=False)
+
+    def reported_progress(self, mock):
+        return mock.call_args.kwargs["progress"]
+
+    def test_probe_preview_files_reports_progress_on_demand(self):
+        from collections import Counter
+
+        with patch.object(
+            commands.preview_file_states_service,
+            "probe_preview_files",
+            return_value=Counter(),
+        ) as probe:
+            self.invoke("probe-preview-files")
+            self.assertIsInstance(
+                self.reported_progress(probe), progress_utils.NullProgress
+            )
+            self.invoke("probe-preview-files", "--progress")
+            self.assertNotIsInstance(
+                self.reported_progress(probe), progress_utils.NullProgress
+            )
+
+    def test_queue_missing_tiles_reports_progress_on_demand(self):
+        from collections import Counter
+
+        with patch.object(
+            commands.preview_maintenance_service,
+            "queue_missing_tiles",
+            return_value=Counter(),
+        ) as queue:
+            self.invoke("generate-preview-extra", "--only-missing-tiles")
+            self.assertIsInstance(
+                self.reported_progress(queue), progress_utils.NullProgress
+            )
+            self.invoke(
+                "generate-preview-extra", "--only-missing-tiles", "--progress"
+            )
+            self.assertNotIsInstance(
+                self.reported_progress(queue), progress_utils.NullProgress
+            )
+
+    def test_generate_preview_extra_reports_progress_on_demand(self):
+        with patch.object(
+            commands.preview_maintenance_service, "generate_preview_extra"
+        ) as generate:
+            self.invoke("generate-preview-extra", "--with-tiles")
+            self.assertIsInstance(
+                self.reported_progress(generate), progress_utils.NullProgress
+            )
+            self.invoke("generate-preview-extra", "--with-tiles", "--progress")
+            self.assertNotIsInstance(
+                self.reported_progress(generate), progress_utils.NullProgress
+            )
+
+
+class MigrationGraphTestCase(unittest.TestCase):
+    def test_the_migrations_have_a_single_head(self):
+        """
+        upgrade-db asks Alembic for the head and stops when there are
+        several. Two migrations written on the same parent broke the
+        deployment after #1243, while this suite, which builds its schema
+        from the models, stayed green.
+        """
+        heads = ScriptDirectory.from_config(_get_alembic_config()).get_heads()
+        self.assertEqual(len(heads), 1, heads)

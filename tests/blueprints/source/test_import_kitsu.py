@@ -1,5 +1,4 @@
 from tests.base import ApiDBTestCase
-
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.build_job import BuildJob
 from zou.app.models.comment import Comment
@@ -12,8 +11,8 @@ from zou.app.models.playlist import Playlist
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
 from zou.app.models.schedule_item import ScheduleItem
-from zou.app.models.task import Task
 from zou.app.models.subscription import Subscription
+from zou.app.models.task import Task
 from zou.app.models.time_spent import TimeSpent
 from zou.app.utils import fields
 
@@ -294,6 +293,32 @@ class ImportKitsuRoutesTestCase(ApiDBTestCase):
         ]
         self._post_kitsu("/import/kitsu/comments", payload)
         self.assertIsNotNone(Comment.get(new_id))
+
+    def test_import_comments_names_the_task_the_author_and_the_flag(self):
+        # Kitsu reloads an imported comment from its task, and a client
+        # skips the ones it cannot read.
+        payload = [
+            {
+                "id": str(fields.gen_uuid()),
+                "object_id": self.task_id,
+                "object_type": "Task",
+                "text": "Imported comment",
+                "person_id": str(self.person.id),
+                "task_status_id": str(self.task_status.id),
+                "for_client": True,
+            }
+        ]
+        added = self.capture_events("comment:new")
+
+        self._post_kitsu("/import/kitsu/comments", payload)
+
+        self.assertEqual(
+            [
+                (event["task_id"], event["person_id"], event["for_client"])
+                for event in added
+            ],
+            [(self.task_id, str(self.person.id), True)],
+        )
 
     def test_non_admin_is_denied(self):
         """

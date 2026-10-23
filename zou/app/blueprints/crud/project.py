@@ -1,28 +1,25 @@
+from flasgger import swag_from
 from flask import request
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
-from flask.views import MethodView
-
-
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
+from zou.app.exceptions import WrongParameterException
 from zou.app.mixin import ArgsMixin
-from zou.app.models.project import Project, PROJECT_STYLES
+from zou.app.models.project import PROJECT_STYLES, Project
 from zou.app.models.project_status import ProjectStatus
 from zou.app.services import (
-    deletion_service,
+    cascade_deletion_service,
+    files_service,
+    metadata_descriptors_service,
+    permissions_service,
+    persons_service,
     project_templates_service,
     projects_service,
     shots_service,
-    permissions_service,
     user_service,
-    persons_service,
-    files_service,
-    preview_files_service,
 )
-from zou.app.utils import events, permissions, fields
-
-from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
-
-from zou.app.services.exception import WrongParameterException
+from zou.app.utils import events, fields, permissions
 
 
 class ProjectsResource(BaseModelsResource):
@@ -44,147 +41,18 @@ class ProjectsResource(BaseModelsResource):
         ]
 
     @jwt_required()
+    @swag_from("openapi/ProjectsResource_get.yml")
     def get(self):
         """
         Get projects
-        ---
-        tags:
-          - Crud
-        description: Retrieve all projects. Supports filtering via query
-          parameters and pagination. Includes project permission filtering
-          for non-admin users.
-        parameters:
-          - in: query
-            name: page
-            required: false
-            schema:
-              type: integer
-            example: 1
-            description: Page number for pagination
-          - in: query
-            name: limit
-            required: false
-            schema:
-              type: integer
-            example: 50
-            description: Number of results per page
-          - in: query
-            name: relations
-            required: false
-            schema:
-              type: boolean
-            default: false
-            example: false
-            description: Whether to include relations
-        responses:
-            200:
-              description: Projects retrieved successfully
-              content:
-                application/json:
-                  schema:
-                    oneOf:
-                      - type: array
-                        items:
-                          type: object
-                      - type: object
-                        properties:
-                          data:
-                            type: array
-                            items:
-                              type: object
-                            example: []
-                          total:
-                            type: integer
-                            example: 100
-                          nb_pages:
-                            type: integer
-                            example: 2
-                          limit:
-                            type: integer
-                            example: 50
-                          offset:
-                            type: integer
-                            example: 0
-                          page:
-                            type: integer
-                            example: 1
-            400:
-              description: Invalid filter format or query error
         """
         return super().get()
 
     @jwt_required()
+    @swag_from("openapi/ProjectsResource_post.yml")
     def post(self):
         """
         Create project
-        ---
-        tags:
-          - Crud
-        description: Create a new project with data provided in the
-          request body. JSON format is expected. Validates production_style.
-          For tvshow production type, automatically creates first episode.
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - name
-                properties:
-                  name:
-                    type: string
-                    example: Project Name
-                  production_type:
-                    type: string
-                    example: feature
-                  production_style:
-                    type: string
-                    default: 2d3d
-                    example: 2d3d
-                  project_status_id:
-                    type: string
-                    format: uuid
-                    example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            201:
-              description: Project created successfully
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      name:
-                        type: string
-                        example: Project Name
-                      production_type:
-                        type: string
-                        example: feature
-                      production_style:
-                        type: string
-                        example: 2d3d
-                      project_status_id:
-                        type: string
-                        format: uuid
-                        example: b24a6ea4-ce75-4665-a070-57453082c25
-                      first_episode_id:
-                        type: string
-                        format: uuid
-                        example: c24a6ea4-ce75-4665-a070-57453082c25
-                      created_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-            400:
-              description: Invalid data format or invalid production_style
         """
         return super().post()
 
@@ -210,7 +78,8 @@ class ProjectsResource(BaseModelsResource):
             ]:
                 raise WrongParameterException("Invalid production_style")
         if "resolution" in data:
-            preview_files_service.validate_resolution(data["resolution"])
+            projects_service.validate_resolution(data["resolution"])
+        projects_service.validate_movie_bitrates(data)
         return True
 
     def update_data(self, data):
@@ -240,14 +109,19 @@ class ProjectsResource(BaseModelsResource):
                 ]
             ]
 
-        if data.get("preview_background_file_id") is not None:
+        if data.get("default_preview_background_file_id") is not None:
+            preview_background_files_ids = [
+                str(preview_background_file.id)
+                for preview_background_file in data.get(
+                    "preview_background_files", []
+                )
+            ]
             if (
-                "preview_background_files" not in data
-                or data["preview_background_file_id"]
-                not in data["preview_background_files_ids"]
+                data["default_preview_background_file_id"]
+                not in preview_background_files_ids
             ):
                 raise WrongParameterException(
-                    "Invalid preview_background_file_id"
+                    "Invalid default_preview_background_file_id"
                 )
         return data
 
@@ -273,8 +147,10 @@ class ProjectsResource(BaseModelsResource):
         # per project: copy them onto the new project so its cells are
         # editable right away, instead of one create request per descriptor
         # from the client.
-        projects_service.copy_project_metadata_descriptors(str(project.id))
-        user_service.clear_project_cache()
+        metadata_descriptors_service.copy_project_metadata_descriptors(
+            str(project.id)
+        )
+        user_service.clear_open_projects_cache()
         projects_service.clear_project_cache("")
         return project_dict
 
@@ -287,146 +163,40 @@ class ProjectResource(BaseModelResource, ArgsMixin):
     def check_read_permissions(self, project):
         return permissions_service.check_project_access(project["id"])
 
+    def get_serialized_instance(self, instance_id, relations=True):
+        # With its relations, the project is the one the open projects
+        # listing serves, extra data included: a closed project, read by
+        # its id since it is out of that listing, was missing its metadata
+        # descriptors, task type priorities, and task status links.
+        if not relations:
+            return super().get_serialized_instance(instance_id, relations)
+        project = self.get_model_or_404(instance_id)
+        # The read is serialized before check_read_permissions runs, and the
+        # descriptors are narrowed on a role that can be set per project:
+        # the access check comes first, it resolves that role.
+        permissions_service.check_project_access(str(project.id))
+        for_client, vendor_departments = (
+            permissions_service.get_descriptor_visibility(
+                permissions.get_effective_role()
+            )
+        )
+        return projects_service.get_project_with_extra_data(
+            project, for_client, vendor_departments
+        )
+
     @jwt_required()
+    @swag_from("openapi/ProjectResource_get.yml")
     def get(self, instance_id):
         """
         Get project
-        ---
-        tags:
-          - Crud
-        description: Retrieve a project by its ID and return it as a JSON
-          object. Supports including relations. Requires project access.
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: relations
-            required: false
-            schema:
-              type: boolean
-            default: true
-            example: true
-            description: Whether to include relations
-        responses:
-            200:
-              description: Project retrieved successfully
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      name:
-                        type: string
-                        example: Project Name
-                      production_type:
-                        type: string
-                        example: feature
-                      production_style:
-                        type: string
-                        example: 2d3d
-                      project_status_id:
-                        type: string
-                        format: uuid
-                        example: b24a6ea4-ce75-4665-a070-57453082c25
-                      project_status_name:
-                        type: string
-                        example: Open
-                      created_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-            400:
-              description: Invalid ID format or query error
         """
         return super().get(instance_id)
 
     @jwt_required()
+    @swag_from("openapi/ProjectResource_put.yml")
     def put(self, instance_id):
         """
         Update project
-        ---
-        tags:
-          - Crud
-        description: Update a project with data provided in the request
-          body. JSON format is expected. Requires manager access to the
-          project. Validates production_style.
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  name:
-                    type: string
-                    example: Updated Project Name
-                  production_style:
-                    type: string
-                    example: 2d
-                  preview_background_file_id:
-                    type: string
-                    format: uuid
-                    example: b24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-              description: Project updated successfully
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      name:
-                        type: string
-                        example: Updated Project Name
-                      production_type:
-                        type: string
-                        example: feature
-                      production_style:
-                        type: string
-                        example: 2d
-                      project_status_id:
-                        type: string
-                        format: uuid
-                        example: b24a6ea4-ce75-4665-a070-57453082c25
-                      first_episode_id:
-                        type: string
-                        format: uuid
-                        example: c24a6ea4-ce75-4665-a070-57453082c25
-                      created_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T10:30:00Z"
-                      updated_at:
-                        type: string
-                        format: date-time
-                        example: "2024-01-15T11:00:00Z"
-            400:
-              description: Invalid data format or invalid production_style
         """
         return super().put(instance_id)
 
@@ -435,7 +205,8 @@ class ProjectResource(BaseModelResource, ArgsMixin):
 
     def pre_update(self, project_dict, data):
         if "resolution" in data:
-            preview_files_service.validate_resolution(data["resolution"])
+            projects_service.validate_resolution(data["resolution"])
+        projects_service.validate_movie_bitrates(data, current=project_dict)
 
         if "preview_background_files" in data:
             data["preview_background_files"] = [
@@ -508,35 +279,10 @@ class ProjectResource(BaseModelResource, ArgsMixin):
         return data
 
     @jwt_required()
+    @swag_from("openapi/ProjectResource_delete.yml")
     def delete(self, instance_id):
         """
         Delete project
-        ---
-        tags:
-          - Crud
-        description: Delete a project by its ID. Only closed projects can
-          be deleted. Returns empty response on success.
-        parameters:
-          - in: path
-            name: instance_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: force
-            required: false
-            schema:
-              type: boolean
-            default: false
-            example: false
-            description: Force deletion with cascading removal
-        responses:
-            204:
-              description: Project deleted successfully
-            400:
-              description: Only closed projects can be deleted or integrity error
         """
         force = self.get_force()
 
@@ -550,8 +296,9 @@ class ProjectResource(BaseModelResource, ArgsMixin):
         else:
             self.check_delete_permissions(project_dict)
             if force:
-                deletion_service.remove_project(instance_id)
+                cascade_deletion_service.remove_project(instance_id)
             else:
+                cascade_deletion_service.remove_preview_account(instance_id)
                 project.delete()
                 events.emit("project:delete", {"project_id": project.id})
             self.post_delete(project_dict)
@@ -560,62 +307,10 @@ class ProjectResource(BaseModelResource, ArgsMixin):
 
 class ProjectTaskTypeLinksResource(MethodView, ArgsMixin):
     @jwt_required()
+    @swag_from("openapi/ProjectTaskTypeLinksResource_post.yml")
     def post(self):
         """
         Create project task type link
-        ---
-        tags:
-          - Crud
-        description: Create a link between a project and a task type.
-          Sets the priority of the task type within the project.
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - project_id
-                  - task_type_id
-                properties:
-                  project_id:
-                    type: string
-                    format: uuid
-                    example: a24a6ea4-ce75-4665-a070-57453082c25
-                  task_type_id:
-                    type: string
-                    format: uuid
-                    example: b24a6ea4-ce75-4665-a070-57453082c25
-                  priority:
-                    type: integer
-                    default: 1
-                    example: 1
-                    description: Priority of the task type in the project
-        responses:
-            201:
-              description: Project task type link created successfully
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: c24a6ea4-ce75-4665-a070-57453082c25
-                      project_id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      task_type_id:
-                        type: string
-                        format: uuid
-                        example: b24a6ea4-ce75-4665-a070-57453082c25
-                      priority:
-                        type: integer
-                        example: 1
-            400:
-              description: Invalid project or task type
         """
         args = self.get_args(
             [
@@ -637,73 +332,10 @@ class ProjectTaskTypeLinksResource(MethodView, ArgsMixin):
 
 class ProjectTaskStatusLinksResource(MethodView, ArgsMixin):
     @jwt_required()
+    @swag_from("openapi/ProjectTaskStatusLinksResource_post.yml")
     def post(self):
         """
         Create project task status link
-        ---
-        tags:
-          - Crud
-        description: Create a link between a project and a task status.
-          Sets the priority and roles that can view it on the board.
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - project_id
-                  - task_status_id
-                properties:
-                  project_id:
-                    type: string
-                    format: uuid
-                    example: a24a6ea4-ce75-4665-a070-57453082c25
-                  task_status_id:
-                    type: string
-                    format: uuid
-                    example: b24a6ea4-ce75-4665-a070-57453082c25
-                  priority:
-                    type: integer
-                    default: 1
-                    example: 1
-                    description: Priority of the task status in the project
-                  roles_for_board:
-                    type: array
-                    items:
-                      type: string
-                    example: ["admin", "manager"]
-                    description: Roles allowed to see this status on the board
-        responses:
-            201:
-              description: Project task status link created successfully
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: c24a6ea4-ce75-4665-a070-57453082c25
-                      project_id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                      task_status_id:
-                        type: string
-                        format: uuid
-                        example: b24a6ea4-ce75-4665-a070-57453082c25
-                      priority:
-                        type: integer
-                        example: 1
-                      roles_for_board:
-                        type: array
-                        items:
-                          type: string
-                        example: ["admin", "manager"]
-            400:
-              description: Invalid project or task status
         """
         args = self.get_args(
             [
@@ -742,39 +374,10 @@ def _validate_id_list_body(key):
 
 class ProjectTaskTypeLinksReorderResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/ProjectTaskTypeLinksReorderResource_post.yml")
     def post(self, project_id):
         """
         Reorder project task type links
-        ---
-        tags:
-          - Crud
-        description: Set the priority of the project's task type links from
-          the given ordered id list in a single request, replacing one link
-          request per task type.
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - task_type_ids
-                properties:
-                  task_type_ids:
-                    type: array
-                    items:
-                      type: string
-                      format: uuid
-        responses:
-            200:
-              description: Updated task type links
         """
         permissions_service.check_manager_project_access(project_id)
         task_type_ids = _validate_id_list_body("task_type_ids")
@@ -785,39 +388,10 @@ class ProjectTaskTypeLinksReorderResource(MethodView):
 
 class ProjectTaskStatusLinksReorderResource(MethodView):
     @jwt_required()
+    @swag_from("openapi/ProjectTaskStatusLinksReorderResource_post.yml")
     def post(self, project_id):
         """
         Reorder project task status links
-        ---
-        tags:
-          - Crud
-        description: Set the priority of the project's task status links from
-          the given ordered id list in a single request, preserving each
-          link's board roles and replacing one link request per status.
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - task_status_ids
-                properties:
-                  task_status_ids:
-                    type: array
-                    items:
-                      type: string
-                      format: uuid
-        responses:
-            200:
-              description: Updated task status links
         """
         permissions_service.check_manager_project_access(project_id)
         task_status_ids = _validate_id_list_body("task_status_ids")

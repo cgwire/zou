@@ -1,26 +1,25 @@
 from flask import Blueprint
 
-from zou.app.utils.api import configure_api_from_blueprint
-
 from zou.app.blueprints.playlists.resources import (
     BuildJobResource,
     BuildPlaylistMovieResource,
     EntityPreviewsResource,
     EpisodePlaylistsResource,
+    NotifyClientsResource,
     PlaylistAddEntitiesResource,
     PlaylistAddEntityResource,
-    NotifyClientsResource,
-    PlaylistShareLinksResource,
-    PlaylistShareLinkResource,
+    PlaylistDownloadResource,
     PlaylistShareLinkInviteResource,
-    ProjectPlaylistsResource,
+    PlaylistShareLinkResource,
+    PlaylistShareLinksResource,
+    PlaylistZipDownloadResource,
     ProjectAllPlaylistsResource,
     ProjectBuildJobsResource,
     ProjectPlaylistResource,
-    PlaylistDownloadResource,
-    PlaylistZipDownloadResource,
+    ProjectPlaylistsResource,
     TempPlaylistResource,
 )
+from zou.app.utils.api import configure_api_from_blueprint
 
 routes = [
     ("/data/projects/<project_id>/playlists", ProjectPlaylistsResource),

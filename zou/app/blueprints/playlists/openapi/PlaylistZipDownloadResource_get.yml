@@ -1,0 +1,23 @@
+Download playlist zip
+---
+description: Download given playlist as ZIP file containing all preview
+  files.
+tags:
+  - Playlists
+parameters:
+  - in: path
+    name: playlist_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Playlist unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+responses:
+  200:
+    description: Playlist downloaded as ZIP file
+    content:
+      application/zip:
+        schema:
+          type: string
+          format: binary

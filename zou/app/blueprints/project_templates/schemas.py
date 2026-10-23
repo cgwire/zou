@@ -17,6 +17,19 @@ class AddTaskTypeSchema(BaseSchema):
 
     task_type_id: str = Field(..., min_length=1, description="Task type UUID")
     priority: Optional[int] = None
+    hd_bitrate_compression: Optional[int] = Field(None, ge=1)
+    ld_bitrate_compression: Optional[int] = Field(None, ge=1)
+    is_client_visible: Optional[bool] = None
+
+    def bitrates(self):
+        """
+        The bitrates to write on the link, or None when the body did not
+        mention them: a priority-only call leaves them as they are.
+        """
+        keys = ("hd_bitrate_compression", "ld_bitrate_compression")
+        if not self.model_fields_set.intersection(keys):
+            return None
+        return {key: getattr(self, key) for key in keys}
 
 
 class AddTaskStatusSchema(BaseSchema):
@@ -29,6 +42,7 @@ class AddTaskStatusSchema(BaseSchema):
     )
     priority: Optional[int] = None
     roles_for_board: List[str] = Field(default_factory=list)
+    is_client_allowed: Optional[bool] = None
 
 
 class AddAssetTypeSchema(BaseSchema):
@@ -59,6 +73,22 @@ class AddBackgroundSchema(BaseSchema):
     preview_background_file_id: str = Field(
         ..., min_length=1, description="Preview background file UUID"
     )
+
+
+class ReorderTaskTypesSchema(BaseSchema):
+    """
+    Body of the task type reorder route: the ids in their new order.
+    """
+
+    task_type_ids: List[str]
+
+
+class ReorderTaskStatusesSchema(BaseSchema):
+    """
+    Body of the task status reorder route: the ids in their new order.
+    """
+
+    task_status_ids: List[str]
 
 
 class SetMetadataDescriptorsSchema(BaseSchema):

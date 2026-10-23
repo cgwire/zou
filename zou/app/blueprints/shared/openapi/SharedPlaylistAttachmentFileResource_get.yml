@@ -1,0 +1,7 @@
+Download attachment file
+---
+description: Serve an attachment file linked to a comment visible in
+  this shared playlist (either `for_client=True` or authored by a
+  guest).
+tags:
+  - Playlists

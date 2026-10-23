@@ -6,7 +6,6 @@ import shutil
 import subprocess
 import tempfile
 import uuid
-
 from collections import namedtuple
 from fractions import Fraction
 
@@ -21,6 +20,13 @@ formatter = logging.Formatter(
 )
 loghandler.setFormatter(formatter)
 logger.addHandler(loghandler)
+
+# Encoding defaults, in Mbit/s for the bitrates. The web app overrides them
+# from its config; the remote worker reads them from its payload.
+DEFAULT_HIGHDEF_BITRATE = 28
+DEFAULT_LOWDEF_BITRATE = 6
+DEFAULT_ENCODING_PRESET = "medium"
+DEFAULT_VBV_BUFSIZE_FACTOR = 2
 
 EncodingParameters = namedtuple(
     "EncodingParameters", ["width", "height", "fps"]
@@ -40,8 +46,11 @@ def save_file(tmp_folder, instance_id, file_to_save):
     Save given flask file in given path. This function should only be used for
     temporary storage.
     """
-    extension = file_to_save.filename[-4:]
-    file_name = instance_id + extension.lower() + ".tmp"
+    # The last four characters are not the extension: "clip.webm" gave
+    # "webm" without its dot, and the path lost the extension the later
+    # steps rebuild their temporary names from.
+    extension = os.path.splitext(file_to_save.filename or "")[1].lower()
+    file_name = f"{instance_id}{extension}.tmp"
     file_path = os.path.join(tmp_folder, file_name)
     file_to_save.save(file_path)
     return file_path
@@ -117,21 +126,30 @@ def generate_tile(movie_path):
     video_track = get_video_track(movie_path, "generate_tile")
     duration = get_movie_duration(video_track=video_track)
     fps = get_movie_fps(video_track=video_track)
-    duration_in_frames = int(duration * fps)
+    # round, not int: a probed duration a hair under the frame count
+    # (64.9999 for 65 frames) would drop the last frame (#1248).
+    duration_in_frames = round(duration * fps)
     rows = min(math.ceil(duration_in_frames / 8), 480)
     ratio = get_movie_display_aspect_ratio(video_track=video_track)
     height = 100
     width = math.ceil(height * ratio)
     if rows == 480:
         select = (
-            rf"select='not(mod(n\,{math.ceil(duration_in_frames/3840)}))',"
+            rf"select='not(mod(n\,{math.ceil(duration_in_frames / 3840)}))',"
         )
     else:
         select = ""
     try:
-        ffmpeg.input(movie_path).output(
+        # One decoding thread: the tile is built next to the API. The
+        # duration can be underestimated, so the filter emits a second,
+        # partial sheet: keep the first one, the muxer refuses to write
+        # two frames to a plain filename.
+        ffmpeg.input(movie_path, threads=1).output(
             file_target_path,
             vf=f"{select}scale={width}:{height},tile=8x{rows}",
+            vframes=1,
+            update=1,
+            threads=1,
         ).overwrite_output().run(quiet=True)
     except ffmpeg._run.Error as e:
         log_ffmpeg_error(e, "An error occured while generating the tile.")
@@ -223,11 +241,39 @@ def get_movie_duration(movie_path=None, video_track=None):
 
 
 def normalize_encoding(
-    movie_path, task, file_target_path, fps, b, width, height, keyframes=1
+    movie_path,
+    task,
+    file_target_path,
+    fps,
+    bitrate,
+    width,
+    height,
+    keyframes=1,
+    preset=DEFAULT_ENCODING_PRESET,
+    vbv_bufsize_factor=DEFAULT_VBV_BUFSIZE_FACTOR,
 ):
+    """
+    Encode a movie with libx264 at given bitrate in Mbit/s. The bitrate
+    also caps the rate over the VBV buffer, so a player receiving that
+    rate never starves; a zero factor drops the cap.
+    """
     # ffmpeg's color_primaries/trc/colorspace output flags only tag the
     # metadata; they shift perceived colors on untagged sources.
     logger.info(task)
+    rate_control = {"b": f"{bitrate}M"}
+    if vbv_bufsize_factor > 0:
+        rate_control["maxrate"] = f"{bitrate}M"
+        rate_control["bufsize"] = f"{bitrate * vbv_bufsize_factor}M"
+    # Pad the audio with silence to the end of the video. Sources often
+    # carry a shorter soundtrack (and the silent one add_empty_soundtrack
+    # builds ends early too): Firefox then stalls on the last frames.
+    audio_filters = {}
+    try:
+        video_duration = get_movie_duration(movie_path)
+    except (KeyError, ValueError):
+        video_duration = 0
+    if video_duration > 0:
+        audio_filters["af"] = f"apad=whole_dur={video_duration}"
     stream = ffmpeg.input(movie_path)
     stream = ffmpeg.output(
         stream.video,
@@ -236,8 +282,7 @@ def normalize_encoding(
         pix_fmt="yuv420p",
         format="mp4",
         r=fps,
-        b=b,
-        preset="slow",
+        preset=preset,
         vcodec="libx264",
         movflags="+faststart",
         x264opts=f"keyint={keyframes}:scenecut=0",
@@ -253,6 +298,8 @@ def normalize_encoding(
             f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,"
             "setsar=1"
         ),
+        **rate_control,
+        **audio_filters,
     )
     try:
         logger.info(f"ffmpeg {' '.join(stream.get_args())}")
@@ -262,12 +309,22 @@ def normalize_encoding(
         raise (e)
 
 
-def normalize_movie(movie_path, fps, width, height, skip_high_def=False):
+def normalize_movie(
+    movie_path,
+    fps,
+    width,
+    height,
+    skip_high_def=False,
+    highdef_bitrate=DEFAULT_HIGHDEF_BITRATE,
+    lowdef_bitrate=DEFAULT_LOWDEF_BITRATE,
+    preset=DEFAULT_ENCODING_PRESET,
+    vbv_bufsize_factor=DEFAULT_VBV_BUFSIZE_FACTOR,
+):
     """
     Normalize movie using resolution, width and height given in parameter.
-    Generates a high def movie and a low def movie. When skip_high_def is
-    True, only the low def movie is generated and the returned high def path
-    is None.
+    Generates a high def movie and a low def movie, at given bitrates in
+    Mbit/s. When skip_high_def is True, only the low def movie is generated
+    and the returned high def path is None.
     """
     file_source_name = os.path.basename(movie_path)
     unique_suffix = uuid.uuid4().hex
@@ -311,10 +368,12 @@ def normalize_movie(movie_path, fps, width, height, skip_high_def=False):
             "Compute high def version",
             file_target_path,
             fps,
-            "28M",
+            highdef_bitrate,
             width,
             height,
             keyframes=2,
+            preset=preset,
+            vbv_bufsize_factor=vbv_bufsize_factor,
         )
 
     # Low def version
@@ -327,20 +386,36 @@ def normalize_movie(movie_path, fps, width, height, skip_high_def=False):
         "Compute low def version",
         low_file_target_path,
         fps,
-        "6M",
+        lowdef_bitrate,
         low_width,
         low_height,
         keyframes=2,
+        preset=preset,
+        vbv_bufsize_factor=vbv_bufsize_factor,
     )
 
     return file_target_path, low_file_target_path, err
 
 
+def get_empty_soundtrack_path(file_path):
+    """
+    Path of the temporary output add_empty_soundtrack writes for given movie,
+    with the same container extension so ffmpeg picks the right muxer. A
+    trailing .tmp (the upload marker) is looked through, not taken as the
+    extension.
+    """
+    base_path = file_path[:-4] if file_path.endswith(".tmp") else file_path
+    extension = os.path.splitext(base_path)[1].lstrip(".").lower() or "mp4"
+    if extension == "webm":
+        # WebM only takes Vorbis or Opus audio: the aac track goes into an
+        # mp4 container instead, which the retry below re-encodes the
+        # video for when the muxer refuses it as is.
+        extension = "mp4"
+    return f"{file_path}_empty_audio.{extension}"
+
+
 def add_empty_soundtrack(file_path, try_count=1):
-    extension = file_path.split(".")[-1]
-    if extension == "tmp":
-        extension = file_path.split(".")[-2]
-    tmp_file_path = file_path + "_empty_audio." + extension
+    tmp_file_path = get_empty_soundtrack_path(file_path)
 
     with contextlib.suppress(FileNotFoundError):
         os.remove(tmp_file_path)
@@ -391,7 +466,9 @@ def add_empty_soundtrack(file_path, try_count=1):
         # Hack needed to fix duration after adding empty soundtrack due to a
         # bug in ffmpeg which adds duplicated frames at the end of the movie.
         if duration is not None and duration != new_duration:
-            tmp_file_path_trim = file_path + "_empty_audio_trim." + extension
+            tmp_file_path_trim = tmp_file_path.replace(
+                "_empty_audio.", "_empty_audio_trim."
+            )
             stream = ffmpeg.input(tmp_file_path)
             stream = ffmpeg.output(
                 stream.video,
@@ -496,6 +573,7 @@ def concat_demuxer(in_files, output_path, *args):
     """
 
     first_layout = None
+    video_durations = {}
     for input_path in in_files:
         try:
             info = ffmpeg.probe(input_path)
@@ -540,10 +618,21 @@ def concat_demuxer(in_files, output_path, *args):
                     f"{input_path} has unexpected stream type ({stream_infos})"
                 ),
             }
+        video_durations[input_path] = next(
+            stream.get("duration")
+            for stream in streams
+            if stream["codec_type"] == "video"
+        )
 
     with tempfile.NamedTemporaryFile(mode="w") as temp:
         for input_path in in_files:
             temp.write(f"file '{input_path}'\n")
+            # The demuxer offsets the next file by the container duration,
+            # which follows the audio: AAC overshoots the last video frame
+            # by a few ms, and the CFR output fills the accumulated gap with
+            # a duplicated frame. Offset by the video duration instead.
+            if video_durations[input_path]:
+                temp.write(f"duration {video_durations[input_path]}\n")
         temp.flush()
 
         stream = ffmpeg.input(temp.name, format="concat", safe=0)
@@ -551,7 +640,9 @@ def concat_demuxer(in_files, output_path, *args):
             stream.video,
             stream.audio,
             output_path,
-            vf="select=concatdec_select",
+            # setpts: AAC priming shifts the first video frame off zero,
+            # which the CFR output pads with a duplicated frame.
+            vf="select=concatdec_select,setpts=N/FR/TB",
             af="aselect=concatdec_select,aresample=async=1",
         )
         return run_ffmpeg(stream, "-xerror")

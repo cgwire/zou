@@ -1,0 +1,47 @@
+Get chats
+---
+description: Retrieve all chats where the current user is a
+  participant. Returns list of chat conversations the user can access.
+tags:
+- User
+responses:
+    200:
+      description: Chats where user is participant
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Chat unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                entity_id:
+                  type: string
+                  format: uuid
+                  description: Entity identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                entity_type:
+                  type: string
+                  description: Entity type
+                  example: "Asset"
+                participants:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  description: List of participant person identifiers
+                  example: ["c46c80c6-e097-6887-c292-79675204e470"]
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: "2023-01-01T12:00:00Z"
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Last update timestamp
+                  example: "2023-01-01T12:30:00Z"

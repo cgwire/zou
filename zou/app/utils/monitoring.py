@@ -1,11 +1,14 @@
+import logging
+
 from babel.core import UnknownLocaleError
+from flask_fs.errors import FileNotFound
 from flask_jwt_extended.exceptions import NoAuthorizationError
 from jwt import ExpiredSignatureError
 from werkzeug.exceptions import Forbidden, NotFound
-from flask_fs.errors import FileNotFound
 
+from zou import __version__ as zou_version
 from zou.app import config
-from zou.app.services.exception import (
+from zou.app.exceptions import (
     ModelWithRelationsDeletionException,
     TwoFactorAuthenticationRequiredException,
     WrongIdFormatException,
@@ -13,7 +16,9 @@ from zou.app.services.exception import (
     WrongTaskTypeForEntityException,
 )
 from zou.app.utils import permissions
-from zou import __version__ as zou_version
+
+logger = logging.getLogger(__name__)
+
 
 if config.SENTRY_ENABLED:
     try:
@@ -22,14 +27,14 @@ if config.SENTRY_ENABLED:
         from sentry_sdk.integrations.rq import RqIntegration
         from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
     except ModuleNotFoundError:
-        print("sentry_sdk module not found.")
+        logger.warning("sentry_sdk module not found.")
 
 if config.PROMETHEUS_METRICS_ENABLED:
     try:
         import prometheus_flask_exporter
         import prometheus_flask_exporter.multiprocess
     except ModuleNotFoundError:
-        print("prometheus_flask_exporter not found.")
+        logger.warning("prometheus_flask_exporter not found.")
 
 
 def init_monitoring(app):
@@ -74,11 +79,8 @@ def init_monitoring(app):
                 **prometheus_kwargs
             )
         except ValueError:
-            prometheus_kwargs["api"] = None
-            prometheus_kwargs["metrics_decorator"] = (
-                permissions.require_admin,
-            )
-            metrics = prometheus_flask_exporter.RESTfulPrometheusMetrics(
+            prometheus_kwargs["metrics_decorator"] = permissions.require_admin
+            metrics = prometheus_flask_exporter.PrometheusMetrics(
                 **prometheus_kwargs
             )
         metrics.info("zou_info", "Application info", version=zou_version)

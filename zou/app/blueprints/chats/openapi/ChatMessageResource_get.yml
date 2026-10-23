@@ -1,0 +1,53 @@
+Get chat message
+---
+description: Retrieve a specific chat message by its ID.
+  Returns detailed message information including content and metadata.
+tags:
+  - Chat
+parameters:
+  - in: path
+    name: entity_id
+    description: ID of the entity related to the chat
+    type: string
+    format: uuid
+    required: true
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+  - in: path
+    name: chat_message_id
+    description: ID of the chat message
+    type: string
+    format: uuid
+    required: true
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+responses:
+  200:
+    description: Chat message successfully retrieved
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Message unique identifier
+            message:
+              type: string
+              description: Message content
+            person_id:
+              type: string
+              format: uuid
+              description: ID of the message sender
+            created_at:
+              type: string
+              format: date-time
+              description: Message creation timestamp
+            updated_at:
+              type: string
+              format: date-time
+              description: Message last update timestamp
+            attachments:
+              type: array
+              items:
+                type: object
+              description: Array of file attachments

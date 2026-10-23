@@ -1,0 +1,59 @@
+Add shot asset instance
+---
+description: Add an asset instance to a specific shot.
+tags:
+  - Breakdown
+parameters:
+  - in: path
+    name: shot_id
+    required: true
+    type: string
+    format: uuid
+    example: e68e02e8-0219-8009-e514-918974260690
+    description: Unique identifier of the shot
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - asset_instance_id
+        properties:
+          asset_instance_id:
+            type: string
+            format: uuid
+            description: Asset instance identifier to add
+            example: 19113511-3542-1332-1847-241207593920
+responses:
+  201:
+    description: Asset instance successfully added to shot
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Shot unique identifier
+              example: e68e02e8-0219-8009-e514-918974260690
+            name:
+              type: string
+              description: Shot name
+              example: "SH001"
+            asset_instances:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    description: Asset instance unique identifier
+                    example: 19113511-3542-1332-1847-241207593920
+                  asset_id:
+                    type: string
+                    format: uuid
+                    description: Asset identifier
+                    example: c46c80c6-e097-6887-c292-79675204e470

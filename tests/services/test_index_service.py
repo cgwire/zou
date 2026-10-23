@@ -3,17 +3,14 @@ from unittest.mock import patch
 import pytest
 
 from tests.base import ApiDBTestCase, indexer_is_up
-
+from tests.services.cases import AssetsTestCase, PersonsTestCase, ShotsTestCase
 from zou.app.models.entity import Entity
-
 from zou.app.services import (
     assets_service,
+    cascade_deletion_service,
     index_service,
+    persons_service,
     projects_service,
-)
-from zou.app.services.exception import (
-    EpisodeNotFoundException,
-    SequenceNotFoundException,
 )
 
 # The gate is on the class that talks to the indexer, not on the module: the
@@ -92,7 +89,7 @@ class SearchTestCase(ApiDBTestCase):
         )
         self.assertEqual(len(index_service.search_assets("girafe")), 1)
 
-        assets_service.remove_asset(asset["id"])
+        cascade_deletion_service.remove_asset(asset["id"])
 
         self.assertEqual(index_service.search_assets("girafe"), [])
 
@@ -183,6 +180,43 @@ class PrepareDocumentTestCase(ApiDBTestCase):
         # The technical fields are not worth searching on.
         self.assertEqual(document["metadatas"], {"camera": "A"})
 
+    def test_index_assets_sends_one_batch(self):
+        asset = self.generate_fixture_asset(name="main_character")
+        with patch.object(
+            index_service.indexing, "get_index", return_value="assets-index"
+        ):
+            with patch.object(
+                index_service.indexing, "index_documents"
+            ) as index_documents:
+                documents = index_service.index_assets([asset.id])
+
+        self.assertEqual(
+            [document["id"] for document in documents], [str(asset.id)]
+        )
+        index_documents.assert_called_once_with(
+            "assets-index", documents, wait=False
+        )
+
+    def test_index_shots_sends_one_batch(self):
+        # A bulk import indexes its shots at the end, in one call, without
+        # waiting for Meilisearch to process them.
+        with patch.object(
+            index_service.indexing, "get_index", return_value="shots-index"
+        ):
+            with patch.object(
+                index_service.indexing, "index_documents"
+            ) as index_documents:
+                documents = index_service.index_shots(
+                    [self.shot.id, self.shot.id]
+                )
+
+        self.assertEqual(
+            [document["id"] for document in documents], [str(self.shot.id)]
+        )
+        index_documents.assert_called_once_with(
+            "shots-index", documents, wait=False
+        )
+
     def test_prepare_shot_outside_an_episode(self):
         # A production that is not a series has sequences and no episode:
         # the generator hangs one off self.episode, so this one is built by
@@ -203,11 +237,7 @@ class PrepareDocumentTestCase(ApiDBTestCase):
         self.assertIsNone(document["episode_id"])
 
     def test_prepare_shot_with_missing_sequence(self):
-        with patch.object(
-            index_service.shots_service,
-            "get_sequence",
-            side_effect=SequenceNotFoundException,
-        ):
+        with patch.object(index_service.Entity, "get", return_value=None):
             document = index_service.prepare_shot(self.shot)
 
         self.assertEqual(document["name"], "P01 P01")
@@ -215,16 +245,12 @@ class PrepareDocumentTestCase(ApiDBTestCase):
         self.assertEqual(document["episode_id"], "")
 
     def test_prepare_shot_with_missing_episode(self):
-        fake_sequence = {"name": "S01", "parent_id": "missing-episode-id"}
-        with patch.object(
-            index_service.shots_service,
-            "get_sequence",
-            return_value=fake_sequence,
-        ), patch.object(
-            index_service.shots_service,
-            "get_episode",
-            side_effect=EpisodeNotFoundException,
-        ):
+        sequence = self.sequence
+
+        def get(entity_id):
+            return sequence if str(entity_id) == str(sequence.id) else None
+
+        with patch.object(index_service.Entity, "get", side_effect=get):
             document = index_service.prepare_shot(self.shot)
 
         self.assertEqual(document["name"], "S01 P01 P01")
@@ -257,6 +283,8 @@ class WithoutIndexerTestCase(ApiDBTestCase):
         self.assertEqual(
             index_service.remove_person_index(str(self.person.id)), {}
         )
+        self.assertEqual(index_service.index_shots([self.asset.id]), [])
+        self.assertEqual(index_service.index_assets([self.asset.id]), [])
 
     def test_an_indexer_that_stops_answering_is_swallowed_too(self):
         """
@@ -284,3 +312,53 @@ class WithoutIndexerTestCase(ApiDBTestCase):
                 self.assertEqual(
                     index_service.remove_asset_index(str(self.asset.id)), {}
                 )
+
+    def test_a_bulk_indexation_swallows_an_indexer_that_stops_answering(self):
+        # A shots import indexes in a finally: a raise there would replace
+        # the import answer (the 201, or the 400 naming the failing line).
+        self.generate_fixture_episode()
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+        with patch.object(
+            index_service.indexing, "get_index", return_value=object()
+        ):
+            with patch.object(
+                index_service.indexing,
+                "index_documents",
+                side_effect=ConnectionError("indexer is down"),
+            ) as index_documents:
+                self.assertEqual(index_service.index_shots([self.shot.id]), [])
+                index_documents.assert_called_once()
+
+    def test_a_bulk_indexation_of_nothing_leaves_the_indexer_alone(self):
+        with patch.object(index_service.indexing, "get_index") as get_index:
+            self.assertEqual(index_service.index_shots([]), [])
+        get_index.assert_not_called()
+
+
+class AssetListTestCase(AssetsTestCase):
+    def test_get_all_raw_assets(self):
+        # The indexer walks every asset of the instance, productions included.
+        assets = index_service.get_all_raw_assets()
+        self.assertEqual([asset.id for asset in assets], [self.asset.id])
+
+
+class PersonListTestCase(PersonsTestCase):
+    def test_get_all_raw_active_persons(self):
+        persons_service.update_person(self.person_id, {"active": False})
+        self.assertNotIn(
+            self.person_id,
+            [
+                str(person.id)
+                for person in index_service.get_all_raw_active_persons()
+            ],
+        )
+
+
+class ListingTestCase(ShotsTestCase):
+    def test_every_shot_of_the_instance_is_walked_for_the_index(self):
+        # The indexer walks every shot, productions included.
+        self.assertEqual(
+            [shot.id for shot in index_service.get_all_raw_shots()],
+            [self.shot.id],
+        )

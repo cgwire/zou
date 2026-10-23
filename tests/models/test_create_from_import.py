@@ -3,13 +3,12 @@ from unittest import mock
 from sqlalchemy.exc import IntegrityError
 
 from tests.base import ApiDBTestCase
-
 from zou.app.models.entity import Entity, EntityLink
 from zou.app.models.news import News
-from zou.app.models.project import Project
 from zou.app.models.person import Person
 from zou.app.models.playlist import Playlist
 from zou.app.models.preview_file import PreviewFile
+from zou.app.models.project import Project
 from zou.app.models.task import Task
 
 
@@ -161,7 +160,7 @@ class CreateFromImportTestCase(ApiDBTestCase):
             "updated_at": "2019-06-29T15:05:22",
             "first_name": "John",
             "last_name": "Doe",
-            "email": "jhon01@gmail.com",
+            "email": "jhon01@example.com",
             "phone": "",
             "active": True,
             "desktop_login": "",

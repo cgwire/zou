@@ -3,18 +3,14 @@ from datetime import datetime
 from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
-
 from zou.app import db
-from zou.app.models.build_job import BuildJob
+from zou.app.exceptions import PlaylistLockTimeoutException
 from zou.app.models.playlist import Playlist
 from zou.app.services import (
-    playlists_service,
     entities_service,
+    playlists_service,
     projects_service,
 )
-from zou.app.services.exception import PlaylistLockTimeoutException
-from zou.utils import movie
-from zou.utils.movie import EncodingParameters
 
 
 class PlaylistsServiceTestCase(ApiDBTestCase):
@@ -317,7 +313,9 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
     def test_get_preview_files_for_task(self):
         self.generate_fixture_preview_files()
         task_id = self.task.id
-        preview_files = playlists_service.get_preview_files_for_task(task_id)
+        preview_files = playlists_service.get_preview_files_for_task_raw(
+            task_id
+        )
         self.assertEqual(len(preview_files), 2)
         self.assertEqual(preview_files[0]["revision"], 2)
 
@@ -420,82 +418,6 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         names = sorted(playlist["name"] for playlist in playlists)
         self.assertEqual(names, ["Playlist 1", "Playlist 3", "Playlist 4"])
         self.assertNotIn(elsewhere.name, names)
-
-    def test_get_playlist_file_name(self):
-        playlist = self.generate_fixture_playlists()
-        self.assertEqual(
-            playlists_service.get_playlist_file_name(playlist),
-            "cosmos-landromat-playlist-4",
-        )
-
-    def test_start_and_end_build_job(self):
-        """
-        The two ends of a playlist build: the row the clients poll while the
-        movie is being encoded, then its final status.
-        """
-        playlist = self.generate_fixture_playlists()
-
-        job = playlists_service.start_build_job(playlist)
-        self.assertEqual(job["status"], "running")
-        self.assertEqual(job["playlist_id"], playlist["id"])
-        self.assertIsNone(job["ended_at"])
-
-        job = playlists_service.end_build_job(playlist, job, False)
-        self.assertEqual(job["status"], "failed")
-        self.assertIsNotNone(job["ended_at"])
-
-    def test_end_build_job_message(self):
-        """
-        The optional message explains a degraded build to whoever looks
-        at the job afterwards.
-        """
-        playlist = self.generate_fixture_playlists()
-        job = playlists_service.start_build_job(playlist)
-        job = playlists_service.end_build_job(
-            playlist, job, True, message="built by the concat filter"
-        )
-        self.assertEqual(job["status"], "succeeded")
-        self.assertEqual(job["message"], "built by the concat filter")
-
-    def test_build_playlist_movie_file_reports_the_fallback(self):
-        """
-        When the concat demuxer rejects the previews and the re-encoding
-        concat filter builds the movie instead, the job says so rather
-        than reporting a plain success (cgwire/kitsu#2184).
-        """
-        playlist = self.generate_fixture_playlists()
-        job = playlists_service.start_build_job(playlist)
-        params = EncodingParameters(width=1920, height=1080, fps="25.00")
-
-        def fake_build(mode, tmp_file_paths, movie_file_path, **kwargs):
-            if mode is movie.concat_demuxer:
-                return {
-                    "success": False,
-                    "message": "a.mp4 has an unexpected video/audio "
-                    "stream number (3)",
-                }
-            open(movie_file_path, "w").close()
-            return {"success": True}
-
-        with (
-            patch.object(
-                playlists_service, "playlist_previews", return_value=[]
-            ),
-            patch.object(
-                playlists_service,
-                "retrieve_playlist_tmp_files",
-                return_value=[("/tmp/a.mp4", "a.mp4")],
-            ),
-            patch.object(movie, "build_playlist_movie", fake_build),
-            patch.object(playlists_service.file_store, "add_movie"),
-        ):
-            job = playlists_service.build_playlist_movie_file(
-                playlist, job, [], params, False, False
-            )
-
-        self.assertEqual(job["status"], "succeeded")
-        self.assertIn("concat filter", job["message"])
-        self.assertIn("stream number", job["message"])
 
     def test_an_entity_is_added_with_the_preview_it_names(self):
         self.generate_fixture_preview_files()
@@ -645,14 +567,3 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
             )
 
         self.assertEqual(Playlist.get(playlist.id).shots, [])
-
-    def test_end_build_job_of_a_deleted_job(self):
-        # The job row may be gone by the time the build ends: the clients
-        # still get the event, and the caller an empty dict rather than a
-        # crash inside the queue worker.
-        playlist = self.generate_fixture_playlists()
-        job = playlists_service.start_build_job(playlist)
-        BuildJob.get(job["id"]).delete()
-        self.assertEqual(
-            playlists_service.end_build_job(playlist, job, True), {}
-        )

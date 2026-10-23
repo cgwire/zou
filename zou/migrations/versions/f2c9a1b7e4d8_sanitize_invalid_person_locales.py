@@ -17,7 +17,6 @@ Create Date: 2026-07-06 10:00:00.000000
 
 import sqlalchemy as sa
 from alembic import op
-
 from babel import Locale
 from babel.core import UnknownLocaleError
 

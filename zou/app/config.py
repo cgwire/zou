@@ -1,11 +1,11 @@
+import datetime
 import os
 import sys
-import datetime
 import tempfile
 
 from sqlalchemy.engine.url import URL
 
-from zou.app.utils.env import envtobool, env_with_semicolon_to_list
+from zou.app.utils.env import env_with_semicolon_to_list, envtobool
 
 PROPAGATE_EXCEPTIONS = True
 DEBUG = envtobool("DEBUG", False)
@@ -70,6 +70,14 @@ JWT_IDENTITY_CLAIM = "sub"
 CORS_ALLOWED_ORIGINS = env_with_semicolon_to_list("CORS_ALLOWED_ORIGINS", [])
 
 CLIENT_CACHE_MAX_AGE = int(os.getenv("CLIENT_CACHE_MAX_AGE", 604800))
+# Picture and movie downloads one worker process handles at once; the
+# others wait for a slot, so a burst of thumbnails cannot starve the rest
+# of the API. 0 disables the limit. Past MEDIA_SLOT_WAIT_TIMEOUT seconds
+# of waiting (0: no limit), the request is answered 503.
+MEDIA_MAX_CONCURRENT_REQUESTS = int(
+    os.getenv("MEDIA_MAX_CONCURRENT_REQUESTS", 0)
+)
+MEDIA_SLOT_WAIT_TIMEOUT = int(os.getenv("MEDIA_SLOT_WAIT_TIMEOUT", 30))
 
 DATABASE = {
     "drivername": os.getenv("DB_DRIVER", "postgresql+psycopg"),
@@ -120,6 +128,15 @@ SKIP_NORMALIZATION_HIGHDEF = envtobool("SKIP_NORMALIZATION_HIGHDEF", False)
 # when the other instance skips the normalization, since the source is then
 # the movie its preview routes serve.
 SYNC_SOURCE_MOVIE_FILES = envtobool("SYNC_SOURCE_MOVIE_FILES", False)
+# Movie encoding defaults, in Mbit/s like the hd_bitrate_compression and
+# ld_bitrate_compression columns of projects and task type links that
+# override them. The bitrate is also the VBV cap, with a buffer of
+# MOVIE_VBV_BUFSIZE_FACTOR times the bitrate: 0 drops the cap and keeps a
+# plain average bitrate target.
+MOVIE_HIGHDEF_BITRATE = int(os.getenv("MOVIE_HIGHDEF_BITRATE", 28))
+MOVIE_LOWDEF_BITRATE = int(os.getenv("MOVIE_LOWDEF_BITRATE", 6))
+MOVIE_ENCODING_PRESET = os.getenv("MOVIE_ENCODING_PRESET", "medium")
+MOVIE_VBV_BUFSIZE_FACTOR = int(os.getenv("MOVIE_VBV_BUFSIZE_FACTOR", 2))
 MAX_IMAGE_PIXELS = int(os.getenv("MAX_IMAGE_PIXELS", 20000 * 20000))
 # Cap on any request body size (Flask MAX_CONTENT_LENGTH). Generous by
 # default so multi-GB movie uploads keep working while unbounded bodies
@@ -168,6 +185,10 @@ FS_SWIFT_AES256_KEY = os.getenv("FS_SWIFT_AES256_KEY")
 FS_SWIFT_POOL_SIZE = int(os.getenv("FS_SWIFT_POOL_SIZE", 20))
 FS_SWIFT_TIMEOUT = int(os.getenv("FS_SWIFT_TIMEOUT", 60))
 FS_SWIFT_RETRIES = int(os.getenv("FS_SWIFT_RETRIES", 5))
+# Seconds a Keystone token is shared through Redis between processes (every
+# RQ job runs in a fork of its own): 0 authenticates on every new connection.
+# Keep it below the token lifetime set on the Keystone side.
+FS_SWIFT_TOKEN_CACHE_TTL = int(os.getenv("FS_SWIFT_TOKEN_CACHE_TTL", 3600))
 # What to do when the ETag returned by Swift does not match the uploaded
 # content: "log", "raise" or "raise_and_delete" (see flask-fs2 SwiftBackend).
 FS_SWIFT_ETAG_MISMATCH_POLICY = os.getenv(
@@ -187,8 +208,15 @@ JOB_QUEUE_NOMAD_PLAYLIST_JOB = os.getenv(
     "JOB_QUEUE_NOMAD_PLAYLIST_JOB", "zou-playlist"
 )
 JOB_QUEUE_NOMAD_NORMALIZE_JOB = os.getenv("JOB_QUEUE_NOMAD_NORMALIZE_JOB", "")
+JOB_QUEUE_NOMAD_TILE_JOB = os.getenv("JOB_QUEUE_NOMAD_TILE_JOB", "")
 JOB_QUEUE_NOMAD_HOST = os.getenv("JOB_QUEUE_NOMAD_HOST", "zou-nomad-01.zou")
 JOB_QUEUE_TIMEOUT = os.getenv("JOB_QUEUE_TIMEOUT", 3600)
+
+# Seconds during which a preview file known missing is answered 404
+# without asking the storage again.
+PREVIEW_MISSING_FILE_RECHECK_DELAY = int(
+    os.getenv("PREVIEW_MISSING_FILE_RECHECK_DELAY", 3600)
+)
 
 LDAP_HOST = os.getenv("LDAP_HOST", "127.0.0.1")
 LDAP_PORT = os.getenv("LDAP_PORT", "389")
@@ -204,6 +232,10 @@ SAML_ENABLED = envtobool("SAML_ENABLED", False)
 SAML_IDP_NAME = os.getenv("SAML_IDP_NAME", "")
 SAML_METADATA_URL = os.getenv("SAML_METADATA_URL", "")
 SAML_SKIP_2FA = envtobool("SAML_SKIP_2FA", False)
+# Assertion attribute holding the provider's stable user id. SAML has no
+# equivalent of the OIDC sub claim, so accounts are only bound to an
+# identity when this is set; without it they are matched by email.
+SAML_SUBJECT_ATTRIBUTE = os.getenv("SAML_SUBJECT_ATTRIBUTE", "")
 
 OIDC_ENABLED = envtobool("OIDC_ENABLED", False)
 OIDC_IDP_NAME = os.getenv("OIDC_IDP_NAME", "")

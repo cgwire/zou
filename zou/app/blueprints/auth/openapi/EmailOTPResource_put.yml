@@ -1,0 +1,11 @@
+Pre-enable email OTP
+---
+description: Prepare email OTP (One-Time Password) for enabling.
+  It sets up email-based two-factor authentication.
+tags:
+    - Authentication
+responses:
+  200:
+    description: Email OTP pre-enabled
+  400:
+    description: Email OTP already enabled

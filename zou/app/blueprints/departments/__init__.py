@@ -1,14 +1,15 @@
 from flask import Blueprint
-from zou.app.utils.api import configure_api_from_blueprint
 
 from zou.app.blueprints.departments.resources import (
-    AllDepartmentSoftwareResource,
-    AddSoftwareToDepartmentResource,
-    SoftwareDepartmentResource,
-    AllDepartmentHardwareItemsResource,
     AddHardwareItemToDepartmentResource,
+    AddSoftwareToDepartmentResource,
+    AllDepartmentHardwareItemsResource,
+    AllDepartmentSoftwareResource,
+    DepartmentPersonsResource,
     HardwareItemDepartmentResource,
+    SoftwareDepartmentResource,
 )
+from zou.app.utils.api import configure_api_from_blueprint
 
 routes = [
     ("/data/departments/software-licenses", AllDepartmentSoftwareResource),
@@ -29,6 +30,7 @@ routes = [
         "/data/departments/<department_id>/hardware-items/<hardware_item_id>",
         HardwareItemDepartmentResource,
     ),
+    ("/data/departments/<department_id>/persons", DepartmentPersonsResource),
 ]
 
 blueprint = Blueprint("departments", "departments")

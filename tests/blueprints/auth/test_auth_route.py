@@ -1,15 +1,14 @@
-import pyotp
-import pytest
-import orjson as json
-
 from datetime import timedelta
 
-from tests.base import ApiDBTestCase
+import orjson as json
+import pyotp
+import pytest
 
-from zou.app.utils import auth, date_helpers, fields
+from tests.base import ApiDBTestCase
 from zou.app.models.person import Person
-from zou.app.stores import auth_tokens_store
 from zou.app.services import auth_service, persons_service
+from zou.app.stores import auth_tokens_store
+from zou.app.utils import auth, date_helpers, fields
 
 pytestmark = pytest.mark.real_bcrypt
 
@@ -54,6 +53,35 @@ class AuthTestCase(ApiDBTestCase):
         headers = self.get_auth_headers(tokens)
         response = self.app.get("auth/authenticated", headers=headers)
         self.assertEqual(response.status_code, code)
+
+    def forge_nested_token(self, nested_part):
+        import base64
+
+        def encode(data):
+            return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
+
+        depth = 100000
+        nested = b"[" * depth + b"]" * depth
+        header = b'{"alg":"HS256","typ":"JWT"}'
+        payload = b'{"sub":"x"}'
+        if nested_part == "header":
+            header = nested
+        else:
+            payload = nested
+        return f"{encode(header)}.{encode(payload)}.{encode(b'signature')}"
+
+    def test_deeply_nested_token_is_rejected(self):
+        # A RecursionError escaping PyJWT turned into a 500, without any
+        # authentication: CVE-2026-102265 on the header,
+        # CVE-2026-101918 on the payload, which flask-jwt-extended
+        # decodes before checking the signature.
+        for nested_part in ("header", "payload"):
+            token = self.forge_nested_token(nested_part)
+            response = self.app.get(
+                "auth/authenticated",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            self.assertIn(response.status_code, (401, 422), nested_part)
 
     def test_login(self):
         tokens = self.post("auth/login", self.credentials, 200)
@@ -141,6 +169,7 @@ class AuthTestCase(ApiDBTestCase):
         }
         result = self.post("auth/login", credentials, 400)
         self.assertFalse(result["login"])
+        self.assertEqual(result["message"], "Wrong email or password.")
         self.assertIsNotAuthenticated(result, 422)
 
     def _fail_login(self, times):
@@ -167,6 +196,10 @@ class AuthTestCase(ApiDBTestCase):
         self._fail_login(5)
         result = self.post("auth/login", self.credentials, 400)
         self.assertTrue(result["too_many_failed_login_attemps"])
+        self.assertEqual(
+            result["message"],
+            "Too many failed login attempts, retry in a minute.",
+        )
 
         self._expire_the_lockout_window()
         self._fail_login(1)
@@ -261,7 +294,7 @@ class AuthTestCase(ApiDBTestCase):
 
     def test_register_route_is_gone(self):
         subscription_data = {
-            "email": "alice@doe.com",
+            "email": "alice@example.com",
             "password": "12345678",
             "password_2": "12345678",
             "first_name": "Alice",
@@ -365,7 +398,7 @@ class AuthTestCase(ApiDBTestCase):
         self.assertIsNotAuthenticated({}, code=422)
         # Unknown and known emails must return the same response so the
         # endpoint cannot be used to enumerate accounts.
-        data = {"email": "fake_email@test.com"}
+        data = {"email": "fake_email@example.com"}
         response = self.post("auth/reset-password", data, 200)
         self.assertTrue(response["success"])
         data = {"email": email}
@@ -429,7 +462,7 @@ class AuthTestCase(ApiDBTestCase):
 
         self.log_in(user_artist["email"])
         self.log_in(user_manager["email"])
-        self.log_in("john.did@gmail.com")
+        self.log_in("john.did@example.com")
         login_logs = self.get("/data/events/login-logs/last")
         self.assertEqual(len(login_logs), 4)
         login_logs = self.get("/data/events/login-logs/last?limit=2")
@@ -899,7 +932,7 @@ class EmailOTPTestCase(ApiDBTestCase):
         known = self.app.get(
             f"auth/email-otp?email={self.credentials['email']}"
         )
-        unknown = self.app.get("auth/email-otp?email=unknown@test.com")
+        unknown = self.app.get("auth/email-otp?email=unknown@example.com")
         self.assertEqual(unknown.status_code, 200)
         self.assertEqual(unknown.data, known.data)
 
@@ -1075,10 +1108,28 @@ class TOTPTestCase(ApiDBTestCase):
         self.app.get("auth/logout", headers=headers)
 
         # Login without TOTP should fail
-        self.post("auth/login", self.credentials, 400)
+        result = self.post("auth/login", self.credentials, 400)
+        self.assertEqual(
+            result["message"],
+            "A two-factor authentication code is required.",
+        )
+
+        # Login with a wrong TOTP should fail
+        totp = pyotp.TOTP(otp_secret)
+        result = self.post(
+            "auth/login",
+            {
+                "email": self.credentials["email"],
+                "password": self.credentials["password"],
+                "totp": str((int(totp.now()) + 1) % 1000000).zfill(6),
+            },
+            400,
+        )
+        self.assertEqual(
+            result["message"], "Wrong two-factor authentication code."
+        )
 
         # Login with TOTP
-        totp = pyotp.TOTP(otp_secret)
         response = self.post(
             "auth/login",
             {
@@ -1157,6 +1208,17 @@ class TOTPTestCase(ApiDBTestCase):
         )
         self.assertTrue(data["wrong_OTP"])
 
+    def test_recovery_codes_without_code(self):
+        """
+        PUT /auth/recovery-codes without any code answers like a wrong
+        code, not with a server error.
+        """
+        _, headers = self.login()
+        self.enable_totp(headers)
+
+        data = self.call_2fa("put", "auth/recovery-codes", headers, status=400)
+        self.assertTrue(data["wrong_OTP"])
+
 
 class ChangePasswordErrorsTestCase(ApiDBTestCase):
     def setUp(self):
@@ -1221,7 +1283,7 @@ class ChangePasswordErrorsTestCase(ApiDBTestCase):
     def test_change_password_while_locked_out(self):
         """
         check_auth applies the login lockout here too, and the handler
-        used to let TooMuchLoginFailedAttemps out as a 500.
+        used to let TooManyLoginFailedAttempts out as a 500.
         """
         _, headers = self.login()
         Person.get(self.person_dict["id"]).update(

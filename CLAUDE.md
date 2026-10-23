@@ -37,12 +37,14 @@ zou/
 ├── remote/                  # Remote job runners (playlist, normalize)
 └── cli.py                   # CLI commands (zou init-db, create-admin, etc.)
 tests/
-├── base.py                  # ApiDBTestCase with fixture generators
+├── base.py                  # ApiTestCase / ApiDBTestCase (HTTP helpers, DB setup)
+├── factories/               # generate_fixture_* mixins, one module per domain
 ├── conftest.py              # Schema create/drop per session
-├── models/                  # CRUD model tests
+├── blueprints/<feature>/    # Route-level tests (CRUD ones in crud/)
+├── models/                  # BaseMixin tests
 ├── services/                # Service function tests
 ├── utils/                   # Utility tests
-└── <feature>/               # Route-level tests per blueprint
+└── misc/                    # Static contract checks (imports, OpenAPI…)
 specs/                       # Detailed architecture specs (for reference)
 ```
 
@@ -67,6 +69,7 @@ HTTP → Flask routing → Resource method → @jwt_required()
 - Models inherit `db.Model, BaseMixin, SerializerMixin`
 - UUIDs everywhere for primary keys (`UUIDType(binary=False)`)
 - **String formatting: f-strings only** for any new or edited code. Do not introduce `"... %s" % x` or `.format(...)`. Pre-existing `%`-formatted lines in a file you're editing can stay — don't scope-creep — but every new line you add uses f-strings. Multi-line: implicit concatenation of f-string literals, not `+`.
+- **Imports sorted alphabetically** inside a parenthesized `from x import (...)` block. Adding a name to a block that is not sorted yet means sorting the whole block, never appending at the end.
 - **No parentheses around tuple literals** where they add nothing: write `return a, b`, not `return (a, b)`. Same for unpacking. Don't refactor untouched code for this.
 - **Docstrings: opening and closing `"""` each on their own line.** Always put a newline immediately after the opening `"""` and immediately before the closing `"""`, even for one-liners. Do not write `"""Summary on the same line."""` or `"""First line\n    second line."""`.
 
@@ -215,7 +218,7 @@ def update_thing(thing_id, data):
     return thing.serialize()
 ```
 
-- Raise domain exceptions from `zou/app/services/exception.py` (e.g., `ThingNotFoundException`)
+- Raise domain exceptions from `zou/app/exceptions.py` (e.g., `ThingNotFoundException`)
 - Emit events after mutations: `events.emit("entity:action", data, project_id=...)`
 - `get_*_raw()` returns SQLAlchemy instance (for internal use), `get_*()` returns serialized dict
 
@@ -296,8 +299,10 @@ adding or reviewing a route.
 **One data path, one policy.** The dominant defect class here is two routes
 serving the same data with different guards — list vs. single, bulk vs. unit,
 export vs. import. When you add a route next to an existing one, copy its
-guard or change both. `tests/misc/test_crud_permission_symmetry.py` enforces
-this for CRUD list/single pairs.
+guard or change both. `tests/blueprints/crud/test_permission_symmetry.py` enforces
+this for CRUD list/single pairs (a static check: it verifies that a
+single-instance resource naming a restrictor has a list resource naming
+one too, not that the two policies are equal).
 
 **Never trust a client-supplied id to belong to its parent.** A route that
 takes `<task_id>/<comment_id>/<attachment_file_id>` must check each link, not
@@ -397,7 +402,7 @@ class DepartmentTestCase(ApiDBTestCase):
 ```python
 from tests.base import ApiDBTestCase
 from zou.app.services import my_service
-from zou.app.services.exception import MyNotFoundException
+from zou.app.exceptions import MyNotFoundException
 
 class MyServiceTestCase(ApiDBTestCase):
     def setUp(self):

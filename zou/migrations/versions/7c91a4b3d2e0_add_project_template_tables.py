@@ -6,10 +6,11 @@ Create Date: 2026-04-08 12:00:00.000000
 
 """
 
-from alembic import op
+import uuid
+
 import sqlalchemy as sa
 import sqlalchemy_utils
-import uuid
+from alembic import op
 
 from zou.app.models.person import ROLE_TYPES
 from zou.app.models.project import PROJECT_STYLES

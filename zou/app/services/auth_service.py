@@ -1,53 +1,60 @@
-import pyotp
+import base64
+import hashlib
+import hmac
+import json
 import random
+import secrets
 import string
-
 from datetime import timedelta
 
-from flask import request, session, current_app
+import pyotp
+from babel.dates import format_datetime
+from fido2.utils import bytes2int, int2bytes
+from fido2.webauthn import (
+    AttestedCredentialData,
+    PublicKeyCredentialUserEntity,
+)
+from flask import current_app, request, session
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
     get_jti,
 )
-from babel.dates import format_datetime
+from sqlalchemy.orm.attributes import flag_modified
 
-
-from zou.app.services import persons_service, templates_service
-from zou.app.models.person import Person, SENSITIVE_FIELDS
-from zou.app.services.exception import (
+from zou.app import config
+from zou.app.exceptions import (
     EmailOTPAlreadyEnabledException,
     EmailOTPNotEnabledException,
     FIDONoPreregistrationException,
     FIDOServerException,
+    InactiveUserException,
     MissingOTPException,
     NoAuthStrategyConfigured,
     PersonNotFoundException,
-    TooMuchLoginFailedAttemps,
+    TooManyLoginFailedAttempts,
     TOTPAlreadyEnabledException,
     TOTPNotEnabledException,
     TwoFactorAuthenticationNotEnabledException,
-    UnactiveUserException,
     UserCantConnectDueToNoFallback,
     WrongOTPException,
     WrongPasswordException,
     WrongUserException,
 )
-from zou.app import config
+from zou.app.models.person import SENSITIVE_FIELDS, Person
+from zou.app.services import (
+    organisation_service,
+    persons_service,
+    preview_accounts_service,
+    templates_service,
+)
 from zou.app.stores import auth_tokens_store
 from zou.app.utils import auth, date_helpers, emails
 from zou.app.utils.email_i18n import get_email_translation
 
-from fido2.webauthn import (
-    PublicKeyCredentialUserEntity,
-)
-from sqlalchemy.orm.attributes import flag_modified
-
-from fido2.utils import bytes2int, int2bytes
-from fido2.webauthn import AttestedCredentialData
-
 MAX_LOGIN_FAILED_ATTEMPS = 5
 LOGIN_LOCKOUT_DELAY = timedelta(minutes=1)
+APP_LOGIN_CODE_TTL = 60
 
 # Which method the preferred one falls back to when it gets disabled, in
 # order of preference.
@@ -115,7 +122,7 @@ def check_auth(
         _spend_password_check_time(password)
         raise WrongUserException()
 
-    login_failed_attemps = check_login_failed_attemps(person)
+    login_failed_attemps = check_login_failed_attempts(person)
 
     strategy = app.config["AUTH_STRATEGY"]
     try:
@@ -128,7 +135,7 @@ def check_auth(
         else:
             raise NoAuthStrategyConfigured()
     except WrongPasswordException:
-        update_login_failed_attemps(
+        update_login_failed_attempts(
             person["id"],
             login_failed_attemps + 1,
             date_helpers.get_utc_now_datetime(),
@@ -138,7 +145,14 @@ def check_auth(
     # Past the password, and before the second factor: a deactivated
     # account does not hand out the list of its enabled 2FA methods.
     if not person.get("active", False):
-        raise UnactiveUserException()
+        raise InactiveUserException()
+    if person.get("preview_project_id") is not None and not (
+        preview_accounts_service.is_available()
+        and preview_accounts_service.is_preview_session_valid(
+            persons_service.get_person_raw(person["id"]), None
+        )
+    ):
+        raise InactiveUserException()
 
     if not no_otp and person_two_factor_authentication_enabled(person):
         if not check_two_factor_authentication(
@@ -148,7 +162,7 @@ def check_auth(
             fido_authentication_response,
             recovery_code,
         ):
-            update_login_failed_attemps(
+            update_login_failed_attempts(
                 person["id"],
                 login_failed_attemps + 1,
                 date_helpers.get_utc_now_datetime(),
@@ -156,7 +170,7 @@ def check_auth(
             raise WrongOTPException()
 
     if login_failed_attemps > 0:
-        update_login_failed_attemps(person["id"], 0)
+        update_login_failed_attempts(person["id"], 0)
 
     # This dict is what the login route hands back to the client, and it
     # was read with the unsafe serialization to reach the secrets above.
@@ -216,10 +230,10 @@ def ldap_auth_strategy(person, password, app):
     (only if fallback is activated (via LDAP_FALLBACK flag) in configuration)
     """
     if person["is_generated_from_ldap"]:
-        from ldap3 import Server, Connection, ALL, NTLM, SIMPLE
+        from ldap3 import ALL, NTLM, SIMPLE, Connection, Server
         from ldap3.core.exceptions import (
-            LDAPSocketOpenError,
             LDAPInvalidCredentialsResult,
+            LDAPSocketOpenError,
         )
 
         try:
@@ -268,13 +282,13 @@ def ldap_auth_strategy(person, password, app):
         raise UserCantConnectDueToNoFallback()
 
 
-def update_login_failed_attemps(
+def update_login_failed_attempts(
     person_id, login_failed_attemps, last_login_failed=None
 ):
     """
-    Update login failed attemps for a person_id.
+    Update login failed attempts for a person_id.
 
-    The person cache is deliberately left alone: check_login_failed_attemps
+    The person cache is deliberately left alone: check_login_failed_attempts
     reads the counter from the row, so nothing needs the cached copy to be
     in step, and clear_person_cache drops every memoized person lookup for
     the whole instance. Calling it here let an anonymous caller keep that
@@ -362,6 +376,8 @@ def is_user_exempt_from_2fa(person, app):
     """
     Check if user is exempt from mandatory 2FA requirement.
     """
+    if person.get("preview_project_id") is not None:
+        return True
     exempt_users = app.config.get("TWO_FA_EXEMPT_USERS", [])
     return person.get("email", "") in exempt_users
 
@@ -454,7 +470,8 @@ def check_fido(person, authentication_response):
             get_fido_attested_credential_data_from_person(fido_credentials),
             authentication_response,
         )
-    except Exception:
+    except Exception as exception:
+        current_app.logger.info(f"FIDO authentication failed: {exception}")
         return False
     return True
 
@@ -469,7 +486,7 @@ def pre_enable_totp(person_id):
 
     person.totp_secret = pyotp.random_base32()
     totp = pyotp.TOTP(person.totp_secret)
-    organisation = persons_service.get_organisation()
+    organisation = organisation_service.get_organisation()
     totp_provisionning_uri = totp.provisioning_uri(
         name=person.email, issuer_name=f"Kitsu {organisation['name']}"
     )
@@ -569,7 +586,7 @@ def send_email_otp(person):
     auth_tokens_store.add(
         f"email-otp-count-{person['email']}", count, ttl=60 * 5
     )
-    organisation = persons_service.get_organisation()
+    organisation = organisation_service.get_organisation()
     locale = person.get("locale") or config.DEFAULT_LOCALE
     if hasattr(locale, "language"):
         locale = str(locale)
@@ -696,9 +713,10 @@ def unregister_fido(person_id, device_name):
             del person.fido_credentials[i]
             break
     flag_modified(person, "fido_credentials")
+    # The keys left keep FIDO on, and the preferred method with it.
     if len(person.fido_credentials) == 0:
         person.fido_enabled = False
-    _disable_two_factor_method(person, "fido")
+        _disable_two_factor_method(person, "fido")
     person.commit()
     persons_service.clear_person_cache()
     return True
@@ -772,6 +790,66 @@ def create_auth_tokens(identity, additional_claims=None):
     return access_token, refresh_token
 
 
+def create_app_login_code(person_id, code_challenge, skip_2fa_setup=False):
+    """
+    Store a one-time browser login code bound to the given PKCE challenge
+    and return it. It lives APP_LOGIN_CODE_TTL seconds.
+    """
+    code = secrets.token_urlsafe(32)
+    auth_tokens_store.add(
+        f"app-login-code-{code}",
+        json.dumps(
+            {
+                "person_id": person_id,
+                "code_challenge": code_challenge,
+                "skip_2fa_setup": skip_2fa_setup,
+            }
+        ),
+        ttl=APP_LOGIN_CODE_TTL,
+    )
+    return code
+
+
+def exchange_app_login_code(code, code_verifier):
+    """
+    Consume a browser login code and return the person it was minted for
+    with a new token pair, or None when the code is unknown or expired, the
+    verifier does not match its challenge or the person is inactive.
+    """
+    key = f"app-login-code-{code}"
+    value = auth_tokens_store.get(key)
+    # Of two concurrent exchanges, only the one whose delete removes the
+    # key goes on: the code stays single-use.
+    if value is None or auth_tokens_store.delete(key) != 1:
+        return None
+    data = json.loads(value)
+
+    challenge = (
+        base64.urlsafe_b64encode(
+            hashlib.sha256(code_verifier.encode()).digest()
+        )
+        .rstrip(b"=")
+        .decode()
+    )
+    if not hmac.compare_digest(challenge, data["code_challenge"]):
+        return None
+
+    try:
+        person = persons_service.get_person(data["person_id"])
+    except PersonNotFoundException:
+        return None
+    if not person["active"]:
+        return None
+
+    additional_claims = {"identity_type": "person"}
+    if data["skip_2fa_setup"]:
+        additional_claims["skip_2fa_setup"] = True
+    access_token, refresh_token = create_auth_tokens(
+        person["id"], additional_claims
+    )
+    return person, access_token, refresh_token
+
+
 def revoke_tokens(app, jti, refresh_jti=None):
     """
     Add given token ids to the auth token blocklist. Each entry lives as
@@ -791,16 +869,6 @@ def is_default_password(app, password):
     return (
         password == "default"
         and app.config["AUTH_STRATEGY"] != "auth_local_no_password"
-    )
-
-
-def generate_reset_token():
-    """
-    Generate and return a reset token.
-    """
-    return "".join(
-        random.SystemRandom().choice(string.ascii_uppercase + string.digits)
-        for _ in range(64)
     )
 
 
@@ -829,7 +897,7 @@ def hash_recovery_codes(recovery_codes):
     ]
 
 
-def check_login_failed_attemps(person):
+def check_login_failed_attempts(person):
     """
     Return the count to keep going from, raising while the account sits in
     a lockout window.
@@ -843,7 +911,7 @@ def check_login_failed_attemps(person):
     The counter is read from the row, not from the person dict: that dict
     comes from a lookup memoized for two minutes, and keeping it in step
     meant dropping the whole instance person cache on every wrong
-    password. See update_login_failed_attemps.
+    password. See update_login_failed_attempts.
     """
     row = Person.get(person["id"])
     login_failed_attemps = row.login_failed_attemps or 0
@@ -854,9 +922,9 @@ def check_login_failed_attemps(person):
     if last_login_failed is not None:
         locked_until = last_login_failed + LOGIN_LOCKOUT_DELAY
         if locked_until > date_helpers.get_utc_now_datetime():
-            raise TooMuchLoginFailedAttemps()
+            raise TooManyLoginFailedAttempts()
 
-    update_login_failed_attemps(person["id"], 0)
+    update_login_failed_attempts(person["id"], 0)
     return 0
 
 
@@ -868,4 +936,8 @@ def logout(jti, refresh_jti=None):
     try:
         revoke_tokens(current_app, jti, refresh_jti=refresh_jti)
     except Exception:
-        pass
+        current_app.logger.warning(
+            "The token store is unreachable, the session tokens were not "
+            "revoked.",
+            exc_info=1,
+        )

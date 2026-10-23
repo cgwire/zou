@@ -1,18 +1,18 @@
-from tests.base import ApiDBTestCase
+import os
+import tempfile
 
-from zou.app.models.entity import Entity
+from tests.base import ApiDBTestCase
+from tests.services.cases import PreviewFileTestCase
+from zou.app.exceptions import (
+    ProjectNotFoundException,
+    WrongParameterException,
+)
 from zou.app.models.project import Project
-from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.project_status import ProjectStatus
 from zou.app.services import (
     breakdown_service,
-    deletion_service,
+    cascade_deletion_service,
     projects_service,
-)
-from zou.app.services.exception import (
-    MetadataDescriptorNotFoundException,
-    ProjectNotFoundException,
-    WrongParameterException,
 )
 
 
@@ -33,14 +33,16 @@ class ProjectServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(projects), 2)
         self.assertEqual(projects[0]["project_status_name"], "Open")
 
-    def test_get_or_create_status(self):
-        project_status = projects_service.get_or_create_status("Frozen")
+    def test_get_or_create_project_status(self):
+        project_status = projects_service.get_or_create_project_status(
+            "Frozen"
+        )
         self.assertEqual(project_status["name"], "Frozen")
         self.assertEqual(ProjectStatus.query.count(), 3)
 
         # Asking again returns the same row rather than adding one. The
         # count has to be read back, the second call is what could add it.
-        again = projects_service.get_or_create_status("Frozen")
+        again = projects_service.get_or_create_project_status("Frozen")
         self.assertEqual(again["id"], project_status["id"])
         self.assertEqual(ProjectStatus.query.count(), 3)
 
@@ -62,13 +64,6 @@ class ProjectServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(statuses), 2)
         statuses = ProjectStatus.query.all()
         self.assertEqual(len(statuses), 4)
-
-    def test_get_or_create_project(self):
-        project = projects_service.get_or_create_project("Agent 327")
-        projects = projects_service.get_projects()
-        self.assertIsNotNone(project["id"])
-        self.assertEqual(project["name"], "Agent 327")
-        self.assertEqual(len(projects), 3)
 
     def test_get_project_by_name(self):
         project = projects_service.get_project_by_name(self.project.name)
@@ -100,6 +95,7 @@ class ProjectServiceTestCase(ApiDBTestCase):
 
     def test_add_team_member_swallows_concurrent_insert(self):
         from unittest import mock
+
         from sqlalchemy.exc import IntegrityError
 
         self.generate_fixture_person()
@@ -172,7 +168,7 @@ class ProjectServiceTestCase(ApiDBTestCase):
         breakdown_service.create_casting_link(self.shot.id, self.asset.id)
 
         project_id = str(self.project.id)
-        deletion_service.remove_project(project_id)
+        cascade_deletion_service.remove_project(project_id)
         self.assertIsNone(Project.get(project_id))
 
     def test_is_tv_show(self):
@@ -267,6 +263,46 @@ class ProjectServiceTestCase(ApiDBTestCase):
         )
         task_types = projects_service.get_project_task_types(self.project.id)
         self.assertEqual(len(task_types), 1)
+
+    def test_get_project_task_types_raw_narrows_to_an_entity_kind(self):
+        """
+        The importers read the task types of a production per entity kind.
+        A task type predating the for_entity column reads NULL and means
+        Asset, the model default.
+        """
+        self.generate_fixture_department()
+        self.generate_fixture_task_type()
+        for task_type in [
+            self.task_type,
+            self.task_type_animation,
+            self.task_type_concept,
+        ]:
+            projects_service.add_task_type_setting(
+                self.project.id, task_type.id
+            )
+        self.task_type_concept.update({"for_entity": None})
+
+        names = lambda task_types: sorted(t.name for t in task_types)
+        self.assertEqual(
+            names(
+                projects_service.get_project_task_types_raw(
+                    self.project.id, "Asset"
+                )
+            ),
+            [self.task_type_concept.name, self.task_type.name],
+        )
+        self.assertEqual(
+            names(
+                projects_service.get_project_task_types_raw(
+                    self.project.id, "Shot"
+                )
+            ),
+            [self.task_type_animation.name],
+        )
+        self.assertEqual(
+            len(projects_service.get_project_task_types_raw(self.project.id)),
+            3,
+        )
 
     def test_get_project_task_statuses(self):
         self.generate_fixture_task_status()
@@ -398,7 +434,7 @@ class ProjectServiceTestCase(ApiDBTestCase):
             first_name="Alice",
             last_name="Zulu",
             desktop_login="alice.zulu",
-            email="alice.zulu@gmail.com",
+            email="alice.zulu@example.com",
         )
         projects_service.add_team_member(self.project.id, here.id)
         projects_service.add_team_member(
@@ -416,232 +452,70 @@ class ProjectServiceTestCase(ApiDBTestCase):
         self.assertEqual([person.id for person in team], [here.id])
 
 
-class ProjectMetadataDescriptorTestCase(ApiDBTestCase):
-    """
-    The custom columns a production adds to its assets, shots or to
-    itself. They carry a position, which is what the reorder route
-    rewrites, and renaming or removing one rewrites the entity data
-    that used the old name.
-    """
-
-    def setUp(self):
-        super().setUp()
-
-        self.generate_fixture_project()
-        self.generate_fixture_project_closed()
-
-    def names_and_positions(self, descriptors):
-        return [(d["name"], d["position"]) for d in descriptors]
-
-    def add(self, name, entity_type="Asset", choices=None):
+class PreviewFileServiceTestCase(PreviewFileTestCase):
+    def _write_temp_movie(self, size=1024):
         """
-        A string descriptor of given name, the shape all these tests want.
+        Create a non-empty temp file standing in for a movie.
         """
-        return projects_service.add_metadata_descriptor(
-            self.project.id,
-            entity_type,
-            name,
-            "list" if choices else "string",
-            choices or [],
-            False,
+        tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+        tmp.write(b"\x00" * size)
+        tmp.close()
+        self.addCleanup(
+            lambda: os.path.exists(tmp.name) and os.remove(tmp.name)
         )
+        return tmp.name
 
-    def test_add_asset_metadata_descriptor(self):
-        descriptor = self.add("Is Outdoor")
-        self.assertIsNotNone(MetadataDescriptor.get(descriptor["id"]))
-        descriptor = projects_service.add_metadata_descriptor(
-            self.project.id,
-            "Asset",
-            "Contractor",
-            "list",
-            ["contractor 1", "contractor 2"],
-            False,
-        )
-        descriptors = projects_service.get_metadata_descriptors(
-            self.project.id
-        )
-        self.assertEqual(len(descriptors), 2)
-        self.assertEqual(descriptors[0]["id"], descriptor["id"])
-        self.assertEqual(descriptors[0]["field_name"], "contractor")
-        self.assertEqual(descriptors[1]["field_name"], "is_outdoor")
+    def test_movie_bitrate_validation(self):
+        projects_service.validate_movie_bitrate(None)
+        projects_service.validate_movie_bitrate(20)
+        projects_service.validate_movie_bitrate(28)
+        for bitrate in ("20", 20.5, True, 0, 29):
+            with self.assertRaises(WrongParameterException):
+                projects_service.validate_movie_bitrate(bitrate)
 
-        descriptors = projects_service.get_metadata_descriptors(
-            self.project.id, for_client=True
+    def test_low_def_bitrate_stays_below_high_def(self):
+        validate = projects_service.validate_movie_bitrates
+        validate({"hd_bitrate_compression": 20, "ld_bitrate_compression": 20})
+        # Against the instance default when the high def is not set.
+        validate({"ld_bitrate_compression": 28})
+        # Against the object's own high def when only the low def changes.
+        validate(
+            {"ld_bitrate_compression": 10},
+            current={"hd_bitrate_compression": 10},
         )
-        self.assertEqual(descriptors, [])
+        # A link leaving its high def unset is checked against the level
+        # it inherits from.
+        validate(
+            {"hd_bitrate_compression": None, "ld_bitrate_compression": 10},
+            inherited={"hd_bitrate_compression": 10},
+        )
+        # Clearing the low def while lowering the high def is fine.
+        validate(
+            {"hd_bitrate_compression": 4, "ld_bitrate_compression": None},
+            current={"ld_bitrate_compression": 6},
+        )
+        # So is leaving it: the encoder caps a stored low def.
+        validate(
+            {"hd_bitrate_compression": 4},
+            current={"ld_bitrate_compression": 6},
+        )
+        for data, kwargs in (
+            ({"hd_bitrate_compression": 10, "ld_bitrate_compression": 12}, {}),
+            (
+                {"ld_bitrate_compression": 12},
+                {"current": {"hd_bitrate_compression": 10}},
+            ),
+            (
+                {"hd_bitrate_compression": None, "ld_bitrate_compression": 12},
+                {"inherited": {"hd_bitrate_compression": 10}},
+            ),
+        ):
+            with self.assertRaises(WrongParameterException):
+                validate(data, **kwargs)
 
-    def test_update_metadata_descriptor(self):
-        asset = self.generate_fixture_asset_type()
-        asset = self.generate_fixture_asset()
-        descriptor = self.add("Contractor")
-        asset.update({"data": {"contractor": "contractor 1"}})
-        self.assertIn("contractor", asset.data)
-        projects_service.update_metadata_descriptor(
-            descriptor["id"], {"name": "Team", "for_client": True}
-        )
-        descriptors = projects_service.get_metadata_descriptors(
-            self.project.id
-        )
-        self.assertEqual(len(descriptors), 1)
-        self.assertTrue(descriptors[0]["for_client"])
-        asset = Entity.get(asset.id)
-        self.assertEqual(asset.data.get("team"), "contractor 1")
-
-    def test_update_project_metadata_descriptor_renames_project_data(self):
-        descriptor = self.add("Studio code", "Project")
-        self.project.update({"data": {"studio_code": "A1"}})
-        projects_service.update_metadata_descriptor(
-            descriptor["id"], {"name": "Code", "for_client": False}
-        )
-        self.project = Project.get(self.project.id)
-        self.assertEqual(self.project.data.get("code"), "A1")
-        self.assertIsNone(self.project.data.get("studio_code"))
-
-    def test_remove_project_metadata_descriptor_clears_project_data(self):
-        descriptor = self.add("Studio code", "Project")
-        self.project.update({"data": {"studio_code": "A1"}})
-        projects_service.remove_metadata_descriptor(descriptor["id"])
-        self.project = Project.get(self.project.id)
-        self.assertIsNone((self.project.data or {}).get("studio_code"))
+    def test_encoding_bitrates_never_exceed_the_ceilings(self):
+        project = {"hd_bitrate_compression": 8, "ld_bitrate_compression": None}
+        link = {"hd_bitrate_compression": None, "ld_bitrate_compression": 12}
         self.assertEqual(
-            [
-                d
-                for d in projects_service.get_metadata_descriptors(
-                    self.project.id
-                )
-                if d["entity_type"] == "Project"
-            ],
-            [],
+            projects_service.get_movie_bitrates(project, link), (8, 8)
         )
-
-    def test_reorder_project_metadata_descriptors(self):
-        d1 = self.add("Alpha", "Project")
-        d2 = self.add("Beta", "Project")
-        d3 = self.add("Gamma", "Project")
-        reordered = projects_service.reorder_metadata_descriptors(
-            self.project.id,
-            "Project",
-            [str(d3["id"]), str(d1["id"]), str(d2["id"])],
-        )
-        self.assertEqual(reordered[0]["id"], d3["id"])
-        self.assertEqual(reordered[0]["position"], 1)
-        self.assertEqual(reordered[1]["id"], d1["id"])
-        self.assertEqual(reordered[2]["id"], d2["id"])
-
-    def test_add_delete_metadata_descriptor(self):
-        asset = self.generate_fixture_asset_type()
-        asset = self.generate_fixture_asset()
-        descriptor = self.add("Contractor")
-        asset.update({"data": {"contractor": "contractor 1"}})
-        self.assertIn("contractor", asset.data)
-
-        projects_service.remove_metadata_descriptor(descriptor["id"])
-        descriptors = projects_service.get_metadata_descriptors(
-            self.project.id
-        )
-        self.assertEqual(descriptors, [])
-        asset = Entity.get(asset.id)
-        self.assertNotIn("contractor", asset.data)
-
-    def test_reorder_metadata_descriptors(self):
-        # Zone and Angle are created in the order that contradicts their
-        # alphabetical one, which is the order the leftovers fall back to.
-        descriptor1 = self.add("Contractor")
-        descriptor2 = self.add("Zone")
-        descriptor3 = self.add("Location")
-        descriptor4 = self.add("Angle")
-        descriptor5 = self.add("Status")
-
-        self.assertEqual(
-            len(projects_service.get_metadata_descriptors(self.project.id)), 5
-        )
-
-        reordered = projects_service.reorder_metadata_descriptors(
-            self.project.id,
-            "Asset",
-            [
-                str(descriptor3["id"]),
-                str(descriptor1["id"]),
-                str(descriptor5["id"]),
-            ],
-        )
-
-        # The three named first, then the two left out, alphabetically
-        # rather than in the order they were created.
-        self.assertEqual(
-            self.names_and_positions(reordered),
-            [
-                ("Location", 1),
-                ("Contractor", 2),
-                ("Status", 3),
-                ("Angle", 4),
-                ("Zone", 5),
-            ],
-        )
-
-    def test_reorder_metadata_descriptors_all_included(self):
-        descriptor1 = self.add("Contractor")
-        descriptor2 = self.add("Environment")
-
-        reordered = projects_service.reorder_metadata_descriptors(
-            self.project.id,
-            "Asset",
-            [str(descriptor2["id"]), str(descriptor1["id"])],
-        )
-
-        self.assertEqual(
-            self.names_and_positions(reordered),
-            [("Environment", 1), ("Contractor", 2)],
-        )
-
-    def test_reorder_metadata_descriptors_empty_list(self):
-        self.add("Contractor")
-        self.add("Environment")
-        self.add("Location")
-
-        reordered = projects_service.reorder_metadata_descriptors(
-            self.project.id, "Asset", []
-        )
-
-        # Naming none of them still renumbers, alphabetically.
-        self.assertEqual(
-            self.names_and_positions(reordered),
-            [("Contractor", 1), ("Environment", 2), ("Location", 3)],
-        )
-
-    def test_reorder_metadata_descriptors_descriptor_not_found(self):
-        self.add("Contractor")
-
-        fake_id = "00000000-0000-0000-0000-000000000000"
-        descriptor_ids = [fake_id]
-
-        with self.assertRaises(WrongParameterException):
-            projects_service.reorder_metadata_descriptors(
-                self.project.id, "Asset", descriptor_ids
-            )
-
-    def test_reorder_metadata_descriptors_different_entity_type(self):
-        self.add("Contractor")
-        shot_descriptor = self.add("Location", "Shot")
-        descriptor_ids = [str(shot_descriptor["id"])]
-
-        with self.assertRaises(WrongParameterException):
-            projects_service.reorder_metadata_descriptors(
-                self.project.id, "Asset", descriptor_ids
-            )
-
-    def test_get_metadata_descriptor_raw(self):
-        descriptor = self.add("Weight")
-        raw = projects_service.get_metadata_descriptor_raw(descriptor["id"])
-        self.assertEqual(str(raw.id), descriptor["id"])
-        self.assertRaises(
-            MetadataDescriptorNotFoundException,
-            projects_service.get_metadata_descriptor_raw,
-            "wrong-id",
-        )
-
-    def test_get_metadata_descriptor(self):
-        descriptor = self.add("Weight")
-        result = projects_service.get_metadata_descriptor(descriptor["id"])
-        self.assertEqual(result["id"], descriptor["id"])
-        self.assertEqual(result["name"], "Weight")

@@ -1,0 +1,55 @@
+Update entity
+---
+tags:
+  - Crud
+description: Update an entity with data provided in the request
+  body. JSON format is expected. Supports shot versioning when
+  frame data or name changes. Changes made by one person at most a
+  minute apart update the same version, for five minutes at most.
+  A frame change after a rename, or a change after another route
+  set a frame value this change leaves alone, gets a new version.
+parameters:
+  - in: path
+    name: instance_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            example: SH010
+          data:
+            type: object
+            example: {"frame_in": 1001, "frame_out": 1120}
+responses:
+    200:
+      description: Entity updated successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: SH010
+              project_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              data:
+                type: object
+                example: {"frame_in": 1001, "frame_out": 1120}
+    400:
+      description: Invalid data format or validation error

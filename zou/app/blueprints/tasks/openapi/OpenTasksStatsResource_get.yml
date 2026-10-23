@@ -1,0 +1,27 @@
+Get open tasks stats
+---
+tags:
+- Tasks
+description: Return totals and aggregates by status and task type per
+  project for open projects.
+responses:
+    200:
+      description: A dict by project with results for each task type and
+        status pair
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties:
+              type: object
+              properties:
+                total:
+                  type: integer
+                done:
+                  type: integer
+                estimation:
+                  type: integer
+                duration:
+                  type: integer
+    400:
+      description: Bad request

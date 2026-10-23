@@ -6,13 +6,12 @@ Create Date: 2018-03-22 11:23:09.885006
 
 """
 
-from alembic import op
 import sqlalchemy as sa
 import sqlalchemy_utils
-
-from sqlalchemy.dialects import postgresql
-from pytz import timezone as pytz_timezone
+from alembic import op
 from babel import Locale
+from pytz import timezone as pytz_timezone
+from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = "b4dd0add5f79"

@@ -1,0 +1,69 @@
+Generate working file path
+---
+description: Generate a working file path from file tree template based
+  on task parameters. Revision can be computed automatically if not
+  provided.
+tags:
+- Files
+parameters:
+  - in: path
+    name: task_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Task unique identifier
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            description: File name
+            default: main
+            example: "main"
+          mode:
+            type: string
+            description: File mode
+            default: working
+            example: "working"
+          software_id:
+            type: string
+            format: uuid
+            description: Software identifier
+            example: a24a6ea4-ce75-4665-a070-57453082c250
+          comment:
+            type: string
+            description: File comment
+            example: "Updated lighting"
+          revision:
+            type: integer
+            description: File revision number
+            example: 1
+          separator:
+            type: string
+            description: Path separator
+            default: /
+            example: "/"
+responses:
+  200:
+    description: Working file path generated successfully
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            path:
+              type: string
+              description: Generated file path
+              example: "/project/asset/working/main_v001.blend"
+            name:
+              type: string
+              description: Generated file name
+              example: "main_v001.blend"
+  400:
+    description: Malformed file tree

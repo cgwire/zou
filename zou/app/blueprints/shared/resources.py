@@ -1,13 +1,15 @@
+from flasgger import swag_from
 from flask import current_app, g, request
-from flask_fs.errors import FileNotFound
 from flask.views import MethodView
+from flask_fs.errors import FileNotFound
 
 from zou.app.blueprints.previews.resources import (
     ALLOWED_FILE_EXTENSION,
     ALLOWED_PICTURE_EXTENSION,
     send_movie_file,
     send_picture_file,
-    send_standard_file,
+    send_preview_picture_file,
+    send_preview_standard_file,
 )
 from zou.app.blueprints.shared.decorators import (
     require_valid_playlist_share_link,
@@ -19,106 +21,46 @@ from zou.app.blueprints.shared.schemas import (
     GuestActionSchema,
     UpdateGuestAnnotationsSchema,
 )
-from zou.app.services import (
-    comments_service,
-    files_service,
-    playlist_sharing_service,
-    playlists_service,
-    preview_files_service,
-    tasks_service,
-)
-from zou.app.services.exception import (
+from zou.app.exceptions import (
+    AttachmentFileNotFoundException,
+    PersonNotFoundException,
+    PlaylistShareLinkNotFoundException,
     PreviewFileNotFoundException,
     WrongParameterException,
 )
-from zou.app.utils import permissions, validation
+from zou.app.services import (
+    comments_service,
+    files_service,
+    persons_service,
+    playlist_sharing_service,
+    playlists_service,
+    preview_annotations_service,
+    projects_service,
+    task_types_service,
+    tasks_service,
+)
+from zou.app.utils import date_helpers, permissions, validation
 
 
 class SharedPlaylistResource(MethodView):
     @require_valid_playlist_share_link(with_password=True)
+    @swag_from("openapi/SharedPlaylistResource_get.yml")
     def get(self, token):
         """
         Get shared playlist
-        ---
-        description: Retrieve a playlist with preview file revisions for a
-          secret share link. No JWT; the path token (and optional query
-          password) is the credential.
-        tags:
-          - Playlists
-        parameters:
-          - in: path
-            name: token
-            required: true
-            schema:
-              type: string
-            description: Share link token
-          - in: query
-            name: password
-            required: false
-            schema:
-              type: string
-            description: Password when the link is protected
-        responses:
-          200:
-            description: Playlist with preview file revisions and enriched shots
-            content:
-              application/json:
-                schema:
-                  type: object
         """
-        share_link = g.playlist_share_link
-        playlist = playlists_service.get_playlist_with_preview_file_revisions(
-            share_link["playlist_id"]
+        playlist = playlist_sharing_service.get_share_link_playlist(
+            g.playlist_share_link
         )
         return playlist_sharing_service.enrich_shots_with_entity_info(playlist)
 
 
 class SharedPlaylistGuestResource(MethodView):
     @require_valid_playlist_share_link()
+    @swag_from("openapi/SharedPlaylistGuestResource_post.yml")
     def post(self, token):
         """
         Create or retrieve guest for shared playlist
-        ---
-        description: Create a guest identity for the shared playlist, or return
-          an existing guest when `guest_id` is provided and still valid.
-        tags:
-          - Playlists
-        parameters:
-          - in: path
-            name: token
-            required: true
-            schema:
-              type: string
-            description: Share link token
-        requestBody:
-          required: false
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  first_name:
-                    type: string
-                    default: Guest
-                  last_name:
-                    type: string
-                  guest_id:
-                    type: string
-                    format: uuid
-                    description: If set, return this guest if it still exists
-        responses:
-          200:
-            description: Existing guest returned
-            content:
-              application/json:
-                schema:
-                  type: object
-          201:
-            description: New guest created
-            content:
-              application/json:
-                schema:
-                  type: object
         """
         body = validation.validate_request_body(CreateGuestSchema)
 
@@ -131,7 +73,11 @@ class SharedPlaylistGuestResource(MethodView):
                     str(body.guest_id), g.playlist_share_link
                 )
                 return guest
-            except Exception:
+            except (
+                PersonNotFoundException,
+                PlaylistShareLinkNotFoundException,
+            ):
+                # Unknown, or created from another link: a new guest then.
                 pass
 
         guest = playlist_sharing_service.create_guest(
@@ -142,37 +88,10 @@ class SharedPlaylistGuestResource(MethodView):
 
 class SharedPlaylistCommentsResource(MethodView):
     @require_valid_playlist_share_link(with_password=True)
+    @swag_from("openapi/SharedPlaylistCommentsResource_get.yml")
     def get(self, token):
         """
         List shared playlist comments
-        ---
-        description: List comments for tasks that appear in the shared playlist
-          (aggregated from each shot's preview task). Same optional `password`
-          query param as the main shared playlist when the link is protected.
-        tags:
-          - Playlists
-        parameters:
-          - in: path
-            name: token
-            required: true
-            schema:
-              type: string
-            description: Share link token
-          - in: query
-            name: password
-            required: false
-            schema:
-              type: string
-            description: Password when the link is protected
-        responses:
-          200:
-            description: Comment entries for the playlist
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
         """
         share_link = g.playlist_share_link
         playlist = playlists_service.get_playlist_with_preview_file_revisions(
@@ -196,82 +115,10 @@ class SharedPlaylistCommentsResource(MethodView):
         return comments
 
     @require_valid_playlist_share_link(with_password=True)
+    @swag_from("openapi/SharedPlaylistCommentsResource_post.yml")
     def post(self, token):
         """
         Post comment on shared playlist
-        ---
-        description: Add a review comment as a guest. Requires `guest_id`,
-          `task_id`, `task_status_id` and `text` when the link allows
-          commenting. Optional `password` query param if the link is
-          protected.
-        tags:
-          - Playlists
-        parameters:
-          - in: path
-            name: token
-            required: true
-            schema:
-              type: string
-            description: Share link token
-          - in: query
-            name: password
-            required: false
-            schema:
-              type: string
-            description: Password when the link is protected
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - guest_id
-                  - task_id
-                  - task_status_id
-                properties:
-                  guest_id:
-                    type: string
-                    format: uuid
-                  task_id:
-                    type: string
-                    format: uuid
-                  task_status_id:
-                    type: string
-                    format: uuid
-                  text:
-                    type: string
-                  checklist:
-                    type: array
-                    items:
-                      type: object
-        responses:
-          201:
-            description: Comment created
-            content:
-              application/json:
-                schema:
-                  type: object
-          400:
-            description: Missing required body fields, unknown task status, or
-              task status not allowed for guest reviewers
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    error:
-                      type: string
-          403:
-            description: Comments disabled for this share link, or the task
-              is not part of this shared playlist
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    error:
-                      type: string
         """
         share_link = g.playlist_share_link
         if not share_link.get("can_comment", True):
@@ -289,14 +136,18 @@ class SharedPlaylistCommentsResource(MethodView):
         except Exception:
             return {"error": "Guest not part of this shared playlist"}, 403
 
-        if not _is_task_in_shared_playlist(token, task_id):
+        playlist = playlist_sharing_service.get_shared_playlist(token)
+        if not _is_task_in_playlist(playlist, task_id):
             return {"error": "Task not part of this shared playlist"}, 403
 
         try:
-            task_status = tasks_service.get_task_status(task_status_id)
+            task_status = task_types_service.get_task_status(task_status_id)
         except Exception:
             return {"error": "Task status not found"}, 400
-        if not task_status.get("is_client_allowed", False):
+        project_id = playlist["project_id"]
+        if not projects_service.is_task_status_client_allowed(
+            project_id, task_status
+        ):
             return {"error": "Task status not allowed for guests"}, 400
 
         comment = comments_service.create_comment(
@@ -315,14 +166,10 @@ class SharedPlaylistCommentResource(MethodView):
     """
 
     @require_valid_playlist_share_link()
+    @swag_from("openapi/SharedPlaylistCommentResource_put.yml")
     def put(self, token, comment_id):
         """
         Edit guest-owned comment
-        ---
-        description: Update the text / checklist / task status of a comment
-          previously posted by the same guest.
-        tags:
-          - Playlists
         """
         share_link = g.playlist_share_link
         if not share_link.get("can_comment", True):
@@ -349,13 +196,10 @@ class SharedPlaylistCommentResource(MethodView):
             return {"error": "Comment not found"}, 404
 
     @require_valid_playlist_share_link()
+    @swag_from("openapi/SharedPlaylistCommentResource_delete.yml")
     def delete(self, token, comment_id):
         """
         Delete guest-owned comment
-        ---
-        description: Delete a comment previously posted by the same guest.
-        tags:
-          - Playlists
         """
         share_link = g.playlist_share_link
         if not share_link.get("can_comment", True):
@@ -379,14 +223,10 @@ class SharedPlaylistCommentAttachmentsResource(MethodView):
     """
 
     @require_valid_playlist_share_link()
+    @swag_from("openapi/SharedPlaylistCommentAttachmentsResource_post.yml")
     def post(self, token, comment_id):
         """
         Attach files to a guest-owned comment
-        ---
-        description: Upload one or more files as attachments to a comment the
-          same guest previously posted.
-        tags:
-          - Playlists
         """
         share_link = g.playlist_share_link
         if not share_link.get("can_comment", True):
@@ -412,12 +252,10 @@ class SharedPlaylistCommentAttachmentResource(MethodView):
     """
 
     @require_valid_playlist_share_link()
+    @swag_from("openapi/SharedPlaylistCommentAttachmentResource_delete.yml")
     def delete(self, token, comment_id, attachment_file_id):
         """
         Delete an attachment from a guest-owned comment
-        ---
-        tags:
-          - Playlists
         """
         share_link = g.playlist_share_link
         if not share_link.get("can_comment", True):
@@ -441,15 +279,10 @@ class SharedPlaylistAttachmentFileResource(MethodView):
     """
 
     @require_valid_playlist_share_link()
+    @swag_from("openapi/SharedPlaylistAttachmentFileResource_get.yml")
     def get(self, token, attachment_file_id, file_name):
         """
         Download attachment file
-        ---
-        description: Serve an attachment file linked to a comment visible in
-          this shared playlist (either `for_client=True` or authored by a
-          guest).
-        tags:
-          - Playlists
         """
         try:
             return playlist_sharing_service.download_shared_attachment(
@@ -457,68 +290,16 @@ class SharedPlaylistAttachmentFileResource(MethodView):
             )
         except playlist_sharing_service.GuestCommentNotFound:
             return {"error": "Attachment not found"}, 404
+        except FileNotFound:
+            raise AttachmentFileNotFoundException
 
 
 class SharedPlaylistAnnotationsResource(MethodView):
     @require_valid_playlist_share_link()
+    @swag_from("openapi/SharedPlaylistAnnotationsResource_put.yml")
     def put(self, token):
         """
         Update guest annotations for a preview file
-        ---
-        description: Update preview file annotations in the context of a shared
-          playlist. Reuses the same additions/updates/deletions diff format as
-          the manager-facing /actions/preview-files/<id>/update-annotations
-          route, so concurrent edits stay safe via the Redis lock.
-        tags:
-          - Playlists
-        parameters:
-          - in: path
-            name: token
-            required: true
-            schema:
-              type: string
-            description: Share link token
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - guest_id
-                  - preview_file_id
-                properties:
-                  guest_id:
-                    type: string
-                    format: uuid
-                  preview_file_id:
-                    type: string
-                    format: uuid
-                  additions:
-                    type: array
-                    items:
-                      type: object
-                  updates:
-                    type: array
-                    items:
-                      type: object
-                  deletions:
-                    type: array
-                    items:
-                      type: string
-                      format: uuid
-        responses:
-          200:
-            description: Updated preview file with the new annotations
-            content:
-              application/json:
-                schema:
-                  type: object
-          400:
-            description: Missing required body fields
-          403:
-            description: Annotations disabled for this share link, or the
-              preview file is not part of the shared playlist
         """
         share_link = g.playlist_share_link
         if not share_link.get("can_comment", True):
@@ -545,7 +326,7 @@ class SharedPlaylistAnnotationsResource(MethodView):
 
         preview_file = files_service.get_preview_file(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
-        return preview_files_service.update_preview_file_annotations(
+        return preview_annotations_service.update_preview_file_annotations(
             guest_id,
             task["project_id"],
             preview_file_id,
@@ -555,13 +336,12 @@ class SharedPlaylistAnnotationsResource(MethodView):
         )
 
 
-def _is_task_in_shared_playlist(token, task_id):
+def _is_task_in_playlist(playlist, task_id):
     """
     Ensure the given task id is the preview task of one of the playlist's
     shots. Used to scope guest mutations (comments, status changes) to the
     playlist exposed by the share token.
     """
-    playlist = playlist_sharing_service.get_shared_playlist(token)
     tid = str(task_id)
     for shot in playlist.get("shots", []) or []:
         if str(shot.get("preview_file_task_id") or "") == tid:
@@ -571,37 +351,10 @@ def _is_task_in_shared_playlist(token, task_id):
 
 class SharedPlaylistPreviewFileResource(MethodView):
     @require_valid_playlist_share_link()
+    @swag_from("openapi/SharedPlaylistPreviewFileResource_get.yml")
     def get(self, token, preview_file_id):
         """
         Get shared preview file metadata
-        ---
-        description: Return preview file record when the request includes a
-          valid share token. No JWT.
-        tags:
-          - Playlists
-        parameters:
-          - in: path
-            name: token
-            required: true
-            schema:
-              type: string
-            description: Share link token
-          - in: path
-            name: preview_file_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Preview file unique identifier
-        responses:
-          200:
-            description: Preview file metadata
-            content:
-              application/json:
-                schema:
-                  type: object
-          403:
-            description: Preview file is not part of this shared playlist
         """
         if not playlist_sharing_service.is_preview_file_in_shared_playlist(
             token, preview_file_id
@@ -612,48 +365,10 @@ class SharedPlaylistPreviewFileResource(MethodView):
 
 class SharedPlaylistPreviewFileMovieResource(MethodView):
     @require_valid_playlist_share_link()
+    @swag_from("openapi/SharedPlaylistPreviewFileMovieResource_get.yml")
     def get(self, token, preview_file_id):
         """
         Get shared original movie preview
-        ---
-        description: Stream the original movie file for a preview, authorized by
-          the share token. Same role as the authenticated original movie
-          preview route, without JWT.
-        tags:
-          - Playlists
-        parameters:
-          - in: path
-            name: token
-            required: true
-            schema:
-              type: string
-            description: Share link token
-          - in: path
-            name: preview_file_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Preview file unique identifier
-        responses:
-          200:
-            description: Movie preview file stream
-            content:
-              video/mp4:
-                schema:
-                  type: string
-                  format: binary
-          403:
-            description: Preview file is not part of this shared playlist
-          404:
-            description: Preview file not on disk
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    error:
-                      type: string
         """
         if not playlist_sharing_service.is_preview_file_in_shared_playlist(
             token, preview_file_id
@@ -667,167 +382,70 @@ class SharedPlaylistPreviewFileMovieResource(MethodView):
 
 class SharedPlaylistPreviewFileThumbnailResource(MethodView):
     @require_valid_playlist_share_link()
+    @swag_from("openapi/SharedPlaylistPreviewFileThumbnailResource_get.yml")
     def get(self, token, preview_file_id):
         """
         Get shared preview thumbnail
-        ---
-        description: Serve the PNG thumbnail for a preview file when the share
-          token is valid.
-        tags:
-          - Playlists
-        parameters:
-          - in: path
-            name: token
-            required: true
-            schema:
-              type: string
-            description: Share link token
-          - in: path
-            name: preview_file_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Preview file unique identifier
-        responses:
-          200:
-            description: Thumbnail image
-            content:
-              image/png:
-                schema:
-                  type: string
-                  format: binary
-          403:
-            description: Preview file is not part of this shared playlist
-          404:
-            description: Thumbnail file missing
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    error:
-                      type: string
         """
         if not playlist_sharing_service.is_preview_file_in_shared_playlist(
             token, preview_file_id
         ):
             raise permissions.PermissionDenied
         try:
-            return send_picture_file("thumbnails", preview_file_id)
+            return send_preview_picture_file("thumbnails", preview_file_id)
+        except FileNotFound:
+            raise PreviewFileNotFoundException
+
+
+class SharedPlaylistPersonThumbnailResource(MethodView):
+    @require_valid_playlist_share_link()
+    @swag_from("openapi/SharedPlaylistPersonThumbnailResource_get.yml")
+    def get(self, token, person_id):
+        """
+        Get shared person avatar
+        """
+        if not playlist_sharing_service.is_person_shown_by_share_link(
+            g.playlist_share_link, person_id
+        ):
+            raise PersonNotFoundException
+        person = persons_service.get_person(person_id)
+        if not person["has_avatar"]:
+            raise PersonNotFoundException
+        try:
+            return send_picture_file(
+                "thumbnails",
+                person_id,
+                last_modified=date_helpers.get_datetime_from_string(
+                    person["updated_at"]
+                ),
+            )
         except FileNotFound:
             raise PreviewFileNotFoundException
 
 
 class SharedPlaylistPreviewFileOriginalResource(MethodView):
     @require_valid_playlist_share_link()
+    @swag_from("openapi/SharedPlaylistPreviewFileOriginalResource_get.yml")
     def get(self, token, preview_file_id):
         """
         Get shared original picture preview
-        ---
-        description: Serve the full-size PNG for a still preview, authorized by
-          the share token.
-        tags:
-          - Playlists
-        parameters:
-          - in: path
-            name: token
-            required: true
-            schema:
-              type: string
-            description: Share link token
-          - in: path
-            name: preview_file_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Preview file unique identifier
-        responses:
-          200:
-            description: Original picture file
-            content:
-              image/png:
-                schema:
-                  type: string
-                  format: binary
-          403:
-            description: Preview file is not part of this shared playlist
-          404:
-            description: Original file missing
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    error:
-                      type: string
         """
         if not playlist_sharing_service.is_preview_file_in_shared_playlist(
             token, preview_file_id
         ):
             raise permissions.PermissionDenied
         try:
-            return send_picture_file("original", preview_file_id)
+            return send_preview_picture_file("original", preview_file_id)
         except FileNotFound:
             raise PreviewFileNotFoundException
 
 
 class SharedPlaylistPreviewFileExtensionResource(MethodView):
     @require_valid_playlist_share_link()
+    @swag_from("openapi/SharedPlaylistPreviewFileExtensionResource_get.yml")
     def get(self, token, preview_file_id, extension):
         """
         Get shared original picture preview for any extension
-        ---
-        description: Serve the original still preview for an arbitrary
-          extension (gif, svg, jpg, pdf, ...), authorized by the share token.
-          Mirrors the authenticated
-          ``/pictures/originals/preview-files/<id>.<extension>`` route, which
-          the ``.png``-only shared route did not cover, so animated GIFs and
-          other non-PNG originals 404'd through a share link.
-        tags:
-          - Playlists
-        parameters:
-          - in: path
-            name: token
-            required: true
-            schema:
-              type: string
-            description: Share link token
-          - in: path
-            name: preview_file_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Preview file unique identifier
-          - in: path
-            name: extension
-            required: true
-            schema:
-              type: string
-            description: File extension
-        responses:
-          200:
-            description: Original picture file
-            content:
-              application/octet-stream:
-                schema:
-                  type: string
-                  format: binary
-          400:
-            description: Extension not allowed
-          403:
-            description: Preview file is not part of this shared playlist
-          404:
-            description: Original file missing
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    error:
-                      type: string
         """
         if not playlist_sharing_service.is_preview_file_in_shared_playlist(
             token, preview_file_id
@@ -840,109 +458,40 @@ class SharedPlaylistPreviewFileExtensionResource(MethodView):
             )
         try:
             if extension == "png":
-                return send_picture_file("original", preview_file_id)
+                return send_preview_picture_file("original", preview_file_id)
             elif extension == "pdf":
-                return send_standard_file(
-                    preview_file_id, extension, "application/pdf"
+                return send_preview_standard_file(
+                    preview_file_id, extension, mimetype="application/pdf"
                 )
             else:
-                return send_standard_file(preview_file_id, extension)
+                return send_preview_standard_file(preview_file_id, extension)
         except FileNotFound:
             raise PreviewFileNotFoundException
 
 
 class SharedPlaylistPreviewFileTileResource(MethodView):
     @require_valid_playlist_share_link()
+    @swag_from("openapi/SharedPlaylistPreviewFileTileResource_get.yml")
     def get(self, token, preview_file_id):
         """
         Get shared movie tile strip
-        ---
-        description: Serve the filmstrip/tile image used for timeline hover
-          previews, when the share token is valid.
-        tags:
-          - Playlists
-        parameters:
-          - in: path
-            name: token
-            required: true
-            schema:
-              type: string
-            description: Share link token
-          - in: path
-            name: preview_file_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Preview file unique identifier
-        responses:
-          200:
-            description: Tile sprite image
-            content:
-              image/png:
-                schema:
-                  type: string
-                  format: binary
-          403:
-            description: Preview file is not part of this shared playlist
-          404:
-            description: Tile file missing
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    error:
-                      type: string
         """
         if not playlist_sharing_service.is_preview_file_in_shared_playlist(
             token, preview_file_id
         ):
             raise permissions.PermissionDenied
         try:
-            return send_picture_file("tiles", preview_file_id)
+            return send_preview_picture_file("tiles", preview_file_id)
         except FileNotFound:
             raise PreviewFileNotFoundException
 
 
 class SharedPlaylistPreviewFileDownloadResource(MethodView):
     @require_valid_playlist_share_link()
+    @swag_from("openapi/SharedPlaylistPreviewFileDownloadResource_get.yml")
     def get(self, token, preview_file_id):
         """
         Download shared preview file
-        ---
-        description: Download a preview file (any extension) attached to
-          the shared playlist as an attachment. Mirrors the authenticated
-          ``/pictures/originals/preview-files/<id>/download`` route but
-          gated by the playlist share token instead of JWT.
-        tags:
-          - Playlists
-        parameters:
-          - in: path
-            name: token
-            required: true
-            schema:
-              type: string
-            description: Share link token
-          - in: path
-            name: preview_file_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            description: Preview file unique identifier
-        responses:
-          200:
-            description: Preview file downloaded as attachment
-            content:
-              application/octet-stream:
-                schema:
-                  type: string
-                  format: binary
-          403:
-            description: Preview file is not part of this shared playlist
-          404:
-            description: Preview file not on disk
         """
         if not playlist_sharing_service.is_preview_file_in_shared_playlist(
             token, preview_file_id
@@ -952,20 +501,20 @@ class SharedPlaylistPreviewFileDownloadResource(MethodView):
         extension = preview_file["extension"]
         try:
             if extension == "png":
-                return send_picture_file(
+                return send_preview_picture_file(
                     "original", preview_file_id, as_attachment=True
                 )
             elif extension == "pdf":
-                return send_standard_file(
+                return send_preview_standard_file(
                     preview_file_id,
                     extension,
-                    "application/pdf",
+                    mimetype="application/pdf",
                     as_attachment=True,
                 )
             elif extension == "mp4":
                 return send_movie_file(preview_file_id, as_attachment=True)
             else:
-                return send_standard_file(
+                return send_preview_standard_file(
                     preview_file_id, extension, as_attachment=True
                 )
         except FileNotFound:
@@ -974,34 +523,9 @@ class SharedPlaylistPreviewFileDownloadResource(MethodView):
 
 class SharedPlaylistContextResource(MethodView):
     @require_valid_playlist_share_link(with_password=True)
+    @swag_from("openapi/SharedPlaylistContextResource_get.yml")
     def get(self, token):
         """
         Get shared playlist context
-        ---
-        description: Return minimal project and playlist context needed to
-          render the shared playlist UI. Optional `password` query param when
-          the link is protected.
-        tags:
-          - Playlists
-        parameters:
-          - in: path
-            name: token
-            required: true
-            schema:
-              type: string
-            description: Share link token
-          - in: query
-            name: password
-            required: false
-            schema:
-              type: string
-            description: Password when the link is protected
-        responses:
-          200:
-            description: Context payload for the share page
-            content:
-              application/json:
-                schema:
-                  type: object
         """
         return playlist_sharing_service.get_shared_playlist_context(token)

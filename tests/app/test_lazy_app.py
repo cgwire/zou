@@ -23,3 +23,12 @@ class LazyAppTestCase(unittest.TestCase):
         )
         env = dict(os.environ, SECRET_KEY="test-only")
         subprocess.run([sys.executable, "-c", code], check=True, env=env)
+
+    def test_job_worker_builds_the_app_before_forking(self):
+        code = (
+            "import zou.job_settings, zou.app; "
+            "assert 'app' in vars(zou.app), 'workers boot per job'; "
+            "assert zou.app.app is zou.job_settings.app"
+        )
+        env = dict(os.environ, SECRET_KEY="test-only")
+        subprocess.run([sys.executable, "-c", code], check=True, env=env)

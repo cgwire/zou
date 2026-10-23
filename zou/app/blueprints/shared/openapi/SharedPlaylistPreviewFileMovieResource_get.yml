@@ -1,0 +1,40 @@
+Get shared original movie preview
+---
+description: Stream the original movie file for a preview, authorized by
+  the share token. Same role as the authenticated original movie
+  preview route, without JWT.
+tags:
+  - Playlists
+parameters:
+  - in: path
+    name: token
+    required: true
+    schema:
+      type: string
+    description: Share link token
+  - in: path
+    name: preview_file_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Preview file unique identifier
+responses:
+  200:
+    description: Movie preview file stream
+    content:
+      video/mp4:
+        schema:
+          type: string
+          format: binary
+  403:
+    description: Preview file is not part of this shared playlist
+  404:
+    description: Preview file not on disk
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            error:
+              type: string

@@ -1,29 +1,35 @@
 import email.utils
 import importlib
 import importlib.util
+import logging
 import os
-import requests
-import tomlkit
-import traceback
-import semver
 import shutil
 import subprocess
-import spdx_license_list
 import sys
 import tempfile
+import traceback
 import zipfile
+from collections.abc import MutableMapping
+from pathlib import Path
 
+import requests
+import semver
+import spdx_license_list
+import tomlkit
 from alembic import command
 from alembic.config import Config
-from collections.abc import MutableMapping
-from flask import Blueprint, send_from_directory, abort, current_app
+from flask import Blueprint, abort, current_app, send_from_directory
 from flask.views import MethodView
-from pathlib import Path
 from sqlalchemy import MetaData
 from sqlalchemy.util import FacadeDict
 
 from zou.app import db
 from zou.app.utils.api import configure_api_from_blueprint
+
+logger = logging.getLogger(__name__)
+
+
+PLUGIN_ALEMBIC_TEMPLATE_DIR = Path(__file__).parent / "plugin_alembic_template"
 
 
 class StaticResource(MethodView):
@@ -151,10 +157,7 @@ def load_plugin(app, plugin_path, init_plugin=True):
     manifest = PluginManifest.from_plugin_path(plugin_path)
     plugin_module = importlib.import_module(manifest["id"])
 
-    if not hasattr(plugin_module, "routes"):
-        raise Exception(f"Plugin {manifest['id']} has no routes.")
-
-    routes = plugin_module.routes
+    routes = list(getattr(plugin_module, "routes", []))
     add_static_routes(manifest, routes)
     blueprint = Blueprint(manifest["id"], manifest["id"])
     configure_api_from_blueprint(blueprint, routes)
@@ -188,9 +191,6 @@ def load_plugins(app):
                     f" failed to initialize: {e}"
                 )
                 app.logger.debug(traceback.format_exc())
-
-
-PLUGIN_ALEMBIC_TEMPLATE_DIR = Path(__file__).parent / "plugin_alembic_template"
 
 
 def _build_plugin_alembic_config(plugin_path):
@@ -291,7 +291,9 @@ def downgrade_plugin_migrations(plugin_path):
     try:
         command.downgrade(alembic_cfg, "base")
     except Exception as e:
-        print(f"⚠️  [Plugins] Downgrade failed for {manifest.id}: {e}")
+        logger.warning(
+            f"⚠️  [Plugins] Downgrade failed for {manifest.id}: {e}"
+        )
 
 
 def create_plugin_package(path, output_path, force=False):
@@ -431,7 +433,7 @@ def download_zip_url(url, temp_dir=None):
     temp_dir = Path(temp_dir)
     zip_path = temp_dir / "plugin.zip"
 
-    print(f"[Plugins] Downloading {url}...")
+    logger.info(f"[Plugins] Downloading {url}...")
 
     response = requests.get(url, stream=True, timeout=300)
     response.raise_for_status()
@@ -440,7 +442,7 @@ def download_zip_url(url, temp_dir=None):
         for chunk in response.iter_content(chunk_size=8192):
             f.write(chunk)
 
-    print(f"[Plugins] Successfully downloaded {url}")
+    logger.info(f"[Plugins] Successfully downloaded {url}")
     return zip_path
 
 
@@ -456,7 +458,7 @@ def clone_git_repo(git_url, temp_dir=None):
     repo_name = git_url.rstrip("/").split("/")[-1].replace(".git", "")
     clone_path = temp_dir / repo_name
 
-    print(f"[Plugins] Cloning {git_url}...")
+    logger.info(f"[Plugins] Cloning {git_url}...")
 
     try:
         subprocess.run(
@@ -465,7 +467,7 @@ def clone_git_repo(git_url, temp_dir=None):
             capture_output=True,
             timeout=300,
         )
-        print(f"[Plugins] Successfully cloned {git_url}")
+        logger.info(f"[Plugins] Successfully cloned {git_url}")
         return clone_path
     except subprocess.CalledProcessError as e:
         error_msg = e.stderr.decode() if e.stderr else str(e)

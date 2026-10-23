@@ -1,7 +1,11 @@
 from tests.base import ApiDBTestCase
-
-from zou.app.utils import fields
 from zou.app.models.metadata_descriptor import MetadataDescriptor
+from zou.app.services import (
+    metadata_descriptors_service,
+    persons_service,
+    projects_service,
+)
+from zou.app.utils import fields
 
 
 class MetadataTestCase(ApiDBTestCase):
@@ -14,6 +18,80 @@ class MetadataTestCase(ApiDBTestCase):
     def test_get_metadata_descriptors(self):
         descriptors = self.get("data/metadata-descriptors")
         self.assertEqual(len(descriptors), 1)
+
+    def add_published_descriptor(self):
+        return metadata_descriptors_service.add_metadata_descriptor(
+            self.project.id, "Asset", "Delivery", "string", [], True
+        )
+
+    def test_a_client_lists_the_published_descriptors_only(self):
+        # The read check meant to refuse a vendor returned instead of
+        # raising: every member listed all the descriptors of their
+        # productions, the ones kept to the studio included.
+        published = self.add_published_descriptor()
+        client_id = self.generate_fixture_user_client()["id"]
+        projects_service.add_team_member(self.project.id, client_id)
+        self.log_in_client()
+
+        descriptors = self.get("data/metadata-descriptors")
+
+        self.assertEqual(
+            [descriptor["id"] for descriptor in descriptors],
+            [published["id"]],
+        )
+        # The query string filters cannot reach the ones left out.
+        descriptors = self.get(
+            f"data/metadata-descriptors?project_id={self.project.id}"
+            "&field_name=contractor"
+        )
+        self.assertEqual(descriptors, [])
+
+    def test_a_client_on_the_project_lists_the_published_descriptors(self):
+        published = self.add_published_descriptor()
+        manager_id = self.generate_fixture_user_manager()["id"]
+        projects_service.add_team_member(
+            self.project.id, manager_id, role="client"
+        )
+        self.log_in_manager()
+
+        descriptors = self.get("data/metadata-descriptors")
+
+        self.assertEqual(
+            [descriptor["id"] for descriptor in descriptors],
+            [published["id"]],
+        )
+
+    def test_a_vendor_lists_the_descriptors_of_their_departments(self):
+        self.generate_fixture_department()
+        theirs = metadata_descriptors_service.add_metadata_descriptor(
+            self.project.id,
+            "Asset",
+            "Rig",
+            "string",
+            [],
+            False,
+            [str(self.department.id)],
+        )
+        metadata_descriptors_service.add_metadata_descriptor(
+            self.project.id,
+            "Asset",
+            "Layout",
+            "string",
+            [],
+            False,
+            [str(self.department_animation.id)],
+        )
+        vendor_id = self.generate_fixture_user_vendor()["id"]
+        projects_service.add_team_member(self.project.id, vendor_id)
+        persons_service.add_to_department(str(self.department.id), vendor_id)
+        self.log_in_vendor()
+
+        descriptors = self.get("data/metadata-descriptors")
+
+        self.assertEqual(
+            {descriptor["id"] for descriptor in descriptors},
+            {str(self.meta_descriptor.id), theirs["id"]},
+        )
 
     def test_get_metadata_descriptor(self):
         descriptor = self.get_first("data/metadata-descriptors")
@@ -55,6 +133,15 @@ class MetadataTestCase(ApiDBTestCase):
         self.put_404(f"data/metadata-descriptors/{fields.gen_uuid()}", data)
         data = {"data_type": "wrongdatatype"}
         self.put(f"data/metadata-descriptors/{descriptor['id']}", data, 400)
+
+    def test_an_updated_descriptor_lists_its_departments(self):
+        self.generate_fixture_department()
+        department_id = str(self.department.id)
+        descriptor = self.put(
+            f"data/metadata-descriptors/{self.meta_descriptor.id}",
+            {"departments": [department_id]},
+        )
+        self.assertEqual(descriptor["departments"], [department_id])
 
     def test_delete_metadadescriptor(self):
         descriptors = self.get("data/metadata-descriptors")

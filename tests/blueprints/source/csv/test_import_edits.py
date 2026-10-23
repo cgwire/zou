@@ -2,8 +2,8 @@ import os
 import tempfile
 
 from tests.base import ApiDBTestCase
-
-from zou.app.services import edits_service, shots_service
+from zou.app.models.task import Task
+from zou.app.services import edits_service, projects_service, shots_service
 
 
 class ImportCsvEditsTestCase(ApiDBTestCase):
@@ -51,6 +51,25 @@ class ImportCsvEditsTestCase(ApiDBTestCase):
             sorted(edit["name"] for edit in edits), ["Ending", "Opening"]
         )
 
+    def test_an_empty_episode_cell_means_no_episode(self):
+        # DictReader reads an empty cell as "", which used to create an
+        # episode named "".
+        self.project.update({"production_type": "tvshow"})
+        self.upload_file(
+            self.path,
+            self.write_csv("Name,Episode\nOpening,E01\nTeaser,\n"),
+        )
+        episodes = shots_service.get_episodes({"project_id": self.project.id})
+        self.assertEqual([episode["name"] for episode in episodes], ["E01"])
+        edits = {
+            edit["name"]: edit
+            for edit in edits_service.get_edits_for_project(
+                str(self.project.id)
+            )
+        }
+        self.assertEqual(edits["Opening"]["parent_id"], episodes[0]["id"])
+        self.assertIsNone(edits["Teaser"]["parent_id"])
+
     def test_episode_column_is_refused_outside_a_tv_show(self):
         """
         A short has no episode to hang an edit from, so the column is a
@@ -63,4 +82,28 @@ class ImportCsvEditsTestCase(ApiDBTestCase):
         )
         self.assertEqual(
             edits_service.get_edits_for_project(str(self.project.id)), []
+        )
+
+    def test_import_creates_the_tasks_of_rows_before_a_failure(self):
+        # The tasks were created once the whole file was imported: a
+        # rejected line left the edits imported before it without them,
+        # and a new import does not create them.
+        self.generate_fixture_task_type()
+        projects_service.add_task_type_setting(
+            self.project.id, self.task_type_edit.id
+        )
+        self.upload_file(
+            self.path,
+            self.write_csv("Name,Edit\nOpening,\nEnding,Unknown\n"),
+            code=400,
+        )
+
+        edits = edits_service.get_edits_for_project(str(self.project.id))
+        self.assertEqual([edit["name"] for edit in edits], ["Opening"])
+        self.assertEqual(
+            [
+                (str(task.entity_id), str(task.task_type_id))
+                for task in Task.query.all()
+            ],
+            [(edits[0]["id"], str(self.task_type_edit.id))],
         )

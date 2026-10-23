@@ -17,11 +17,12 @@ leaves the cached object untouched.
 
 import copy
 import logging
-import redis
-
+import uuid
 from functools import wraps
 
+import redis
 from flask_caching import Cache
+
 from zou.app import config
 
 logger = logging.getLogger(__name__)
@@ -66,15 +67,33 @@ else:
         _is_simple_cache = True
 
 
+def _normalize_cache_arguments(args, kwargs):
+    """
+    Return the arguments with every uuid.UUID turned into its string.
+
+    flask-caching keys on the repr of the arguments, so a function memoized
+    with an id read from an ORM instance (a UUID) and invalidated with the
+    same id read from a serialized dict (a string) would use two different
+    keys, and the invalidation would miss the cached entry.
+    """
+    args = tuple(str(a) if isinstance(a, uuid.UUID) else a for a in args)
+    kwargs = {
+        key: str(value) if isinstance(value, uuid.UUID) else value
+        for key, value in kwargs.items()
+    }
+    return args, kwargs
+
+
 def memoize_function(timeout=120):
     def decorator(func):
         cached_func = cache.memoize(timeout)(func)
-        if not _is_simple_cache:
-            return cached_func
 
         @wraps(func)
         def wrapper(*args, **kwargs):
+            args, kwargs = _normalize_cache_arguments(args, kwargs)
             result = cached_func(*args, **kwargs)
+            if not _is_simple_cache:
+                return result
             if hasattr(result, "_sa_instance_state"):
                 # ORM instances: returning the detached cached object is
                 # safe because callers merge() it into their own session,
@@ -82,8 +101,13 @@ def memoize_function(timeout=120):
                 return result
             return copy.deepcopy(result)
 
-        # Copy flask-caching attributes so delete_memoized works
-        wrapper.make_cache_key = cached_func.make_cache_key
+        def make_cache_key(f, *args, **kwargs):
+            args, kwargs = _normalize_cache_arguments(args, kwargs)
+            return cached_func.make_cache_key(f, *args, **kwargs)
+
+        # Copy flask-caching attributes so delete_memoized works, with the
+        # same normalization as the call so both sides compute one key.
+        wrapper.make_cache_key = make_cache_key
         wrapper.uncached = cached_func.uncached
         wrapper.cache_timeout = cached_func.cache_timeout
         return wrapper

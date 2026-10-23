@@ -1,15 +1,27 @@
+import json
+import os
+import uuid
+
 import pytest
 
-from tests.base import ApiDBTestCase
-
+from tests.base import TEST_FOLDER, ApiDBTestCase
+from zou.app.models.attachment_file import AttachmentFile
+from zou.app.models.comment import Comment
 from zou.app.models.person import Person
-from zou.app.models.playlist import Playlist
-from zou.app.models.playlist import Playlist as PlaylistModel
+from zou.app.models.playlist import Playlist, Playlist as PlaylistModel
 from zou.app.models.playlist_share_link import PlaylistShareLink
 from zou.app.models.preview_file import PreviewFile
+from zou.app.models.project import ProjectTaskStatusLink
 from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
+from zou.app.services import (
+    comments_service,
+    playlist_sharing_service,
+    preview_file_states_service as states_service,
+    tasks_service,
+)
 from zou.app.stores import file_store
+from zou.app.utils import fs
 
 # Share-link passwords are hashed with bcrypt; the verification path must
 # not be patched to always-True here.
@@ -335,6 +347,237 @@ class SharedPlaylistReadTestCase(PlaylistSharingTestCase):
         self.assertIn("task_statuses", result)
 
 
+class SharedRevisionTestCase(PlaylistSharingTestCase):
+    """
+    The revisions of a shot a guest reads. The shot has two positions of
+    revision 1 and a revision 2 on its animation task, and a preview on
+    its layout task. The playlist positions revision 1.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_shot()
+        # generate_fixture_shot_task repoints self.shot_task at the task it
+        # creates, so keep each one.
+        self.animation_task = self.generate_fixture_shot_task()
+        self.layout_task = self.generate_fixture_shot_task(
+            name="Layout", task_type_id=self.task_type_layout.id
+        )
+        animation_task_id = self.animation_task.id
+        self.pinned = self.generate_fixture_preview_file(
+            task_id=animation_task_id
+        )
+        self.pinned_position_2 = self.generate_fixture_preview_file(
+            name="main-position-2", position=2, task_id=animation_task_id
+        )
+        self.revision_2 = self.generate_fixture_preview_file(
+            revision=2, task_id=animation_task_id
+        )
+        self.layout_preview = self.generate_fixture_preview_file(
+            task_id=self.layout_task.id
+        )
+        self.pinned_annotations = [
+            {"time": 0, "drawing": {"objects": [{"id": "pinned-stroke"}]}}
+        ]
+        self.pinned.update({"annotations": self.pinned_annotations})
+        self.revision_2.update(
+            {
+                "annotations": [
+                    {
+                        "time": 0,
+                        "drawing": {"objects": [{"id": "hidden-stroke"}]},
+                    }
+                ]
+            }
+        )
+        self.pin(self.entry(self.pinned))
+
+    def entry(self, preview=None):
+        """
+        A playlist entry of the shot in the builder format, positioned on
+        given preview, or on none.
+        """
+        entry = {"entity_id": str(self.shot.id)}
+        if preview is not None:
+            entry["preview_file_id"] = str(preview.id)
+        return entry
+
+    def pin(self, *entries):
+        PlaylistModel.get(self.playlist["id"]).update({"shots": list(entries)})
+
+    def guest_get(self, suffix=""):
+        """
+        Read the shared playlist, or one of its routes, the way a viewer
+        does: through a fresh link and with no token at all.
+        """
+        link = self.post(self.share_path(), {}, 201)
+        response = self.app.get(self.shared_path(link["token"], suffix))
+        self.assertEqual(response.status_code, 200)
+        return response.json
+
+    def test_a_guest_sees_no_other_revision(self):
+        """
+        A share link hands over the revision the playlist positions. Each
+        shot also carried every revision of every task type of its entity,
+        annotations included, for a revision switcher a guest does not
+        have, while the file routes refuse to serve them.
+        """
+        payload = json.dumps(self.guest_get())
+
+        hidden = (
+            self.revision_2,
+            self.layout_preview,
+            self.layout_task,
+            self.task_type_layout,
+        )
+        for row in hidden:
+            self.assertNotIn(str(row.id), payload)
+        self.assertNotIn("hidden-stroke", payload)
+
+    def test_the_other_guest_routes_read_the_same_revisions(self):
+        """
+        The guest routes that check a comment or an attachment against the
+        playlist of the link read it through get_shared_playlist, which
+        still returned every revision.
+        """
+        link = self.post(self.share_path(), {}, 201)
+        payload = json.dumps(
+            playlist_sharing_service.get_shared_playlist(link["token"]),
+            default=str,
+        )
+
+        for row in (self.revision_2, self.layout_preview):
+            self.assertNotIn(str(row.id), payload)
+        self.assertNotIn("hidden-stroke", payload)
+
+    def test_a_guest_keeps_the_positioned_revision(self):
+        """
+        The player reads the positioned revision from the preview_file
+        fields, with its other positions and its annotations. The revision
+        list stays, empty: the player reads it on every shot.
+        """
+        (shot,) = self.guest_get()["shots"]
+
+        self.assertEqual(shot["preview_file_id"], str(self.pinned.id))
+        self.assertEqual(shot["preview_file_revision"], 1)
+        self.assertEqual(
+            shot["preview_file_task_id"], str(self.animation_task.id)
+        )
+        self.assertEqual(shot["preview_file_extension"], "mp4")
+        self.assertEqual(
+            shot["preview_file_annotations"], self.pinned_annotations
+        )
+        self.assertEqual(
+            [preview["id"] for preview in shot["preview_file_previews"]],
+            [str(self.pinned_position_2.id)],
+        )
+        self.assertEqual(
+            shot["preview_file_task_type"]["id"],
+            str(self.task_type_animation.id),
+        )
+        self.assertEqual((shot["name"], shot["parent_name"]), ("P01", "S01"))
+        self.assertEqual(shot["preview_files"], {})
+
+    def test_a_guest_sees_no_preview_of_another_task_of_the_type(self):
+        """
+        An entity can hold several tasks of one task type. The positions
+        of a revision are grouped per task type, so the positioned revision
+        also listed the preview of the same number on the other task,
+        which the file routes refuse to serve.
+        """
+        # Created after the positioned revision, so it groups under it.
+        retake_task = self.generate_fixture_shot_task(name="Retake")
+        retake_preview = self.generate_fixture_preview_file(
+            task_id=retake_task.id
+        )
+
+        (shot,) = self.guest_get()["shots"]
+
+        self.assertEqual(
+            [preview["id"] for preview in shot["preview_file_previews"]],
+            [str(self.pinned_position_2.id)],
+        )
+        self.assertNotIn(str(retake_preview.id), json.dumps(shot))
+        self.assertNotIn(str(retake_task.id), json.dumps(shot))
+
+    def test_each_entry_of_a_repeated_entity_keeps_its_own_revision(self):
+        """
+        An entity can be listed several times, positioned on another
+        preview each time, and every entry received the same revision
+        list, which named the previews of the other entries.
+        """
+        self.pin(self.entry(self.pinned), self.entry(self.layout_preview))
+
+        animation_entry, layout_entry = self.guest_get()["shots"]
+
+        self.assertEqual(
+            animation_entry["preview_file_id"], str(self.pinned.id)
+        )
+        self.assertEqual(
+            layout_entry["preview_file_id"], str(self.layout_preview.id)
+        )
+        self.assertNotIn(
+            str(self.layout_preview.id), json.dumps(animation_entry)
+        )
+        for preview in (self.pinned, self.pinned_position_2):
+            self.assertNotIn(str(preview.id), json.dumps(layout_entry))
+        for entry in (animation_entry, layout_entry):
+            self.assertNotIn(str(self.revision_2.id), json.dumps(entry))
+
+    def test_an_entry_without_a_live_position_exposes_no_revision(self):
+        """
+        An entry added before the entity had any preview, positioned on a
+        preview deleted since, or stored in the legacy shape with a task
+        and no preview, gets no positioned revision, and its revision list
+        still named every revision of the entity.
+        """
+        cases = {
+            "added before any preview existed": self.entry(),
+            "positioned on a preview deleted since": {
+                "entity_id": str(self.shot.id),
+                "preview_file_id": str(uuid.uuid4()),
+            },
+            "stored in the legacy shape": {
+                "id": str(self.shot.id),
+                "preview_file_task_id": str(self.animation_task.id),
+            },
+        }
+        previews = (
+            self.pinned,
+            self.pinned_position_2,
+            self.revision_2,
+            self.layout_preview,
+        )
+        for reason, entry in cases.items():
+            with self.subTest(reason=reason):
+                self.pin(entry)
+
+                (shot,) = self.guest_get()["shots"]
+
+                self.assertNotIn("preview_file_id", shot)
+                payload = json.dumps(shot)
+                for preview in previews:
+                    self.assertNotIn(str(preview.id), payload)
+
+    def test_the_context_lists_no_entity(self):
+        """
+        The context listed each entity of the playlist with its main
+        preview, which can be a revision the link does not share. The
+        player reads the names off the shots.
+        """
+        tasks_service.update_entity_preview(
+            str(self.shot.id), str(self.revision_2.id)
+        )
+
+        context = self.guest_get("/context")
+
+        self.assertNotIn("entities", context)
+        self.assertNotIn(str(self.revision_2.id), json.dumps(context))
+        self.assertEqual(context["project"]["id"], str(self.project.id))
+        self.assertIn("task_types", context)
+        self.assertIn("task_statuses", context)
+
+
 class GuestTestCase(PlaylistSharingTestCase):
     """
     The person record a viewer gets on first arrival, reused on the
@@ -590,6 +833,40 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
             task_status=manager_status,
         )
 
+    def test_guest_comment_follows_the_production_override(self):
+        """
+        The production decides over the studio which statuses its guests
+        may set, and the context sends them the decision.
+        """
+        studio_forbidden = TaskStatus.create(
+            name="Retake",
+            short_name="rtk",
+            color="#000000",
+            is_client_allowed=False,
+        )
+        ProjectTaskStatusLink.create(
+            project_id=self.project.id,
+            task_status_id=studio_forbidden.id,
+            is_client_allowed=True,
+        )
+        ProjectTaskStatusLink.create(
+            project_id=self.project.id,
+            task_status_id=self.task_status.id,
+            is_client_allowed=False,
+        )
+        link, guest = self.guest_on_a_share_link()
+        context = self.get(self.shared_path(link["token"], "/context"))
+        allowed = {
+            status["id"]: status["is_client_allowed"]
+            for status in context["task_statuses"]
+        }
+        self.assertIs(allowed[str(studio_forbidden.id)], True)
+        self.assertIs(allowed[str(self.task_status.id)], False)
+        self.post_guest_comment(
+            link, guest, code=400, task_status=self.task_status
+        )
+        self.post_guest_comment(link, guest, task_status=studio_forbidden)
+
     def test_guest_comment_disabled(self):
         link, guest = self.guest_on_a_share_link(can_comment=False)
         self.post_guest_comment(link, guest, code=403, text="Should fail")
@@ -611,6 +888,36 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
             200,
         )
         self.assertEqual(result["text"], "Second thought")
+
+    def test_an_edited_comment_keeps_naming_its_repliers(self):
+        link, guest, comment = self._guest_comment()
+        comments_service.reply_comment(
+            comment["id"], "Noted", person_id=str(self.user["id"])
+        )
+
+        result = self.put(
+            self.shared_path(link["token"], f"/comments/{comment['id']}"),
+            {"guest_id": guest["id"], "text": "Second thought"},
+        )
+
+        replier = result["replies"][0]["person"]
+        self.assertEqual(replier["id"], str(self.user["id"]))
+
+    def test_a_guest_edit_names_the_author_and_client_flag(self):
+        # A client may read only some comments: from the author and the
+        # client flag, Kitsu skips reloading the others.
+        link, guest, comment = self._guest_comment()
+        path = self.shared_path(link["token"], f"/comments/{comment['id']}")
+        updates = self.capture_events("comment:update")
+
+        self.put(path, {"guest_id": guest["id"], "text": "Second thought"})
+        Comment.get(comment["id"]).update({"for_client": True})
+        self.put(path, {"guest_id": guest["id"], "text": "Third thought"})
+
+        self.assertEqual(
+            [(event["person_id"], event["for_client"]) for event in updates],
+            [(guest["id"], False), (guest["id"], True)],
+        )
 
     def test_guest_deletes_own_comment(self):
         link, guest, comment = self._guest_comment()
@@ -668,6 +975,137 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
         self.assertEqual(len(result["attachment_files"]), 1)
         self.assertEqual(result["attachment_files"][0]["name"], "th01.png")
 
+    def test_the_comment_list_carries_guest_attachments(self):
+        """
+        The list is what the page reloads from: an attachment missing there
+        vanished from the comment, although its download route serves it.
+        """
+        link, guest, comment = self._guest_comment()
+        attachment = self._attach_to_guest_comment(link, guest, comment)[
+            "attachment_files"
+        ][0]
+
+        comments = self.get(self.shared_path(link["token"], "/comments"))
+
+        listed = next(c for c in comments if c["id"] == comment["id"])
+        self.assertEqual(
+            [a["id"] for a in listed["attachment_files"]], [attachment["id"]]
+        )
+        self.assertEqual(listed["attachment_files"][0]["name"], "th01.png")
+
+    def test_the_comment_list_carries_client_comment_attachments(self):
+        comment = comments_service.new_comment(
+            str(self.task.id),
+            str(self.task_status.id),
+            str(self.person.id),
+            "See the reference",
+            for_client=True,
+        )
+        attachment = AttachmentFile.create(
+            name="reference.png",
+            extension="png",
+            mimetype="image/png",
+            comment_id=comment["id"],
+        )
+        link = self.post(self.share_path(), {"can_comment": True}, 201)
+        self.log_out()
+
+        comments = self.get(self.shared_path(link["token"], "/comments"))
+
+        listed = next(c for c in comments if c["id"] == comment["id"])
+        self.assertEqual(
+            [a["id"] for a in listed["attachment_files"]],
+            [str(attachment.id)],
+        )
+
+    def test_the_comment_list_leaves_internal_attachments_out(self):
+        """
+        Only the comments the link shows bring their files: the attachment
+        of an internal comment on the same task stays with the studio.
+        """
+        internal = comments_service.new_comment(
+            str(self.task.id),
+            str(self.task_status.id),
+            str(self.person.id),
+            "Studio only",
+        )
+        internal_attachment = AttachmentFile.create(
+            name="internal.png",
+            extension="png",
+            mimetype="image/png",
+            comment_id=internal["id"],
+        )
+        visible = comments_service.new_comment(
+            str(self.task.id),
+            str(self.task_status.id),
+            str(self.person.id),
+            "Looks good",
+            for_client=True,
+        )
+        link = self.post(self.share_path(), {"can_comment": True}, 201)
+        self.log_out()
+
+        comments = self.get(self.shared_path(link["token"], "/comments"))
+
+        self.assertNotIn(internal["id"], [c["id"] for c in comments])
+        self.assertNotIn(
+            str(internal_attachment.id),
+            [a["id"] for c in comments for a in c["attachment_files"]],
+        )
+        listed = next(c for c in comments if c["id"] == visible["id"])
+        self.assertEqual(listed["attachment_files"], [])
+
+    def test_the_comment_list_names_the_repliers(self):
+        comment = comments_service.new_comment(
+            str(self.task.id),
+            str(self.task_status.id),
+            str(self.person.id),
+            "Looks good",
+            for_client=True,
+        )
+        comments_service.reply_comment(
+            comment["id"], "Thanks", person_id=str(self.user["id"])
+        )
+        link = self.post(self.share_path(), {"can_comment": True}, 201)
+        self.log_out()
+
+        comments = self.get(self.shared_path(link["token"], "/comments"))
+
+        listed = next(c for c in comments if c["id"] == comment["id"])
+        replier = listed["replies"][0]["person"]
+        self.assertEqual(replier["id"], str(self.user["id"]))
+        self.assertEqual(replier["full_name"], "John Did")
+
+    def test_a_missing_attachment_file_answers_404(self):
+        """
+        The page of the link loads every picture, sound and movie its
+        comment list names: a file gone from the storage is not found, as
+        on the studio route, rather than a server error.
+        """
+        comment = comments_service.new_comment(
+            str(self.task.id),
+            str(self.task_status.id),
+            str(self.person.id),
+            "See the reference",
+            for_client=True,
+        )
+        attachment = AttachmentFile.create(
+            name="reference.png",
+            extension="png",
+            mimetype="image/png",
+            comment_id=comment["id"],
+        )
+        link = self.post(self.share_path(), {"can_comment": True}, 201)
+        self.log_out()
+
+        response = self.app.get(
+            self.shared_path(
+                link["token"],
+                f"/attachment-files/{attachment.id}/file/reference.png",
+            )
+        )
+        self.assertEqual(response.status_code, 404)
+
     def test_guest_removes_own_attachment(self):
         link, guest, comment = self._guest_comment()
         attachment = self._attach_to_guest_comment(link, guest, comment)[
@@ -710,6 +1148,103 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
         self.assertEqual(response.status_code, 404)
 
 
+class SharedAvatarTestCase(PlaylistSharingTestCase):
+    """
+    The avatars a link serves: those of the people its page shows, the
+    authors of the comments it lists and of their replies, and nobody else.
+    """
+
+    def tearDown(self):
+        super().tearDown()
+        fs.rm_rf(TEST_FOLDER)
+
+    def give_an_avatar(self, person_id):
+        self.upload_file(
+            f"/pictures/thumbnails/persons/{person_id}",
+            self.get_fixture_file_path(os.path.join("thumbnails", "th01.png")),
+        )
+
+    def get_avatar(self, link, person_id):
+        return self.app.get(
+            self.shared_path(
+                link["token"], f"/pictures/thumbnails/persons/{person_id}.png"
+            )
+        )
+
+    def new_comment(self, text, for_client=False):
+        return comments_service.new_comment(
+            str(self.task.id),
+            str(self.task_status.id),
+            str(self.person.id),
+            text,
+            for_client=for_client,
+        )
+
+    def test_a_link_serves_the_avatars_of_the_people_it_shows(self):
+        comment = self.new_comment("Looks good", for_client=True)
+        comments_service.reply_comment(
+            comment["id"], "Thanks", person_id=str(self.user["id"])
+        )
+        self.give_an_avatar(self.person.id)
+        self.give_an_avatar(self.user["id"])
+        link = self.post(self.share_path(), {"can_comment": True}, 201)
+        self.log_out()
+
+        for person_id in (self.person.id, self.user["id"]):
+            response = self.get_avatar(link, person_id)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.mimetype, "image/png")
+
+    def test_a_playlist_built_in_kitsu_serves_the_avatars(self):
+        # The playlist builder stores the positioned preview of a shot, not
+        # its task.
+        preview_file = PreviewFile.create(
+            name="preview.mov",
+            revision=1,
+            extension="mp4",
+            task_id=self.task.id,
+            person_id=self.person.id,
+        )
+        PlaylistModel.get(self.playlist["id"]).update(
+            {
+                "shots": [
+                    {
+                        "id": str(self.asset.id),
+                        "entity_id": str(self.asset.id),
+                        "preview_file_id": str(preview_file.id),
+                    }
+                ]
+            }
+        )
+        self.new_comment("Looks good", for_client=True)
+        self.give_an_avatar(self.person.id)
+        link = self.post(self.share_path(), {"can_comment": True}, 201)
+        self.log_out()
+
+        self.assertEqual(
+            self.get_avatar(link, self.person.id).status_code, 200
+        )
+
+    def test_a_link_keeps_the_other_avatars(self):
+        self.new_comment("Studio only")
+        self.give_an_avatar(self.person.id)
+        link = self.post(self.share_path(), {"can_comment": True}, 201)
+        self.log_out()
+
+        self.assertEqual(
+            self.get_avatar(link, self.person.id).status_code, 404
+        )
+
+    def test_a_shown_person_without_avatar_answers_404(self):
+        self.new_comment("Looks good", for_client=True)
+        link = self.post(self.share_path(), {"can_comment": True}, 201)
+        self.log_out()
+
+        self.assertEqual(
+            self.get_avatar(link, self.person.id).status_code, 404
+        )
+
+
 class SharedFileServingTestCase(PlaylistSharingTestCase):
     """
     Serving the preview binaries through the link. Only the previews
@@ -731,6 +1266,7 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
             extension="zip",
             task_id=self.task.id,
             person_id=self.person.id,
+            status="ready",
         )
         payload = b"PK\x03\x04fake-zip-payload"
         with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
@@ -738,7 +1274,10 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
             tmp_path = tmp.name
         file_store.add_file("previews", str(preview_file.id), tmp_path)
         self.addCleanup(
-            file_store.remove_file, "previews", str(preview_file.id)
+            file_store.remove_file,
+            "previews",
+            str(preview_file.id),
+            force=True,
         )
 
         PlaylistModel.get(self.playlist["id"]).update(
@@ -836,13 +1375,16 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
             extension="zip",
             task_id=positioned.task_id,
             person_id=self.person.id,
+            status="ready",
         )
         sibling_payload = b"PK\x03\x04sibling-position"
         with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
             tmp.write(sibling_payload)
             tmp_path = tmp.name
         file_store.add_file("previews", str(sibling.id), tmp_path)
-        self.addCleanup(file_store.remove_file, "previews", str(sibling.id))
+        self.addCleanup(
+            file_store.remove_file, "previews", str(sibling.id), force=True
+        )
 
         link = self.post(
             self.share_path(),
@@ -899,6 +1441,7 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
             extension="gif",
             task_id=self.task.id,
             person_id=self.person.id,
+            status="ready",
         )
         payload = b"GIF89a-fake-animated-payload"
         with tempfile.NamedTemporaryFile(suffix=".gif", delete=False) as tmp:
@@ -906,7 +1449,10 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
             tmp_path = tmp.name
         file_store.add_file("previews", str(preview_file.id), tmp_path)
         self.addCleanup(
-            file_store.remove_file, "previews", str(preview_file.id)
+            file_store.remove_file,
+            "previews",
+            str(preview_file.id),
+            force=True,
         )
 
         PlaylistModel.get(self.playlist["id"]).update(
@@ -979,6 +1525,7 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
             extension="png",
             task_id=self.task.id,
             person_id=self.person.id,
+            status="ready",
         )
         payload = b"\x89PNG\r\n\x1a\n-fake-original-png"
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
@@ -986,7 +1533,10 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
             tmp_path = tmp.name
         file_store.add_picture("original", str(preview_file.id), tmp_path)
         self.addCleanup(
-            file_store.remove_picture, "original", str(preview_file.id)
+            file_store.remove_picture,
+            "original",
+            str(preview_file.id),
+            force=True,
         )
         PlaylistModel.get(self.playlist["id"]).update(
             {
@@ -1017,7 +1567,8 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
     def test_shared_original_missing_file(self):
         """
         A preview that is part of the shared playlist but whose original
-        file is absent from storage yields a 404, not a 500.
+        file is absent from storage yields a 404, not a 500, and the
+        confirmed absence is recorded.
         """
 
         preview_file = PreviewFile.create(
@@ -1026,6 +1577,7 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
             extension="gif",
             task_id=self.task.id,
             person_id=self.person.id,
+            status="ready",
         )
         PlaylistModel.get(self.playlist["id"]).update(
             {
@@ -1051,3 +1603,11 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
             )
         )
         self.assertEqual(response.status_code, 404)
+        # Reached the storage lookup (not the processing short-circuit):
+        # the confirmed absence is recorded. A non-png extension is
+        # served through send_preview_standard_file, bucket "files".
+        states = states_service.get_file_states(str(preview_file.id))
+        self.assertEqual(
+            states_service.get_state(states, "files", "previews"),
+            "missing",
+        )

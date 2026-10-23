@@ -1,0 +1,22 @@
+Delete asset
+---
+description: Permanently remove an asset from the system. Only asset creators or project managers can delete assets
+tags:
+  - Assets
+parameters:
+  - in: path
+    name: asset_id
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+    required: true
+    description: Unique identifier of the asset to delete
+  - in: query
+    name: force
+    type: boolean
+    required: false
+    description: Force deletion bypassing validation checks
+    example: false
+responses:
+  204:
+    description: Asset successfully deleted

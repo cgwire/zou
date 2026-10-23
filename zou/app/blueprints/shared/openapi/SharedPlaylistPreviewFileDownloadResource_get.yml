@@ -1,0 +1,34 @@
+Download shared preview file
+---
+description: Download a preview file (any extension) attached to
+  the shared playlist as an attachment. Mirrors the authenticated
+  ``/pictures/originals/preview-files/<id>/download`` route but
+  gated by the playlist share token instead of JWT.
+tags:
+  - Playlists
+parameters:
+  - in: path
+    name: token
+    required: true
+    schema:
+      type: string
+    description: Share link token
+  - in: path
+    name: preview_file_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Preview file unique identifier
+responses:
+  200:
+    description: Preview file downloaded as attachment
+    content:
+      application/octet-stream:
+        schema:
+          type: string
+          format: binary
+  403:
+    description: Preview file is not part of this shared playlist
+  404:
+    description: Preview file not on disk

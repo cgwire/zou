@@ -1,8 +1,8 @@
 from sqlalchemy_utils import UUIDType
 
 from zou.app import db
-from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
+from zou.app.models.serializer import SerializerMixin
 
 
 class PlaylistShareLink(db.Model, BaseMixin, SerializerMixin):
@@ -26,6 +26,7 @@ class PlaylistShareLink(db.Model, BaseMixin, SerializerMixin):
         UUIDType(binary=False),
         db.ForeignKey("person.id"),
         nullable=False,
+        index=True,
     )
     expiration_date = db.Column(db.DateTime, nullable=True)
     is_active = db.Column(db.Boolean(), default=True, nullable=False)

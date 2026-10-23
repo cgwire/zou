@@ -1,0 +1,42 @@
+Link shot to scene
+---
+tags:
+- Shots
+description: Link a shot to a scene as its source.
+parameters:
+  - in: path
+    name: scene_id
+    required: True
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - shot_id
+        properties:
+          shot_id:
+            type: string
+            format: uuid
+            required: true
+            example: a24a6ea4-ce75-4665-a070-57453082c250
+responses:
+    201:
+        description: Scene marked as source of shot
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scene_id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                shot_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c250

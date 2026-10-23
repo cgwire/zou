@@ -23,7 +23,7 @@ class ImportShotgunPersonTestCase(ShotgunTestCase):
 
     def test_import_person(self):
         sg_person = {
-            "email": "james.doe@gmail.com",
+            "email": "james.doe@example.com",
             "firstname": "James",
             "lastname": "Doe",
             "login": "jamie",
@@ -51,7 +51,7 @@ class ImportShotgunPersonTestCase(ShotgunTestCase):
 
     def test_import_admin(self):
         sg_person = {
-            "email": "james.doe@gmail.com",
+            "email": "james.doe@example.com",
             "firstname": "James",
             "lastname": "Doe",
             "login": "jamie",

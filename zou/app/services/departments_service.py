@@ -1,17 +1,23 @@
+from sqlalchemy.orm import selectinload
+
+from zou.app.exceptions import (
+    DepartmentNotFoundException,
+    HardwareItemNotFoundException,
+    SoftwareNotFoundException,
+)
 from zou.app.models.department import (
     Department,
-    SoftwareDepartmentLink,
     HardwareItemDepartmentLink,
+    SoftwareDepartmentLink,
 )
 from zou.app.models.hardware_item import HardwareItem
+from zou.app.models.person import DepartmentLink, Person
 from zou.app.models.software import Software
-from zou.app.utils import fields
-
-from zou.app.services.exception import (
-    DepartmentNotFoundException,
-    SoftwareNotFoundException,
-    HardwareItemNotFoundException,
+from zou.app.services import (
+    base_service,
+    task_types_service,
 )
+from zou.app.utils import cache, events, fields
 
 
 def _check_department_exists(department_id):
@@ -92,6 +98,30 @@ def get_software_for_department(department_id):
     )
 
 
+def get_persons_for_department(department_id, minimal=False):
+    """
+    Get all persons belonging to a given department.
+    """
+    _check_department_exists(department_id)
+    persons = (
+        Person.query.join(
+            DepartmentLink, DepartmentLink.person_id == Person.id
+        )
+        .filter(DepartmentLink.department_id == department_id)
+        .options(selectinload(Person.departments))
+        .order_by(Person.first_name, Person.last_name)
+        .all()
+    )
+    return [
+        (
+            person.present_minimal(relations=True)
+            if minimal
+            else person.serialize_safe(relations=True)
+        )
+        for person in persons
+    ]
+
+
 def get_hardware_items_for_department(department_id):
     """
     Get all hardware items for a given department.
@@ -156,3 +186,51 @@ def remove_hardware_item_from_department(department_id, hardware_item_id):
         return None
     link.delete()
     return link.serialize()
+
+
+def clear_department_cache(department_id):
+    """
+    Drop the memoized serializations of given department, and the list.
+    """
+    cache.cache.delete_memoized(get_department, department_id)
+    cache.cache.delete_memoized(get_departments)
+
+
+@cache.memoize_function(120)
+def get_departments():
+    """
+    Return every department.
+    """
+    return fields.serialize_models(Department.get_all())
+
+
+@cache.memoize_function(120)
+def get_department(department_id):
+    """
+    Get department matching given id as a dictionary.
+    """
+    return base_service.get_instance(
+        Department, department_id, DepartmentNotFoundException
+    ).serialize()
+
+
+def get_department_from_task_type(task_type_id):
+    """
+    Get department of given task type as dictionary
+    """
+    task_type = task_types_service.get_task_type_raw(task_type_id)
+    return get_department(task_type.department_id)
+
+
+def get_or_create_department(name, color="#000000"):
+    """
+    Create a new department it doesn't exist. If it exists, it returns the
+    department from database.
+    """
+    department = Department.get_by(name=name)
+    if department is None:
+        department = Department(name=name, color=color)
+        department.save()
+        clear_department_cache(department.id)
+        events.emit("department:new", {"department_id": department.id})
+    return department.serialize()

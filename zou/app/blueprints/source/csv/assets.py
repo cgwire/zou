@@ -1,89 +1,29 @@
-from sqlalchemy import or_
+from flasgger import swag_from
 
 from zou.app.blueprints.source.csv.base import (
     BaseCsvProjectImportResource,
     RowException,
 )
-from zou.app.models.project import ProjectTaskTypeLink
-from zou.app.models.task_type import TaskType
-
+from zou.app.exceptions import WrongParameterException
 from zou.app.services import (
     assets_service,
+    comments_service,
+    entities_service,
+    entity_types_service,
+    index_service,
+    persons_service,
     projects_service,
     shots_service,
-    persons_service,
-    comments_service,
-    index_service,
+    task_types_service,
     tasks_service,
 )
-from zou.app.models.entity import Entity
-from zou.app.services.exception import WrongParameterException
-from zou.app.utils import events
 
 
 class AssetsCsvImportResource(BaseCsvProjectImportResource):
+    @swag_from("openapi/AssetsCsvImportResource_post.yml")
     def post(self, project_id):
         """
         Import assets csv
-        ---
-        tags:
-          - Import
-        description: Import project assets from a CSV file. Creates or updates
-          assets based on CSV rows. Supports metadata descriptors and task
-          status updates.
-        consumes:
-          - multipart/form-data
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: update
-            required: false
-            schema:
-              type: boolean
-            default: false
-            example: false
-            description: Whether to update existing assets
-          - in: formData
-            name: file
-            type: file
-            required: true
-            description: CSV file with asset data
-        responses:
-            201:
-              description: Assets imported successfully
-              content:
-                application/json:
-                  schema:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                          example: a24a6ea4-ce75-4665-a070-57453082c25
-                        name:
-                          type: string
-                          example: Character A
-                        project_id:
-                          type: string
-                          format: uuid
-                          example: b24a6ea4-ce75-4665-a070-57453082c25
-                        entity_type_id:
-                          type: string
-                          format: uuid
-                          example: c24a6ea4-ce75-4665-a070-57453082c25
-                        description:
-                          type: string
-                          example: Main character asset
-            400:
-              description: Invalid CSV format or missing required columns
         """
         return super().post(project_id)
 
@@ -103,46 +43,38 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         asset_type_ids_in_project = set(project["asset_types"])
         self.asset_types_in_project = {
             asset_type["name"].lower(): asset_type["id"]
-            for asset_type in assets_service.get_asset_types()
+            for asset_type in entity_types_service.get_asset_types()
             if asset_type["id"] in asset_type_ids_in_project
         }
-        self.task_types_in_project_for_assets = (
-            TaskType.query.join(ProjectTaskTypeLink)
-            .filter(ProjectTaskTypeLink.project_id == project_id)
-            # for_entity was added nullable in 2018 and only ever backfilled
-            # for shots, so a task type predating it reads NULL and means
-            # "Asset", the model default. Databases we cannot inspect still
-            # carry those rows.
-            .filter(
-                or_(
-                    TaskType.for_entity == "Asset",
-                    TaskType.for_entity.is_(None),
-                )
-            )
-            .all()
+        task_types = projects_service.get_project_task_types_raw(
+            project_id, "Asset"
         )
+        # Serialized: model instances would be expired by every row commit,
+        # and read again from the database on every row.
+        self.task_types_in_project_for_assets = [
+            task_type.serialize() for task_type in task_types
+        ]
         self.task_type_ids_in_project_for_assets = [
-            str(task_type.id)
+            task_type["id"]
             for task_type in self.task_types_in_project_for_assets
         ]
         self.task_types_for_asset_type = {}
         self.task_statuses = {
             status["id"]: [status[n].lower() for n in ("name", "short_name")]
-            for status in tasks_service.get_task_statuses()
+            for status in task_types_service.get_task_statuses()
         }
         self.current_user_id = persons_service.get_current_user()["id"]
         self.task_types_for_ready_for_map = {
             task_type.name: str(task_type.id)
-            for task_type in TaskType.query.join(ProjectTaskTypeLink)
-            .filter(ProjectTaskTypeLink.project_id == project_id)
-            .filter(TaskType.for_entity == "Shot")
-            .all()
+            for task_type in projects_service.get_project_task_types_raw(
+                project_id, "Shot"
+            )
         }
 
     def get_tasks_update(self, row):
         tasks_update = []
         for task_type in self.task_types_in_project_for_assets:
-            task_status_name = row.get(task_type.name, None)
+            task_status_name = row.get(task_type["name"], None)
             task_status_id = None
             if task_status_name not in [None, ""]:
                 for status_id, status_names in self.task_statuses.items():
@@ -154,8 +86,8 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                         f"Task status not found for {task_status_name}"
                     )
 
-            task_comment_text = row.get(f"{task_type.name} comment", None)
-            task_assignees = self.get_assignation_ids(row, task_type.name)
+            task_comment_text = row.get(f"{task_type['name']} comment", None)
+            task_assignees = self.get_assignation_ids(row, task_type["name"])
 
             if (
                 task_status_id is not None
@@ -164,7 +96,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             ):
                 tasks_update.append(
                     {
-                        "task_type_id": str(task_type.id),
+                        "task_type_id": task_type["id"],
                         "task_status_id": task_status_id,
                         "comment": task_comment_text,
                         "assignees": task_assignees,
@@ -214,7 +146,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                 # The column names a task type outside the asset type
                 # workflow: the explicit status still creates its task.
                 task = tasks_service.create_task(
-                    tasks_service.get_task_type(task_type_id),
+                    task_types_service.get_task_type(task_type_id),
                     entity.serialize(),
                 )
                 if task is None:
@@ -255,7 +187,9 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             # An empty cell used to create an asset type named "" that
             # every later empty row then reused.
             raise RowException("An asset type is required in the Type column")
-        episode_name = row.get("Episode", None)
+        # An empty cell reads as "" with DictReader: it means no episode,
+        # not an episode named "".
+        episode_name = (row.get("Episode") or "").strip() or None
         episode_id = None
 
         if self.is_tv_show:
@@ -281,7 +215,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                 entity_type_name.lower()
             )
             if entity_type_id is None:
-                asset_type = assets_service.find_asset_type_by_name(
+                asset_type = entity_types_service.find_asset_type_by_name(
                     entity_type_name
                 )
                 if asset_type is None:
@@ -299,7 +233,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         else:
             self.add_to_cache_if_absent(
                 self.entity_types,
-                assets_service.get_or_create_asset_type,
+                entity_types_service.get_or_create_asset_type,
                 entity_type_name,
             )
             entity_type_id = self.get_id_from_cache(
@@ -313,11 +247,13 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             "source_id": episode_id,
         }
 
-        entity = Entity.get_by(
-            **{
-                "name": asset_values["name"],
-                "project_id": asset_values["project_id"],
-            }
+        # The entity table is polymorphic: without the type, a sequence or
+        # an episode with the same name would be taken for the asset and
+        # re-typed on update.
+        entity = entities_service.find_entity_raw(
+            name=asset_values["name"],
+            project_id=asset_values["project_id"],
+            entity_type_id=entity_type_id,
         )
 
         asset_new_values = {}
@@ -349,31 +285,30 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         tasks_update = self.get_tasks_update(row)
 
         if entity is None:
-            entity = Entity.create(
-                **{**asset_values, **asset_new_values},
+            asset = assets_service.create_asset(
+                project_id,
+                entity_type_id,
+                asset_name,
+                asset_new_values.get("description"),
+                asset_new_values["data"],
+                source_id=episode_id,
                 created_by=self.current_user_id,
+                ready_for=asset_new_values.get("ready_for"),
+                index=False,
             )
-
-            index_service.index_asset(entity)
-            events.emit(
-                "asset:new",
-                {"asset_id": str(entity.id), "episode_id": episode_id},
-                project_id=project_id,
-            )
+            entity = entities_service.get_entity_raw(asset["id"])
+            self.asset_ids_to_index.append(entity.id)
 
             self.create_and_update_tasks(
                 tasks_update, entity, asset_creation=True
             )
 
         elif self.is_update:
-            entity.update({**asset_values, **asset_new_values})
-
-            index_service.remove_asset_index(entity.id)
-            index_service.index_asset(entity)
-            events.emit(
-                "asset:update",
-                {"asset_id": str(entity.id), "episode_id": episode_id},
-                project_id=project_id,
+            self.asset_ids_to_index.append(entity.id)
+            assets_service.update_asset(
+                str(entity.id),
+                {**asset_values, **asset_new_values},
+                index=False,
             )
 
             self.create_and_update_tasks(
@@ -387,6 +322,16 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
 
         return entity.serialize()
 
+    def run_import(self, file_path, project_id):
+        self.asset_ids_to_index = []
+        try:
+            return super().run_import(file_path, project_id)
+        finally:
+            # Indexed at the end, without waiting for the indexer on every
+            # row. The rows committed before a failing one stay imported:
+            # they are indexed too.
+            index_service.index_assets(self.asset_ids_to_index)
+
     def get_task_types_for_asset_type(self, asset_type_id):
         """
         Return the ids of the task types to create for a given asset type:
@@ -398,7 +343,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         asset_type_id = str(asset_type_id)
         if asset_type_id not in self.task_types_for_asset_type:
             task_type_ids = self.task_type_ids_in_project_for_assets
-            asset_type = assets_service.get_asset_type(asset_type_id)
+            asset_type = entity_types_service.get_asset_type(asset_type_id)
             type_task_type_ids = asset_type["task_types"]
             if len(type_task_type_ids) > 0:
                 type_task_types_map = {

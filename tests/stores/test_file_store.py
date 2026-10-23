@@ -1,6 +1,5 @@
-import unittest
 import os
-
+import unittest
 from unittest.mock import Mock
 
 import pytest
@@ -235,6 +234,7 @@ class ReadMovieRangeTestCase(unittest.TestCase):
 
     def test_refused_range_is_a_416(self):
         from unittest.mock import patch
+
         from werkzeug.exceptions import RequestedRangeNotSatisfiable
 
         class ClientError(Exception):
@@ -250,3 +250,309 @@ class ReadMovieRangeTestCase(unittest.TestCase):
         ):
             with pytest.raises(RequestedRangeNotSatisfiable):
                 file_store.read_movie_range("lowdef", "1", "bytes=999-")
+
+
+class ExistsConfirmedTestCase(unittest.TestCase):
+    """
+    Both the S3 and the Swift flask_fs backends answer False to any
+    backend error, a transient one included: exists_confirmed must tell
+    a confirmed absence (404) apart from a failure it has to raise
+    instead of reporting as missing.
+    """
+
+    def test_local_checks_existence_directly(self):
+        from unittest.mock import patch
+
+        pictures = Mock()
+        pictures.exists.return_value = True
+        with (
+            patch.object(file_store, "pictures", pictures),
+            patch.object(file_store.config, "FS_BACKEND", "local"),
+        ):
+            self.assertTrue(
+                file_store.exists_confirmed("pictures", "tiles", "1")
+            )
+        pictures.exists.assert_called_once_with("tiles-1")
+
+    def test_s3_confirmed_missing_is_false(self):
+        from unittest.mock import patch
+
+        class ClientError(Exception):
+            response = {"ResponseMetadata": {"HTTPStatusCode": 404}}
+
+        movies = Mock()
+        movies.backend.bucket.Object.return_value.load.side_effect = (
+            ClientError()
+        )
+        with (
+            patch.object(file_store, "movies", movies),
+            patch.object(file_store.config, "FS_BACKEND", "s3"),
+        ):
+            self.assertFalse(
+                file_store.exists_confirmed("movies", "lowdef", "1")
+            )
+
+    def test_s3_transient_failure_raises(self):
+        from unittest.mock import patch
+
+        class ClientError(Exception):
+            response = {"ResponseMetadata": {"HTTPStatusCode": 503}}
+
+        movies = Mock()
+        movies.backend.bucket.Object.return_value.load.side_effect = (
+            ClientError()
+        )
+        with (
+            patch.object(file_store, "movies", movies),
+            patch.object(file_store.config, "FS_BACKEND", "s3"),
+        ):
+            with pytest.raises(ClientError):
+                file_store.exists_confirmed("movies", "lowdef", "1")
+
+    def test_swift_confirmed_missing_is_false(self):
+        from contextlib import contextmanager
+        from unittest.mock import patch
+
+        class SwiftClientException(Exception):
+            def __init__(self, http_status):
+                super().__init__(f"status {http_status}")
+                self.http_status = http_status
+
+        conn = Mock()
+        conn.head_object.side_effect = SwiftClientException(404)
+
+        @contextmanager
+        def borrow():
+            yield conn
+
+        pictures = Mock()
+        pictures.backend._borrow = borrow
+        pictures.backend.name = "pictures"
+        with (
+            patch.object(file_store, "pictures", pictures),
+            patch.object(file_store.config, "FS_BACKEND", "swift"),
+        ):
+            self.assertFalse(
+                file_store.exists_confirmed("pictures", "tiles", "1")
+            )
+
+    def test_swift_transient_failure_raises(self):
+        from contextlib import contextmanager
+        from unittest.mock import patch
+
+        class SwiftClientException(Exception):
+            def __init__(self, http_status):
+                super().__init__(f"status {http_status}")
+                self.http_status = http_status
+
+        conn = Mock()
+        conn.head_object.side_effect = SwiftClientException(503)
+
+        @contextmanager
+        def borrow():
+            yield conn
+
+        pictures = Mock()
+        pictures.backend._borrow = borrow
+        pictures.backend.name = "pictures"
+        with (
+            patch.object(file_store, "pictures", pictures),
+            patch.object(file_store.config, "FS_BACKEND", "swift"),
+        ):
+            with pytest.raises(SwiftClientException):
+                file_store.exists_confirmed("pictures", "tiles", "1")
+
+
+class SharedSwiftAuthTestCase(unittest.TestCase):
+    """
+    Against a real SwiftBackend and swiftclient.Connection, the Keystone
+    call itself stubbed out, and the Redis store the jobs share.
+    """
+
+    CATALOG_URL = "https://swift/v1/AUTH_x"
+
+    def setUp(self):
+        from unittest.mock import patch
+
+        from zou.app.stores import swift_auth_store
+
+        self.auth_calls = 0
+        self.auth_failures = []
+        test = self
+
+        def get_auth(*args, **kwargs):
+            test.auth_calls += 1
+            if test.auth_failures:
+                raise test.auth_failures.pop(0)
+            # As swiftclient.client.get_auth: a storage URL set in the
+            # options wins over the one of the Keystone catalog.
+            url = kwargs["os_options"].get("object_storage_url")
+            return url or test.CATALOG_URL, f"token-{test.auth_calls}"
+
+        patcher = patch("swiftclient.client.get_auth", get_auth)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        patcher = patch.object(file_store.time, "sleep")
+        self.sleep = patcher.start()
+        self.addCleanup(patcher.stop)
+        self.store = swift_auth_store
+        self.backend = self.make_backend()
+
+    def make_backend(self, **options):
+        from types import SimpleNamespace
+
+        from flask_fs.backends.swift import SwiftBackend
+
+        backend = SwiftBackend(
+            "pictures",
+            SimpleNamespace(
+                user="user",
+                key="key",
+                authurl="https://keystone/v3",
+                tenant_name="tenant",
+                pool_size=1,
+                **options,
+            ),
+        )
+        self.cache_key = self.store.make_key(
+            backend._authurl, backend._user, backend._os_options
+        )
+        self.store.swift_auth_store.delete(self.cache_key)
+        self.addCleanup(self.store.swift_auth_store.delete, self.cache_key)
+        file_store._setup_swift_auth(backend)
+        return backend
+
+    @staticmethod
+    def auth_failure():
+        import swiftclient
+
+        return swiftclient.ClientException(
+            "Authorization Failure. Authorization failed: "
+            "Gateway Timeout (HTTP 504)"
+        )
+
+    def test_token_is_shared_between_connections(self):
+        first = self.backend._new_connection()
+        self.assertEqual(first.get_auth()[1], "token-1")
+        # A connection opened by another job reuses it: no Keystone call.
+        second = self.backend._new_connection()
+        self.assertEqual(
+            (second.url, second.token), (self.CATALOG_URL, "token-1")
+        )
+        self.assertEqual(self.auth_calls, 1)
+
+    def test_new_token_replaces_the_shared_one(self):
+        self.store.add(self.cache_key, self.CATALOG_URL, "stale", 60)
+        conn = self.backend._new_connection()
+        self.assertEqual(conn.token, "stale")
+        # What swiftclient does on a 401: authenticate again.
+        conn.get_auth()
+        self.assertEqual(
+            self.store.get(self.cache_key), (self.CATALOG_URL, "token-1")
+        )
+
+    def test_new_token_comes_with_the_catalog_storage_url(self):
+        # The shared URL is pinned on the connection: authenticating
+        # again must not publish it once more, or it would outlive an
+        # endpoint change.
+        self.store.add(self.cache_key, "https://old/v1/AUTH_x", "stale", 60)
+        conn = self.backend._new_connection()
+        self.assertEqual(conn.get_auth(), (self.CATALOG_URL, "token-1"))
+        self.assertEqual(
+            self.store.get(self.cache_key), (self.CATALOG_URL, "token-1")
+        )
+
+    def test_configured_storage_url_is_kept(self):
+        backend = self.make_backend(
+            os_options={"object_storage_url": "https://fixed/v1/AUTH_x"}
+        )
+        self.store.add(self.cache_key, "https://old/v1/AUTH_x", "stale", 60)
+        conn = backend._new_connection()
+        self.assertEqual(conn.get_auth()[0], "https://fixed/v1/AUTH_x")
+
+    def test_auth_is_retried_on_keystone_failure(self):
+        self.auth_failures = [self.auth_failure()]
+        conn = self.backend._new_connection()
+        self.assertEqual(conn.get_auth(), (self.CATALOG_URL, "token-2"))
+        self.sleep.assert_called_once_with(file_store.AUTH_RETRY_DELAYS[0])
+        self.assertEqual(
+            self.store.get(self.cache_key), (self.CATALOG_URL, "token-2")
+        )
+
+    def test_auth_gives_up_after_the_last_attempt(self):
+        self.auth_failures = [
+            self.auth_failure()
+            for _ in range(len(file_store.AUTH_RETRY_DELAYS) + 1)
+        ]
+        conn = self.backend._new_connection()
+        with pytest.raises(Exception, match="Authorization Failure"):
+            conn.get_auth()
+        self.assertEqual(
+            self.auth_calls, len(file_store.AUTH_RETRY_DELAYS) + 1
+        )
+
+    def test_other_auth_errors_are_not_retried(self):
+        import swiftclient
+
+        self.auth_failures = [
+            swiftclient.ClientException(
+                "Unauthorized. Check username, password and tenant name/id."
+            )
+        ]
+        conn = self.backend._new_connection()
+        with pytest.raises(swiftclient.ClientException):
+            conn.get_auth()
+        self.assertEqual(self.auth_calls, 1)
+        self.sleep.assert_not_called()
+
+    def test_auth_is_not_retried_in_a_request(self):
+        # An API request fails fast instead of holding its worker for
+        # several Keystone timeouts.
+        self.auth_failures = [self.auth_failure()]
+        conn = self.backend._new_connection()
+        with app.test_request_context():
+            with pytest.raises(Exception, match="Authorization Failure"):
+                conn.get_auth()
+        self.assertEqual(self.auth_calls, 1)
+        self.sleep.assert_not_called()
+
+    def test_storage_operations_go_through_the_retry(self):
+        # A read, like an upload or an exists(), authenticates through
+        # the connection of the pool: no wrapper needed around them.
+        from unittest.mock import patch
+
+        self.auth_failures = [self.auth_failure()]
+        with patch(
+            "swiftclient.client.get_object",
+            return_value=({}, b"data"),
+        ):
+            self.assertEqual(self.backend.read("thumbnails-1"), b"data")
+        self.assertEqual(self.auth_calls, 2)
+
+    def test_no_token_shared_when_ttl_is_zero(self):
+        from unittest.mock import patch
+
+        with patch.object(file_store.config, "FS_SWIFT_TOKEN_CACHE_TTL", 0):
+            backend = self.make_backend()
+            self.store.add(self.cache_key, "https://old", "stale", 60)
+            conn = backend._new_connection()
+            self.assertIsNone(conn.token)
+            self.auth_failures = [self.auth_failure()]
+            # The retry does not depend on the sharing.
+            self.assertEqual(conn.get_auth()[1], "token-2")
+        self.assertEqual(
+            self.store.get(self.cache_key), ("https://old", "stale")
+        )
+
+    def test_redis_failure_falls_back_to_keystone(self):
+        from unittest.mock import patch
+
+        import redis
+
+        with patch.object(
+            self.store.swift_auth_store,
+            "get",
+            side_effect=redis.ConnectionError(),
+        ):
+            conn = self.backend._new_connection()
+        self.assertIsNone(conn.token)

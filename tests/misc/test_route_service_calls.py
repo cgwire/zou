@@ -9,15 +9,7 @@ BLUEPRINTS = pathlib.Path(__file__).parents[2] / "zou" / "app" / "blueprints"
 # is reached, and each is a name that does not exist rather than a bug in
 # the code around it. They are listed so a new one fails this test instead
 # of joining them silently.
-KNOWN_BROKEN = {
-    (
-        "departments/resources.py",
-        "departments_service",
-        "get_softwares_for_department",
-    ),
-    ("projects/resources.py", "user_service", "get_project_by_name"),
-    ("tasks/resources.py", "persons_service", "get"),
-}
+KNOWN_BROKEN = set()
 
 
 def collect_service_calls():
@@ -97,9 +89,7 @@ class RouteServiceCallsTestCase(unittest.TestCase):
 # Resources reaching for an ArgsMixin helper without inheriting the mixin.
 # Same failure as above one layer in: the name resolves at request time, so
 # the route answers 500 and nothing says so until someone calls it.
-KNOWN_BROKEN_MIXIN_CALLS = {
-    ("files/resources.py", "InstanceOutputFilesResource", "get_args"),
-}
+KNOWN_BROKEN_MIXIN_CALLS = set()
 
 
 def collect_mixin_calls():

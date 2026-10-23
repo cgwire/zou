@@ -1,12 +1,10 @@
-from sqlalchemy_utils import UUIDType, ChoiceType
-
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy_utils import ChoiceType, UUIDType
 
 from zou.app import db
-from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
-
 from zou.app.models.person import ROLE_TYPES
+from zou.app.models.serializer import SerializerMixin
 
 PROJECT_STYLES = [
     ("2d", "2D Animation"),
@@ -61,10 +59,49 @@ class ProjectTaskTypeLink(db.Model, BaseMixin, SerializerMixin):
         index=True,
     )
     priority = db.Column(db.Integer, default=None)
+    # Movie encoding bitrates in Mbit/s, null inherits from the project.
+    hd_bitrate_compression = db.Column(db.Integer, nullable=True)
+    ld_bitrate_compression = db.Column(db.Integer, nullable=True)
+    is_client_visible = db.Column(db.Boolean(), default=True)
 
     __table_args__ = (
         db.UniqueConstraint(
             "project_id", "task_type_id", name="project_tasktype_uc"
+        ),
+    )
+
+
+class ProjectTaskTypeSoftwareLink(db.Model, BaseMixin, SerializerMixin):
+    """
+    Software that the artists of a project use for a task type.
+    """
+
+    __tablename__ = "project_task_type_software_link"
+    project_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("project.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
+    )
+    task_type_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("task_type.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
+    )
+    software_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("software.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "project_id",
+            "task_type_id",
+            "software_id",
+            name="project_task_type_software_uc",
         ),
     )
 
@@ -88,6 +125,8 @@ class ProjectTaskStatusLink(db.Model, BaseMixin, SerializerMixin):
         db.ARRAY(ChoiceType(ROLE_TYPES)),
         default=["user", "admin", "supervisor", "manager", "vendor"],
     )
+    # Null inherits the studio value, TaskStatus.is_client_allowed.
+    is_client_allowed = db.Column(db.Boolean(), nullable=True, default=None)
 
     __table_args__ = (
         db.UniqueConstraint(
@@ -170,6 +209,9 @@ class Project(db.Model, BaseMixin, SerializerMixin):
     episode_span = db.Column(db.Integer, default=0)
     max_retakes = db.Column(db.Integer, default=0)
     is_clients_isolated = db.Column(db.Boolean(), default=False)
+    is_client_stats_visible = db.Column(db.Boolean(), default=True)
+    is_client_task_list_visible = db.Column(db.Boolean(), default=True)
+    is_client_task_panel_visible = db.Column(db.Boolean(), default=True)
     is_preview_download_allowed = db.Column(db.Boolean(), default=False)
     is_set_preview_automated = db.Column(db.Boolean(), default=False)
     homepage = db.Column(db.String(80), default="assets")
@@ -178,8 +220,9 @@ class Project(db.Model, BaseMixin, SerializerMixin):
     is_single_preview_per_revision = db.Column(db.Boolean(), default=False)
     is_frame_in_numbering = db.Column(db.Boolean(), default=False)
     revision_padding = db.Column(db.Integer, default=0, nullable=False)
-    hd_bitrate_compression = db.Column(db.Integer, default=28)
-    ld_bitrate_compression = db.Column(db.Integer, default=6)
+    # Movie encoding bitrates in Mbit/s, null inherits from the config.
+    hd_bitrate_compression = db.Column(db.Integer, nullable=True)
+    ld_bitrate_compression = db.Column(db.Integer, nullable=True)
 
     project_status_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("project_status.id"), index=True
@@ -198,6 +241,7 @@ class Project(db.Model, BaseMixin, SerializerMixin):
             "production_schedule_version.id",
             name="project_from_schedule_version_id_fkey",
             use_alter=True,
+            ondelete="SET NULL",
         ),
         index=True,
         nullable=True,

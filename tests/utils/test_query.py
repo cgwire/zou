@@ -1,8 +1,8 @@
 import unittest
 
+from zou.app.exceptions import WrongParameterException
 from zou.app.utils import query
 from zou.app.utils.query import check_criterion_id_format
-from zou.app.services.exception import WrongParameterException
 
 
 class GetQueryCriterionsTestCase(unittest.TestCase):
@@ -33,6 +33,11 @@ class CheckCriterionIdFormatTestCase(unittest.TestCase):
         for field in ("id", "project_id", "episode_id"):
             with self.assertRaises(WrongParameterException):
                 check_criterion_id_format({field: "not-a-uuid"})
+
+    def test_trailing_characters_raise(self):
+        for field in ("id", "project_id", "episode_id"):
+            with self.assertRaises(WrongParameterException):
+                check_criterion_id_format({field: f"{self.valid_id}\n"})
 
     def test_episode_id_sentinels_pass(self):
         for sentinel in ("all", "main"):

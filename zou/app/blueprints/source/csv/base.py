@@ -1,22 +1,20 @@
-import uuid
-import os
 import csv
+import os
+import uuid
 
-from sqlalchemy.exc import IntegrityError
-
-from flask import request, current_app
+from flask import current_app, request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
+from sqlalchemy.exc import IntegrityError
 
-from zou.app.mixin import ArgsMixin
 from zou.app import app
-from zou.app.models.person import Person
-from zou.app.utils import permissions, string
+from zou.app.mixin import ArgsMixin
 from zou.app.services import (
+    metadata_descriptors_service,
     permissions_service,
-    projects_service,
-    user_service,
+    persons_service,
 )
+from zou.app.utils import permissions, string
 
 
 class ImportRowException(Exception):
@@ -56,13 +54,16 @@ class BaseCsvImportResource(MethodView, ArgsMixin):
         try:
             result = self.run_import(file_path, *args)
             return result, 201
+        # A malformed file is client input, not a server fault: warnings keep
+        # it out of the error monitoring while the 400 still tells the user
+        # which line to fix.
         except ImportRowException as e:
-            current_app.logger.error(
+            current_app.logger.warning(
                 f"Import row {e.line_number} failed: {e.message}"
             )
             return self.format_row_error(e), 400
         except csv.Error as e:
-            current_app.logger.error(f"Import failed: {e}")
+            current_app.logger.warning(f"Import failed: {e}")
             return self.format_error(e), 400
         finally:
             if os.path.exists(file_path):
@@ -95,6 +96,13 @@ class BaseCsvImportResource(MethodView, ArgsMixin):
                 # reader.line_num is the real file line (header included),
                 # so errors point at the line the user sees in the file.
                 line_number = reader.line_num
+                # Spreadsheets often export empty lines made of separators
+                # only: they carry nothing to import.
+                if not any(
+                    isinstance(value, str) and value.strip()
+                    for value in row.values()
+                ):
+                    continue
                 try:
                     row = self.import_row(row, *args)
                     result.append(row)
@@ -165,7 +173,9 @@ class BaseCsvProjectImportResource(BaseCsvImportResource, ArgsMixin):
     def get_descriptor_field_map(self, project_id, entity_type):
         descriptor_map = {}
         self.person_lookup = None
-        descriptors = projects_service.get_metadata_descriptors(project_id)
+        descriptors = metadata_descriptors_service.get_metadata_descriptors(
+            project_id
+        )
         for descriptor in descriptors:
             if descriptor["entity_type"] == entity_type:
                 descriptor_map[descriptor["name"]] = descriptor
@@ -201,7 +211,7 @@ class BaseCsvProjectImportResource(BaseCsvImportResource, ArgsMixin):
             return value
         if self.person_lookup is None:
             self.person_lookup = {}
-            for person in Person.query.all():
+            for person in persons_service.get_persons_raw():
                 self.person_lookup[str(person.id)] = str(person.id)
                 self.person_lookup[person.full_name.lower()] = str(person.id)
                 if person.email:

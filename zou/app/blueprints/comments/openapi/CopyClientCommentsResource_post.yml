@@ -1,0 +1,75 @@
+Copy the last client comment of each given task
+---
+description: Artists do not see the comments written by clients. For each
+  given task of the project, copy the last comment written by a client of
+  the project into a new comment of the current user, so the artists get
+  it. The task keeps its status. A task without client comment, or out of
+  the project, is skipped. Project managers only.
+tags:
+  - Comments
+parameters:
+  - in: path
+    name: project_id
+    required: true
+    type: string
+    format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the project
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - task_ids
+        properties:
+          task_ids:
+            type: array
+            items:
+              type: string
+              format: uuid
+            description: Identifiers of the tasks
+            example: ["e68e02e8-0219-8009-e514-918974260690"]
+          prefix:
+            type: string
+            description: Text put before the client text, on its own line
+            example: "Client feedback:"
+responses:
+  201:
+    description: Comments created, one by task with a client comment
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Comment unique identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              object_id:
+                type: string
+                format: uuid
+                description: Task identifier
+                example: e68e02e8-0219-8009-e514-918974260690
+              person_id:
+                type: string
+                format: uuid
+                description: Author identifier, the current user
+                example: d57d91d7-f108-7998-d403-80786315f580
+              text:
+                type: string
+                description: Copied text, with its prefix
+                example: "Client feedback:\n\nThe light is too warm."
+              task_status_id:
+                type: string
+                format: uuid
+                description: Current status of the task
+                example: c46c80c6-e097-6887-c292-79675204e470
+  400:
+    description: Malformed body
+  403:
+    description: Current user is not a manager of the project

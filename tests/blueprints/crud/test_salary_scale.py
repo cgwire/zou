@@ -1,9 +1,7 @@
 from tests.base import ApiDBTestCase
-
 from zou.app.models.department import Department
 from zou.app.models.person import POSITION_TYPES, SENIORITY_TYPES
 from zou.app.models.salary_scale import SalaryScale
-
 from zou.app.utils import fields
 
 

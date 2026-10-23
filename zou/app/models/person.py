@@ -1,27 +1,26 @@
 import logging
 
+from babel import Locale
+from babel.core import UnknownLocaleError
+from pytz import timezone as pytz_timezone
+from sqlalchemy import Index, func
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm import validates
 from sqlalchemy_utils import (
-    UUIDType,
+    ChoiceType,
     EmailType,
     LocaleType,
     TimezoneType,
-    ChoiceType,
+    UUIDType,
 )
-from sqlalchemy import func, Index
-from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import validates
-from sqlalchemy.dialects.postgresql import JSONB
 
-from pytz import timezone as pytz_timezone
-from babel import Locale
-from babel.core import UnknownLocaleError
-
-from zou.app.models.serializer import SerializerMixin
-from zou.app.utils import fields
-from zou.app.models.department import Department
-from zou.app.models.base import BaseMixin
 from zou.app import db
+from zou.app.models.base import BaseMixin
+from zou.app.models.department import Department
+from zou.app.models.serializer import SerializerMixin
 from zou.app.stores import config_store
+from zou.app.utils import fields
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +79,24 @@ SENSITIVE_FIELDS = [
     # right now. An admin can still clear it, writes are unaffected.
     "login_failed_attemps",
     "last_login_failed",
+    # The identities an account signs in with through SSO: only the
+    # callbacks and an admin unlinking an account have a use for them.
+    "oidc_issuer",
+    "oidc_subject",
+    "saml_issuer",
+    "saml_subject",
+]
+
+# The two-factor settings: only the auth routes change them.
+TWO_FACTOR_FIELDS = [
+    "totp_enabled",
+    "totp_secret",
+    "email_otp_enabled",
+    "email_otp_secret",
+    "fido_enabled",
+    "fido_credentials",
+    "otp_recovery_codes",
+    "preferred_two_factor_authentication",
 ]
 
 
@@ -238,10 +255,23 @@ class Person(db.Model, BaseMixin, SerializerMixin):
 
     is_bot = db.Column(db.Boolean(), default=False, nullable=False)
     is_guest = db.Column(db.Boolean(), default=False, nullable=False)
+    preview_project_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("project.id"),
+        nullable=True,
+        unique=True,
+        index=True,
+    )
+    preview_opened_at = db.Column(db.DateTime, nullable=True)
+    preview_open_until = db.Column(db.DateTime, nullable=True)
     jti = db.Column(db.String(60), nullable=True, unique=True)
     expiration_date = db.Column(db.Date(), nullable=True)
     is_generated_from_ldap = db.Column(db.Boolean(), default=False)
     ldap_uid = db.Column(db.String(60), unique=True, default=None)
+    oidc_issuer = db.Column(db.Text(), nullable=True)
+    oidc_subject = db.Column(db.String(255), nullable=True)
+    saml_issuer = db.Column(db.Text(), nullable=True)
+    saml_subject = db.Column(db.String(255), nullable=True)
 
     departments = db.relationship(
         "Department",
@@ -258,6 +288,12 @@ class Person(db.Model, BaseMixin, SerializerMixin):
             is_bot,
             unique=True,
             postgresql_where=is_bot.isnot(True),
+        ),
+        db.UniqueConstraint(
+            "oidc_issuer", "oidc_subject", name="person_oidc_identity_uc"
+        ),
+        db.UniqueConstraint(
+            "saml_issuer", "saml_subject", name="person_saml_identity_uc"
         ),
     )
 
@@ -358,6 +394,23 @@ class Person(db.Model, BaseMixin, SerializerMixin):
             "studio_id": str(self.studio_id) if self.studio_id else None,
             "role": fields.serialize_value(self.role),
             "desktop_login": self.desktop_login,
+            "is_bot": self.is_bot,
+        }
+
+    def present_client(self):
+        """
+        Build the person dict a client reads: a name and an avatar to put
+        on a comment, nothing of how the studio is organised.
+        """
+        return {
+            "id": str(self.id),
+            "type": "Person",
+            "first_name": self.first_name,
+            "last_name": self.last_name,
+            "full_name": self.full_name,
+            "has_avatar": self.has_avatar,
+            "active": self.active,
+            "role": fields.serialize_value(self.role),
             "is_bot": self.is_bot,
         }
 

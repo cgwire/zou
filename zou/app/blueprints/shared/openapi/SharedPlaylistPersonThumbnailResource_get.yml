@@ -1,0 +1,30 @@
+Get shared person avatar
+---
+description: Serve the avatar of a person the page of the share link
+  shows, as the author of a comment it lists or of a reply to one.
+tags:
+  - Playlists
+parameters:
+  - in: path
+    name: token
+    required: true
+    schema:
+      type: string
+    description: Share link token
+  - in: path
+    name: person_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    description: Person unique identifier
+responses:
+  200:
+    description: Avatar image
+    content:
+      image/png:
+        schema:
+          type: string
+          format: binary
+  404:
+    description: Person not shown by this link, or without avatar
