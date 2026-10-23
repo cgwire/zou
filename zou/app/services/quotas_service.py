@@ -594,13 +594,14 @@ def get_weighted_quota_shots_between(
 ):
     """
     Get all shots leading to a quota computation during the given period.
-    Set a weight on each one:
-        * If there is time spent filled, weight it by the sum of duration
+    Set a weight on each one, the sum of the shares of its tasks:
+        * A task with time spent filled weighs the sum of the durations
           divided by the overall task duration. A task whose duration is 0
           or unset is left out.
-        * If there is no time spent, weight it by the share of its business
-          days, from the WIP date (start) to the feedback date (end), that
-          falls in the period.
+        * A task without time spent weighs the share of its working days,
+          from its WIP day to its end day (feedback or approval), that
+          falls in the period. A task that never went WIP, or has no
+          working day, weighs whole on its end day.
 
     The period bounds are expressed in the user's local time. TimeSpent
     dates are plain calendar days, so the bounds apply to them as-is; task
@@ -610,8 +611,7 @@ def get_weighted_quota_shots_between(
     """
     shot_type = entity_types_service.get_shot_type()
     person = persons_service.get_person_raw(person_id)
-    shots = []
-    already_listed = {}
+    shots = {}
     if type(start) is str:
         start = date_helpers.get_datetime_from_string(start)
     if type(end) is str:
@@ -646,18 +646,8 @@ def get_weighted_quota_shots_between(
 
     query_shots = query.all()
     for entity, task_duration, duration, _ in query_shots:
-        shot = entity.serialize()
-        if shot["id"] not in already_listed:
-            full_name, _, _ = entities_service.get_full_entity_name(shot["id"])
-            shot["full_name"] = full_name
-            shot["weight"] = 0
-            shots.append(shot)
-            already_listed[shot["id"]] = shot
-        already_listed[shot["id"]]["weight"] += duration / task_duration
-    # Rounded once: rounded per time spent, a shot logged whole in the
-    # period weighed 0.99.
-    for shot in shots:
-        shot["weight"] = round(shot["weight"], 2)
+        shot = _get_listed_shot(shots, entity)
+        shot["weight"] += duration / task_duration
 
     query = (
         Entity.query.filter(Entity.entity_type_id == shot_type["id"])
@@ -691,28 +681,45 @@ def get_weighted_quota_shots_between(
             .add_columns(Task.real_start_date, Task.done_date)
         )
 
-    query_shots = query.all()
+    # Task.id keeps apart two tasks of a shot worked on the same dates: the
+    # legacy Query.all() drops duplicate rows.
+    query_shots = query.add_columns(Task.id).all()
 
     # The share of the days the quotas spread a task over that falls in
     # the period, compared as days of the user: a week is bounded by
-    # dates, not datetimes. The period ends before its end bound.
+    # dates, not datetimes. The period ends before its end bound. As in
+    # the quotas, every task of a shot adds its share.
     first_day = _get_day(start)
     last_day = _get_day(end)
-    for entity, task_start, task_end in query_shots:
-        shot = entity.serialize()
-        if shot["id"] not in already_listed:
-            days = _get_working_days(task_start, task_end, timezone)
-            nb_days = len([day for day in days if first_day <= day < last_day])
-            if nb_days > 0:
-                full_name, _, _ = entities_service.get_full_entity_name(
-                    shot["id"]
-                )
-                shot["full_name"] = full_name
-                shot["weight"] = round(nb_days / len(days), 2)
-                already_listed[shot["id"]] = True
-                shots.append(shot)
+    for entity, task_start, task_end, _ in query_shots:
+        days = _get_working_days(task_start, task_end, timezone)
+        nb_days = len([day for day in days if first_day <= day < last_day])
+        if nb_days > 0:
+            shot = _get_listed_shot(shots, entity)
+            shot["weight"] += nb_days / len(days)
 
-    return sorted(shots, key=itemgetter("full_name"))
+    # Rounded once: rounded per time spent, a shot logged whole in the
+    # period weighed 0.99.
+    for shot in shots.values():
+        shot["weight"] = round(shot["weight"], 2)
+
+    return sorted(shots.values(), key=itemgetter("full_name"))
+
+
+def _get_listed_shot(shots, entity):
+    """
+    The entry of a shot in a quota list, created on the first task row of
+    the shot, so that the time spents and the tasks of a shot add their
+    weights up on it.
+    """
+    shot_id = str(entity.id)
+    if shot_id not in shots:
+        shot = entity.serialize()
+        full_name, _, _ = entities_service.get_full_entity_name(shot_id)
+        shot["full_name"] = full_name
+        shot["weight"] = 0
+        shots[shot_id] = shot
+    return shots[shot_id]
 
 
 def get_raw_quota_shots_between(
