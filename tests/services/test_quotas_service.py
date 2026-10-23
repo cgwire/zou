@@ -676,6 +676,39 @@ class QuotaTestCase(ShotsTestCase):
         self.assertEqual(entry["year"]["frames"], {"2024": 100})
         self.assertEqual(entry["year"]["count"], {"2024": 1})
 
+    def test_the_total_of_a_task_type_counts_a_shared_task_once(self):
+        """
+        A task shared by two people is one shot in the total of a task
+        type, while each of them counts it whole. The total counted it once
+        per assignee in the raw modes, and in the weighted ones for a task
+        without time spent.
+        """
+        task = self.generate_shot_task()
+        self.shot.update({"nb_frames": 100})
+        tasks_service.assign_task(str(task.id), self.user["id"])
+        task.update(
+            {
+                "real_start_date": datetime.datetime(2024, 6, 3, 10, 0),
+                "end_date": datetime.datetime(2024, 6, 7, 10, 0),
+            }
+        )
+
+        for get_quotas in [
+            quotas_service.get_weighted_quotas,
+            quotas_service.get_raw_quotas,
+        ]:
+            with self.subTest(get_quotas=get_quotas.__name__):
+                quotas = get_quotas(
+                    str(self.project.id), str(self.task_type_animation.id)
+                )
+                total = quotas["total"]["year"]
+                self.assertEqual(total["frames"], {"2024": 100})
+                self.assertEqual(total["count"], {"2024": 1})
+                for person_id in [str(self.person.id), self.user["id"]]:
+                    row = quotas[person_id]["year"]
+                    self.assertEqual(row["frames"], {"2024": 100})
+                    self.assertEqual(row["count"], {"2024": 1})
+
     def test_the_quota_shots_of_every_task_type_without_a_filter(self):
         """
         Without a task type, the listing holds the shots of every task type
