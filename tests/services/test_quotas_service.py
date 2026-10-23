@@ -261,6 +261,36 @@ class QuotaTestCase(ShotsTestCase):
             [],
         )
 
+    def test_a_logged_task_without_duration_is_left_out(self):
+        """
+        A manager can set the duration of a task to 0, or to null, once
+        time was logged on it. The list divided each time spent by it and
+        failed, and a null duration failed the quotas too: both leave such
+        a task out.
+        """
+        task = self.generate_shot_task()
+        task.update({"end_date": datetime.datetime(2024, 6, 5, 10, 0)})
+        time_spents_service.create_or_update_time_spent(
+            str(task.id), str(self.person.id), "2024-06-04", 120
+        )
+
+        for duration in [0, None]:
+            with self.subTest(duration=duration):
+                task.update({"duration": duration})
+                quota_shots = quotas_service.get_week_quota_shots(
+                    str(self.person.id),
+                    2024,
+                    23,
+                    project_id=str(self.project.id),
+                    task_type_id=str(self.task_type_animation.id),
+                    timezone="Europe/Paris",
+                )
+                quotas = quotas_service.get_weighted_quotas(
+                    str(self.project.id), str(self.task_type_animation.id)
+                )
+                self.assertEqual(quota_shots, [])
+                self.assertEqual(quotas, {})
+
     def a_shot_without_time_spent(self, start_date, end_date):
         """
         The shot task of the person, worked from start_date to end_date
