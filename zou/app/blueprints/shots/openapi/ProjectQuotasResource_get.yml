@@ -31,7 +31,14 @@ parameters:
     example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
     200:
-        description: Quotas statistics for shots
+        description: >-
+          Quotas statistics for shots, keyed by person id, with a total
+          entry. The total counts each task once. In raw modes, and in
+          weighted modes for a task without time spent, the entry of each
+          assignee counts the whole task, so the entries of a task with
+          several assignees add up to more than the total. In weighted
+          modes, a task with time spent is shared out between the people
+          who logged time on it.
         content:
           application/json:
             schema:

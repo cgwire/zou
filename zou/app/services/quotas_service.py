@@ -159,6 +159,7 @@ def get_weighted_quotas(
         query = query.filter(Task.assignees.any(Person.studio_id == studio_id))
     result = query.all()
 
+    tasks_in_total = set()
     for task, nb_frames, task_person_id in result:
         end_date = task.done_date
         if feedback:
@@ -170,13 +171,14 @@ def get_weighted_quotas(
         frames = _spread(nb_frames or 0, len(days))
         drawings = _spread(task.nb_drawings or 0, len(days))
 
-        for day, nb_day_frames, nb_day_drawings in zip(days, frames, drawings):
-            entry_id = str(task_person_id)
-            # We get quotas for a specific person split by task types
-            if person_id is not None:
-                entry_id = str(task.task_type_id)
+        entry_id = str(task_person_id)
+        # We get quotas for a specific person split by task types
+        if person_id is not None:
+            entry_id = str(task.task_type_id)
+        entries = _get_quota_entries(entry_id, task, tasks_in_total)
 
-            for entry in [entry_id, "total"]:
+        for day, nb_day_frames, nb_day_drawings in zip(days, frames, drawings):
+            for entry in entries:
                 _add_quota_entry(
                     quotas,
                     entry,
@@ -253,6 +255,7 @@ def get_raw_quotas(
 
     result = query.all()
 
+    tasks_in_total = set()
     for task, nb_frames, task_person_id in result:
         date = task.done_date
         if feedback:
@@ -267,11 +270,23 @@ def get_raw_quotas(
         if person_id is not None:
             entry_id = str(task.task_type_id)
 
-        for entry in [entry_id, "total"]:
+        for entry in _get_quota_entries(entry_id, task, tasks_in_total):
             _add_quota_entry(
                 quotas, entry, date, timezone, nb_frames, nb_drawings, fps
             )
     return quotas
+
+
+def _get_quota_entries(entry_id, task, tasks_in_total):
+    """
+    The entries a row of a task adds to. The query returns a row for each
+    assignee of the task: each of them counts it whole, the total counts
+    it once.
+    """
+    if task.id in tasks_in_total:
+        return [entry_id]
+    tasks_in_total.add(task.id)
+    return [entry_id, "total"]
 
 
 def _spread(amount, nb_days):
