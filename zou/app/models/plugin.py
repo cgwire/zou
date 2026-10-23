@@ -24,6 +24,10 @@ class Plugin(db.Model, BaseMixin, SerializerMixin):
     revision = db.Column(db.String(12), nullable=True)
     frontend_project_enabled = db.Column(db.Boolean(), default=False)
     frontend_studio_enabled = db.Column(db.Boolean(), default=False)
+    frontend_task_enabled = db.Column(db.Boolean(), default=False, nullable=False)
+    frontend_project_admin_enabled = db.Column(
+        db.Boolean(), default=False, nullable=False
+    )
     icon = db.Column(db.String(255), nullable=True)  # lucide-vue icon name
 
     def present(self):
@@ -37,5 +41,7 @@ class Plugin(db.Model, BaseMixin, SerializerMixin):
             "maintainer_email": self.maintainer_email,
             "frontend_project_enabled": self.frontend_project_enabled,
             "frontend_studio_enabled": self.frontend_studio_enabled,
+            "frontend_task_enabled": self.frontend_task_enabled,
+            "frontend_project_admin_enabled": self.frontend_project_admin_enabled,
             "icon": self.icon,
         }
