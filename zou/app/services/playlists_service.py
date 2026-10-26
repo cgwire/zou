@@ -237,6 +237,9 @@ def get_playlist_with_preview_file_revisions(
             preview_file = preview_file_map.get(shot["preview_file_id"], None)
             if preview_file is not None:
                 shot["preview_file_id"] = preview_file["id"]
+                shot["preview_file_original_name"] = preview_file[
+                    "original_name"
+                ]
                 shot["preview_file_extension"] = preview_file["extension"]
                 shot["preview_file_revision"] = preview_file["revision"]
                 shot["preview_file_width"] = preview_file["width"]
@@ -302,6 +305,7 @@ def set_preview_files_for_entities(playlist_dict, with_annotations=True):
     preview_columns = [
         PreviewFile.id,
         PreviewFile.revision,
+        PreviewFile.original_name,
         PreviewFile.extension,
         PreviewFile.width,
         PreviewFile.height,
@@ -342,6 +346,7 @@ def set_preview_files_for_entities(playlist_dict, with_annotations=True):
         light_preview_file = {
             "id": preview_file_id,
             "revision": row.revision,
+            "original_name": row.original_name,
             "extension": row.extension,
             "width": row.width,
             "height": row.height,
@@ -806,6 +811,7 @@ def generate_playlisted_entity_from_task(task_id, task_type_links):
         playlisted_entity.update(
             {
                 "preview_file_id": preview_file["id"],
+                "preview_file_original_name": preview_file["original_name"],
                 "preview_file_extension": preview_file["extension"],
                 "preview_file_width": preview_file["width"],
                 "preview_file_height": preview_file["height"],

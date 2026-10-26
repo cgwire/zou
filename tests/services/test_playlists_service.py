@@ -177,12 +177,15 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
 
     def test_generate_temp_playlist(self):
         self.generate_fixture_preview_files()
+        self.preview_file.update({"original_name": "SH010_animation"})
         task_id = self.task.id
         task_type_id = str(self.task.task_type_id)
         shots = playlists_service.generate_temp_playlist([task_id])
         self.assertEqual(len(shots), 1)
         self.assertEqual(str(self.shot.id), shots[0]["id"])
         self.assertEqual(len(shots[0]["preview_files"][task_type_id]), 2)
+        shot = shots[0]
+        self.assertEqual(shot["preview_file_original_name"], "SH010_animation")
 
     def test_generate_temp_playlist_sorted_by_sequence(self):
         """
@@ -283,7 +286,10 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
 
     def test_get_playlist_with_preview_file_revisions(self):
         self.generate_fixture_preview_files()
-        self.preview_file_2.update({"status": "processing"})
+        self.preview_file_1.update({"original_name": "SH010_animation_v001"})
+        self.preview_file_2.update(
+            {"status": "processing", "original_name": "SH010_animation_v002"}
+        )
         # On the older revision: the entry reads its own file, not the
         # newest one.
         playlist = Playlist.create(
@@ -310,6 +316,13 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         self.assertEqual(
             [revision["status"] for revision in revisions],
             ["processing", "ready"],
+        )
+        self.assertEqual(
+            shot["preview_file_original_name"], "SH010_animation_v001"
+        )
+        self.assertEqual(
+            [revision["original_name"] for revision in revisions],
+            ["SH010_animation_v002", "SH010_animation_v001"],
         )
 
     def test_get_playlist_with_an_empty_preview_status(self):
