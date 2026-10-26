@@ -85,6 +85,39 @@ class DateHelpersTestCase(unittest.TestCase):
         self.assertEqual(start, datetime.datetime(2024, 12, 17, 5, 0))
         self.assertEqual(end, datetime.datetime(2024, 12, 18, 5, 0))
 
+    def test_a_local_day_starts_at_its_first_midnight(self):
+        """
+        In Havana, clocks go back from 01:00 to 00:00 on 1 November 2026:
+        the day starts at the first midnight, 04:00 UTC, an hour before
+        the second one. On 8 March they go forward from 00:00 to 01:00:
+        the day starts at 01:00, 05:00 UTC.
+        """
+        self.assertEqual(
+            date_helpers.get_utc_from_local_datetime(
+                datetime.date(2026, 11, 1), "America/Havana"
+            ),
+            datetime.datetime(2026, 11, 1, 4, 0),
+        )
+        self.assertEqual(
+            date_helpers.get_utc_from_local_datetime(
+                datetime.date(2026, 3, 8), "America/Havana"
+            ),
+            datetime.datetime(2026, 3, 8, 5, 0),
+        )
+
+    def test_a_local_time_met_twice_is_taken_at_its_first_pass(self):
+        """
+        Dublin keeps its winter time as negative DST: when clocks go back
+        from 02:00 to 01:00 on 25 October 2026, 01:30 first comes at 00:30
+        UTC, an hour before it comes again.
+        """
+        self.assertEqual(
+            date_helpers.get_utc_from_local_datetime(
+                datetime.datetime(2026, 10, 25, 1, 30), "Europe/Dublin"
+            ),
+            datetime.datetime(2026, 10, 25, 0, 30),
+        )
+
     def test_interval_allows_future_years(self):
         next_year = date_helpers.get_utc_now_datetime().year + 1
         start, _ = date_helpers.get_month_interval(next_year, 1)

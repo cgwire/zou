@@ -143,11 +143,25 @@ def get_timezoned_interval(start, end, timezone):
 def get_utc_from_local_datetime(date_obj, timezone):
     """
     Interpret a naive date or datetime as local time in the given timezone
-    and return the matching naive UTC datetime.
+    and return the matching naive UTC datetime. A local time met twice,
+    when clocks go back, is taken at its first pass, and one that never
+    happens, when they go forward, as if they had not moved yet: a local
+    midnight is always the first instant of its day.
     """
     if not isinstance(date_obj, datetime.datetime):
         date_obj = datetime.datetime.combine(date_obj, datetime.time.min)
-    localized = pytz.timezone(timezone).localize(date_obj)
+    tz = pytz.timezone(timezone)
+    try:
+        localized = tz.localize(date_obj, is_dst=None)
+    except pytz.AmbiguousTimeError:
+        # The earlier of the two instants: is_dst alone would pick the
+        # second pass where winter time is negative DST, as in Dublin.
+        localized = min(
+            tz.localize(date_obj, is_dst=True),
+            tz.localize(date_obj, is_dst=False),
+        )
+    except pytz.NonExistentTimeError:
+        localized = tz.localize(date_obj, is_dst=False)
     return localized.astimezone(pytz.utc).replace(tzinfo=None)
 
 

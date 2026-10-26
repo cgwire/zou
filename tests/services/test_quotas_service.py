@@ -679,6 +679,39 @@ class QuotaTestCase(ShotsTestCase):
                 )
                 self.assertEqual(weights, {5: {}, 6: {"P01": 1}})
 
+    def test_the_lists_hold_the_first_hour_of_a_day_met_twice(self):
+        """
+        In Havana, clocks go back from 01:00 to 00:00 on Sunday 1 November
+        2026. Sent to feedback at 00:30, the first time, a task that never
+        went WIP belongs to that Sunday, where the quotas count it. The
+        lists started the day at the second midnight: the weighted one left
+        the task out, the raw one put it on the Saturday.
+        """
+        end_date = datetime.datetime(2026, 11, 1, 4, 30)
+        self.a_shot_without_time_spent(None, end_date)
+        self.assertEqual(
+            quotas_service._get_working_days(None, end_date, "America/Havana"),
+            [datetime.date(2026, 11, 1)],
+        )
+
+        for weighted in [True, False]:
+            with self.subTest(weighted=weighted):
+                weights = {}
+                for month, day in [(10, 31), (11, 1)]:
+                    quota_shots = quotas_service.get_day_quota_shots(
+                        str(self.person.id),
+                        2026,
+                        month,
+                        day,
+                        project_id=str(self.project.id),
+                        weighted=weighted,
+                        timezone="America/Havana",
+                    )
+                    weights[day] = {
+                        shot["name"]: shot["weight"] for shot in quota_shots
+                    }
+                self.assertEqual(weights, {31: {}, 1: {"P01": 1}})
+
     def test_the_working_days_of_a_task_that_never_went_wip(self):
         """
         Without a start date, the task lands on its end day: an absent date
