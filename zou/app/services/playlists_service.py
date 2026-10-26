@@ -346,7 +346,7 @@ def set_preview_files_for_entities(playlist_dict, with_annotations=True):
             "width": row.width,
             "height": row.height,
             "duration": float(row.duration or 0),
-            "status": str(row.status),
+            "status": fields.serialize_value(row.status),
             "created_at": fields.serialize_value(row.created_at),
             "task_id": str(row.task_id),
         }  # Do not add too much field to avoid building too big responses
@@ -954,7 +954,7 @@ def _get_playlist_preview_file_list(preview_files):
             "width": preview_file.width,
             "height": preview_file.height,
             "duration": float(preview_file.duration or 0),
-            "status": str(preview_file.status),
+            "status": fields.serialize_value(preview_file.status),
             "annotations": preview_file.annotations,
             "created_at": fields.serialize_value(preview_file.created_at),
             "task_id": str(preview_file.task_id),

@@ -281,6 +281,59 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         self.assertEqual(entities[0]["episode_name"], self.episode.name)
         self.assertEqual(entities[0]["parent_name"], self.episode.name)
 
+    def test_get_playlist_with_preview_file_revisions(self):
+        self.generate_fixture_preview_files()
+        self.preview_file_2.update({"status": "processing"})
+        # On the older revision: the entry reads its own file, not the
+        # newest one.
+        playlist = Playlist.create(
+            name="Playlist with shot",
+            project_id=self.project.id,
+            shots=[
+                {
+                    "entity_id": str(self.shot.id),
+                    "preview_file_id": str(self.preview_file_1.id),
+                }
+            ],
+        )
+        result = playlists_service.get_playlist_with_preview_file_revisions(
+            playlist.id
+        )
+        self.assertEqual(len(result["shots"]), 1)
+        shot = result["shots"][0]
+        task_type_id = str(self.task.task_type_id)
+        revisions = shot["preview_files"][task_type_id]
+        self.assertEqual(shot["preview_file_id"], str(self.preview_file_1.id))
+        # The code of the status, as every other route sends it, not its
+        # label ("Ready").
+        self.assertEqual(shot["preview_file_status"], "ready")
+        self.assertEqual(
+            [revision["status"] for revision in revisions],
+            ["processing", "ready"],
+        )
+
+    def test_get_playlist_with_an_empty_preview_status(self):
+        """
+        The preview file route stores an empty status as it is: such a
+        file cannot make the whole playlist fail.
+        """
+        self.generate_fixture_preview_files()
+        self.preview_file.update({"status": ""})
+        playlist = Playlist.create(
+            name="Playlist with shot",
+            project_id=self.project.id,
+            shots=[
+                {
+                    "entity_id": str(self.shot.id),
+                    "preview_file_id": str(self.preview_file.id),
+                }
+            ],
+        )
+        result = playlists_service.get_playlist_with_preview_file_revisions(
+            playlist.id
+        )
+        self.assertEqual(result["shots"][0]["preview_file_status"], "")
+
     def test_generate_playlisted_entity_from_task(self):
         self.generate_fixture_preview_files()
         task_id = self.task.id
@@ -318,6 +371,7 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         )
         self.assertEqual(len(preview_files), 2)
         self.assertEqual(preview_files[0]["revision"], 2)
+        self.assertEqual(preview_files[0]["status"], "ready")
 
     def test_build_playlist_dict(self):
         playlist = Playlist.create(
