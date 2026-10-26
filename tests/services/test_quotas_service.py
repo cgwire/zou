@@ -642,6 +642,43 @@ class QuotaTestCase(ShotsTestCase):
                     quotas["total"]["month"]["count"], {"2024-06": 2}
                 )
 
+    def test_the_raw_list_ends_before_its_end_bound(self):
+        """
+        A task sent to feedback, or approved, at midnight in Paris belongs
+        to the day that starts then, where the raw quotas count it. The
+        list of the day before held it too, its end bound included.
+        """
+        task = self.generate_shot_task()
+        date = datetime.datetime(2024, 6, 5, 22, 0)
+        task.update({"end_date": date, "done_date": date})
+
+        for feedback in [True, False]:
+            with self.subTest(feedback=feedback):
+                quotas = quotas_service.get_raw_quotas(
+                    str(self.project.id),
+                    person_id=str(self.person.id),
+                    feedback=feedback,
+                )
+                weights = {}
+                for day in [5, 6]:
+                    quota_shots = quotas_service.get_day_quota_shots(
+                        str(self.person.id),
+                        2024,
+                        6,
+                        day,
+                        project_id=str(self.project.id),
+                        weighted=False,
+                        feedback=feedback,
+                        timezone="Europe/Paris",
+                    )
+                    weights[day] = {
+                        shot["name"]: shot["weight"] for shot in quota_shots
+                    }
+                self.assertEqual(
+                    quotas["total"]["day"]["count"], {"2024-06-06": 1}
+                )
+                self.assertEqual(weights, {5: {}, 6: {"P01": 1}})
+
     def test_the_working_days_of_a_task_that_never_went_wip(self):
         """
         Without a start date, the task lands on its end day: an absent date

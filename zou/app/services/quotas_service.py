@@ -770,19 +770,17 @@ def get_raw_quota_shots_between(
 
     query = _filter_on_scope(query, project_id, task_type_id)
 
+    # The period ends before its end bound: a task ending on that local
+    # midnight belongs to the next period, as in the raw quotas.
     if feedback:
         query = query.filter(
-            Task.end_date.between(
-                func.cast(start, Task.end_date.type),
-                func.cast(end, Task.end_date.type),
-            )
+            (Task.end_date >= func.cast(start, Task.end_date.type))
+            & (Task.end_date < func.cast(end, Task.end_date.type))
         )
     else:
         query = query.filter(
-            Task.done_date.between(
-                func.cast(start, Task.done_date.type),
-                func.cast(end, Task.done_date.type),
-            )
+            (Task.done_date >= func.cast(start, Task.done_date.type))
+            & (Task.done_date < func.cast(end, Task.done_date.type))
         )
 
     # Task.id keeps a row for each task of a shot: on the shots alone, the
