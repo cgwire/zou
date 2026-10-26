@@ -26,4 +26,4 @@ responses:
   201:
     description: Created descriptors
   400:
-    description: Invalid parameters
+    description: Invalid parameters, or a name taken by a built-in field

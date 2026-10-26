@@ -16,4 +16,4 @@ responses:
     description: Updated descriptors
   400:
     description: Invalid parameters, or a name taken by another column of
-      the same type in one of the projects or too long
+      the same type in one of the projects, by a built-in field, or too long

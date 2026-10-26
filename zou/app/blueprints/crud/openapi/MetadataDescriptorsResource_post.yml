@@ -69,4 +69,5 @@ responses:
                 format: date-time
                 example: "2024-01-15T10:30:00Z"
     400:
-      description: Invalid data format or invalid data_type
+      description: Invalid data format, invalid data_type, or a field name
+        taken by a built-in field

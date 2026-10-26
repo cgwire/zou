@@ -61,12 +61,16 @@ class MetadataDescriptorsResource(BaseModelsResource):
 
     def check_creation_integrity(self, data):
         """
-        Check if the data descriptor has a valid data_type.
+        Check if the data descriptor has a valid data_type, and a field name
+        that no built-in field uses.
         """
         if "data_type" in data:
             types = [type_name for type_name, _ in METADATA_DESCRIPTOR_TYPES]
             if data["data_type"] not in types:
                 raise WrongParameterException("Invalid data_type")
+        metadata_descriptors_service.check_metadata_descriptor_field_name(
+            data.get("entity_type"), data.get("field_name")
+        )
         return True
 
     def all_entries(self, query=None, relations=True):
@@ -111,13 +115,23 @@ class MetadataDescriptorResource(BaseModelResource):
     def update_data(self, data, instance_id):
         """
         Check if the data descriptor has a valid data_type and valid
-        departments.
+        departments, and that a new field name is not one a built-in field
+        uses. A descriptor created on one before that check keeps it.
         """
         data = super().update_data(data, instance_id)
         if "data_type" in data:
             types = [type_name for type_name, _ in METADATA_DESCRIPTOR_TYPES]
             if data["data_type"] not in types:
                 raise WrongParameterException("Invalid data_type")
+        entity_type = data.get("entity_type", self.instance.entity_type)
+        field_name = data.get("field_name", self.instance.field_name)
+        if (entity_type, field_name) != (
+            self.instance.entity_type,
+            self.instance.field_name,
+        ):
+            metadata_descriptors_service.check_metadata_descriptor_field_name(
+                entity_type, field_name
+            )
         return data
 
     def serialize_update_response(self, instance):

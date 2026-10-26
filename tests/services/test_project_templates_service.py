@@ -672,6 +672,40 @@ class ProjectTemplateServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(links), 1)
         self.assertEqual(links[0].priority, 99)  # untouched
 
+    def test_apply_template_leaves_out_a_column_on_a_built_in_field(self):
+        # A template saved before Zou refused these columns still applies:
+        # only the column on the key of a built-in field is left out.
+        template = project_templates_service.create_project_template(
+            name="Legacy"
+        )
+        project_templates_service.set_template_metadata_descriptors(
+            template["id"],
+            [
+                {
+                    "name": "Resolution",
+                    "entity_type": "Shot",
+                    "data_type": "string",
+                },
+                {
+                    "name": "Difficulty",
+                    "entity_type": "Asset",
+                    "data_type": "string",
+                },
+            ],
+        )
+        target = Project.create(
+            name="Target", project_status_id=self.open_status.id
+        )
+        project_templates_service.apply_template_to_project(
+            str(target.id), template["id"]
+        )
+        descriptors = MetadataDescriptor.query.filter_by(
+            project_id=target.id
+        ).all()
+        self.assertEqual(
+            [descriptor.name for descriptor in descriptors], ["Difficulty"]
+        )
+
     def test_apply_template_with_explicit_overrides(self):
         template = self._build_full_template()
         target = Project.create(
