@@ -96,4 +96,4 @@ responses:
                 format: uuid
               example: ["a24a6ea4-ce75-4665-a070-57453082c250"]
   400:
-    description: Invalid parameters
+    description: Invalid parameters, or a name taken by a built-in field

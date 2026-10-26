@@ -456,6 +456,96 @@ class ProjectMetadataDescriptorTestCase(ApiDBTestCase):
                     Entity.get(self.asset.id).data, {"difficulty": "hard"}
                 )
 
+    def test_a_column_cannot_take_the_key_of_a_built_in_field(self):
+        # An entity column stores its values in the entity data, where the
+        # built-in fields store theirs: a Resolution shot column showed next
+        # to the built-in one in Kitsu, both on the same value, and that
+        # value set the size of the previews of the shot.
+        for entity_type in ("Asset", "Shot", "Sequence", "Episode", "Edit"):
+            for name in (
+                "Resolution",
+                "Résolution",
+                "FPS",
+                "Frame In",
+                "frame-out",
+                "Handle In",
+                "handle-out",
+                "Max Retakes",
+            ):
+                with self.subTest(entity_type=entity_type, name=name):
+                    with self.assertRaisesRegex(
+                        WrongParameterException, "built-in field"
+                    ):
+                        self.add(name, entity_type)
+        self.assertEqual(
+            metadata_descriptors_service.get_metadata_descriptors(
+                self.project.id
+            ),
+            [],
+        )
+
+    def test_project_and_task_columns_keep_the_names_of_built_in_fields(
+        self,
+    ):
+        # Their values live in the project or the task data, where no
+        # built-in field uses these keys.
+        self.generate_fixture_task_type()
+        for entity_type, task_type_id in (
+            ("Project", None),
+            ("Task", self.task_type.id),
+        ):
+            with self.subTest(entity_type=entity_type):
+                descriptor = self.add(
+                    "Resolution", entity_type, task_type_id=task_type_id
+                )
+                self.assertEqual(descriptor["field_name"], "resolution")
+
+    def test_rename_onto_the_key_of_a_built_in_field_is_refused(self):
+        # The values of the column moved onto the key of the built-in
+        # field, overwriting its values.
+        self.generate_fixture_shot()
+        notes = self.add("Notes", "Shot")
+        self.shot.update(
+            {"data": {"notes": "wide", "resolution": "1920x1080"}}
+        )
+        with self.assertRaises(WrongParameterException):
+            metadata_descriptors_service.update_metadata_descriptor(
+                notes["id"], {"name": "Resolution"}
+            )
+        self.assertEqual(
+            Entity.get(self.shot.id).data,
+            {"notes": "wide", "resolution": "1920x1080"},
+        )
+        self.assertEqual(
+            MetadataDescriptor.get(notes["id"]).field_name, "notes"
+        )
+
+    def test_a_column_on_the_key_of_a_built_in_field_stays_editable(self):
+        # A column created before the check keeps its settings editable,
+        # and a rename moves its values out of the built-in field.
+        self.generate_fixture_shot()
+        resolution = MetadataDescriptor.create(
+            project_id=self.project.id,
+            entity_type="Shot",
+            name="Resolution",
+            data_type="string",
+            field_name="resolution",
+        )
+        self.shot.update({"data": {"resolution": "3038x1911"}})
+
+        descriptor = metadata_descriptors_service.update_metadata_descriptor(
+            str(resolution.id), {"name": "Resolution", "for_client": True}
+        )
+        self.assertTrue(descriptor["for_client"])
+
+        descriptor = metadata_descriptors_service.update_metadata_descriptor(
+            str(resolution.id), {"name": "Shot resolution"}
+        )
+        self.assertEqual(descriptor["field_name"], "shot_resolution")
+        self.assertEqual(
+            Entity.get(self.shot.id).data, {"shot_resolution": "3038x1911"}
+        )
+
     def test_update_metadata_descriptor_without_a_name(self):
         # A body may leave the name out: the update keeps the column name
         # instead of failing on it with a 500, and applies the rest. An
