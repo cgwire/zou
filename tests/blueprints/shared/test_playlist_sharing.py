@@ -346,6 +346,15 @@ class SharedPlaylistReadTestCase(PlaylistSharingTestCase):
         self.assertIn("task_types", result)
         self.assertIn("task_statuses", result)
 
+    def test_get_shared_playlist_context_with_a_password(self):
+        link = self.post(self.share_path(), {"password": "topsecret123"}, 201)
+        self.log_out()
+        path = self.shared_path(link["token"], "/context")
+        self.get(path, 404)
+        self.get(f"{path}?password=wrong", 404)
+        result = self.get(f"{path}?password=topsecret123")
+        self.assertIn("project", result)
+
 
 class SharedRevisionTestCase(PlaylistSharingTestCase):
     """
