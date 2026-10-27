@@ -288,10 +288,7 @@ def update_login_failed_attempts(
     cache cold with a handful of wrong passwords a minute, while the JWT
     loader reads it on every authenticated request.
 
-    updated_at keeps its value too: every role but clients reads it, and
-    Kitsu puts it in the avatar URL, so each wrong password told the studio
-    when it was typed and changed the avatar URL of the account it aimed
-    at.
+    updated_at keeps its value too: Kitsu versions the avatar URL with it.
     """
     values = {
         "login_failed_attemps": login_failed_attemps,

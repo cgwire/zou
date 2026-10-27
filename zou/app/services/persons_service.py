@@ -658,7 +658,7 @@ def update_person_last_presence(person_id):
 
     It runs for every new time spent and desktop login, so it writes the
     field alone, and only when the day changes: no updated_at change
-    (clients put it in the avatar URL), no reindex, no person cache clear
+    (Kitsu puts it in the avatar URL), no reindex, no person cache clear
     for the whole instance, and no person:update that makes every connected
     client reload the person. Kitsu never reads the field, and the memoized
     persons catch up when they expire.

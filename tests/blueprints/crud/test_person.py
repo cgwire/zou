@@ -115,7 +115,7 @@ class PersonTestCase(PersonFixtureTestCase):
 
     def test_updated_at_in_present_minimal(self):
         """
-        Clients version the avatar URL with updated_at. Without it, a
+        Kitsu versions the avatar URL with updated_at. Without it, a
         non-manager kept the previous picture of a person for as long as
         the browser cache held it, up to a week.
         """

@@ -329,9 +329,8 @@ class LoginLockoutTestCase(AuthTestCase):
 
     def test_the_count_keeps_updated_at(self):
         """
-        Every role but clients reads updated_at, and Kitsu puts it in the
-        avatar URL: a wrong password told the studio when it was typed, and
-        changed the avatar URL of the account it aimed at.
+        Kitsu versions the avatar URL with updated_at: the failed login
+        counter leaves it alone.
         """
         last_edit = datetime.datetime(2021, 1, 1, 12, 0)
         Person.query.filter(Person.id == self.person_id).update(

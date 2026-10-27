@@ -17,8 +17,8 @@ from zou.app.models.person import (
     normalize_locale,
 )
 
-# Columns behind Person.present_minimal, the payload every non admin gets
-# from the list route, plus email. Email is not in that payload but the
+# Columns behind Person.present_minimal, the list payload of every non admin
+# but clients, plus is_guest and email. Email is not in that payload but the
 # lookup is part of the API every studio pipeline builds on
 # (gazu.person.get_person_by_email); matching an address the caller already
 # holds is not the sweep the other hidden columns allow, since equality

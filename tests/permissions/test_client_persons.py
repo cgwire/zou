@@ -87,8 +87,8 @@ class ClientPersonsTestCase(ApiDBTestCase):
 
     def test_department_members(self):
         """
-        Who belongs to which department is how the studio is organized,
-        which a client reads nothing of, even for their own team.
+        A client reads nothing of how the studio is organized: not even the
+        departments of their own team.
         """
         self.generate_fixture_department()
         department_id = str(self.department.id)
