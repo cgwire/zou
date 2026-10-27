@@ -26,7 +26,14 @@ from flask_jwt_extended import (
     jwt_required,
     verify_jwt_in_request,
 )
-from flask_socketio import SocketIO, disconnect, emit, join_room, leave_room
+from flask_socketio import (
+    ConnectionRefusedError,
+    SocketIO,
+    disconnect,
+    emit,
+    join_room,
+    leave_room,
+)
 
 from zou.app import config, create_app
 from zou.app.utils.redis import get_redis_url
@@ -240,7 +247,9 @@ def connected(auth):
     """
     Accept the handshake request (cookie or header), else the access token
     of the auth payload. A refused connection gets the reason in its
-    connect_error.
+    connect_error. The refusal is the ConnectionRefusedError of
+    flask_socketio: Flask-SocketIO hands any other exception, the builtin
+    one included, to on_error, and the connection is then accepted.
     """
     try:
         try:
