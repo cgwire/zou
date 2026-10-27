@@ -420,16 +420,6 @@ def add_empty_soundtrack(file_path, try_count=1):
     with contextlib.suppress(FileNotFoundError):
         os.remove(tmp_file_path)
 
-    duration = None
-    try:
-        # Probe the source movie (tmp_file_path is the not-yet-created
-        # output, just removed above): this original duration is used below
-        # to trim the duplicate frames ffmpeg appends when adding the
-        # empty soundtrack.
-        probe = ffmpeg.probe(file_path, select_streams="v")
-        duration = probe["format"]["duration"]
-    except Exception:
-        pass
     args = [
         "ffmpeg",
         "-hide_banner",
@@ -460,34 +450,11 @@ def add_empty_soundtrack(file_path, try_count=1):
 
     logger.info(f"add_empty_soundtrack.sp.returncode: {sp.returncode}")
     if sp.returncode == 0:
-        probe = ffmpeg.probe(tmp_file_path, select_streams="v")
-        new_duration = probe["format"]["duration"]
-
-        # Hack needed to fix duration after adding empty soundtrack due to a
-        # bug in ffmpeg which adds duplicated frames at the end of the movie.
-        if duration is not None and duration != new_duration:
-            tmp_file_path_trim = tmp_file_path.replace(
-                "_empty_audio.", "_empty_audio_trim."
-            )
-            stream = ffmpeg.input(tmp_file_path)
-            stream = ffmpeg.output(
-                stream.video,
-                stream.audio,
-                tmp_file_path_trim,
-                ss="00:00:00",
-                t=duration,
-                vcodec="copy",
-                acodec="copy",
-            )
-            stream.run(quiet=False, capture_stderr=True, overwrite_output=True)
-
-            shutil.copyfile(tmp_file_path_trim, file_path)
-            os.remove(tmp_file_path)
-            os.remove(tmp_file_path_trim)
-
-        else:
-            shutil.copyfile(tmp_file_path, file_path)
-            os.remove(tmp_file_path)
+        # The video is copied as is, so the movie needs no trim. A stream
+        # copy cut with -ss would drop the first keyframe of a movie with
+        # B-frames, and every frame up to the next one.
+        shutil.copyfile(tmp_file_path, file_path)
+        os.remove(tmp_file_path)
     else:
         logger.error(f"Err in soundtrack: {err}")
         logger.error(f"Err code: {sp.returncode}")
