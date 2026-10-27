@@ -206,6 +206,38 @@ class LoginLockoutTestCase(AuthTestCase):
         self.assertRaises(WrongPasswordException, self.authenticate, "wrong")
         self.assertEqual(self.failed_attemps(), 2)
 
+    def test_wrong_passwords_in_parallel_all_count(self):
+        """
+        Each wrong password increments the stored count in the database,
+        so concurrent failures all count.
+        """
+        read_count = auth_service.check_login_failed_attempts
+
+        def read_then_two_failures_land(person):
+            count = read_count(person)
+            Person.query.filter(Person.id == self.person_id).update(
+                {"login_failed_attemps": count + 2},
+                synchronize_session=False,
+            )
+            return count
+
+        with mock.patch.object(
+            auth_service,
+            "check_login_failed_attempts",
+            side_effect=read_then_two_failures_land,
+        ):
+            self.assertRaises(
+                WrongPasswordException, self.authenticate, "wrong"
+            )
+        self.assertEqual(self.failed_attemps(), 3)
+
+    def test_a_count_left_empty_starts_from_zero(self):
+        Person.query.filter(Person.id == self.person_id).update(
+            {"login_failed_attemps": None}, synchronize_session=False
+        )
+        self.assertRaises(WrongPasswordException, self.authenticate, "wrong")
+        self.assertEqual(self.failed_attemps(), 1)
+
     def test_a_right_password_clears_the_count(self):
         self.assertRaises(WrongPasswordException, self.authenticate, "wrong")
         self.authenticate()
