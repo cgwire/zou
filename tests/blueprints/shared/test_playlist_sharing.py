@@ -1272,6 +1272,7 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
         with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
             tmp.write(payload)
             tmp_path = tmp.name
+        self.addCleanup(os.remove, tmp_path)
         file_store.add_file("previews", str(preview_file.id), tmp_path)
         self.addCleanup(
             file_store.remove_file,
@@ -1381,6 +1382,7 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
         with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
             tmp.write(sibling_payload)
             tmp_path = tmp.name
+        self.addCleanup(os.remove, tmp_path)
         file_store.add_file("previews", str(sibling.id), tmp_path)
         self.addCleanup(
             file_store.remove_file, "previews", str(sibling.id), force=True
@@ -1447,6 +1449,7 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
         with tempfile.NamedTemporaryFile(suffix=".gif", delete=False) as tmp:
             tmp.write(payload)
             tmp_path = tmp.name
+        self.addCleanup(os.remove, tmp_path)
         file_store.add_file("previews", str(preview_file.id), tmp_path)
         self.addCleanup(
             file_store.remove_file,
@@ -1531,6 +1534,7 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
             tmp.write(payload)
             tmp_path = tmp.name
+        self.addCleanup(os.remove, tmp_path)
         file_store.add_picture("original", str(preview_file.id), tmp_path)
         self.addCleanup(
             file_store.remove_picture,
