@@ -231,3 +231,24 @@ class ImportCsvTaskTypeEstimationsTestCase(ApiDBTestCase):
         self.assertEqual(result["imported_rows"], 1)
         task = Task.get(self.task.id)
         self.assertEqual(task.start_date.strftime("%Y-%m-%d"), "2024-01-05")
+
+    def test_entity_without_task_is_named(self):
+        self.generate_fixture_task()
+        self.generate_fixture_asset(name="Rock")
+        path = (
+            f"/import/csv/projects/{self.project.id}"
+            f"/task-types/{self.task_type.id}/estimations"
+        )
+        content = (
+            "Parent,Entity,Start date\n"
+            "Props,Tree,2024-01-05\n"
+            "Props,Rock,2024-01-05\n"
+        )
+        result = self.upload_file(path, self.write_csv(content), code=400)
+
+        self.assertEqual(
+            result["message"],
+            "Entity 'Rock' with parent 'Props' has no 'Shaders' task",
+        )
+        self.assertEqual(result["line_number"], 3)
+        self.assertEqual(result["imported_rows"], 1)

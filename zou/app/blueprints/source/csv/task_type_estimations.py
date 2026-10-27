@@ -145,7 +145,12 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
         if difficulty is not None:
             new_data["difficulty"] = difficulty
 
-        task = self.tasks_map[entity_id]
+        task = self.tasks_map.get(entity_id)
+        if task is None:
+            raise RowException(
+                f"Entity '{row['Entity']}' with parent '{row['Parent']}' "
+                f"has no '{task_type['name']}' task"
+            )
 
         # Merge descriptor cells into the task's own metadata instead of
         # replacing it, so columns absent from the CSV are preserved.
