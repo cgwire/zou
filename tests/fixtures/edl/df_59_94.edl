@@ -1,0 +1,8 @@
+TITLE: TestProject_EDL
+FCM: DROP FRAME
+
+001  AX       V     C        00:00:00;00 00:01:00;04 01:00:00;00 01:01:00;04
+* FROM CLIP NAME: TestProject_SQ010-sc010.mp4
+
+002  AX       V     C        00:00:00;00 00:00:10;00 01:01:00;04 01:01:10;04
+* FROM CLIP NAME: TestProject_SQ010-sc020.mp4
