@@ -1,8 +1,9 @@
 import os
 import tempfile
 import unittest
+from unittest import mock
 
-from PIL import Image
+from PIL import Image, ImageChops, ImageFont
 
 from zou.app.utils import annotations as annotations_renderer
 
@@ -1027,6 +1028,55 @@ class AnnotationsRendererTestCase(unittest.TestCase):
         )
         after = Image.open(path).getpixel((100, 100))
         self.assertEqual(before, after)
+
+    def _render_text(self, text, font_path):
+        path = self._temp_image()
+        annotation = {
+            "drawing": {
+                "objects": [
+                    {
+                        "type": "i-text",
+                        "text": text,
+                        "left": 20,
+                        "top": 20,
+                        "fontSize": 30,
+                        "fill": "#ff0000",
+                        "canvasWidth": 200,
+                        "canvasHeight": 200,
+                    }
+                ]
+            }
+        }
+        with mock.patch.object(
+            annotations_renderer, "DEFAULT_FONT_PATHS", [font_path]
+        ):
+            annotations_renderer.render_annotation_on_image(path, annotation)
+        return Image.open(path)
+
+    def assertSameImage(self, actual, expected):
+        self.assertIsNone(ImageChops.difference(actual, expected).getbbox())
+
+    def test_text_breaks_its_lines_like_the_kitsu_canvas(self):
+        # Pillow's default font always skips raqm, the layout library at
+        # fault here: load the same face from a file instead.
+        fd, font_path = tempfile.mkstemp(suffix=".ttf")
+        with os.fdopen(fd, "wb") as font_file:
+            font_file.write(ImageFont.load_default(10).font_bytes)
+        self._paths = getattr(self, "_paths", []) + [font_path]
+        two_lines = self._render_text("Kitsu\nZou", font_path)
+        one_line = self._render_text("Kitsu Zou", font_path)
+        blank = Image.open(self._temp_image())
+        self.assertIsNotNone(ImageChops.difference(two_lines, blank).getbbox())
+
+        self.assertSameImage(
+            self._render_text("Kitsu\r\nZou", font_path), two_lines
+        )
+        for separator in ("\r", "\x1c", "\x1d", "\x1e", "\x85", "\u2029"):
+            with self.subTest(separator=separator):
+                self.assertSameImage(
+                    self._render_text(f"Kitsu{separator}Zou", font_path),
+                    one_line,
+                )
 
 
 if __name__ == "__main__":

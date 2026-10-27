@@ -20,7 +20,7 @@ concurrency:
 env:
   PYTHON_REF: "3.12"
   PG_REF: "18"
-  PYTHON_VERSIONS: '["3.10", "3.11", "3.12", "3.13", "3.14"]'
+  PYTHON_VERSIONS: '["3.11", "3.12", "3.13", "3.14"]'
   PG_VERSIONS: '["12", "14", "15", "16", "17", "18"]'
   MEILI_MASTER_KEY: testkey0123456789
   PGPASSWORD: mysecretpassword
