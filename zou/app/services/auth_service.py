@@ -294,13 +294,24 @@ def update_login_failed_attempts(
     the whole instance. Calling it here let an anonymous caller keep that
     cache cold with a handful of wrong passwords a minute, while the JWT
     loader reads it on every authenticated request.
+
+    updated_at keeps its value too: every role but clients reads it, and
+    Kitsu puts it in the avatar URL, so each wrong password told the studio
+    when it was typed and changed the avatar URL of the account it aimed
+    at.
     """
-    person = Person.get(person_id)
-    person.login_failed_attemps = login_failed_attemps
+    values = {
+        "login_failed_attemps": login_failed_attemps,
+        # Set to itself, updated_at keeps its value instead of taking the
+        # onupdate default.
+        "updated_at": Person.updated_at,
+    }
     if last_login_failed is not None:
-        person.last_login_failed = last_login_failed
-    person.commit()
-    return person.serialize()
+        values["last_login_failed"] = last_login_failed
+    Person.query.filter(Person.id == person_id).update(
+        values, synchronize_session=False
+    )
+    Person.commit()
 
 
 def check_two_factor_authentication(

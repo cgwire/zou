@@ -280,6 +280,40 @@ class LoginLockoutTestCase(AuthTestCase):
         auth_service.update_login_failed_attempts(self.person_id, 0)
         self.assertIsNotNone(Person.get(self.person_id).last_login_failed)
 
+    def test_the_count_keeps_updated_at(self):
+        """
+        Every role but clients reads updated_at, and Kitsu puts it in the
+        avatar URL: a wrong password told the studio when it was typed, and
+        changed the avatar URL of the account it aimed at.
+        """
+        last_edit = datetime.datetime(2021, 1, 1, 12, 0)
+        Person.query.filter(Person.id == self.person_id).update(
+            {"updated_at": last_edit}
+        )
+
+        self.assertRaises(WrongPasswordException, self.authenticate, "wrong")
+        self.assertEqual(self.failed_attemps(), 1)
+        self.authenticate()
+        self.assertEqual(self.failed_attemps(), 0)
+        # The end of a lockout window clears the count through its own call.
+        auth_service.update_login_failed_attempts(
+            self.person_id,
+            auth_service.MAX_LOGIN_FAILED_ATTEMPS,
+            date_helpers.get_utc_now_datetime()
+            - auth_service.LOGIN_LOCKOUT_DELAY
+            - datetime.timedelta(seconds=1),
+        )
+        persons_service.clear_person_cache()
+        self.authenticate()
+        self.assertEqual(self.failed_attemps(), 0)
+
+        self.assertEqual(
+            Person.query.with_entities(Person.updated_at)
+            .filter(Person.id == self.person_id)
+            .scalar(),
+            last_edit,
+        )
+
 
 class TwoFactorMethodTestCase(AuthTestCase):
     """

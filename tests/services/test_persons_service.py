@@ -1,10 +1,14 @@
+import datetime
+from unittest import mock
+
 from tests.services.cases import AuthTestCase, PersonsTestCase
-from zou.app import config
+from zou.app import config, db
 from zou.app.exceptions import (
     PersonInProtectedAccounts,
     PersonNotFoundException,
     WrongParameterException,
 )
+from zou.app.models.desktop_login_log import DesktopLoginLog
 from zou.app.models.person import Person
 from zou.app.services import (
     index_service,
@@ -663,12 +667,7 @@ class PresenceTestCase(PersonsTestCase):
             persons_service.get_desktop_login_logs(self.user["id"]), []
         )
 
-    def test_update_person_last_presence(self):
-        """
-        The latest of the two things that count as a presence: a time spent
-        and a desktop login. They are stored in different types, a date for
-        one and a datetime for the other, and either can be missing.
-        """
+    def a_task(self):
         self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_asset_type()
@@ -676,7 +675,26 @@ class PresenceTestCase(PersonsTestCase):
         self.generate_fixture_task_type()
         self.generate_fixture_task_status()
         self.generate_fixture_assigner()
-        task_id = str(self.generate_fixture_task().id)
+        return str(self.generate_fixture_task().id)
+
+    def stored_presence(self):
+        """
+        Read from the row: the presence write leaves the person cache as it
+        is.
+        """
+        return fields.serialize_value(
+            Person.query.with_entities(Person.last_presence)
+            .filter(Person.id == self.person_id)
+            .scalar()
+        )
+
+    def test_update_person_last_presence(self):
+        """
+        The latest of the two things that count as a presence: a time spent
+        and a desktop login. They are stored in different types, a date for
+        one and a datetime for the other, and either can be missing.
+        """
+        task_id = self.a_task()
 
         def log_in(date):
             persons_service.create_desktop_login_logs(self.person_id, date)
@@ -698,23 +716,129 @@ class PresenceTestCase(PersonsTestCase):
         for reason, add, date, expected in cases:
             with self.subTest(reason=reason):
                 add(date)
-                result = persons_service.update_person_last_presence(
-                    self.person_id
-                )
-                self.assertEqual(result["last_presence"], expected)
+                self.assertEqual(self.stored_presence(), expected)
 
     def test_update_person_last_presence_on_a_login_alone(self):
         # A person who only ever opens the desktop application has no time
         # spent to fall back on.
         persons_service.create_desktop_login_logs(self.person_id, "2021-06-01")
 
-        result = persons_service.update_person_last_presence(self.person_id)
-
-        self.assertEqual(result["last_presence"], "2021-06-01")
+        self.assertEqual(self.stored_presence(), "2021-06-01")
 
     def test_update_person_last_presence_on_nothing_at_all(self):
-        result = persons_service.update_person_last_presence(self.person_id)
-        self.assertIsNone(result["last_presence"])
+        # Once the time spents and logins are gone, so is the presence.
+        Person.query.filter(Person.id == self.person_id).update(
+            {"last_presence": datetime.date(2021, 6, 1)}
+        )
+
+        self.assertTrue(
+            persons_service.update_person_last_presence(self.person_id)
+        )
+        self.assertIsNone(self.stored_presence())
+
+    def test_a_presence_of_a_recorded_day_writes_nothing(self):
+        """
+        Most time spents and logins fall on a day already recorded: the row
+        is only written when the day moves.
+        """
+        Person.query.filter(Person.id == self.person_id).update(
+            {"last_presence": datetime.date(2021, 6, 1)}
+        )
+        DesktopLoginLog.create(
+            person_id=self.person_id, date=datetime.datetime(2021, 6, 1, 18)
+        )
+        self.assertFalse(
+            persons_service.update_person_last_presence(self.person_id)
+        )
+
+        DesktopLoginLog.create(
+            person_id=self.person_id, date=datetime.datetime(2021, 6, 2, 9)
+        )
+        self.assertTrue(
+            persons_service.update_person_last_presence(self.person_id)
+        )
+        self.assertEqual(self.stored_presence(), "2021-06-02")
+
+    def test_a_presence_is_committed(self):
+        """
+        The desktop login routes commit nothing after the service, and the
+        request teardown rolls back what is left.
+        """
+        self.spare_fixtures_from_rollbacks()
+
+        persons_service.create_desktop_login_logs(
+            self.person_id, "2021-06-01T09:00:00"
+        )
+        db.session.rollback()
+
+        self.assertEqual(self.stored_presence(), "2021-06-01")
+
+    def test_a_presence_keeps_updated_at(self):
+        """
+        Clients version the avatar URL with updated_at: while every new time
+        spent changed it, the managers downloaded the avatar of its author
+        again.
+        """
+        task_id = self.a_task()
+        last_edit = datetime.datetime(2021, 1, 1, 12, 0)
+        Person.query.filter(Person.id == self.person_id).update(
+            {"updated_at": last_edit}
+        )
+
+        time_spents_service.create_or_update_time_spent(
+            task_id, self.person_id, "2021-06-01", 600
+        )
+        persons_service.create_desktop_login_logs(
+            self.person_id, "2021-06-02T09:00:00"
+        )
+
+        self.assertEqual(self.stored_presence(), "2021-06-02")
+        self.assertEqual(
+            Person.query.with_entities(Person.updated_at)
+            .filter(Person.id == self.person_id)
+            .scalar(),
+            last_edit,
+        )
+
+    def test_a_presence_is_not_announced(self):
+        """
+        person:update makes every connected client reload the person, for a
+        field Kitsu never reads.
+        """
+        task_id = self.a_task()
+        events = self.capture_events("person:update")
+
+        time_spents_service.create_or_update_time_spent(
+            task_id, self.person_id, "2021-06-01", 600
+        )
+        persons_service.create_desktop_login_logs(
+            self.person_id, "2021-06-02T09:00:00"
+        )
+
+        self.assertEqual(self.stored_presence(), "2021-06-02")
+        self.assertEqual(events, [])
+
+    def test_a_presence_leaves_the_person_cache_and_the_index_alone(self):
+        """
+        clear_person_cache drops every memoized person of the instance, the
+        lookup of the JWT loader included, and the index only holds names.
+        """
+        task_id = self.a_task()
+        with mock.patch.object(
+            persons_service, "clear_person_cache"
+        ) as clear_person_cache, mock.patch.object(
+            persons_service, "index_service"
+        ) as index:
+            time_spents_service.create_or_update_time_spent(
+                task_id, self.person_id, "2021-06-01", 600
+            )
+            persons_service.create_desktop_login_logs(
+                self.person_id, "2021-06-02T09:00:00"
+            )
+
+        self.assertEqual(self.stored_presence(), "2021-06-02")
+        clear_person_cache.assert_not_called()
+        self.assertEqual(index.mock_calls, [])
 
     def test_get_presence_logs(self):
         """

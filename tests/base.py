@@ -1,4 +1,3 @@
-import datetime
 import ntpath
 import os
 import unittest
@@ -33,7 +32,7 @@ from zou.app.stores import (
     redis_client,
     redis_lock,
 )
-from zou.app.utils import events, fields, fs
+from zou.app.utils import date_helpers, events, fields, fs
 
 # Absolute, so that the folder created and the folder written to are the
 # same one wherever pytest is launched from. One folder per pytest-xdist
@@ -464,7 +463,11 @@ class ApiDBTestCase(
         self.assign_task(task_id, self.user_cg_artist["id"])
 
     def now(self):
-        return datetime.datetime.now().replace(microsecond=0).isoformat()
+        """
+        UTC, like the dates Zou writes.
+        """
+        now = date_helpers.get_utc_now_datetime().replace(microsecond=0)
+        return now.isoformat()
 
     def upload_csv(self, path, name):
         file_path_fixture = self.get_fixture_file_path(

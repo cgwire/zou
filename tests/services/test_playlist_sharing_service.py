@@ -78,6 +78,13 @@ class ShareTokenTestCase(SharedPlaylistTestCase):
             token=self.share(expiration_date=expiration_date)
         ).expiration_date
 
+    def utc_today(self):
+        """
+        validate_share_token compares in UTC, while the local date differs
+        from the UTC one for as many hours a day as the UTC offset.
+        """
+        return datetime.datetime.now(datetime.timezone.utc).date()
+
     def test_a_link_without_expiration_date_never_expires(self):
         self.assertIsNone(self.expires_on(None))
         self.assertIsNone(self.expires_on(""))
@@ -89,7 +96,7 @@ class ShareTokenTestCase(SharedPlaylistTestCase):
         pinning the expiration to the first second of that day killed it
         a full day before the date shown next to it.
         """
-        today = datetime.date.today()
+        today = self.utc_today()
         token = self.share(expiration_date=today.isoformat())
 
         self.assertEqual(
@@ -99,7 +106,7 @@ class ShareTokenTestCase(SharedPlaylistTestCase):
         playlist_sharing_service.validate_share_token(token)
 
     def test_a_link_expires_once_its_day_is_over(self):
-        yesterday = datetime.date.today() - datetime.timedelta(days=1)
+        yesterday = self.utc_today() - datetime.timedelta(days=1)
         token = self.share(expiration_date=yesterday.isoformat())
         self.assertRaises(
             PlaylistShareLinkNotFoundException,
