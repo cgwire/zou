@@ -2,7 +2,7 @@ Join chat
 ---
 description: Join a chat for a specific entity by adding the current
   user as a participant. The user will be listed as a participant in
-  the chat.
+  the chat. Clients get a 403.
 tags:
 - User
 parameters:

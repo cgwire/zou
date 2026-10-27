@@ -7,10 +7,8 @@ from zou.app.blueprints.chats.schemas import ChatMessageSchema
 from zou.app.exceptions import WrongParameterException
 from zou.app.services import (
     chats_service,
-    entities_service,
     permissions_service,
     persons_service,
-    user_service,
 )
 from zou.app.utils import permissions, validation
 
@@ -23,9 +21,7 @@ class ChatResource(MethodView):
         """
         Get chat details
         """
-        entity = entities_service.get_entity(entity_id)
-        permissions_service.check_project_access(entity["project_id"])
-        permissions_service.check_entity_access(entity["id"])
+        permissions_service.check_chat_access(entity_id)
         chat = chats_service.get_chat(entity_id)
         chat["messages"] = chats_service.get_chat_messages(entity_id)
         return chat
@@ -39,9 +35,7 @@ class ChatMessagesResource(MethodView):
         """
         Get chat messages
         """
-        entity = entities_service.get_entity(entity_id)
-        permissions_service.check_project_access(entity["project_id"])
-        permissions_service.check_entity_access(entity["id"])
+        permissions_service.check_chat_access(entity_id)
         return chats_service.get_chat_messages_for_entity(entity_id)
 
     @jwt_required()
@@ -50,9 +44,7 @@ class ChatMessagesResource(MethodView):
         """
         Create chat message
         """
-        entity = entities_service.get_entity(entity_id)
-        permissions_service.check_project_access(entity["project_id"])
-        permissions_service.check_entity_access(entity["id"])
+        permissions_service.check_chat_access(entity_id)
 
         person = persons_service.get_current_user()
         body = validation.validate_request_body(ChatMessageSchema)
@@ -81,9 +73,7 @@ class ChatMessageResource(MethodView):
         """
         Get chat message
         """
-        entity = entities_service.get_entity(entity_id)
-        permissions_service.check_project_access(entity["project_id"])
-        permissions_service.check_entity_access(entity["id"])
+        permissions_service.check_chat_access(entity_id)
         chat = chats_service.get_chat(entity_id)
         chat_message = chats_service.get_chat_message(chat_message_id)
         if chat_message["chat_id"] != chat["id"]:
@@ -96,9 +86,7 @@ class ChatMessageResource(MethodView):
         """
         Delete chat message
         """
-        entity = entities_service.get_entity(entity_id)
-        permissions_service.check_project_access(entity["project_id"])
-        permissions_service.check_entity_access(entity["id"])
+        permissions_service.check_chat_access(entity_id)
 
         chat = chats_service.get_chat(entity_id)
         chat_message = chats_service.get_chat_message(chat_message_id)

@@ -1,7 +1,10 @@
+import os
+
 from flask import g, request_started
 
 from tests.base import ApiDBTestCase
-from zou.app.services import projects_service
+from zou.app.models.chat import Chat
+from zou.app.services import chats_service, projects_service
 
 
 class ClientStudioRoutesTestCase(ApiDBTestCase):
@@ -157,3 +160,100 @@ class ClientOpenTasksTestCase(FreshRequestsTestCase):
         self.log_in_cg_artist()
         for path in self.paths:
             self.get(f"{path}?project_id={self.project_id}", 403)
+
+
+class ClientEntityChatTestCase(FreshRequestsTestCase):
+    """
+    The chat of an entity is a studio discussion: Kitsu never opens it to
+    a client, and its routes refuse them, by the role on the project. The
+    files attached to its messages follow the chat.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project_status()
+        self.generate_fixture_project()
+        self.generate_fixture_asset_type()
+        self.generate_fixture_asset()
+        self.generate_fixture_user_client()
+        self.generate_fixture_user_cg_artist()
+        self.project_id = str(self.project.id)
+        for user in (self.user_client, self.user_cg_artist):
+            projects_service.add_team_member(self.project_id, user["id"])
+        # A client who joined the chat before it closed to them.
+        chats_service.join_chat(self.asset.id, self.user_client["id"])
+        self.message = chats_service.create_chat_message(
+            chats_service.get_chat(self.asset.id)["id"],
+            self.user_client["id"],
+            "Hello",
+        )
+        self.chat_path = f"data/entities/{self.asset.id}/chat"
+        self.read_paths = [
+            self.chat_path,
+            f"{self.chat_path}/messages",
+            f"{self.chat_path}/messages/{self.message['id']}",
+        ]
+
+    def generate_attachment(self):
+        self.post(f"actions/user/chats/{self.asset.id}/join", {}, 200)
+        message = self.upload_file(
+            f"{self.chat_path}/messages",
+            self.get_fixture_file_path(os.path.join("thumbnails", "th01.png")),
+            extra_fields={"message": "With a file"},
+        )
+        chat_message = chats_service.get_chat_message(message["id"])
+        return chat_message["attachment_files"][0]
+
+    def get_status(self, path):
+        return self.app.get(path, headers=self.base_headers).status_code
+
+    def test_the_chat_is_closed_to_clients(self):
+        message_path = f"{self.chat_path}/messages/{self.message['id']}"
+        self.log_in_client()
+        for path in self.read_paths:
+            self.get(path, 403)
+        self.post(f"{self.chat_path}/messages", {"message": "Hi"}, 403)
+        self.delete(message_path, 403)
+        self.post(f"actions/user/chats/{self.asset.id}/join", {}, 403)
+        self.assertEqual(self.get("data/user/chats"), [])
+
+    def test_a_client_can_still_leave_the_chat(self):
+        self.log_in_client()
+        self.delete(f"actions/user/chats/{self.asset.id}/join")
+        chat = chats_service.get_chat(self.asset.id)
+        self.assertNotIn(self.user_client["id"], chat["participants"])
+
+    def test_the_team_keeps_the_chat(self):
+        self.log_in_cg_artist()
+        for path in self.read_paths:
+            self.get(path)
+
+    def test_a_client_on_the_project_is_refused_the_chat(self):
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"], role="client"
+        )
+        self.log_in_cg_artist()
+        for path in self.read_paths:
+            self.get(path, 403)
+
+    def test_the_attachments_follow_the_chat(self):
+        attachment = self.generate_attachment()
+        attachment_path = f"data/attachment-files/{attachment['id']}"
+        paths = [
+            attachment_path,
+            f"{attachment_path}/file/{attachment['name']}",
+            f"pictures/thumbnails/attachment-files/{attachment['id']}.png",
+        ]
+        self.log_in_cg_artist()
+        self.assertEqual([self.get_status(path) for path in paths], [200] * 3)
+        self.log_in_client()
+        self.assertEqual([self.get_status(path) for path in paths], [403] * 3)
+
+    def test_an_attachment_record_checks_the_project_of_its_chat(self):
+        attachment = self.generate_attachment()
+        chat_count = Chat.query.count()
+        self.generate_fixture_user_supervisor()
+        self.log_in_supervisor()
+        status = self.get_status(f"data/attachment-files/{attachment['id']}")
+        self.assertEqual(status, 403)
+        self.assertEqual(Chat.query.count(), chat_count)

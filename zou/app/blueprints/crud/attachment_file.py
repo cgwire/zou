@@ -71,8 +71,8 @@ class AttachmentFileResource(BaseModelResource):
             message = chats_service.get_chat_message(
                 attachment_file["chat_message_id"]
             )
-            chat = chats_service.get_chat(message["chat_id"])
-            permissions_service.check_entity_access(chat["object_id"])
+            chat = chats_service.get_chat_by_id(message["chat_id"])
+            permissions_service.check_chat_access(chat["object_id"])
         else:
             raise PermissionDenied()
         return True
