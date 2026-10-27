@@ -254,7 +254,12 @@ class WorkingFilesTestCase(ApiDBTestCase):
             os.path.join("thumbnails", "th01.png")
         )
 
-        self.upload_file(path, fixture)
+        self.assertIsNone(working_file.uploaded_at)
+        uploaded = self.upload_file(path, fixture)
+        self.assertIsNotNone(uploaded["uploaded_at"])
+        self.assertEqual(uploaded["size"], os.path.getsize(fixture))
+        stored = self.get(f"data/working-files/{working_file.id}")
+        self.assertEqual(stored["uploaded_at"], uploaded["uploaded_at"])
 
         response = self.app.get(path, headers=self.base_headers)
         self.assertEqual(response.status_code, 200)

@@ -35,6 +35,9 @@ class OutputFile(db.Model, BaseMixin, SerializerMixin):
     source = db.Column(db.String(40))
     path = db.Column(db.String(400))
     data = db.Column(JSONB)
+    # The date of the last upload of the content: None when the file store
+    # has no content for this file.
+    uploaded_at = db.Column(db.DateTime())
     quality = db.Column(ChoiceType(QUALITIES), nullable=True)
 
     file_status_id = db.Column(

@@ -24,6 +24,9 @@ class WorkingFile(db.Model, BaseMixin, SerializerMixin):
     checksum = db.Column(db.Integer())
     path = db.Column(db.String(400))
     data = db.Column(JSONB)
+    # The date of the last upload of the content: None when the file store
+    # has no content for this file.
+    uploaded_at = db.Column(db.DateTime())
     validation_status = db.Column(
         ChoiceType(VALIDATION_STATUSES), default="neutral", nullable=False
     )

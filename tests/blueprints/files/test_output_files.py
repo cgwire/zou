@@ -682,3 +682,54 @@ class OutputFileListingTestCase(OutputFileTestCase):
         self.generate_fixture_user_cg_artist()
         self.log_in_cg_artist()
         self.get(path, 403)
+
+
+class OutputFileFileTestCase(OutputFileTestCase):
+    """
+    The file route of an output file: the same two verbs as a working file,
+    with the prefix output in the file store.
+    """
+
+    def new_output_file(self):
+        return self.new_output(
+            {
+                "output_type_id": self.tx_type_id,
+                "task_type_id": self.task_type_id,
+                "working_file_id": self.working_file_id,
+                "person_id": self.person_id,
+                "comment": "test",
+            }
+        )
+
+    def test_output_file_round_trip(self):
+        import os
+
+        output_file = self.new_output_file()
+        self.assertIsNone(output_file["uploaded_at"])
+        path = f"/data/output-files/{output_file['id']}/file"
+        fixture = self.get_fixture_file_path(
+            os.path.join("thumbnails", "th01.png")
+        )
+
+        uploaded = self.upload_file(path, fixture)
+        self.assertIsNotNone(uploaded["uploaded_at"])
+        self.assertEqual(uploaded["size"], os.path.getsize(fixture))
+        stored = self.get(f"data/output-files/{output_file['id']}")
+        self.assertEqual(stored["uploaded_at"], uploaded["uploaded_at"])
+
+        response = self.app.get(path, headers=self.base_headers)
+        self.assertEqual(response.status_code, 200)
+        with open(fixture, "rb") as f:
+            self.assertEqual(response.data, f.read())
+
+    def test_an_output_file_without_binary_is_a_404(self):
+        output_file = self.new_output_file()
+        self.get(f"/data/output-files/{output_file['id']}/file", 404)
+
+    def test_output_file_needs_project_access(self):
+        output_file = self.new_output_file()
+        path = f"/data/output-files/{output_file['id']}/file"
+
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        self.get(path, 403)
