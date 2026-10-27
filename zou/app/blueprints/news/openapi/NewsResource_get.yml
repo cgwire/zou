@@ -1,7 +1,7 @@
 Get open projects news
 ---
 description: Returns the latest news and activity feed from all
-  projects the user has access to.
+  projects the user has access to. Clients get a 403.
 tags:
   - News
 parameters:

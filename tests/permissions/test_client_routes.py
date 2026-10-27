@@ -4,7 +4,7 @@ from flask import g, request_started
 
 from tests.base import ApiDBTestCase
 from zou.app.models.chat import Chat
-from zou.app.services import chats_service, projects_service
+from zou.app.services import chats_service, news_service, projects_service
 
 
 class ClientStudioRoutesTestCase(ApiDBTestCase):
@@ -301,6 +301,57 @@ class ClientTimeSpentsTestCase(FreshRequestsTestCase):
             self.get(path)
 
     def test_a_client_on_the_project_is_refused_the_time_spents(self):
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"], role="client"
+        )
+        self.log_in_cg_artist()
+        for path in self.paths:
+            self.get(path, 403)
+
+
+class ClientNewsTestCase(FreshRequestsTestCase):
+    """
+    The news feed tells who did what on a production, and when: Kitsu
+    shows it to no client, and every route serving it refuses them, by the
+    role on the project.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_episode()
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+        self.generate_commented_shot_task()
+        news = news_service.create_news_for_task_and_comment(
+            self.task_dict, self.comment
+        )
+        self.generate_fixture_user_client()
+        self.generate_fixture_user_cg_artist()
+        self.project_id = self.task_dict["project_id"]
+        projects_service.add_team_member(
+            self.project_id, self.user_client["id"]
+        )
+        self.paths = [
+            f"data/projects/news?project_id={self.project_id}",
+            f"data/projects/{self.project_id}/news/{news['id']}",
+            f"data/entities/{self.shot.id}/news",
+        ]
+
+    def test_the_news_are_closed_to_clients(self):
+        self.log_in_client()
+        self.get("data/projects/news", 403)
+        for path in self.paths:
+            self.get(path, 403)
+
+    def test_the_team_keeps_the_news(self):
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"]
+        )
+        self.log_in_cg_artist()
+        for path in self.paths:
+            self.get(path)
+
+    def test_a_client_on_the_project_is_refused_its_news(self):
         projects_service.add_team_member(
             self.project_id, self.user_cg_artist["id"], role="client"
         )
