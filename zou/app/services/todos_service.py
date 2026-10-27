@@ -845,10 +845,11 @@ def _fold_done_rows_before(done_rows, window_start):
 
 
 def get_tasks_for_project(
-    project_id, page=0, task_type_id=None, episode_id=None
+    project_id, page=0, task_type_id=None, episode_id=None, only_assigned=False
 ):
     """
-    Return all tasks for given project.
+    Return all tasks for given project, or with only_assigned the ones
+    assigned to the current user.
     """
     query = (
         # subqueryload: one query whatever the size, selectinload sends
@@ -866,13 +867,13 @@ def get_tasks_for_project(
             .join(Sequence, Sequence.id == Entity.parent_id)
             .filter(Sequence.parent_id == episode_id)
         )
-
-        if permissions.has_vendor_permissions():
-            query = query.filter(persons_service.build_assignee_filter())
-        elif not permissions.has_admin_permissions():
+        if not (only_assigned or permissions.has_admin_permissions()):
             query = query.join(Project).filter(
                 user_service.build_related_projects_filter()
             )
+
+    if only_assigned:
+        query = query.filter(persons_service.build_assignee_filter())
 
     return query_utils.get_paginated_results(query, page, relations=True)
 

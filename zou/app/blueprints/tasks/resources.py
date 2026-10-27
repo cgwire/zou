@@ -788,6 +788,7 @@ class ProjectTasksResource(MethodView, ArgsMixin):
             page,
             task_type_id=task_type_id,
             episode_id=episode_id,
+            only_assigned=permissions.has_vendor_permissions(),
         )
         if isinstance(tasks, dict):
             tasks["data"] = entities_service.blank_tasks_for_current_user(
