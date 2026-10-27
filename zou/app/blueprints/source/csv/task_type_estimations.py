@@ -57,8 +57,7 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
 
     def prepare_import(self, project_id, task_type, episode_id=None):
         self.organisation = organisation_service.get_organisation()
-        self.assets_map = {}
-        self.shots_map = {}
+        self.candidates = {}
         self.tasks_map = {}
         self.descriptor_fields = {
             name: descriptor
@@ -69,54 +68,111 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
         }
 
         if task_type["for_entity"] == "Asset":
-            asset_types_map = {}
-            asset_types = assets_service.get_asset_types_for_project(
-                project_id
-            )
-            for asset_type in asset_types:
-                asset_types_map[asset_type["id"]] = slugify(asset_type["name"])
-
-            criterions_assets = {"project_id": project_id}
-            if episode_id is not None and episode_id not in ["main", "all"]:
-                criterions_assets["source_id"] = episode_id
-            assets = assets_service.get_assets(criterions_assets)
-            for asset in assets:
-                key = (
-                    f"{asset_types_map[asset['entity_type_id']]}"
-                    f"{slugify(asset['name'])}"
-                )
-                self.assets_map[key] = asset["id"]
+            self.add_asset_candidates(project_id, episode_id)
         elif task_type["for_entity"] == "Shot":
-            sequences_map = {}
-            criterions_sequences = {"project_id": project_id}
-            if episode_id is not None and episode_id not in ["main", "all"]:
-                criterions_sequences["parent_id"] = episode_id
-            sequences = shots_service.get_sequences(criterions_sequences)
-            for sequence in sequences:
-                sequences_map[sequence["id"]] = slugify(sequence["name"])
-
-            shots = shots_service.get_shots({"project_id": project_id})
-            for shot in shots:
-                sequence_key = sequences_map.get(shot["parent_id"])
-                if sequence_key is not None:
-                    key = f"{sequence_key}{slugify(shot['name'])}"
-                    self.shots_map[key] = shot["id"]
+            self.add_shot_candidates(project_id, episode_id)
 
         for task in tasks_service.get_tasks_for_project_and_task_type(
             project_id, task_type["id"]
         ):
             self.tasks_map[task["entity_id"]] = task
 
-    def import_row(self, row, project_id, task_type, episode_id=None):
-        key = slugify(f"{row['Parent']}{row['Entity']}")
+    def add_asset_candidates(self, project_id, episode_id):
+        asset_type_names = {
+            asset_type["id"]: asset_type["name"]
+            for asset_type in assets_service.get_asset_types_for_project(
+                project_id
+            )
+        }
+        criterions = {"project_id": project_id}
+        if episode_id is not None and episode_id not in ["main", "all"]:
+            criterions["source_id"] = episode_id
+        for asset in assets_service.get_assets(criterions):
+            self.add_candidate(
+                asset,
+                asset_type_names[asset["entity_type_id"]],
+                asset["source_id"],
+            )
 
-        if task_type["for_entity"] == "Asset" and self.assets_map.get(key):
-            entity_id = self.assets_map[key]
-        elif task_type["for_entity"] == "Shot" and self.shots_map.get(key):
-            entity_id = self.shots_map[key]
-        else:
+    def add_shot_candidates(self, project_id, episode_id):
+        criterions = {"project_id": project_id}
+        if episode_id is not None and episode_id not in ["main", "all"]:
+            criterions["parent_id"] = episode_id
+        sequences = {
+            sequence["id"]: sequence
+            for sequence in shots_service.get_sequences(criterions)
+        }
+        for shot in shots_service.get_shots({"project_id": project_id}):
+            sequence = sequences.get(shot["parent_id"])
+            if sequence is not None:
+                self.add_candidate(
+                    shot, sequence["name"], sequence["parent_id"]
+                )
+
+    def add_candidate(self, entity, parent_name, episode_id):
+        """
+        Register an entity a row can name, under the slug of its name. The
+        episode id (the source of an asset) is kept to tell candidates
+        apart.
+        """
+        self.candidates.setdefault(slugify(entity["name"]), []).append(
+            {
+                "id": entity["id"],
+                "name": entity["name"],
+                "parent_name": parent_name,
+                "parent_key": slugify(parent_name),
+                "episode_id": episode_id,
+                # Kitsu hides both from the task type page and its export.
+                "canceled": bool(entity.get("canceled"))
+                or entity.get("status") == "canceled",
+            }
+        )
+
+    def find_entity(self, parent, name):
+        """
+        Return the candidate a row names, None when there is none. Parent
+        and name are compared apart, each through its slug, so that case,
+        spaces and accents do not matter. When several candidates share the
+        slugs, the ones named exactly like the row win, then the ones not
+        canceled.
+        """
+        if name == "":
+            return None
+        parent_key = slugify(parent)
+        candidates = [
+            candidate
+            for candidate in self.candidates.get(slugify(name), [])
+            if candidate["parent_key"] == parent_key
+        ]
+        if len(candidates) > 1:
+            candidates = [
+                candidate
+                for candidate in candidates
+                if self.is_exact_match(candidate, parent, name)
+            ] or candidates
+        if len(candidates) > 1:
+            candidates = [
+                candidate
+                for candidate in candidates
+                if not candidate["canceled"]
+            ] or candidates
+        return candidates[-1] if candidates else None
+
+    def is_exact_match(self, candidate, parent, name):
+        return (
+            candidate["parent_name"].strip() == parent
+            and candidate["name"].strip() == name
+        )
+
+    def import_row(self, row, project_id, task_type, episode_id=None):
+        # A column missing from the file raises the KeyError the base class
+        # names.
+        parent = (row["Parent"] or "").strip()
+        name = (row["Entity"] or "").strip()
+        entity = self.find_entity(parent, name)
+        if entity is None:
             raise RowException(
-                f"Entity '{row['Entity']}' with parent '{row['Parent']}' not found"
+                f"Entity '{name}' with parent '{parent}' not found"
             )
 
         new_data = {}
@@ -145,16 +201,16 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
         if difficulty is not None:
             new_data["difficulty"] = difficulty
 
-        task = self.tasks_map.get(entity_id)
+        task = self.tasks_map.get(entity["id"])
         if task is None:
             raise RowException(
-                f"Entity '{row['Entity']}' with parent '{row['Parent']}' "
+                f"Entity '{name}' with parent '{parent}' "
                 f"has no '{task_type['name']}' task"
             )
 
         # Merge descriptor cells into the task's own metadata instead of
         # replacing it, so columns absent from the CSV are preserved.
-        if any(name in row for name in self.descriptor_fields):
+        if any(field in row for field in self.descriptor_fields):
             new_data["data"] = self.get_descriptor_values(row, task["data"])
 
         tasks_service.update_task(task["id"], new_data)

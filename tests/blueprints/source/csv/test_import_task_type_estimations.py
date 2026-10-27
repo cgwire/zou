@@ -252,3 +252,142 @@ class ImportCsvTaskTypeEstimationsTestCase(ApiDBTestCase):
         )
         self.assertEqual(result["line_number"], 3)
         self.assertEqual(result["imported_rows"], 1)
+
+    def estimations_path(self, task_type_id, episode_id=None):
+        episode_part = f"/episodes/{episode_id}" if episode_id else ""
+        return (
+            f"/import/csv/projects/{self.project.id}{episode_part}"
+            f"/task-types/{task_type_id}/estimations"
+        )
+
+    def get_start_date(self, task_id):
+        start_date = Task.get(task_id).start_date
+        return start_date.strftime("%Y-%m-%d") if start_date else None
+
+    def generate_asset_task(self, name):
+        asset = self.generate_fixture_asset(name=name)
+        task = self.generate_fixture_task(entity_id=asset.id)
+        task.update({"start_date": None})
+        return task
+
+    def generate_shot_task(self, sequence, name):
+        shot = self.generate_fixture_shot(name, sequence_id=sequence.id)
+        return self.generate_fixture_shot_task(
+            shot_id=shot.id, task_type_id=self.task_type_animation.id
+        )
+
+    def test_key_does_not_join_parent_and_name(self):
+        """
+        Parent and name are compared apart: joined, 'SQ01' + '0010' read as
+        'SQ010' + '010', and 'SQ01' with an empty name as 'SQ' + '01'.
+        """
+        sequence = self.generate_fixture_sequence("SQ010")
+        task = self.generate_shot_task(sequence, "010")
+        short_sequence = self.generate_fixture_sequence("SQ")
+        short_task = self.generate_shot_task(short_sequence, "01")
+        path = self.estimations_path(self.task_type_animation.id)
+
+        for content in [
+            "Parent,Entity,Start date\nSQ01,0010,2024-01-05\n",
+            "Parent,Entity,Start date\nSQ01,,2024-01-05\n",
+        ]:
+            with self.subTest(content=content):
+                result = self.upload_file(
+                    path, self.write_csv(content), code=400
+                )
+                self.assertIn("not found", result["message"])
+        self.assertIsNone(self.get_start_date(task.id))
+        self.assertIsNone(self.get_start_date(short_task.id))
+
+        sequence = self.generate_fixture_sequence("SQ01")
+        other_task = self.generate_shot_task(sequence, "0010")
+        content = "Parent,Entity,Start date\nSQ01,0010,2024-01-05\n"
+        self.upload_file(path, self.write_csv(content))
+        self.assertEqual(self.get_start_date(other_task.id), "2024-01-05")
+        self.assertIsNone(self.get_start_date(task.id))
+
+    def test_key_ignores_case_spaces_and_accents(self):
+        tree_task = self.generate_fixture_task()
+        dash_task = self.generate_asset_task("-Hero")
+        path = self.estimations_path(self.task_type.id)
+        content = (
+            "Parent,Entity,Start date\n"
+            " props ,TREE,2024-01-05\n"
+            "Props,-Hero,2024-01-06\n"
+        )
+        self.upload_file(path, self.write_csv(content))
+
+        self.assertEqual(self.get_start_date(tree_task.id), "2024-01-05")
+        self.assertEqual(self.get_start_date(dash_task.id), "2024-01-06")
+        content = "Parent,Entity,Start date\nPROPS,Trée,2024-01-07\n"
+        self.upload_file(path, self.write_csv(content))
+        self.assertEqual(self.get_start_date(tree_task.id), "2024-01-07")
+
+    def test_key_prefers_the_exact_name(self):
+        upper_task = self.generate_asset_task("Hero")
+        lower_task = self.generate_asset_task("hero")
+        path = self.estimations_path(self.task_type.id)
+        content = (
+            "Parent,Entity,Start date\n"
+            "Props,Hero,2024-01-05\n"
+            "Props,hero,2024-01-06\n"
+        )
+        self.upload_file(path, self.write_csv(content))
+
+        self.assertEqual(self.get_start_date(upper_task.id), "2024-01-05")
+        self.assertEqual(self.get_start_date(lower_task.id), "2024-01-06")
+
+    def test_key_prefers_the_entity_not_canceled(self):
+        # The canceled asset comes last, where the old map kept it.
+        live_task = self.generate_asset_task("HERO")
+        canceled_task = self.generate_asset_task("Hero")
+        self.asset.update({"canceled": True})
+        path = self.estimations_path(self.task_type.id)
+        content = "Parent,Entity,Start date\nProps,hero,2024-01-05\n"
+        self.upload_file(path, self.write_csv(content))
+
+        self.assertEqual(self.get_start_date(live_task.id), "2024-01-05")
+        self.assertIsNone(self.get_start_date(canceled_task.id))
+
+        # The exact name comes first: a row naming the canceled asset
+        # exactly still reaches it.
+        content = "Parent,Entity,Start date\nProps,Hero,2024-01-06\n"
+        self.upload_file(path, self.write_csv(content))
+
+        self.assertEqual(self.get_start_date(canceled_task.id), "2024-01-06")
+        self.assertEqual(self.get_start_date(live_task.id), "2024-01-05")
+
+    def test_missing_column_is_named(self):
+        self.generate_fixture_task()
+        without_parent = "Entity,Start date\nTree,2024-01-05\n"
+        without_entity = "Parent,Start date\nProps,2024-01-05\n"
+        cases = [
+            (self.task_type, without_parent, "Parent"),
+            (self.task_type_animation, without_parent, "Parent"),
+            (self.task_type, without_entity, "Entity"),
+        ]
+        for task_type, content, column in cases:
+            with self.subTest(task_type=task_type.name, column=column):
+                path = self.estimations_path(task_type.id)
+                result = self.upload_file(
+                    path, self.write_csv(content), code=400
+                )
+                self.assertIn(f"missing: '{column}'", result["message"])
+                self.assertEqual(result["line_number"], 2)
+
+    def test_short_row_message_has_no_none(self):
+        self.generate_fixture_task()
+        path = self.estimations_path(self.task_type.id)
+        # The csv sniffer needs enough full rows to read the delimiter
+        # despite the short one.
+        content = (
+            "Parent,Entity,Start date\n"
+            + "Props,Tree,2024-01-05\n" * 9
+            + "Rocks\n"
+        )
+        result = self.upload_file(path, self.write_csv(content), code=400)
+
+        self.assertEqual(
+            result["message"], "Entity '' with parent 'Rocks' not found"
+        )
+        self.assertEqual(result["line_number"], 11)
