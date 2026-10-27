@@ -401,8 +401,8 @@ class BaseModelResource(MethodView, ArgsMixin):
             if key in columns and isinstance(value, str) and value != "":
                 try:
                     # fromisoformat accepts what PostgreSQL does for ISO
-                    # 8601 (date only, time offsets...); Z must be mapped
-                    # to +00:00 while Python 3.10 is supported.
+                    # 8601 (date only, time offsets...), but not a Z after
+                    # a date alone (2026-04-01Z): map Z to +00:00.
                     datetime.datetime.fromisoformat(
                         value.replace("Z", "+00:00")
                     )
