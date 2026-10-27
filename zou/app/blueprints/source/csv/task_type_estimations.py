@@ -59,6 +59,16 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
         self.organisation = organisation_service.get_organisation()
         self.candidates = {}
         self.tasks_map = {}
+        self.entity_label = f"{task_type['for_entity'].lower()}s"
+        self.no_episode_label = (
+            "main pack" if task_type["for_entity"] == "Asset" else "no episode"
+        )
+        self.episode_names = {
+            episode["id"]: episode["name"]
+            for episode in shots_service.get_episodes(
+                {"project_id": project_id}
+            )
+        }
         self.descriptor_fields = {
             name: descriptor
             for name, descriptor in self.get_descriptor_field_map(
@@ -134,7 +144,7 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
         and name are compared apart, each through its slug, so that case,
         spaces and accents do not matter. When several candidates share the
         slugs, the ones named exactly like the row win, then the ones not
-        canceled.
+        canceled. More than one left refuses the row.
         """
         if name == "":
             return None
@@ -156,7 +166,28 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
                 for candidate in candidates
                 if not candidate["canceled"]
             ] or candidates
-        return candidates[-1] if candidates else None
+        if len(candidates) > 1:
+            raise RowException(
+                f"Entity '{name}' with parent '{parent}' matches "
+                f"{len(candidates)} {self.entity_label}"
+                f"{self.describe_episodes(candidates)}"
+            )
+        return candidates[0] if candidates else None
+
+    def describe_episodes(self, candidates):
+        if not self.episode_names:
+            return ""
+        labels = sorted(
+            {
+                self.episode_names.get(
+                    candidate["episode_id"], self.no_episode_label
+                )
+                for candidate in candidates
+            }
+        )
+        if len(labels) == 1:
+            return f", all in {labels[0]}"
+        return f", in episodes {', '.join(labels[:-1])} and {labels[-1]}"
 
     def is_exact_match(self, candidate, parent, name):
         return (

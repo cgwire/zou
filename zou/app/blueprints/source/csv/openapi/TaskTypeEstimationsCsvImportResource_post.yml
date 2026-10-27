@@ -7,7 +7,8 @@ description: Import task type estimations from a CSV file. Updates
   based on CSV rows. The Estimation column is read in hours when the
   organisation displays durations in hours (format_duration_in_hours),
   in days otherwise. When several entities match a row, the ones named
-  exactly like it win, then the ones not canceled.
+  exactly like it win, then the ones not canceled; a row still matching
+  several entities is refused.
 consumes:
   - multipart/form-data
 parameters:

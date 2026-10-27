@@ -97,10 +97,9 @@ class ImportCsvTaskTypeEstimationsTestCase(ApiDBTestCase):
             "main", shot_id=second_shot.id, task_type_id=shot_task_type.id
         )
 
-        # Scoped on the first episode on purpose. Both shots slugify to the
-        # same key, and without the scoping the map keeps the last one built,
-        # which is the second episode's: the row would then land on the wrong
-        # shot and this assertion would fail.
+        # Scoped on the first episode on purpose: both shots are P01 of an S01
+        # sequence, so without the scoping the row would match both and be
+        # refused.
         path = (
             f"/import/csv/projects/{self.project.id}"
             f"/episodes/{first_episode.id}"
@@ -391,3 +390,85 @@ class ImportCsvTaskTypeEstimationsTestCase(ApiDBTestCase):
             result["message"], "Entity '' with parent 'Rocks' not found"
         )
         self.assertEqual(result["line_number"], 11)
+
+    def generate_episode_shot_task(self, episode_name, sequence_name, name):
+        episode = self.generate_fixture_episode(episode_name)
+        sequence = self.generate_fixture_sequence(
+            sequence_name, episode_id=episode.id
+        )
+        return self.generate_shot_task(sequence, name)
+
+    def test_shot_matching_several_episodes_is_refused(self):
+        first_task = self.generate_episode_shot_task("E01", "S01", "P01")
+        second_task = self.generate_episode_shot_task("E02", "S01", "P01")
+        unique_task = self.generate_episode_shot_task("E03", "S02", "P01")
+        content = (
+            "Parent,Entity,Start date\n"
+            "S02,P01,2024-01-05\n"
+            "S01,P01,2024-01-06\n"
+        )
+        for episode_id in [None, "all"]:
+            with self.subTest(episode_id=episode_id):
+                path = self.estimations_path(
+                    self.task_type_animation.id, episode_id
+                )
+                result = self.upload_file(
+                    path, self.write_csv(content), code=400
+                )
+
+                self.assertEqual(
+                    result["message"],
+                    "Entity 'P01' with parent 'S01' matches 2 shots, "
+                    "in episodes E01 and E02",
+                )
+                self.assertEqual(result["line_number"], 3)
+                self.assertEqual(result["imported_rows"], 1)
+        self.assertEqual(self.get_start_date(unique_task.id), "2024-01-05")
+        self.assertIsNone(self.get_start_date(first_task.id))
+        self.assertIsNone(self.get_start_date(second_task.id))
+
+    def test_asset_matching_an_episode_and_the_main_pack_is_refused(self):
+        main_task = self.generate_asset_task("Tree")
+        episode = self.generate_fixture_episode("E01")
+        episode_task = self.generate_asset_task("tree")
+        self.asset.update({"source_id": episode.id})
+        path = self.estimations_path(self.task_type.id, "all")
+        content = "Parent,Entity,Start date\nProps,TREE,2024-01-05\n"
+        result = self.upload_file(path, self.write_csv(content), code=400)
+
+        self.assertEqual(
+            result["message"],
+            "Entity 'TREE' with parent 'Props' matches 2 assets, "
+            "in episodes E01 and main pack",
+        )
+        self.assertIsNone(self.get_start_date(main_task.id))
+        self.assertIsNone(self.get_start_date(episode_task.id))
+
+    def test_asset_matching_several_entities_is_refused(self):
+        # Without episodes, the message can only count the candidates.
+        upper_task = self.generate_asset_task("Hero")
+        lower_task = self.generate_asset_task("hero")
+        path = self.estimations_path(self.task_type.id)
+        content = "Parent,Entity,Start date\nProps,HERO,2024-01-05\n"
+        result = self.upload_file(path, self.write_csv(content), code=400)
+
+        self.assertEqual(
+            result["message"],
+            "Entity 'HERO' with parent 'Props' matches 2 assets",
+        )
+        self.assertIsNone(self.get_start_date(upper_task.id))
+        self.assertIsNone(self.get_start_date(lower_task.id))
+
+    def test_assets_matching_in_one_episode_name_it_once(self):
+        self.generate_fixture_episode("E01")
+        self.generate_asset_task("Tree")
+        self.generate_asset_task("tree")
+        path = self.estimations_path(self.task_type.id, "all")
+        content = "Parent,Entity,Start date\nProps,TREE,2024-01-05\n"
+        result = self.upload_file(path, self.write_csv(content), code=400)
+
+        self.assertEqual(
+            result["message"],
+            "Entity 'TREE' with parent 'Props' matches 2 assets, "
+            "all in main pack",
+        )
