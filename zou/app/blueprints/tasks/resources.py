@@ -783,15 +783,19 @@ class ProjectTasksResource(MethodView, ArgsMixin):
         page = self.get_page()
         task_type_id = self.get_task_type_id()
         episode_id = self.get_episode_id()
-        return http_cache.json_response(
-            todos_service.get_tasks_for_project(
-                project_id,
-                page,
-                task_type_id=task_type_id,
-                episode_id=episode_id,
-            ),
-            etag,
+        tasks = todos_service.get_tasks_for_project(
+            project_id,
+            page,
+            task_type_id=task_type_id,
+            episode_id=episode_id,
         )
+        if isinstance(tasks, dict):
+            tasks["data"] = entities_service.blank_tasks_for_current_user(
+                tasks["data"]
+            )
+        else:
+            tasks = entities_service.blank_tasks_for_current_user(tasks)
+        return http_cache.json_response(tasks, etag)
 
 
 class ProjectCommentsResource(MethodView, ArgsMixin):

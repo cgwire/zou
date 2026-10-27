@@ -106,6 +106,22 @@ class ClientTaskViewTestCase(ApiDBTestCase):
         for task in tasks:
             self.assert_blank(task)
 
+    def test_project_tasks(self):
+        path = f"data/projects/{self.project_id}/tasks"
+        task_id = str(self.task.id)
+        self.assert_full(
+            next(task for task in self.get(path) if task["id"] == task_id)
+        )
+        self.log_in_client()
+        tasks = self.get(path)
+        self.assertEqual(len(tasks), 3)
+        for task in tasks:
+            self.assert_blank(task)
+        page = self.get(f"{path}?page=1")["data"]
+        self.assertEqual(len(page), 3)
+        for task in page:
+            self.assert_blank(task)
+
     def test_task_detail(self):
         path = f"data/tasks/{self.task.id}"
         self.assert_full(self.get(path))
