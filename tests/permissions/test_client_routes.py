@@ -257,3 +257,53 @@ class ClientEntityChatTestCase(FreshRequestsTestCase):
         status = self.get_status(f"data/attachment-files/{attachment['id']}")
         self.assertEqual(status, 403)
         self.assertEqual(Chat.query.count(), chat_count)
+
+
+class ClientTimeSpentsTestCase(FreshRequestsTestCase):
+    """
+    The time logged on a task or an entity is how the studio runs a
+    production: Kitsu shows it to no client, and its routes refuse them.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project_status()
+        self.generate_fixture_project()
+        self.generate_fixture_asset_type()
+        self.generate_fixture_department()
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status()
+        self.generate_fixture_asset()
+        self.generate_fixture_task()
+        self.generate_fixture_user_client()
+        self.generate_fixture_user_cg_artist()
+        self.project_id = str(self.project.id)
+        projects_service.add_team_member(
+            self.project_id, self.user_client["id"]
+        )
+        self.paths = [
+            f"data/entities/{self.asset.id}/time-spents",
+            f"actions/tasks/{self.task.id}/time-spents",
+            f"actions/tasks/{self.task.id}/time-spents/2026-10-27",
+        ]
+
+    def test_time_spents_are_closed_to_clients(self):
+        self.log_in_client()
+        for path in self.paths:
+            self.get(path, 403)
+
+    def test_the_team_keeps_the_time_spents(self):
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"]
+        )
+        self.log_in_cg_artist()
+        for path in self.paths:
+            self.get(path)
+
+    def test_a_client_on_the_project_is_refused_the_time_spents(self):
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"], role="client"
+        )
+        self.log_in_cg_artist()
+        for path in self.paths:
+            self.get(path, 403)

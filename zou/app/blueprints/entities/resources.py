@@ -56,6 +56,7 @@ class EntityTimeSpentsResource(MethodView):
         entity = entities_service.get_entity(entity_id)
         permissions_service.check_project_access(entity["project_id"])
         permissions_service.check_entity_access(entity_id)
+        permissions_service.block_access_to_client()
         return time_spents_service.get_time_spents_for_entity(entity_id)
 
 

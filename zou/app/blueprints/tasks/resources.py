@@ -677,6 +677,7 @@ class GetTimeSpentResource(MethodView):
         Get task time spent
         """
         permissions_service.check_task_access(task_id)
+        permissions_service.block_access_to_client()
         return time_spents_service.get_time_spents_for_task(task_id)
 
 
@@ -690,6 +691,7 @@ class GetTimeSpentDateResource(MethodView):
         """
         try:
             permissions_service.check_task_access(task_id)
+            permissions_service.block_access_to_client()
             return time_spents_service.get_time_spents_for_task(task_id, date)
         except WrongDateFormatException:
             raise WrongParameterException("Wrong date format.")
