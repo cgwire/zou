@@ -938,7 +938,13 @@ def check_login_failed_attempts(person):
     meant dropping the whole instance person cache on every wrong
     password. See update_login_failed_attempts.
     """
-    row = Person.get(person["id"])
+    row = (
+        Person.query.with_entities(
+            Person.login_failed_attemps, Person.last_login_failed
+        )
+        .filter(Person.id == person["id"])
+        .one()
+    )
     login_failed_attemps = row.login_failed_attemps or 0
     if login_failed_attemps < MAX_LOGIN_FAILED_ATTEMPS:
         return login_failed_attemps

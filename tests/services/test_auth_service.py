@@ -4,7 +4,7 @@ from unittest import mock
 import pytest
 
 from tests.services.cases import AuthTestCase
-from zou.app import app
+from zou.app import app, db
 from zou.app.exceptions import (
     InactiveUserException,
     MissingOTPException,
@@ -247,6 +247,21 @@ class LoginLockoutTestCase(AuthTestCase):
         self.lock()
         persons_service.clear_person_cache()
         # Even with the right password: that is the whole point.
+        self.assertRaises(TooManyLoginFailedAttempts, self.authenticate)
+
+    def test_the_lockout_reads_the_row_not_the_session_copy(self):
+        """
+        The lockout reads the failed login count from the database row,
+        not from the person object the request holds.
+        """
+        cached = Person.get(self.person_id)
+        db.session.refresh(cached)
+        db.session.expunge(cached)
+        self.lock()
+        persons_service.clear_person_cache()
+        # The request holds it as the current user until it ends.
+        identity = db.session.merge(cached, load=False)
+        self.assertEqual(identity.login_failed_attemps, 0)
         self.assertRaises(TooManyLoginFailedAttempts, self.authenticate)
 
     def test_an_elapsed_window_reopens_the_account(self):
