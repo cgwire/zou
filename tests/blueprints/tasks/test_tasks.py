@@ -770,6 +770,68 @@ class TaskListingTestCase(TaskTestCase):
         self.assertEqual(len(tasks), 1)
         self.assertEqual(tasks[0]["task_type_id"], task_type_id)
 
+    def test_related_tasks_stay_in_the_productions_of_the_caller(self):
+        task_type_id = str(self.task_type_animation.id)
+        self.generate_fixture_task()
+        task = self.generate_fixture_task(task_type_id=task_type_id)
+        task.assignees = []
+        task.save()
+        path = f"/data/persons/{self.person.id}/related-tasks/{task_type_id}"
+        self.generate_fixture_user_cg_artist()
+        self.generate_fixture_user_client()
+        self.log_in_cg_artist()
+        self.assertEqual(self.get(path), [])
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"]
+        )
+        self.assertEqual(len(self.get(path)), 1)
+        projects_service.add_team_member(
+            self.project_id, self.user_client["id"]
+        )
+        self.log_in_client()
+        self.assertEqual(self.get(path), [])
+
+    def test_a_vendor_gets_no_related_tasks(self):
+        task_type_id = str(self.task_type_animation.id)
+        self.generate_fixture_user_vendor()
+        vendor_id = self.user_vendor["id"]
+        projects_service.add_team_member(self.project_id, vendor_id)
+        tasks_service.assign_task(self.generate_fixture_task().id, vendor_id)
+        self.generate_fixture_task(task_type_id=task_type_id)
+        self.log_in_vendor()
+        path = f"/data/persons/{vendor_id}/related-tasks/{task_type_id}"
+        self.assertEqual(self.get(path), [])
+
+    def test_a_client_reads_no_tasks_of_a_person(self):
+        self.generate_fixture_task()
+        done_task = self.generate_fixture_task(name="Done")
+        done_status = task_types_service.get_or_create_task_status(
+            "Done", "done", "#22d160", is_done=True
+        )
+        done_task.update({"task_status_id": done_status["id"]})
+        self.generate_fixture_user_client()
+        projects_service.add_team_member(
+            self.project_id, self.user_client["id"]
+        )
+        self.log_in_client()
+        for route in (
+            "tasks",
+            "done-tasks",
+            f"related-tasks/{self.task_type.id}",
+        ):
+            path = f"/data/persons/{self.person.id}/{route}"
+            self.assertEqual(self.get(path), [])
+
+    def test_a_vendor_cannot_read_the_tasks_of_someone_else(self):
+        self.generate_fixture_user_vendor()
+        self.log_in_vendor()
+        for route in (
+            "tasks",
+            "done-tasks",
+            f"related-tasks/{self.task_type.id}",
+        ):
+            self.get(f"/data/persons/{self.person.id}/{route}", 403)
+
     def test_get_tasks_permissions(self):
         self.generate_fixture_user_vendor()
         self.generate_fixture_user_cg_artist()
@@ -1325,5 +1387,39 @@ class TaskRoutesTestCase(TaskTestCase):
         self.log_in_manager()
 
         tasks = self.get(f"/data/persons/{self.person.id}/tasks")
+
+        self.assertEqual([task["id"] for task in tasks], [here])
+
+    def test_get_done_tasks_for_person_is_scoped_to_the_callers_productions(
+        self,
+    ):
+        done_status = task_types_service.get_or_create_task_status(
+            "Done", "done", "#22d160", is_done=True
+        )
+        self.generate_fixture_task()
+        here = str(self.task.id)
+        self.task.update({"task_status_id": done_status["id"]})
+
+        self.generate_fixture_project_standard()
+        other_asset = self.generate_fixture_asset(
+            "Car", project_id=self.project_standard.id
+        )
+        other_task = self.generate_fixture_task(
+            name="other", entity_id=other_asset.id
+        )
+        other_task.update(
+            {
+                "project_id": self.project_standard.id,
+                "task_status_id": done_status["id"],
+            }
+        )
+
+        self.generate_fixture_user_manager()
+        projects_service.add_team_member(
+            str(self.project.id), self.user_manager["id"]
+        )
+        self.log_in_manager()
+
+        tasks = self.get(f"/data/persons/{self.person.id}/done-tasks")
 
         self.assertEqual([task["id"] for task in tasks], [here])

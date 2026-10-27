@@ -29,13 +29,12 @@ def get_person_done_tasks(person_id, projects):
     return get_person_tasks(person_id, projects, is_done=True)
 
 
-def get_person_related_tasks(person_id, task_type_id):
+def get_person_related_tasks(person_id, task_type_id, projects):
     """
     Retrieve all tasks for given task types and to entiities
-    that have at least one person assignation.
+    that have at least one person assignation, in given projects.
     """
     person = Person.get(person_id)
-    projects = projects_service.open_projects()
     project_ids = [project["id"] for project in projects]
 
     entities = (

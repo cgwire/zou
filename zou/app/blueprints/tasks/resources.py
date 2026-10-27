@@ -216,6 +216,31 @@ class TaskCommentResource(MethodView):
         return "", 204
 
 
+def get_person_tasks_projects(person_id):
+    """
+    Return the projects in which the current user may list the tasks of
+    given person: the open ones for an admin, the user's own open ones for
+    the other roles, and none for clients and vendors. A vendor may only
+    ask about themselves.
+    """
+    permissions_service.check_person_is_not_bot(person_id)
+    current_user = persons_service.get_current_user()
+    if (
+        person_id != current_user["id"]
+        and permissions.has_vendor_permissions()
+    ):
+        raise permissions.PermissionDenied
+    if permissions.has_vendor_permissions():
+        person = persons_service.get_person(person_id)
+        if person["role"] == "vendor":
+            return []
+    elif permissions.has_client_permissions():
+        return []
+    if permissions.has_admin_permissions():
+        return projects_service.open_projects()
+    return user_service.related_projects()
+
+
 class PersonTasksResource(MethodView):
 
     @jwt_required()
@@ -224,22 +249,8 @@ class PersonTasksResource(MethodView):
         """
         Get person open tasks
         """
-        permissions_service.check_person_is_not_bot(person_id)
-        current_user = persons_service.get_current_user()
-        if (
-            person_id != current_user["id"]
-            and permissions.has_vendor_permissions()
-        ):
-            raise permissions.PermissionDenied
-        if not permissions.has_admin_permissions():
-            projects = user_service.related_projects()
-        else:
-            projects = projects_service.open_projects()
-        if permissions.has_vendor_permissions():
-            person = persons_service.get_person(person_id)
-            if person["role"] == "vendor":
-                return []
-        elif permissions.has_client_permissions():
+        projects = get_person_tasks_projects(person_id)
+        if not projects:
             return []
         return todos_service.get_person_tasks(person_id, projects)
 
@@ -252,14 +263,12 @@ class PersonRelatedTasksResource(MethodView):
         """
         Get person tasks for type
         """
-        permissions_service.check_person_is_not_bot(person_id)
-        current_user = persons_service.get_current_user()
-        if (
-            person_id != current_user["id"]
-            and permissions.has_vendor_permissions()
-        ):
-            raise permissions.PermissionDenied
-        return todos_service.get_person_related_tasks(person_id, task_type_id)
+        projects = get_person_tasks_projects(person_id)
+        if not projects:
+            return []
+        return todos_service.get_person_related_tasks(
+            person_id, task_type_id, projects
+        )
 
 
 class PersonDoneTasksResource(MethodView):
@@ -270,22 +279,8 @@ class PersonDoneTasksResource(MethodView):
         """
         Get person done tasks
         """
-        permissions_service.check_person_is_not_bot(person_id)
-        current_user = persons_service.get_current_user()
-        if (
-            person_id != current_user["id"]
-            and permissions.has_vendor_permissions()
-        ):
-            raise permissions.PermissionDenied
-        if not permissions.has_admin_permissions():
-            projects = user_service.related_projects()
-        else:
-            projects = projects_service.open_projects()
-        if permissions.has_vendor_permissions():
-            person = persons_service.get_person(person_id)
-            if person["role"] == "vendor":
-                return []
-        elif permissions.has_client_permissions():
+        projects = get_person_tasks_projects(person_id)
+        if not projects:
             return []
         return todos_service.get_person_done_tasks(person_id, projects)
 

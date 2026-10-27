@@ -3,7 +3,9 @@ Get person tasks for type
 tags:
 - Tasks
 description: For all entities assigned to the person, return tasks for
-  the given task type.
+  the given task type. Admins get them from every open production, the
+  other roles from their own open productions, and clients and vendors
+  get none.
 parameters:
   - in: path
     name: person_id
