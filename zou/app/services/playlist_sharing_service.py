@@ -898,14 +898,14 @@ def get_guest_for_share_link(guest_id, share_link):
     return person
 
 
-def get_shared_playlist_context(token):
+def get_share_link_context(share_link):
     """
-    Return the minimal project context needed to display a shared
-    playlist: the project, its task types, and its task statuses. No
-    entity is listed: the shots of the playlist carry their names, and the
-    main preview of an entity can be a revision the link does not share.
+    Return the minimal context needed to display the playlist of a
+    validated share link: what the link allows, the project, its task
+    types, and its task statuses. No entity is listed: the shots of the
+    playlist carry their names, and the main preview of an entity can be
+    a revision the link does not share.
     """
-    share_link = validate_share_token(token)
     playlist = playlists_service.get_playlist(share_link["playlist_id"])
     project_id = playlist["project_id"]
     project = projects_service.get_project(project_id)
@@ -917,6 +917,7 @@ def get_shared_playlist_context(token):
     )
 
     return {
+        "share_link": {"can_comment": share_link["can_comment"]},
         "project": {
             "id": project["id"],
             "name": project["name"],

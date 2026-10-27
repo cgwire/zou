@@ -528,4 +528,6 @@ class SharedPlaylistContextResource(MethodView):
         """
         Get shared playlist context
         """
-        return playlist_sharing_service.get_shared_playlist_context(token)
+        return playlist_sharing_service.get_share_link_context(
+            g.playlist_share_link
+        )
