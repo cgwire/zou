@@ -40,9 +40,8 @@ MINIMAL_PERSON_FILTER_FIELDS = [
     "is_guest",
 ]
 # Columns behind Person.present_client, plus is_guest, which Kitsu sends
-# for every role. The filters run before the list is narrowed to the team,
-# so any other column answered which department or studio each member of
-# that team belongs to.
+# for every role. Any other column would answer which department or studio
+# each member of the team belongs to.
 CLIENT_PERSON_FILTER_FIELDS = [
     "id",
     "first_name",
@@ -133,7 +132,12 @@ class PersonsResource(BaseModelsResource):
     def add_project_permission_filter(self, query):
         # Applied before pagination: all_entries gets an already limited
         # query on paginated calls.
-        return query.filter(Person.preview_project_id.is_(None))
+        query = query.filter(Person.preview_project_id.is_(None))
+        if permissions.has_client_permissions():
+            query = query.filter(
+                Person.id.in_(user_service.get_client_team_person_ids())
+            )
+        return query
 
     @jwt_required()
     @swag_from("openapi/PersonsResource_get.yml")
@@ -177,11 +181,7 @@ class PersonsResource(BaseModelsResource):
                     for person in query.all()
                 ]
         elif permissions.has_client_permissions():
-            team_ids = user_service.get_client_team_person_ids()
-            return [
-                person.present_client()
-                for person in query.filter(Person.id.in_(team_ids)).all()
-            ]
+            return [person.present_client() for person in query.all()]
         else:
             return [
                 person.present_minimal(relations=relations)

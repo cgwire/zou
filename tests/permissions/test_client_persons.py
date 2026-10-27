@@ -50,6 +50,22 @@ class ClientPersonsTestCase(ApiDBTestCase):
             self.get("data/persons?relations=true&is_guest=false")
         )
 
+    def test_paginated_persons_listing(self):
+        self.log_in_client()
+        result = self.get("data/persons?page=1")
+        self.assertEqual(result["total"], len(self.team_ids))
+        self.assert_client_persons(result["data"])
+
+    def test_paginated_persons_count_the_team_only(self):
+        path = (
+            "data/persons?first_name=John"
+            f"&last_name={self.user_cg_artist['last_name']}&page="
+        )
+        self.assertEqual(self.get(f"{path}1")["total"], 1)
+        self.log_in_client()
+        for page in (0, 1):
+            self.assertEqual(self.get(f"{path}{page}")["total"], 0)
+
     def test_user_context(self):
         self.log_in_client()
         self.assert_client_persons(self.get("data/user/context")["persons"])
@@ -89,9 +105,7 @@ class ClientPersonsTestCase(ApiDBTestCase):
 
     def test_persons_filters(self):
         """
-        The filters run before the list is narrowed to the team: one on a
-        field present_client leaves out answered which department each
-        member of that team belongs to.
+        A client filters on the fields of present_client only, plus is_guest.
         """
         self.generate_fixture_department()
         department_id = str(self.department.id)
