@@ -5,6 +5,7 @@ from tests.base import ApiDBTestCase
 from zou.app.models.entity import EntityLink
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.task import Task
+from zou.app.models.task_type import TaskType
 from zou.app.services import (
     organisation_service,
 )
@@ -560,3 +561,112 @@ class ImportCsvTaskTypeEstimationsTestCase(ApiDBTestCase):
         self.assertEqual(
             result["message"], "Entity 'Rock' with parent 'Props' not found"
         )
+
+    def generate_entity_task_type(self, for_entity):
+        return TaskType.create(
+            name=f"{for_entity} Layout",
+            short_name=f"{for_entity[:3].lower()}lay",
+            color="#FFFFFF",
+            for_entity=for_entity,
+            department_id=self.department.id,
+        )
+
+    def generate_entity_task(self, entity, task_type):
+        task = self.generate_fixture_task(
+            entity_id=entity.id, task_type_id=task_type.id
+        )
+        task.update({"start_date": None})
+        return task
+
+    def test_import_episode_task_dates(self):
+        task_type = self.generate_entity_task_type("Episode")
+        first_task = self.generate_entity_task(
+            self.generate_fixture_episode("E01"), task_type
+        )
+        second_task = self.generate_entity_task(
+            self.generate_fixture_episode("E02"), task_type
+        )
+        path = self.estimations_path(task_type.id)
+        content = "Entity,Start date\nE01,2024-01-05\n"
+        self.upload_file(path, self.write_csv(content))
+
+        self.assertEqual(self.get_start_date(first_task.id), "2024-01-05")
+        self.assertIsNone(self.get_start_date(second_task.id))
+
+    def test_import_episode_task_ignores_the_route_episode(self):
+        """
+        Older Kitsu versions post the import of an episode task type under
+        the current episode: the row still names any episode of the
+        project, and a Parent cell is ignored.
+        """
+        task_type = self.generate_entity_task_type("Episode")
+        task = self.generate_entity_task(
+            self.generate_fixture_episode("E01"), task_type
+        )
+        second_episode = self.generate_fixture_episode("E02")
+        self.generate_entity_task(second_episode, task_type)
+        cases = [
+            (
+                second_episode.id,
+                "Entity,Start date\nE01,2024-01-05\n",
+                "2024-01-05",
+            ),
+            ("all", "Entity,Start date\nE01,2024-01-06\n", "2024-01-06"),
+            (
+                "main",
+                "Parent,Entity,Start date\nE02,e01,2024-01-07\n",
+                "2024-01-07",
+            ),
+        ]
+        for episode_id, content, start_date in cases:
+            # xdist workers cannot send a UUID back in a subtest report.
+            with self.subTest(episode_id=str(episode_id)):
+                path = self.estimations_path(task_type.id, episode_id)
+                self.upload_file(path, self.write_csv(content))
+                self.assertEqual(self.get_start_date(task.id), start_date)
+
+    def test_import_episode_task_prefers_the_episode_not_canceled(self):
+        task_type = self.generate_entity_task_type("Episode")
+        canceled_task = self.generate_entity_task(
+            self.generate_fixture_episode("E01"), task_type
+        )
+        self.episode.update({"status": "canceled"})
+        live_task = self.generate_entity_task(
+            self.generate_fixture_episode("E01"), task_type
+        )
+        path = self.estimations_path(task_type.id)
+        content = "Entity,Start date\nE01,2024-01-05\n"
+        self.upload_file(path, self.write_csv(content))
+
+        self.assertEqual(self.get_start_date(live_task.id), "2024-01-05")
+        self.assertIsNone(self.get_start_date(canceled_task.id))
+
+    def test_import_episode_task_refuses_a_shared_name(self):
+        task_type = self.generate_entity_task_type("Episode")
+        first_task = self.generate_entity_task(
+            self.generate_fixture_episode("E01"), task_type
+        )
+        second_task = self.generate_entity_task(
+            self.generate_fixture_episode("E01"), task_type
+        )
+        path = self.estimations_path(task_type.id)
+        content = "Entity,Start date\nE01,2024-01-05\nE09,2024-01-05\n"
+        result = self.upload_file(path, self.write_csv(content), code=400)
+
+        self.assertEqual(result["message"], "Entity 'E01' matches 2 episodes")
+        self.assertEqual(result["imported_rows"], 0)
+        self.assertIsNone(self.get_start_date(first_task.id))
+        self.assertIsNone(self.get_start_date(second_task.id))
+
+    def test_import_episode_task_names_the_missing_episode(self):
+        task_type = self.generate_entity_task_type("Episode")
+        self.generate_entity_task(
+            self.generate_fixture_episode("E01"), task_type
+        )
+        path = self.estimations_path(task_type.id)
+        content = "Entity,Start date\nE01,2024-01-05\nE09,2024-01-05\n"
+        result = self.upload_file(path, self.write_csv(content), code=400)
+
+        self.assertEqual(result["message"], "Entity 'E09' not found")
+        self.assertEqual(result["line_number"], 3)
+        self.assertEqual(result["imported_rows"], 1)

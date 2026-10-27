@@ -57,18 +57,17 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
 
     def prepare_import(self, project_id, task_type, episode_id=None):
         self.organisation = organisation_service.get_organisation()
+        self.for_entity = task_type["for_entity"]
         self.own_episode_id = None
         self.candidates = {}
         self.tasks_map = {}
-        self.entity_label = f"{task_type['for_entity'].lower()}s"
+        self.entity_label = f"{self.for_entity.lower()}s"
         self.no_episode_label = (
-            "main pack" if task_type["for_entity"] == "Asset" else "no episode"
+            "main pack" if self.for_entity == "Asset" else "no episode"
         )
+        episodes = shots_service.get_episodes({"project_id": project_id})
         self.episode_names = {
-            episode["id"]: episode["name"]
-            for episode in shots_service.get_episodes(
-                {"project_id": project_id}
-            )
+            episode["id"]: episode["name"] for episode in episodes
         }
         self.descriptor_fields = {
             name: descriptor
@@ -78,10 +77,15 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
             if descriptor["task_type_id"] == task_type["id"]
         }
 
-        if task_type["for_entity"] == "Asset":
+        if self.for_entity == "Asset":
             self.add_asset_candidates(project_id, episode_id)
-        elif task_type["for_entity"] == "Shot":
+        elif self.for_entity == "Shot":
             self.add_shot_candidates(project_id, episode_id)
+        elif self.for_entity == "Episode":
+            # The route episode is ignored: older Kitsu versions post the
+            # import of an episode task type under the current episode.
+            for episode in episodes:
+                self.add_candidate(episode, "", episode["id"])
 
         for task in tasks_service.get_tasks_for_project_and_task_type(
             project_id, task_type["id"]
@@ -163,7 +167,8 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
         candidates = [
             candidate
             for candidate in self.candidates.get(slugify(name), [])
-            if candidate["parent_key"] == parent_key
+            if self.for_entity == "Episode"
+            or candidate["parent_key"] == parent_key
         ]
         if len(candidates) > 1:
             candidates = [
@@ -187,14 +192,19 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
             ] or candidates
         if len(candidates) > 1:
             raise RowException(
-                f"Entity '{name}' with parent '{parent}' matches "
+                f"{self.describe_row(parent, name)} matches "
                 f"{len(candidates)} {self.entity_label}"
                 f"{self.describe_episodes(candidates)}"
             )
         return candidates[0] if candidates else None
 
+    def describe_row(self, parent, name):
+        if self.for_entity == "Episode":
+            return f"Entity '{name}'"
+        return f"Entity '{name}' with parent '{parent}'"
+
     def describe_episodes(self, candidates):
-        if not self.episode_names:
+        if not self.episode_names or self.for_entity == "Episode":
             return ""
         labels = sorted(
             {
@@ -209,21 +219,22 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
         return f", in episodes {', '.join(labels[:-1])} and {labels[-1]}"
 
     def is_exact_match(self, candidate, parent, name):
-        return (
-            candidate["parent_name"].strip() == parent
-            and candidate["name"].strip() == name
+        return candidate["name"].strip() == name and (
+            self.for_entity == "Episode"
+            or candidate["parent_name"].strip() == parent
         )
 
     def import_row(self, row, project_id, task_type, episode_id=None):
         # A column missing from the file raises the KeyError the base class
-        # names.
-        parent = (row["Parent"] or "").strip()
+        # names. Only asset and shot rows need a parent.
+        if self.for_entity in ["Asset", "Shot"]:
+            parent = (row["Parent"] or "").strip()
+        else:
+            parent = (row.get("Parent") or "").strip()
         name = (row["Entity"] or "").strip()
         entity = self.find_entity(parent, name)
         if entity is None:
-            raise RowException(
-                f"Entity '{name}' with parent '{parent}' not found"
-            )
+            raise RowException(f"{self.describe_row(parent, name)} not found")
 
         new_data = {}
         estimation = self.read_cell(row, "Estimation", NUMBER_FORMAT)
@@ -254,7 +265,7 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
         task = self.tasks_map.get(entity["id"])
         if task is None:
             raise RowException(
-                f"Entity '{name}' with parent '{parent}' "
+                f"{self.describe_row(parent, name)} "
                 f"has no '{task_type['name']}' task"
             )
 
