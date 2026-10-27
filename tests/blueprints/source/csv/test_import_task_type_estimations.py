@@ -430,6 +430,29 @@ class ImportCsvTaskTypeEstimationsTestCase(ApiDBTestCase):
         self.assertIsNone(self.get_start_date(first_task.id))
         self.assertIsNone(self.get_start_date(second_task.id))
 
+    def test_main_pack_imports_the_shots_without_episode(self):
+        main_task = self.generate_shot_task(
+            self.generate_fixture_sequence("SQ01"), "P01"
+        )
+        episode_task = self.generate_episode_shot_task("E01", "SQ01", "P01")
+        path = self.estimations_path(self.task_type_animation.id, "main")
+        content = "Parent,Entity,Start date\nSQ01,P01,2024-01-05\n"
+        self.upload_file(path, self.write_csv(content))
+
+        self.assertEqual(self.get_start_date(main_task.id), "2024-01-05")
+        self.assertIsNone(self.get_start_date(episode_task.id))
+
+    def test_main_pack_does_not_find_the_shots_of_episodes(self):
+        task = self.generate_episode_shot_task("E01", "SQ01", "P01")
+        path = self.estimations_path(self.task_type_animation.id, "main")
+        content = "Parent,Entity,Start date\nSQ01,P01,2024-01-05\n"
+        result = self.upload_file(path, self.write_csv(content), code=400)
+
+        self.assertEqual(
+            result["message"], "Entity 'P01' with parent 'SQ01' not found"
+        )
+        self.assertIsNone(self.get_start_date(task.id))
+
     def test_asset_matching_an_episode_and_the_main_pack_is_refused(self):
         main_task = self.generate_asset_task("Tree")
         episode = self.generate_fixture_episode("E01")

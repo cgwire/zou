@@ -128,10 +128,15 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
         criterions = {"project_id": project_id}
         if episode_id is not None and episode_id not in ["main", "all"]:
             criterions["parent_id"] = episode_id
-        sequences = {
-            sequence["id"]: sequence
-            for sequence in shots_service.get_sequences(criterions)
-        }
+        sequences = shots_service.get_sequences(criterions)
+        if episode_id == "main":
+            # A None criterion would compile to "= NULL" and match nothing.
+            sequences = [
+                sequence
+                for sequence in sequences
+                if sequence["parent_id"] is None
+            ]
+        sequences = {sequence["id"]: sequence for sequence in sequences}
         for shot in shots_service.get_shots({"project_id": project_id}):
             sequence = sequences.get(shot["parent_id"])
             if sequence is not None:
