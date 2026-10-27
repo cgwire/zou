@@ -88,11 +88,14 @@ class ClientTaskViewTestCase(ApiDBTestCase):
 
     def test_sequences_with_tasks(self):
         path = f"data/sequences/with-tasks?project_id={self.project_id}"
-        self.assertEqual(self.get(path)[0]["tasks"][0]["estimation"], 40)
+        task = self.get(path)[0]["tasks"][0]
+        self.assertEqual(task["estimation"], 40)
+        self.assertEqual(task["assignees"], [str(self.person.id)])
         self.log_in_client()
         task = self.get(path)[0]["tasks"][0]
         self.assertEqual(task["estimation"], 0)
         self.assertIsNone(task["due_date"])
+        self.assertEqual(task["assignees"], [])
 
     def test_tasks_listing(self):
         path = f"data/tasks?project_id={self.project_id}&relations=true"

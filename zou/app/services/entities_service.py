@@ -523,10 +523,15 @@ def fetch_entity_task_map(
     if assigned_to:
         link_query = link_query.filter(persons_service.build_assignee_filter())
 
+    if for_client is None:
+        for_client = permissions.has_client_permissions()
+    # The views without assignees in task_fields still add them below: a
+    # client gets no links at all, so none of them comes back.
     assignees_by_task = {}
-    for task_id, person_id in link_query.all():
-        if person_id:
-            assignees_by_task.setdefault(task_id, []).append(person_id)
+    if not for_client:
+        for task_id, person_id in link_query.all():
+            if person_id:
+                assignees_by_task.setdefault(task_id, []).append(person_id)
 
     tasks_by_entity = {}
     for row in task_rows:
@@ -545,8 +550,6 @@ def fetch_entity_task_map(
         )
         for name in task_fields
     ]
-    if for_client is None:
-        for_client = permissions.has_client_permissions()
     if for_client:
         client_builders = []
         for name, builder in builders:
