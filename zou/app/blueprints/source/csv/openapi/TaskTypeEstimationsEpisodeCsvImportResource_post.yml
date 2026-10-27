@@ -4,9 +4,27 @@ tags:
   - Import
 description: Import task type estimations from a CSV file for a
   specific episode. Updates estimations, dates, and other task
-  properties for assets or shots based on CSV rows. The Estimation
-  column is read in hours when the organisation displays durations in
-  hours (format_duration_in_hours), in days otherwise.
+  properties of the tasks of the task type, one row per entity. The
+  columns are Parent, Entity, Estimation, Drawings, Start date, Due
+  date, Difficulty and the names of the task metadata descriptors of
+  the task type. For an asset task type, Parent is the asset type and
+  Entity the asset, among the assets of the episode and the ones cast
+  into it (main = the assets without episode, all = every asset). For
+  a shot task type, Parent is the sequence and Entity the shot, among
+  the shots of the episode (main = the shots without episode, all =
+  every shot). For a sequence or an edit task type, Entity is the
+  sequence or the edit, among the ones of the episode, and Parent is
+  empty or the name of the episode (main = the ones without episode,
+  with an empty Parent; all = every one of the project, Parent naming
+  its episode, empty to match any episode). For an episode task type,
+  Entity is the episode, Parent and the episode of the route are
+  ignored. Concept task types are not supported. The Estimation column
+  is read in hours when the organisation displays durations in hours
+  (format_duration_in_hours), in days otherwise. Dates are YYYY-MM-DD.
+  When several entities match a row, the ones named exactly like it
+  win, then the ones not canceled, then the assets of the episode over
+  the ones cast into it; a row still matching several entities is
+  refused.
 consumes:
   - multipart/form-data
 parameters:
@@ -30,6 +48,7 @@ parameters:
     schema:
       type: string
       format: uuid
+    description: Episode unique identifier or special value (main, all)
     example: c24a6ea4-ce75-4665-a070-57453082c250
   - in: formData
     name: file
