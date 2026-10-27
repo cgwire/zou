@@ -39,6 +39,12 @@ class MovieTestCase(unittest.TestCase):
         self.tmpdir = tempfile.mkdtemp()
         self.video_only_path = str(Path(self.tmpdir) / "demo.m4v")
         shutil.copyfile(self.source_path, self.video_only_path)
+        # normalize_movie and the other helpers write their outputs to the
+        # system temporary folder: keep them in this test's folder, which
+        # tearDown removes.
+        tempdir = patch.object(tempfile, "tempdir", self.tmpdir)
+        tempdir.start()
+        self.addCleanup(tempdir.stop)
 
     def tearDown(self):
         super().tearDown()
