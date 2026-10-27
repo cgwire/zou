@@ -1,3 +1,5 @@
+import math
+
 from flasgger import swag_from
 from slugify import slugify
 
@@ -24,6 +26,18 @@ def snap_to_whole(value):
     """
     whole = round(value)
     return whole if abs(value - whole) < 1e-6 else value
+
+
+def parse_number(value):
+    number = float(value)
+    if not math.isfinite(number):
+        raise ValueError(value)
+    return number
+
+
+DATE_FORMAT = (date_helpers.get_date_from_string, "YYYY-MM-DD")
+NUMBER_FORMAT = (parse_number, "a number with a dot, such as 1.5")
+WHOLE_NUMBER_FORMAT = (int, "a whole number")
 
 
 class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
@@ -106,32 +120,30 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
             )
 
         new_data = {}
-        estimation = None
-
-        if row.get("Estimation") not in [None, ""]:
-            estimation = float(row["Estimation"])
+        estimation = self.read_cell(row, "Estimation", NUMBER_FORMAT)
+        if estimation is not None:
             new_data["estimation"] = self.get_estimation_minutes(estimation)
 
-        if row.get("Drawings") not in [None, ""]:
-            new_data["nb_drawings"] = int(row["Drawings"])
+        nb_drawings = self.read_cell(row, "Drawings", WHOLE_NUMBER_FORMAT)
+        if nb_drawings is not None:
+            new_data["nb_drawings"] = nb_drawings
 
-        if row.get("Start date") not in [None, ""]:
-            new_data["start_date"] = date_helpers.get_date_from_string(
-                row["Start date"]
-            )
+        start_date = self.read_cell(row, "Start date", DATE_FORMAT)
+        if start_date is not None:
+            new_data["start_date"] = start_date
 
-        if row.get("Due date") not in [None, ""]:
-            new_data["due_date"] = date_helpers.get_date_from_string(
-                row["Due date"]
-            )
+        due_date = self.read_cell(row, "Due date", DATE_FORMAT)
+        if due_date is not None:
+            new_data["due_date"] = due_date
         elif new_data.get("start_date") and new_data.get("estimation"):
             new_data["due_date"] = date_helpers.add_business_days_to_date(
                 new_data["start_date"],
                 self.get_estimation_days(estimation) - 1,
             )
 
-        if row.get("Difficulty") not in [None, ""]:
-            new_data["difficulty"] = int(row["Difficulty"])
+        difficulty = self.read_cell(row, "Difficulty", WHOLE_NUMBER_FORMAT)
+        if difficulty is not None:
+            new_data["difficulty"] = difficulty
 
         task = self.tasks_map[entity_id]
 
@@ -141,6 +153,24 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
             new_data["data"] = self.get_descriptor_values(row, task["data"])
 
         tasks_service.update_task(task["id"], new_data)
+
+    def read_cell(self, row, column, value_format):
+        """
+        Return the parsed value of a cell, None when it is empty. A value
+        that does not parse is refused with the name of its column and the
+        form expected.
+        """
+        value = (row.get(column) or "").strip()
+        if value == "":
+            return None
+        parse, expected = value_format
+        try:
+            return parse(value)
+        except ValueError:
+            raise RowException(
+                f"Invalid value in column '{column}': '{value}' "
+                f"(expected {expected})"
+            )
 
     def get_estimation_minutes(self, estimation):
         """

@@ -186,3 +186,48 @@ class ImportCsvTaskTypeEstimationsTestCase(ApiDBTestCase):
         )
         self.assertEqual(task.estimation, 1368)
         self.assertEqual(task.due_date.strftime("%Y-%m-%d"), "2024-01-10")
+
+    def test_invalid_value_names_its_column(self):
+        self.generate_fixture_task()
+        path = (
+            f"/import/csv/projects/{self.project.id}"
+            f"/task-types/{self.task_type.id}/estimations"
+        )
+        cases = [
+            ("Start date", "02/11/2026", "YYYY-MM-DD"),
+            ("Due date", "2026-13-01", "YYYY-MM-DD"),
+            ("Estimation", "1,5", "a number with a dot, such as 1.5"),
+            ("Difficulty", "x", "a whole number"),
+            ("Drawings", "2.5", "a whole number"),
+        ]
+        for column, value, expected in cases:
+            with self.subTest(column=column):
+                content = f'Parent,Entity,{column}\nProps,Tree,"{value}"\n'
+                result = self.upload_file(
+                    path, self.write_csv(content), code=400
+                )
+                self.assertEqual(
+                    result["message"],
+                    f"Invalid value in column '{column}': '{value}' "
+                    f"(expected {expected})",
+                )
+                self.assertEqual(result["line_number"], 2)
+                self.assertEqual(result["imported_rows"], 0)
+
+    def test_rows_before_an_invalid_value_stay_imported(self):
+        self.generate_fixture_task()
+        path = (
+            f"/import/csv/projects/{self.project.id}"
+            f"/task-types/{self.task_type.id}/estimations"
+        )
+        content = (
+            "Parent,Entity,Start date\n"
+            "Props,Tree,2024-01-05\n"
+            "Props,Tree,05/01/2024\n"
+        )
+        result = self.upload_file(path, self.write_csv(content), code=400)
+
+        self.assertEqual(result["line_number"], 3)
+        self.assertEqual(result["imported_rows"], 1)
+        task = Task.get(self.task.id)
+        self.assertEqual(task.start_date.strftime("%Y-%m-%d"), "2024-01-05")
