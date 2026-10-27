@@ -1,5 +1,6 @@
 import os
 import tempfile
+import uuid
 
 from tests.base import ApiDBTestCase
 from zou.app.models.entity import EntityLink
@@ -892,3 +893,14 @@ class ImportCsvTaskTypeEstimationsTestCase(ApiDBTestCase):
         self.assertEqual(
             result["message"], "Entity 'Sketch' with parent '' not found"
         )
+
+    def test_request_without_token_answers_401(self):
+        self.base_headers = {}
+        content = "Parent,Entity,Start date\nProps,Tree,2024-01-05\n"
+        for task_type_id in [self.task_type.id, uuid.uuid4()]:
+            for episode_id in [None, "all"]:
+                with self.subTest(
+                    task_type_id=str(task_type_id), episode_id=episode_id
+                ):
+                    path = self.estimations_path(task_type_id, episode_id)
+                    self.upload_file(path, self.write_csv(content), code=401)

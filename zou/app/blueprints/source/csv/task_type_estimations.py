@@ -1,6 +1,7 @@
 import math
 
 from flasgger import swag_from
+from flask_jwt_extended import jwt_required
 from slugify import slugify
 
 from zou.app.blueprints.source.csv.base import (
@@ -48,6 +49,8 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
             project_id, task_type["id"]
         )
 
+    # The task type is read before the base class checks the session.
+    @jwt_required()
     @swag_from("openapi/TaskTypeEstimationsCsvImportResource_post.yml")
     def post(self, project_id, task_type_id, episode_id=None):
         """
