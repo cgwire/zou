@@ -1,3 +1,5 @@
+from flask import g, request_started
+
 from tests.base import ApiDBTestCase
 from zou.app.services import projects_service
 
@@ -91,3 +93,67 @@ class ClientHiddenStatsTestCase(ApiDBTestCase):
         )
         self.log_in_manager()
         self.get(self.path, 200)
+
+
+def forget_project_role(sender, **extra):
+    g.pop("project_role", None)
+
+
+class FreshRequestsTestCase(ApiDBTestCase):
+    """
+    Each request starts without a project role, as a real one does: g
+    outlives the requests of a test, so a route that read the role before
+    resolving its project would read the one the previous request left.
+    """
+
+    def setUp(self):
+        super().setUp()
+        request_started.connect(forget_project_role, self.flask_app)
+        self.addCleanup(
+            request_started.disconnect, forget_project_role, self.flask_app
+        )
+
+
+class ClientOpenTasksTestCase(FreshRequestsTestCase):
+    """
+    The open tasks pool and its burndown are planning views: clients are
+    refused, by the role they hold on the project when the call names one.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project_status()
+        self.generate_fixture_project()
+        self.generate_fixture_user_client()
+        self.generate_fixture_user_cg_artist()
+        self.project_id = str(self.project.id)
+        projects_service.add_team_member(
+            self.project_id, self.user_client["id"]
+        )
+        self.paths = [
+            "data/tasks/open-tasks",
+            "data/tasks/open-tasks/burndown",
+        ]
+
+    def test_clients_are_refused(self):
+        self.log_in_client()
+        for path in self.paths:
+            self.get(path, 403)
+            self.get(f"{path}?project_id={self.project_id}", 403)
+
+    def test_artists_keep_the_pool(self):
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"]
+        )
+        self.log_in_cg_artist()
+        for path in self.paths:
+            self.get(path, 200)
+            self.get(f"{path}?project_id={self.project_id}", 200)
+
+    def test_a_client_on_the_project_is_refused_its_pool(self):
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"], role="client"
+        )
+        self.log_in_cg_artist()
+        for path in self.paths:
+            self.get(f"{path}?project_id={self.project_id}", 403)

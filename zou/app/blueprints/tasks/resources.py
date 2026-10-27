@@ -958,6 +958,16 @@ def check_open_tasks_filter_args(resource, args):
     resource.parse_date_parameter(args["due_date"])
 
 
+def check_open_tasks_access(project_id):
+    """
+    Refuse the open tasks pool to clients. When the call names a project,
+    its access check runs first, so the role read is the one held there.
+    """
+    if project_id is not None:
+        permissions_service.check_project_access(project_id)
+    permissions_service.block_access_to_client()
+
+
 class OpenTasksResource(MethodView, ArgsMixin):
 
     @jwt_required()
@@ -983,6 +993,7 @@ class OpenTasksResource(MethodView, ArgsMixin):
             ]
         )
         check_open_tasks_filter_args(self, args)
+        check_open_tasks_access(args["project_id"])
         return todos_service.get_open_tasks(
             tasks_service.OpenTasksFilters.from_args(args),
             page=args["page"],
@@ -1023,6 +1034,7 @@ class OpenTasksBurndownResource(MethodView, ArgsMixin):
             ]
         )
         check_open_tasks_filter_args(self, args)
+        check_open_tasks_access(args["project_id"])
         return todos_service.get_open_tasks_burndown(
             tasks_service.OpenTasksFilters.from_args(args)
         )
