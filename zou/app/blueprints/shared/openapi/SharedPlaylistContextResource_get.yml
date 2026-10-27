@@ -1,8 +1,8 @@
 Get shared playlist context
 ---
 description: Return minimal project and playlist context needed to
-  render the shared playlist UI. Optional `password` query param when
-  the link is protected.
+  render the shared playlist UI, with what the link allows. Optional
+  `password` query param when the link is protected.
 tags:
   - Playlists
 parameters:
@@ -25,3 +25,10 @@ responses:
       application/json:
         schema:
           type: object
+          properties:
+            share_link:
+              type: object
+              properties:
+                can_comment:
+                  type: boolean
+                  description: Whether guests may comment and annotate
