@@ -1,5 +1,4 @@
 # -*- coding: UTF-8 -*-
-import datetime
 import uuid
 from unittest import mock
 
@@ -27,6 +26,7 @@ from zou.app.services import (
     time_spents_service,
     todos_service,
 )
+from zou.app.utils import date_helpers
 
 
 class TaskCreationTestCase(TaskTestCase):
@@ -122,7 +122,9 @@ class TaskUpdateTestCase(TaskTestCase):
 
         self.assertEqual(str(self.task.task_status_id), wfa_status["id"])
         self.assertIsNotNone(self.task.end_date)
-        self.assertLess(self.task.end_date, datetime.datetime.now())
+        self.assertLessEqual(
+            self.task.end_date, date_helpers.get_utc_now_datetime()
+        )
 
     def test_update_task_resets_dates_on_status_rollback(self):
         wfa_status = self.generate_fixture_task_status_wfa()
