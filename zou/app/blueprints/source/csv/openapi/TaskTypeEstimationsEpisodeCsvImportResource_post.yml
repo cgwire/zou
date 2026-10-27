@@ -4,11 +4,15 @@ tags:
   - Import
 description: Import task type estimations from a CSV file for a
   specific episode. Updates estimations, dates, and other task
-  properties for assets or shots based on CSV rows. The Estimation
-  column is read in hours when the organisation displays durations in
-  hours (format_duration_in_hours), in days otherwise. When several
-  entities match a row, the ones named exactly like it win, then the
-  ones not canceled; a row still matching several entities is refused.
+  properties for assets or shots based on CSV rows. For an asset task
+  type, the rows match the assets of the episode and the ones cast
+  into it (main = the assets without episode, all = every asset). The
+  Estimation column is read in hours when the organisation displays
+  durations in hours (format_duration_in_hours), in days otherwise.
+  When several entities match a row, the ones named exactly like it
+  win, then the ones not canceled, then the assets of the episode over
+  the ones cast into it; a row still matching several entities is
+  refused.
 consumes:
   - multipart/form-data
 parameters:
@@ -32,6 +36,7 @@ parameters:
     schema:
       type: string
       format: uuid
+    description: Episode unique identifier or special value (main, all)
     example: c24a6ea4-ce75-4665-a070-57453082c250
   - in: formData
     name: file

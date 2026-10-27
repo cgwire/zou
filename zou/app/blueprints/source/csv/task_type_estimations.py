@@ -57,6 +57,7 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
 
     def prepare_import(self, project_id, task_type, episode_id=None):
         self.organisation = organisation_service.get_organisation()
+        self.own_episode_id = None
         self.candidates = {}
         self.tasks_map = {}
         self.entity_label = f"{task_type['for_entity'].lower()}s"
@@ -95,9 +96,18 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
             )
         }
         criterions = {"project_id": project_id}
-        if episode_id is not None and episode_id not in ["main", "all"]:
-            criterions["source_id"] = episode_id
-        for asset in assets_service.get_assets(criterions):
+        if episode_id not in [None, "main", "all"]:
+            # The assets of the episode and the ones cast into it, as the
+            # task type page of the episode lists them. get_assets compares
+            # the id uncast: a malformed one would fail as a 500.
+            self.check_id_parameter(episode_id)
+            criterions["episode_id"] = episode_id
+            self.own_episode_id = episode_id
+        assets = assets_service.get_assets(criterions)
+        if episode_id == "main":
+            # A None criterion would compile to "= NULL" and match nothing.
+            assets = [asset for asset in assets if asset["source_id"] is None]
+        for asset in assets:
             self.add_candidate(
                 asset,
                 asset_type_names[asset["entity_type_id"]],
@@ -144,7 +154,8 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
         and name are compared apart, each through its slug, so that case,
         spaces and accents do not matter. When several candidates share the
         slugs, the ones named exactly like the row win, then the ones not
-        canceled. More than one left refuses the row.
+        canceled, then, in an episode, its own assets over the ones cast
+        into it. More than one left refuses the row.
         """
         if name == "":
             return None
@@ -165,6 +176,14 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
                 candidate
                 for candidate in candidates
                 if not candidate["canceled"]
+            ] or candidates
+        if len(candidates) > 1 and self.own_episode_id is not None:
+            # The import matched the assets of the episode only before
+            # matching the cast ones: their rows must keep importing.
+            candidates = [
+                candidate
+                for candidate in candidates
+                if candidate["episode_id"] == self.own_episode_id
             ] or candidates
         if len(candidates) > 1:
             raise RowException(

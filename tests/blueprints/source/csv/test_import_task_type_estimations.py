@@ -2,6 +2,7 @@ import os
 import tempfile
 
 from tests.base import ApiDBTestCase
+from zou.app.models.entity import EntityLink
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.task import Task
 from zou.app.services import (
@@ -471,4 +472,91 @@ class ImportCsvTaskTypeEstimationsTestCase(ApiDBTestCase):
             result["message"],
             "Entity 'TREE' with parent 'Props' matches 2 assets, "
             "all in main pack",
+        )
+
+    def test_asset_cast_into_the_episode_is_imported(self):
+        """
+        The task type page of an episode lists the assets cast into it,
+        whatever their source: the main pack or another episode.
+        """
+        first_episode = self.generate_fixture_episode("E01")
+        second_episode = self.generate_fixture_episode("E02")
+        main_task = self.generate_asset_task("Tree")
+        EntityLink.create(
+            entity_in_id=first_episode.id, entity_out_id=self.asset.id
+        )
+        other_task = self.generate_asset_task("Rock")
+        self.asset.update({"source_id": second_episode.id})
+        EntityLink.create(
+            entity_in_id=first_episode.id, entity_out_id=self.asset.id
+        )
+        path = self.estimations_path(self.task_type.id, first_episode.id)
+        content = (
+            "Parent,Entity,Start date\n"
+            "Props,Tree,2024-01-05\n"
+            "Props,Rock,2024-01-06\n"
+        )
+        self.upload_file(path, self.write_csv(content))
+
+        self.assertEqual(self.get_start_date(main_task.id), "2024-01-05")
+        self.assertEqual(self.get_start_date(other_task.id), "2024-01-06")
+
+    def test_asset_of_the_episode_wins_over_a_cast_one(self):
+        """
+        The import used to match the assets of the episode only: a homonym
+        cast into it from the main pack must not make that row ambiguous.
+        """
+        episode = self.generate_fixture_episode("E01")
+        own_task = self.generate_asset_task("Rock")
+        self.asset.update({"source_id": episode.id})
+        cast_task = self.generate_asset_task("Rock")
+        EntityLink.create(entity_in_id=episode.id, entity_out_id=self.asset.id)
+        path = self.estimations_path(self.task_type.id, episode.id)
+        content = "Parent,Entity,Start date\nProps,Rock,2024-01-05\n"
+        self.upload_file(path, self.write_csv(content))
+
+        self.assertEqual(self.get_start_date(own_task.id), "2024-01-05")
+        self.assertIsNone(self.get_start_date(cast_task.id))
+
+    def test_asset_outside_the_episode_is_not_found(self):
+        first_episode = self.generate_fixture_episode("E01")
+        second_episode = self.generate_fixture_episode("E02")
+        task = self.generate_asset_task("Rock")
+        self.asset.update({"source_id": second_episode.id})
+        path = self.estimations_path(self.task_type.id, first_episode.id)
+        content = "Parent,Entity,Start date\nProps,Rock,2024-01-05\n"
+        result = self.upload_file(path, self.write_csv(content), code=400)
+
+        self.assertEqual(
+            result["message"], "Entity 'Rock' with parent 'Props' not found"
+        )
+        self.assertIsNone(self.get_start_date(task.id))
+
+    def test_malformed_episode_id_is_refused(self):
+        self.generate_fixture_task()
+        content = "Parent,Entity,Start date\nProps,Tree,2024-01-05\n"
+        for task_type in [self.task_type, self.task_type_animation]:
+            with self.subTest(task_type=task_type.name):
+                path = self.estimations_path(task_type.id, "E01")
+                self.upload_file(path, self.write_csv(content), code=400)
+
+    def test_main_pack_imports_the_assets_without_episode(self):
+        episode = self.generate_fixture_episode("E01")
+        main_task = self.generate_asset_task("Tree")
+        episode_task = self.generate_asset_task("tree")
+        self.asset.update({"source_id": episode.id})
+        EntityLink.create(entity_in_id=episode.id, entity_out_id=self.asset.id)
+        path = self.estimations_path(self.task_type.id, "main")
+        content = "Parent,Entity,Start date\nProps,TREE,2024-01-05\n"
+        self.upload_file(path, self.write_csv(content))
+
+        self.assertEqual(self.get_start_date(main_task.id), "2024-01-05")
+        self.assertIsNone(self.get_start_date(episode_task.id))
+
+        self.generate_asset_task("Rock")
+        self.asset.update({"source_id": episode.id})
+        content = "Parent,Entity,Start date\nProps,Rock,2024-01-05\n"
+        result = self.upload_file(path, self.write_csv(content), code=400)
+        self.assertEqual(
+            result["message"], "Entity 'Rock' with parent 'Props' not found"
         )

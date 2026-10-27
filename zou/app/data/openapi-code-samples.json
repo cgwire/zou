@@ -3873,7 +3873,7 @@
     "/import/csv/projects/{project_id}/episodes/{episode_id}/task-types/{task_type_id}/estimations": {
       "post": {
         "summary": "Import episode task type estimations csv",
-        "description": "Import task type estimations from a CSV file for a specific episode. Updates estimations, dates, and other task properties for assets or shots based on CSV rows. When several entities match a row, exact names win, then entities not canceled; a row still matching several is refused.",
+        "description": "Import task type estimations from a CSV file for a specific episode. Updates estimations, dates, and other task properties for assets or shots based on CSV rows. When several entities match a row, exact names win, then entities not canceled, then the episode's own assets over cast ones; a row still matching several is refused.",
         "x-codeSamples": [
           {
             "lang": "bash",
