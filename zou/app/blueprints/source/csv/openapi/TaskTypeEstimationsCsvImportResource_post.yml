@@ -8,13 +8,16 @@ description: Import task type estimations from a CSV file. Updates
   Estimation, Drawings, Start date, Due date, Difficulty and the names
   of the task metadata descriptors of the task type. For an asset task
   type, Parent is the asset type and Entity the asset; for a shot task
-  type, Parent is the sequence and Entity the shot; for an episode task
-  type, Entity is the episode and Parent is ignored. The Estimation
-  column is read in hours when the organisation displays durations in
-  hours (format_duration_in_hours), in days otherwise. Dates are
-  YYYY-MM-DD. When several entities match a row, the ones named
-  exactly like it win, then the ones not canceled; a row still
-  matching several entities is refused.
+  type, Parent is the sequence and Entity the shot; for a sequence or
+  an edit task type, Parent is the name of its episode, or empty to
+  match any episode, and Entity the sequence or the edit; for an
+  episode task type, Entity is the episode and Parent is ignored.
+  Concept task types are not supported. The Estimation column is read
+  in hours when the organisation displays durations in hours
+  (format_duration_in_hours), in days otherwise. Dates are YYYY-MM-DD.
+  When several entities match a row, the ones named exactly like it
+  win, then the ones not canceled; a row still matching several
+  entities is refused.
 consumes:
   - multipart/form-data
 parameters:

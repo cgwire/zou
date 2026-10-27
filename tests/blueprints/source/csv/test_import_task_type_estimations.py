@@ -670,3 +670,225 @@ class ImportCsvTaskTypeEstimationsTestCase(ApiDBTestCase):
         self.assertEqual(result["message"], "Entity 'E09' not found")
         self.assertEqual(result["line_number"], 3)
         self.assertEqual(result["imported_rows"], 1)
+
+    def generate_tv_sequence_tasks(self):
+        """
+        Create S01 in E01 and in E02, each with a task of a sequence task
+        type, and return the task type and both tasks.
+        """
+        task_type = self.generate_entity_task_type("Sequence")
+        self.first_episode = self.generate_fixture_episode("E01")
+        first_task = self.generate_entity_task(
+            self.generate_fixture_sequence(
+                "S01", episode_id=self.first_episode.id
+            ),
+            task_type,
+        )
+        self.second_episode = self.generate_fixture_episode("E02")
+        second_task = self.generate_entity_task(
+            self.generate_fixture_sequence(
+                "S01", episode_id=self.second_episode.id
+            ),
+            task_type,
+        )
+        return task_type, first_task, second_task
+
+    def test_import_sequence_task_in_episode(self):
+        task_type, first_task, second_task = self.generate_tv_sequence_tasks()
+        path = self.estimations_path(task_type.id, self.first_episode.id)
+        for content, start_date in [
+            ("Parent,Entity,Start date\n,S01,2024-01-05\n", "2024-01-05"),
+            ("Entity,Start date\nS01,2024-01-06\n", "2024-01-06"),
+            ("Parent,Entity,Start date\ne01,S01,2024-01-07\n", "2024-01-07"),
+        ]:
+            with self.subTest(content=content):
+                self.upload_file(path, self.write_csv(content))
+                self.assertEqual(
+                    self.get_start_date(first_task.id), start_date
+                )
+        self.assertIsNone(self.get_start_date(second_task.id))
+
+        content = "Parent,Entity,Start date\nE02,S01,2024-01-08\n"
+        result = self.upload_file(path, self.write_csv(content), code=400)
+        self.assertEqual(
+            result["message"], "Entity 'S01' with parent 'E02' not found"
+        )
+        self.assertIsNone(self.get_start_date(second_task.id))
+
+    def test_import_sequence_task_with_episode_parent(self):
+        task_type, first_task, second_task = self.generate_tv_sequence_tasks()
+        content = "Parent,Entity,Start date\nE02,S01,2024-01-05\n"
+        for episode_id in [None, "all"]:
+            with self.subTest(episode_id=episode_id):
+                path = self.estimations_path(task_type.id, episode_id)
+                self.upload_file(path, self.write_csv(content))
+                self.assertEqual(
+                    self.get_start_date(second_task.id), "2024-01-05"
+                )
+                self.assertIsNone(self.get_start_date(first_task.id))
+
+    def test_import_sequence_task_without_parent_is_refused_if_shared(self):
+        task_type, first_task, second_task = self.generate_tv_sequence_tasks()
+        path = self.estimations_path(task_type.id, "all")
+        content = "Parent,Entity,Start date\n,S01,2024-01-05\n"
+        result = self.upload_file(path, self.write_csv(content), code=400)
+
+        self.assertEqual(
+            result["message"],
+            "Entity 'S01' matches 2 sequences, in episodes E01 and E02",
+        )
+        self.assertEqual(result["imported_rows"], 0)
+        self.assertIsNone(self.get_start_date(first_task.id))
+        self.assertIsNone(self.get_start_date(second_task.id))
+
+    def test_import_sequence_task_without_episodes(self):
+        task_type = self.generate_entity_task_type("Sequence")
+        first_task = self.generate_entity_task(
+            self.generate_fixture_sequence("S01"), task_type
+        )
+        second_task = self.generate_entity_task(
+            self.generate_fixture_sequence("S02"), task_type
+        )
+        # Without an episode as parent, two sequences can share a name.
+        for _ in range(2):
+            self.generate_entity_task(
+                self.generate_fixture_sequence("S03"), task_type
+            )
+        path = self.estimations_path(task_type.id)
+        content = (
+            "Entity,Start date\nS01,2024-01-05\nS02,2024-01-06\n"
+            "S03,2024-01-07\n"
+        )
+        result = self.upload_file(path, self.write_csv(content), code=400)
+
+        self.assertEqual(self.get_start_date(first_task.id), "2024-01-05")
+        self.assertEqual(self.get_start_date(second_task.id), "2024-01-06")
+        self.assertEqual(result["message"], "Entity 'S03' matches 2 sequences")
+        self.assertEqual(result["imported_rows"], 2)
+
+    def test_import_edit_task_in_episode(self):
+        task_type = self.task_type_edit
+        first_episode = self.generate_fixture_episode("E01")
+        first_task = self.generate_entity_task(
+            self.generate_fixture_edit("Trailer", parent_id=first_episode.id),
+            task_type,
+        )
+        second_episode = self.generate_fixture_episode("E02")
+        second_task = self.generate_entity_task(
+            self.generate_fixture_edit("Trailer", parent_id=second_episode.id),
+            task_type,
+        )
+        path = self.estimations_path(task_type.id, second_episode.id)
+        content = "Parent,Entity,Start date\n,Trailer,2024-01-05\n"
+        self.upload_file(path, self.write_csv(content))
+
+        self.assertEqual(self.get_start_date(second_task.id), "2024-01-05")
+        self.assertIsNone(self.get_start_date(first_task.id))
+
+        path = self.estimations_path(task_type.id, "all")
+        content = "Parent,Entity,Start date\nE01,Trailer,2024-01-06\n"
+        self.upload_file(path, self.write_csv(content))
+        self.assertEqual(self.get_start_date(first_task.id), "2024-01-06")
+
+    def test_import_edit_task_without_episode(self):
+        task_type = self.task_type_edit
+        episode = self.generate_fixture_episode("E01")
+        task = self.generate_entity_task(
+            self.generate_fixture_edit("Trailer"), task_type
+        )
+        episode_task = self.generate_entity_task(
+            self.generate_fixture_edit("Teaser", parent_id=episode.id),
+            task_type,
+        )
+        content = "Parent,Entity,Start date\n,Trailer,2024-01-05\n"
+        for episode_id in [None, "main"]:
+            with self.subTest(episode_id=episode_id):
+                path = self.estimations_path(task_type.id, episode_id)
+                self.upload_file(path, self.write_csv(content))
+                self.assertEqual(self.get_start_date(task.id), "2024-01-05")
+                task.update({"start_date": None})
+
+        content = "Parent,Entity,Start date\nE01,Trailer,2024-01-05\n"
+        path = self.estimations_path(task_type.id)
+        result = self.upload_file(path, self.write_csv(content), code=400)
+        self.assertEqual(
+            result["message"], "Entity 'Trailer' with parent 'E01' not found"
+        )
+        self.assertIsNone(self.get_start_date(task.id))
+        self.assertIsNone(self.get_start_date(episode_task.id))
+
+    def test_main_pack_imports_the_sequences_and_edits_without_episode(self):
+        sequence_task_type = self.generate_entity_task_type("Sequence")
+        main_sequence_task = self.generate_entity_task(
+            self.generate_fixture_sequence("SQ01"), sequence_task_type
+        )
+        main_edit_task = self.generate_entity_task(
+            self.generate_fixture_edit("Trailer"), self.task_type_edit
+        )
+        episode = self.generate_fixture_episode("E01")
+        episode_sequence_task = self.generate_entity_task(
+            self.generate_fixture_sequence("SQ01", episode_id=episode.id),
+            sequence_task_type,
+        )
+        episode_edit_task = self.generate_entity_task(
+            self.generate_fixture_edit("Trailer", parent_id=episode.id),
+            self.task_type_edit,
+        )
+        cases = [
+            (sequence_task_type, "SQ01", main_sequence_task),
+            (self.task_type_edit, "Trailer", main_edit_task),
+        ]
+        for task_type, name, task in cases:
+            with self.subTest(for_entity=task_type.for_entity):
+                path = self.estimations_path(task_type.id, "main")
+                content = f"Parent,Entity,Start date\n,{name},2024-01-05\n"
+                self.upload_file(path, self.write_csv(content))
+                self.assertEqual(self.get_start_date(task.id), "2024-01-05")
+        self.assertIsNone(self.get_start_date(episode_sequence_task.id))
+        self.assertIsNone(self.get_start_date(episode_edit_task.id))
+
+    def test_main_pack_does_not_find_the_sequences_and_edits_of_episodes(
+        self,
+    ):
+        sequence_task_type = self.generate_entity_task_type("Sequence")
+        episode = self.generate_fixture_episode("E01")
+        sequence_task = self.generate_entity_task(
+            self.generate_fixture_sequence("SQ01", episode_id=episode.id),
+            sequence_task_type,
+        )
+        edit_task = self.generate_entity_task(
+            self.generate_fixture_edit("Trailer", parent_id=episode.id),
+            self.task_type_edit,
+        )
+        cases = [
+            (sequence_task_type, "SQ01", sequence_task),
+            (self.task_type_edit, "Trailer", edit_task),
+        ]
+        for task_type, name, task in cases:
+            path = self.estimations_path(task_type.id, "main")
+            for parent, message in [
+                ("E01", f"Entity '{name}' with parent 'E01' not found"),
+                ("", f"Entity '{name}' not found"),
+            ]:
+                with self.subTest(
+                    for_entity=task_type.for_entity, parent=parent
+                ):
+                    content = (
+                        "Parent,Entity,Start date\n"
+                        f"{parent},{name},2024-01-05\n"
+                    )
+                    result = self.upload_file(
+                        path, self.write_csv(content), code=400
+                    )
+                    self.assertEqual(result["message"], message)
+                    self.assertIsNone(self.get_start_date(task.id))
+
+    def test_concept_task_type_is_not_imported(self):
+        task_type = self.generate_entity_task_type("Concept")
+        path = self.estimations_path(task_type.id)
+        content = "Parent,Entity,Start date\n,Sketch,2024-01-05\n"
+        result = self.upload_file(path, self.write_csv(content), code=400)
+
+        self.assertEqual(
+            result["message"], "Entity 'Sketch' with parent '' not found"
+        )

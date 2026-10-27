@@ -9,6 +9,7 @@ from zou.app.blueprints.source.csv.base import (
 )
 from zou.app.services import (
     assets_service,
+    edits_service,
     organisation_service,
     permissions_service,
     shots_service,
@@ -86,6 +87,8 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
             # import of an episode task type under the current episode.
             for episode in episodes:
                 self.add_candidate(episode, "", episode["id"])
+        elif self.for_entity in ["Sequence", "Edit"]:
+            self.add_episode_child_candidates(project_id, episode_id)
 
         for task in tasks_service.get_tasks_for_project_and_task_type(
             project_id, task_type["id"]
@@ -133,6 +136,30 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
                     shot, sequence["name"], sequence["parent_id"]
                 )
 
+    def add_episode_child_candidates(self, project_id, episode_id):
+        """
+        Register the sequences or the edits, under the name of their
+        episode as parent, an empty one when they have none.
+        """
+        criterions = {"project_id": project_id}
+        if episode_id not in [None, "main", "all"]:
+            criterions["parent_id"] = episode_id
+        if self.for_entity == "Sequence":
+            entities = shots_service.get_sequences(criterions)
+        else:
+            entities = edits_service.get_edits(criterions)
+        if episode_id == "main":
+            # A None criterion would compile to "= NULL" and match nothing.
+            entities = [
+                entity for entity in entities if entity["parent_id"] is None
+            ]
+        for entity in entities:
+            self.add_candidate(
+                entity,
+                self.episode_names.get(entity["parent_id"], ""),
+                entity["parent_id"],
+            )
+
     def add_candidate(self, entity, parent_name, episode_id):
         """
         Register an entity a row can name, under the slug of its name. The
@@ -163,12 +190,12 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
         """
         if name == "":
             return None
+        parent_ignored = self.is_parent_ignored(parent)
         parent_key = slugify(parent)
         candidates = [
             candidate
             for candidate in self.candidates.get(slugify(name), [])
-            if self.for_entity == "Episode"
-            or candidate["parent_key"] == parent_key
+            if parent_ignored or candidate["parent_key"] == parent_key
         ]
         if len(candidates) > 1:
             candidates = [
@@ -199,7 +226,7 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
         return candidates[0] if candidates else None
 
     def describe_row(self, parent, name):
-        if self.for_entity == "Episode":
+        if self.is_parent_ignored(parent):
             return f"Entity '{name}'"
         return f"Entity '{name}' with parent '{parent}'"
 
@@ -218,9 +245,18 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
             return f", all in {labels[0]}"
         return f", in episodes {', '.join(labels[:-1])} and {labels[-1]}"
 
+    def is_parent_ignored(self, parent):
+        """
+        Episode rows have no parent, and a sequence or an edit row with
+        an empty Parent names any episode in scope.
+        """
+        return self.for_entity == "Episode" or (
+            self.for_entity in ["Sequence", "Edit"] and parent == ""
+        )
+
     def is_exact_match(self, candidate, parent, name):
         return candidate["name"].strip() == name and (
-            self.for_entity == "Episode"
+            self.is_parent_ignored(parent)
             or candidate["parent_name"].strip() == parent
         )
 
