@@ -2,7 +2,8 @@ Search entities
 ---
 description: Search across indexes for persons, assets and shots.
   Use optional filters to limit results to a project and specific
-  indexes. Results are paginated with limit and offset.
+  indexes. Results are paginated with limit and offset. A client always
+  gets an empty persons list.
 tags:
 - Search
 requestBody:

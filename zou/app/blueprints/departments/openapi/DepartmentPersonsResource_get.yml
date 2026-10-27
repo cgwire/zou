@@ -2,7 +2,7 @@ Get department members
 ---
 description: Retrieve all persons belonging to a given department.
   Non admin users get the minimal person payload, the same one the
-  person list route returns them.
+  person list route returns them. Clients get a 403.
 tags:
   - Departments
 parameters:
@@ -44,5 +44,7 @@ responses:
                   type: string
                   format: uuid
                   example: b35b7fb5-df86-5776-b181-68564193d360
+  403:
+    description: Client
   404:
     description: Department not found
