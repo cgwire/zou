@@ -168,26 +168,34 @@ def get_person_raw(person_id):
 
 
 @cache.memoize_function(120)
-def get_person(person_id, unsafe=False, relations=True):
+def get_person(person_id, unsafe=False, relations=True, minimal=False):
     """
     Return given person as a dictionary.
     """
     person = get_person_raw(person_id)
     if unsafe:
         return person.serialize(relations=relations)
+    elif minimal:
+        return person.present_minimal(relations=relations)
     else:
         return person.serialize_safe(relations=relations)
 
 
-def get_persons_by_ids(person_ids):
+def get_persons_by_ids(person_ids, minimal=False):
     """
-    Return persons matching given ids as a list of safe dictionaries.
-    Single query instead of one per person.
+    Return persons matching given ids as a list of safe dictionaries, or of
+    minimal ones. One query for the persons, plus one for the departments of
+    the minimal ones, instead of one per person.
     """
     if not person_ids:
         return []
-    persons = Person.query.filter(Person.id.in_(person_ids)).all()
-    return [person.serialize_safe() for person in persons]
+    query = Person.query.filter(Person.id.in_(person_ids))
+    if minimal:
+        query = query.options(selectinload(Person.departments))
+        return [
+            person.present_minimal(relations=True) for person in query.all()
+        ]
+    return [person.serialize_safe() for person in query.all()]
 
 
 def build_short_person(person):

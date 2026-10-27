@@ -997,10 +997,12 @@ def get_project_tasks_fingerprint(project_id):
     return f"{max_updated_at}:{task_count}"
 
 
-def get_full_task(task_id, user_id):
+def get_full_task(task_id, user_id, minimal_persons=False):
     """
     Return a task with everything the task page displays: entity, project,
-    task type, status, assignees, time spents and subscription state.
+    task type, status, assignees and subscription state. With
+    minimal_persons, the assignees and the assigner come as minimal person
+    dictionaries.
     """
     task = get_task(task_id, relations=True)
     task_type = task_types_service.get_task_type(task["task_type_id"])
@@ -1013,7 +1015,9 @@ def get_full_task(task_id, user_id):
     is_subscribed = subscriptions_service.is_person_subscribed(
         user_id, task_id
     )
-    assignees = persons_service.get_persons_by_ids(task["assignees"])
+    assignees = persons_service.get_persons_by_ids(
+        task["assignees"], minimal=minimal_persons
+    )
 
     task.update(
         {
@@ -1029,7 +1033,9 @@ def get_full_task(task_id, user_id):
     )
 
     try:
-        assigner = persons_service.get_person(task["assigner_id"])
+        assigner = persons_service.get_person(
+            task["assigner_id"], minimal=minimal_persons
+        )
         task["assigner"] = assigner
     except PersonNotFoundException:
         pass

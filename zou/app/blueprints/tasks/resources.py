@@ -571,11 +571,13 @@ class TaskFullResource(MethodView):
         """
         Get task full
         """
+        # Resolves the role on the project, which shapes the persons.
+        permissions_service.check_task_access(task_id)
         task = tasks_service.get_full_task(
-            task_id, persons_service.get_current_user()["id"]
+            task_id,
+            persons_service.get_current_user()["id"],
+            minimal_persons=not permissions.has_manager_permissions(),
         )
-        permissions_service.check_project_access(task["project_id"])
-        permissions_service.check_entity_access(task["entity_id"])
         if permissions.has_client_permissions():
             task = entities_service.blank_task_for_client(task)
             task["persons"] = []

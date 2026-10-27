@@ -1,5 +1,5 @@
 from tests.base import ApiDBTestCase
-from zou.app.services import projects_service
+from zou.app.services import projects_service, tasks_service
 from zou.app.utils import fields
 
 
@@ -129,3 +129,95 @@ class ClientTaskViewTestCase(ApiDBTestCase):
             self.assert_full(self.get(path)[0])
             self.log_in_client()
             self.assert_blank(self.get(path)[0])
+
+
+class TaskFullPersonsTestCase(ApiDBTestCase):
+    """
+    The task page embeds the assignees and the assigner of the task, shaped
+    as the person routes shape them: whole for managers, minimal for the
+    other studio roles.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project_status()
+        self.generate_fixture_project()
+        self.generate_fixture_asset_type()
+        self.generate_fixture_department()
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status()
+        self.generate_fixture_asset()
+        self.generate_fixture_task()
+        self.path = f"data/tasks/{self.task.id}/full"
+        for user in (
+            self.generate_fixture_user_manager(),
+            self.generate_fixture_user_supervisor(),
+            self.generate_fixture_user_cg_artist(),
+            self.generate_fixture_user_vendor(),
+        ):
+            projects_service.add_team_member(str(self.project.id), user["id"])
+        # A vendor only reaches the entities they hold a task on.
+        tasks_service.assign_task(self.task.id, self.user_vendor["id"])
+        self.assignee_ids = sorted(
+            [str(self.person.id), self.user_vendor["id"]]
+        )
+
+    def test_managers_get_the_whole_persons(self):
+        self.log_in_manager()
+        task = self.get(self.path)
+        self.assertIn("email", task["assigner"])
+        self.assertEqual(
+            sorted(person["id"] for person in task["persons"]),
+            self.assignee_ids,
+        )
+        for person in task["persons"]:
+            self.assertIn("email", person)
+
+    def test_other_roles_get_the_minimal_persons(self):
+        minimal_fields = set(self.assigner.present_minimal(relations=True))
+        for log_in in (
+            self.log_in_supervisor,
+            self.log_in_cg_artist,
+            self.log_in_vendor,
+        ):
+            with self.subTest(log_in.__name__):
+                log_in()
+                task = self.get(self.path)
+                self.assertEqual(task["assigner"]["id"], str(self.assigner.id))
+                self.assertEqual(set(task["assigner"]), minimal_fields)
+                self.assertEqual(
+                    sorted(person["id"] for person in task["persons"]),
+                    self.assignee_ids,
+                )
+                for person in task["persons"]:
+                    self.assertEqual(set(person), minimal_fields)
+
+    def get_as(self, user, project_role):
+        projects_service.add_team_member(
+            str(self.project.id), user["id"], role=project_role
+        )
+        self.log_in(user["email"])
+        return self.get(self.path)
+
+    def test_admins_get_the_whole_persons(self):
+        task = self.get(self.path)
+        self.assertIn("email", task["assigner"])
+        for person in task["persons"]:
+            self.assertIn("email", person)
+
+    def test_the_role_on_the_project_shapes_the_persons(self):
+        task = self.get_as(self.user_manager, "user")
+        self.assertNotIn("email", task["assigner"])
+        for person in task["persons"]:
+            self.assertNotIn("email", person)
+
+    def test_a_manager_on_the_project_gets_the_whole_persons(self):
+        task = self.get_as(self.user_supervisor, "manager")
+        self.assertIn("email", task["assigner"])
+        for person in task["persons"]:
+            self.assertIn("email", person)
+
+    def test_a_client_on_the_project_gets_no_persons(self):
+        task = self.get_as(self.user_manager, "client")
+        self.assertEqual(task["persons"], [])
+        self.assertNotIn("assigner", task)
