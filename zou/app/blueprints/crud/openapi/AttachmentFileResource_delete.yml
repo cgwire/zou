@@ -1,8 +1,8 @@
-Delete a attachment file
+Delete an attachment file
 ---
 tags:
   - Crud
-description: Delete a attachment file. You must be an administrator.
+description: Delete an attachment file. You must be an administrator.
 parameters:
   - in: path
     name: instance_id
@@ -18,6 +18,6 @@ responses:
   400:
     description: Other data uses this row
   403:
-    description: You cannot delete this attachment file
+    description: You are not an administrator
   404:
     description: The attachment file does not exist

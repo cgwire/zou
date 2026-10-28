@@ -1,8 +1,8 @@
-Delete a organisation
+Delete an organisation
 ---
 tags:
   - Crud
-description: Delete a organisation. You must be an administrator.
+description: Delete an organisation. You must be an administrator.
 parameters:
   - in: path
     name: instance_id
@@ -18,6 +18,6 @@ responses:
   400:
     description: Other data uses this row
   403:
-    description: You cannot delete this organisation
+    description: You are not an administrator
   404:
     description: The organisation does not exist

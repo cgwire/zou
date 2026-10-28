@@ -3,8 +3,12 @@ Update a working file
 tags:
   - Crud
 description: Update the fields of a working file. Send only the fields to
-  change. You cannot change id, created_at, updated_at. Dates use the ISO
-  8601 format.
+  change. You cannot change id, created_at, updated_at. Dates use the ISO 8601
+  format. The validation_status must be validated, rejected or neutral. You
+  must be an administrator, or a manager or a client of the project. Other
+  members of the project can change it if they are an assignee of the task or
+  the creator of the entity. A supervisor can also change it if the task type
+  is in their departments.
 parameters:
   - in: path
     name: instance_id
@@ -69,6 +73,6 @@ responses:
     description: The body is not valid, a date is not valid, or a field
       breaks a database constraint
   403:
-    description: You cannot update this working file
+    description: You cannot act on the task of this working file
   404:
     description: The working file does not exist

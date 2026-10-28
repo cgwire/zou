@@ -1,8 +1,8 @@
-Delete a asset instance
+Delete an asset instance
 ---
 tags:
   - Crud
-description: Delete a asset instance. You must be an administrator.
+description: Delete an asset instance. You must be an administrator.
 parameters:
   - in: path
     name: instance_id
@@ -18,6 +18,6 @@ responses:
   400:
     description: Other data uses this row
   403:
-    description: You cannot delete this asset instance
+    description: You are not an administrator
   404:
     description: The asset instance does not exist

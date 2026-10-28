@@ -1,8 +1,8 @@
-Delete a api event
+Delete an API event
 ---
 tags:
   - Crud
-description: Delete a api event. You must be an administrator.
+description: Delete an API event. You must be an administrator.
 parameters:
   - in: path
     name: instance_id
@@ -18,6 +18,6 @@ responses:
   400:
     description: Other data uses this row
   403:
-    description: You cannot delete this api event
+    description: You are not an administrator
   404:
     description: The api event does not exist

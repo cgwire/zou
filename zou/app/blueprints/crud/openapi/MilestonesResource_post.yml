@@ -2,7 +2,8 @@ Create a milestone
 ---
 tags:
   - Crud
-description: Create a milestone. Send the fields of the new row in JSON.
+description: Create a milestone. Send the fields of the new row in JSON. You
+  must be an administrator, or a manager in the team of the project.
 requestBody:
   required: true
   content:
@@ -60,4 +61,5 @@ responses:
     description: The body is not valid, or a field breaks a database
       constraint
   403:
-    description: You cannot create a milestone
+    description: You are not an administrator or a manager in the
+      team of the project

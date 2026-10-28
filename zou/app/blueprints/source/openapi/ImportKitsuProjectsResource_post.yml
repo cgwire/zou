@@ -1,7 +1,7 @@
-Import projects from an other Kitsu instance
+Import projects from another Kitsu instance
 ---
-description: 'Import projects from an other Kitsu instance. Synchronization tools
-  use this route to copy data from an other Kitsu instance. Send a JSON list of
+description: 'Import projects from another Kitsu instance. Synchronization tools
+  use this route to copy data from another Kitsu instance. Send a JSON list of
   rows, with their identifiers. A row that exists is updated. Else, it is created.
   Only an administrator can import: for other users, the route skips all the rows
   and returns an empty list.'

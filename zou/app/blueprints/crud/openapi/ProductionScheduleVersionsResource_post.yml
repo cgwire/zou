@@ -3,7 +3,8 @@ Create a production schedule version
 tags:
   - Crud
 description: Create a production schedule version. Send the fields of the
-  new row in JSON.
+  new row in JSON. You must be a manager in the team of the project, or an
+  administrator.
 requestBody:
   required: true
   content:
@@ -52,4 +53,4 @@ responses:
     description: The body is not valid, or a field breaks a database
       constraint
   403:
-    description: You cannot create a production schedule version
+    description: You are not a manager in the team of the project

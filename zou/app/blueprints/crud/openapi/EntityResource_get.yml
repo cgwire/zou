@@ -1,8 +1,10 @@
-Get a entity
+Get an entity
 ---
 tags:
   - Crud
-description: Get a entity.
+description: Get an entity. You must have access to its project. A vendor
+  must also have a task on the entity. The response has a type field, for
+  example Asset or Shot.
 parameters:
   - in: path
     name: instance_id
@@ -63,6 +65,7 @@ responses:
   400:
     description: The identifier is not a valid UUID
   403:
-    description: You cannot read this entity
+    description: You do not have access to the project, or you are a vendor
+      without a task on the entity
   404:
     description: The entity does not exist

@@ -3,7 +3,7 @@ Copy the client comments to the artists
 description: Artists do not see the comments of clients. For each task of
   the list, copy the last client comment into a new comment of the current
   user. Then the artists see it. The status of the task does not change. A
-  task without client comment, or a task of an other project, is skipped.
+  task without client comment, or a task of another project, is skipped.
   You must be a manager of the project.
 tags:
   - Comments

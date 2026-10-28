@@ -64,7 +64,7 @@ responses:
               description: Last update timestamp
               example: '2023-01-01T12:00:00Z'
   400:
-    description: An other folder of the project has this name, or the name
+    description: Another folder of the project has this name, or the name
       is not valid
   403:
     description: You are not a manager or a supervisor of the project

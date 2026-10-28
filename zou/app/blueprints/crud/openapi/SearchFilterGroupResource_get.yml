@@ -50,6 +50,6 @@ responses:
   400:
     description: The identifier is not a valid UUID
   403:
-    description: You cannot read this search filter group
+    description: You are not an administrator
   404:
     description: The search filter group does not exist

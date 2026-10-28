@@ -3,7 +3,8 @@ Update a production schedule version
 tags:
   - Crud
 description: Update the fields of a production schedule version. Send only
-  the fields to change. You cannot change id, created_at, updated_at and
+  the fields to change. You must be a manager in the team of the project, or
+  an administrator. You cannot change id, created_at, updated_at and
   project_id. Dates use the ISO 8601 format.
 parameters:
   - in: path
@@ -55,6 +56,6 @@ responses:
     description: The body is not valid, a date is not valid, or a field
       breaks a database constraint
   403:
-    description: You cannot update this production schedule version
+    description: You are not a manager in the team of the project
   404:
     description: The production schedule version does not exist

@@ -2,11 +2,12 @@ Get time spent rows
 ---
 tags:
   - Crud
-description: Get the time spent rows. Add a query parameter for each column
-  to filter on, for example name=Modeling. The name filter does not make a
-  difference between upper case and lower case. To get the rows that have
-  one value of a list, give the list in JSON, for example
-  task_status_id=["<id1>","<id2>"]. You must be an administrator.
+description: Get the time spent rows. Add a query parameter for each column to
+  filter on, for example name=Modeling. The name filter does not make a
+  difference between upper case and lower case. To get the rows that have one
+  value of a list, give the list in JSON, for example
+  task_status_id=["<id1>","<id2>"]. To get a range of dates, give both
+  start_date and end_date. You must be an administrator.
 parameters:
   - in: query
     name: start_date
@@ -91,4 +92,4 @@ responses:
   400:
     description: A filter is not valid
   403:
-    description: You cannot read these rows
+    description: You are not an administrator

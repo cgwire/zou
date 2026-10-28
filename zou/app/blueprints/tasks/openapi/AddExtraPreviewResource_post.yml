@@ -2,7 +2,7 @@ Upload an extra preview of a comment
 ---
 tags:
   - Tasks
-description: Upload the file of an other preview of a comment. A comment can
+description: Upload the file of another preview of a comment. A comment can
   have several previews in the same revision. Send the file in a multipart
   form.
 parameters:

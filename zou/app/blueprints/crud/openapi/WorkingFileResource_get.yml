@@ -2,8 +2,9 @@ Get a working file
 ---
 tags:
   - Crud
-description: Get a working file. You must have access to the task of the
-  file.
+description: Get a working file. You must be an administrator or a member of
+  the project team of the task. A vendor must also have a task assigned on the
+  entity of the task.
 parameters:
   - in: path
     name: instance_id
@@ -43,6 +44,7 @@ responses:
   400:
     description: The identifier is not valid
   403:
-    description: You cannot read this working file
+    description: You are not in the project team, or you are a vendor without
+      a task on this entity
   404:
     description: The working file does not exist

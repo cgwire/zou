@@ -2,7 +2,10 @@ Delete a playlist
 ---
 tags:
   - Crud
-description: Delete a playlist.
+description: Delete a playlist. Its notifications, build jobs, movie files
+  and share links are deleted too. You must be an administrator, or a
+  manager in the team of the project. A supervisor in the team can also do
+  it on the playlists they created and on the playlists with no creator.
 parameters:
   - in: path
     name: instance_id
@@ -18,6 +21,7 @@ responses:
   400:
     description: Other data uses this row
   403:
-    description: You cannot delete this playlist
+    description: You are not a manager in the team of the project, or a
+      supervisor in the team who created the playlist
   404:
     description: The playlist does not exist

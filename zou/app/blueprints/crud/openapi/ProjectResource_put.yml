@@ -3,8 +3,13 @@ Update a project
 tags:
   - Crud
 description: Update the fields of a project. Send only the fields to change.
-  You cannot change id, created_at, updated_at. Dates use the ISO 8601
-  format.
+  You must be a manager in the team of the project, or an administrator. You
+  cannot change id, created_at, updated_at and team. Use the team routes to
+  change the team. The route checks production_style, resolution and the
+  movie bitrates. A null production_style gives 2d3d.
+  preview_background_file_id must be in the preview background files of the
+  project. A tvshow project gets a first episode if it has none. Dates use
+  the ISO 8601 format.
 parameters:
   - in: path
     name: instance_id
@@ -73,6 +78,6 @@ responses:
     description: The body is not valid, a date is not valid, or a field
       breaks a database constraint
   403:
-    description: You cannot update this project
+    description: You are not a manager in the team of the project
   404:
     description: The project does not exist

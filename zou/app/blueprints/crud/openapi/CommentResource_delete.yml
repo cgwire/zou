@@ -3,9 +3,9 @@ Delete a comment
 tags:
   - Crud
 description: Delete a comment. After the deletion, the task gets the status
-  and the data of its last comment. A manager of the project can delete all
-  the comments of the project. Other users can delete their own comments
-  only.
+  and the data of its last comment. An administrator or a manager of the
+  project can delete all the comments of the project. Other users can delete
+  their own comments only.
 parameters:
   - in: path
     name: instance_id
@@ -21,6 +21,7 @@ responses:
   400:
     description: Cannot delete comment or integrity error
   403:
-    description: You cannot delete this comment
+    description: You are not a manager of the project, and the comment is
+      not yours
   404:
     description: The comment does not exist

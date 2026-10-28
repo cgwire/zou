@@ -6,7 +6,11 @@ description: Get the metadata descriptor rows. Add a query parameter for
   each column to filter on, for example name=Modeling. The name filter does
   not make a difference between upper case and lower case. To get the rows
   that have one value of a list, give the list in JSON, for example
-  task_status_id=["<id1>","<id2>"].
+  task_status_id=["<id1>","<id2>"]. If you are not an administrator, you get
+  only the descriptors of the open projects of your team. Your role on each
+  project sets what you get. A client gets only the descriptors for clients.
+  A vendor gets only the descriptors of their departments or of no
+  department.
 parameters:
   - in: query
     name: page

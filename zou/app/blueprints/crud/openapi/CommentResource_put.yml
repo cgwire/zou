@@ -3,8 +3,19 @@ Update a comment
 tags:
   - Crud
 description: Update the fields of a comment. Send only the fields to change.
-  You cannot change id, created_at, updated_at. Dates use the ISO 8601
-  format.
+  You cannot change id, created_at, updated_at, mentions and
+  department_mentions. Dates use the ISO 8601 format. The mentions are
+  computed again from the text. You become the editor of the comment. An
+  administrator can change all the fields. Other users must be in the team
+  of the project. A manager of the project can change all the fields. Other
+  users must be able to read the comment and cannot change for_client. Only
+  the author can change the fields other than pinned and checklist. Only a
+  supervisor of the department of the task type, or without a department,
+  can change pinned. Only the author, an assignee of the task or such a
+  supervisor can change checklist. You cannot give the comment to another
+  person or move it to another task. To change task_status_id, you must have
+  action access to the task and access to the status. A status change resets
+  the task data.
 parameters:
   - in: path
     name: instance_id
@@ -78,6 +89,7 @@ responses:
     description: The body is not valid, a date is not valid, or a field
       breaks a database constraint
   403:
-    description: You cannot update this comment
+    description: You are not in the team of the project, or your role cannot
+      change these fields
   404:
     description: The comment does not exist

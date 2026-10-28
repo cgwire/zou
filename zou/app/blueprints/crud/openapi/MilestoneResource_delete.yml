@@ -2,7 +2,8 @@ Delete a milestone
 ---
 tags:
   - Crud
-description: Delete a milestone.
+description: Delete a milestone. You must be an administrator, or a manager
+  in the team of the project.
 parameters:
   - in: path
     name: instance_id
@@ -18,6 +19,7 @@ responses:
   400:
     description: Other data uses this row
   403:
-    description: You cannot delete this milestone
+    description: You are not an administrator or a manager in the
+      team of the project
   404:
     description: The milestone does not exist

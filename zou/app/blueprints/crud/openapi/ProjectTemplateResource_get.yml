@@ -2,14 +2,15 @@ Get a project template
 ---
 tags:
   - Crud
-description: Get a project template.
+description: Get a project template. You must be a manager or an
+  administrator.
 responses:
   200:
     description: The project template
   400:
     description: The identifier is not a valid UUID
   403:
-    description: You cannot read this project template
+    description: You are not a manager or an administrator
   404:
     description: The project template does not exist
 parameters:

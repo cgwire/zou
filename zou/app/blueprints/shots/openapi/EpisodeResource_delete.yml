@@ -2,7 +2,7 @@ Delete an episode
 ---
 tags:
   - Shots
-description: Delete a episode. The creator of the episode can delete it if
+description: Delete an episode. The creator of the episode can delete it if
   the creator is in the project team. Other users must be managers of the
   project. If the episode has tasks, the episode is only marked as canceled.
   Use force=true to delete the episode and all its related data.

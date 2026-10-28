@@ -37,4 +37,4 @@ responses:
     description: You are not a manager of the project
   404:
     description: The playlist or the share link does not exist, or the token
-      is for an other playlist
+      is for another playlist

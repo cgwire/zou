@@ -4,7 +4,8 @@ tags:
   - Crud
 description: Get the events of the API, for example task:update. Add a query
   parameter for each column to filter on. Use page and limit to get the
-  events page by page. You must be an administrator.
+  events page by page. Without page, you get 1000 events or fewer. You must
+  be an administrator.
 parameters:
   - in: query
     name: page

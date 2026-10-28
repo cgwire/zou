@@ -2,7 +2,8 @@ Delete a preview background file
 ---
 tags:
   - Crud
-description: Delete a preview background file. You must be an administrator.
+description: Delete a preview background file. Its stored files are deleted
+  too. You must be an administrator.
 parameters:
   - in: path
     name: instance_id
@@ -18,6 +19,6 @@ responses:
   400:
     description: Other data uses this row
   403:
-    description: You cannot delete this preview background file
+    description: You are not an administrator
   404:
     description: The preview background file does not exist

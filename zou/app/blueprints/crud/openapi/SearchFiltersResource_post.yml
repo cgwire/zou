@@ -67,4 +67,4 @@ responses:
     description: The body is not valid, or a field breaks a database
       constraint
   403:
-    description: You cannot create a search filter
+    description: You are not an administrator

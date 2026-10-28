@@ -1,6 +1,6 @@
-Move a comment to an other task
+Move a comment to another task
 ---
-description: Move a comment to an other task of the same entity. The entity
+description: Move a comment to another task of the same entity. The entity
   can be a shot, an asset, a sequence, an episode or an edit. The comment
   keeps its text, attachments, mentions, creation date and status change.
   The notifications and the news of the comment move to the new task. Thus,

@@ -1,8 +1,10 @@
-Get a asset instance
+Get an asset instance
 ---
 tags:
   - Crud
-description: Get a asset instance.
+description: Get an asset instance. An administrator can read all the asset
+  instances. Other users must have access to the project of the asset. A
+  vendor must also have a task on the asset.
 parameters:
   - in: path
     name: instance_id
@@ -53,6 +55,7 @@ responses:
   400:
     description: The identifier is not a valid UUID
   403:
-    description: You cannot read this asset instance
+    description: You do not have access to the project of the asset, or you
+      are a vendor without a task on the asset
   404:
     description: The asset instance does not exist

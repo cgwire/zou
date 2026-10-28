@@ -2,9 +2,15 @@ Update a task
 ---
 tags:
   - Crud
-description: Update the fields of a task. Send only the fields to change.
-  You cannot change id, created_at, updated_at and project_id. Dates use the
-  ISO 8601 format.
+description: Update the fields of a task. Send only the fields to change. You
+  cannot change id, created_at, updated_at and project_id. Dates use the ISO
+  8601 format. You must be an administrator or a manager of the project. A
+  supervisor of the project can change only priority, start_date, due_date,
+  estimation, difficulty and data. The task type must also be in the
+  departments of the supervisor, if they have departments. The data field
+  merges into the current metadata. A bot made for previews cannot be an
+  assignee. A change of assignees sends task:assign and task:unassign events
+  and notifies the new assignees.
 parameters:
   - in: path
     name: instance_id
@@ -83,6 +89,7 @@ responses:
     description: The body is not valid, a date is not valid, or a field
       breaks a database constraint
   403:
-    description: You cannot update this task
+    description: You are not a manager of the project, or you are a supervisor
+      and you change a field or a task type that you cannot change
   404:
     description: The task does not exist

@@ -2,10 +2,12 @@ Get project rows
 ---
 tags:
   - Crud
-description: Get the project rows. Add a query parameter for each column to
-  filter on, for example name=Modeling. The name filter does not make a
-  difference between upper case and lower case. To get the rows that have
-  one value of a list, give the list in JSON, for example
+description: Get the project rows. All users can call this route. An
+  administrator gets all the projects. The other users get only the open
+  projects of their teams. Add a query parameter for each column to filter
+  on, for example name=Modeling. The name filter does not make a difference
+  between upper case and lower case. To get the rows that have one value of
+  a list, give the list in JSON, for example
   task_status_id=["<id1>","<id2>"].
 parameters:
   - in: query

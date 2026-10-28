@@ -2,11 +2,19 @@ Update an entity
 ---
 tags:
   - Crud
-description: 'Update the fields of an entity: an asset, a shot, a sequence, an
-  episode, an edit or a concept. The data field is merged with the current data.
-  Send only the keys to change. When the frames or the name of a shot change,
-  a new version of the shot is saved. Changes of one person that are less than
-  one minute apart update the same version, for five minutes at most.'
+description: Update the fields of an entity. An entity is an asset, a shot,
+  a sequence, an episode, an edit or a concept. Send only the fields to
+  change. You cannot change id, created_at, updated_at, project_id, type,
+  instance_casting, entities_in, entities_out, shotgun_id and created_by. An
+  administrator, a manager of the project or the creator of the entity can
+  change the other fields. The creator must be in the team of the project. A
+  supervisor of the project can change only the data field. Each key must be
+  a metadata descriptor of one of their departments. A supervisor without a
+  department can change all the data keys. The data field is merged with the
+  current data. The name must be unique for the project, the type and the
+  parent. When the frames or the name of a shot change, a new version of the
+  shot is saved. Changes of one person that are less than one minute apart
+  update the same version, for five minutes at most.
 parameters:
   - in: path
     name: instance_id
@@ -52,8 +60,10 @@ responses:
               type: object
               example: {frame_in: 1001, frame_out: 1120}
   400:
-    description: The body is not valid
+    description: The body is not valid, the status is not valid, or another
+      entity has the same name, type and parent in the project
   403:
-    description: You cannot update this entity
+    description: You are not in the team of the project, or your role cannot
+      change these fields
   404:
     description: The entity does not exist

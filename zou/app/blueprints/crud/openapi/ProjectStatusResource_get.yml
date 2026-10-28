@@ -2,7 +2,7 @@ Get a project status
 ---
 tags:
   - Crud
-description: Get a project status.
+description: Get a project status. All users can read project statuses.
 parameters:
   - in: path
     name: instance_id

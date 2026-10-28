@@ -74,4 +74,4 @@ responses:
   400:
     description: A filter is not valid
   403:
-    description: You cannot read these rows
+    description: You are not an administrator

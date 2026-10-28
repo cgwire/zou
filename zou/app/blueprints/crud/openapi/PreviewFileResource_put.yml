@@ -3,8 +3,12 @@ Update a preview file
 tags:
   - Crud
 description: Update the fields of a preview file. Send only the fields to
-  change. You cannot change id, created_at, updated_at. Dates use the ISO
-  8601 format.
+  change. You must be in the team of the project of its task, or an
+  administrator. If you are not a manager, the task must be assigned to you,
+  or you must be a supervisor of the task type. You cannot change id,
+  created_at, updated_at. For a main preview (position 1), the new revision
+  must be unique for the task. The extra previews of the same revision get
+  the new revision too. Dates use the ISO 8601 format.
 parameters:
   - in: path
     name: instance_id
@@ -61,6 +65,8 @@ responses:
     description: The body is not valid, a date is not valid, or a field
       breaks a database constraint
   403:
-    description: You cannot update this preview file
+    description: You are not in the team of the project, or you are not a
+      manager, the task is not assigned to you and you are not a supervisor
+      of the task type
   404:
     description: The preview file does not exist

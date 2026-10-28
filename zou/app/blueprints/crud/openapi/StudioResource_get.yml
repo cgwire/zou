@@ -2,7 +2,7 @@ Get a studio
 ---
 tags:
   - Crud
-description: Get a studio.
+description: Get a studio. All users can read it.
 parameters:
   - in: path
     name: instance_id
@@ -48,7 +48,5 @@ responses:
               example: '2024-01-15T10:30:00Z'
   400:
     description: The identifier is not a valid UUID
-  403:
-    description: You cannot read this studio
   404:
     description: The studio does not exist

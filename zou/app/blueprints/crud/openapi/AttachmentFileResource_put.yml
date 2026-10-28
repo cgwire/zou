@@ -1,9 +1,9 @@
-Update a attachment file
+Update an attachment file
 ---
 tags:
   - Crud
-description: Update the fields of a attachment file. Send only the fields to
-  change. You cannot change id, created_at, updated_at. Dates use the ISO
+description: Update the fields of an attachment file. Send only the fields
+  to change. You cannot change id, created_at, updated_at. Dates use the ISO
   8601 format. You must be an administrator.
 parameters:
   - in: path
@@ -51,6 +51,6 @@ responses:
     description: The body is not valid, a date is not valid, or a field
       breaks a database constraint
   403:
-    description: You cannot update this attachment file
+    description: You are not an administrator
   404:
     description: The attachment file does not exist

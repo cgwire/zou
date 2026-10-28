@@ -1,6 +1,6 @@
-Copy the task dates of an other schedule version
+Copy the task dates of another schedule version
 ---
-description: Copy the task dates of an other production schedule version
+description: Copy the task dates of another production schedule version
   into this version. A production schedule version is a copy of the
   schedule. You can change it, and then apply it to the tasks. You must be a
   manager of the project.

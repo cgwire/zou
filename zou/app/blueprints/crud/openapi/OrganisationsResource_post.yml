@@ -1,8 +1,8 @@
-Create a organisation
+Create an organisation
 ---
 tags:
   - Crud
-description: Create a organisation. Send the fields of the new row in JSON.
+description: Create an organisation. Send the fields of the new row in JSON.
   You must be an administrator.
 requestBody:
   required: true
@@ -49,4 +49,4 @@ responses:
     description: The body is not valid, or a field breaks a database
       constraint
   403:
-    description: You cannot create a organisation
+    description: You are not an administrator

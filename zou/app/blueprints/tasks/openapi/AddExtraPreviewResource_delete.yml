@@ -3,9 +3,12 @@ Delete a preview of a comment
 tags:
   - Tasks
 description: Delete a preview of a comment of a task. The preview must be on
-  the comment, and the comment must be on the task. Use force=true to delete
-  the files from the storage now. Else, the purge deletes them later. Only a
-  manager of the project can use force.
+  the comment, and the comment must be on the task. Administrators, and the
+  managers and clients of the project can use this route. Other users must
+  be assignees of the task, supervisors of its department, or creators of
+  its entity. You must also be able to read the comment. Use force=true to
+  delete the files from the storage now. Else, the purge deletes them
+  later. Only a manager of the project can use force.
 parameters:
   - in: path
     name: task_id

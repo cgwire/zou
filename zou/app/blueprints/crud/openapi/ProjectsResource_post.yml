@@ -3,7 +3,13 @@ Create a project
 tags:
   - Crud
 description: Create a project. Send the fields of the new row in JSON. You
-  must be an administrator.
+  must be an administrator. A null production_style gives 2d3d. The route
+  checks production_style, resolution and the movie bitrates. With
+  project_template_id, the route applies the template. The fields you send
+  override the template values. Without project_status_id, the project gets
+  the open status. default_preview_background_file_id must be in
+  preview_background_files. A tvshow project gets a first episode E01. The
+  project gets a copy of the metadata descriptors set for all projects.
 requestBody:
   required: true
   content:
@@ -68,4 +74,4 @@ responses:
     description: The body is not valid, or a field breaks a database
       constraint
   403:
-    description: You cannot create a project
+    description: You are not an administrator

@@ -2,7 +2,11 @@ Get a person
 ---
 tags:
   - Crud
-description: Get a person.
+description: Get a person. All users can call this route. A manager or an
+  administrator gets all the fields but the password and the two-factor
+  secrets. A client can read only the people of the teams of their open
+  projects, with a short set of fields. The other users get a minimal set of
+  fields.
 parameters:
   - in: path
     name: instance_id
@@ -75,6 +79,7 @@ responses:
   400:
     description: The identifier is not a valid UUID
   403:
-    description: You cannot read this person
+    description: You are a client and the person is not in the teams of your
+      projects
   404:
     description: The person does not exist

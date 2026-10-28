@@ -2,7 +2,7 @@ Get a department
 ---
 tags:
   - Crud
-description: Get a department.
+description: Get a department. All users can read the departments.
 parameters:
   - in: path
     name: instance_id
@@ -48,7 +48,5 @@ responses:
               example: '2024-01-15T10:30:00Z'
   400:
     description: The identifier is not a valid UUID
-  403:
-    description: You cannot read this department
   404:
     description: The department does not exist

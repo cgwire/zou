@@ -4,7 +4,9 @@ tags:
   - Crud
 description: Update the fields of a metadata descriptor. Send only the
   fields to change. You cannot change id, created_at, updated_at and
-  project_id. Dates use the ISO 8601 format. You must be an administrator.
+  project_id. Dates use the ISO 8601 format. data_type must be a known type.
+  For an entity column, a new field_name cannot be the name of a built-in
+  field. You must be an administrator.
 parameters:
   - in: path
     name: instance_id
@@ -71,6 +73,6 @@ responses:
     description: The body is not valid, a date is not valid, or a field
       breaks a database constraint
   403:
-    description: You cannot update this metadata descriptor
+    description: You are not an administrator
   404:
     description: The metadata descriptor does not exist

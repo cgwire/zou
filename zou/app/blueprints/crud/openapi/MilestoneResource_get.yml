@@ -2,7 +2,8 @@ Get a milestone
 ---
 tags:
   - Crud
-description: Get a milestone.
+description: Get a milestone. You must be in the team of its project. A
+  vendor cannot read it.
 parameters:
   - in: path
     name: instance_id
@@ -54,6 +55,7 @@ responses:
   400:
     description: The identifier is not a valid UUID
   403:
-    description: You cannot read this milestone
+    description: You are not in the team of the project, or you
+      are a vendor
   404:
     description: The milestone does not exist

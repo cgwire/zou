@@ -2,7 +2,9 @@ Delete a production schedule version
 ---
 tags:
   - Crud
-description: Delete a production schedule version.
+description: Delete a production schedule version. The versions copied from
+  it and the project that uses it lose their link to it first. You must be a
+  manager in the team of the project, or an administrator.
 parameters:
   - in: path
     name: instance_id
@@ -18,6 +20,6 @@ responses:
   400:
     description: Other data uses this row
   403:
-    description: You cannot delete this production schedule version
+    description: You are not a manager in the team of the project
   404:
     description: The production schedule version does not exist

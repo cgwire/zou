@@ -45,7 +45,7 @@ responses:
         schema:
           type: object
   400:
-    description: The date is not valid, or a supervisor asks for an other
+    description: The date is not valid, or a supervisor asks for another
       department
   403:
     description: You cannot access this project

@@ -2,7 +2,8 @@ Get a preview background file
 ---
 tags:
   - Crud
-description: Get a preview background file.
+description: Get a preview background file. All users can read preview
+  background files.
 parameters:
   - in: path
     name: instance_id

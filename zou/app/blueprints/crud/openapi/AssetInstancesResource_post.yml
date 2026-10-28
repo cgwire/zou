@@ -1,8 +1,8 @@
-Create a asset instance
+Create an asset instance
 ---
 tags:
   - Crud
-description: Create a asset instance. Send the fields of the new row in
+description: Create an asset instance. Send the fields of the new row in
   JSON. You must be an administrator.
 requestBody:
   required: true
@@ -51,4 +51,4 @@ responses:
     description: The body is not valid, or a field breaks a database
       constraint
   403:
-    description: You cannot create a asset instance
+    description: You are not an administrator

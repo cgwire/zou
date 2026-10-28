@@ -2,7 +2,7 @@ Get a software
 ---
 tags:
   - Crud
-description: Get a software.
+description: Get a software. All users can read it.
 parameters:
   - in: path
     name: instance_id
@@ -37,7 +37,5 @@ responses:
               example: '2024-01-15T10:30:00Z'
   400:
     description: The identifier is not valid
-  403:
-    description: You cannot read this software
   404:
     description: The software does not exist

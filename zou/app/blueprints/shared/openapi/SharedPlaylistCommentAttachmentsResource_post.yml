@@ -46,7 +46,7 @@ responses:
   201:
     description: The comment with its attachments
   403:
-    description: Comments are disabled for this link, or an other guest
+    description: Comments are disabled for this link, or another guest
       wrote the comment
   404:
     description: The link is not valid, has expired, or has a password, or

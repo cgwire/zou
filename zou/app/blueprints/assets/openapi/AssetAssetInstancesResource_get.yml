@@ -1,7 +1,7 @@
 Get the asset instances of an asset
 ---
 description: Get the asset instances that are in an asset. An asset instance
-  is a copy of an asset in an other asset.
+  is a copy of an asset in another asset.
 tags:
   - Assets
 parameters:

@@ -1,6 +1,6 @@
-Remove a asset type from a project template
+Remove an asset type from a project template
 ---
-description: Remove a asset type from a project template. The asset type is
+description: Remove an asset type from a project template. The asset type is
   not deleted. You must be an administrator.
 tags:
   - Project Templates

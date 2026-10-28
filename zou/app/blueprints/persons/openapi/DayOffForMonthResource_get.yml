@@ -2,8 +2,9 @@ Get the day offs of a month
 ---
 description: Get the day offs of a month. An administrator gets all the day
   offs. A manager gets the day offs of the persons of their projects. A
-  supervisor gets the dates only, for the persons of their departments.
-  Other users get their own day offs.
+  supervisor gets the dates only, for the persons of their projects who
+  share one of their departments. A supervisor without department gets all
+  the persons of their projects. Other users get their own day offs.
 tags:
   - Persons
 parameters:

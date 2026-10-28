@@ -3,7 +3,8 @@ Create a metadata descriptor
 tags:
   - Crud
 description: Create a metadata descriptor. Send the fields of the new row in
-  JSON. You must be an administrator.
+  JSON. data_type must be a known type. For an entity column, field_name
+  cannot be the name of a built-in field. You must be an administrator.
 requestBody:
   required: true
   content:
@@ -72,4 +73,4 @@ responses:
     description: The body is not valid, or a field breaks a database
       constraint
   403:
-    description: You cannot create a metadata descriptor
+    description: You are not an administrator

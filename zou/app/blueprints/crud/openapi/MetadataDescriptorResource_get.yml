@@ -59,6 +59,6 @@ responses:
   400:
     description: The identifier is not a valid UUID
   403:
-    description: You cannot read this metadata descriptor
+    description: You are not an administrator
   404:
     description: The metadata descriptor does not exist

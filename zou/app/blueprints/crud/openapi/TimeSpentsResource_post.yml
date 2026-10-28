@@ -2,8 +2,9 @@ Create a time spent
 ---
 tags:
   - Crud
-description: Create a time spent. Send the fields of the new row in JSON.
-  You must be an administrator.
+description: Create a time spent. Send the fields of the new row in JSON. The
+  task duration becomes the sum of its time spents. You must be an
+  administrator.
 requestBody:
   required: true
   content:
@@ -70,4 +71,4 @@ responses:
     description: The body is not valid, or a field breaks a database
       constraint
   403:
-    description: You cannot create a time spent
+    description: You are not an administrator

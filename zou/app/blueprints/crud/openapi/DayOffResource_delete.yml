@@ -2,7 +2,8 @@ Delete a day off
 ---
 tags:
   - Crud
-description: Delete a day off.
+description: Delete a day off. Only an administrator or the person of the
+  day off can delete it.
 parameters:
   - in: path
     name: instance_id
@@ -18,6 +19,6 @@ responses:
   400:
     description: Other data uses this row
   403:
-    description: You cannot delete this day off
+    description: You are not the person of the day off or an administrator
   404:
     description: The day off does not exist

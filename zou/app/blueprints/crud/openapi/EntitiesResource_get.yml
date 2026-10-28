@@ -6,7 +6,10 @@ description: Get the entity rows. Add a query parameter for each column to
   filter on, for example name=Modeling. The name filter does not make a
   difference between upper case and lower case. To get the rows that have
   one value of a list, give the list in JSON, for example
-  task_status_id=["<id1>","<id2>"].
+  task_status_id=["<id1>","<id2>"]. An administrator gets all the entities.
+  Other users get the entities of the open projects where they are in the
+  team. A vendor gets only the entities with a task assigned to them. Each
+  row has a type field, for example Asset or Shot.
 parameters:
   - in: query
     name: page
@@ -73,5 +76,3 @@ responses:
                   example: 1
   400:
     description: A filter is not valid
-  403:
-    description: You cannot read these rows

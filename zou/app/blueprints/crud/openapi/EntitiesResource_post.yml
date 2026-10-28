@@ -1,8 +1,10 @@
-Create a entity
+Create an entity
 ---
 tags:
   - Crud
-description: Create a entity. Send the fields of the new row in JSON.
+description: Create an entity. Send the fields of the new row in JSON. You
+  must be an administrator or a manager of the project. You become the
+  creator of the entity. The status must be a valid entity status.
 requestBody:
   required: true
   content:
@@ -69,7 +71,7 @@ responses:
               format: date-time
               example: '2024-01-15T10:30:00Z'
   400:
-    description: The body is not valid, or a field breaks a database
-      constraint
+    description: The status is not valid, the body is not valid, or a field
+      breaks a database constraint
   403:
-    description: You cannot create a entity
+    description: You are not a manager of the project

@@ -2,7 +2,11 @@ Get a project
 ---
 tags:
   - Crud
-description: Get a project.
+description: Get a project. You must be in the team of the project, or an
+  administrator. The response gives project_status_name. With relations (the
+  default), it also gives the metadata descriptors, the task type priorities
+  and the task status links. A client gets only the descriptors shared with
+  clients. A vendor gets only the descriptors of their departments.
 parameters:
   - in: path
     name: instance_id
@@ -77,6 +81,6 @@ responses:
   400:
     description: The identifier is not a valid UUID
   403:
-    description: You cannot read this project
+    description: You are not in the team of the project
   404:
     description: The project does not exist

@@ -2,7 +2,7 @@ Get the quota shots of a person for a day
 ---
 description: 'Get the shots that count in the quota of a person for a day. A quota
   shot is a shot that the person ended. Give project_id to read the quotas of
-  an other person: you must be a manager or a supervisor of the project. Without
+  another person: you must be a manager or a supervisor of the project. Without
   project_id, you can read your own quotas only.'
 tags:
   - Persons

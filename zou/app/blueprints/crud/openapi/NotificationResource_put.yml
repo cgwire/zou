@@ -59,6 +59,6 @@ responses:
     description: The body is not valid, a date is not valid, or a field
       breaks a database constraint
   403:
-    description: You cannot update this notification
+    description: You are not an administrator
   404:
     description: The notification does not exist

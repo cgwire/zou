@@ -56,6 +56,6 @@ responses:
   400:
     description: The identifier is not a valid UUID
   403:
-    description: You cannot read this salary scale
+    description: You are not an administrator
   404:
     description: The salary scale does not exist

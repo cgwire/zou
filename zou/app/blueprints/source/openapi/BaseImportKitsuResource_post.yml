@@ -1,10 +1,10 @@
-Import rows from an other Kitsu instance
+Import rows from another Kitsu instance
 ---
 tags:
   - Import
 description: 'Import rows, for example preview files, time spents, playlists,
-  milestones, notifications or attachment files, from an other Kitsu instance.
-  Synchronization tools use this route to copy data from an other Kitsu instance.
+  milestones, notifications or attachment files, from another Kitsu instance.
+  Synchronization tools use this route to copy data from another Kitsu instance.
   Send a JSON list of rows, with their identifiers. A row that exists is updated.
   Else, it is created. Only an administrator can import: for other users, the
   route skips all the rows and returns an empty list.'

@@ -2,7 +2,11 @@ Get a day off
 ---
 tags:
   - Crud
-description: Get a day off.
+description: Get a day off. An administrator and the person of the day off
+  get all the fields. A manager of a production of the person also gets all
+  the fields. A supervisor of such a production gets the day off without the
+  description. The supervisor must have no department, or share a department
+  with the person.
 parameters:
   - in: path
     name: instance_id
@@ -55,6 +59,7 @@ responses:
   400:
     description: The identifier is not a valid UUID
   403:
-    description: You cannot read this day off
+    description: You are not the person, an administrator, or a manager or
+      supervisor of a production of the person
   404:
     description: The day off does not exist

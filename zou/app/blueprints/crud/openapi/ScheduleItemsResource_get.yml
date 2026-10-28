@@ -2,10 +2,10 @@ Get schedule item rows
 ---
 tags:
   - Crud
-description: Get the schedule item rows. Add a query parameter for each
-  column to filter on, for example name=Modeling. The name filter does not
-  make a difference between upper case and lower case. To get the rows that
-  have one value of a list, give the list in JSON, for example
+description: Get the schedule item rows. Add a query parameter for each column
+  to filter on, for example name=Modeling. The name filter does not make a
+  difference between upper case and lower case. To get the rows that have one
+  value of a list, give the list in JSON, for example
   task_status_id=["<id1>","<id2>"]. You must be an administrator.
 parameters:
   - in: query
@@ -75,4 +75,4 @@ responses:
   400:
     description: A filter is not valid
   403:
-    description: You cannot read these rows
+    description: You are not an administrator

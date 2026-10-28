@@ -3,7 +3,8 @@ Create a preview background file
 tags:
   - Crud
 description: Create a preview background file. Send the fields of the new
-  row in JSON. You must be an administrator.
+  row in JSON. You must be an administrator. The name must be unique. If
+  is_default is true, the other files stop being the default.
 requestBody:
   required: true
   content:
@@ -50,4 +51,4 @@ responses:
     description: The body is not valid, or a field breaks a database
       constraint
   403:
-    description: You cannot create a preview background file
+    description: You are not an administrator

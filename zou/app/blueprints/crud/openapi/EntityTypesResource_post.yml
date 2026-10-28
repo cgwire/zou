@@ -1,9 +1,10 @@
-Create a entity type
+Create an entity type
 ---
 tags:
   - Crud
-description: Create a entity type. Send the fields of the new row in JSON.
-  You must be an administrator.
+description: Create an entity type. Send the fields of the new row in JSON.
+  The name must be unique. The check does not make a difference between
+  upper case and lower case. You must be an administrator.
 requestBody:
   required: true
   content:
@@ -46,4 +47,4 @@ responses:
     description: The body is not valid, or a field breaks a database
       constraint
   403:
-    description: You cannot create a entity type
+    description: You are not an administrator

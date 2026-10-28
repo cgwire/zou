@@ -3,8 +3,20 @@ Update a person
 tags:
   - Crud
 description: Update the fields of a person. Send only the fields to change.
-  You cannot change id, created_at, updated_at. Dates use the ISO 8601
-  format.
+  You can change your own person. To change another person, you must be an
+  administrator. If you are not an administrator, the route ignores role,
+  departments, active, is_bot, archived, studio_id, last_presence, the login
+  failure fields and the LDAP, OIDC and SAML fields. A bot cannot change its
+  own expiration_date. You cannot change id, created_at, updated_at,
+  password, jti, the two-factor fields and the preview account fields. You
+  cannot change a preview account. You cannot deactivate a protected account
+  of another person or change its role. You cannot activate a person who is
+  not a bot when the user limit is reached. The route checks role,
+  contract_type, country, locale, display_date_format,
+  two_factor_authentication, email and expiration_date. A new expiration
+  date cannot be in the past. When you change expiration_date, the response
+  gives a new access_token, unless the date is in the past. Dates use the
+  ISO 8601 format.
 parameters:
   - in: path
     name: instance_id
@@ -113,6 +125,7 @@ responses:
     description: The body is not valid, a date is not valid, or a field
       breaks a database constraint
   403:
-    description: You cannot update this person
+    description: The person is not you and you are not an administrator, or
+      the person is a preview account
   404:
     description: The person does not exist

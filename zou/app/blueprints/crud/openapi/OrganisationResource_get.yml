@@ -1,8 +1,10 @@
-Get a organisation
+Get an organisation
 ---
 tags:
   - Crud
-description: Get a organisation.
+description: Get an organisation. All signed-in users can read it. If you
+  are not an administrator, you do not get the chat tokens and webhooks
+  (chat_token_slack, chat_webhook_mattermost, chat_token_discord).
 parameters:
   - in: path
     name: instance_id

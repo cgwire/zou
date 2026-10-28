@@ -18,6 +18,6 @@ responses:
   400:
     description: Other data uses this row
   403:
-    description: You cannot delete this hardware item
+    description: You are not an administrator
   404:
     description: The hardware item does not exist

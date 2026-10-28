@@ -2,7 +2,9 @@ Get a playlist
 ---
 tags:
   - Crud
-description: Get a playlist.
+description: Get a playlist. You must be in the team of the project, or an
+  administrator. A vendor cannot read playlists. A client can read only the
+  playlists shared with clients.
 parameters:
   - in: path
     name: instance_id
@@ -63,6 +65,7 @@ responses:
   400:
     description: The identifier is not a valid UUID
   403:
-    description: You cannot read this playlist
+    description: You are not in the team of the project, you are a vendor,
+      or you are a client and the playlist is not shared with clients
   404:
     description: The playlist does not exist

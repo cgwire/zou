@@ -1,8 +1,8 @@
-Get a entity link
+Get an entity link
 ---
 tags:
   - Crud
-description: Get a entity link. You must be an administrator.
+description: Get an entity link. You must be an administrator.
 parameters:
   - in: path
     name: instance_id
@@ -57,6 +57,6 @@ responses:
   400:
     description: The identifier is not a valid UUID
   403:
-    description: You cannot read this entity link
+    description: You are not an administrator
   404:
     description: The entity link does not exist

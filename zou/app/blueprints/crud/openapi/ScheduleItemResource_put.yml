@@ -4,7 +4,10 @@ tags:
   - Crud
 description: Update the fields of a schedule item. Send only the fields to
   change. You cannot change id, created_at, updated_at and project_id. Dates
-  use the ISO 8601 format.
+  use the ISO 8601 format. A man_days value sent as a string is ignored. You
+  must be an administrator, or a manager or a supervisor of the project. A
+  supervisor with departments can change only the items of a task type of
+  these departments.
 parameters:
   - in: path
     name: instance_id
@@ -63,6 +66,7 @@ responses:
     description: The body is not valid, a date is not valid, or a field
       breaks a database constraint
   403:
-    description: You cannot update this schedule item
+    description: You are not a manager or a supervisor of the project, or the
+      task type is not in your departments
   404:
     description: The schedule item does not exist

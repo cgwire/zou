@@ -4,7 +4,10 @@ tags:
   - Crud
 description: Update the fields of a day off. Send only the fields to change.
   You cannot change id, created_at, updated_at. Dates use the ISO 8601
-  format.
+  format. Only an administrator or the person of the day off can update it.
+  Only an administrator can give the day off to another person. The day off
+  must not overlap another day off of the person. The time spent of the
+  person on the days of the day off is deleted.
 parameters:
   - in: path
     name: instance_id
@@ -62,9 +65,9 @@ responses:
               format: date-time
               example: '2024-01-15T11:00:00Z'
   400:
-    description: The body is not valid, a date is not valid, or a field
-      breaks a database constraint
+    description: The day off overlaps another day off, the body is not
+      valid, a date is not valid, or a field breaks a database constraint
   403:
-    description: You cannot update this day off
+    description: You are not the person of the day off or an administrator
   404:
     description: The day off does not exist

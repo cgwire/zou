@@ -1,8 +1,11 @@
-Delete a entity
+Delete an entity
 ---
 tags:
   - Crud
-description: Delete a entity.
+description: Delete an entity. An administrator, a manager of the project or
+  the creator of the entity can delete it. The links of the entity are
+  deleted too. You cannot delete an entity that has tasks, versions or child
+  entities.
 parameters:
   - in: path
     name: instance_id
@@ -16,8 +19,10 @@ responses:
   204:
     description: The entity is deleted
   400:
-    description: Other data uses this row
+    description: Tasks, versions, child entities or other data use this
+      entity
   403:
-    description: You cannot delete this entity
+    description: You are not a manager of the project or the creator of the
+      entity
   404:
     description: The entity does not exist

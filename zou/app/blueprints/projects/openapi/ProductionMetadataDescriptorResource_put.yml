@@ -61,7 +61,7 @@ responses:
           type: object
   400:
     description: The name is empty, the data type is not valid, or the name
-      is used by an other column of the same type, by a built-in field, or
+      is used by another column of the same type, by a built-in field, or
       is too long
   403:
     description: You cannot change this descriptor

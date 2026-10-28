@@ -3,7 +3,8 @@ Create a working file
 tags:
   - Crud
 description: Create a working file. Send the fields of the new row in JSON.
-  You must be an administrator.
+  The validation_status must be validated, rejected or neutral. You must be an
+  administrator.
 requestBody:
   required: true
   content:
@@ -68,4 +69,4 @@ responses:
     description: The body is not valid, or a field breaks a database
       constraint
   403:
-    description: You cannot create a working file
+    description: You are not an administrator

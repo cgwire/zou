@@ -49,4 +49,4 @@ responses:
     description: The body is not valid, or a field breaks a database
       constraint
   403:
-    description: You cannot create a project status
+    description: You are not an administrator

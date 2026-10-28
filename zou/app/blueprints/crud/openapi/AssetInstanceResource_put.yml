@@ -1,10 +1,12 @@
-Update a asset instance
+Update an asset instance
 ---
 tags:
   - Crud
-description: Update the fields of a asset instance. Send only the fields to
-  change. You cannot change id, created_at, updated_at. Dates use the ISO
-  8601 format.
+description: Update the fields of an asset instance. Send only the fields to
+  change. You cannot change id, created_at, updated_at and number. Dates use
+  the ISO 8601 format. An administrator can update all the asset instances.
+  Other users must have access to the project of the asset. A vendor must
+  also have a task on the asset.
 parameters:
   - in: path
     name: instance_id
@@ -55,6 +57,7 @@ responses:
     description: The body is not valid, a date is not valid, or a field
       breaks a database constraint
   403:
-    description: You cannot update this asset instance
+    description: You do not have access to the project of the asset, or you
+      are a vendor without a task on the asset
   404:
     description: The asset instance does not exist

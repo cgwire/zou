@@ -19,7 +19,7 @@ responses:
   200:
     description: The updated descriptors
   400:
-    description: A value is not valid, or the name is used by an other
+    description: A value is not valid, or the name is used by another
       column of the same type, by a built-in field, or is too long
   403:
     description: You do not have the manager role

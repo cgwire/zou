@@ -2,7 +2,7 @@ Get a file status
 ---
 tags:
   - Crud
-description: Get a file status.
+description: Get a file status. All signed-in users can read it.
 parameters:
   - in: path
     name: instance_id

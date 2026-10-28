@@ -2,7 +2,10 @@ Get a task
 ---
 tags:
   - Crud
-description: Get a task.
+description: Get a task. You must be an administrator or a member of the
+  project team. A vendor must also have a task assigned on the entity of the
+  task. A client gets the studio fields blank, for example assignees,
+  duration, estimation and dates.
 parameters:
   - in: path
     name: instance_id
@@ -65,6 +68,7 @@ responses:
   400:
     description: The identifier is not a valid UUID
   403:
-    description: You cannot read this task
+    description: You are not in the project team, or you are a vendor without
+      a task on this entity
   404:
     description: The task does not exist

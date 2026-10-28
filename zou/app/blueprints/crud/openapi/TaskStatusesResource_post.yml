@@ -2,8 +2,9 @@ Create a task status
 ---
 tags:
   - Crud
-description: Create a task status. Send the fields of the new row in JSON.
-  You must be an administrator.
+description: Create a task status. Send the fields of the new row in JSON. If
+  is_default is true, the previous default status stops being the default. You
+  must be an administrator.
 requestBody:
   required: true
   content:
@@ -62,4 +63,4 @@ responses:
     description: The body is not valid, or a field breaks a database
       constraint
   403:
-    description: You cannot create a task status
+    description: You are not an administrator

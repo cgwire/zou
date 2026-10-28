@@ -2,10 +2,15 @@ Get preview file rows
 ---
 tags:
   - Crud
-description: Get the preview file rows. Add a query parameter for each
-  column to filter on, for example name=Modeling. The name filter does not
-  make a difference between upper case and lower case. To get the rows that
-  have one value of a list, give the list in JSON, for example
+description: Get the preview file rows. All users can call this route. An
+  administrator gets all the preview files. The other users get only the
+  preview files of the tasks of open projects. A vendor gets only the
+  preview files of the tasks assigned to them. The other users get only the
+  preview files of the projects of their teams. Give project_id to get the
+  preview files of one project. Add a query parameter for each column to
+  filter on, for example name=Modeling. The name filter does not make a
+  difference between upper case and lower case. To get the rows that have
+  one value of a list, give the list in JSON, for example
   task_status_id=["<id1>","<id2>"].
 parameters:
   - in: query

@@ -38,7 +38,7 @@ responses:
   204:
     description: The comment is deleted
   403:
-    description: Comments are disabled for this link, or an other guest
+    description: Comments are disabled for this link, or another guest
       wrote the comment
   404:
     description: The link is not valid, has expired, or has a password, or

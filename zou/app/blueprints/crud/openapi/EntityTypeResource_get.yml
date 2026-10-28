@@ -1,8 +1,8 @@
-Get a entity type
+Get an entity type
 ---
 tags:
   - Crud
-description: Get a entity type.
+description: Get an entity type. All signed-in users can read it.
 parameters:
   - in: path
     name: instance_id

@@ -2,11 +2,11 @@ Get project template rows
 ---
 tags:
   - Crud
-description: Get the project template rows. Add a query parameter for each
-  column to filter on, for example name=Modeling. The name filter does not
-  make a difference between upper case and lower case. To get the rows that
-  have one value of a list, give the list in JSON, for example
-  task_status_id=["<id1>","<id2>"].
+description: Get the project template rows. You must be a manager or an
+  administrator. Add a query parameter for each column to filter on, for
+  example name=Modeling. The name filter does not make a difference between
+  upper case and lower case. To get the rows that have one value of a list,
+  give the list in JSON, for example task_status_id=["<id1>","<id2>"].
 responses:
   200:
     description: The list of project template rows, or a page of rows if you
@@ -14,7 +14,7 @@ responses:
   400:
     description: A filter is not valid
   403:
-    description: You cannot read these rows
+    description: You are not a manager or an administrator
 parameters:
   - in: query
     name: page

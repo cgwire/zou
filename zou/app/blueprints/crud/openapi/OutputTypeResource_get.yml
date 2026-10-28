@@ -1,8 +1,8 @@
-Get a output type
+Get an output type
 ---
 tags:
   - Crud
-description: Get a output type.
+description: Get an output type. All users can read output types.
 parameters:
   - in: path
     name: instance_id

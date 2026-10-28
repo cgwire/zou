@@ -1,8 +1,8 @@
-Delete a entity link
+Delete an entity link
 ---
 tags:
   - Crud
-description: Delete a entity link. You must be an administrator.
+description: Delete an entity link. You must be an administrator.
 parameters:
   - in: path
     name: instance_id
@@ -18,6 +18,6 @@ responses:
   400:
     description: Other data uses this row
   403:
-    description: You cannot delete this entity link
+    description: You are not an administrator
   404:
     description: The entity link does not exist

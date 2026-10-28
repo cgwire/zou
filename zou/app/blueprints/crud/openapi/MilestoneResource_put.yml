@@ -4,7 +4,8 @@ tags:
   - Crud
 description: Update the fields of a milestone. Send only the fields to
   change. You cannot change id, created_at, updated_at and project_id. Dates
-  use the ISO 8601 format.
+  use the ISO 8601 format. You must be an administrator, or a manager in the
+  team of the project.
 parameters:
   - in: path
     name: instance_id
@@ -63,6 +64,7 @@ responses:
     description: The body is not valid, a date is not valid, or a field
       breaks a database constraint
   403:
-    description: You cannot update this milestone
+    description: You are not an administrator or a manager in the
+      team of the project
   404:
     description: The milestone does not exist

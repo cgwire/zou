@@ -1,7 +1,7 @@
 Disable the two-factor authentication of a person
 ---
 description: Disable the two-factor authentication of a person. You cannot
-  disable it for an other administrator. The person gets an email about the
+  disable it for another administrator. The person gets an email about the
   change. You must be an administrator.
 tags:
   - Persons
@@ -27,7 +27,7 @@ responses:
               description: Success flag
               example: true
   400:
-    description: The person is inactive, the person is an other
+    description: The person is inactive, the person is another
       administrator, or the two-factor authentication is not enabled
     content:
       application/json:

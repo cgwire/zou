@@ -4,9 +4,13 @@ tags:
   - Crud
 description: Get the task rows. Add a query parameter for each column to
   filter on, for example name=Modeling. The name filter does not make a
-  difference between upper case and lower case. To get the rows that have
-  one value of a list, give the list in JSON, for example
-  task_status_id=["<id1>","<id2>"].
+  difference between upper case and lower case. To get the rows that have one
+  value of a list, give the list in JSON, for example
+  task_status_id=["<id1>","<id2>"]. Add episode_id to get the tasks of the
+  shots of this episode. An administrator gets all the tasks. A vendor gets
+  only the tasks assigned to them. Other users get the tasks of the open
+  projects of their team. A client gets the studio fields blank, for example
+  assignees, duration, estimation and dates.
 parameters:
   - in: query
     name: episode_id
@@ -81,5 +85,3 @@ responses:
                   example: 1
   400:
     description: A filter is not valid
-  403:
-    description: You cannot read these rows

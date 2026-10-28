@@ -2,11 +2,14 @@ Get production schedule version task link rows
 ---
 tags:
   - Crud
-description: Get the production schedule version task link rows. Add a query
-  parameter for each column to filter on, for example name=Modeling. The
-  name filter does not make a difference between upper case and lower case.
-  To get the rows that have one value of a list, give the list in JSON, for
-  example task_status_id=["<id1>","<id2>"].
+description: Get the production schedule version task link rows. Give
+  project_id to get the rows of a project. You must then be in the team of
+  this project. Without project_id, you must be an administrator. A vendor
+  or a client cannot call this route. Add a query parameter for each column
+  to filter on, for example name=Modeling. The name filter does not make a
+  difference between upper case and lower case. To get the rows that have
+  one value of a list, give the list in JSON, for example
+  task_status_id=["<id1>","<id2>"].
 parameters:
   - in: query
     name: project_id
@@ -83,4 +86,6 @@ responses:
   400:
     description: A filter is not valid
   403:
-    description: You cannot read these rows
+    description: You are a vendor or a client, you are not in the team of
+      the project, or you give no project_id and you are not an
+      administrator

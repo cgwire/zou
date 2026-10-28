@@ -1,7 +1,7 @@
 Get the entities linked to a concept
 ---
 description: Get the entities that are linked to a concept, with the tasks
-  of each entity. Give the identifier of a concept. For an other type of
+  of each entity. Give the identifier of a concept. For another type of
   entity, the list is empty. Clients cannot use this route.
 tags:
   - Entities
