@@ -92,8 +92,8 @@ def get_casting(shot_id):
 def get_production_episodes_casting(project_id):
     """
     Return all assets and their number of occurences listed in episodes of given
-    project. Result is returned as a map where keys are asset IDs and values
-    are casting for given episode.
+    project. Result is returned as a map where keys are episode IDs and values
+    are the casting of the episode, ordered by asset type name then asset name.
     """
     castings = {}
     Episode = aliased(Entity, name="episode")
