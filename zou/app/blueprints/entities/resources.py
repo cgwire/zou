@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
@@ -18,11 +17,14 @@ from zou.app.services import (
     time_spents_service,
 )
 from zou.app.utils import permissions, validation
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 class EntityNewsResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/EntityNewsResource_get.yml")
+    @swag_from(SPECS["EntityNewsResource_get"])
     def get(self, entity_id):
         """
         Get entity news
@@ -36,7 +38,7 @@ class EntityNewsResource(MethodView):
 
 class EntityPreviewFilesResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/EntityPreviewFilesResource_get.yml")
+    @swag_from(SPECS["EntityPreviewFilesResource_get"])
     def get(self, entity_id):
         """
         Get entity preview files
@@ -49,7 +51,7 @@ class EntityPreviewFilesResource(MethodView):
 
 class EntityTimeSpentsResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/EntityTimeSpentsResource_get.yml")
+    @swag_from(SPECS["EntityTimeSpentsResource_get"])
     def get(self, entity_id):
         """
         Get entity time spent
@@ -63,7 +65,7 @@ class EntityTimeSpentsResource(MethodView):
 
 class EntitiesLinkedWithTasksResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/EntitiesLinkedWithTasksResource_get.yml")
+    @swag_from(SPECS["EntitiesLinkedWithTasksResource_get"])
     def get(self, entity_id):
         """
         Get linked entities
@@ -77,7 +79,7 @@ class EntitiesLinkedWithTasksResource(MethodView):
 
 class EntityTaskCreationResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/EntityTaskCreationResource_post.yml")
+    @swag_from(SPECS["EntityTaskCreationResource_post"])
     def post(self, entity_id):
         """
         Create tasks for an entity
@@ -101,7 +103,7 @@ class EntityTaskCreationResource(MethodView):
 
 class ProjectDeleteEntitiesResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/ProjectDeleteEntitiesResource_post.yml")
+    @swag_from(SPECS["ProjectDeleteEntitiesResource_post"])
     def post(self, project_id):
         """
         Delete entities batch

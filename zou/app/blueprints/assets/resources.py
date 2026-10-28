@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -28,6 +27,9 @@ from zou.app.utils import (
     query,
     validation,
 )
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 def check_criterion_access(criterions):
@@ -54,7 +56,7 @@ def check_criterion_access(criterions):
 class AssetResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/AssetResource_get.yml")
+    @swag_from(SPECS["AssetResource_get"])
     def get(self, asset_id):
         """
         Get asset
@@ -65,7 +67,7 @@ class AssetResource(MethodView, ArgsMixin):
         return entities_service.blank_entity_tasks_for_current_user(asset)
 
     @jwt_required()
-    @swag_from("openapi/AssetResource_delete.yml")
+    @swag_from(SPECS["AssetResource_delete"])
     def delete(self, asset_id):
         """
         Delete asset
@@ -87,7 +89,7 @@ class AssetResource(MethodView, ArgsMixin):
 class AllAssetsResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/AllAssetsResource_get.yml")
+    @swag_from(SPECS["AllAssetsResource_get"])
     def get(self):
         """
         Get all assets
@@ -104,7 +106,7 @@ class AllAssetsResource(MethodView):
 class AssetsAndTasksResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/AssetsAndTasksResource_get.yml")
+    @swag_from(SPECS["AssetsAndTasksResource_get"])
     def get(self):
         """
         Get assets with tasks
@@ -156,7 +158,7 @@ class AssetsAndTasksResource(MethodView, ArgsMixin):
 class AssetTypeResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/AssetTypeResource_get.yml")
+    @swag_from(SPECS["AssetTypeResource_get"])
     def get(self, asset_type_id):
         """
         Get asset type
@@ -167,7 +169,7 @@ class AssetTypeResource(MethodView):
 class AssetTypesResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/AssetTypesResource_get.yml")
+    @swag_from(SPECS["AssetTypesResource_get"])
     def get(self):
         """
         Get asset types
@@ -179,7 +181,7 @@ class AssetTypesResource(MethodView):
 class ProjectAssetTypesResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/ProjectAssetTypesResource_get.yml")
+    @swag_from(SPECS["ProjectAssetTypesResource_get"])
     def get(self, project_id):
         """
         Get project asset types
@@ -191,7 +193,7 @@ class ProjectAssetTypesResource(MethodView):
 class ShotAssetTypesResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/ShotAssetTypesResource_get.yml")
+    @swag_from(SPECS["ShotAssetTypesResource_get"])
     def get(self, shot_id):
         """
         Get shot asset types
@@ -204,7 +206,7 @@ class ShotAssetTypesResource(MethodView):
 class ProjectAssetsResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/ProjectAssetsResource_get.yml")
+    @swag_from(SPECS["ProjectAssetsResource_get"])
     def get(self, project_id):
         """
         Get project assets
@@ -219,7 +221,7 @@ class ProjectAssetsResource(MethodView):
 class ProjectAssetTypeAssetsResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/ProjectAssetTypeAssetsResource_get.yml")
+    @swag_from(SPECS["ProjectAssetTypeAssetsResource_get"])
     def get(self, project_id, asset_type_id):
         """
         Get project asset type assets
@@ -235,7 +237,7 @@ class ProjectAssetTypeAssetsResource(MethodView):
 class AssetAssetsResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/AssetAssetsResource_get.yml")
+    @swag_from(SPECS["AssetAssetsResource_get"])
     def get(self, asset_id):
         """
         Get linked assets
@@ -249,7 +251,7 @@ class AssetAssetsResource(MethodView):
 class AssetTasksResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/AssetTasksResource_get.yml")
+    @swag_from(SPECS["AssetTasksResource_get"])
     def get(self, asset_id):
         """
         Get asset tasks
@@ -265,7 +267,7 @@ class AssetTasksResource(MethodView, ArgsMixin):
 class AssetTaskTypesResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/AssetTaskTypesResource_get.yml")
+    @swag_from(SPECS["AssetTaskTypesResource_get"])
     def get(self, asset_id):
         """
         Get asset task types
@@ -279,7 +281,7 @@ class AssetTaskTypesResource(MethodView):
 class NewAssetResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/NewAssetResource_post.yml")
+    @swag_from(SPECS["NewAssetResource_post"])
     def post(self, project_id, asset_type_id):
         """
         Create asset
@@ -303,7 +305,7 @@ class NewAssetResource(MethodView, ArgsMixin):
 class AssetCastingResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/AssetCastingResource_get.yml")
+    @swag_from(SPECS["AssetCastingResource_get"])
     def get(self, asset_id):
         """
         Get asset casting
@@ -314,7 +316,7 @@ class AssetCastingResource(MethodView):
         return breakdown_service.get_casting(asset_id)
 
     @jwt_required()
-    @swag_from("openapi/AssetCastingResource_put.yml")
+    @swag_from(SPECS["AssetCastingResource_put"])
     def put(self, asset_id):
         """
         Update asset casting
@@ -331,7 +333,7 @@ class AssetCastingResource(MethodView):
 class AssetCastInResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/AssetCastInResource_get.yml")
+    @swag_from(SPECS["AssetCastInResource_get"])
     def get(self, asset_id):
         """
         Get shots casting asset
@@ -345,7 +347,7 @@ class AssetCastInResource(MethodView):
 class AssetShotAssetInstancesResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/AssetShotAssetInstancesResource_get.yml")
+    @swag_from(SPECS["AssetShotAssetInstancesResource_get"])
     def get(self, asset_id):
         """
         Get shot asset instances
@@ -357,7 +359,7 @@ class AssetShotAssetInstancesResource(MethodView):
 
 class AssetSceneAssetInstancesResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/AssetSceneAssetInstancesResource_get.yml")
+    @swag_from(SPECS["AssetSceneAssetInstancesResource_get"])
     def get(self, asset_id):
         """
         Get scene asset instances
@@ -369,7 +371,7 @@ class AssetSceneAssetInstancesResource(MethodView):
 
 class AssetAssetInstancesResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/AssetAssetInstancesResource_get.yml")
+    @swag_from(SPECS["AssetAssetInstancesResource_get"])
     def get(self, asset_id):
         """
         Get asset instances
@@ -379,7 +381,7 @@ class AssetAssetInstancesResource(MethodView, ArgsMixin):
         return breakdown_service.get_asset_instances_for_asset(asset_id)
 
     @jwt_required()
-    @swag_from("openapi/AssetAssetInstancesResource_post.yml")
+    @swag_from(SPECS["AssetAssetInstancesResource_post"])
     def post(self, asset_id):
         """
         Create asset instance
@@ -410,7 +412,7 @@ class BaseSetSharedAssetsResource(MethodView, ArgsMixin):
 class SetSharedProjectAssetsResource(BaseSetSharedAssetsResource):
 
     @jwt_required()
-    @swag_from("openapi/SetSharedProjectAssetsResource_post.yml")
+    @swag_from(SPECS["SetSharedProjectAssetsResource_post"])
     def post(self, project_id):
         """
         Set project assets shared
@@ -426,7 +428,7 @@ class SetSharedProjectAssetsResource(BaseSetSharedAssetsResource):
 class SetSharedProjectAssetTypeAssetsResource(BaseSetSharedAssetsResource):
 
     @jwt_required()
-    @swag_from("openapi/SetSharedProjectAssetTypeAssetsResource_post.yml")
+    @swag_from(SPECS["SetSharedProjectAssetTypeAssetsResource_post"])
     def post(self, project_id, asset_type_id):
         """
         Set asset type assets shared
@@ -438,7 +440,7 @@ class SetSharedProjectAssetTypeAssetsResource(BaseSetSharedAssetsResource):
 class SetSharedAssetsResource(BaseSetSharedAssetsResource):
 
     @jwt_required()
-    @swag_from("openapi/SetSharedAssetsResource_post.yml")
+    @swag_from(SPECS["SetSharedAssetsResource_post"])
     def post(self):
         """
         Set assets shared
@@ -455,7 +457,7 @@ class SetSharedAssetsResource(BaseSetSharedAssetsResource):
 
 class ProjectAssetsSharedUsedResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ProjectAssetsSharedUsedResource_get.yml")
+    @swag_from(SPECS["ProjectAssetsSharedUsedResource_get"])
     def get(self, project_id):
         """
         Get shared assets used in project
@@ -467,7 +469,7 @@ class ProjectAssetsSharedUsedResource(MethodView):
 class ProjectEpisodeAssetsSharedUsedResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/ProjectEpisodeAssetsSharedUsedResource_get.yml")
+    @swag_from(SPECS["ProjectEpisodeAssetsSharedUsedResource_get"])
     def get(self, project_id, episode_id):
         """
         Get shared assets used in episode

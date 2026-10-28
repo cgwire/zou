@@ -1,7 +1,6 @@
 import datetime
 
 import sqlalchemy.orm as orm
-from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 from sqlalchemy.inspection import inspect
 
@@ -16,6 +15,9 @@ from zou.app.models.person import (
     normalize_country,
     normalize_locale,
 )
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/person.yml")
 
 # Columns behind Person.present_minimal, the list payload of every non admin
 # but clients, plus is_guest and email. Email is not in that payload but the
@@ -140,7 +142,7 @@ class PersonsResource(BaseModelsResource):
         return query
 
     @jwt_required()
-    @swag_from("openapi/PersonsResource_get.yml")
+    @swag_from(SPECS["PersonsResource_get"])
     def get(self):
         """
         Get persons
@@ -148,7 +150,7 @@ class PersonsResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/PersonsResource_post.yml")
+    @swag_from(SPECS["PersonsResource_post"])
     def post(self):
         """
         Create person
@@ -313,7 +315,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
         return True
 
     @jwt_required()
-    @swag_from("openapi/PersonResource_get.yml")
+    @swag_from(SPECS["PersonResource_get"])
     def get(self, instance_id):
         """
         Get person
@@ -321,7 +323,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/PersonResource_put.yml")
+    @swag_from(SPECS["PersonResource_put"])
     def put(self, instance_id):
         """
         Update person
@@ -490,7 +492,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
         return instance_dict
 
     @jwt_required()
-    @swag_from("openapi/PersonResource_delete.yml")
+    @swag_from(SPECS["PersonResource_delete"])
     def delete(self, instance_id):
         """
         Delete person

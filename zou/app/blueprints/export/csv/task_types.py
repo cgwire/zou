@@ -1,9 +1,11 @@
-from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.export.csv.base import BaseCsvExport
 from zou.app.models.department import Department
 from zou.app.models.task_type import TaskType
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 class TaskTypesCsvExport(BaseCsvExport):
@@ -13,7 +15,7 @@ class TaskTypesCsvExport(BaseCsvExport):
         self.name = "task_types_export"
 
     @jwt_required()
-    @swag_from("openapi/TaskTypesCsvExport_get.yml")
+    @swag_from(SPECS["TaskTypesCsvExport_get"])
     def get(self):
         """
         Export task types csv

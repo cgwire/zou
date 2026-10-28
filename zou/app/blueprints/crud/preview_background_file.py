@@ -1,10 +1,12 @@
-from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.exceptions import WrongParameterException
 from zou.app.models.preview_background_file import PreviewBackgroundFile
 from zou.app.services import deletion_service, files_service
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/preview_background_file.yml")
 
 
 class PreviewBackgroundFilesResource(BaseModelsResource):
@@ -15,7 +17,7 @@ class PreviewBackgroundFilesResource(BaseModelsResource):
         return True
 
     @jwt_required()
-    @swag_from("openapi/PreviewBackgroundFilesResource_get.yml")
+    @swag_from(SPECS["PreviewBackgroundFilesResource_get"])
     def get(self):
         """
         Get preview background files
@@ -23,7 +25,7 @@ class PreviewBackgroundFilesResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/PreviewBackgroundFilesResource_post.yml")
+    @swag_from(SPECS["PreviewBackgroundFilesResource_post"])
     def post(self):
         """
         Create preview background file
@@ -55,7 +57,7 @@ class PreviewBackgroundFileResource(BaseModelResource):
         return True
 
     @jwt_required()
-    @swag_from("openapi/PreviewBackgroundFileResource_get.yml")
+    @swag_from(SPECS["PreviewBackgroundFileResource_get"])
     def get(self, instance_id):
         """
         Get preview background file
@@ -63,7 +65,7 @@ class PreviewBackgroundFileResource(BaseModelResource):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/PreviewBackgroundFileResource_put.yml")
+    @swag_from(SPECS["PreviewBackgroundFileResource_put"])
     def put(self, instance_id):
         """
         Update preview background file
@@ -71,7 +73,7 @@ class PreviewBackgroundFileResource(BaseModelResource):
         return super().put(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/PreviewBackgroundFileResource_delete.yml")
+    @swag_from(SPECS["PreviewBackgroundFileResource_delete"])
     def delete(self, instance_id):
         """
         Delete preview background file

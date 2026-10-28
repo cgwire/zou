@@ -1,8 +1,10 @@
-from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.models.chat_message import ChatMessage
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/chat_message.yml")
 
 
 class ChatMessagesResource(BaseModelsResource):
@@ -10,7 +12,7 @@ class ChatMessagesResource(BaseModelsResource):
         BaseModelsResource.__init__(self, ChatMessage)
 
     @jwt_required()
-    @swag_from("openapi/ChatMessagesResource_get.yml")
+    @swag_from(SPECS["ChatMessagesResource_get"])
     def get(self):
         """
         Get chat messages
@@ -18,7 +20,7 @@ class ChatMessagesResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/ChatMessagesResource_post.yml")
+    @swag_from(SPECS["ChatMessagesResource_post"])
     def post(self):
         """
         Create chat message
@@ -31,7 +33,7 @@ class ChatMessageResource(BaseModelResource):
         BaseModelResource.__init__(self, ChatMessage)
 
     @jwt_required()
-    @swag_from("openapi/ChatMessageResource_get.yml")
+    @swag_from(SPECS["ChatMessageResource_get"])
     def get(self, instance_id):
         """
         Get chat message
@@ -39,7 +41,7 @@ class ChatMessageResource(BaseModelResource):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/ChatMessageResource_put.yml")
+    @swag_from(SPECS["ChatMessageResource_put"])
     def put(self, instance_id):
         """
         Update chat message
@@ -47,7 +49,7 @@ class ChatMessageResource(BaseModelResource):
         return super().put(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/ChatMessageResource_delete.yml")
+    @swag_from(SPECS["ChatMessageResource_delete"])
     def delete(self, instance_id):
         """
         Delete chat message

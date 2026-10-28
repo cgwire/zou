@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask import current_app
 from flask_jwt_extended import jwt_required
 from sqlalchemy.exc import StatementError
@@ -11,6 +10,9 @@ from zou.app.models.project import Project
 from zou.app.models.working_file import WorkingFile
 from zou.app.services import files_service, permissions_service, user_service
 from zou.app.utils import permissions
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/working_file.yml")
 
 
 def check_validation_status(data):
@@ -36,7 +38,7 @@ class WorkingFilesResource(BaseModelsResource):
         return True
 
     @jwt_required()
-    @swag_from("openapi/WorkingFilesResource_get.yml")
+    @swag_from(SPECS["WorkingFilesResource_get"])
     def get(self):
         """
         Get working files
@@ -44,7 +46,7 @@ class WorkingFilesResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/WorkingFilesResource_post.yml")
+    @swag_from(SPECS["WorkingFilesResource_post"])
     def post(self):
         """
         Create working file
@@ -87,7 +89,7 @@ class WorkingFileResource(BaseModelResource):
         return True
 
     @jwt_required()
-    @swag_from("openapi/WorkingFileResource_put.yml")
+    @swag_from(SPECS["WorkingFileResource_put"])
     def put(self, instance_id):
         """
         Update working file
@@ -95,7 +97,7 @@ class WorkingFileResource(BaseModelResource):
         return super().put(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/WorkingFileResource_delete.yml")
+    @swag_from(SPECS["WorkingFileResource_delete"])
     def delete(self, instance_id):
         """
         Delete working file
@@ -103,7 +105,7 @@ class WorkingFileResource(BaseModelResource):
         return super().delete(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/WorkingFileResource_get.yml")
+    @swag_from(SPECS["WorkingFileResource_get"])
     def get(self, instance_id):
         """
         Get working file

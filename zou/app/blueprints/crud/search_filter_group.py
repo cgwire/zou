@@ -1,8 +1,10 @@
-from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.models.search_filter_group import SearchFilterGroup
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/search_filter_group.yml")
 
 
 class SearchFilterGroupsResource(BaseModelsResource):
@@ -10,7 +12,7 @@ class SearchFilterGroupsResource(BaseModelsResource):
         BaseModelsResource.__init__(self, SearchFilterGroup)
 
     @jwt_required()
-    @swag_from("openapi/SearchFilterGroupsResource_get.yml")
+    @swag_from(SPECS["SearchFilterGroupsResource_get"])
     def get(self):
         """
         Get search filter groups
@@ -18,7 +20,7 @@ class SearchFilterGroupsResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/SearchFilterGroupsResource_post.yml")
+    @swag_from(SPECS["SearchFilterGroupsResource_post"])
     def post(self):
         """
         Create search filter group
@@ -31,7 +33,7 @@ class SearchFilterGroupResource(BaseModelResource):
         BaseModelResource.__init__(self, SearchFilterGroup)
 
     @jwt_required()
-    @swag_from("openapi/SearchFilterGroupResource_get.yml")
+    @swag_from(SPECS["SearchFilterGroupResource_get"])
     def get(self, instance_id):
         """
         Get search filter group
@@ -39,7 +41,7 @@ class SearchFilterGroupResource(BaseModelResource):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/SearchFilterGroupResource_put.yml")
+    @swag_from(SPECS["SearchFilterGroupResource_put"])
     def put(self, instance_id):
         """
         Update search filter group
@@ -47,7 +49,7 @@ class SearchFilterGroupResource(BaseModelResource):
         return super().put(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/SearchFilterGroupResource_delete.yml")
+    @swag_from(SPECS["SearchFilterGroupResource_delete"])
     def delete(self, instance_id):
         """
         Delete search filter group

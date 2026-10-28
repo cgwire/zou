@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from slugify import slugify
 
 from zou.app.blueprints.source.csv.base import BaseCsvProjectImportResource
@@ -11,10 +10,13 @@ from zou.app.services import (
     shots_service,
 )
 from zou.app.utils import events
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 class CastingCsvImportResource(BaseCsvProjectImportResource):
-    @swag_from("openapi/CastingCsvImportResource_post.yml")
+    @swag_from(SPECS["CastingCsvImportResource_post"])
     def post(self, project_id):
         """
         Import casting csv

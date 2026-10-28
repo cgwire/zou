@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask import current_app
 from flask_jwt_extended import jwt_required
 from sqlalchemy.exc import IntegrityError, StatementError
@@ -10,6 +9,9 @@ from zou.app.services import (
     permissions_service,
     status_automations_service,
 )
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/status_automation.yml")
 
 
 class StatusAutomationsResource(BaseModelsResource):
@@ -21,7 +23,7 @@ class StatusAutomationsResource(BaseModelsResource):
         return True
 
     @jwt_required()
-    @swag_from("openapi/StatusAutomationsResource_get.yml")
+    @swag_from(SPECS["StatusAutomationsResource_get"])
     def get(self):
         """
         Get status automations
@@ -29,7 +31,7 @@ class StatusAutomationsResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/StatusAutomationsResource_post.yml")
+    @swag_from(SPECS["StatusAutomationsResource_post"])
     def post(self):
         """
         Create status automation
@@ -46,7 +48,7 @@ class StatusAutomationResource(BaseModelResource):
         BaseModelResource.__init__(self, StatusAutomation)
 
     @jwt_required()
-    @swag_from("openapi/StatusAutomationResource_get.yml")
+    @swag_from(SPECS["StatusAutomationResource_get"])
     def get(self, instance_id):
         """
         Get status automation
@@ -54,7 +56,7 @@ class StatusAutomationResource(BaseModelResource):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/StatusAutomationResource_put.yml")
+    @swag_from(SPECS["StatusAutomationResource_put"])
     def put(self, instance_id):
         """
         Update status automation
@@ -66,7 +68,7 @@ class StatusAutomationResource(BaseModelResource):
         return status_automation
 
     @jwt_required()
-    @swag_from("openapi/StatusAutomationResource_delete.yml")
+    @swag_from(SPECS["StatusAutomationResource_delete"])
     def delete(self, instance_id):
         """
         Delete status automation

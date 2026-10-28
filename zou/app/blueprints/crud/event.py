@@ -1,8 +1,10 @@
-from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.models.event import ApiEvent
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/event.yml")
 
 
 class EventsResource(BaseModelsResource):
@@ -10,7 +12,7 @@ class EventsResource(BaseModelsResource):
         BaseModelsResource.__init__(self, ApiEvent)
 
     @jwt_required()
-    @swag_from("openapi/EventsResource_get.yml")
+    @swag_from(SPECS["EventsResource_get"])
     def get(self):
         """
         Get events
@@ -35,7 +37,7 @@ class EventResource(BaseModelResource):
         BaseModelResource.__init__(self, ApiEvent)
 
     @jwt_required()
-    @swag_from("openapi/EventResource_get.yml")
+    @swag_from(SPECS["EventResource_get"])
     def get(self, instance_id):
         """
         Get event
@@ -43,7 +45,7 @@ class EventResource(BaseModelResource):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/EventResource_put.yml")
+    @swag_from(SPECS["EventResource_put"])
     def put(self, instance_id):
         """
         Update event
@@ -51,7 +53,7 @@ class EventResource(BaseModelResource):
         return super().put(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/EventResource_delete.yml")
+    @swag_from(SPECS["EventResource_delete"])
     def delete(self, instance_id):
         """
         Delete event

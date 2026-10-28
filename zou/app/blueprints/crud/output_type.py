@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask import current_app
 from flask_jwt_extended import jwt_required
 from sqlalchemy.exc import StatementError
@@ -7,6 +6,9 @@ from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.exceptions import WrongParameterException
 from zou.app.models.output_type import OutputType
 from zou.app.services import files_service
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/output_type.yml")
 
 
 class OutputTypesResource(BaseModelsResource):
@@ -25,7 +27,7 @@ class OutputTypeResource(BaseModelResource):
         return True
 
     @jwt_required()
-    @swag_from("openapi/OutputTypeResource_get.yml")
+    @swag_from(SPECS["OutputTypeResource_get"])
     def get(self, instance_id):
         """
         Get output type

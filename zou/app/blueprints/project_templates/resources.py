@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -22,6 +21,9 @@ from zou.app.exceptions import (
 )
 from zou.app.services import project_templates_service
 from zou.app.utils import permissions, validation
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 # ---------------------------------------------------------------------------
 # Link management
@@ -30,7 +32,7 @@ from zou.app.utils import permissions, validation
 
 class ProjectTemplateTaskTypesResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ProjectTemplateTaskTypesResource_get.yml")
+    @swag_from(SPECS["ProjectTemplateTaskTypesResource_get"])
     def get(self, project_template_id):
         """
         List task types attached to a project template.
@@ -44,7 +46,7 @@ class ProjectTemplateTaskTypesResource(MethodView):
             return {"message": "Project template not found"}, 404
 
     @jwt_required()
-    @swag_from("openapi/ProjectTemplateTaskTypesResource_post.yml")
+    @swag_from(SPECS["ProjectTemplateTaskTypesResource_post"])
     def post(self, project_template_id):
         """
         Attach a task type to a project template.
@@ -68,7 +70,7 @@ class ProjectTemplateTaskTypesResource(MethodView):
 
 class ProjectTemplateTaskTypeResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ProjectTemplateTaskTypeResource_delete.yml")
+    @swag_from(SPECS["ProjectTemplateTaskTypeResource_delete"])
     def delete(self, project_template_id, task_type_id):
         """
         Detach a task type from a project template.
@@ -85,7 +87,7 @@ class ProjectTemplateTaskTypeResource(MethodView):
 
 class ProjectTemplateTaskStatusesResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ProjectTemplateTaskStatusesResource_get.yml")
+    @swag_from(SPECS["ProjectTemplateTaskStatusesResource_get"])
     def get(self, project_template_id):
         """
         List task statuses attached to a project template.
@@ -99,7 +101,7 @@ class ProjectTemplateTaskStatusesResource(MethodView):
             return {"message": "Project template not found"}, 404
 
     @jwt_required()
-    @swag_from("openapi/ProjectTemplateTaskStatusesResource_post.yml")
+    @swag_from(SPECS["ProjectTemplateTaskStatusesResource_post"])
     def post(self, project_template_id):
         """
         Attach a task status to a project template.
@@ -127,7 +129,7 @@ class ProjectTemplateTaskStatusesResource(MethodView):
 
 class ProjectTemplateTaskStatusResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ProjectTemplateTaskStatusResource_delete.yml")
+    @swag_from(SPECS["ProjectTemplateTaskStatusResource_delete"])
     def delete(self, project_template_id, task_status_id):
         """
         Detach a task status from a project template.
@@ -144,7 +146,7 @@ class ProjectTemplateTaskStatusResource(MethodView):
 
 class ProjectTemplateAssetTypesResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ProjectTemplateAssetTypesResource_get.yml")
+    @swag_from(SPECS["ProjectTemplateAssetTypesResource_get"])
     def get(self, project_template_id):
         """
         List asset types attached to a project template.
@@ -158,7 +160,7 @@ class ProjectTemplateAssetTypesResource(MethodView):
             return {"message": "Project template not found"}, 404
 
     @jwt_required()
-    @swag_from("openapi/ProjectTemplateAssetTypesResource_post.yml")
+    @swag_from(SPECS["ProjectTemplateAssetTypesResource_post"])
     def post(self, project_template_id):
         """
         Attach an asset type to a project template.
@@ -178,7 +180,7 @@ class ProjectTemplateAssetTypesResource(MethodView):
 
 class ProjectTemplateAssetTypeResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ProjectTemplateAssetTypeResource_delete.yml")
+    @swag_from(SPECS["ProjectTemplateAssetTypeResource_delete"])
     def delete(self, project_template_id, asset_type_id):
         """
         Detach an asset type from a project template.
@@ -195,7 +197,7 @@ class ProjectTemplateAssetTypeResource(MethodView):
 
 class ProjectTemplateStatusAutomationsResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ProjectTemplateStatusAutomationsResource_get.yml")
+    @swag_from(SPECS["ProjectTemplateStatusAutomationsResource_get"])
     def get(self, project_template_id):
         """
         List status automations attached to a project template.
@@ -209,7 +211,7 @@ class ProjectTemplateStatusAutomationsResource(MethodView):
             return {"message": "Project template not found"}, 404
 
     @jwt_required()
-    @swag_from("openapi/ProjectTemplateStatusAutomationsResource_post.yml")
+    @swag_from(SPECS["ProjectTemplateStatusAutomationsResource_post"])
     def post(self, project_template_id):
         """
         Attach a status automation to a project template.
@@ -231,7 +233,7 @@ class ProjectTemplateStatusAutomationsResource(MethodView):
 
 class ProjectTemplateStatusAutomationResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ProjectTemplateStatusAutomationResource_delete.yml")
+    @swag_from(SPECS["ProjectTemplateStatusAutomationResource_delete"])
     def delete(self, project_template_id, status_automation_id):
         """
         Detach a status automation from a project template.
@@ -248,7 +250,7 @@ class ProjectTemplateStatusAutomationResource(MethodView):
 
 class ProjectTemplateBackgroundsResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ProjectTemplateBackgroundsResource_get.yml")
+    @swag_from(SPECS["ProjectTemplateBackgroundsResource_get"])
     def get(self, project_template_id):
         """
         List preview background files attached to a project template.
@@ -262,7 +264,7 @@ class ProjectTemplateBackgroundsResource(MethodView):
             return {"message": "Project template not found"}, 404
 
     @jwt_required()
-    @swag_from("openapi/ProjectTemplateBackgroundsResource_post.yml")
+    @swag_from(SPECS["ProjectTemplateBackgroundsResource_post"])
     def post(self, project_template_id):
         """
         Attach a preview background file to a project template.
@@ -282,7 +284,7 @@ class ProjectTemplateBackgroundsResource(MethodView):
 
 class ProjectTemplateBackgroundResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ProjectTemplateBackgroundResource_delete.yml")
+    @swag_from(SPECS["ProjectTemplateBackgroundResource_delete"])
     def delete(self, project_template_id, preview_background_file_id):
         """
         Detach a preview background file from a project template.
@@ -299,7 +301,7 @@ class ProjectTemplateBackgroundResource(MethodView):
 
 class ProjectTemplateDefaultBackgroundResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ProjectTemplateDefaultBackgroundResource_put.yml")
+    @swag_from(SPECS["ProjectTemplateDefaultBackgroundResource_put"])
     def put(self, project_template_id):
         """
         Set the default preview background file for a project template.
@@ -319,7 +321,7 @@ class ProjectTemplateDefaultBackgroundResource(MethodView):
 
 class ProjectTemplateMetadataDescriptorsResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ProjectTemplateMetadataDescriptorsResource_put.yml")
+    @swag_from(SPECS["ProjectTemplateMetadataDescriptorsResource_put"])
     def put(self, project_template_id):
         """
         Replace the JSONB metadata descriptors snapshot on a project
@@ -353,7 +355,7 @@ class ProjectTemplateMetadataDescriptorsResource(MethodView):
 
 class ProjectTemplateFromProjectResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ProjectTemplateFromProjectResource_post.yml")
+    @swag_from(SPECS["ProjectTemplateFromProjectResource_post"])
     def post(self, project_id):
         """
         Create a new project template from an existing project's
@@ -377,7 +379,7 @@ class ProjectTemplateFromProjectResource(MethodView):
 
 class ApplyProjectTemplateResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ApplyProjectTemplateResource_post.yml")
+    @swag_from(SPECS["ApplyProjectTemplateResource_post"])
     def post(self, project_id, project_template_id):
         """
         Apply a project template to an existing project. Admin only.
@@ -398,7 +400,7 @@ class ApplyProjectTemplateResource(MethodView):
 
 class ProjectTemplateTaskTypesReorderResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ProjectTemplateTaskTypesReorderResource_post.yml")
+    @swag_from(SPECS["ProjectTemplateTaskTypesReorderResource_post"])
     def post(self, project_template_id):
         """
         Reorder template task types
@@ -412,7 +414,7 @@ class ProjectTemplateTaskTypesReorderResource(MethodView):
 
 class ProjectTemplateTaskStatusesReorderResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ProjectTemplateTaskStatusesReorderResource_post.yml")
+    @swag_from(SPECS["ProjectTemplateTaskStatusesReorderResource_post"])
     def post(self, project_template_id):
         """
         Reorder template task statuses

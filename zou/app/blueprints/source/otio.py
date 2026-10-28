@@ -3,7 +3,6 @@ import pathlib
 import re
 from string import Template
 
-from flasgger import swag_from
 from flask import current_app, request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -23,6 +22,9 @@ from zou.app.services.tasks_service import (
     create_tasks,
 )
 from zou.app.utils import fields
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 mapping_substitutions_to_regex = {
     "${project_name}": r"(?P<project_name>\w*)",
@@ -39,7 +41,7 @@ mapping_substitutions_to_regex = {
 class OTIOBaseResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/OTIOBaseResource_post.yml")
+    @swag_from(SPECS["OTIOBaseResource_post"])
     def post(self, project_id, episode_id=None):
         """
         Import otio base
@@ -309,7 +311,7 @@ class OTIOBaseResource(MethodView, ArgsMixin):
 class OTIOImportResource(OTIOBaseResource):
 
     @jwt_required()
-    @swag_from("openapi/OTIOImportResource_post.yml")
+    @swag_from(SPECS["OTIOImportResource_post"])
     def post(self, **kwargs):
         """
         Import otio EDL
@@ -333,7 +335,7 @@ class OTIOImportResource(OTIOBaseResource):
 class OTIOImportEpisodeResource(OTIOBaseResource):
 
     @jwt_required()
-    @swag_from("openapi/OTIOImportEpisodeResource_post.yml")
+    @swag_from(SPECS["OTIOImportEpisodeResource_post"])
     def post(self, **kwargs):
         """
         Import episode otio

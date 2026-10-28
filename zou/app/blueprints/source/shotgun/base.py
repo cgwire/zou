@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask import current_app, request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -17,6 +16,9 @@ from zou.app.exceptions import (
 )
 from zou.app.services import assets_service, shots_service, tasks_service
 from zou.app.utils import fields, permissions
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 class BaseImportShotgunResource(MethodView):
@@ -24,7 +26,7 @@ class BaseImportShotgunResource(MethodView):
         MethodView.__init__(self)
 
     @jwt_required()
-    @swag_from("openapi/BaseImportShotgunResource_post.yml")
+    @swag_from(SPECS["BaseImportShotgunResource_post"])
     def post(self):
         """
         Import shotgun resource
@@ -152,7 +154,7 @@ class ImportRemoveShotgunBaseResource(MethodView):
         return permissions.check_admin_permissions()
 
     @jwt_required()
-    @swag_from("openapi/ImportRemoveShotgunBaseResource_post.yml")
+    @swag_from(SPECS["ImportRemoveShotgunBaseResource_post"])
     def post(self):
         """
         Remove shotgun resource

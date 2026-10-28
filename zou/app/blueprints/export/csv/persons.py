@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 from sqlalchemy import func
 from sqlalchemy.orm import selectinload
@@ -6,6 +5,9 @@ from sqlalchemy.orm import selectinload
 from zou.app.blueprints.export.csv.base import BaseCsvExport
 from zou.app.models.person import Person
 from zou.app.models.studio import Studio
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 class PersonsCsvExport(BaseCsvExport):
@@ -15,7 +17,7 @@ class PersonsCsvExport(BaseCsvExport):
         self.studio_cache = {}
 
     @jwt_required()
-    @swag_from("openapi/PersonsCsvExport_get.yml")
+    @swag_from(SPECS["PersonsCsvExport_get"])
     def get(self):
         """
         Export persons csv

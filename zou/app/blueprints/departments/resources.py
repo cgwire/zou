@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
@@ -13,13 +12,16 @@ from zou.app.services import (
     permissions_service,
 )
 from zou.app.utils import permissions, validation
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 class AllDepartmentSoftwareResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_admin
-    @swag_from("openapi/AllDepartmentSoftwareResource_get.yml")
+    @swag_from(SPECS["AllDepartmentSoftwareResource_get"])
     def get(self):
         """
         Get all department software licenses
@@ -32,7 +34,7 @@ class AddSoftwareToDepartmentResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_admin
-    @swag_from("openapi/AddSoftwareToDepartmentResource_post.yml")
+    @swag_from(SPECS["AddSoftwareToDepartmentResource_post"])
     def post(self, department_id):
         """
         Add software license to department
@@ -49,7 +51,7 @@ class SoftwareDepartmentResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_admin
-    @swag_from("openapi/SoftwareDepartmentResource_get.yml")
+    @swag_from(SPECS["SoftwareDepartmentResource_get"])
     def get(self, department_id, software_id):
         """
         Get department software license
@@ -65,7 +67,7 @@ class SoftwareDepartmentResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_admin
-    @swag_from("openapi/SoftwareDepartmentResource_delete.yml")
+    @swag_from(SPECS["SoftwareDepartmentResource_delete"])
     def delete(self, department_id, software_id):
         """
         Remove software license from department
@@ -82,7 +84,7 @@ class AllDepartmentHardwareItemsResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_admin
-    @swag_from("openapi/AllDepartmentHardwareItemsResource_get.yml")
+    @swag_from(SPECS["AllDepartmentHardwareItemsResource_get"])
     def get(self):
         """
         Get all department hardware items
@@ -97,7 +99,7 @@ class AddHardwareItemToDepartmentResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_admin
-    @swag_from("openapi/AddHardwareItemToDepartmentResource_post.yml")
+    @swag_from(SPECS["AddHardwareItemToDepartmentResource_post"])
     def post(self, department_id):
         """
         Add hardware item to department
@@ -116,7 +118,7 @@ class HardwareItemDepartmentResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_admin
-    @swag_from("openapi/HardwareItemDepartmentResource_get.yml")
+    @swag_from(SPECS["HardwareItemDepartmentResource_get"])
     def get(self, department_id):
         """
         Get department hardware items
@@ -129,7 +131,7 @@ class HardwareItemDepartmentResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_admin
-    @swag_from("openapi/HardwareItemDepartmentResource_delete.yml")
+    @swag_from(SPECS["HardwareItemDepartmentResource_delete"])
     def delete(self, department_id, hardware_item_id):
         """
         Remove hardware item from department
@@ -145,7 +147,7 @@ class HardwareItemDepartmentResource(MethodView, ArgsMixin):
 class DepartmentPersonsResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/DepartmentPersonsResource_get.yml")
+    @swag_from(SPECS["DepartmentPersonsResource_get"])
     def get(self, department_id):
         """
         Get department members

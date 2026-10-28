@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask import jsonify, request
 from flask.views import MethodView
 
@@ -31,11 +30,14 @@ from zou.app.services import (
     user_service,
 )
 from zou.app.utils import date_helpers, permissions, validation
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 class AssetTasksResource(MethodView):
 
-    @swag_from("openapi/AssetTasksResource_get.yml")
+    @swag_from(SPECS["AssetTasksResource_get"])
     def get(self, asset_id):
         """
         Get asset tasks
@@ -46,7 +48,7 @@ class AssetTasksResource(MethodView):
 
 class AssetTaskTypesResource(MethodView):
 
-    @swag_from("openapi/AssetTaskTypesResource_get.yml")
+    @swag_from(SPECS["AssetTaskTypesResource_get"])
     def get(self, asset_id):
         """
         Get asset task types
@@ -57,7 +59,7 @@ class AssetTaskTypesResource(MethodView):
 
 class ShotTaskTypesResource(MethodView):
 
-    @swag_from("openapi/ShotTaskTypesResource_get.yml")
+    @swag_from(SPECS["ShotTaskTypesResource_get"])
     def get(self, shot_id):
         """
         Get shot task types
@@ -71,7 +73,7 @@ class SceneTaskTypesResource(MethodView):
     Return tasks related to given scene for current user.
     """
 
-    @swag_from("openapi/SceneTaskTypesResource_get.yml")
+    @swag_from(SPECS["SceneTaskTypesResource_get"])
     def get(self, scene_id):
         """
         Get scene task types
@@ -82,7 +84,7 @@ class SceneTaskTypesResource(MethodView):
 
 class SequenceTaskTypesResource(MethodView):
 
-    @swag_from("openapi/SequenceTaskTypesResource_get.yml")
+    @swag_from(SPECS["SequenceTaskTypesResource_get"])
     def get(self, sequence_id):
         """
         Get sequence task types
@@ -93,7 +95,7 @@ class SequenceTaskTypesResource(MethodView):
 
 class AssetTypeAssetsResource(MethodView):
 
-    @swag_from("openapi/AssetTypeAssetsResource_get.yml")
+    @swag_from(SPECS["AssetTypeAssetsResource_get"])
     def get(self, project_id, asset_type_id):
         """
         Get project assets
@@ -107,7 +109,7 @@ class AssetTypeAssetsResource(MethodView):
 
 class OpenProjectsResource(MethodView, ArgsMixin):
 
-    @swag_from("openapi/OpenProjectsResource_get.yml")
+    @swag_from(SPECS["OpenProjectsResource_get"])
     def get(self):
         """
         Get open projects
@@ -118,7 +120,7 @@ class OpenProjectsResource(MethodView, ArgsMixin):
 
 class ProjectSequencesResource(MethodView):
 
-    @swag_from("openapi/ProjectSequencesResource_get.yml")
+    @swag_from(SPECS["ProjectSequencesResource_get"])
     def get(self, project_id):
         """
         Get project sequences
@@ -129,7 +131,7 @@ class ProjectSequencesResource(MethodView):
 
 class ProjectEpisodesResource(MethodView):
 
-    @swag_from("openapi/ProjectEpisodesResource_get.yml")
+    @swag_from(SPECS["ProjectEpisodesResource_get"])
     def get(self, project_id):
         """
         Get project episodes
@@ -140,7 +142,7 @@ class ProjectEpisodesResource(MethodView):
 
 class ProjectAssetTypesResource(MethodView):
 
-    @swag_from("openapi/ProjectAssetTypesResource_get.yml")
+    @swag_from(SPECS["ProjectAssetTypesResource_get"])
     def get(self, project_id):
         """
         Get project asset types
@@ -151,7 +153,7 @@ class ProjectAssetTypesResource(MethodView):
 
 class SequenceShotsResource(MethodView):
 
-    @swag_from("openapi/SequenceShotsResource_get.yml")
+    @swag_from(SPECS["SequenceShotsResource_get"])
     def get(self, sequence_id):
         """
         Get sequence shots
@@ -162,7 +164,7 @@ class SequenceShotsResource(MethodView):
 
 class SequenceScenesResource(MethodView):
 
-    @swag_from("openapi/SequenceScenesResource_get.yml")
+    @swag_from(SPECS["SequenceScenesResource_get"])
     def get(self, sequence_id):
         """
         Get sequence scenes
@@ -173,7 +175,7 @@ class SequenceScenesResource(MethodView):
 
 class ShotTasksResource(MethodView):
 
-    @swag_from("openapi/ShotTasksResource_get.yml")
+    @swag_from(SPECS["ShotTasksResource_get"])
     def get(self, shot_id):
         """
         Get shot tasks
@@ -184,7 +186,7 @@ class ShotTasksResource(MethodView):
 
 class SceneTasksResource(MethodView):
 
-    @swag_from("openapi/SceneTasksResource_get.yml")
+    @swag_from(SPECS["SceneTasksResource_get"])
     def get(self, scene_id):
         """
         Get scene tasks
@@ -195,7 +197,7 @@ class SceneTasksResource(MethodView):
 
 class SequenceTasksResource(MethodView):
 
-    @swag_from("openapi/SequenceTasksResource_get.yml")
+    @swag_from(SPECS["SequenceTasksResource_get"])
     def get(self, sequence_id):
         """
         Get sequence tasks
@@ -206,7 +208,7 @@ class SequenceTasksResource(MethodView):
 
 class TodosResource(MethodView):
 
-    @swag_from("openapi/TodosResource_get.yml")
+    @swag_from(SPECS["TodosResource_get"])
     def get(self):
         """
         Get my tasks
@@ -216,7 +218,7 @@ class TodosResource(MethodView):
 
 class ToChecksResource(MethodView, ArgsMixin):
 
-    @swag_from("openapi/ToChecksResource_get.yml")
+    @swag_from(SPECS["ToChecksResource_get"])
     def get(self):
         """
         Get tasks requiring feedback
@@ -253,7 +255,7 @@ class ToChecksResource(MethodView, ArgsMixin):
 
 class ToChecksFilterValuesResource(MethodView):
 
-    @swag_from("openapi/ToChecksFilterValuesResource_get.yml")
+    @swag_from(SPECS["ToChecksFilterValuesResource_get"])
     def get(self):
         """
         Get filter values for tasks requiring feedback
@@ -263,7 +265,7 @@ class ToChecksFilterValuesResource(MethodView):
 
 class DoneResource(MethodView):
 
-    @swag_from("openapi/DoneResource_get.yml")
+    @swag_from(SPECS["DoneResource_get"])
     def get(self):
         """
         Get done tasks
@@ -273,14 +275,14 @@ class DoneResource(MethodView):
 
 class FiltersResource(MethodView, ArgsMixin):
 
-    @swag_from("openapi/FiltersResource_get.yml")
+    @swag_from(SPECS["FiltersResource_get"])
     def get(self):
         """
         Get filters
         """
         return search_filters_service.get_filters()
 
-    @swag_from("openapi/FiltersResource_post.yml")
+    @swag_from(SPECS["FiltersResource_post"])
     def post(self):
         """
         Create filter
@@ -304,7 +306,7 @@ class FiltersResource(MethodView, ArgsMixin):
 
 class FilterResource(MethodView, ArgsMixin):
 
-    @swag_from("openapi/FilterResource_put.yml")
+    @swag_from(SPECS["FilterResource_put"])
     def put(self, filter_id):
         """
         Update filter
@@ -316,7 +318,7 @@ class FilterResource(MethodView, ArgsMixin):
         user_filter = search_filters_service.update_filter(filter_id, data)
         return user_filter, 200
 
-    @swag_from("openapi/FilterResource_delete.yml")
+    @swag_from(SPECS["FilterResource_delete"])
     def delete(self, filter_id):
         """
         Delete filter
@@ -327,14 +329,14 @@ class FilterResource(MethodView, ArgsMixin):
 
 class FilterGroupsResource(MethodView, ArgsMixin):
 
-    @swag_from("openapi/FilterGroupsResource_get.yml")
+    @swag_from(SPECS["FilterGroupsResource_get"])
     def get(self):
         """
         Get filter groups
         """
         return search_filters_service.get_filter_groups()
 
-    @swag_from("openapi/FilterGroupsResource_post.yml")
+    @swag_from(SPECS["FilterGroupsResource_post"])
     def post(self):
         """
         Create filter group
@@ -356,14 +358,14 @@ class FilterGroupsResource(MethodView, ArgsMixin):
 
 class FilterGroupResource(MethodView, ArgsMixin):
 
-    @swag_from("openapi/FilterGroupResource_get.yml")
+    @swag_from(SPECS["FilterGroupResource_get"])
     def get(self, filter_group_id):
         """
         Get filter group
         """
         return search_filters_service.get_filter_group(filter_group_id)
 
-    @swag_from("openapi/FilterGroupResource_put.yml")
+    @swag_from(SPECS["FilterGroupResource_put"])
     def put(self, filter_group_id):
         """
         Update filter group
@@ -375,7 +377,7 @@ class FilterGroupResource(MethodView, ArgsMixin):
         )
         return user_filter, 200
 
-    @swag_from("openapi/FilterGroupResource_delete.yml")
+    @swag_from(SPECS["FilterGroupResource_delete"])
     def delete(self, filter_group_id):
         """
         Delete filter group
@@ -386,7 +388,7 @@ class FilterGroupResource(MethodView, ArgsMixin):
 
 class DesktopLoginLogsResource(MethodView, ArgsMixin):
 
-    @swag_from("openapi/DesktopLoginLogsResource_get.yml")
+    @swag_from(SPECS["DesktopLoginLogsResource_get"])
     def get(self):
         """
         Get desktop login logs
@@ -394,7 +396,7 @@ class DesktopLoginLogsResource(MethodView, ArgsMixin):
         current_user = persons_service.get_current_user()
         return persons_service.get_desktop_login_logs(current_user["id"])
 
-    @swag_from("openapi/DesktopLoginLogsResource_post.yml")
+    @swag_from(SPECS["DesktopLoginLogsResource_post"])
     def post(self):
         """
         Create desktop login log
@@ -411,7 +413,7 @@ class DesktopLoginLogsResource(MethodView, ArgsMixin):
 
 class NotificationsResource(MethodView, ArgsMixin):
 
-    @swag_from("openapi/NotificationsResource_get.yml")
+    @swag_from(SPECS["NotificationsResource_get"])
     def get(self):
         """
         Get notifications
@@ -453,14 +455,14 @@ class NotificationsResource(MethodView, ArgsMixin):
 
 class NotificationResource(MethodView, ArgsMixin):
 
-    @swag_from("openapi/NotificationResource_get.yml")
+    @swag_from(SPECS["NotificationResource_get"])
     def get(self, notification_id):
         """
         Get notification
         """
         return user_service.get_notification(notification_id)
 
-    @swag_from("openapi/NotificationResource_put.yml")
+    @swag_from(SPECS["NotificationResource_put"])
     def put(self, notification_id):
         """
         Update notification
@@ -471,7 +473,7 @@ class NotificationResource(MethodView, ArgsMixin):
 
 class MarkAllNotificationsAsReadResource(MethodView):
 
-    @swag_from("openapi/MarkAllNotificationsAsReadResource_post.yml")
+    @swag_from(SPECS["MarkAllNotificationsAsReadResource_post"])
     def post(self):
         """
         Mark all notifications as read
@@ -482,7 +484,7 @@ class MarkAllNotificationsAsReadResource(MethodView):
 
 class HasTaskSubscribedResource(MethodView):
 
-    @swag_from("openapi/HasTaskSubscribedResource_get.yml")
+    @swag_from(SPECS["HasTaskSubscribedResource_get"])
     def get(self, task_id):
         """
         Check task subscription
@@ -492,7 +494,7 @@ class HasTaskSubscribedResource(MethodView):
 
 class TaskSubscribeResource(MethodView):
 
-    @swag_from("openapi/TaskSubscribeResource_post.yml")
+    @swag_from(SPECS["TaskSubscribeResource_post"])
     def post(self, task_id):
         """
         Subscribe to task
@@ -504,7 +506,7 @@ class TaskSubscribeResource(MethodView):
 
 class TaskUnsubscribeResource(MethodView):
 
-    @swag_from("openapi/TaskUnsubscribeResource_delete.yml")
+    @swag_from(SPECS["TaskUnsubscribeResource_delete"])
     def delete(self, task_id):
         """
         Unsubscribe from task
@@ -515,7 +517,7 @@ class TaskUnsubscribeResource(MethodView):
 
 class TasksSubscribeResource(MethodView):
 
-    @swag_from("openapi/TasksSubscribeResource_post.yml")
+    @swag_from(SPECS["TasksSubscribeResource_post"])
     def post(self):
         """
         Subscribe to several tasks
@@ -532,7 +534,7 @@ class TasksSubscribeResource(MethodView):
 
 class TasksUnsubscribeResource(MethodView):
 
-    @swag_from("openapi/TasksUnsubscribeResource_post.yml")
+    @swag_from(SPECS["TasksUnsubscribeResource_post"])
     def post(self):
         """
         Unsubscribe from several tasks
@@ -545,7 +547,7 @@ class TasksUnsubscribeResource(MethodView):
 
 class HasSequenceSubscribedResource(MethodView):
 
-    @swag_from("openapi/HasSequenceSubscribedResource_get.yml")
+    @swag_from(SPECS["HasSequenceSubscribedResource_get"])
     def get(self, sequence_id, task_type_id):
         """
         Check sequence subscription
@@ -557,7 +559,7 @@ class HasSequenceSubscribedResource(MethodView):
 
 class SequenceSubscribeResource(MethodView):
 
-    @swag_from("openapi/SequenceSubscribeResource_post.yml")
+    @swag_from(SPECS["SequenceSubscribeResource_post"])
     def post(self, sequence_id, task_type_id):
         """
         Subscribe to sequence
@@ -572,7 +574,7 @@ class SequenceSubscribeResource(MethodView):
 
 class SequenceUnsubscribeResource(MethodView):
 
-    @swag_from("openapi/SequenceUnsubscribeResource_delete.yml")
+    @swag_from(SPECS["SequenceUnsubscribeResource_delete"])
     def delete(self, sequence_id, task_type_id):
         """
         Unsubscribe from sequence
@@ -587,7 +589,7 @@ class TimeSpentsResource(MethodView, ArgsMixin):
     Optionnaly can accept date range parameters.
     """
 
-    @swag_from("openapi/TimeSpentsResource_get.yml")
+    @swag_from(SPECS["TimeSpentsResource_get"])
     def get(self):
         """
         Get time spents
@@ -616,7 +618,7 @@ class TimeSpentsResource(MethodView, ArgsMixin):
 
 class DateTimeSpentsResource(MethodView):
 
-    @swag_from("openapi/DateTimeSpentsResource_get.yml")
+    @swag_from(SPECS["DateTimeSpentsResource_get"])
     def get(self, date):
         """
         Get time spents by date
@@ -632,7 +634,7 @@ class DateTimeSpentsResource(MethodView):
 
 class TaskTimeSpentResource(MethodView):
 
-    @swag_from("openapi/TaskTimeSpentResource_get.yml")
+    @swag_from(SPECS["TaskTimeSpentResource_get"])
     def get(self, task_id, date):
         """
         Get task time spent
@@ -648,7 +650,7 @@ class TaskTimeSpentResource(MethodView):
 
 class DayOffResource(MethodView):
 
-    @swag_from("openapi/DayOffResource_get.yml")
+    @swag_from(SPECS["DayOffResource_get"])
     def get(self, date):
         """
         Get day off
@@ -662,7 +664,7 @@ class DayOffResource(MethodView):
 
 class ContextResource(MethodView):
 
-    @swag_from("openapi/ContextResource_get.yml")
+    @swag_from(SPECS["ContextResource_get"])
     def get(self):
         """
         Get context
@@ -672,7 +674,7 @@ class ContextResource(MethodView):
 
 class ClearAvatarResource(MethodView):
 
-    @swag_from("openapi/ClearAvatarResource_delete.yml")
+    @swag_from(SPECS["ClearAvatarResource_delete"])
     def delete(self):
         """
         Clear avatar
@@ -684,7 +686,7 @@ class ClearAvatarResource(MethodView):
 
 class ChatsResource(MethodView):
 
-    @swag_from("openapi/ChatsResource_get.yml")
+    @swag_from(SPECS["ChatsResource_get"])
     def get(self):
         """
         Get chats
@@ -697,7 +699,7 @@ class ChatsResource(MethodView):
 
 class JoinChatResource(MethodView):
 
-    @swag_from("openapi/JoinChatResource_post.yml")
+    @swag_from(SPECS["JoinChatResource_post"])
     def post(self, entity_id):
         """
         Join chat
@@ -706,7 +708,7 @@ class JoinChatResource(MethodView):
         person = persons_service.get_current_user()
         return chats_service.join_chat(entity_id, person["id"])
 
-    @swag_from("openapi/JoinChatResource_delete.yml")
+    @swag_from(SPECS["JoinChatResource_delete"])
     def delete(self, entity_id):
         """
         Leave chat

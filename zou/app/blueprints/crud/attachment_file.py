@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
@@ -8,7 +7,10 @@ from zou.app.services import (
     comments_service,
     permissions_service,
 )
+from zou.app.utils.openapi import load_specs, swag_from
 from zou.app.utils.permissions import PermissionDenied
+
+SPECS = load_specs(__file__, "openapi/attachment_file.yml")
 
 
 class AttachmentFilesResource(BaseModelsResource):
@@ -16,7 +18,7 @@ class AttachmentFilesResource(BaseModelsResource):
         BaseModelsResource.__init__(self, AttachmentFile)
 
     @jwt_required()
-    @swag_from("openapi/AttachmentFilesResource_get.yml")
+    @swag_from(SPECS["AttachmentFilesResource_get"])
     def get(self):
         """
         Get attachment files
@@ -24,7 +26,7 @@ class AttachmentFilesResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/AttachmentFilesResource_post.yml")
+    @swag_from(SPECS["AttachmentFilesResource_post"])
     def post(self):
         """
         Create attachment file
@@ -37,7 +39,7 @@ class AttachmentFileResource(BaseModelResource):
         BaseModelResource.__init__(self, AttachmentFile)
 
     @jwt_required()
-    @swag_from("openapi/AttachmentFileResource_get.yml")
+    @swag_from(SPECS["AttachmentFileResource_get"])
     def get(self, instance_id):
         """
         Get attachment file
@@ -45,7 +47,7 @@ class AttachmentFileResource(BaseModelResource):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/AttachmentFileResource_put.yml")
+    @swag_from(SPECS["AttachmentFileResource_put"])
     def put(self, instance_id):
         """
         Update attachment file
@@ -53,7 +55,7 @@ class AttachmentFileResource(BaseModelResource):
         return super().put(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/AttachmentFileResource_delete.yml")
+    @swag_from(SPECS["AttachmentFileResource_delete"])
     def delete(self, instance_id):
         """
         Delete attachment file

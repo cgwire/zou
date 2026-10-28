@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask import current_app, g, request
 from flask.views import MethodView
 from flask_fs.errors import FileNotFound
@@ -40,11 +39,14 @@ from zou.app.services import (
     tasks_service,
 )
 from zou.app.utils import date_helpers, permissions, validation
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 class SharedPlaylistResource(MethodView):
     @require_valid_playlist_share_link(with_password=True)
-    @swag_from("openapi/SharedPlaylistResource_get.yml")
+    @swag_from(SPECS["SharedPlaylistResource_get"])
     def get(self, token):
         """
         Get shared playlist
@@ -57,7 +59,7 @@ class SharedPlaylistResource(MethodView):
 
 class SharedPlaylistGuestResource(MethodView):
     @require_valid_playlist_share_link()
-    @swag_from("openapi/SharedPlaylistGuestResource_post.yml")
+    @swag_from(SPECS["SharedPlaylistGuestResource_post"])
     def post(self, token):
         """
         Create or retrieve guest for shared playlist
@@ -88,7 +90,7 @@ class SharedPlaylistGuestResource(MethodView):
 
 class SharedPlaylistCommentsResource(MethodView):
     @require_valid_playlist_share_link(with_password=True)
-    @swag_from("openapi/SharedPlaylistCommentsResource_get.yml")
+    @swag_from(SPECS["SharedPlaylistCommentsResource_get"])
     def get(self, token):
         """
         List shared playlist comments
@@ -115,7 +117,7 @@ class SharedPlaylistCommentsResource(MethodView):
         return comments
 
     @require_valid_playlist_share_link(with_password=True)
-    @swag_from("openapi/SharedPlaylistCommentsResource_post.yml")
+    @swag_from(SPECS["SharedPlaylistCommentsResource_post"])
     def post(self, token):
         """
         Post comment on shared playlist
@@ -166,7 +168,7 @@ class SharedPlaylistCommentResource(MethodView):
     """
 
     @require_valid_playlist_share_link()
-    @swag_from("openapi/SharedPlaylistCommentResource_put.yml")
+    @swag_from(SPECS["SharedPlaylistCommentResource_put"])
     def put(self, token, comment_id):
         """
         Edit guest-owned comment
@@ -196,7 +198,7 @@ class SharedPlaylistCommentResource(MethodView):
             return {"error": "Comment not found"}, 404
 
     @require_valid_playlist_share_link()
-    @swag_from("openapi/SharedPlaylistCommentResource_delete.yml")
+    @swag_from(SPECS["SharedPlaylistCommentResource_delete"])
     def delete(self, token, comment_id):
         """
         Delete guest-owned comment
@@ -223,7 +225,7 @@ class SharedPlaylistCommentAttachmentsResource(MethodView):
     """
 
     @require_valid_playlist_share_link()
-    @swag_from("openapi/SharedPlaylistCommentAttachmentsResource_post.yml")
+    @swag_from(SPECS["SharedPlaylistCommentAttachmentsResource_post"])
     def post(self, token, comment_id):
         """
         Attach files to a guest-owned comment
@@ -252,7 +254,7 @@ class SharedPlaylistCommentAttachmentResource(MethodView):
     """
 
     @require_valid_playlist_share_link()
-    @swag_from("openapi/SharedPlaylistCommentAttachmentResource_delete.yml")
+    @swag_from(SPECS["SharedPlaylistCommentAttachmentResource_delete"])
     def delete(self, token, comment_id, attachment_file_id):
         """
         Delete an attachment from a guest-owned comment
@@ -279,7 +281,7 @@ class SharedPlaylistAttachmentFileResource(MethodView):
     """
 
     @require_valid_playlist_share_link()
-    @swag_from("openapi/SharedPlaylistAttachmentFileResource_get.yml")
+    @swag_from(SPECS["SharedPlaylistAttachmentFileResource_get"])
     def get(self, token, attachment_file_id, file_name):
         """
         Download attachment file
@@ -296,7 +298,7 @@ class SharedPlaylistAttachmentFileResource(MethodView):
 
 class SharedPlaylistAnnotationsResource(MethodView):
     @require_valid_playlist_share_link()
-    @swag_from("openapi/SharedPlaylistAnnotationsResource_put.yml")
+    @swag_from(SPECS["SharedPlaylistAnnotationsResource_put"])
     def put(self, token):
         """
         Update guest annotations for a preview file
@@ -351,7 +353,7 @@ def _is_task_in_playlist(playlist, task_id):
 
 class SharedPlaylistPreviewFileResource(MethodView):
     @require_valid_playlist_share_link()
-    @swag_from("openapi/SharedPlaylistPreviewFileResource_get.yml")
+    @swag_from(SPECS["SharedPlaylistPreviewFileResource_get"])
     def get(self, token, preview_file_id):
         """
         Get shared preview file metadata
@@ -365,7 +367,7 @@ class SharedPlaylistPreviewFileResource(MethodView):
 
 class SharedPlaylistPreviewFileMovieResource(MethodView):
     @require_valid_playlist_share_link()
-    @swag_from("openapi/SharedPlaylistPreviewFileMovieResource_get.yml")
+    @swag_from(SPECS["SharedPlaylistPreviewFileMovieResource_get"])
     def get(self, token, preview_file_id):
         """
         Get shared original movie preview
@@ -382,7 +384,7 @@ class SharedPlaylistPreviewFileMovieResource(MethodView):
 
 class SharedPlaylistPreviewFileThumbnailResource(MethodView):
     @require_valid_playlist_share_link()
-    @swag_from("openapi/SharedPlaylistPreviewFileThumbnailResource_get.yml")
+    @swag_from(SPECS["SharedPlaylistPreviewFileThumbnailResource_get"])
     def get(self, token, preview_file_id):
         """
         Get shared preview thumbnail
@@ -399,7 +401,7 @@ class SharedPlaylistPreviewFileThumbnailResource(MethodView):
 
 class SharedPlaylistPersonThumbnailResource(MethodView):
     @require_valid_playlist_share_link()
-    @swag_from("openapi/SharedPlaylistPersonThumbnailResource_get.yml")
+    @swag_from(SPECS["SharedPlaylistPersonThumbnailResource_get"])
     def get(self, token, person_id):
         """
         Get shared person avatar
@@ -425,7 +427,7 @@ class SharedPlaylistPersonThumbnailResource(MethodView):
 
 class SharedPlaylistPreviewFileOriginalResource(MethodView):
     @require_valid_playlist_share_link()
-    @swag_from("openapi/SharedPlaylistPreviewFileOriginalResource_get.yml")
+    @swag_from(SPECS["SharedPlaylistPreviewFileOriginalResource_get"])
     def get(self, token, preview_file_id):
         """
         Get shared original picture preview
@@ -442,7 +444,7 @@ class SharedPlaylistPreviewFileOriginalResource(MethodView):
 
 class SharedPlaylistPreviewFileExtensionResource(MethodView):
     @require_valid_playlist_share_link()
-    @swag_from("openapi/SharedPlaylistPreviewFileExtensionResource_get.yml")
+    @swag_from(SPECS["SharedPlaylistPreviewFileExtensionResource_get"])
     def get(self, token, preview_file_id, extension):
         """
         Get shared original picture preview for any extension
@@ -471,7 +473,7 @@ class SharedPlaylistPreviewFileExtensionResource(MethodView):
 
 class SharedPlaylistPreviewFileTileResource(MethodView):
     @require_valid_playlist_share_link()
-    @swag_from("openapi/SharedPlaylistPreviewFileTileResource_get.yml")
+    @swag_from(SPECS["SharedPlaylistPreviewFileTileResource_get"])
     def get(self, token, preview_file_id):
         """
         Get shared movie tile strip
@@ -488,7 +490,7 @@ class SharedPlaylistPreviewFileTileResource(MethodView):
 
 class SharedPlaylistPreviewFileDownloadResource(MethodView):
     @require_valid_playlist_share_link()
-    @swag_from("openapi/SharedPlaylistPreviewFileDownloadResource_get.yml")
+    @swag_from(SPECS["SharedPlaylistPreviewFileDownloadResource_get"])
     def get(self, token, preview_file_id):
         """
         Download shared preview file
@@ -523,7 +525,7 @@ class SharedPlaylistPreviewFileDownloadResource(MethodView):
 
 class SharedPlaylistContextResource(MethodView):
     @require_valid_playlist_share_link(with_password=True)
-    @swag_from("openapi/SharedPlaylistContextResource_get.yml")
+    @swag_from(SPECS["SharedPlaylistContextResource_get"])
     def get(self, token):
         """
         Get shared playlist context

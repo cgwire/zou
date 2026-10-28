@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -39,11 +38,14 @@ from zou.app.utils import (
     query,
     validation,
 )
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 class ShotResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/ShotResource_get.yml")
+    @swag_from(SPECS["ShotResource_get"])
     def get(self, shot_id):
         """
         Get shot
@@ -54,7 +56,7 @@ class ShotResource(MethodView, ArgsMixin):
         return entities_service.blank_entity_tasks_for_current_user(shot)
 
     @jwt_required()
-    @swag_from("openapi/ShotResource_put.yml")
+    @swag_from(SPECS["ShotResource_put"])
     def put(self, shot_id):
         """
         Update shot
@@ -81,7 +83,7 @@ class ShotResource(MethodView, ArgsMixin):
         return shots_service.update_shot(shot_id, data)
 
     @jwt_required()
-    @swag_from("openapi/ShotResource_delete.yml")
+    @swag_from(SPECS["ShotResource_delete"])
     def delete(self, shot_id):
         """
         Delete shot
@@ -100,7 +102,7 @@ class ShotResource(MethodView, ArgsMixin):
 
 class SceneResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/SceneResource_get.yml")
+    @swag_from(SPECS["SceneResource_get"])
     def get(self, scene_id):
         """
         Get scene
@@ -111,7 +113,7 @@ class SceneResource(MethodView):
         return scene
 
     @jwt_required()
-    @swag_from("openapi/SceneResource_delete.yml")
+    @swag_from(SPECS["SceneResource_delete"])
     def delete(self, scene_id):
         """
         Delete scene
@@ -129,7 +131,7 @@ class SceneResource(MethodView):
 
 class AllShotsResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/AllShotsResource_get.yml")
+    @swag_from(SPECS["AllShotsResource_get"])
     def get(self):
         """
         Get all shots
@@ -149,7 +151,7 @@ class AllShotsResource(MethodView):
 
 class ScenesResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ScenesResource_get.yml")
+    @swag_from(SPECS["ScenesResource_get"])
     def get(self):
         """
         Get scenes
@@ -165,7 +167,7 @@ class ScenesResource(MethodView):
 
 class ShotAssetsResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ShotAssetsResource_get.yml")
+    @swag_from(SPECS["ShotAssetsResource_get"])
     def get(self, shot_id):
         """
         Get shot assets
@@ -178,7 +180,7 @@ class ShotAssetsResource(MethodView):
 
 class ShotTaskTypesResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ShotTaskTypesResource_get.yml")
+    @swag_from(SPECS["ShotTaskTypesResource_get"])
     def get(self, shot_id):
         """
         Get shot task types
@@ -191,7 +193,7 @@ class ShotTaskTypesResource(MethodView):
 
 class ShotTasksResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/ShotTasksResource_get.yml")
+    @swag_from(SPECS["ShotTasksResource_get"])
     def get(self, shot_id):
         """
         Get shot tasks
@@ -205,7 +207,7 @@ class ShotTasksResource(MethodView, ArgsMixin):
 
 class SequenceShotTasksResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/SequenceShotTasksResource_get.yml")
+    @swag_from(SPECS["SequenceShotTasksResource_get"])
     def get(self, sequence_id):
         """
         Get sequence shot tasks
@@ -223,7 +225,7 @@ class SequenceShotTasksResource(MethodView, ArgsMixin):
 
 class EpisodeShotTasksResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/EpisodeShotTasksResource_get.yml")
+    @swag_from(SPECS["EpisodeShotTasksResource_get"])
     def get(self, episode_id):
         """
         Get episode shot tasks
@@ -241,7 +243,7 @@ class EpisodeShotTasksResource(MethodView, ArgsMixin):
 
 class EpisodeAssetTasksResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/EpisodeAssetTasksResource_get.yml")
+    @swag_from(SPECS["EpisodeAssetTasksResource_get"])
     def get(self, episode_id):
         """
         Get episode asset tasks
@@ -259,7 +261,7 @@ class EpisodeAssetTasksResource(MethodView, ArgsMixin):
 
 class EpisodeShotsResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/EpisodeShotsResource_get.yml")
+    @swag_from(SPECS["EpisodeShotsResource_get"])
     def get(self, episode_id):
         """
         Get episode shots
@@ -278,7 +280,7 @@ class EpisodeShotsResource(MethodView, ArgsMixin):
 
 class ShotPreviewsResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ShotPreviewsResource_get.yml")
+    @swag_from(SPECS["ShotPreviewsResource_get"])
     def get(self, shot_id):
         """
         Get shot previews
@@ -291,7 +293,7 @@ class ShotPreviewsResource(MethodView):
 
 class SequenceTasksResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/SequenceTasksResource_get.yml")
+    @swag_from(SPECS["SequenceTasksResource_get"])
     def get(self, sequence_id):
         """
         Get sequence tasks
@@ -309,7 +311,7 @@ class SequenceTasksResource(MethodView, ArgsMixin):
 
 class SequenceTaskTypesResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/SequenceTaskTypesResource_get.yml")
+    @swag_from(SPECS["SequenceTaskTypesResource_get"])
     def get(self, sequence_id):
         """
         Get sequence task types
@@ -323,7 +325,7 @@ class SequenceTaskTypesResource(MethodView):
 class ShotsAndTasksResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/ShotsAndTasksResource_get.yml")
+    @swag_from(SPECS["ShotsAndTasksResource_get"])
     def get(self):
         """
         Get shots and tasks
@@ -369,7 +371,7 @@ class ShotsAndTasksResource(MethodView):
 
 class SceneAndTasksResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/SceneAndTasksResource_get.yml")
+    @swag_from(SPECS["SceneAndTasksResource_get"])
     def get(self):
         """
         Get scenes and tasks
@@ -391,7 +393,7 @@ class SceneAndTasksResource(MethodView):
 
 class SequenceAndTasksResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/SequenceAndTasksResource_get.yml")
+    @swag_from(SPECS["SequenceAndTasksResource_get"])
     def get(self):
         """
         Get sequences and tasks
@@ -432,7 +434,7 @@ class SequenceAndTasksResource(MethodView):
 
 class EpisodeAndTasksResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/EpisodeAndTasksResource_get.yml")
+    @swag_from(SPECS["EpisodeAndTasksResource_get"])
     def get(self):
         """
         Get episodes and tasks
@@ -466,7 +468,7 @@ class EpisodeAndTasksResource(MethodView):
 
 class ProjectShotsResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/ProjectShotsResource_get.yml")
+    @swag_from(SPECS["ProjectShotsResource_get"])
     def get(self, project_id):
         """
         Get project shots
@@ -482,7 +484,7 @@ class ProjectShotsResource(MethodView, ArgsMixin):
         )
 
     @jwt_required()
-    @swag_from("openapi/ProjectShotsResource_post.yml")
+    @swag_from(SPECS["ProjectShotsResource_post"])
     def post(self, project_id):
         """
         Create project shot
@@ -505,7 +507,7 @@ class ProjectShotsResource(MethodView, ArgsMixin):
 
 class ProjectSequencesResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/ProjectSequencesResource_get.yml")
+    @swag_from(SPECS["ProjectSequencesResource_get"])
     def get(self, project_id):
         """
         Get project sequences
@@ -521,7 +523,7 @@ class ProjectSequencesResource(MethodView, ArgsMixin):
         )
 
     @jwt_required()
-    @swag_from("openapi/ProjectSequencesResource_post.yml")
+    @swag_from(SPECS["ProjectSequencesResource_post"])
     def post(self, project_id):
         """
         Create project sequence
@@ -542,7 +544,7 @@ class ProjectSequencesResource(MethodView, ArgsMixin):
 
 class ProjectEpisodesResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/ProjectEpisodesResource_get.yml")
+    @swag_from(SPECS["ProjectEpisodesResource_get"])
     def get(self, project_id):
         """
         Get project episodes
@@ -558,7 +560,7 @@ class ProjectEpisodesResource(MethodView, ArgsMixin):
         )
 
     @jwt_required()
-    @swag_from("openapi/ProjectEpisodesResource_post.yml")
+    @swag_from(SPECS["ProjectEpisodesResource_post"])
     def post(self, project_id):
         """
         Create project episode
@@ -581,7 +583,7 @@ class ProjectEpisodesResource(MethodView, ArgsMixin):
 
 class ProjectEpisodeStatsResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ProjectEpisodeStatsResource_get.yml")
+    @swag_from(SPECS["ProjectEpisodeStatsResource_get"])
     def get(self, project_id):
         """
         Get episode stats
@@ -600,7 +602,7 @@ class ProjectEpisodeStatsResource(MethodView):
 
 class ProjectEpisodeRetakeStatsResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ProjectEpisodeRetakeStatsResource_get.yml")
+    @swag_from(SPECS["ProjectEpisodeRetakeStatsResource_get"])
     def get(self, project_id):
         """
         Get episode retake stats
@@ -615,7 +617,7 @@ class ProjectEpisodeRetakeStatsResource(MethodView):
 
 class EpisodeResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/EpisodeResource_get.yml")
+    @swag_from(SPECS["EpisodeResource_get"])
     def get(self, episode_id):
         """
         Get episode
@@ -626,7 +628,7 @@ class EpisodeResource(MethodView, ArgsMixin):
         return episode
 
     @jwt_required()
-    @swag_from("openapi/EpisodeResource_delete.yml")
+    @swag_from(SPECS["EpisodeResource_delete"])
     def delete(self, episode_id):
         """
         Delete episode
@@ -645,7 +647,7 @@ class EpisodeResource(MethodView, ArgsMixin):
 
 class EpisodesResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/EpisodesResource_get.yml")
+    @swag_from(SPECS["EpisodesResource_get"])
     def get(self):
         """
         Get episodes
@@ -670,7 +672,7 @@ class EpisodesResource(MethodView):
 
 class EpisodeSequencesResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/EpisodeSequencesResource_get.yml")
+    @swag_from(SPECS["EpisodeSequencesResource_get"])
     def get(self, episode_id):
         """
         Get episode sequences
@@ -694,7 +696,7 @@ class EpisodeSequencesResource(MethodView):
 
 class EpisodeTaskTypesResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/EpisodeTaskTypesResource_get.yml")
+    @swag_from(SPECS["EpisodeTaskTypesResource_get"])
     def get(self, episode_id):
         """
         Get episode task types
@@ -707,7 +709,7 @@ class EpisodeTaskTypesResource(MethodView):
 
 class EpisodeTasksResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/EpisodeTasksResource_get.yml")
+    @swag_from(SPECS["EpisodeTasksResource_get"])
     def get(self, episode_id):
         """
         Get episode tasks
@@ -722,7 +724,7 @@ class EpisodeTasksResource(MethodView):
 
 class SequenceResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/SequenceResource_get.yml")
+    @swag_from(SPECS["SequenceResource_get"])
     def get(self, sequence_id):
         """
         Get sequence
@@ -733,7 +735,7 @@ class SequenceResource(MethodView, ArgsMixin):
         return sequence
 
     @jwt_required()
-    @swag_from("openapi/SequenceResource_delete.yml")
+    @swag_from(SPECS["SequenceResource_delete"])
     def delete(self, sequence_id):
         """
         Delete sequence
@@ -752,7 +754,7 @@ class SequenceResource(MethodView, ArgsMixin):
 
 class SequencesResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/SequencesResource_get.yml")
+    @swag_from(SPECS["SequencesResource_get"])
     def get(self):
         """
         Get sequences
@@ -782,7 +784,7 @@ class SequencesResource(MethodView):
 
 class SequenceShotsResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/SequenceShotsResource_get.yml")
+    @swag_from(SPECS["SequenceShotsResource_get"])
     def get(self, sequence_id):
         """
         Get sequence shots
@@ -797,7 +799,7 @@ class SequenceShotsResource(MethodView):
 
 class ProjectScenesResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/ProjectScenesResource_get.yml")
+    @swag_from(SPECS["ProjectScenesResource_get"])
     def get(self, project_id):
         """
         Get project scenes
@@ -814,7 +816,7 @@ class ProjectScenesResource(MethodView, ArgsMixin):
         )
 
     @jwt_required()
-    @swag_from("openapi/ProjectScenesResource_post.yml")
+    @swag_from(SPECS["ProjectScenesResource_post"])
     def post(self, project_id):
         """
         Create project scene
@@ -833,7 +835,7 @@ class ProjectScenesResource(MethodView, ArgsMixin):
 
 class SequenceScenesResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/SequenceScenesResource_get.yml")
+    @swag_from(SPECS["SequenceScenesResource_get"])
     def get(self, sequence_id):
         """
         Get sequence scenes
@@ -848,7 +850,7 @@ class SequenceScenesResource(MethodView):
 
 class SceneTaskTypesResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/SceneTaskTypesResource_get.yml")
+    @swag_from(SPECS["SceneTaskTypesResource_get"])
     def get(self, scene_id):
         """
         Get scene task types
@@ -861,7 +863,7 @@ class SceneTaskTypesResource(MethodView):
 
 class SceneTasksResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/SceneTasksResource_get.yml")
+    @swag_from(SPECS["SceneTasksResource_get"])
     def get(self, scene_id):
         """
         Get scene tasks
@@ -874,7 +876,7 @@ class SceneTasksResource(MethodView):
 
 class SceneShotsResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/SceneShotsResource_get.yml")
+    @swag_from(SPECS["SceneShotsResource_get"])
     def get(self, scene_id):
         """
         Get scene shots
@@ -885,7 +887,7 @@ class SceneShotsResource(MethodView, ArgsMixin):
         return scenes_service.get_shots_by_scene(scene_id)
 
     @jwt_required()
-    @swag_from("openapi/SceneShotsResource_post.yml")
+    @swag_from(SPECS["SceneShotsResource_post"])
     def post(self, scene_id):
         """
         Link shot to scene
@@ -900,7 +902,7 @@ class SceneShotsResource(MethodView, ArgsMixin):
 
 class RemoveShotFromSceneResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/RemoveShotFromSceneResource_delete.yml")
+    @swag_from(SPECS["RemoveShotFromSceneResource_delete"])
     def delete(self, scene_id, shot_id):
         """
         Delete given shot from given scene.
@@ -918,7 +920,7 @@ class ShotVersionsResource(MethodView):
     """
 
     @jwt_required()
-    @swag_from("openapi/ShotVersionsResource_get.yml")
+    @swag_from(SPECS["ShotVersionsResource_get"])
     def get(self, shot_id):
         """
         Get shot versions
@@ -932,7 +934,7 @@ class ShotVersionsResource(MethodView):
 class ProjectQuotasResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/ProjectQuotasResource_get.yml")
+    @swag_from(SPECS["ProjectQuotasResource_get"])
     def get(self, project_id, task_type_id):
         """
         Get project quotas
@@ -977,7 +979,7 @@ class ProjectQuotasResource(MethodView, ArgsMixin):
 class ProjectPersonQuotasResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/ProjectPersonQuotasResource_get.yml")
+    @swag_from(SPECS["ProjectPersonQuotasResource_get"])
     def get(self, project_id, person_id):
         """
         Get project person quotas
@@ -1028,7 +1030,7 @@ class ProjectPersonQuotasResource(MethodView, ArgsMixin):
 
 class SetShotsFramesResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/SetShotsFramesResource_post.yml")
+    @swag_from(SPECS["SetShotsFramesResource_post"])
     def post(self, project_id, task_type_id):
         """
         Set shots frames

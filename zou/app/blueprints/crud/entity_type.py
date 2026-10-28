@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
@@ -8,6 +7,9 @@ from zou.app.services import (
     entity_types_service,
 )
 from zou.app.utils import events
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/entity_type.yml")
 
 
 class EntityTypesResource(BaseModelsResource):
@@ -15,7 +17,7 @@ class EntityTypesResource(BaseModelsResource):
         BaseModelsResource.__init__(self, EntityType)
 
     @jwt_required()
-    @swag_from("openapi/EntityTypesResource_get.yml")
+    @swag_from(SPECS["EntityTypesResource_get"])
     def get(self):
         """
         Get entity types
@@ -23,7 +25,7 @@ class EntityTypesResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/EntityTypesResource_post.yml")
+    @swag_from(SPECS["EntityTypesResource_post"])
     def post(self):
         """
         Create entity type
@@ -68,7 +70,7 @@ class EntityTypeResource(BaseModelResource):
         return True
 
     @jwt_required()
-    @swag_from("openapi/EntityTypeResource_get.yml")
+    @swag_from(SPECS["EntityTypeResource_get"])
     def get(self, instance_id):
         """
         Get entity type
@@ -76,7 +78,7 @@ class EntityTypeResource(BaseModelResource):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/EntityTypeResource_put.yml")
+    @swag_from(SPECS["EntityTypeResource_put"])
     def put(self, instance_id):
         """
         Update entity type
@@ -84,7 +86,7 @@ class EntityTypeResource(BaseModelResource):
         return super().put(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/EntityTypeResource_delete.yml")
+    @swag_from(SPECS["EntityTypeResource_delete"])
     def delete(self, instance_id):
         """
         Delete entity type

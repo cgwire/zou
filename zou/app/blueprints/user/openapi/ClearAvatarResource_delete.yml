@@ -1,8 +1,0 @@
-Delete my avatar
----
-description: Delete your avatar file and set has_avatar to false.
-tags:
-  - User
-responses:
-  204:
-    description: The avatar is deleted

@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask import jsonify
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -47,6 +46,9 @@ from zou.app.services import (
     user_service,
 )
 from zou.app.utils import permissions, validation
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 VALID_METADATA_ENTITY_TYPES = [
     "Asset",
@@ -65,7 +67,7 @@ class OpenProjectsResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
-    @swag_from("openapi/OpenProjectsResource_get.yml")
+    @swag_from(SPECS["OpenProjectsResource_get"])
     def get(self):
         """
         Get open projects
@@ -84,7 +86,7 @@ class AllProjectsResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
-    @swag_from("openapi/AllProjectsResource_get.yml")
+    @swag_from(SPECS["AllProjectsResource_get"])
     def get(self):
         """
         Get all projects
@@ -110,7 +112,7 @@ class ProductionTeamResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
-    @swag_from("openapi/ProductionTeamResource_get.yml")
+    @swag_from(SPECS["ProductionTeamResource_get"])
     def get(self, project_id):
         """
         Get production team
@@ -130,7 +132,7 @@ class ProductionTeamResource(MethodView, ArgsMixin):
         return persons
 
     @jwt_required()
-    @swag_from("openapi/ProductionTeamResource_post.yml")
+    @swag_from(SPECS["ProductionTeamResource_post"])
     def post(self, project_id):
         """
         Add person to production team
@@ -149,7 +151,7 @@ class ProductionTeamResource(MethodView, ArgsMixin):
 class ProductionTeamMemberResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/ProductionTeamMemberResource_delete.yml")
+    @swag_from(SPECS["ProductionTeamMemberResource_delete"])
     def delete(self, project_id, person_id):
         """
         Remove person from production team
@@ -159,7 +161,7 @@ class ProductionTeamMemberResource(MethodView):
         return "", 204
 
     @jwt_required()
-    @swag_from("openapi/ProductionTeamMemberResource_put.yml")
+    @swag_from(SPECS["ProductionTeamMemberResource_put"])
     def put(self, project_id, person_id):
         """
         Set team member role
@@ -174,7 +176,7 @@ class ProductionTeamMemberResource(MethodView):
 class ProductionPreviewAccountResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/ProductionPreviewAccountResource_get.yml")
+    @swag_from(SPECS["ProductionPreviewAccountResource_get"])
     def get(self, project_id):
         """
         Get the preview account of a production
@@ -185,7 +187,7 @@ class ProductionPreviewAccountResource(MethodView):
         )
 
     @jwt_required()
-    @swag_from("openapi/ProductionPreviewAccountResource_post.yml")
+    @swag_from(SPECS["ProductionPreviewAccountResource_post"])
     def post(self, project_id):
         """
         Create the preview account of a production or reset its password
@@ -199,7 +201,7 @@ class ProductionPreviewAccountResource(MethodView):
         return {**account, "password": password}, 201
 
     @jwt_required()
-    @swag_from("openapi/ProductionPreviewAccountResource_put.yml")
+    @swag_from(SPECS["ProductionPreviewAccountResource_put"])
     def put(self, project_id):
         """
         Open or close the access window of the preview account
@@ -211,7 +213,7 @@ class ProductionPreviewAccountResource(MethodView):
         )
 
     @jwt_required()
-    @swag_from("openapi/ProductionPreviewAccountResource_delete.yml")
+    @swag_from(SPECS["ProductionPreviewAccountResource_delete"])
     def delete(self, project_id):
         """
         Delete the preview account of a production
@@ -227,7 +229,7 @@ class ProductionAssetTypeResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
-    @swag_from("openapi/ProductionAssetTypeResource_post.yml")
+    @swag_from(SPECS["ProductionAssetTypeResource_post"])
     def post(self, project_id):
         """
         Add asset type to production
@@ -244,7 +246,7 @@ class ProductionAssetTypeResource(MethodView, ArgsMixin):
 class ProductionAssetTypeRemoveResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/ProductionAssetTypeRemoveResource_delete.yml")
+    @swag_from(SPECS["ProductionAssetTypeRemoveResource_delete"])
     def delete(self, project_id, asset_type_id):
         """
         Remove asset type from production
@@ -260,7 +262,7 @@ class ProductionTaskTypesResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
-    @swag_from("openapi/ProductionTaskTypesResource_get.yml")
+    @swag_from(SPECS["ProductionTaskTypesResource_get"])
     def get(self, project_id):
         """
         Get production task types
@@ -275,7 +277,7 @@ class ProductionTaskTypeResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
-    @swag_from("openapi/ProductionTaskTypeResource_post.yml")
+    @swag_from(SPECS["ProductionTaskTypeResource_post"])
     def post(self, project_id):
         """
         Add task type to production
@@ -299,7 +301,7 @@ class ProductionTaskTypeRemoveResource(MethodView):
     """
 
     @jwt_required()
-    @swag_from("openapi/ProductionTaskTypeRemoveResource_delete.yml")
+    @swag_from(SPECS["ProductionTaskTypeRemoveResource_delete"])
     def delete(self, project_id, task_type_id):
         """
         Remove task type from production
@@ -315,7 +317,7 @@ class ProductionTaskTypeSoftwaresResource(MethodView):
     """
 
     @jwt_required()
-    @swag_from("openapi/ProductionTaskTypeSoftwaresResource_get.yml")
+    @swag_from(SPECS["ProductionTaskTypeSoftwaresResource_get"])
     def get(self, project_id):
         """
         Get production task type softwares
@@ -330,7 +332,7 @@ class ProductionTaskTypeSoftwareResource(MethodView):
     """
 
     @jwt_required()
-    @swag_from("openapi/ProductionTaskTypeSoftwareResource_post.yml")
+    @swag_from(SPECS["ProductionTaskTypeSoftwareResource_post"])
     def post(self, project_id, task_type_id):
         """
         Add software to production task type
@@ -351,7 +353,7 @@ class ProductionTaskTypeSoftwareRemoveResource(MethodView):
     """
 
     @jwt_required()
-    @swag_from("openapi/ProductionTaskTypeSoftwareRemoveResource_delete.yml")
+    @swag_from(SPECS["ProductionTaskTypeSoftwareRemoveResource_delete"])
     def delete(self, project_id, task_type_id, software_id):
         """
         Remove software from production task type
@@ -371,7 +373,7 @@ class ProductionTaskStatusResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
-    @swag_from("openapi/ProductionTaskStatusResource_get.yml")
+    @swag_from(SPECS["ProductionTaskStatusResource_get"])
     def get(self, project_id):
         """
         Get production task statuses
@@ -380,7 +382,7 @@ class ProductionTaskStatusResource(MethodView, ArgsMixin):
         return projects_service.get_project_task_statuses(project_id)
 
     @jwt_required()
-    @swag_from("openapi/ProductionTaskStatusResource_post.yml")
+    @swag_from(SPECS["ProductionTaskStatusResource_post"])
     def post(self, project_id):
         """
         Add task status to production
@@ -400,7 +402,7 @@ class ProductionTaskStatusRemoveResource(MethodView):
     """
 
     @jwt_required()
-    @swag_from("openapi/ProductionTaskStatusRemoveResource_put.yml")
+    @swag_from(SPECS["ProductionTaskStatusRemoveResource_put"])
     def put(self, project_id, task_status_id):
         """
         Set production task status client permission
@@ -414,7 +416,7 @@ class ProductionTaskStatusRemoveResource(MethodView):
         )
 
     @jwt_required()
-    @swag_from("openapi/ProductionTaskStatusRemoveResource_delete.yml")
+    @swag_from(SPECS["ProductionTaskStatusRemoveResource_delete"])
     def delete(self, project_id, task_status_id):
         """
         Remove task status from production
@@ -431,7 +433,7 @@ class ProductionSettingsBatchResource(MethodView):
     """
 
     @jwt_required()
-    @swag_from("openapi/ProductionSettingsBatchResource_post.yml")
+    @swag_from(SPECS["ProductionSettingsBatchResource_post"])
     def post(self, project_id):
         """
         Add settings to production batch
@@ -453,7 +455,7 @@ class ProductionStatusAutomationResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
-    @swag_from("openapi/ProductionStatusAutomationResource_get.yml")
+    @swag_from(SPECS["ProductionStatusAutomationResource_get"])
     def get(self, project_id):
         """
         Get production status automations
@@ -462,7 +464,7 @@ class ProductionStatusAutomationResource(MethodView, ArgsMixin):
         return projects_service.get_project_status_automations(project_id)
 
     @jwt_required()
-    @swag_from("openapi/ProductionStatusAutomationResource_post.yml")
+    @swag_from(SPECS["ProductionStatusAutomationResource_post"])
     def post(self, project_id):
         """
         Add status automation to production
@@ -482,7 +484,7 @@ class ProductionStatusAutomationRemoveResource(MethodView):
     """
 
     @jwt_required()
-    @swag_from("openapi/ProductionStatusAutomationRemoveResource_delete.yml")
+    @swag_from(SPECS["ProductionStatusAutomationRemoveResource_delete"])
     def delete(self, project_id, status_automation_id):
         """
         Remove status automation from production
@@ -500,7 +502,7 @@ class ProductionPreviewBackgroundFileResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
-    @swag_from("openapi/ProductionPreviewBackgroundFileResource_get.yml")
+    @swag_from(SPECS["ProductionPreviewBackgroundFileResource_get"])
     def get(self, project_id):
         """
         Get production preview background files
@@ -511,7 +513,7 @@ class ProductionPreviewBackgroundFileResource(MethodView, ArgsMixin):
         )
 
     @jwt_required()
-    @swag_from("openapi/ProductionPreviewBackgroundFileResource_post.yml")
+    @swag_from(SPECS["ProductionPreviewBackgroundFileResource_post"])
     def post(self, project_id):
         """
         Add preview background file to production
@@ -531,9 +533,7 @@ class ProductionPreviewBackgroundFileRemoveResource(MethodView):
     """
 
     @jwt_required()
-    @swag_from(
-        "openapi/ProductionPreviewBackgroundFileRemoveResource_delete.yml"
-    )
+    @swag_from(SPECS["ProductionPreviewBackgroundFileRemoveResource_delete"])
     def delete(self, project_id, preview_background_file_id):
         """
         Remove preview background file from production
@@ -552,7 +552,7 @@ class ProductionMetadataDescriptorsResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
-    @swag_from("openapi/ProductionMetadataDescriptorsResource_get.yml")
+    @swag_from(SPECS["ProductionMetadataDescriptorsResource_get"])
     def get(self, project_id):
         """
         Get metadata descriptors
@@ -568,7 +568,7 @@ class ProductionMetadataDescriptorsResource(MethodView, ArgsMixin):
         )
 
     @jwt_required()
-    @swag_from("openapi/ProductionMetadataDescriptorsResource_post.yml")
+    @swag_from(SPECS["ProductionMetadataDescriptorsResource_post"])
     def post(self, project_id):
         """
         Create metadata descriptor
@@ -633,7 +633,7 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
-    @swag_from("openapi/ProductionMetadataDescriptorResource_get.yml")
+    @swag_from(SPECS["ProductionMetadataDescriptorResource_get"])
     def get(self, project_id, metadata_descriptor_id):
         """
         Get metadata descriptor
@@ -648,7 +648,7 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
         return descriptor
 
     @jwt_required()
-    @swag_from("openapi/ProductionMetadataDescriptorResource_put.yml")
+    @swag_from(SPECS["ProductionMetadataDescriptorResource_put"])
     def put(self, project_id, metadata_descriptor_id):
         """
         Update metadata descriptor
@@ -678,7 +678,7 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
         )
 
     @jwt_required()
-    @swag_from("openapi/ProductionMetadataDescriptorResource_delete.yml")
+    @swag_from(SPECS["ProductionMetadataDescriptorResource_delete"])
     def delete(self, project_id, metadata_descriptor_id):
         """
         Delete metadata descriptor
@@ -702,7 +702,7 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
 class ProductionMetadataDescriptorsReorderResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/ProductionMetadataDescriptorsReorderResource_post.yml")
+    @swag_from(SPECS["ProductionMetadataDescriptorsReorderResource_post"])
     def post(self, project_id):
         """
         Reorder metadata descriptors
@@ -762,7 +762,7 @@ def _check_metadata_entity_type(entity_type):
 class AllProjectsMetadataDescriptorsResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/AllProjectsMetadataDescriptorsResource_post.yml")
+    @swag_from(SPECS["AllProjectsMetadataDescriptorsResource_post"])
     def post(self):
         """
         Create a metadata descriptor on all accessible projects
@@ -790,7 +790,7 @@ class AllProjectsMetadataDescriptorsResource(MethodView):
 class AllProjectsMetadataDescriptorResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/AllProjectsMetadataDescriptorResource_put.yml")
+    @swag_from(SPECS["AllProjectsMetadataDescriptorResource_put"])
     def put(self, field_name):
         """
         Update a metadata descriptor on all accessible projects
@@ -820,7 +820,7 @@ class AllProjectsMetadataDescriptorResource(MethodView, ArgsMixin):
         )
 
     @jwt_required()
-    @swag_from("openapi/AllProjectsMetadataDescriptorResource_delete.yml")
+    @swag_from(SPECS["AllProjectsMetadataDescriptorResource_delete"])
     def delete(self, field_name):
         """
         Delete a metadata descriptor from all accessible projects
@@ -836,9 +836,7 @@ class AllProjectsMetadataDescriptorResource(MethodView, ArgsMixin):
 class AllProjectsMetadataDescriptorsReorderResource(MethodView):
 
     @jwt_required()
-    @swag_from(
-        "openapi/AllProjectsMetadataDescriptorsReorderResource_post.yml"
-    )
+    @swag_from(SPECS["AllProjectsMetadataDescriptorsReorderResource_post"])
     def post(self):
         """
         Reorder metadata descriptors on all accessible projects
@@ -861,7 +859,7 @@ class ProductionTimeSpentsResource(MethodView):
     """
 
     @jwt_required()
-    @swag_from("openapi/ProductionTimeSpentsResource_get.yml")
+    @swag_from(SPECS["ProductionTimeSpentsResource_get"])
     def get(self, project_id):
         """
         Get production time spents
@@ -878,7 +876,7 @@ class ProductionMilestonesResource(MethodView):
     """
 
     @jwt_required()
-    @swag_from("openapi/ProductionMilestonesResource_get.yml")
+    @swag_from(SPECS["ProductionMilestonesResource_get"])
     def get(self, project_id):
         """
         Get production milestones
@@ -894,7 +892,7 @@ class ProductionScheduleItemsResource(MethodView):
     """
 
     @jwt_required()
-    @swag_from("openapi/ProductionScheduleItemsResource_get.yml")
+    @swag_from(SPECS["ProductionScheduleItemsResource_get"])
     def get(self, project_id):
         """
         Get production schedule items
@@ -911,7 +909,7 @@ class ProductionTaskTypeScheduleItemsResource(MethodView):
     """
 
     @jwt_required()
-    @swag_from("openapi/ProductionTaskTypeScheduleItemsResource_get.yml")
+    @swag_from(SPECS["ProductionTaskTypeScheduleItemsResource_get"])
     def get(self, project_id):
         """
         Get production task type schedule items
@@ -927,7 +925,7 @@ class ProductionAssetTypesScheduleItemsResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
-    @swag_from("openapi/ProductionAssetTypesScheduleItemsResource_get.yml")
+    @swag_from(SPECS["ProductionAssetTypesScheduleItemsResource_get"])
     def get(self, project_id, task_type_id):
         """
         Get asset types schedule items
@@ -948,7 +946,7 @@ class ProductionEpisodesScheduleItemsResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
-    @swag_from("openapi/ProductionEpisodesScheduleItemsResource_get.yml")
+    @swag_from(SPECS["ProductionEpisodesScheduleItemsResource_get"])
     def get(self, project_id, task_type_id):
         """
         Get episodes schedule items
@@ -969,7 +967,7 @@ class ProductionSequencesScheduleItemsResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
-    @swag_from("openapi/ProductionSequencesScheduleItemsResource_get.yml")
+    @swag_from(SPECS["ProductionSequencesScheduleItemsResource_get"])
     def get(self, project_id, task_type_id):
         """
         Get sequences schedule items
@@ -990,7 +988,7 @@ class ProductionEditsScheduleItemsResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
-    @swag_from("openapi/ProductionEditsScheduleItemsResource_get.yml")
+    @swag_from(SPECS["ProductionEditsScheduleItemsResource_get"])
     def get(self, project_id, task_type_id):
         """
         Get edits schedule items
@@ -1008,7 +1006,7 @@ class ProductionEditsScheduleItemsResource(MethodView, ArgsMixin):
 class ProductionBudgetsResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/ProductionBudgetsResource_get.yml")
+    @swag_from(SPECS["ProductionBudgetsResource_get"])
     def get(self, project_id):
         """
         Get production budgets
@@ -1018,7 +1016,7 @@ class ProductionBudgetsResource(MethodView, ArgsMixin):
         return budget_service.get_budgets(project_id)
 
     @jwt_required()
-    @swag_from("openapi/ProductionBudgetsResource_post.yml")
+    @swag_from(SPECS["ProductionBudgetsResource_post"])
     def post(self, project_id):
         """
         Create budget
@@ -1037,7 +1035,7 @@ class ProductionBudgetResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
-    @swag_from("openapi/ProductionBudgetResource_get.yml")
+    @swag_from(SPECS["ProductionBudgetResource_get"])
     def get(self, project_id, budget_id):
         """
         Get budget
@@ -1051,7 +1049,7 @@ class ProductionBudgetResource(MethodView, ArgsMixin):
         return budget
 
     @jwt_required()
-    @swag_from("openapi/ProductionBudgetResource_put.yml")
+    @swag_from(SPECS["ProductionBudgetResource_put"])
     def put(self, project_id, budget_id):
         """
         Update budget
@@ -1065,7 +1063,7 @@ class ProductionBudgetResource(MethodView, ArgsMixin):
         )
 
     @jwt_required()
-    @swag_from("openapi/ProductionBudgetResource_delete.yml")
+    @swag_from(SPECS["ProductionBudgetResource_delete"])
     def delete(self, project_id, budget_id):
         """
         Delete budget
@@ -1080,7 +1078,7 @@ class ProductionBudgetResource(MethodView, ArgsMixin):
 class ProductionBudgetEntriesResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/ProductionBudgetEntriesResource_get.yml")
+    @swag_from(SPECS["ProductionBudgetEntriesResource_get"])
     def get(self, project_id, budget_id):
         """
         Get budget entries
@@ -1091,7 +1089,7 @@ class ProductionBudgetEntriesResource(MethodView, ArgsMixin):
         return budget_service.get_budget_entries(budget_id)
 
     @jwt_required()
-    @swag_from("openapi/ProductionBudgetEntriesResource_post.yml")
+    @swag_from(SPECS["ProductionBudgetEntriesResource_post"])
     def post(self, project_id, budget_id):
         """
         Create budget entry
@@ -1115,7 +1113,7 @@ class ProductionBudgetEntriesResource(MethodView, ArgsMixin):
 class ProductionBudgetEntryResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/ProductionBudgetEntryResource_get.yml")
+    @swag_from(SPECS["ProductionBudgetEntryResource_get"])
     def get(self, project_id, budget_id, entry_id):
         """
         Get budget entry
@@ -1130,7 +1128,7 @@ class ProductionBudgetEntryResource(MethodView, ArgsMixin):
         return budget_service.get_budget_entry(entry_id)
 
     @jwt_required()
-    @swag_from("openapi/ProductionBudgetEntryResource_put.yml")
+    @swag_from(SPECS["ProductionBudgetEntryResource_put"])
     def put(self, project_id, budget_id, entry_id):
         """
         Update budget entry
@@ -1143,7 +1141,7 @@ class ProductionBudgetEntryResource(MethodView, ArgsMixin):
         return budget_service.update_budget_entry(entry_id, body.model_dump())
 
     @jwt_required()
-    @swag_from("openapi/ProductionBudgetEntryResource_delete.yml")
+    @swag_from(SPECS["ProductionBudgetEntryResource_delete"])
     def delete(self, project_id, budget_id, entry_id):
         """
         Delete budget entry
@@ -1159,7 +1157,7 @@ class ProductionBudgetEntryResource(MethodView, ArgsMixin):
 class ProductionMonthTimeSpentsResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/ProductionMonthTimeSpentsResource_get.yml")
+    @swag_from(SPECS["ProductionMonthTimeSpentsResource_get"])
     def get(self, project_id):
         """
         Get production month time spents
@@ -1175,7 +1173,7 @@ class ProductionMonthTimeSpentsResource(MethodView, ArgsMixin):
 class ProductionScheduleVersionTaskLinksResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/ProductionScheduleVersionTaskLinksResource_get.yml")
+    @swag_from(SPECS["ProductionScheduleVersionTaskLinksResource_get"])
     def get(self, production_schedule_version_id):
         """
         Get production schedule version task links
@@ -1215,7 +1213,7 @@ class ProductionScheduleVersionSetTaskLinksFromTasksResource(
 
     @jwt_required()
     @swag_from(
-        "openapi/ProductionScheduleVersionSetTaskLinksFromTasksResource_post.yml"
+        SPECS["ProductionScheduleVersionSetTaskLinksFromTasksResource_post"]
     )
     def post(self, production_schedule_version_id):
         """
@@ -1241,7 +1239,7 @@ class ProductionScheduleVersionApplyToProductionResource(
 
     @jwt_required()
     @swag_from(
-        "openapi/ProductionScheduleVersionApplyToProductionResource_post.yml"
+        SPECS["ProductionScheduleVersionApplyToProductionResource_post"]
     )
     def post(self, production_schedule_version_id):
         """
@@ -1269,7 +1267,9 @@ class ProductionScheduleVersionSetTaskLinksFromProductionScheduleVersionResource
 
     @jwt_required()
     @swag_from(
-        "openapi/ProductionScheduleVersionSetTaskLinksFromProductionScheduleVersionResource_post.yml"
+        SPECS[
+            "ProductionScheduleVersionSetTaskLinksFromProductionScheduleVersionResource_post"
+        ]
     )
     def post(self, production_schedule_version_id):
         """
@@ -1314,7 +1314,7 @@ class ProductionTaskTypesTimeSpentsResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
-    @swag_from("openapi/ProductionTaskTypesTimeSpentsResource_get.yml")
+    @swag_from(SPECS["ProductionTaskTypesTimeSpentsResource_get"])
     def get(self, project_id, task_type_id):
         """
         Get production task type time spents
@@ -1339,7 +1339,7 @@ class ProductionDayOffsResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
-    @swag_from("openapi/ProductionDayOffsResource_get.yml")
+    @swag_from(SPECS["ProductionDayOffsResource_get"])
     def get(self, project_id):
         """
         Get production day offs

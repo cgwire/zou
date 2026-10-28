@@ -1,0 +1,314 @@
+DayOffResource_delete:
+  summary: Delete a day off
+  tags:
+    - Crud
+  description: Delete a day off. Only an administrator or the person of the
+    day off can delete it.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the day off
+  responses:
+    204:
+      description: The day off is deleted
+    400:
+      description: Other data uses this row
+    403:
+      description: You are not the person of the day off or an administrator
+    404:
+      description: The day off does not exist
+
+DayOffResource_get:
+  summary: Get a day off
+  tags:
+    - Crud
+  description: Get a day off. An administrator and the person of the day off
+    get all the fields. A manager of a production of the person also gets all
+    the fields. A supervisor of such a production gets the day off without the
+    description. The supervisor must have no department, or share a department
+    with the person.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the day off
+    - in: query
+      name: relations
+      required: false
+      schema:
+        type: boolean
+        default: true
+      example: true
+      description: Add the related data. The default value is true.
+  responses:
+    200:
+      description: The day off
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              date:
+                type: string
+                format: date
+                example: '2024-01-15'
+              end_date:
+                type: string
+                format: date
+                example: '2024-01-20'
+              person_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The identifier is not a valid UUID
+    403:
+      description: You are not the person, an administrator, or a manager or
+        supervisor of a production of the person
+    404:
+      description: The day off does not exist
+
+DayOffResource_put:
+  summary: Update a day off
+  tags:
+    - Crud
+  description: Update the fields of a day off. Send only the fields to change.
+    You cannot change id, created_at, updated_at. Dates use the ISO 8601
+    format. Only an administrator or the person of the day off can update it.
+    Only an administrator can give the day off to another person. The day off
+    must not overlap another day off of the person. The time spent of the
+    person on the days of the day off is deleted.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the day off
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            date:
+              type: string
+              format: date
+              example: '2024-01-16'
+            end_date:
+              type: string
+              format: date
+              example: '2024-01-21'
+  responses:
+    200:
+      description: The updated day off
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              date:
+                type: string
+                format: date
+                example: '2024-01-16'
+              end_date:
+                type: string
+                format: date
+                example: '2024-01-21'
+              person_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T11:00:00Z'
+    400:
+      description: The day off overlaps another day off, the body is not
+        valid, a date is not valid, or a field breaks a database constraint
+    403:
+      description: You are not the person of the day off or an administrator
+    404:
+      description: The day off does not exist
+
+DayOffsResource_get:
+  summary: Get day off rows
+  tags:
+    - Crud
+  description: Get the day off rows. Add a query parameter for each column to
+    filter on, for example name=Modeling. The name filter does not make a
+    difference between upper case and lower case. To get the rows that have
+    one value of a list, give the list in JSON, for example
+    task_status_id=["<id1>","<id2>"]. You must be an administrator.
+  parameters:
+    - in: query
+      name: page
+      required: false
+      description: Page to get. Without this parameter, the response has all
+        the rows.
+      example: 1
+      schema:
+        type: integer
+    - in: query
+      name: limit
+      required: false
+      description: Number of rows in a page. The default value is 100.
+      example: 100
+      schema:
+        type: integer
+    - in: query
+      name: relations
+      required: false
+      description: Add the related data to each row
+      schema:
+        type: boolean
+        default: false
+    - in: query
+      name: fields
+      required: false
+      description: Comma-separated list of the fields to get for each row. The
+        response always has id and type. The names that are not fields are
+        ignored.
+      example: id,name
+      schema:
+        type: string
+  responses:
+    200:
+      description: The list of day off rows, or a page of rows if you give
+        page
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - type: array
+                items:
+                  type: object
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  total:
+                    type: integer
+                    example: 100
+                  nb_pages:
+                    type: integer
+                    example: 2
+                  limit:
+                    type: integer
+                    example: 50
+                  offset:
+                    type: integer
+                    example: 0
+                  page:
+                    type: integer
+                    example: 1
+    400:
+      description: A filter is not valid
+    403:
+      description: You are not an administrator
+
+DayOffsResource_post:
+  summary: Create a day off
+  tags:
+    - Crud
+  description: Create a day off. Send the fields of the new row in JSON. An
+    administrator can create a day off for all persons. Other users can create
+    a day off for themselves only. The day off must not overlap another day
+    off of the person. The time spent of the person on the days of the day off
+    is deleted.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - date
+            - end_date
+            - person_id
+          properties:
+            date:
+              type: string
+              format: date
+              example: '2024-01-15'
+            end_date:
+              type: string
+              format: date
+              example: '2024-01-20'
+            person_id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    201:
+      description: The new day off
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              date:
+                type: string
+                format: date
+                example: '2024-01-15'
+              end_date:
+                type: string
+                format: date
+                example: '2024-01-20'
+              person_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The day off overlaps another day off, the body is not
+        valid, or a field breaks a database constraint
+    403:
+      description: The day off is not for you, and you are not an
+        administrator

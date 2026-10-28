@@ -1,0 +1,274 @@
+NewsResource_get:
+  summary: Get the news of the open projects
+  description: Get the last news of the open projects that you can access,
+    the newest first. A news is made when a comment is posted on a task.
+    Give project_id to get the news of one project. If you cannot access
+    this project, the route gives the news of all your open projects.
+    Clients cannot use this route.
+  tags:
+    - News
+  parameters:
+    - in: query
+      name: project_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Get only the news of this open project
+    - in: query
+      name: before
+      required: false
+      schema:
+        type: string
+        format: date
+      example: '2022-07-12'
+      description: Get the news before this date. Date in the ISO 8601 format,
+        for example 2026-10-28T10:00:00
+    - in: query
+      name: after
+      required: false
+      schema:
+        type: string
+        format: date
+      example: '2022-07-12'
+      description: Get the news after this date. Date in the ISO 8601 format,
+        for example 2026-10-28T10:00:00
+    - in: query
+      name: page
+      required: false
+      schema:
+        type: integer
+        default: 1
+      example: 1
+      description: Page to get
+    - in: query
+      name: limit
+      required: false
+      schema:
+        type: integer
+        default: 50
+      example: 50
+      description: Number of news in a page
+    - in: query
+      name: person_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Get only the news of this author
+    - in: query
+      name: task_type_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Get only the news of this task type
+    - in: query
+      name: task_status_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Get only the news of this task status
+    - in: query
+      name: episode_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Get only the news of this episode
+    - in: query
+      name: only_preview
+      required: false
+      schema:
+        type: boolean
+        default: false
+      example: false
+      description: Get only the news with a preview
+  responses:
+    200:
+      description: A page of news, with the statistics of the news
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  type: object
+              stats:
+                type: object
+                description: Number of news for each task status
+              total:
+                type: integer
+              nb_pages:
+                type: integer
+              limit:
+                type: integer
+              offset:
+                type: integer
+              page:
+                type: integer
+    400:
+      description: A date is not valid
+    403:
+      description: You are a client
+
+ProjectNewsResource_get:
+  summary: Get the news of a project
+  description: Get the last news of a project, the newest first. A news is
+    made when a comment is posted on a task. Clients cannot use this route.
+  tags:
+    - News
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+    - in: query
+      name: before
+      required: false
+      schema:
+        type: string
+        format: date
+      example: '2022-07-12'
+      description: Get the news before this date. Date in the ISO 8601 format,
+        for example 2026-10-28T10:00:00
+    - in: query
+      name: after
+      required: false
+      schema:
+        type: string
+        format: date
+      example: '2022-07-12'
+      description: Get the news after this date. Date in the ISO 8601 format,
+        for example 2026-10-28T10:00:00
+    - in: query
+      name: page
+      required: false
+      schema:
+        type: integer
+        default: 1
+      example: 1
+      description: Page to get
+    - in: query
+      name: limit
+      required: false
+      schema:
+        type: integer
+        default: 50
+      example: 50
+      description: Number of news in a page
+    - in: query
+      name: person_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Get only the news of this author
+    - in: query
+      name: task_type_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Get only the news of this task type
+    - in: query
+      name: task_status_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Get only the news of this task status
+    - in: query
+      name: episode_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Get only the news of this episode
+    - in: query
+      name: only_preview
+      required: false
+      schema:
+        type: boolean
+        default: false
+      example: false
+      description: Get only the news with a preview
+  responses:
+    200:
+      description: A page of news, with the statistics of the news
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  type: object
+              stats:
+                type: object
+                description: Number of news for each task status
+              total:
+                type: integer
+              nb_pages:
+                type: integer
+              limit:
+                type: integer
+              offset:
+                type: integer
+              page:
+                type: integer
+    400:
+      description: A date is not valid
+    403:
+      description: You do not have access to this project, or you are a client
+    404:
+      description: The project does not exist
+
+ProjectSingleNewsResource_get:
+  summary: Get a news of a project
+  description: Get a news of a project. Clients and vendors cannot use this
+    route.
+  tags:
+    - News
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+    - in: path
+      name: news_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the news item
+  responses:
+    200:
+      description: The news
+    403:
+      description: You do not have access to this project, or you are a client
+        or a vendor
+    404:
+      description: The project or the news does not exist

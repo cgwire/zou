@@ -1,9 +1,0 @@
-Prepare a FIDO registration
----
-description: Get the WebAuthn registration options for a new FIDO device of
-  the current user.
-tags:
-  - Authentication
-responses:
-  200:
-    description: The WebAuthn registration options

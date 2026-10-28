@@ -1,6 +1,5 @@
 import datetime
 
-from flasgger import swag_from
 from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -54,12 +53,15 @@ from zou.app.utils import (
     query,
     validation,
 )
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 class AddPreviewResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/AddPreviewResource_post.yml")
+    @swag_from(SPECS["AddPreviewResource_post"])
     def post(self, task_id, comment_id):
         """
         Add task preview
@@ -78,7 +80,7 @@ class AddPreviewResource(MethodView, ArgsMixin):
 class AddExtraPreviewResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/AddExtraPreviewResource_post.yml")
+    @swag_from(SPECS["AddExtraPreviewResource_post"])
     def post(self, task_id, comment_id, preview_file_id):
         """
         Add preview to comment
@@ -95,7 +97,7 @@ class AddExtraPreviewResource(MethodView, ArgsMixin):
         return preview_file, 201
 
     @jwt_required()
-    @swag_from("openapi/AddExtraPreviewResource_delete.yml")
+    @swag_from(SPECS["AddExtraPreviewResource_delete"])
     def delete(self, task_id, comment_id, preview_file_id):
         """
         Delete preview from comment
@@ -127,7 +129,7 @@ class AddExtraPreviewResource(MethodView, ArgsMixin):
 class TaskPreviewsResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/TaskPreviewsResource_get.yml")
+    @swag_from(SPECS["TaskPreviewsResource_get"])
     def get(self, task_id):
         """
         Get task previews
@@ -144,7 +146,7 @@ class TaskPreviewsResource(MethodView):
 class TaskCommentsResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/TaskCommentsResource_get.yml")
+    @swag_from(SPECS["TaskCommentsResource_get"])
     def get(self, task_id):
         """
         Get task comments
@@ -161,7 +163,7 @@ class TaskCommentsResource(MethodView):
 class TaskCommentResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/TaskCommentResource_get.yml")
+    @swag_from(SPECS["TaskCommentResource_get"])
     def get(self, task_id, comment_id):
         """
         Get comment
@@ -196,7 +198,7 @@ class TaskCommentResource(MethodView):
         return comment
 
     @jwt_required()
-    @swag_from("openapi/TaskCommentResource_delete.yml")
+    @swag_from(SPECS["TaskCommentResource_delete"])
     def delete(self, task_id, comment_id):
         """
         Delete comment
@@ -244,7 +246,7 @@ def get_person_tasks_projects(person_id):
 class PersonTasksResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/PersonTasksResource_get.yml")
+    @swag_from(SPECS["PersonTasksResource_get"])
     def get(self, person_id):
         """
         Get person open tasks
@@ -258,7 +260,7 @@ class PersonTasksResource(MethodView):
 class PersonRelatedTasksResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/PersonRelatedTasksResource_get.yml")
+    @swag_from(SPECS["PersonRelatedTasksResource_get"])
     def get(self, person_id, task_type_id):
         """
         Get person tasks for type
@@ -274,7 +276,7 @@ class PersonRelatedTasksResource(MethodView):
 class PersonDoneTasksResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/PersonDoneTasksResource_get.yml")
+    @swag_from(SPECS["PersonDoneTasksResource_get"])
     def get(self, person_id):
         """
         Get person done tasks
@@ -288,7 +290,7 @@ class PersonDoneTasksResource(MethodView):
 class CreateShotTasksResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/CreateShotTasksResource_post.yml")
+    @swag_from(SPECS["CreateShotTasksResource_post"])
     def post(self, project_id, task_type_id):
         """
         Create shot tasks
@@ -315,7 +317,7 @@ class CreateShotTasksResource(MethodView):
 class CreateConceptTasksResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/CreateConceptTasksResource_post.yml")
+    @swag_from(SPECS["CreateConceptTasksResource_post"])
     def post(self, project_id, task_type_id):
         """
         Create concept tasks
@@ -350,7 +352,7 @@ class CreateConceptTasksResource(MethodView):
 class CreateEntityTasksResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/CreateEntityTasksResource_post.yml")
+    @swag_from(SPECS["CreateEntityTasksResource_post"])
     def post(self, project_id, entity_type, task_type_id):
         """
         Create entity tasks
@@ -384,7 +386,7 @@ class CreateEntityTasksResource(MethodView):
 class CreateAssetTasksResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/CreateAssetTasksResource_post.yml")
+    @swag_from(SPECS["CreateAssetTasksResource_post"])
     def post(self, project_id, task_type_id):
         """
         Create asset tasks
@@ -411,7 +413,7 @@ class CreateAssetTasksResource(MethodView):
 class CreateEditTasksResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/CreateEditTasksResource_post.yml")
+    @swag_from(SPECS["CreateEditTasksResource_post"])
     def post(self, project_id, task_type_id):
         """
         Create edit tasks
@@ -438,7 +440,7 @@ class CreateEditTasksResource(MethodView):
 class ClearAssignationResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/ClearAssignationResource_put.yml")
+    @swag_from(SPECS["ClearAssignationResource_put"])
     def put(self):
         """
         Clear task assignations
@@ -466,7 +468,7 @@ class ClearAssignationResource(MethodView, ArgsMixin):
 class SetTasksPriorityResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/SetTasksPriorityResource_put.yml")
+    @swag_from(SPECS["SetTasksPriorityResource_put"])
     def put(self):
         """
         Set tasks priority
@@ -491,7 +493,7 @@ class SetTasksPriorityResource(MethodView, ArgsMixin):
 class TasksAssignResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/TasksAssignResource_put.yml")
+    @swag_from(SPECS["TasksAssignResource_put"])
     def put(self, person_id):
         """
         Assign tasks to person
@@ -531,7 +533,7 @@ class TasksAssignResource(MethodView, ArgsMixin):
 class TaskAssignResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/TaskAssignResource_put.yml")
+    @swag_from(SPECS["TaskAssignResource_put"])
     def put(self, task_id):
         """
         Assign task to person
@@ -561,7 +563,7 @@ class TaskAssignResource(MethodView, ArgsMixin):
 class TaskFullResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/TaskFullResource_get.yml")
+    @swag_from(SPECS["TaskFullResource_get"])
     def get(self, task_id):
         """
         Get task full
@@ -583,7 +585,7 @@ class TaskFullResource(MethodView):
 class TaskForEntityResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/TaskForEntityResource_get.yml")
+    @swag_from(SPECS["TaskForEntityResource_get"])
     def get(self, entity_id, task_type_id):
         """
         Get tasks for entity and type
@@ -599,7 +601,7 @@ class TaskForEntityResource(MethodView):
 class SetTimeSpentResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/SetTimeSpentResource_post.yml")
+    @swag_from(SPECS["SetTimeSpentResource_post"])
     def post(self, task_id, date, person_id):
         """
         Set time spent
@@ -622,7 +624,7 @@ class SetTimeSpentResource(MethodView, ArgsMixin):
             raise WrongParameterException("Wrong date format.")
 
     @jwt_required()
-    @swag_from("openapi/SetTimeSpentResource_delete.yml")
+    @swag_from(SPECS["SetTimeSpentResource_delete"])
     def delete(self, task_id, date, person_id):
         """
         Delete time spent
@@ -645,7 +647,7 @@ class SetTimeSpentResource(MethodView, ArgsMixin):
 class AddTimeSpentResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/AddTimeSpentResource_post.yml")
+    @swag_from(SPECS["AddTimeSpentResource_post"])
     def post(self, task_id, date, person_id):
         """
         Add time spent
@@ -672,7 +674,7 @@ class AddTimeSpentResource(MethodView, ArgsMixin):
 class GetTimeSpentResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/GetTimeSpentResource_get.yml")
+    @swag_from(SPECS["GetTimeSpentResource_get"])
     def get(self, task_id):
         """
         Get task time spent
@@ -685,7 +687,7 @@ class GetTimeSpentResource(MethodView):
 class GetTimeSpentDateResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/GetTimeSpentDateResource_get.yml")
+    @swag_from(SPECS["GetTimeSpentDateResource_get"])
     def get(self, task_id, date):
         """
         Get task time spent for date
@@ -701,7 +703,7 @@ class GetTimeSpentDateResource(MethodView):
 class DeleteAllTasksForTaskTypeResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/DeleteAllTasksForTaskTypeResource_delete.yml")
+    @swag_from(SPECS["DeleteAllTasksForTaskTypeResource_delete"])
     def delete(self, project_id, task_type_id):
         """
         Delete tasks for type
@@ -719,7 +721,7 @@ class DeleteAllTasksForTaskTypeResource(MethodView):
 class DeleteTasksResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/DeleteTasksResource_post.yml")
+    @swag_from(SPECS["DeleteTasksResource_post"])
     def post(self, project_id):
         """
         Delete tasks batch
@@ -736,7 +738,7 @@ class ProjectSubscriptionsResource(MethodView):
 
     @jwt_required()
     @permissions.require_admin
-    @swag_from("openapi/ProjectSubscriptionsResource_get.yml")
+    @swag_from(SPECS["ProjectSubscriptionsResource_get"])
     def get(self, project_id):
         """
         Get project subscriptions
@@ -749,7 +751,7 @@ class ProjectNotificationsResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_admin
-    @swag_from("openapi/ProjectNotificationsResource_get.yml")
+    @swag_from(SPECS["ProjectNotificationsResource_get"])
     def get(self, project_id):
         """
         Get project notifications
@@ -764,7 +766,7 @@ class ProjectNotificationsResource(MethodView, ArgsMixin):
 class ProjectTasksResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/ProjectTasksResource_get.yml")
+    @swag_from(SPECS["ProjectTasksResource_get"])
     def get(self, project_id):
         """
         Get project tasks
@@ -805,7 +807,7 @@ class ProjectTasksResource(MethodView, ArgsMixin):
 class ProjectCommentsResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/ProjectCommentsResource_get.yml")
+    @swag_from(SPECS["ProjectCommentsResource_get"])
     def get(self, project_id):
         """
         Get project comments
@@ -828,7 +830,7 @@ class ProjectPreviewFilesResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_admin
-    @swag_from("openapi/ProjectPreviewFilesResource_get.yml")
+    @swag_from(SPECS["ProjectPreviewFilesResource_get"])
     def get(self, project_id):
         """
         Get project preview files
@@ -840,7 +842,7 @@ class ProjectPreviewFilesResource(MethodView, ArgsMixin):
 
 class SetTaskMainPreviewResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/SetTaskMainPreviewResource_put.yml")
+    @swag_from(SPECS["SetTaskMainPreviewResource_put"])
     def put(self, task_id):
         """
         Set main preview from task
@@ -866,7 +868,7 @@ class SetTaskMainPreviewResource(MethodView):
 
 class SetTasksMainPreviewResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/SetTasksMainPreviewResource_put.yml")
+    @swag_from(SPECS["SetTasksMainPreviewResource_put"])
     def put(self):
         """
         Set main preview from several tasks
@@ -899,7 +901,7 @@ class SetTasksMainPreviewResource(MethodView):
 class PersonsTasksDatesResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/PersonsTasksDatesResource_get.yml")
+    @swag_from(SPECS["PersonsTasksDatesResource_get"])
     def get(self):
         """
         Get persons tasks dates
@@ -978,7 +980,7 @@ def check_open_tasks_access(project_id):
 class OpenTasksResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/OpenTasksResource_get.yml")
+    @swag_from(SPECS["OpenTasksResource_get"])
     def get(self):
         """
         Get open tasks
@@ -1011,7 +1013,7 @@ class OpenTasksResource(MethodView, ArgsMixin):
 class OpenTasksStatsResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/OpenTasksStatsResource_get.yml")
+    @swag_from(SPECS["OpenTasksStatsResource_get"])
     def get(self):
         """
         Get open tasks stats
@@ -1022,7 +1024,7 @@ class OpenTasksStatsResource(MethodView, ArgsMixin):
 class OpenTasksBurndownResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/OpenTasksBurndownResource_get.yml")
+    @swag_from(SPECS["OpenTasksBurndownResource_get"])
     def get(self):
         """
         Get open tasks burndown

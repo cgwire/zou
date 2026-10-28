@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -13,11 +12,14 @@ from zou.app.services import (
     task_types_service,
 )
 from zou.app.utils import csv_utils, query
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 class AssetsCsvExport(MethodView):
     @jwt_required()
-    @swag_from("openapi/AssetsCsvExport_get.yml")
+    @swag_from(SPECS["AssetsCsvExport_get"])
     def get(self, project_id):
         """
         Export assets csv

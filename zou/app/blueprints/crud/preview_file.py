@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask import current_app
 from flask_jwt_extended import jwt_required
 from sqlalchemy.exc import IntegrityError, StatementError
@@ -18,6 +17,9 @@ from zou.app.services import (
     user_service,
 )
 from zou.app.utils import fields, permissions
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/preview_file.yml")
 
 
 class PreviewFilesResource(BaseModelsResource):
@@ -25,7 +27,7 @@ class PreviewFilesResource(BaseModelsResource):
         BaseModelsResource.__init__(self, PreviewFile)
 
     @jwt_required()
-    @swag_from("openapi/PreviewFilesResource_get.yml")
+    @swag_from(SPECS["PreviewFilesResource_get"])
     def get(self):
         """
         Get preview files
@@ -33,7 +35,7 @@ class PreviewFilesResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/PreviewFilesResource_post.yml")
+    @swag_from(SPECS["PreviewFilesResource_post"])
     def post(self):
         """
         Create preview file
@@ -100,7 +102,7 @@ class PreviewFileResource(BaseModelResource):
         return True
 
     @jwt_required()
-    @swag_from("openapi/PreviewFileResource_get.yml")
+    @swag_from(SPECS["PreviewFileResource_get"])
     def get(self, instance_id):
         """
         Get preview file
@@ -108,7 +110,7 @@ class PreviewFileResource(BaseModelResource):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/PreviewFileResource_put.yml")
+    @swag_from(SPECS["PreviewFileResource_put"])
     def put(self, instance_id):
         """
         Update preview file
@@ -161,7 +163,7 @@ class PreviewFileResource(BaseModelResource):
         return True
 
     @jwt_required()
-    @swag_from("openapi/PreviewFileResource_delete.yml")
+    @swag_from(SPECS["PreviewFileResource_delete"])
     def delete(self, instance_id):
         """
         Delete preview file

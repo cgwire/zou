@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
@@ -14,6 +13,9 @@ from zou.app.services import (
     user_service,
 )
 from zou.app.utils import permissions
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/metadata_descriptor.yml")
 
 
 class MetadataDescriptorsResource(BaseModelsResource):
@@ -29,7 +31,7 @@ class MetadataDescriptorsResource(BaseModelsResource):
         return True
 
     @jwt_required()
-    @swag_from("openapi/MetadataDescriptorsResource_get.yml")
+    @swag_from(SPECS["MetadataDescriptorsResource_get"])
     def get(self):
         """
         Get metadata descriptors
@@ -37,7 +39,7 @@ class MetadataDescriptorsResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/MetadataDescriptorsResource_post.yml")
+    @swag_from(SPECS["MetadataDescriptorsResource_post"])
     def post(self):
         """
         Create metadata descriptor
@@ -89,7 +91,7 @@ class MetadataDescriptorResource(BaseModelResource):
         BaseModelResource.__init__(self, MetadataDescriptor)
 
     @jwt_required()
-    @swag_from("openapi/MetadataDescriptorResource_get.yml")
+    @swag_from(SPECS["MetadataDescriptorResource_get"])
     def get(self, instance_id):
         """
         Get metadata descriptor
@@ -97,7 +99,7 @@ class MetadataDescriptorResource(BaseModelResource):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/MetadataDescriptorResource_put.yml")
+    @swag_from(SPECS["MetadataDescriptorResource_put"])
     def put(self, instance_id):
         """
         Update metadata descriptor
@@ -105,7 +107,7 @@ class MetadataDescriptorResource(BaseModelResource):
         return super().put(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/MetadataDescriptorResource_delete.yml")
+    @swag_from(SPECS["MetadataDescriptorResource_delete"])
     def delete(self, instance_id):
         """
         Delete metadata descriptor

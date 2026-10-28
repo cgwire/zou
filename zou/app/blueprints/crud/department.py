@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
@@ -6,6 +5,9 @@ from zou.app.models.department import Department
 from zou.app.services import (
     departments_service,
 )
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/department.yml")
 
 
 class DepartmentsResource(BaseModelsResource):
@@ -16,7 +18,7 @@ class DepartmentsResource(BaseModelsResource):
         return True
 
     @jwt_required()
-    @swag_from("openapi/DepartmentsResource_get.yml")
+    @swag_from(SPECS["DepartmentsResource_get"])
     def get(self):
         """
         Get departments
@@ -24,7 +26,7 @@ class DepartmentsResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/DepartmentsResource_post.yml")
+    @swag_from(SPECS["DepartmentsResource_post"])
     def post(self):
         """
         Create department
@@ -44,7 +46,7 @@ class DepartmentResource(BaseModelResource):
         return True
 
     @jwt_required()
-    @swag_from("openapi/DepartmentResource_get.yml")
+    @swag_from(SPECS["DepartmentResource_get"])
     def get(self, instance_id):
         """
         Get department
@@ -52,7 +54,7 @@ class DepartmentResource(BaseModelResource):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/DepartmentResource_put.yml")
+    @swag_from(SPECS["DepartmentResource_put"])
     def put(self, instance_id):
         """
         Update department
@@ -60,7 +62,7 @@ class DepartmentResource(BaseModelResource):
         return super().put(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/DepartmentResource_delete.yml")
+    @swag_from(SPECS["DepartmentResource_delete"])
     def delete(self, instance_id):
         """
         Delete department

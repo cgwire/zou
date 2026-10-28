@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask import current_app
 from flask_jwt_extended import jwt_required
 
@@ -12,6 +11,9 @@ from zou.app.services import (
     entity_types_service,
     persons_service,
 )
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 class ImportShotgunScenesResource(BaseImportShotgunResource):
@@ -19,7 +21,7 @@ class ImportShotgunScenesResource(BaseImportShotgunResource):
         BaseImportShotgunResource.__init__(self)
 
     @jwt_required()
-    @swag_from("openapi/ImportShotgunScenesResource_post.yml")
+    @swag_from(SPECS["ImportShotgunScenesResource_post"])
     def post(self):
         """
         Import shotgun scenes
@@ -92,7 +94,7 @@ class ImportRemoveShotgunSceneResource(ImportRemoveShotgunBaseResource):
         )
 
     @jwt_required()
-    @swag_from("openapi/ImportRemoveShotgunSceneResource_post.yml")
+    @swag_from(SPECS["ImportRemoveShotgunSceneResource_post"])
     def post(self):
         """
         Remove shotgun scene

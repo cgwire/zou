@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
@@ -14,6 +13,9 @@ from zou.app.services import (
     tasks_service,
 )
 from zou.app.utils import events, permissions
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/comments.yml")
 
 
 class CommentsResource(BaseModelsResource):
@@ -30,7 +32,7 @@ class CommentsResource(BaseModelsResource):
         ]
 
     @jwt_required()
-    @swag_from("openapi/CommentsResource_get.yml")
+    @swag_from(SPECS["CommentsResource_get"])
     def get(self):
         """
         Get comments
@@ -38,7 +40,7 @@ class CommentsResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/CommentsResource_post.yml")
+    @swag_from(SPECS["CommentsResource_post"])
     def post(self):
         """
         Create comment
@@ -66,7 +68,7 @@ class CommentResource(BaseModelResource):
         self.protected_fields += ["mentions", "department_mentions"]
 
     @jwt_required()
-    @swag_from("openapi/CommentResource_get.yml")
+    @swag_from(SPECS["CommentResource_get"])
     def get(self, instance_id):
         """
         Get comment
@@ -74,7 +76,7 @@ class CommentResource(BaseModelResource):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/CommentResource_put.yml")
+    @swag_from(SPECS["CommentResource_put"])
     def put(self, instance_id):
         """
         Update comment
@@ -300,7 +302,7 @@ class CommentResource(BaseModelResource):
         return data
 
     @jwt_required()
-    @swag_from("openapi/CommentResource_delete.yml")
+    @swag_from(SPECS["CommentResource_delete"])
     def delete(self, instance_id):
         """
         Delete comment

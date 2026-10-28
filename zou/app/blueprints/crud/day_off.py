@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
@@ -11,6 +10,9 @@ from zou.app.services import (
     user_service,
 )
 from zou.app.utils import permissions
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/day_off.yml")
 
 
 def _remove_time_spents_covered_by(day_off):
@@ -36,7 +38,7 @@ class DayOffsResource(BaseModelsResource):
         return permissions_service.check_day_off_access(data)
 
     @jwt_required()
-    @swag_from("openapi/DayOffsResource_get.yml")
+    @swag_from(SPECS["DayOffsResource_get"])
     def get(self):
         """
         Get day offs
@@ -44,7 +46,7 @@ class DayOffsResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/DayOffsResource_post.yml")
+    @swag_from(SPECS["DayOffsResource_post"])
     def post(self):
         """
         Create day off
@@ -71,7 +73,7 @@ class DayOffResource(BaseModelResource):
         self.with_description = True
 
     @jwt_required()
-    @swag_from("openapi/DayOffResource_get.yml")
+    @swag_from(SPECS["DayOffResource_get"])
     def get(self, instance_id):
         """
         Get day off
@@ -79,7 +81,7 @@ class DayOffResource(BaseModelResource):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/DayOffResource_put.yml")
+    @swag_from(SPECS["DayOffResource_put"])
     def put(self, instance_id):
         """
         Update day off
@@ -87,7 +89,7 @@ class DayOffResource(BaseModelResource):
         return super().put(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/DayOffResource_delete.yml")
+    @swag_from(SPECS["DayOffResource_delete"])
     def delete(self, instance_id):
         """
         Delete day off
