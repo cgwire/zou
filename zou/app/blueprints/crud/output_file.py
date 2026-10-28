@@ -30,6 +30,14 @@ class OutputFilesResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, OutputFile)
 
+    @jwt_required()
+    @swag_from(SPECS["OutputFilesResource_get"])
+    def get(self):
+        """
+        Get output files
+        """
+        return super().get()
+
     def check_read_permissions(self, options=None):
         permissions_service.block_access_to_vendor()
         return True
@@ -97,6 +105,22 @@ class OutputFileResource(BaseModelResource):
 
         except ValueError:
             raise WrongParameterException("Invalid value.")
+
+    @jwt_required()
+    @swag_from(SPECS["OutputFileResource_put"])
+    def put(self, instance_id):
+        """
+        Update output file
+        """
+        return super().put(instance_id)
+
+    @jwt_required()
+    @swag_from(SPECS["OutputFileResource_delete"])
+    def delete(self, instance_id):
+        """
+        Delete output file
+        """
+        return super().delete(instance_id)
 
     def update_data(self, data, instance_id):
         data = super().update_data(data, instance_id)
