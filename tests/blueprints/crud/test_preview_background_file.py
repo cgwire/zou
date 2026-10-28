@@ -68,6 +68,24 @@ class PreviewBackgroundFileTestCase(ApiDBTestCase):
         self.assertEqual(len(preview_background_files), 1)
         self.delete_404(f"data/preview-background-files/{fields.gen_uuid()}")
 
+    def test_the_default_background_is_one_of_the_project(self):
+        path = f"data/projects/{self.project.id}"
+        background_id = str(self.preview_background_file.id)
+        self.put(
+            path, {"default_preview_background_file_id": background_id}, 400
+        )
+        self.put(
+            path,
+            {
+                "preview_background_files": [background_id],
+                "default_preview_background_file_id": background_id,
+            },
+        )
+        self.assertEqual(
+            self.get(path)["default_preview_background_file_id"],
+            background_id,
+        )
+
     def test_add_preview_background_to_project(self):
         data = {
             "preview_background_file_id": self.preview_background_file.id,

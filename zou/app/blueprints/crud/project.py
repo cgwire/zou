@@ -220,7 +220,12 @@ class ProjectResource(BaseModelResource, ArgsMixin):
                 ]
             ]
 
-        if data.get("preview_background_file_id") is not None:
+        for field in (
+            "preview_background_file_id",
+            "default_preview_background_file_id",
+        ):
+            if data.get(field) is None:
+                continue
             if "preview_background_files" in data:
                 preview_background_files_ids = [
                     str(preview_background_file.id)
@@ -230,18 +235,13 @@ class ProjectResource(BaseModelResource, ArgsMixin):
                 ]
             else:
                 preview_background_files_ids = [
-                    preview_background_file_id
-                    for preview_background_file_id in project_dict[
-                        "preview_background_files"
-                    ]
+                    str(preview_background_file.id)
+                    for preview_background_file in projects_service.get_project_raw(
+                        project_dict["id"]
+                    ).preview_background_files
                 ]
-            if (
-                data["preview_background_file_id"]
-                not in preview_background_files_ids
-            ):
-                raise WrongParameterException(
-                    "Invalid preview_background_file_id"
-                )
+            if data[field] not in preview_background_files_ids:
+                raise WrongParameterException(f"Invalid {field}")
 
         return data
 
