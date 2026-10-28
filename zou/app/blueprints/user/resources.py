@@ -1,3 +1,5 @@
+import datetime
+
 from flask import jsonify, request
 from flask.views import MethodView
 
@@ -404,9 +406,15 @@ class DesktopLoginLogsResource(MethodView, ArgsMixin):
         arguments = self.get_args(
             [("date", date_helpers.get_utc_now_datetime())]
         )
+        date = arguments["date"]
+        if isinstance(date, str):
+            try:
+                date = datetime.datetime.fromisoformat(date)
+            except ValueError:
+                raise WrongParameterException("Wrong date format.")
         current_user = persons_service.get_current_user()
         desktop_login_log = persons_service.create_desktop_login_logs(
-            current_user["id"], arguments["date"]
+            current_user["id"], date
         )
         return desktop_login_log, 201
 

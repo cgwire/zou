@@ -635,9 +635,12 @@ def _readable_day_offs(list_period, *period):
     with the descriptions of the ones the caller may read in full.
     """
     readable = permissions_service.get_day_off_readable_person_ids()
-    if readable is None:
-        return list_period(*period)
-    day_offs = list_period(*period, person_ids=list(readable.keys()))
+    try:
+        if readable is None:
+            return list_period(*period)
+        day_offs = list_period(*period, person_ids=list(readable.keys()))
+    except WrongDateFormatException:
+        raise WrongParameterException("Wrong date format.")
     return [
         day_off if readable[day_off["person_id"]] else _dates_only(day_off)
         for day_off in day_offs

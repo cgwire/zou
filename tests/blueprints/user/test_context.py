@@ -665,6 +665,9 @@ class UserNotificationTestCase(UserContextTestCase):
         self.assertEqual(logs[0]["person_id"], str(self.user_id))
         self.assertEqual(logs[0]["date"], date_2)
 
+        self.post(path, {"date": "2024-06-10T10:00:00.123456"})
+        self.post(path, {"date": "not a date"}, 400)
+
     def test_get_notifications(self):
         person_id = str(self.person.id)
         tasks_service.assign_task(self.task.id, self.user_id)
