@@ -916,12 +916,14 @@ class PersonsTasksDatesResource(MethodView, ArgsMixin):
         busy_project_ids = None
         if not permissions.has_admin_permissions():
             # Supervisors reach the team schedule page too: like managers,
-            # they only see the projects of their own teams.
-            permissions.check_at_least_supervisor_permissions()
+            # they only see the projects of their own teams. A named
+            # project resolves the role held on it before the check.
             if project_id is not None:
                 if not permissions_service.check_belong_to_project(project_id):
                     raise permissions.PermissionDenied
+                permissions.check_at_least_supervisor_permissions()
             else:
+                permissions.check_at_least_supervisor_permissions()
                 project_ids = user_service.get_open_project_ids()
                 # The other open productions come back as anonymous busy
                 # periods: date pairs only, so the schedule can show a
