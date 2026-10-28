@@ -65,7 +65,12 @@ class CommentsResource(BaseModelsResource):
 class CommentResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, Comment)
-        self.protected_fields += ["mentions", "department_mentions"]
+        # The update check reads the task off the stored comment.
+        self.protected_fields += [
+            "mentions",
+            "department_mentions",
+            "object_id",
+        ]
 
     @jwt_required()
     @swag_from(SPECS["CommentResource_get"])

@@ -87,6 +87,8 @@ class PreviewFilesResource(BaseModelsResource):
 class PreviewFileResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, PreviewFile)
+        # The update check reads the project off the stored task.
+        self.protected_fields.append("task_id")
 
     def check_read_permissions(self, preview_file):
         """

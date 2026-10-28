@@ -58,6 +58,14 @@ class CommentTestCase(ApiDBTestCase):
         comment_id = fields.gen_uuid()
         self.put_404(f"data/comments/{comment_id}", data)
 
+    def test_object_id_is_protected(self):
+        comment = self.comments[0]
+        path = f"data/comments/{comment['id']}"
+        self.put(path, {"object_id": fields.gen_uuid(), "text": "Moved"})
+        comment_again = self.get(path)
+        self.assertEqual(comment_again["object_id"], comment["object_id"])
+        self.assertEqual(comment_again["text"], "Moved")
+
     def test_update_comment_with_a_null_checklist(self):
         comment_id = self.comments[0]["id"]
         self.put(f"data/comments/{comment_id}", {"checklist": None})
