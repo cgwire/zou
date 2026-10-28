@@ -389,6 +389,18 @@ class SearchFilterGroupTestCase(SavedSearchTestCase):
                 search_filters_service.get_filter_group(group["id"])
         self.assertIsNone(SearchFilter.get(search_filter["id"]))
 
+    def test_remove_filter_group_leaves_the_filters_of_others(self):
+        with self.as_user(self.user_manager):
+            group, search_filter = self.a_shared_group_holding_a_filter()
+        with self.as_user():
+            other = self.a_filter(
+                is_shared=True, search_filter_group_id=group["id"]
+            )
+        with self.as_user(self.user_manager):
+            search_filters_service.remove_filter_group(group["id"])
+        self.assertIsNone(SearchFilter.get(search_filter["id"]))
+        self.assertIsNone(SearchFilter.get(other["id"]).search_filter_group_id)
+
     def test_removing_the_owner_of_a_group_drops_its_filters_everywhere(self):
         """
         Removing a person takes their groups with them, and the filters

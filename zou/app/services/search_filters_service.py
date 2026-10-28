@@ -394,12 +394,18 @@ def remove_filter_group(search_filter_group_id):
     )
     if search_filter_group is None:
         raise SearchFilterGroupNotFoundException
-    if (
-        SearchFilter.query.filter_by(
-            search_filter_group_id=search_filter_group_id
-        ).delete()
-        > 0
-    ):
+    # The filters of the other members in a shared group stay theirs, out
+    # of the group.
+    group_filters = SearchFilter.query.filter_by(
+        search_filter_group_id=search_filter_group_id
+    )
+    changed = group_filters.filter(
+        SearchFilter.person_id != search_filter_group.person_id
+    ).update({"search_filter_group_id": None})
+    changed += group_filters.filter_by(
+        person_id=search_filter_group.person_id
+    ).delete()
+    if changed > 0:
         SearchFilter.query.session.commit()
         clear_filter_cache()
     search_filter_group.delete()
