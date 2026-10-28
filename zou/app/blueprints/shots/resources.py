@@ -742,7 +742,7 @@ class SequenceResource(MethodView, ArgsMixin):
         """
         force = self.get_force()
         sequence = shots_service.get_sequence(sequence_id)
-        if sequence["created_by"] != persons_service.get_current_user()["id"]:
+        if sequence["created_by"] == persons_service.get_current_user()["id"]:
             permissions_service.check_belong_to_project(sequence["project_id"])
         else:
             permissions_service.check_manager_project_access(
