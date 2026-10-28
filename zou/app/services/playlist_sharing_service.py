@@ -846,31 +846,19 @@ def enrich_shots_with_entity_info(playlist_dict):
 
 def create_guest(token, first_name, last_name=""):
     """
-    Return or create a guest Person scoped to the share link of ``token``.
+    Create a guest Person scoped to the share link of ``token``.
 
     Each guest is bound to the share link that created it (via
-    ``Person.data['share_link_id']``). Reuse by first/last name only matches
-    guests created from the same share link, so a reviewer named "John
-    Smith" who has commented through link A cannot be impersonated by an
-    attacker who later creates a guest with the same name through link B.
-    The guest always has ``is_guest=True`` and ``role=client``.
+    ``Person.data['share_link_id']``). A guest is never looked up by name:
+    typing the name of a reviewer who commented before must not take their
+    identity. The viewer keeps their guest id and reuses it through
+    get_guest_for_share_link. The guest always has ``is_guest=True`` and
+    ``role=client``.
     """
     share_link = validate_share_token(token)
     share_link_id = str(share_link["id"])
     first_name = (first_name or "Guest").strip()
     last_name = (last_name or "").strip()
-
-    existing = (
-        Person.query.filter_by(
-            is_guest=True,
-            first_name=first_name,
-            last_name=last_name,
-        )
-        .filter(Person.data["share_link_id"].astext == share_link_id)
-        .first()
-    )
-    if existing is not None:
-        return existing.serialize()
 
     guest = Person.create(
         first_name=first_name,

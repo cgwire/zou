@@ -658,6 +658,14 @@ class GuestTestCase(PlaylistSharingTestCase):
         )
         self.assertEqual(guest["id"], guest2["id"])
 
+    def test_the_same_name_makes_another_guest(self):
+        link = self.post(self.share_path(), {}, 201)
+        self.log_out()
+        path = self.shared_path(link["token"], "/guest")
+        guest = self.post(path, {"first_name": "John"}, 201)
+        impostor = self.post(path, {"first_name": "John"}, 201)
+        self.assertNotEqual(guest["id"], impostor["id"])
+
     def test_a_protected_link_takes_its_password_on_every_route(self):
         link = self.post(self.share_path(), {"password": "topsecret123"}, 201)
         self.log_out()
