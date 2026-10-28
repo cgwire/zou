@@ -335,6 +335,7 @@ class SharedPlaylistAnnotationsResource(MethodView):
             additions=additions,
             updates=updates,
             deletions=deletions,
+            only_own_objects=True,
         )
 
 

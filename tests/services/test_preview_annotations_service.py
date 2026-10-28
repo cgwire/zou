@@ -44,6 +44,32 @@ class PreviewFileAnnotationsTestCase(PreviewFileTestCase):
             "annotations"
         ]
 
+    def test_a_guest_touches_only_its_own_objects(self):
+        self.annotate(additions=self.at_zero)
+
+        def guest_annotates(**changes):
+            preview_annotations_service.update_preview_file_annotations(
+                "guest",
+                self.project_id,
+                self.preview_file_id,
+                only_own_objects=True,
+                **changes,
+            )
+
+        guest_annotates(additions=[self.annotation("0", "mine")])
+        guest_annotates(
+            updates=[self.annotation("0", "obj1", path=["Q", 5, 5])],
+            deletions=[{"time": "0", "objects": ["obj1", "mine"]}],
+        )
+
+        (annotation,) = files_service.get_preview_file(self.preview_file_id)[
+            "annotations"
+        ]
+        (obj1,) = annotation["drawing"]["objects"]
+        self.assertEqual(obj1["id"], "obj1")
+        self.assertEqual(obj1["path"], ["Q", 0, 10])
+        self.assertNotIn("person_id", obj1)
+
     def test_an_addition_lands_on_the_preview(self):
         self.assertEqual(self.annotate(additions=self.at_zero), self.at_zero)
 
