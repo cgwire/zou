@@ -292,6 +292,15 @@ class CommentRoutesTestCase(CommentTestCase):
         reply_ids = [r["id"] for r in comment.get("replies", [])]
         self.assertNotIn(reply_id, reply_ids)
 
+    def test_ack_and_reply_deletion_take_the_comment_task(self):
+        other_task = self._make_sibling_task()
+        reply = comments_service.reply_comment(
+            self.comment["id"], "Reply", person_id=str(self.user["id"])
+        )
+        wrong = f"/data/tasks/{other_task.id}/comments/{self.comment['id']}"
+        self.post(f"{wrong}/ack", {}, 404)
+        self.delete(f"{wrong}/reply/{reply['id']}", 404)
+
 
 class ClientVisibleCommentTestCase(CommentTestCase):
     """

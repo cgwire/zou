@@ -92,6 +92,7 @@ class AckCommentResource(MethodView):
         """
         Acknowledge comment
         """
+        comments_service.get_task_comment(task_id, comment_id)
         permissions_service.check_task_access(task_id)
         return comments_service.acknowledge_comment(comment_id)
 
@@ -380,6 +381,8 @@ class DeleteReplyCommentResource(MethodView):
         """
         Delete comment reply
         """
+        comments_service.get_task_comment(task_id, comment_id)
+        permissions_service.check_task_access(task_id)
         reply = comments_service.get_reply(comment_id, reply_id)
         current_user = persons_service.get_current_user()
         if reply["person_id"] != current_user["id"]:
