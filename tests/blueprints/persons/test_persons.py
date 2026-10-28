@@ -184,6 +184,12 @@ class PersonRoutesTestCase(ApiDBTestCase):
         self.log_in_cg_artist()
         self.get("/data/persons/day-offs/2024/13", 400)
 
+    def test_the_day_offs_of_a_person_with_a_wrong_date(self):
+        path = f"/data/persons/{self.person_id}/day-offs"
+        self.get(f"{path}/week/2024/60", 400)
+        self.get(f"{path}/month/2024/13", 400)
+        self.get(f"{path}/year/year", 400)
+
     def test_the_studio_wide_month_lists_what_the_caller_may_read(self):
         """
         /data/persons/day-offs/<year> and its month hold the leave of

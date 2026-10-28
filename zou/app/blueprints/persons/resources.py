@@ -662,6 +662,19 @@ def _readable_day_offs(list_period, *period):
     ]
 
 
+def _person_day_offs(list_period, person_id, *period):
+    """
+    The day offs of the person for the period, with their descriptions when
+    the caller may read them.
+    """
+    with_description = _check_day_off_read_access(person_id)
+    try:
+        day_offs = list_period(person_id, *period)
+    except WrongDateFormatException:
+        raise WrongParameterException("Wrong date format.")
+    return _shape_day_offs(day_offs, with_description)
+
+
 class PersonWeekDayOffResource(MethodView, ArgsMixin):
 
     @jwt_required()
@@ -670,12 +683,11 @@ class PersonWeekDayOffResource(MethodView, ArgsMixin):
         """
         Get person week day offs
         """
-        with_description = _check_day_off_read_access(person_id)
-        return _shape_day_offs(
-            time_spents_service.get_person_day_offs_for_week(
-                person_id, year, week
-            ),
-            with_description,
+        return _person_day_offs(
+            time_spents_service.get_person_day_offs_for_week,
+            person_id,
+            year,
+            week,
         )
 
 
@@ -687,12 +699,11 @@ class PersonMonthDayOffResource(MethodView, ArgsMixin):
         """
         Get person month day offs
         """
-        with_description = _check_day_off_read_access(person_id)
-        return _shape_day_offs(
-            time_spents_service.get_person_day_offs_for_month(
-                person_id, year, month
-            ),
-            with_description,
+        return _person_day_offs(
+            time_spents_service.get_person_day_offs_for_month,
+            person_id,
+            year,
+            month,
         )
 
 
@@ -704,10 +715,8 @@ class PersonYearDayOffResource(MethodView, ArgsMixin):
         """
         Get person year day offs
         """
-        with_description = _check_day_off_read_access(person_id)
-        return _shape_day_offs(
-            time_spents_service.get_person_day_offs_for_year(person_id, year),
-            with_description,
+        return _person_day_offs(
+            time_spents_service.get_person_day_offs_for_year, person_id, year
         )
 
 
