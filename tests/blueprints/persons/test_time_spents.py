@@ -1,4 +1,5 @@
 from tests.base import ApiDBTestCase
+from zou.app.services import projects_service
 
 
 class PersonTimeSpentsTestCase(ApiDBTestCase):
@@ -40,6 +41,15 @@ class PersonTimeSpentsTestCase(ApiDBTestCase):
 
         self.assertEqual(len(time_spents), 2)
         self.assertEqual(duration, 800)
+
+    def test_a_manager_of_this_project_only_reads_the_time_spents(self):
+        artist_id = self.generate_fixture_user_cg_artist()["id"]
+        projects_service.add_team_member(self.project.id, artist_id, "manager")
+        self.log_in_cg_artist()
+        time_spents = self.get(
+            f"/data/persons/{self.person_id}/time-spents/2018-06-04"
+        )
+        self.assertEqual(len(time_spents), 2)
 
     def test_get_all_month_time_spents(self):
         time_spents = self.get(

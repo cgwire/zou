@@ -56,14 +56,25 @@ def _get_project_department_ids_for_person_access(person_id):
     current_user_id = persons_service.get_current_user()["id"]
     if current_user_id == person_id:
         return (None, None)
-    if not (
+    # Read per project: the role held on each project of the team.
+    roles = user_service.get_team_project_roles()
+    project_ids = [
+        project_id
+        for project_id, role in roles.items()
+        if role in ("manager", "supervisor")
+    ]
+    # A global manager or supervisor on no team yet is allowed, and scoped
+    # to nothing.
+    if not project_ids and not (
         permissions.has_manager_permissions()
         or permissions.has_supervisor_permissions()
     ):
         raise permissions.PermissionDenied
-    project_ids = [p["id"] for p in user_service.get_projects()]
     department_ids = None
-    if permissions.has_supervisor_permissions():
+    if (
+        "supervisor" in roles.values()
+        or permissions.has_supervisor_permissions()
+    ):
         department_ids = persons_service.get_current_user(relations=True).get(
             "departments", []
         )
@@ -477,18 +488,22 @@ class TimeSpentDurationResource(MethodView, ArgsMixin):
             department_ids = None
         studio_id = self.get_text_parameter("studio_id")
         if not permissions.has_admin_permissions():
-            if (
-                permissions.has_manager_permissions()
-                or permissions.has_supervisor_permissions()
-            ):
-                project_ids = [
-                    project["id"] for project in user_service.get_projects()
-                ]
+            # Read per project: the role held on each project of the team.
+            roles = user_service.get_team_project_roles()
+            project_ids = [
+                project_id
+                for project_id, role in roles.items()
+                if role in ("manager", "supervisor")
+            ]
+            if project_ids:
                 if project_id is None:
                     project_id = project_ids
+                    is_supervising = "supervisor" in roles.values()
                 elif project_id not in project_ids:
                     raise permissions.PermissionDenied
-                if permissions.has_supervisor_permissions():
+                else:
+                    is_supervising = roles[project_id] == "supervisor"
+                if is_supervising:
                     persons_departments = persons_service.get_current_user(
                         relations=True
                     )["departments"]
