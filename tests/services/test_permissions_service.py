@@ -10,6 +10,7 @@ from zou.app.exceptions import PlaylistNotFoundException
 from zou.app.models.entity import Entity
 from zou.app.services import (
     comments_service,
+    entities_service,
     permissions_service,
     persons_service,
     projects_service,
@@ -900,6 +901,16 @@ class DepartmentAccessTestCase(PermissionsTestCase):
             with self.denied():
                 permissions_service.check_supervisor_task_access(
                     self.task_dict, {"task_status_id": UNKNOWN}
+                )
+
+    def test_a_supervisor_with_departments_sends_no_metadata(self):
+        self.a_supervisor(department=self.own_department)
+        entity = entities_service.get_entity(str(self.asset.id))
+
+        with self.as_role("supervisor"):
+            with self.denied():
+                permissions_service.check_metadata_department_access(
+                    entity, {}
                 )
 
     def test_a_manager_of_the_team_writes_any_column(self):
