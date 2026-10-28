@@ -1,5 +1,5 @@
 from tests.base import ApiDBTestCase
-from zou.app.services import breakdown_service
+from zou.app.services import breakdown_service, projects_service
 
 
 class BreakdownRoutesTestCase(ApiDBTestCase):
@@ -276,6 +276,31 @@ class BreakdownRoutesTestCase(ApiDBTestCase):
         self.assertIsNotNone(result.get("id"))
         instances = self.get(f"/data/shots/{self.shot_id}/asset-instances")
         self.assertGreater(len(instances), 0)
+
+    def test_a_client_edits_no_asset_instance(self):
+        self.generate_fixture_scene_asset_instance()
+        self.generate_fixture_user_client()
+        projects_service.add_team_member(
+            self.project_id, self.user_client["id"]
+        )
+        self.log_in_client()
+        shot_instances = f"/data/shots/{self.shot_id}/asset-instances"
+        self.post(
+            shot_instances,
+            {"asset_instance_id": str(self.asset_instance.id)},
+            403,
+        )
+        self.delete(f"{shot_instances}/{self.asset_instance.id}", 403)
+        self.post(
+            f"/data/scenes/{self.scene_id}/asset-instances",
+            {"asset_id": self.asset_id},
+            403,
+        )
+        self.post(
+            f"/data/assets/{self.asset_id}/asset-asset-instances",
+            {"asset_to_instantiate_id": self.asset_character_id},
+            403,
+        )
 
     def test_remove_asset_instance_from_shot(self):
         self.generate_fixture_scene_asset_instance()

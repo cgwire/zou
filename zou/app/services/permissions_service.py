@@ -166,6 +166,17 @@ def check_project_access(project_id):
     return is_allowed
 
 
+def check_project_edition_access(project_id):
+    """
+    Project access for the members who edit its structure, as the shots of
+    a scene or the asset instances: neither a client nor a vendor. Raise a
+    PermissionDenied exception otherwise.
+    """
+    check_project_access(project_id)
+    block_access_to_client()
+    return block_access_to_vendor()
+
+
 def block_access_to_vendor():
     """
     Raise PermissionDenied if current user has a vendor role.

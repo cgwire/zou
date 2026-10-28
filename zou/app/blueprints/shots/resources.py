@@ -875,8 +875,10 @@ class SceneShotsResource(MethodView, ArgsMixin):
         body = validation.validate_request_body(AddShotToSceneSchema)
 
         scene = shots_service.get_scene(scene_id)
-        permissions_service.check_project_access(scene["project_id"])
+        permissions_service.check_project_edition_access(scene["project_id"])
         shot = shots_service.get_shot(str(body.shot_id))
+        if shot["project_id"] != scene["project_id"]:
+            raise permissions.PermissionDenied
         return scenes_service.add_shot_to_scene(scene, shot), 201
 
 
@@ -888,8 +890,10 @@ class RemoveShotFromSceneResource(MethodView):
         Delete given shot from given scene.
         """
         scene = shots_service.get_scene(scene_id)
-        permissions_service.check_project_access(scene["project_id"])
+        permissions_service.check_project_edition_access(scene["project_id"])
         shot = shots_service.get_shot(shot_id)
+        if shot["project_id"] != scene["project_id"]:
+            raise permissions.PermissionDenied
         scenes_service.remove_shot_from_scene(scene, shot)
         return "", 204
 
