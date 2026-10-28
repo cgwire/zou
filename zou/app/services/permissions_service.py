@@ -349,6 +349,16 @@ def check_task_action_access(task_id):
     return is_allowed
 
 
+def check_task_work_access(task_id):
+    """
+    Task action access for the work itself, previews and working files: a
+    client comments on a task but never adds to its deliverables. The
+    action check resolves the project role first.
+    """
+    check_task_action_access(task_id)
+    return block_access_to_client()
+
+
 def is_person_mentioned_on_task(person_id, task_id):
     """
     Return true if given person was mentioned anywhere in the conversation

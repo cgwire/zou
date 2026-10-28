@@ -446,7 +446,7 @@ class ModifiedFileResource(MethodView):
         Update working file modification date
         """
         working_file = files_service.get_working_file(working_file_id)
-        permissions_service.check_task_action_access(working_file["task_id"])
+        permissions_service.check_task_work_access(working_file["task_id"])
         working_file = files_service.update_working_file(
             working_file_id,
             {"updated_at": date_helpers.get_utc_now_datetime()},
@@ -465,7 +465,7 @@ class CommentWorkingFileResource(MethodView, ArgsMixin):
         body = validation.validate_request_body(WorkingFileCommentSchema)
 
         working_file = files_service.get_working_file(working_file_id)
-        permissions_service.check_task_action_access(working_file["task_id"])
+        permissions_service.check_task_work_access(working_file["task_id"])
         working_file = self.update_comment(working_file_id, body.comment)
         return working_file
 

@@ -659,31 +659,20 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
         self.assertIsNone(PreviewFile.get(preview_file["id"]))
 
     def test_delete_preview_from_comment_as_a_client(self):
-        # Adding a preview to a comment is a task action a client has, and
-        # the preview player of Kitsu offers them the removal too, on the
-        # comments they read only. Force stays out of their reach.
+        # A client comments on a task but never touches its previews, not
+        # even on the comments flagged for them.
         comment, preview_file = self.generate_comment_with_preview(self.task)
         self.generate_fixture_user_client()
         self.log_in_member(self.user_client)
 
-        self.remove_comment_preview(
-            self.task.id, comment["id"], preview_file["id"], 403
-        )
         Comment.get(comment["id"]).update({"for_client": True})
         comments_service.clear_comment_cache(comment["id"])
         self.remove_comment_preview(
-            self.task.id, comment["id"], preview_file["id"], 403, force=True
+            self.task.id, comment["id"], preview_file["id"], 403
         )
         self.assertEqual(
             self.get_comment_preview_ids(comment["id"]), [preview_file["id"]]
         )
-
-        self.remove_comment_preview(
-            self.task.id, comment["id"], preview_file["id"]
-        )
-
-        self.assertEqual(self.get_comment_preview_ids(comment["id"]), [])
-        self.assertIsNone(PreviewFile.get(preview_file["id"]))
 
     def test_force_delete_preview_from_comment_needs_a_manager(self):
         # Force purges the stored files at once, a right the preview file

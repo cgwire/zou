@@ -844,7 +844,7 @@ class CreatePreviewFilePictureResource(
             )
             raise PreviewFileReuploadNotAllowedException
 
-        permissions_service.check_task_action_access(preview_file["task_id"])
+        permissions_service.check_task_work_access(preview_file["task_id"])
         return True
 
 
@@ -1589,7 +1589,7 @@ class UpdatePreviewPositionResource(MethodView, ArgsMixin):
             PreviewFilePositionSchema
         )
         preview_file = files_service.get_preview_file(preview_file_id)
-        permissions_service.check_task_action_access(preview_file["task_id"])
+        permissions_service.check_task_work_access(preview_file["task_id"])
         return preview_files_service.update_preview_file_position(
             preview_file_id, body.position
         )

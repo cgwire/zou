@@ -85,7 +85,7 @@ class WorkingFileResource(BaseModelResource):
 
     def check_update_permissions(self, instance, data):
         working_file = files_service.get_working_file(instance["id"])
-        permissions_service.check_task_action_access(working_file["task_id"])
+        permissions_service.check_task_work_access(working_file["task_id"])
         return True
 
     @jwt_required()
