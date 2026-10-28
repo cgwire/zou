@@ -1,11 +1,11 @@
-from sqlalchemy import or_
+from sqlalchemy import and_, or_, true
 
 from zou.app.exceptions import (
     SearchFilterGroupNotFoundException,
     SearchFilterNotFoundException,
     WrongParameterException,
 )
-from zou.app.models.project import Project
+from zou.app.models.project import Project, ProjectPersonLink
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.search_filter import SearchFilter
 from zou.app.models.search_filter_group import SearchFilterGroup
@@ -54,7 +54,12 @@ def get_user_filters(current_user_id):
         .filter(
             or_(
                 SearchFilter.person_id == current_user_id,
-                SearchFilter.is_shared == True,
+                and_(
+                    SearchFilter.is_shared == True,
+                    _reaches_team_filter(
+                        SearchFilter.project_id, current_user_id
+                    ),
+                ),
             )
         )
         .filter(
@@ -249,7 +254,12 @@ def get_user_filter_groups(current_user_id):
         .filter(
             or_(
                 SearchFilterGroup.person_id == current_user_id,
-                SearchFilterGroup.is_shared == True,
+                and_(
+                    SearchFilterGroup.is_shared == True,
+                    _reaches_team_filter(
+                        SearchFilterGroup.project_id, current_user_id
+                    ),
+                ),
             )
         )
         .filter(
@@ -415,6 +425,23 @@ def remove_filter_group(search_filter_group_id):
         current_user["id"],
     )
     return search_filter_group.serialize()
+
+
+def _reaches_team_filter(project_id_column, current_user_id):
+    """
+    Query filter keeping a shared filter or group to the teams of its
+    project, or to everyone when it names no project. An admin reaches
+    every production.
+    """
+    if permissions.has_admin_permissions():
+        return true()
+    team_project_ids = ProjectPersonLink.query.with_entities(
+        ProjectPersonLink.project_id
+    ).filter(ProjectPersonLink.person_id == current_user_id)
+    return or_(
+        project_id_column == None,
+        project_id_column.in_(team_project_ids),
+    )
 
 
 def clear_filter_cache(user_id=None):

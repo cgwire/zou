@@ -32,6 +32,10 @@ class SavedSearchTestCase(UserContextTestCase):
         self.generate_fixture_user_cg_artist()
         self.project_id = str(self.project.id)
         self.department_id = str(self.department.id)
+        # A shared filter reaches the team of its project, no further.
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"]
+        )
 
     def a_filter(self, name="mine", **kwargs):
         kwargs.setdefault("project_id", self.project_id)

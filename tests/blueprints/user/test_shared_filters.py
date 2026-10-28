@@ -104,6 +104,17 @@ class SharedFilterMixin:
         self.log_in_cg_artist()
         self.assertEqual(self.visible_names(), ["mine", "team"])
 
+    def test_a_shared_one_stays_within_its_project_teams(self):
+        self.put_join_the_team_and_the_department()
+        # The fixture moves self.project_id onto the new project.
+        other_project_id = str(self.generate_fixture_project("Other").id)
+        self.create("elsewhere", is_shared=True, project_id=other_project_id)
+
+        self.log_in_cg_artist()
+        self.clear_cache()
+        result = self.get(self.path)
+        self.assertNotIn(other_project_id, result.get("asset", {}))
+
     def test_only_the_author_can_update_a_shared_one(self):
         self.log_in_admin()
         self.put_join_the_team_and_the_department()
