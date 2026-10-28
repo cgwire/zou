@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask import current_app
 from flask_jwt_extended import jwt_required
 from sqlalchemy.exc import StatementError
@@ -15,6 +14,9 @@ from zou.app.services import (
     user_service,
 )
 from zou.app.utils import events, permissions
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/output_file.yml")
 
 
 def check_quality(data):
@@ -79,7 +81,7 @@ class OutputFileResource(BaseModelResource):
             )
 
     @jwt_required()
-    @swag_from("openapi/OutputFileResource_get.yml")
+    @swag_from(SPECS["OutputFileResource_get"])
     def get(self, instance_id):
         """
         Get output file

@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask import current_app
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -13,6 +12,9 @@ from zou.app.services import (
     task_types_service,
 )
 from zou.app.utils import colors
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 class ImportShotgunStepsResource(BaseImportShotgunResource):
@@ -20,7 +22,7 @@ class ImportShotgunStepsResource(BaseImportShotgunResource):
         MethodView.__init__(self)
 
     @jwt_required()
-    @swag_from("openapi/ImportShotgunStepsResource_post.yml")
+    @swag_from(SPECS["ImportShotgunStepsResource_post"])
     def post(self):
         """
         Import shotgun steps
@@ -108,7 +110,7 @@ class ImportRemoveShotgunStepResource(ImportRemoveShotgunBaseResource):
         ImportRemoveShotgunBaseResource.__init__(self, TaskType)
 
     @jwt_required()
-    @swag_from("openapi/ImportRemoveShotgunStepResource_post.yml")
+    @swag_from(SPECS["ImportRemoveShotgunStepResource_post"])
     def post(self):
         """
         Remove shotgun step

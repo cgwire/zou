@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask import abort, current_app, request
 from flask.views import MethodView
 from sqlalchemy.exc import OperationalError, ProgrammingError
@@ -6,11 +5,14 @@ from sqlalchemy.exc import OperationalError, ProgrammingError
 from zou.app import config
 from zou.app.services import persons_service
 from zou.app.stores import config_store
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 class ConfigCheckResource(MethodView):
 
-    @swag_from("openapi/ConfigCheckResource_get.yml")
+    @swag_from(SPECS["ConfigCheckResource_get"])
     def get(self):
         """
         Compare the environment and the stored configuration

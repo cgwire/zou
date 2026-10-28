@@ -1,0 +1,349 @@
+MetadataDescriptorResource_delete:
+  summary: Delete a metadata descriptor
+  tags:
+    - Crud
+  description: Delete a metadata descriptor. You must be an administrator.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the metadata descriptor
+  responses:
+    204:
+      description: The metadata descriptor is deleted
+    400:
+      description: Other data uses this row
+    403:
+      description: You are not an administrator
+    404:
+      description: The metadata descriptor does not exist
+
+MetadataDescriptorResource_get:
+  summary: Get a metadata descriptor
+  tags:
+    - Crud
+  description: Get a metadata descriptor. You must be an administrator.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the metadata descriptor
+    - in: query
+      name: relations
+      required: false
+      schema:
+        type: boolean
+        default: true
+      example: true
+      description: Add the related data. The default value is true.
+  responses:
+    200:
+      description: The metadata descriptor
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: Custom Field
+              field_name:
+                type: string
+                example: custom_field
+              data_type:
+                type: string
+                example: text
+              project_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              entity_type:
+                type: string
+                example: Asset
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The identifier is not a valid UUID
+    403:
+      description: You are not an administrator
+    404:
+      description: The metadata descriptor does not exist
+
+MetadataDescriptorResource_put:
+  summary: Update a metadata descriptor
+  tags:
+    - Crud
+  description: Update the fields of a metadata descriptor. Send only the
+    fields to change. You cannot change id, created_at, updated_at and
+    project_id. Dates use the ISO 8601 format. data_type must be a known type.
+    For an entity column, a new field_name cannot be the name of a built-in
+    field. You must be an administrator.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the metadata descriptor
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+              example: Updated Custom Field
+            data_type:
+              type: string
+              example: number
+  responses:
+    200:
+      description: The updated metadata descriptor
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: Updated Custom Field
+              field_name:
+                type: string
+                example: custom_field
+              data_type:
+                type: string
+                example: number
+              departments:
+                type: array
+                description: Departments the descriptor is limited to
+                items:
+                  type: string
+                  format: uuid
+                example: [a24a6ea4-ce75-4665-a070-57453082c250]
+              project_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not valid, a date is not valid, or a field
+        breaks a database constraint
+    403:
+      description: You are not an administrator
+    404:
+      description: The metadata descriptor does not exist
+
+MetadataDescriptorsResource_get:
+  summary: Get metadata descriptor rows
+  tags:
+    - Crud
+  description: Get the metadata descriptor rows. Add a query parameter for
+    each column to filter on, for example name=Modeling. The name filter does
+    not make a difference between upper case and lower case. To get the rows
+    that have one value of a list, give the list in JSON, for example
+    task_status_id=["<id1>","<id2>"]. If you are not an administrator, you get
+    only the descriptors of the open projects of your team. Your role on each
+    project sets what you get. A client gets only the descriptors for clients.
+    A vendor gets only the descriptors of their departments or of no
+    department.
+  parameters:
+    - in: query
+      name: page
+      required: false
+      description: Page to get. Without this parameter, the response has all
+        the rows.
+      example: 1
+      schema:
+        type: integer
+    - in: query
+      name: limit
+      required: false
+      description: Number of rows in a page. The default value is 100.
+      example: 100
+      schema:
+        type: integer
+    - in: query
+      name: relations
+      required: false
+      description: Add the departments of each descriptor. Without any query
+        parameter, the response includes the departments of each descriptor.
+        With a query parameter, give relations=true to get them.
+      schema:
+        type: boolean
+    - in: query
+      name: fields
+      required: false
+      description: Comma-separated list of the fields to get for each row. The
+        response always has id and type. The names that are not fields are
+        ignored.
+      example: id,name
+      schema:
+        type: string
+  responses:
+    200:
+      description: The list of metadata descriptor rows, or a page of rows if
+        you give page
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                      example: a24a6ea4-ce75-4665-a070-57453082c250
+                    name:
+                      type: string
+                      example: Custom Field
+                    field_name:
+                      type: string
+                      example: custom_field
+                    data_type:
+                      type: string
+                      example: text
+                    project_id:
+                      type: string
+                      format: uuid
+                      example: b24a6ea4-ce75-4665-a070-57453082c250
+                    created_at:
+                      type: string
+                      format: date-time
+                      example: '2024-01-15T10:30:00Z'
+                    updated_at:
+                      type: string
+                      format: date-time
+                      example: '2024-01-15T10:30:00Z'
+              - type: object
+                description: Response when you give page
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                  total:
+                    type: integer
+                  nb_pages:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+                  page:
+                    type: integer
+    400:
+      description: A filter is not valid
+    403:
+      description: You cannot read these rows
+
+MetadataDescriptorsResource_post:
+  summary: Create a metadata descriptor
+  tags:
+    - Crud
+  description: Create a metadata descriptor. Send the fields of the new row in
+    JSON. data_type must be a known type. For an entity column, field_name
+    cannot be the name of a built-in field. You must be an administrator.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - name
+            - field_name
+            - data_type
+            - project_id
+          properties:
+            name:
+              type: string
+              example: Custom Field
+            field_name:
+              type: string
+              example: custom_field
+            data_type:
+              type: string
+              example: text
+            project_id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            entity_type:
+              type: string
+              example: Asset
+  responses:
+    201:
+      description: The new metadata descriptor
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: Custom Field
+              field_name:
+                type: string
+                example: custom_field
+              data_type:
+                type: string
+                example: text
+              project_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              entity_type:
+                type: string
+                example: Asset
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The body is not valid, or a field breaks a database
+        constraint
+    403:
+      description: You are not an administrator

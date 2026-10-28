@@ -1,10 +1,12 @@
-from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.exceptions import WrongParameterException
 from zou.app.models.schedule_item import ScheduleItem
 from zou.app.services import permissions_service, user_service
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/schedule_item.yml")
 
 
 class ScheduleItemsResource(BaseModelsResource):
@@ -12,7 +14,7 @@ class ScheduleItemsResource(BaseModelsResource):
         BaseModelsResource.__init__(self, ScheduleItem)
 
     @jwt_required()
-    @swag_from("openapi/ScheduleItemsResource_get.yml")
+    @swag_from(SPECS["ScheduleItemsResource_get"])
     def get(self):
         """
         Get schedule items
@@ -20,7 +22,7 @@ class ScheduleItemsResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/ScheduleItemsResource_post.yml")
+    @swag_from(SPECS["ScheduleItemsResource_post"])
     def post(self):
         """
         Create schedule item
@@ -60,7 +62,7 @@ class ScheduleItemResource(BaseModelResource):
         )
 
     @jwt_required()
-    @swag_from("openapi/ScheduleItemResource_get.yml")
+    @swag_from(SPECS["ScheduleItemResource_get"])
     def get(self, instance_id):
         """
         Get schedule item
@@ -68,7 +70,7 @@ class ScheduleItemResource(BaseModelResource):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/ScheduleItemResource_put.yml")
+    @swag_from(SPECS["ScheduleItemResource_put"])
     def put(self, instance_id):
         """
         Update schedule item
@@ -76,7 +78,7 @@ class ScheduleItemResource(BaseModelResource):
         return super().put(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/ScheduleItemResource_delete.yml")
+    @swag_from(SPECS["ScheduleItemResource_delete"])
     def delete(self, instance_id):
         """
         Delete schedule item

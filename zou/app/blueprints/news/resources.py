@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
@@ -12,6 +11,9 @@ from zou.app.services import (
     user_service,
 )
 from zou.app.utils import fields, permissions
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 class NewsMixin(ArgsMixin):
@@ -87,7 +89,7 @@ class NewsMixin(ArgsMixin):
 class ProjectNewsResource(MethodView, NewsMixin, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/ProjectNewsResource_get.yml")
+    @swag_from(SPECS["ProjectNewsResource_get"])
     def get(self, project_id):
         """
         Get project latest news
@@ -101,7 +103,7 @@ class ProjectNewsResource(MethodView, NewsMixin, ArgsMixin):
 class NewsResource(MethodView, NewsMixin, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/NewsResource_get.yml")
+    @swag_from(SPECS["NewsResource_get"])
     def get(self):
         """
         Get open projects news
@@ -124,7 +126,7 @@ class NewsResource(MethodView, NewsMixin, ArgsMixin):
 class ProjectSingleNewsResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/ProjectSingleNewsResource_get.yml")
+    @swag_from(SPECS["ProjectSingleNewsResource_get"])
     def get(self, project_id, news_id):
         """
         Get news item

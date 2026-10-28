@@ -1,6 +1,5 @@
 import math
 
-from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 from slugify import slugify
 
@@ -18,6 +17,9 @@ from zou.app.services import (
     tasks_service,
 )
 from zou.app.utils import date_helpers
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 def snap_to_whole(value):
@@ -51,7 +53,7 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
 
     # The task type is read before the base class checks the session.
     @jwt_required()
-    @swag_from("openapi/TaskTypeEstimationsCsvImportResource_post.yml")
+    @swag_from(SPECS["TaskTypeEstimationsCsvImportResource_post"])
     def post(self, project_id, task_type_id, episode_id=None):
         """
         Import task type estimations csv
@@ -365,7 +367,7 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
 class TaskTypeEstimationsEpisodeCsvImportResource(
     TaskTypeEstimationsCsvImportResource
 ):
-    @swag_from("openapi/TaskTypeEstimationsEpisodeCsvImportResource_post.yml")
+    @swag_from(SPECS["TaskTypeEstimationsEpisodeCsvImportResource_post"])
     def post(self, project_id, task_type_id, episode_id):
         """
         Import episode task type estimations csv

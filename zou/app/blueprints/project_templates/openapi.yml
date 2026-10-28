@@ -1,0 +1,734 @@
+ApplyProjectTemplateResource_post:
+  summary: Apply a project template to a project
+  description: Apply the configuration of a project template to a project. The
+    current links of the project stay. The links that the project already has
+    are skipped. The production settings of the template are written to the
+    project. You must be an administrator.
+  tags:
+    - Project Templates
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      description: Unique identifier of the project
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: project_template_id
+      required: true
+      description: Unique identifier of the project template
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The updated project
+    400:
+      description: A value of the template is not valid
+    403:
+      description: You are not an administrator
+    404:
+      description: The project or the project template does not exist
+
+ProjectTemplateAssetTypeResource_delete:
+  summary: Remove an asset type from a project template
+  description: Remove an asset type from a project template. The asset type is
+    not deleted. You must be an administrator.
+  tags:
+    - Project Templates
+  parameters:
+    - in: path
+      name: project_template_id
+      required: true
+      description: Unique identifier of the project template
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: asset_type_id
+      required: true
+      description: Unique identifier of the asset type
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+  responses:
+    204:
+      description: The asset type is removed from the template
+    403:
+      description: You are not an administrator
+    404:
+      description: The project template does not exist
+
+ProjectTemplateAssetTypesResource_get:
+  summary: Get the asset types of a project template
+  description: Get the asset types of a project template. A project template
+    keeps a production configuration. You can apply it to a project. You must
+    have the manager role or a higher role.
+  tags:
+    - Project Templates
+  parameters:
+    - in: path
+      name: project_template_id
+      required: true
+      description: Unique identifier of the project template
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The list of asset types
+    403:
+      description: You do not have the manager role
+    404:
+      description: The project template does not exist
+
+ProjectTemplateAssetTypesResource_post:
+  summary: Add an asset type to a project template
+  description: Add an asset type to a project template. You must be an
+    administrator.
+  tags:
+    - Project Templates
+  parameters:
+    - in: path
+      name: project_template_id
+      required: true
+      description: Unique identifier of the project template
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - asset_type_id
+          properties:
+            asset_type_id:
+              type: string
+              format: uuid
+              description: Asset type to add
+  responses:
+    201:
+      description: The new link
+    400:
+      description: The body is not valid, or an identifier does not exist
+    403:
+      description: You are not an administrator
+    404:
+      description: The project template does not exist
+
+ProjectTemplateBackgroundResource_delete:
+  summary: Remove a preview background file from a project template
+  description: Remove a preview background file from a project template. The
+    preview background file is not deleted. You must be an administrator.
+  tags:
+    - Project Templates
+  parameters:
+    - in: path
+      name: project_template_id
+      required: true
+      description: Unique identifier of the project template
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: preview_background_file_id
+      required: true
+      description: Unique identifier of the preview background file
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+  responses:
+    204:
+      description: The preview background file is removed from the template
+    403:
+      description: You are not an administrator
+    404:
+      description: The project template does not exist
+
+ProjectTemplateBackgroundsResource_get:
+  summary: Get the preview background files of a project template
+  description: Get the preview background files of a project template. A
+    project template keeps a production configuration. You can apply it to a
+    project. You must have the manager role or a higher role.
+  tags:
+    - Project Templates
+  parameters:
+    - in: path
+      name: project_template_id
+      required: true
+      description: Unique identifier of the project template
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The list of preview background files
+    403:
+      description: You do not have the manager role
+    404:
+      description: The project template does not exist
+
+ProjectTemplateBackgroundsResource_post:
+  summary: Add a preview background file to a project template
+  description: Add a preview background file to a project template. You must
+    be an administrator.
+  tags:
+    - Project Templates
+  parameters:
+    - in: path
+      name: project_template_id
+      required: true
+      description: Unique identifier of the project template
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - preview_background_file_id
+          properties:
+            preview_background_file_id:
+              type: string
+              format: uuid
+              description: Preview background file to add
+  responses:
+    201:
+      description: The new link
+    400:
+      description: The body is not valid, or an identifier does not exist
+    403:
+      description: You are not an administrator
+    404:
+      description: The project template does not exist
+
+ProjectTemplateDefaultBackgroundResource_put:
+  summary: Set the default preview background of a project template
+  description: Set the default preview background file of a project template.
+    Send null to remove the default background. You must be an administrator.
+  tags:
+    - Project Templates
+  parameters:
+    - in: path
+      name: project_template_id
+      required: true
+      description: Unique identifier of the project template
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            default_preview_background_file_id:
+              type: string
+              format: uuid
+              description: Default preview background file
+              nullable: true
+  responses:
+    200:
+      description: The updated project template
+    400:
+      description: The preview background file is not valid
+    403:
+      description: You are not an administrator
+    404:
+      description: The project template does not exist
+
+ProjectTemplateFromProjectResource_post:
+  summary: Create a project template from a project
+  description: Create a project template from the configuration of a project.
+    The template gets the production settings, the task types, the task
+    statuses, the asset types, the status automations, the metadata
+    descriptors, the file tree and the free data. The template does not get
+    the team, the dates, the preview backgrounds, the project status or the
+    production data. You must be an administrator.
+  tags:
+    - Project Templates
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      description: Unique identifier of the project
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - name
+          properties:
+            name:
+              type: string
+              minLength: 1
+              description: Name of the template
+            description:
+              type: string
+              description: Description of the template
+  responses:
+    201:
+      description: The new project template
+    400:
+      description: The body is not valid
+    403:
+      description: You are not an administrator
+    404:
+      description: The project does not exist
+
+ProjectTemplateMetadataDescriptorsResource_put:
+  summary: Replace the metadata descriptors of a project template
+  description: Replace the metadata descriptors of a project template. Send a
+    list of descriptors, or an object with a metadata_descriptors list. You
+    must be an administrator.
+  tags:
+    - Project Templates
+  parameters:
+    - in: path
+      name: project_template_id
+      required: true
+      description: Unique identifier of the project template
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          oneOf:
+            - type: array
+              items:
+                type: object
+            - type: object
+              properties:
+                metadata_descriptors:
+                  type: array
+                  items:
+                    type: object
+  responses:
+    200:
+      description: The updated project template
+    400:
+      description: A descriptor is not valid
+    403:
+      description: You are not an administrator
+    404:
+      description: The project template does not exist
+
+ProjectTemplateStatusAutomationResource_delete:
+  summary: Remove a status automation from a project template
+  description: Remove a status automation from a project template. The status
+    automation is not deleted. You must be an administrator.
+  tags:
+    - Project Templates
+  parameters:
+    - in: path
+      name: project_template_id
+      required: true
+      description: Unique identifier of the project template
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: status_automation_id
+      required: true
+      description: Unique identifier of the status automation
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+  responses:
+    204:
+      description: The status automation is removed from the template
+    403:
+      description: You are not an administrator
+    404:
+      description: The project template does not exist
+
+ProjectTemplateStatusAutomationsResource_get:
+  summary: Get the status automations of a project template
+  description: Get the status automations of a project template. A project
+    template keeps a production configuration. You can apply it to a project.
+    You must have the manager role or a higher role.
+  tags:
+    - Project Templates
+  parameters:
+    - in: path
+      name: project_template_id
+      required: true
+      description: Unique identifier of the project template
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The list of status automations
+    403:
+      description: You do not have the manager role
+    404:
+      description: The project template does not exist
+
+ProjectTemplateStatusAutomationsResource_post:
+  summary: Add a status automation to a project template
+  description: Add a status automation to a project template. You must be an
+    administrator.
+  tags:
+    - Project Templates
+  parameters:
+    - in: path
+      name: project_template_id
+      required: true
+      description: Unique identifier of the project template
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - status_automation_id
+          properties:
+            status_automation_id:
+              type: string
+              format: uuid
+              description: Status automation to add
+  responses:
+    201:
+      description: The new link
+    400:
+      description: The body is not valid, or an identifier does not exist
+    403:
+      description: You are not an administrator
+    404:
+      description: The project template does not exist
+
+ProjectTemplateTaskStatusResource_delete:
+  summary: Remove a task status from a project template
+  description: Remove a task status from a project template. The task status
+    is not deleted. You must be an administrator.
+  tags:
+    - Project Templates
+  parameters:
+    - in: path
+      name: project_template_id
+      required: true
+      description: Unique identifier of the project template
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: task_status_id
+      required: true
+      description: Unique identifier of the task status
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+  responses:
+    204:
+      description: The task status is removed from the template
+    403:
+      description: You are not an administrator
+    404:
+      description: The project template does not exist
+
+ProjectTemplateTaskStatusesReorderResource_post:
+  summary: Reorder the task statuses of a project template
+  description: Set the priority of the task statuses of a project template in
+    one request. The order of the list gives the priority. The board roles of
+    each link do not change. You must be an administrator.
+  tags:
+    - Project Templates
+  parameters:
+    - in: path
+      name: project_template_id
+      required: true
+      description: Unique identifier of the project template
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - task_status_ids
+          properties:
+            task_status_ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+              description: Task statuses in the new order
+  responses:
+    200:
+      description: The updated links
+    400:
+      description: The body is not valid
+    403:
+      description: You are not an administrator
+    404:
+      description: The project template does not exist
+
+ProjectTemplateTaskStatusesResource_get:
+  summary: Get the task statuses of a project template
+  description: Get the task statuses of a project template. A project template
+    keeps a production configuration. You can apply it to a project. You must
+    have the manager role or a higher role.
+  tags:
+    - Project Templates
+  parameters:
+    - in: path
+      name: project_template_id
+      required: true
+      description: Unique identifier of the project template
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The list of task statuses
+    403:
+      description: You do not have the manager role
+    404:
+      description: The project template does not exist
+
+ProjectTemplateTaskStatusesResource_post:
+  summary: Add a task status to a project template
+  description: Add a task status to a project template. You must be an
+    administrator.
+  tags:
+    - Project Templates
+  parameters:
+    - in: path
+      name: project_template_id
+      required: true
+      description: Unique identifier of the project template
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - task_status_id
+          properties:
+            task_status_id:
+              type: string
+              format: uuid
+              description: Task status to add
+            priority:
+              type: integer
+              description: Priority of the task status in the template
+            roles_for_board:
+              type: array
+              items:
+                type: string
+              description: Roles that see the task status on the board
+            is_client_allowed:
+              type: boolean
+              nullable: true
+              description: Let the clients use the task status. Send null to
+                use the value of the studio. If the field is not in the body,
+                an existing link keeps its value.
+  responses:
+    201:
+      description: The new link
+    400:
+      description: The body is not valid, or an identifier does not exist
+    403:
+      description: You are not an administrator
+    404:
+      description: The project template does not exist
+
+ProjectTemplateTaskTypeResource_delete:
+  summary: Remove a task type from a project template
+  description: Remove a task type from a project template. The task type is
+    not deleted. You must be an administrator.
+  tags:
+    - Project Templates
+  parameters:
+    - in: path
+      name: project_template_id
+      required: true
+      description: Unique identifier of the project template
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: task_type_id
+      required: true
+      description: Unique identifier of the task type
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+  responses:
+    204:
+      description: The task type is removed from the template
+    403:
+      description: You are not an administrator
+    404:
+      description: The project template does not exist
+
+ProjectTemplateTaskTypesReorderResource_post:
+  summary: Reorder the task types of a project template
+  description: Set the priority of the task types of a project template in one
+    request. The order of the list gives the priority. You must be an
+    administrator.
+  tags:
+    - Project Templates
+  parameters:
+    - in: path
+      name: project_template_id
+      required: true
+      description: Unique identifier of the project template
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - task_type_ids
+          properties:
+            task_type_ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+              description: Task types in the new order
+  responses:
+    200:
+      description: The updated links
+    400:
+      description: The body is not valid
+    403:
+      description: You are not an administrator
+    404:
+      description: The project template does not exist
+
+ProjectTemplateTaskTypesResource_get:
+  summary: Get the task types of a project template
+  description: Get the task types of a project template. A project template
+    keeps a production configuration. You can apply it to a project. You must
+    have the manager role or a higher role.
+  tags:
+    - Project Templates
+  parameters:
+    - in: path
+      name: project_template_id
+      required: true
+      description: Unique identifier of the project template
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The list of task types
+    403:
+      description: You do not have the manager role
+    404:
+      description: The project template does not exist
+
+ProjectTemplateTaskTypesResource_post:
+  summary: Add a task type to a project template
+  description: Add a task type to a project template. If the task type is
+    already in the template, the route changes its values. A request without
+    bitrates keeps the current bitrates. You must be an administrator.
+  tags:
+    - Project Templates
+  parameters:
+    - in: path
+      name: project_template_id
+      required: true
+      description: Unique identifier of the project template
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - task_type_id
+          properties:
+            task_type_id:
+              type: string
+              format: uuid
+              description: Task type to add
+            priority:
+              type: integer
+              description: Priority of the task type in the template
+            hd_bitrate_compression:
+              type: integer
+              minimum: 1
+              description: Bitrate of the high definition movies
+            ld_bitrate_compression:
+              type: integer
+              minimum: 1
+              description: Bitrate of the low definition movies
+            is_client_visible:
+              type: boolean
+              description: Show the task type to the clients. If the field is
+                not in the body, an existing link keeps its value.
+  responses:
+    201:
+      description: The new link
+    400:
+      description: The body is not valid, or an identifier does not exist
+    403:
+      description: You are not an administrator
+    404:
+      description: The project template does not exist

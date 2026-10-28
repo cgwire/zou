@@ -1,10 +1,12 @@
-from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.models.asset_instance import AssetInstance
 from zou.app.services import assets_service, permissions_service, user_service
 from zou.app.utils import permissions
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/asset_instance.yml")
 
 
 class AssetInstancesResource(BaseModelsResource):
@@ -12,7 +14,7 @@ class AssetInstancesResource(BaseModelsResource):
         BaseModelsResource.__init__(self, AssetInstance)
 
     @jwt_required()
-    @swag_from("openapi/AssetInstancesResource_get.yml")
+    @swag_from(SPECS["AssetInstancesResource_get"])
     def get(self):
         """
         Get asset instances
@@ -20,7 +22,7 @@ class AssetInstancesResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/AssetInstancesResource_post.yml")
+    @swag_from(SPECS["AssetInstancesResource_post"])
     def post(self):
         """
         Create asset instance
@@ -34,7 +36,7 @@ class AssetInstanceResource(BaseModelResource):
         self.protected_fields.append("number")
 
     @jwt_required()
-    @swag_from("openapi/AssetInstanceResource_get.yml")
+    @swag_from(SPECS["AssetInstanceResource_get"])
     def get(self, instance_id):
         """
         Get asset instance
@@ -42,7 +44,7 @@ class AssetInstanceResource(BaseModelResource):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/AssetInstanceResource_put.yml")
+    @swag_from(SPECS["AssetInstanceResource_put"])
     def put(self, instance_id):
         """
         Update asset instance
@@ -50,7 +52,7 @@ class AssetInstanceResource(BaseModelResource):
         return super().put(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/AssetInstanceResource_delete.yml")
+    @swag_from(SPECS["AssetInstanceResource_delete"])
     def delete(self, instance_id):
         """
         Delete asset instance

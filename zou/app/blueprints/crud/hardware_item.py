@@ -1,8 +1,10 @@
-from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.models.hardware_item import HardwareItem
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/hardware_item.yml")
 
 
 class HardwareItemsResource(BaseModelsResource):
@@ -10,7 +12,7 @@ class HardwareItemsResource(BaseModelsResource):
         BaseModelsResource.__init__(self, HardwareItem)
 
     @jwt_required()
-    @swag_from("openapi/HardwareItemsResource_get.yml")
+    @swag_from(SPECS["HardwareItemsResource_get"])
     def get(self):
         """
         Get hardware items
@@ -18,7 +20,7 @@ class HardwareItemsResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/HardwareItemsResource_post.yml")
+    @swag_from(SPECS["HardwareItemsResource_post"])
     def post(self):
         """
         Create hardware item
@@ -31,7 +33,7 @@ class HardwareItemResource(BaseModelResource):
         BaseModelResource.__init__(self, HardwareItem)
 
     @jwt_required()
-    @swag_from("openapi/HardwareItemResource_get.yml")
+    @swag_from(SPECS["HardwareItemResource_get"])
     def get(self, instance_id):
         """
         Get hardware item
@@ -39,7 +41,7 @@ class HardwareItemResource(BaseModelResource):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/HardwareItemResource_put.yml")
+    @swag_from(SPECS["HardwareItemResource_put"])
     def put(self, instance_id):
         """
         Update hardware item
@@ -47,7 +49,7 @@ class HardwareItemResource(BaseModelResource):
         return super().put(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/HardwareItemResource_delete.yml")
+    @swag_from(SPECS["HardwareItemResource_delete"])
     def delete(self, instance_id):
         """
         Delete hardware item

@@ -1,9 +1,11 @@
-from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.models.file_status import FileStatus
 from zou.app.services import files_service
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/file_status.yml")
 
 
 class FileStatusesResource(BaseModelsResource):
@@ -18,7 +20,7 @@ class FileStatusesResource(BaseModelsResource):
         return True
 
     @jwt_required()
-    @swag_from("openapi/FileStatusesResource_get.yml")
+    @swag_from(SPECS["FileStatusesResource_get"])
     def get(self):
         """
         Get file statuses
@@ -26,7 +28,7 @@ class FileStatusesResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/FileStatusesResource_post.yml")
+    @swag_from(SPECS["FileStatusesResource_post"])
     def post(self):
         """
         Create file status
@@ -50,7 +52,7 @@ class FileStatusResource(BaseModelResource):
         return True
 
     @jwt_required()
-    @swag_from("openapi/FileStatusResource_get.yml")
+    @swag_from(SPECS["FileStatusResource_get"])
     def get(self, instance_id):
         """
         Get file status
@@ -58,7 +60,7 @@ class FileStatusResource(BaseModelResource):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/FileStatusResource_put.yml")
+    @swag_from(SPECS["FileStatusResource_put"])
     def put(self, instance_id):
         """
         Update file status
@@ -66,7 +68,7 @@ class FileStatusResource(BaseModelResource):
         return super().put(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/FileStatusResource_delete.yml")
+    @swag_from(SPECS["FileStatusResource_delete"])
     def delete(self, instance_id):
         """
         Delete file status

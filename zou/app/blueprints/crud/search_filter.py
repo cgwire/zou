@@ -1,8 +1,10 @@
-from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.models.search_filter import SearchFilter
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/search_filter.yml")
 
 
 class SearchFiltersResource(BaseModelsResource):
@@ -10,7 +12,7 @@ class SearchFiltersResource(BaseModelsResource):
         BaseModelsResource.__init__(self, SearchFilter)
 
     @jwt_required()
-    @swag_from("openapi/SearchFiltersResource_get.yml")
+    @swag_from(SPECS["SearchFiltersResource_get"])
     def get(self):
         """
         Get search filters
@@ -18,7 +20,7 @@ class SearchFiltersResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/SearchFiltersResource_post.yml")
+    @swag_from(SPECS["SearchFiltersResource_post"])
     def post(self):
         """
         Create search filter
@@ -31,7 +33,7 @@ class SearchFilterResource(BaseModelResource):
         BaseModelResource.__init__(self, SearchFilter)
 
     @jwt_required()
-    @swag_from("openapi/SearchFilterResource_get.yml")
+    @swag_from(SPECS["SearchFilterResource_get"])
     def get(self, instance_id):
         """
         Get search filter
@@ -39,7 +41,7 @@ class SearchFilterResource(BaseModelResource):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/SearchFilterResource_put.yml")
+    @swag_from(SPECS["SearchFilterResource_put"])
     def put(self, instance_id):
         """
         Update search filter
@@ -47,7 +49,7 @@ class SearchFilterResource(BaseModelResource):
         return super().put(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/SearchFilterResource_delete.yml")
+    @swag_from(SPECS["SearchFilterResource_delete"])
     def delete(self, instance_id):
         """
         Delete search filter

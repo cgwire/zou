@@ -1,8 +1,10 @@
-from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.models.subscription import Subscription
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/subscription.yml")
 
 
 class SubscriptionsResource(BaseModelsResource):
@@ -10,7 +12,7 @@ class SubscriptionsResource(BaseModelsResource):
         BaseModelsResource.__init__(self, Subscription)
 
     @jwt_required()
-    @swag_from("openapi/SubscriptionsResource_get.yml")
+    @swag_from(SPECS["SubscriptionsResource_get"])
     def get(self):
         """
         Get subscriptions
@@ -18,7 +20,7 @@ class SubscriptionsResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/SubscriptionsResource_post.yml")
+    @swag_from(SPECS["SubscriptionsResource_post"])
     def post(self):
         """
         Create subscription
@@ -31,7 +33,7 @@ class SubscriptionResource(BaseModelResource):
         BaseModelResource.__init__(self, Subscription)
 
     @jwt_required()
-    @swag_from("openapi/SubscriptionResource_get.yml")
+    @swag_from(SPECS["SubscriptionResource_get"])
     def get(self, instance_id):
         """
         Get subscription
@@ -39,7 +41,7 @@ class SubscriptionResource(BaseModelResource):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/SubscriptionResource_put.yml")
+    @swag_from(SPECS["SubscriptionResource_put"])
     def put(self, instance_id):
         """
         Update subscription
@@ -47,7 +49,7 @@ class SubscriptionResource(BaseModelResource):
         return super().put(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/SubscriptionResource_delete.yml")
+    @swag_from(SPECS["SubscriptionResource_delete"])
     def delete(self, instance_id):
         """
         Delete subscription

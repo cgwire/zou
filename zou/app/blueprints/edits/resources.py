@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -17,11 +16,14 @@ from zou.app.services import (
     tasks_service,
 )
 from zou.app.utils import permissions, query, validation
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 class EditResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/EditResource_get.yml")
+    @swag_from(SPECS["EditResource_get"])
     def get(self, edit_id):
         """
         Get edit
@@ -32,7 +34,7 @@ class EditResource(MethodView, ArgsMixin):
         return entities_service.blank_entity_tasks_for_current_user(edit)
 
     @jwt_required()
-    @swag_from("openapi/EditResource_delete.yml")
+    @swag_from(SPECS["EditResource_delete"])
     def delete(self, edit_id):
         """
         Delete edit
@@ -51,7 +53,7 @@ class EditResource(MethodView, ArgsMixin):
 
 class AllEditsResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/AllEditsResource_get.yml")
+    @swag_from(SPECS["AllEditsResource_get"])
     def get(self):
         """
         Get all edits
@@ -66,7 +68,7 @@ class AllEditsResource(MethodView):
 
 class EditTaskTypesResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/EditTaskTypesResource_get.yml")
+    @swag_from(SPECS["EditTaskTypesResource_get"])
     def get(self, edit_id):
         """
         Get edit task types
@@ -79,7 +81,7 @@ class EditTaskTypesResource(MethodView):
 
 class EditTasksResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/EditTasksResource_get.yml")
+    @swag_from(SPECS["EditTasksResource_get"])
     def get(self, edit_id):
         """
         Get edit tasks
@@ -93,7 +95,7 @@ class EditTasksResource(MethodView, ArgsMixin):
 
 class EpisodeEditTasksResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/EpisodeEditTasksResource_get.yml")
+    @swag_from(SPECS["EpisodeEditTasksResource_get"])
     def get(self, episode_id):
         """
         Get episode edit tasks
@@ -111,7 +113,7 @@ class EpisodeEditTasksResource(MethodView, ArgsMixin):
 
 class EpisodeEditsResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/EpisodeEditsResource_get.yml")
+    @swag_from(SPECS["EpisodeEditsResource_get"])
     def get(self, episode_id):
         """
         Get episode edits
@@ -130,7 +132,7 @@ class EpisodeEditsResource(MethodView, ArgsMixin):
 
 class EditPreviewsResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/EditPreviewsResource_get.yml")
+    @swag_from(SPECS["EditPreviewsResource_get"])
     def get(self, edit_id):
         """
         Get edit previews
@@ -143,7 +145,7 @@ class EditPreviewsResource(MethodView):
 
 class EditsAndTasksResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/EditsAndTasksResource_get.yml")
+    @swag_from(SPECS["EditsAndTasksResource_get"])
     def get(self):
         """
         Get edits and tasks
@@ -159,7 +161,7 @@ class EditsAndTasksResource(MethodView):
 
 class ProjectEditsResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/ProjectEditsResource_get.yml")
+    @swag_from(SPECS["ProjectEditsResource_get"])
     def get(self, project_id):
         """
         Get project edits
@@ -175,7 +177,7 @@ class ProjectEditsResource(MethodView, ArgsMixin):
         )
 
     @jwt_required()
-    @swag_from("openapi/ProjectEditsResource_post.yml")
+    @swag_from(SPECS["ProjectEditsResource_post"])
     def post(self, project_id):
         """
         Create edit
@@ -201,7 +203,7 @@ class EditVersionsResource(MethodView):
     """
 
     @jwt_required()
-    @swag_from("openapi/EditVersionsResource_get.yml")
+    @swag_from(SPECS["EditVersionsResource_get"])
     def get(self, edit_id):
         """
         Get edit versions

@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
@@ -8,6 +7,9 @@ from zou.app.exceptions import (
 )
 from zou.app.models.entity import EntityLink
 from zou.app.utils import fields
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/entity_link.yml")
 
 
 class EntityLinksResource(BaseModelsResource):
@@ -15,7 +17,7 @@ class EntityLinksResource(BaseModelsResource):
         BaseModelsResource.__init__(self, EntityLink)
 
     @jwt_required()
-    @swag_from("openapi/EntityLinksResource_get.yml")
+    @swag_from(SPECS["EntityLinksResource_get"])
     def get(self):
         """
         Get entity links
@@ -23,7 +25,7 @@ class EntityLinksResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/EntityLinksResource_post.yml")
+    @swag_from(SPECS["EntityLinksResource_post"])
     def post(self):
         """
         Create entity link
@@ -36,7 +38,7 @@ class EntityLinkResource(BaseModelResource):
         BaseModelResource.__init__(self, EntityLink)
 
     @jwt_required()
-    @swag_from("openapi/EntityLinkResource_get.yml")
+    @swag_from(SPECS["EntityLinkResource_get"])
     def get(self, instance_id):
         """
         Get entity link
@@ -44,7 +46,7 @@ class EntityLinkResource(BaseModelResource):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/EntityLinkResource_put.yml")
+    @swag_from(SPECS["EntityLinkResource_put"])
     def put(self, instance_id):
         """
         Update entity link
@@ -52,7 +54,7 @@ class EntityLinkResource(BaseModelResource):
         return super().put(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/EntityLinkResource_delete.yml")
+    @swag_from(SPECS["EntityLinkResource_delete"])
     def delete(self, instance_id):
         """
         Delete entity link

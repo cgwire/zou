@@ -1,6 +1,5 @@
 import os
 
-from flasgger import swag_from
 from flask import current_app, request, send_file as flask_send_file
 from flask.views import MethodView
 from flask_fs.errors import FileNotFound
@@ -37,6 +36,9 @@ from zou.app.services import (
 )
 from zou.app.stores import file_store
 from zou.app.utils import date_helpers, fs, validation
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 def send_storage_file(
@@ -114,7 +116,7 @@ class WorkingFileFileResource(MethodView):
         return file_path
 
     @jwt_required()
-    @swag_from("openapi/WorkingFileFileResource_get.yml")
+    @swag_from(SPECS["WorkingFileFileResource_get"])
     def get(self, working_file_id):
         """
         Download working file
@@ -128,7 +130,7 @@ class WorkingFileFileResource(MethodView):
         )
 
     @jwt_required()
-    @swag_from("openapi/WorkingFileFileResource_post.yml")
+    @swag_from(SPECS["WorkingFileFileResource_post"])
     def post(self, working_file_id):
         """
         Store working file
@@ -147,7 +149,7 @@ class WorkingFileFileResource(MethodView):
 class WorkingFilePathResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/WorkingFilePathResource_post.yml")
+    @swag_from(SPECS["WorkingFilePathResource_post"])
     def post(self, task_id):
         """
         Generate working file path
@@ -215,7 +217,7 @@ class WorkingFilePathResource(MethodView, ArgsMixin):
 class EntityOutputFilePathResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/EntityOutputFilePathResource_post.yml")
+    @swag_from(SPECS["EntityOutputFilePathResource_post"])
     def post(self, entity_id):
         """
         Generate entity output file path
@@ -272,7 +274,7 @@ class EntityOutputFilePathResource(MethodView, ArgsMixin):
 class InstanceOutputFilePathResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/InstanceOutputFilePathResource_post.yml")
+    @swag_from(SPECS["InstanceOutputFilePathResource_post"])
     def post(self, asset_instance_id, temporal_entity_id):
         """
         Generate instance output file path
@@ -326,7 +328,7 @@ class InstanceOutputFilePathResource(MethodView, ArgsMixin):
 class LastWorkingFilesResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/LastWorkingFilesResource_get.yml")
+    @swag_from(SPECS["LastWorkingFilesResource_get"])
     def get(self, task_id):
         """
         Get last working files
@@ -341,7 +343,7 @@ class LastWorkingFilesResource(MethodView):
 class TaskWorkingFilesResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/TaskWorkingFilesResource_get.yml")
+    @swag_from(SPECS["TaskWorkingFilesResource_get"])
     def get(self, task_id):
         """
         Get task working files
@@ -356,7 +358,7 @@ class TaskWorkingFilesResource(MethodView):
 class NewWorkingFileResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/NewWorkingFileResource_post.yml")
+    @swag_from(SPECS["NewWorkingFileResource_post"])
     def post(self, task_id):
         """
         Create new working file
@@ -438,7 +440,7 @@ class NewWorkingFileResource(MethodView, ArgsMixin):
 class ModifiedFileResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/ModifiedFileResource_put.yml")
+    @swag_from(SPECS["ModifiedFileResource_put"])
     def put(self, working_file_id):
         """
         Update working file modification date
@@ -455,7 +457,7 @@ class ModifiedFileResource(MethodView):
 class CommentWorkingFileResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/CommentWorkingFileResource_put.yml")
+    @swag_from(SPECS["CommentWorkingFileResource_put"])
     def put(self, working_file_id):
         """
         Update working file comment
@@ -477,7 +479,7 @@ class CommentWorkingFileResource(MethodView, ArgsMixin):
 class NewEntityOutputFileResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/NewEntityOutputFileResource_post.yml")
+    @swag_from(SPECS["NewEntityOutputFileResource_post"])
     def post(self, entity_id):
         """
         Create new entity output file
@@ -595,7 +597,7 @@ class NewEntityOutputFileResource(MethodView, ArgsMixin):
 class NewInstanceOutputFileResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/NewInstanceOutputFileResource_post.yml")
+    @swag_from(SPECS["NewInstanceOutputFileResource_post"])
     def post(self, asset_instance_id, temporal_entity_id):
         """
         Create new instance output file
@@ -720,7 +722,7 @@ class NewInstanceOutputFileResource(MethodView, ArgsMixin):
 class GetNextEntityOutputFileRevisionResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/GetNextEntityOutputFileRevisionResource_post.yml")
+    @swag_from(SPECS["GetNextEntityOutputFileRevisionResource_post"])
     def post(self, entity_id):
         """
         Get next entity output file revision
@@ -741,7 +743,7 @@ class GetNextEntityOutputFileRevisionResource(MethodView, ArgsMixin):
 class GetNextInstanceOutputFileRevisionResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/GetNextInstanceOutputFileRevisionResource_post.yml")
+    @swag_from(SPECS["GetNextInstanceOutputFileRevisionResource_post"])
     def post(self, asset_instance_id, temporal_entity_id):
         """
         Get next instance output file revision
@@ -771,7 +773,7 @@ class GetNextInstanceOutputFileRevisionResource(MethodView, ArgsMixin):
 class LastEntityOutputFilesResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/LastEntityOutputFilesResource_get.yml")
+    @swag_from(SPECS["LastEntityOutputFilesResource_get"])
     def get(self, entity_id):
         """
         Get last entity output files
@@ -802,7 +804,7 @@ class LastEntityOutputFilesResource(MethodView, ArgsMixin):
 class LastInstanceOutputFilesResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/LastInstanceOutputFilesResource_get.yml")
+    @swag_from(SPECS["LastInstanceOutputFilesResource_get"])
     def get(self, asset_instance_id, temporal_entity_id):
         """
         Get last instance output files
@@ -837,7 +839,7 @@ class LastInstanceOutputFilesResource(MethodView, ArgsMixin):
 class EntityOutputTypesResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/EntityOutputTypesResource_get.yml")
+    @swag_from(SPECS["EntityOutputTypesResource_get"])
     def get(self, entity_id):
         """
         Get entity output types
@@ -850,7 +852,7 @@ class EntityOutputTypesResource(MethodView):
 class InstanceOutputTypesResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/InstanceOutputTypesResource_get.yml")
+    @swag_from(SPECS["InstanceOutputTypesResource_get"])
     def get(self, asset_instance_id, temporal_entity_id):
         """
         Get instance output types
@@ -868,7 +870,7 @@ class InstanceOutputTypesResource(MethodView):
 class EntityOutputTypeOutputFilesResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/EntityOutputTypeOutputFilesResource_get.yml")
+    @swag_from(SPECS["EntityOutputTypeOutputFilesResource_get"])
     def get(self, entity_id, output_type_id):
         """
         Get entity output type files
@@ -890,7 +892,7 @@ class EntityOutputTypeOutputFilesResource(MethodView, ArgsMixin):
 class InstanceOutputTypeOutputFilesResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/InstanceOutputTypeOutputFilesResource_get.yml")
+    @swag_from(SPECS["InstanceOutputTypeOutputFilesResource_get"])
     def get(self, asset_instance_id, temporal_entity_id, output_type_id):
         """
         Get instance output type files
@@ -917,7 +919,7 @@ class InstanceOutputTypeOutputFilesResource(MethodView, ArgsMixin):
 class ProjectOutputFilesResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/ProjectOutputFilesResource_get.yml")
+    @swag_from(SPECS["ProjectOutputFilesResource_get"])
     def get(self, project_id):
         """
         Get project output files
@@ -946,7 +948,7 @@ class ProjectOutputFilesResource(MethodView, ArgsMixin):
 class EntityOutputFilesResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/EntityOutputFilesResource_get.yml")
+    @swag_from(SPECS["EntityOutputFilesResource_get"])
     def get(self, entity_id):
         """
         Get entity output files
@@ -977,7 +979,7 @@ class EntityOutputFilesResource(MethodView, ArgsMixin):
 class InstanceOutputFilesResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/InstanceOutputFilesResource_get.yml")
+    @swag_from(SPECS["InstanceOutputFilesResource_get"])
     def get(self, asset_instance_id):
         """
         Get instance output files
@@ -1013,7 +1015,7 @@ class InstanceOutputFilesResource(MethodView, ArgsMixin):
 class FileResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/FileResource_get.yml")
+    @swag_from(SPECS["FileResource_get"])
     def get(self, file_id):
         """
         Get file information
@@ -1034,7 +1036,7 @@ class FileResource(MethodView):
 class EntityWorkingFilesResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/EntityWorkingFilesResource_get.yml")
+    @swag_from(SPECS["EntityWorkingFilesResource_get"])
     def get(self, entity_id):
         """
         Get entity working files
@@ -1062,7 +1064,7 @@ class EntityWorkingFilesResource(MethodView, ArgsMixin):
 class GuessFromPathResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/GuessFromPathResource_post.yml")
+    @swag_from(SPECS["GuessFromPathResource_post"])
     def post(self):
         """
         Guess file tree template

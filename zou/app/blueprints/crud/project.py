@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -20,6 +19,9 @@ from zou.app.services import (
     user_service,
 )
 from zou.app.utils import events, fields, permissions
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/project.yml")
 
 
 class ProjectsResource(BaseModelsResource):
@@ -41,7 +43,7 @@ class ProjectsResource(BaseModelsResource):
         ]
 
     @jwt_required()
-    @swag_from("openapi/ProjectsResource_get.yml")
+    @swag_from(SPECS["ProjectsResource_get"])
     def get(self):
         """
         Get projects
@@ -49,7 +51,7 @@ class ProjectsResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/ProjectsResource_post.yml")
+    @swag_from(SPECS["ProjectsResource_post"])
     def post(self):
         """
         Create project
@@ -185,7 +187,7 @@ class ProjectResource(BaseModelResource, ArgsMixin):
         )
 
     @jwt_required()
-    @swag_from("openapi/ProjectResource_get.yml")
+    @swag_from(SPECS["ProjectResource_get"])
     def get(self, instance_id):
         """
         Get project
@@ -193,7 +195,7 @@ class ProjectResource(BaseModelResource, ArgsMixin):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/ProjectResource_put.yml")
+    @swag_from(SPECS["ProjectResource_put"])
     def put(self, instance_id):
         """
         Update project
@@ -279,7 +281,7 @@ class ProjectResource(BaseModelResource, ArgsMixin):
         return data
 
     @jwt_required()
-    @swag_from("openapi/ProjectResource_delete.yml")
+    @swag_from(SPECS["ProjectResource_delete"])
     def delete(self, instance_id):
         """
         Delete project
@@ -307,7 +309,7 @@ class ProjectResource(BaseModelResource, ArgsMixin):
 
 class ProjectTaskTypeLinksResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/ProjectTaskTypeLinksResource_post.yml")
+    @swag_from(SPECS["ProjectTaskTypeLinksResource_post"])
     def post(self):
         """
         Create project task type link
@@ -332,7 +334,7 @@ class ProjectTaskTypeLinksResource(MethodView, ArgsMixin):
 
 class ProjectTaskStatusLinksResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/ProjectTaskStatusLinksResource_post.yml")
+    @swag_from(SPECS["ProjectTaskStatusLinksResource_post"])
     def post(self):
         """
         Create project task status link
@@ -374,7 +376,7 @@ def _validate_id_list_body(key):
 
 class ProjectTaskTypeLinksReorderResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ProjectTaskTypeLinksReorderResource_post.yml")
+    @swag_from(SPECS["ProjectTaskTypeLinksReorderResource_post"])
     def post(self, project_id):
         """
         Reorder project task type links
@@ -388,7 +390,7 @@ class ProjectTaskTypeLinksReorderResource(MethodView):
 
 class ProjectTaskStatusLinksReorderResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ProjectTaskStatusLinksReorderResource_post.yml")
+    @swag_from(SPECS["ProjectTaskStatusLinksReorderResource_post"])
     def post(self, project_id):
         """
         Reorder project task status links

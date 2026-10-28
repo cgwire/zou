@@ -2,7 +2,6 @@ import hmac
 import secrets
 
 from babel.dates import format_datetime
-from flasgger import swag_from
 from flask import current_app, jsonify, make_response, redirect, request
 from flask.views import MethodView
 from flask_jwt_extended import (
@@ -75,7 +74,10 @@ from zou.app.utils import (
 )
 from zou.app.utils.email_i18n import get_email_translation
 from zou.app.utils.flask_utils import is_from_browser
+from zou.app.utils.openapi import load_specs, swag_from
 from zou.app.utils.saml import get_subject_from_ava, saml_client_for
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 SSO_REFUSED = {
     "error": "This account cannot be signed in to with this identity. "
@@ -108,7 +110,7 @@ def _build_2fa_registration_response(response_data, user_id):
 class AuthenticatedResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/AuthenticatedResource_get.yml")
+    @swag_from(SPECS["AuthenticatedResource_get"])
     def get(self):
         """
         Check authentication status
@@ -131,7 +133,7 @@ class LogoutResource(MethodView):
 
     @jwt_required()
     @permissions.require_person
-    @swag_from("openapi/LogoutResource_get.yml")
+    @swag_from(SPECS["LogoutResource_get"])
     def get(self):
         """
         Logout user
@@ -213,7 +215,7 @@ def _build_login_response(user, email):
 
 class LoginResource(MethodView, ArgsMixin):
 
-    @swag_from("openapi/LoginResource_post.yml")
+    @swag_from(SPECS["LoginResource_post"])
     def post(self):
         """
         Login user
@@ -355,7 +357,7 @@ class LoginResource(MethodView, ArgsMixin):
 class RefreshTokenResource(MethodView):
     @jwt_required(refresh=True)
     @permissions.require_person
-    @swag_from("openapi/RefreshTokenResource_get.yml")
+    @swag_from(SPECS["RefreshTokenResource_get"])
     def get(self):
         """
         Refresh access token
@@ -397,7 +399,7 @@ class AppLoginCodeResource(MethodView):
 
     @jwt_required()
     @permissions.require_person
-    @swag_from("openapi/AppLoginCodeResource_post.yml")
+    @swag_from(SPECS["AppLoginCodeResource_post"])
     def post(self):
         """
         Mint a browser login code
@@ -413,7 +415,7 @@ class AppLoginCodeResource(MethodView):
 
 class AppLoginTokenResource(MethodView):
 
-    @swag_from("openapi/AppLoginTokenResource_post.yml")
+    @swag_from(SPECS["AppLoginTokenResource_post"])
     def post(self):
         """
         Trade a browser login code for tokens
@@ -449,7 +451,7 @@ class ChangePasswordResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_person
-    @swag_from("openapi/ChangePasswordResource_post.yml")
+    @swag_from(SPECS["ChangePasswordResource_post"])
     def post(self):
         """
         Change user password
@@ -537,7 +539,7 @@ class ChangePasswordResource(MethodView, ArgsMixin):
 
 class ResetPasswordResource(MethodView, ArgsMixin):
 
-    @swag_from("openapi/ResetPasswordResource_put.yml")
+    @swag_from(SPECS["ResetPasswordResource_put"])
     def put(self):
         """
         Reset password with token
@@ -578,7 +580,7 @@ class ResetPasswordResource(MethodView, ArgsMixin):
         except InactiveUserException:
             return {"error": True, "message": "User is inactive."}, 400
 
-    @swag_from("openapi/ResetPasswordResource_post.yml")
+    @swag_from(SPECS["ResetPasswordResource_post"])
     def post(self):
         """
         Request password reset
@@ -636,7 +638,7 @@ class TOTPResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_person
-    @swag_from("openapi/TOTPResource_put.yml")
+    @swag_from(SPECS["TOTPResource_put"])
     def put(self):
         """
         Pre-enable TOTP
@@ -657,7 +659,7 @@ class TOTPResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_person
-    @swag_from("openapi/TOTPResource_post.yml")
+    @swag_from(SPECS["TOTPResource_post"])
     def post(self):
         """
         Enable TOTP
@@ -690,7 +692,7 @@ class TOTPResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_person
-    @swag_from("openapi/TOTPResource_delete.yml")
+    @swag_from(SPECS["TOTPResource_delete"])
     def delete(self):
         """
         Disable TOTP
@@ -731,7 +733,7 @@ class TOTPResource(MethodView, ArgsMixin):
 
 class EmailOTPResource(MethodView, ArgsMixin):
 
-    @swag_from("openapi/EmailOTPResource_get.yml")
+    @swag_from(SPECS["EmailOTPResource_get"])
     def get(self):
         """
         Send email OTP
@@ -764,7 +766,7 @@ class EmailOTPResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_person
-    @swag_from("openapi/EmailOTPResource_put.yml")
+    @swag_from(SPECS["EmailOTPResource_put"])
     def put(self):
         """
         Pre-enable email OTP
@@ -782,7 +784,7 @@ class EmailOTPResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_person
-    @swag_from("openapi/EmailOTPResource_post.yml")
+    @swag_from(SPECS["EmailOTPResource_post"])
     def post(self):
         """
         Enable email OTP
@@ -816,7 +818,7 @@ class EmailOTPResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_person
-    @swag_from("openapi/EmailOTPResource_delete.yml")
+    @swag_from(SPECS["EmailOTPResource_delete"])
     def delete(self):
         """
         Disable email OTP
@@ -861,7 +863,7 @@ class FIDOResource(MethodView, ArgsMixin):
     challenge for a FIDO device.
     """
 
-    @swag_from("openapi/FIDOResource_get.yml")
+    @swag_from(SPECS["FIDOResource_get"])
     def get(self):
         """
         Get FIDO challenge
@@ -898,7 +900,7 @@ class FIDOResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_person
-    @swag_from("openapi/FIDOResource_put.yml")
+    @swag_from(SPECS["FIDOResource_put"])
     def put(self):
         """
         Pre-register FIDO device
@@ -909,7 +911,7 @@ class FIDOResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_person
-    @swag_from("openapi/FIDOResource_post.yml")
+    @swag_from(SPECS["FIDOResource_post"])
     def post(self):
         """
         Register FIDO device
@@ -943,7 +945,7 @@ class FIDOResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_person
-    @swag_from("openapi/FIDOResource_delete.yml")
+    @swag_from(SPECS["FIDOResource_delete"])
     def delete(self):
         """
         Unregister FIDO device
@@ -984,7 +986,7 @@ class RecoveryCodesResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_person
-    @swag_from("openapi/RecoveryCodesResource_put.yml")
+    @swag_from(SPECS["RecoveryCodesResource_put"])
     def put(self):
         """
         Generate recovery codes
@@ -1063,7 +1065,7 @@ def is_saml_person_info_new(person, person_info):
 
 
 class SAMLSSOResource(MethodView, ArgsMixin):
-    @swag_from("openapi/SAMLSSOResource_post.yml")
+    @swag_from(SPECS["SAMLSSOResource_post"])
     def post(self):
         """
         SAML SSO login
@@ -1212,7 +1214,7 @@ class SAMLSSOResource(MethodView, ArgsMixin):
 
 class SAMLLoginResource(MethodView, ArgsMixin):
 
-    @swag_from("openapi/SAMLLoginResource_get.yml")
+    @swag_from(SPECS["SAMLLoginResource_get"])
     def get(self):
         """
         SAML SSO login redirect
@@ -1244,7 +1246,7 @@ class SAMLLoginResource(MethodView, ArgsMixin):
 
 
 class OIDCLoginResource(MethodView, ArgsMixin):
-    @swag_from("openapi/OIDCLoginResource_get.yml")
+    @swag_from(SPECS["OIDCLoginResource_get"])
     def get(self):
         """
         OIDC SSO login redirect
@@ -1260,7 +1262,7 @@ class OIDCLoginResource(MethodView, ArgsMixin):
 
 
 class OIDCCallbackResource(MethodView, ArgsMixin):
-    @swag_from("openapi/OIDCCallbackResource_get.yml")
+    @swag_from(SPECS["OIDCCallbackResource_get"])
     def get(self):
         """
         OIDC SSO callback

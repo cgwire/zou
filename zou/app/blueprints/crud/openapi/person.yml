@@ -1,0 +1,456 @@
+PersonResource_delete:
+  summary: Delete a person
+  tags:
+    - Crud
+  description: Delete a person. You cannot delete yourself or a protected
+    account. Without force, the person is deleted only if no other data uses
+    it. With force=true, the comments, notifications, logs, subscriptions,
+    time spents, team memberships and task assignments of the person are
+    deleted or detached first. You must be an administrator.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the person
+    - in: query
+      name: force
+      required: false
+      schema:
+        type: boolean
+        default: false
+      example: false
+      description: Delete or detach all the data of the person first
+  responses:
+    204:
+      description: The person is deleted
+    400:
+      description: Other data uses the person and force is not set
+    403:
+      description: You are not an administrator, you try to delete yourself,
+        or the account is protected
+    404:
+      description: The person does not exist
+
+PersonResource_get:
+  summary: Get a person
+  tags:
+    - Crud
+  description: Get a person. All users can call this route. A manager by
+    global role, or an administrator, gets all the fields but the password,
+    the two-factor secrets, the login failure fields and the OIDC and SAML
+    identities. A client can read only the people of the teams of their open
+    projects, with a short set of fields. The other users get a minimal set of
+    fields.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the person
+    - in: query
+      name: relations
+      required: false
+      schema:
+        type: boolean
+        default: true
+      example: true
+      description: Add the related data. The default value is true.
+  responses:
+    200:
+      description: The person
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              first_name:
+                type: string
+                example: John
+              last_name:
+                type: string
+                example: Doe
+              email:
+                type: string
+                format: email
+                example: john.doe@example.com
+              role:
+                type: string
+                example: user
+              active:
+                type: boolean
+                example: true
+              contract_type:
+                type: string
+                example: permanent
+              two_factor_authentication:
+                type: string
+                example: none
+              departments:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                example: []
+              country:
+                type: string
+                description: ISO 3166-1 alpha-2 country code (nullable)
+                example: FR
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The identifier is not a valid UUID
+    403:
+      description: You are a client and the person is not in the teams of your
+        projects
+    404:
+      description: The person does not exist
+
+PersonResource_put:
+  summary: Update a person
+  tags:
+    - Crud
+  description: Update the fields of a person. Send only the fields to change.
+    You can change your own person. To change another person, you must be an
+    administrator. If you are not an administrator, the route ignores role,
+    departments, active, is_bot, archived, studio_id, last_presence, the login
+    failure fields and the LDAP, OIDC and SAML fields. A bot cannot change its
+    own expiration_date. You cannot change id, created_at, updated_at,
+    password, jti, the two-factor fields and the preview account fields. You
+    cannot change a preview account. You cannot deactivate a protected account
+    of another person or change its role. You cannot activate a person who is
+    not a bot when the user limit is reached. The route checks role,
+    contract_type, country, locale, display_date_format,
+    two_factor_authentication, email and expiration_date. A new expiration
+    date cannot be in the past. When you change expiration_date, the response
+    gives a new access_token, unless the date is in the past. expiration_date
+    uses the YYYY-MM-DD format.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the person
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            first_name:
+              type: string
+              example: Jane
+            last_name:
+              type: string
+              example: Smith
+            email:
+              type: string
+              format: email
+              example: jane.smith@example.com
+            role:
+              type: string
+              example: manager
+              description: Admin only
+            active:
+              type: boolean
+              example: true
+              description: Admin only
+            contract_type:
+              type: string
+              example: freelance
+            expiration_date:
+              type: string
+              format: date
+              example: '2025-12-31'
+              description: Person or admin only
+            country:
+              type: string
+              description: ISO 3166-1 alpha-2 country code (nullable)
+              example: FR
+  responses:
+    200:
+      description: The updated person
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              first_name:
+                type: string
+                example: Jane
+              last_name:
+                type: string
+                example: Smith
+              email:
+                type: string
+                format: email
+                example: jane.smith@example.com
+              role:
+                type: string
+                example: manager
+              active:
+                type: boolean
+                example: true
+              contract_type:
+                type: string
+                example: freelance
+              two_factor_authentication:
+                type: string
+                example: totp
+              departments:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                example: []
+              country:
+                type: string
+                description: ISO 3166-1 alpha-2 country code (nullable)
+                example: FR
+              access_token:
+                type: string
+                example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not valid, a date is not valid, or a field
+        breaks a database constraint
+    403:
+      description: The person is not you and you are not an administrator,
+        the person is a preview account, or you try to deactivate or change
+        the role of a protected account
+    404:
+      description: The person does not exist
+
+PersonsResource_get:
+  summary: Get person rows
+  tags:
+    - Crud
+  description: Get the person rows. All users can call this route. Preview
+    accounts are not in the list. An administrator gets all the fields but the
+    password, the two-factor secrets, the login failure fields and the OIDC
+    and SAML identities. An administrator cannot filter on these fields. With with_pass_hash=true, an
+    administrator also gets the password hash. A client gets only the people
+    of the teams of their open projects, with a short set of fields. The other
+    users get a minimal set of fields. Add a query parameter for each column
+    to filter on, for example first_name=John. An administrator can filter on
+    all the columns but the sensitive ones. The other users can filter only on
+    the fields they get. A user who is not a client can also filter on email.
+    To get the rows that have one value of a list, give the list in JSON.
+  parameters:
+    - in: query
+      name: with_pass_hash
+      required: false
+      schema:
+        type: boolean
+        default: false
+      example: false
+      description: Include password hash (admin only)
+    - in: query
+      name: page
+      required: false
+      description: Page to get. Without this parameter, the response has all
+        the rows.
+      example: 1
+      schema:
+        type: integer
+    - in: query
+      name: limit
+      required: false
+      description: Number of rows in a page. The default value is 100.
+      example: 100
+      schema:
+        type: integer
+    - in: query
+      name: relations
+      required: false
+      description: Add the related data to each row
+      schema:
+        type: boolean
+        default: false
+    - in: query
+      name: fields
+      required: false
+      description: Comma-separated list of the fields to get for each row. The
+        response always has id and type. The names that are not fields are
+        ignored.
+      example: id,name
+      schema:
+        type: string
+  responses:
+    200:
+      description: The list of person rows, or a page of rows if you give page
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - type: array
+                items:
+                  type: object
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  total:
+                    type: integer
+                    example: 100
+                  nb_pages:
+                    type: integer
+                    example: 2
+                  limit:
+                    type: integer
+                    example: 50
+                  offset:
+                    type: integer
+                    example: 0
+                  page:
+                    type: integer
+                    example: 1
+    400:
+      description: A filter is not valid
+
+PersonsResource_post:
+  summary: Create a person
+  tags:
+    - Crud
+  description: Create a person. Send the fields of the new row in JSON. You
+    must be an administrator. You cannot create an active person who is not a
+    bot when the user limit is reached. The route checks role, contract_type,
+    country, locale, display_date_format, two_factor_authentication and
+    expiration_date. The expiration date cannot be in the past. The email must
+    be valid. Only one person who is not a bot can use an email. The route
+    ignores the preview account fields. For a bot, the response also gives its
+    access_token.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - first_name
+            - last_name
+            - email
+          properties:
+            first_name:
+              type: string
+              example: John
+            last_name:
+              type: string
+              example: Doe
+            email:
+              type: string
+              format: email
+              example: john.doe@example.com
+            password:
+              type: string
+              example: securepassword123
+            role:
+              type: string
+              example: user
+            active:
+              type: boolean
+              default: true
+              example: true
+            contract_type:
+              type: string
+              example: permanent
+            expiration_date:
+              type: string
+              format: date
+              example: '2025-12-31'
+            is_bot:
+              type: boolean
+              default: false
+              example: false
+            country:
+              type: string
+              description: ISO 3166-1 alpha-2 country code (nullable)
+              example: FR
+  responses:
+    201:
+      description: The new person
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              first_name:
+                type: string
+                example: John
+              last_name:
+                type: string
+                example: Doe
+              email:
+                type: string
+                format: email
+                example: john.doe@example.com
+              role:
+                type: string
+                example: user
+              active:
+                type: boolean
+                example: true
+              contract_type:
+                type: string
+                example: permanent
+              two_factor_authentication:
+                type: string
+                example: none
+              country:
+                type: string
+                description: ISO 3166-1 alpha-2 country code (nullable)
+                example: FR
+              access_token:
+                type: string
+                example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The body is not valid, or a field breaks a database
+        constraint
+    403:
+      description: You are not an administrator

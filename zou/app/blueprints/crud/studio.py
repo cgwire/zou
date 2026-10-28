@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
@@ -6,6 +5,9 @@ from zou.app.models.studio import Studio
 from zou.app.services import (
     task_types_service,
 )
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/studio.yml")
 
 
 class StudiosResource(BaseModelsResource):
@@ -16,7 +18,7 @@ class StudiosResource(BaseModelsResource):
         return True
 
     @jwt_required()
-    @swag_from("openapi/StudiosResource_get.yml")
+    @swag_from(SPECS["StudiosResource_get"])
     def get(self):
         """
         Get studios
@@ -24,7 +26,7 @@ class StudiosResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/StudiosResource_post.yml")
+    @swag_from(SPECS["StudiosResource_post"])
     def post(self):
         """
         Create studio
@@ -44,7 +46,7 @@ class StudioResource(BaseModelResource):
         return True
 
     @jwt_required()
-    @swag_from("openapi/StudioResource_get.yml")
+    @swag_from(SPECS["StudioResource_get"])
     def get(self, instance_id):
         """
         Get studio
@@ -52,7 +54,7 @@ class StudioResource(BaseModelResource):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/StudioResource_put.yml")
+    @swag_from(SPECS["StudioResource_put"])
     def put(self, instance_id):
         """
         Update studio
@@ -60,7 +62,7 @@ class StudioResource(BaseModelResource):
         return super().put(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/StudioResource_delete.yml")
+    @swag_from(SPECS["StudioResource_delete"])
     def delete(self, instance_id):
         """
         Delete studio

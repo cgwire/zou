@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -11,12 +10,15 @@ from zou.app.services import (
     persons_service,
 )
 from zou.app.utils import permissions, validation
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 class ChatResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/ChatResource_get.yml")
+    @swag_from(SPECS["ChatResource_get"])
     def get(self, entity_id):
         """
         Get chat details
@@ -30,7 +32,7 @@ class ChatResource(MethodView):
 class ChatMessagesResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/ChatMessagesResource_get.yml")
+    @swag_from(SPECS["ChatMessagesResource_get"])
     def get(self, entity_id):
         """
         Get chat messages
@@ -39,7 +41,7 @@ class ChatMessagesResource(MethodView):
         return chats_service.get_chat_messages_for_entity(entity_id)
 
     @jwt_required()
-    @swag_from("openapi/ChatMessagesResource_post.yml")
+    @swag_from(SPECS["ChatMessagesResource_post"])
     def post(self, entity_id):
         """
         Create chat message
@@ -68,7 +70,7 @@ class ChatMessagesResource(MethodView):
 class ChatMessageResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/ChatMessageResource_get.yml")
+    @swag_from(SPECS["ChatMessageResource_get"])
     def get(self, entity_id, chat_message_id):
         """
         Get chat message
@@ -81,7 +83,7 @@ class ChatMessageResource(MethodView):
         return chat_message
 
     @jwt_required()
-    @swag_from("openapi/ChatMessageResource_delete.yml")
+    @swag_from(SPECS["ChatMessageResource_delete"])
     def delete(self, entity_id, chat_message_id):
         """
         Delete chat message

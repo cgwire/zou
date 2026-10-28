@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask import current_app, request
 from flask_jwt_extended import jwt_required
 from sqlalchemy.exc import IntegrityError
@@ -26,6 +25,9 @@ from zou.app.services import (
     user_service,
 )
 from zou.app.utils import events, fields, permissions
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/task.yml")
 
 
 class TasksResource(BaseModelsResource, ArgsMixin):
@@ -44,7 +46,7 @@ class TasksResource(BaseModelsResource, ArgsMixin):
         return True
 
     @jwt_required()
-    @swag_from("openapi/TasksResource_get.yml")
+    @swag_from(SPECS["TasksResource_get"])
     def get(self):
         """
         Get tasks
@@ -102,7 +104,7 @@ class TasksResource(BaseModelsResource, ArgsMixin):
         return query
 
     @jwt_required()
-    @swag_from("openapi/TasksResource_post.yml")
+    @swag_from(SPECS["TasksResource_post"])
     def post(self):
         """
         Create task
@@ -182,7 +184,7 @@ class TaskResource(BaseModelResource, ArgsMixin):
         return task
 
     @jwt_required()
-    @swag_from("openapi/TaskResource_get.yml")
+    @swag_from(SPECS["TaskResource_get"])
     def get(self, instance_id):
         """
         Get task
@@ -190,7 +192,7 @@ class TaskResource(BaseModelResource, ArgsMixin):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/TaskResource_put.yml")
+    @swag_from(SPECS["TaskResource_put"])
     def put(self, instance_id):
         """
         Update task
@@ -245,7 +247,7 @@ class TaskResource(BaseModelResource, ArgsMixin):
         return instance_dict
 
     @jwt_required()
-    @swag_from("openapi/TaskResource_delete.yml")
+    @swag_from(SPECS["TaskResource_delete"])
     def delete(self, instance_id):
         """
         Delete task

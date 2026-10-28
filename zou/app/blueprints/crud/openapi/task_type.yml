@@ -1,0 +1,328 @@
+TaskTypeResource_delete:
+  summary: Delete a task type
+  tags:
+    - Crud
+  description: Delete a task type. If schedule items or projects use the task
+    type, the request fails. With force=true, the schedule items of the task
+    type are deleted and the task type is removed from the projects. You must be
+    an administrator.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task type
+    - in: query
+      name: force
+      required: false
+      schema:
+        type: boolean
+        default: false
+      example: false
+      description: Delete the schedule items of the task type and remove it
+        from the projects
+  responses:
+    204:
+      description: The task type is deleted
+    400:
+      description: Schedule items or projects use the task type, or other data
+        uses this row
+    403:
+      description: You are not an administrator
+    404:
+      description: The task type does not exist
+
+TaskTypeResource_get:
+  summary: Get a task type
+  tags:
+    - Crud
+  description: Get a task type. All users can read it.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task type
+    - in: query
+      name: relations
+      required: false
+      schema:
+        type: boolean
+        default: true
+      example: true
+      description: Add the related data. The default value is true.
+  responses:
+    200:
+      description: The task type
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: Animation
+              for_entity:
+                type: string
+                example: Shot
+              color:
+                type: string
+                example: '#FF5733'
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The identifier is not a valid UUID
+    404:
+      description: The task type does not exist
+
+TaskTypeResource_put:
+  summary: Update a task type
+  tags:
+    - Crud
+  description: Update the fields of a task type. Send only the fields to change.
+    You cannot change id, created_at, updated_at. Dates use the ISO 8601 format.
+    A new name must be unique. The check does not make a difference between
+    upper case and lower case. You must be an administrator.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task type
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+              example: Updated Animation
+            color:
+              type: string
+              example: '#FF5734'
+  responses:
+    200:
+      description: The updated task type
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: Updated Animation
+              for_entity:
+                type: string
+                example: Shot
+              color:
+                type: string
+                example: '#FF5734'
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not valid, a date is not valid, or a field
+        breaks a database constraint
+    403:
+      description: You are not an administrator
+    404:
+      description: The task type does not exist
+
+TaskTypesReorderResource_post:
+  summary: Reorder the task types
+  tags:
+    - Crud
+  description: Set the priority of all the task types in one request. The
+    order of the list gives the priority, from 1. The identifiers that are not
+    task types are skipped. You must be an administrator.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - task_type_ids
+          properties:
+            task_type_ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+              description: Task types in the new order
+  responses:
+    200:
+      description: The updated task types
+    400:
+      description: The body does not have a task_type_ids list
+    403:
+      description: You are not an administrator
+
+TaskTypesResource_get:
+  summary: Get task type rows
+  tags:
+    - Crud
+  description: Get the task type rows. Add a query parameter for each column to
+    filter on, for example name=Modeling. The name filter does not make a
+    difference between upper case and lower case. To get the rows that have one
+    value of a list, give the list in JSON, for example
+    task_status_id=["<id1>","<id2>"]. All users can read them.
+  parameters:
+    - in: query
+      name: page
+      required: false
+      description: Page to get. Without this parameter, the response has all
+        the rows.
+      example: 1
+      schema:
+        type: integer
+    - in: query
+      name: limit
+      required: false
+      description: Number of rows in a page. The default value is 100.
+      example: 100
+      schema:
+        type: integer
+    - in: query
+      name: relations
+      required: false
+      description: Add the related data to each row
+      schema:
+        type: boolean
+        default: false
+    - in: query
+      name: fields
+      required: false
+      description: Comma-separated list of the fields to get for each row. The
+        response always has id and type. The names that are not fields are
+        ignored.
+      example: id,name
+      schema:
+        type: string
+  responses:
+    200:
+      description: The list of task type rows, or a page of rows if you give
+        page
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - type: array
+                items:
+                  type: object
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  total:
+                    type: integer
+                    example: 100
+                  nb_pages:
+                    type: integer
+                    example: 2
+                  limit:
+                    type: integer
+                    example: 50
+                  offset:
+                    type: integer
+                    example: 0
+                  page:
+                    type: integer
+                    example: 1
+    400:
+      description: A filter is not valid
+
+TaskTypesResource_post:
+  summary: Create a task type
+  tags:
+    - Crud
+  description: Create a task type. Send the fields of the new row in JSON. The
+    name must be unique. The check does not make a difference between upper case
+    and lower case. You must be an administrator.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - name
+          properties:
+            name:
+              type: string
+              example: Animation
+            for_entity:
+              type: string
+              description: Kind of entity, Asset by default
+              default: Asset
+              example: Shot
+            color:
+              type: string
+              example: '#FF5733'
+  responses:
+    201:
+      description: The new task type
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: Animation
+              for_entity:
+                type: string
+                example: Shot
+              color:
+                type: string
+                example: '#FF5733'
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The body is not valid, a task type with a similar name
+        exists, or a field breaks a database constraint
+    403:
+      description: You are not an administrator

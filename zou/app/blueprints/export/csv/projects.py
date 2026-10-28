@@ -1,9 +1,11 @@
-from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.export.csv.base import BaseCsvExport
 from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 class ProjectsCsvExport(BaseCsvExport):
@@ -11,7 +13,7 @@ class ProjectsCsvExport(BaseCsvExport):
         BaseCsvExport.__init__(self)
 
     @jwt_required()
-    @swag_from("openapi/ProjectsCsvExport_get.yml")
+    @swag_from(SPECS["ProjectsCsvExport_get"])
     def get(self):
         """
         Export projects csv

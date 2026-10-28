@@ -1,7 +1,6 @@
 import datetime
 import ipaddress
 
-from flasgger import swag_from
 from flask import current_app, request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -40,6 +39,9 @@ from zou.app.utils import (
     permissions,
     validation,
 )
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 def _get_project_department_ids_for_person_access(person_id):
@@ -100,7 +102,7 @@ def _shape_day_offs(day_offs, with_description):
 class DesktopLoginsResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/DesktopLoginsResource_get.yml")
+    @swag_from(SPECS["DesktopLoginsResource_get"])
     def get(self, person_id):
         """
         Get desktop login logs
@@ -116,7 +118,7 @@ class DesktopLoginsResource(MethodView, ArgsMixin):
         return persons_service.get_desktop_login_logs(person_id)
 
     @jwt_required()
-    @swag_from("openapi/DesktopLoginsResource_post.yml")
+    @swag_from(SPECS["DesktopLoginsResource_post"])
     def post(self, person_id):
         """
         Create desktop login log
@@ -145,7 +147,7 @@ class DesktopLoginsResource(MethodView, ArgsMixin):
 class PresenceLogsResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/PresenceLogsResource_get.yml")
+    @swag_from(SPECS["PresenceLogsResource_get"])
     def get(self, month_date):
         """
         Get presence logs
@@ -164,7 +166,7 @@ class PresenceLogsResource(MethodView):
 class TimeSpentsResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/TimeSpentsResource_get.yml")
+    @swag_from(SPECS["TimeSpentsResource_get"])
     def get(self, person_id):
         """
         Get time spents
@@ -205,7 +207,7 @@ class TimeSpentsResource(MethodView, ArgsMixin):
 class DateTimeSpentsResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/DateTimeSpentsResource_get.yml")
+    @swag_from(SPECS["DateTimeSpentsResource_get"])
     def get(self, person_id, date):
         """
         Get time spents for date
@@ -228,7 +230,7 @@ class DateTimeSpentsResource(MethodView):
 class DayOffResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/DayOffResource_get.yml")
+    @swag_from(SPECS["DayOffResource_get"])
     def get(self, person_id, date):
         """
         Get day off
@@ -262,7 +264,7 @@ class PersonDurationTimeSpentsResource(MethodView, ArgsMixin):
 class PersonYearTimeSpentsResource(PersonDurationTimeSpentsResource):
 
     @jwt_required()
-    @swag_from("openapi/PersonYearTimeSpentsResource_get.yml")
+    @swag_from(SPECS["PersonYearTimeSpentsResource_get"])
     def get(self, person_id, year):
         """
         Get year time spents
@@ -281,7 +283,7 @@ class PersonYearTimeSpentsResource(PersonDurationTimeSpentsResource):
 class PersonMonthTimeSpentsResource(PersonDurationTimeSpentsResource):
 
     @jwt_required()
-    @swag_from("openapi/PersonMonthTimeSpentsResource_get.yml")
+    @swag_from(SPECS["PersonMonthTimeSpentsResource_get"])
     def get(self, person_id, year, month):
         """
         Get month time spents
@@ -301,7 +303,7 @@ class PersonMonthTimeSpentsResource(PersonDurationTimeSpentsResource):
 class PersonMonthAllTimeSpentsResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/PersonMonthAllTimeSpentsResource_get.yml")
+    @swag_from(SPECS["PersonMonthAllTimeSpentsResource_get"])
     def get(self, person_id, year, month):
         """
         Get all month time spents
@@ -320,7 +322,7 @@ class PersonMonthAllTimeSpentsResource(MethodView):
 class PersonWeekTimeSpentsResource(PersonDurationTimeSpentsResource):
 
     @jwt_required()
-    @swag_from("openapi/PersonWeekTimeSpentsResource_get.yml")
+    @swag_from(SPECS["PersonWeekTimeSpentsResource_get"])
     def get(self, person_id, year, week):
         """
         Get week time spents
@@ -340,7 +342,7 @@ class PersonWeekTimeSpentsResource(PersonDurationTimeSpentsResource):
 class PersonDayTimeSpentsResource(PersonDurationTimeSpentsResource):
 
     @jwt_required()
-    @swag_from("openapi/PersonDayTimeSpentsResource_get.yml")
+    @swag_from(SPECS["PersonDayTimeSpentsResource_get"])
     def get(self, person_id, year, month, day):
         """
         Get day time spents
@@ -420,7 +422,7 @@ class PersonMonthQuotaShotsResource(MethodView, PersonQuotaMixin):
         )
 
     @jwt_required()
-    @swag_from("openapi/PersonMonthQuotaShotsResource_get.yml")
+    @swag_from(SPECS["PersonMonthQuotaShotsResource_get"])
     def get(self, person_id, year, month):
         """
         Get month quota shots
@@ -436,7 +438,7 @@ class PersonWeekQuotaShotsResource(MethodView, PersonQuotaMixin):
         )
 
     @jwt_required()
-    @swag_from("openapi/PersonWeekQuotaShotsResource_get.yml")
+    @swag_from(SPECS["PersonWeekQuotaShotsResource_get"])
     def get(self, person_id, year, week):
         """
         Get week quota shots
@@ -452,7 +454,7 @@ class PersonDayQuotaShotsResource(MethodView, PersonQuotaMixin):
         )
 
     @jwt_required()
-    @swag_from("openapi/PersonDayQuotaShotsResource_get.yml")
+    @swag_from(SPECS["PersonDayQuotaShotsResource_get"])
     def get(self, person_id, year, month, day):
         """
         Get day quota shots
@@ -511,7 +513,7 @@ class TimeSpentDurationResource(MethodView, ArgsMixin):
 class TimeSpentMonthResource(TimeSpentDurationResource):
 
     @jwt_required()
-    @swag_from("openapi/TimeSpentMonthResource_get.yml")
+    @swag_from(SPECS["TimeSpentMonthResource_get"])
     def get(self, year, month):
         """
         Get time spent month table
@@ -527,7 +529,7 @@ class TimeSpentMonthResource(TimeSpentDurationResource):
 class TimeSpentYearsResource(TimeSpentDurationResource):
 
     @jwt_required()
-    @swag_from("openapi/TimeSpentYearsResource_get.yml")
+    @swag_from(SPECS["TimeSpentYearsResource_get"])
     def get(self):
         """
         Get time spent years table
@@ -540,7 +542,7 @@ class TimeSpentYearsResource(TimeSpentDurationResource):
 class TimeSpentMonthsResource(TimeSpentDurationResource):
 
     @jwt_required()
-    @swag_from("openapi/TimeSpentMonthsResource_get.yml")
+    @swag_from(SPECS["TimeSpentMonthsResource_get"])
     def get(self, year):
         """
         Get time spent months table
@@ -553,7 +555,7 @@ class TimeSpentMonthsResource(TimeSpentDurationResource):
 class TimeSpentWeekResource(TimeSpentDurationResource):
 
     @jwt_required()
-    @swag_from("openapi/TimeSpentWeekResource_get.yml")
+    @swag_from(SPECS["TimeSpentWeekResource_get"])
     def get(self, year):
         """
         Get time spent weeks table
@@ -566,7 +568,7 @@ class TimeSpentWeekResource(TimeSpentDurationResource):
 class InvitePersonResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/InvitePersonResource_get.yml")
+    @swag_from(SPECS["InvitePersonResource_get"])
     def get(self, person_id):
         """
         Invite person
@@ -580,7 +582,7 @@ class InvitePersonResource(MethodView):
 class ResetPasswordLinkResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/ResetPasswordLinkResource_post.yml")
+    @swag_from(SPECS["ResetPasswordLinkResource_post"])
     def post(self, person_id):
         """
         Get a password reset link
@@ -605,7 +607,7 @@ class ResetPasswordLinkResource(MethodView):
 class DayOffForMonthResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/DayOffForMonthResource_get.yml")
+    @swag_from(SPECS["DayOffForMonthResource_get"])
     def get(self, year, month):
         """
         Get day offs for month
@@ -617,7 +619,7 @@ class DayOffForMonthResource(MethodView, ArgsMixin):
 
 class DayOffForYearResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/DayOffForYearResource_get.yml")
+    @swag_from(SPECS["DayOffForYearResource_get"])
     def get(self, year):
         """
         Get day offs for year
@@ -645,7 +647,7 @@ def _readable_day_offs(list_period, *period):
 class PersonWeekDayOffResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/PersonWeekDayOffResource_get.yml")
+    @swag_from(SPECS["PersonWeekDayOffResource_get"])
     def get(self, person_id, year, week):
         """
         Get person week day offs
@@ -662,7 +664,7 @@ class PersonWeekDayOffResource(MethodView, ArgsMixin):
 class PersonMonthDayOffResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/PersonMonthDayOffResource_get.yml")
+    @swag_from(SPECS["PersonMonthDayOffResource_get"])
     def get(self, person_id, year, month):
         """
         Get person month day offs
@@ -679,7 +681,7 @@ class PersonMonthDayOffResource(MethodView, ArgsMixin):
 class PersonYearDayOffResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/PersonYearDayOffResource_get.yml")
+    @swag_from(SPECS["PersonYearDayOffResource_get"])
     def get(self, person_id, year):
         """
         Get person year day offs
@@ -694,7 +696,7 @@ class PersonYearDayOffResource(MethodView, ArgsMixin):
 class PersonDayOffResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/PersonDayOffResource_get.yml")
+    @swag_from(SPECS["PersonDayOffResource_get"])
     def get(self, person_id):
         """
         Get person day offs
@@ -709,7 +711,7 @@ class PersonDayOffResource(MethodView, ArgsMixin):
 class AddToDepartmentResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/AddToDepartmentResource_post.yml")
+    @swag_from(SPECS["AddToDepartmentResource_post"])
     def post(self, person_id):
         """
         Add person to department
@@ -731,7 +733,7 @@ class AddToDepartmentResource(MethodView, ArgsMixin):
 class RemoveFromDepartmentResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/RemoveFromDepartmentResource_delete.yml")
+    @swag_from(SPECS["RemoveFromDepartmentResource_delete"])
     def delete(self, person_id, department_id):
         """
         Remove person from department
@@ -750,7 +752,7 @@ class RemoveFromDepartmentResource(MethodView, ArgsMixin):
 class ChangePasswordForPersonResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/ChangePasswordForPersonResource_post.yml")
+    @swag_from(SPECS["ChangePasswordForPersonResource_post"])
     def post(self, person_id):
         """
         Change person password
@@ -805,9 +807,7 @@ class ChangePasswordForPersonResource(MethodView, ArgsMixin):
 class DisableTwoFactorAuthenticationPersonResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from(
-        "openapi/DisableTwoFactorAuthenticationPersonResource_delete.yml"
-    )
+    @swag_from(SPECS["DisableTwoFactorAuthenticationPersonResource_delete"])
     def delete(self, person_id):
         """
         Disable two factor authentication
@@ -852,7 +852,7 @@ class DisableTwoFactorAuthenticationPersonResource(MethodView, ArgsMixin):
 
 class ClearAvatarPersonResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ClearAvatarPersonResource_delete.yml")
+    @swag_from(SPECS["ClearAvatarPersonResource_delete"])
     def delete(self, person_id):
         """
         Clear person avatar

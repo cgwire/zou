@@ -1,5 +1,3 @@
-from flasgger import swag_from
-
 from zou.app.blueprints.source.csv.base import (
     BaseCsvImportResource,
     RowException,
@@ -13,11 +11,14 @@ from zou.app.models.person import (
 )
 from zou.app.services import persons_service
 from zou.app.utils import auth, permissions
+from zou.app.utils.openapi import load_specs, swag_from
 from zou.app.utils.string import strtobool
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 class PersonsCsvImportResource(BaseCsvImportResource):
-    @swag_from("openapi/PersonsCsvImportResource_post.yml")
+    @swag_from(SPECS["PersonsCsvImportResource_post"])
     def post(self):
         """
         Import persons csv

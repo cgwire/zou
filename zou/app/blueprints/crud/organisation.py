@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 from sqlalchemy.inspection import inspect
 
@@ -8,7 +7,10 @@ from zou.app.models.organisation import SENSITIVE_FIELDS, Organisation
 from zou.app.services import (
     organisation_service,
 )
+from zou.app.utils.openapi import load_specs, swag_from
 from zou.app.utils.permissions import has_admin_permissions
+
+SPECS = load_specs(__file__, "openapi/organisation.yml")
 
 
 class OrganisationsResource(BaseModelsResource):
@@ -36,7 +38,7 @@ class OrganisationsResource(BaseModelsResource):
         ]
 
     @jwt_required()
-    @swag_from("openapi/OrganisationsResource_get.yml")
+    @swag_from(SPECS["OrganisationsResource_get"])
     def get(self):
         """
         Get organisations
@@ -44,7 +46,7 @@ class OrganisationsResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/OrganisationsResource_post.yml")
+    @swag_from(SPECS["OrganisationsResource_post"])
     def post(self):
         """
         Create organisation
@@ -60,7 +62,7 @@ class OrganisationResource(BaseModelResource):
         return True
 
     @jwt_required()
-    @swag_from("openapi/OrganisationResource_get.yml")
+    @swag_from(SPECS["OrganisationResource_get"])
     def get(self, instance_id):
         """
         Get organisation
@@ -68,7 +70,7 @@ class OrganisationResource(BaseModelResource):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/OrganisationResource_put.yml")
+    @swag_from(SPECS["OrganisationResource_put"])
     def put(self, instance_id):
         """
         Update organisation
@@ -76,7 +78,7 @@ class OrganisationResource(BaseModelResource):
         return super().put(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/OrganisationResource_delete.yml")
+    @swag_from(SPECS["OrganisationResource_delete"])
     def delete(self, instance_id):
         """
         Delete organisation

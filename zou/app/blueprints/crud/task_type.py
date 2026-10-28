@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -12,6 +11,9 @@ from zou.app.services import (
     task_types_service,
 )
 from zou.app.utils import permissions
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/task_type.yml")
 
 
 class TaskTypesResource(BaseModelsResource):
@@ -22,7 +24,7 @@ class TaskTypesResource(BaseModelsResource):
         return True
 
     @jwt_required()
-    @swag_from("openapi/TaskTypesResource_get.yml")
+    @swag_from(SPECS["TaskTypesResource_get"])
     def get(self):
         """
         Get task types
@@ -30,7 +32,7 @@ class TaskTypesResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/TaskTypesResource_post.yml")
+    @swag_from(SPECS["TaskTypesResource_post"])
     def post(self):
         """
         Create task type
@@ -55,7 +57,7 @@ class TaskTypeResource(BaseModelResource):
         return True
 
     @jwt_required()
-    @swag_from("openapi/TaskTypeResource_get.yml")
+    @swag_from(SPECS["TaskTypeResource_get"])
     def get(self, instance_id):
         """
         Get task type
@@ -63,7 +65,7 @@ class TaskTypeResource(BaseModelResource):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/TaskTypeResource_put.yml")
+    @swag_from(SPECS["TaskTypeResource_put"])
     def put(self, instance_id):
         """
         Update task type
@@ -71,7 +73,7 @@ class TaskTypeResource(BaseModelResource):
         return super().put(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/TaskTypeResource_delete.yml")
+    @swag_from(SPECS["TaskTypeResource_delete"])
     def delete(self, instance_id):
         """
         Delete task type
@@ -130,7 +132,7 @@ class TaskTypeResource(BaseModelResource):
 
 class TaskTypesReorderResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/TaskTypesReorderResource_post.yml")
+    @swag_from(SPECS["TaskTypesReorderResource_post"])
     def post(self):
         """
         Reorder task types

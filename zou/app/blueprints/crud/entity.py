@@ -1,7 +1,6 @@
 import copy
 import re
 
-from flasgger import swag_from
 from flask import current_app
 from flask_jwt_extended import jwt_required
 from sqlalchemy.exc import StatementError
@@ -36,6 +35,9 @@ from zou.app.services import (
     user_service,
 )
 from zou.app.utils import date_helpers, events, fields, permissions
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/entity.yml")
 
 # A shot version takes the next change of its author up to a minute after
 # its last change, and up to five minutes after its creation, when that
@@ -74,7 +76,7 @@ class EntitiesResource(BaseModelsResource, EntityEventMixin):
         permissions_service.check_manager_project_access(entity["project_id"])
 
     @jwt_required()
-    @swag_from("openapi/EntitiesResource_get.yml")
+    @swag_from(SPECS["EntitiesResource_get"])
     def get(self):
         """
         Get entities
@@ -82,7 +84,7 @@ class EntitiesResource(BaseModelsResource, EntityEventMixin):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/EntitiesResource_post.yml")
+    @swag_from(SPECS["EntitiesResource_post"])
     def post(self):
         """
         Create entity
@@ -212,7 +214,7 @@ class EntityResource(BaseModelResource, EntityEventMixin):
         return data
 
     @jwt_required()
-    @swag_from("openapi/EntityResource_get.yml")
+    @swag_from(SPECS["EntityResource_get"])
     def get(self, instance_id):
         """
         Get entity
@@ -220,7 +222,7 @@ class EntityResource(BaseModelResource, EntityEventMixin):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/EntityResource_delete.yml")
+    @swag_from(SPECS["EntityResource_delete"])
     def delete(self, instance_id):
         """
         Delete entity
@@ -250,7 +252,7 @@ class EntityResource(BaseModelResource, EntityEventMixin):
         return entity
 
     @jwt_required()
-    @swag_from("openapi/EntityResource_put.yml")
+    @swag_from(SPECS["EntityResource_put"])
     def put(self, instance_id):
         """
         Update entity

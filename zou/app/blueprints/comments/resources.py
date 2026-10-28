@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask import current_app, request, send_file as flask_send_file
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -26,12 +25,15 @@ from zou.app.services import (
     tasks_service,
 )
 from zou.app.utils import date_helpers, permissions, validation
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 class DownloadAttachmentResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/DownloadAttachmentResource_get.yml")
+    @swag_from(SPECS["DownloadAttachmentResource_get"])
     def get(self, attachment_file_id, file_name):
         """
         Download attachment file
@@ -85,7 +87,7 @@ class DownloadAttachmentResource(MethodView):
 class AckCommentResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/AckCommentResource_post.yml")
+    @swag_from(SPECS["AckCommentResource_post"])
     def post(self, task_id, comment_id):
         """
         Acknowledge comment
@@ -97,7 +99,7 @@ class AckCommentResource(MethodView):
 class CommentTaskResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/CommentTaskResource_post.yml")
+    @swag_from(SPECS["CommentTaskResource_post"])
     def post(self, task_id):
         """
         Create task comment
@@ -165,7 +167,7 @@ class CommentTaskResource(MethodView):
 
 class AttachmentResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/AttachmentResource_delete.yml")
+    @swag_from(SPECS["AttachmentResource_delete"])
     def delete(self, task_id, comment_id, attachment_file_id):
         """
         Delete comment attachment
@@ -196,7 +198,7 @@ class AttachmentResource(MethodView):
 
 class AddAttachmentToCommentResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/AddAttachmentToCommentResource_post.yml")
+    @swag_from(SPECS["AddAttachmentToCommentResource_post"])
     def post(self, task_id, comment_id):
         """
         Add comment attachments
@@ -221,7 +223,7 @@ class AddAttachmentToCommentResource(MethodView):
 class CommentManyTasksResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/CommentManyTasksResource_post.yml")
+    @swag_from(SPECS["CommentManyTasksResource_post"])
     def post(self, project_id):
         """
         Create multiple comments
@@ -321,7 +323,7 @@ def _is_client_thread(comment, task_id):
 class ReplyCommentResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/ReplyCommentResource_post.yml")
+    @swag_from(SPECS["ReplyCommentResource_post"])
     def post(self, task_id, comment_id):
         """
         Reply to comment
@@ -373,7 +375,7 @@ class ReplyCommentResource(MethodView, ArgsMixin):
 class DeleteReplyCommentResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/DeleteReplyCommentResource_delete.yml")
+    @swag_from(SPECS["DeleteReplyCommentResource_delete"])
     def delete(self, task_id, comment_id, reply_id):
         """
         Delete comment reply
@@ -388,7 +390,7 @@ class DeleteReplyCommentResource(MethodView):
 class ProjectAttachmentFiles(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/ProjectAttachmentFiles_get.yml")
+    @swag_from(SPECS["ProjectAttachmentFiles_get"])
     def get(self, project_id):
         """
         Get project attachment files
@@ -402,7 +404,7 @@ class ProjectAttachmentFiles(MethodView):
 class TaskAttachmentFiles(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/TaskAttachmentFiles_get.yml")
+    @swag_from(SPECS["TaskAttachmentFiles_get"])
     def get(self, task_id):
         """
         Get task attachment files
@@ -416,7 +418,7 @@ class TaskAttachmentFiles(MethodView):
 class MoveCommentResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/MoveCommentResource_post.yml")
+    @swag_from(SPECS["MoveCommentResource_post"])
     def post(self, task_id, comment_id):
         """
         Move a comment to another task of the same entity
@@ -438,7 +440,7 @@ class MoveCommentResource(MethodView):
 class CopyClientCommentsResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/CopyClientCommentsResource_post.yml")
+    @swag_from(SPECS["CopyClientCommentsResource_post"])
     def post(self, project_id):
         """
         Copy the last client comment of each given task
