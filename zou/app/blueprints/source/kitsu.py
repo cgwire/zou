@@ -66,6 +66,7 @@ class BaseImportKitsuResource(MethodView, ArgsMixin):
         """
         Import kitsu resource
         """
+        permissions.check_admin_permissions()
         kitsu_entries = request.json
         if not isinstance(kitsu_entries, list):
             raise WrongParameterException("A list of entities is expected.")
@@ -79,24 +80,20 @@ class BaseImportKitsuResource(MethodView, ArgsMixin):
 
         instances = []
         for entry in kitsu_entries:
-            if self.check_access(entry):
-                try:
-                    instance, is_updated = self.model.create_from_import(entry)
-                    if not silent:
-                        if is_updated:
-                            self.emit_event("update", entry)
-                        else:
-                            self.emit_event("new", entry)
-                except IntegrityError as exc:
-                    raise WrongParameterException(build_db_error_message(exc))
-                instances.append(instance)
+            try:
+                instance, is_updated = self.model.create_from_import(entry)
+                if not silent:
+                    if is_updated:
+                        self.emit_event("update", entry)
+                    else:
+                        self.emit_event("new", entry)
+            except IntegrityError as exc:
+                raise WrongParameterException(build_db_error_message(exc))
+            instances.append(instance)
         return fields.serialize_models(instances)
 
     def emit_event(self, event_type, entry):
         pass
-
-    def check_access(self, entry):
-        return permissions.has_admin_permissions()
 
 
 class ImportKitsuCommentsResource(BaseImportKitsuResource):
@@ -203,7 +200,7 @@ class _ProjectScopedImportResource(BaseImportKitsuResource):
     """
     Import resource whose entries carry a ``project_id`` directly.
 
-    Admin-only by inheritance (BaseImportKitsuResource.check_access).
+    Admin-only by inheritance (BaseImportKitsuResource.post).
 
     """
 
@@ -227,7 +224,7 @@ class _TaskScopedImportResource(BaseImportKitsuResource):
     """
     Import resource whose entries derive their project via ``task_id``.
 
-    Admin-only by inheritance (BaseImportKitsuResource.check_access).
+    Admin-only by inheritance (BaseImportKitsuResource.post).
 
     """
 
